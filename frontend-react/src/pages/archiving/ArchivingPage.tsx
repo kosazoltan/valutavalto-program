@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Archive, Play, Calendar, CheckCircle, Clock, AlertTriangle, Plus, RefreshCw } from 'lucide-react'
-import { archivingApi, ArchiveTask } from '../../services/api/index'
+import { archivingApi, ArchiveTask, ArchivedTransaction } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
@@ -10,10 +10,7 @@ import { useTranslation } from 'react-i18next'
 
 interface MonthlyArchiveStatus {
   yearMonth: string
-  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED'
-  archivedCount: number
-  totalCount: number
-  completedAt?: string
+  archived: boolean
 }
 
 export default function ArchivingPage() {
@@ -24,6 +21,7 @@ export default function ArchivingPage() {
   const [tasks, setTasks] = useState<ArchiveTask[]>([])
   const [loading, setLoading] = useState(true)
   const [monthlyStatus, setMonthlyStatus] = useState<MonthlyArchiveStatus | null>(null)
+  const [archivedTransactions, setArchivedTransactions] = useState<ArchivedTransaction[]>([])
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const d = new Date()
     d.setMonth(d.getMonth() - 1)
@@ -49,10 +47,15 @@ export default function ArchivingPage() {
   const loadMonthlyStatus = useCallback(async () => {
     if (!branchId || !selectedMonth) return
     try {
-      const data = await archivingApi.getMonthlyStatus(branchId, selectedMonth)
-      setMonthlyStatus(data as MonthlyArchiveStatus)
+      const [status, archived] = await Promise.all([
+        archivingApi.getMonthlyStatus(branchId, selectedMonth),
+        archivingApi.getArchivedTransactions(branchId, selectedMonth),
+      ])
+      setMonthlyStatus(status as MonthlyArchiveStatus)
+      setArchivedTransactions(safeArray<ArchivedTransaction>(archived))
     } catch {
       setMonthlyStatus(null)
+      setArchivedTransactions([])
     }
   }, [branchId, selectedMonth])
 
@@ -130,9 +133,38 @@ export default function ArchivingPage() {
         </div>
         {monthlyStatus && (
           <div className="flex items-center gap-4 text-sm">
-            {getStatusBadge(monthlyStatus.status)}
-            <span>{t('archiving.archivalt')}{monthlyStatus.archivedCount}/{monthlyStatus.totalCount}</span>
-            {monthlyStatus.completedAt && <span className="text-gray-500">{t('archiving.befejezve')} {new Date(monthlyStatus.completedAt).toLocaleString('hu-HU')}</span>}
+            {monthlyStatus.archived ? getStatusBadge('COMPLETED') : getStatusBadge('NOT_STARTED')}
+            <span>{t('archiving.archivalt')}{archivedTransactions.length}</span>
+          </div>
+        )}
+        {archivedTransactions.length > 0 && (
+          <div className="overflow-x-auto rounded border border-gray-200 bg-white">
+            <table className="data-grid w-full min-w-[760px]">
+              <thead>
+                <tr>
+                  <th>Bizonylat</th>
+                  <th>{t('cashdesk.tipus')}</th>
+                  <th>Valuta</th>
+                  <th className="text-right">Összeg</th>
+                  <th className="text-right">HUF</th>
+                  <th>Ügyfél</th>
+                  <th>Eredeti dátum</th>
+                </tr>
+              </thead>
+              <tbody>
+                {archivedTransactions.map((transaction) => (
+                  <tr key={transaction.id}>
+                    <td className="font-mono text-xs">{transaction.receiptNumber ?? transaction.originalId}</td>
+                    <td>{transaction.transactionType ?? '-'}</td>
+                    <td>{transaction.currencyCode ?? '-'}</td>
+                    <td className="text-right">{transaction.amount?.toLocaleString('hu-HU') ?? '-'}</td>
+                    <td className="text-right">{transaction.hufAmount?.toLocaleString('hu-HU') ?? '-'}</td>
+                    <td>{transaction.customerName ?? '-'}</td>
+                    <td>{transaction.originalDate ? new Date(transaction.originalDate).toLocaleString('hu-HU') : '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

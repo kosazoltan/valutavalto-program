@@ -28,6 +28,22 @@ export interface PagedAttendance {
 
 export const workerAttendanceApi = {
     /**
+     * Bejelentkezés rögzítése a bejelentkezett workerhez.
+     */
+    login: async (): Promise<WorkerAttendanceDto> => {
+        const r = await api.post<WorkerAttendanceDto>('/attendance/login')
+        return r.data
+    },
+
+    /**
+     * Nyitott jelenléti session lezárása.
+     */
+    logout: async (attendanceId: string): Promise<WorkerAttendanceDto> => {
+        const r = await api.post<WorkerAttendanceDto>(`/attendance/${attendanceId}/logout`)
+        return r.data
+    },
+
+    /**
      * Bejelentkezett worker sajat naploja.
      */
     my: async (from?: string, to?: string, page = 0, size = 50): Promise<PagedAttendance> => {

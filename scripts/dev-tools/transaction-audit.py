@@ -26,9 +26,10 @@ SRC_JAVA = ROOT / "backend" / "src" / "main" / "java"
 IGNORED  = {"node_modules", ".git", "target", "dist", "test"}
 
 # Patterns
-WRITE_OPS = re.compile(
-    r'\.(save|saveAll|saveAndFlush|delete|deleteAll|deleteById|persist|merge|'
-    r'remove|flush|executeUpdate|bulkUpdate|createNativeQuery.*executeUpdate)\s*\('
+WRITE_CALL = re.compile(
+    r'(?P<receiver>[A-Za-z_][\w.]*)\.(?P<op>save|saveAll|saveAndFlush|delete|'
+    r'deleteAll|deleteById|persist|merge|remove|flush|executeUpdate|bulkUpdate|'
+    r'createNativeQuery)\s*\('
 )
 TRANSACTIONAL = re.compile(r'@Transactional\b')
 READONLY_TX   = re.compile(r'@Transactional\s*\(\s*readOnly\s*=\s*true')
@@ -37,6 +38,26 @@ METHOD_DECL   = re.compile(
     r'[\w<>\[\],\s]+\s+(\w+)\s*\([^)]*\)\s*(?:throws[^{]*)?\{'
 )
 SERVICE_CLASS = re.compile(r'@(Service|Component)\b')
+
+
+def is_persistence_write(line: str) -> bool:
+    """Return true for likely DB writes, not Map.merge(), stream.flush(), PDF save(), etc."""
+    for match in WRITE_CALL.finditer(line):
+        receiver = match.group("receiver").split(".")[-1].lower()
+        op = match.group("op")
+        if op == "createNativeQuery":
+            return "executeUpdate" in line
+        if op in {"executeUpdate", "bulkUpdate"}:
+            return True
+        if (
+            receiver == "repository"
+            or receiver == "repo"
+            or receiver.endswith("repo")
+            or receiver.endswith("repository")
+            or receiver in {"entitymanager", "em", "jdbctemplate", "namedparameterjdbctemplate"}
+        ):
+            return True
+    return False
 
 
 def parse_service_methods(java_file: Path) -> list[dict]:
@@ -66,16 +87,17 @@ def parse_service_methods(java_file: Path) -> list[dict]:
             has_tx      = any(TRANSACTIONAL.search(a) for a in ann_block) or class_tx
             is_readonly = any(READONLY_TX.search(a) for a in ann_block)
 
-            # Scan method body for write ops
-            brace_depth = 1
-            body_lines  = []
+            # Scan method body for persistence write ops. Count braces on the
+            # declaration line too, otherwise one-line methods absorb following methods.
+            brace_depth = lines[j].count("{") - lines[j].count("}")
+            body_lines  = [(j + 1, lines[j])]
             k = j + 1
             while k < len(lines) and brace_depth > 0:
                 body_lines.append((k + 1, lines[k]))
                 brace_depth += lines[k].count("{") - lines[k].count("}")
                 k += 1
 
-            write_hits = [(ln, bl.strip()) for ln, bl in body_lines if WRITE_OPS.search(bl)]
+            write_hits = [(ln, bl.strip()) for ln, bl in body_lines if is_persistence_write(bl)]
 
             if write_hits:
                 results.append({

@@ -7,22 +7,27 @@ import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerMfa;
 import hu.puzzleir.valuta.repository.WorkerMfaRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -46,16 +51,23 @@ class TotpServiceTest {
     private TotpService totpService;
 
     private static final Long WORKER_ID = 42L;
+    private static final UUID COMPANY_ID = UUID.randomUUID();
     private Worker worker;
 
     @BeforeEach
     void setUp() {
+        SecurityContextHolder.clearContext();
         ReflectionTestUtils.setField(totpService, "mfaIssuer", "TestIssuer");
         worker = new Worker();
         worker.setId(WORKER_ID);
         worker.setCode("TESTUSER");
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
         when(mfaRepository.save(any(WorkerMfa.class))).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -70,6 +82,23 @@ class TotpServiceTest {
         assertThat(response.getOtpAuthUrl()).contains("TestIssuer");
         assertThat(response.getOtpAuthUrl()).contains("TESTUSER");
         assertThat(response.getQrCodePngBase64()).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("startEnrollment — bejelentkezett kontextusban company szerint scope-olt worker lookupot használ")
+    void startEnrollment_authenticatedScopesWorkerByCompany() {
+        when(mfaRepository.findByWorkerId(WORKER_ID)).thenReturn(Optional.empty());
+        when(workerRepository.findByIdAndCompanyId(WORKER_ID, COMPANY_ID)).thenReturn(Optional.of(worker));
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_ID);
+
+            var response = totpService.startEnrollment(WORKER_ID);
+
+            assertThat(response.getSecret()).isNotBlank();
+            verify(workerRepository).findByIdAndCompanyId(WORKER_ID, COMPANY_ID);
+            verify(workerRepository, never()).findById(WORKER_ID);
+        }
     }
 
     @Test

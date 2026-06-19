@@ -17,6 +17,50 @@ import { WORKGROUP_FORMULA_STORAGE_PREFIX, type Sheet0Values, type WgValues } fr
 const SHEET0_STORAGE_KEY = 'arfolyamkeszito.mainSheet.v1'
 /** Csoportonkénti J–S érték-pillanatkép kulcs (a `#NN` kereszt-hivatkozásokhoz). */
 const WORKGROUP_VALUES_STORAGE_KEY = 'arfolyamkeszito.workgroupSheet.values.v1'
+const RATE_MAKER_STORAGE_PREFIXES = [
+  'arfolyamkeszito.mainSheet.',
+  'arfolyamkeszito.workgroupSheet.',
+  'mainRateSheet.',
+]
+
+export interface RateMakerSheetSnapshot {
+  version: 1
+  savedAt: string
+  entries: Record<string, string>
+}
+
+function isRateMakerStorageKey(key: string): boolean {
+  return RATE_MAKER_STORAGE_PREFIXES.some(prefix => key.startsWith(prefix))
+}
+
+export function exportRateMakerSheetSnapshot(storage: Storage = localStorage): RateMakerSheetSnapshot {
+  const entries: Record<string, string> = {}
+  for (let i = 0; i < storage.length; i += 1) {
+    const key = storage.key(i)
+    if (!key || !isRateMakerStorageKey(key)) continue
+    const value = storage.getItem(key)
+    if (value !== null) entries[key] = value
+  }
+  return { version: 1, savedAt: new Date().toISOString(), entries }
+}
+
+export function importRateMakerSheetSnapshot(sheetJson: string, storage: Storage = localStorage): number {
+  try {
+    const parsed = JSON.parse(sheetJson) as Partial<RateMakerSheetSnapshot>
+    if (parsed.version !== 1 || !parsed.entries || typeof parsed.entries !== 'object' || Array.isArray(parsed.entries)) {
+      return 0
+    }
+    let imported = 0
+    for (const [key, value] of Object.entries(parsed.entries)) {
+      if (!isRateMakerStorageKey(key) || typeof value !== 'string') continue
+      storage.setItem(key, value)
+      imported += 1
+    }
+    return imported
+  } catch {
+    return 0
+  }
+}
 
 /** A 0-s lap egy sorának nyers alakja (a MainRateSheetPage MainRateRow-ja, releváns mezők). */
 interface RawSheet0Row {

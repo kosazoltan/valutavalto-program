@@ -48,14 +48,17 @@ public class BanknoteInventoryService {
     }
 
     public List<BanknoteInventory> getByBranchAndCurrency(UUID branchId, String currencyCode) {
+        requireOwnBranch(branchId);
         return repository.findByBranchIdAndCurrencyCode(branchId, currencyCode);
     }
 
     public List<BanknoteInventory> getLowStock(UUID branchId) {
+        requireOwnBranch(branchId);
         return repository.findLowStock(branchId);
     }
 
     public List<BanknoteInventory> getOverStock(UUID branchId) {
+        requireOwnBranch(branchId);
         return repository.findOverStock(branchId);
     }
 

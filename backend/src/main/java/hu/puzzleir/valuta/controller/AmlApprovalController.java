@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * AML felsővezetői jóváhagyás — POS-oldali engedélyező-ellenőrzés.
@@ -211,7 +212,8 @@ public class AmlApprovalController {
         // session) az első sor jóváhagyása alá fedettek, nem hasalnak el. A consume @Transactional → retry-safe.
         amlApprovalService.issueApprovalGrant(approverWorkerId, approvalSessionId, customerName);
 
-        String approverName = workerRepository.findById(approverWorkerId)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        String approverName = workerRepository.findByIdAndCompanyId(approverWorkerId, companyId)
                 .map(Worker::getName)
                 .orElse("#" + approverWorkerId);
         log.info("[AML-APPROVAL] Engedélyező verifikálva + grant kiállítva — approver #{} a rögzítő #{} tranzakciójához",

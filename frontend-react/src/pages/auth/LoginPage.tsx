@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CredentialResponse, GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google'
 import { useAuthStore } from '../../stores/authStore'
-import { authApi, publicApi, type PublicWorker } from '../../services/api/index'
+import { authApi, publicApi, type LoginResponse, type PublicWorker } from '../../services/api/index'
 import { Eye, EyeOff, User, Lock, Building2, Shield, RefreshCw, ChevronDown } from 'lucide-react'
 import { getErrorMessage, humanizeIpcError } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
@@ -61,6 +61,15 @@ export default function LoginPage() {
   const [pendingLoginResponse, setPendingLoginResponse] = useState<Awaited<ReturnType<typeof authApi.login>> | null>(null)
   const [selectedRole, setSelectedRole] = useState<string | null>(null)
   const [roleLoading, setRoleLoading] = useState(false)
+
+  // MFA login 2. lépés: a token még nem kerülhet a perzisztált auth store-ba.
+  const [showMfaChallenge, setShowMfaChallenge] = useState(false)
+  const [pendingMfaResponse, setPendingMfaResponse] = useState<LoginResponse | null>(null)
+  const [pendingMfaGoogleIdToken, setPendingMfaGoogleIdToken] = useState<string | undefined>(undefined)
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaBackupMode, setMfaBackupMode] = useState(false)
+  const [mfaLoading, setMfaLoading] = useState(false)
+  const [mfaError, setMfaError] = useState('')
 
   // HIBA 2026-05-26: program-mód választó (értéktáros/vezető több módba is beléphet)
   const [showModeSelector, setShowModeSelector] = useState(false)
@@ -207,8 +216,22 @@ export default function LoginPage() {
     return getDefaultRouteForRole(role)
   }
 
-  /** Login eredmény feldolgozása — ha multi-role, role-választó megjelenítése */
-  const handleLoginResponse = (response: Awaited<ReturnType<typeof authApi.login>>, googleIdToken?: string) => {
+  const resetMfaChallenge = () => {
+    setShowMfaChallenge(false)
+    setPendingMfaResponse(null)
+    setPendingMfaGoogleIdToken(undefined)
+    setMfaCode('')
+    setMfaBackupMode(false)
+    setMfaLoading(false)
+    setMfaError('')
+  }
+
+  /** Login eredmény feldolgozása — MFA, multi-role és mód-választó szerint. */
+  const handleLoginResponse = (
+    response: Awaited<ReturnType<typeof authApi.login>>,
+    googleIdToken?: string,
+    mfaVerified = false,
+  ) => {
     // FK-ÉRTÉKTÁR (V285): intézményi (közös) Google-fiók → a backend dolgozóválasztót kért.
     // NINCS token; a felhasználó kiválasztja a SAJÁT nevét, majd jelszót ad (2. fázis).
     if (response.vaultWorkerSelectionRequired) {
@@ -224,6 +247,20 @@ export default function LoginPage() {
       setVaultPassword('')
       setVaultError(null)
       setShowVaultWorkerSelect(true)
+      return
+    }
+
+    if (response.mfaRequired && !mfaVerified) {
+      if (!response.token) {
+        setError('A szerver MFA ellenőrzést kért, de nem adott ellenőrizhető login tokent.')
+        return
+      }
+      setPendingMfaResponse(response)
+      setPendingMfaGoogleIdToken(googleIdToken)
+      setMfaCode('')
+      setMfaBackupMode(false)
+      setMfaError('')
+      setShowMfaChallenge(true)
       return
     }
 
@@ -296,6 +333,37 @@ export default function LoginPage() {
       response.centralModules ?? null,
     )
     navigate(getDefaultRouteForRole(response.activeRole ?? response.worker.role))
+  }
+
+  const handleMfaChallengeSubmit = async () => {
+    if (!pendingMfaResponse) return
+    const submittedCode = mfaCode.trim()
+    const requiredLength = mfaBackupMode ? 8 : 6
+    if (!new RegExp(`^\\d{${requiredLength}}$`).test(submittedCode)) {
+      setMfaError(mfaBackupMode ? 'A backup kód pontosan 8 számjegyű.' : 'A TOTP kód pontosan 6 számjegyű.')
+      return
+    }
+
+    setMfaLoading(true)
+    setMfaError('')
+    try {
+      const tokenType = pendingMfaResponse.tokenType ?? 'Bearer'
+      const result = mfaBackupMode
+        ? await authApi.verifyMfaBackup(pendingMfaResponse.token, submittedCode, tokenType)
+        : await authApi.verifyMfa(pendingMfaResponse.token, submittedCode, tokenType)
+      if (!result.verified) {
+        setMfaError(result.message || 'MFA ellenőrzés sikertelen.')
+        return
+      }
+      const verifiedResponse = pendingMfaResponse
+      const verifiedGoogleIdToken = pendingMfaGoogleIdToken
+      resetMfaChallenge()
+      handleLoginResponse(verifiedResponse, verifiedGoogleIdToken, true)
+    } catch (err: unknown) {
+      setMfaError(getErrorMessage(err))
+    } finally {
+      setMfaLoading(false)
+    }
   }
 
   /** Role kiválasztása a modalból */
@@ -647,6 +715,78 @@ export default function LoginPage() {
               >
                 {t('common.cancel')}
               </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (showMfaChallenge && pendingMfaResponse) {
+    return (
+      <div className="w-[340px]">
+        <div className="bg-form-bg border border-form-border shadow-lg">
+          <div className="header-bar flex items-center gap-2 h-8">
+            <Shield size={16} />
+            <span>MFA ellenőrzés</span>
+          </div>
+          <div className="p-4">
+            <p className="text-sm text-gray-600 mb-3">
+              Add meg az authenticator app 6 számjegyű kódját, vagy válts egyszer használható backup kódra.
+            </p>
+            {mfaError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3" data-testid="login-mfa-error">
+                {mfaError}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div className="form-group-box pt-4">
+                <span className="form-group-box-title">{mfaBackupMode ? 'Backup kód' : 'TOTP kód'}</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={mfaBackupMode ? 8 : 6}
+                  className="form-input w-full text-center font-mono text-lg"
+                  value={mfaCode}
+                  onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, '').slice(0, mfaBackupMode ? 8 : 6))}
+                  placeholder={mfaBackupMode ? '12345678' : '123456'}
+                  data-testid="login-mfa-code"
+                  autoFocus
+                />
+              </div>
+
+              <button
+                type="button"
+                className="text-xs text-primary-600 hover:text-primary-700 hover:underline"
+                onClick={() => {
+                  setMfaBackupMode((prev) => !prev)
+                  setMfaCode('')
+                  setMfaError('')
+                }}
+              >
+                {mfaBackupMode ? 'Authenticator kód használata' : 'Backup kód használata'}
+              </button>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  className="form-button"
+                  disabled={mfaLoading}
+                  onClick={resetMfaChallenge}
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="button"
+                  className="form-button-primary px-4"
+                  disabled={mfaLoading || mfaCode.length !== (mfaBackupMode ? 8 : 6)}
+                  onClick={() => void handleMfaChallengeSubmit()}
+                >
+                  {mfaLoading ? 'Ellenőrzés...' : 'MFA ellenőrzés'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

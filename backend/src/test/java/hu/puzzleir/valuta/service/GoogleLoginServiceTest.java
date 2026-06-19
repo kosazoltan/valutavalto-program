@@ -55,6 +55,7 @@ class GoogleLoginServiceTest {
     private JwtTokenProvider jwtTokenProvider;
     private BranchRepository branchRepository;
     private ClientIpResolver clientIpResolver;
+    private TotpService totpService;
     private WorkerService workerService;
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private GoogleLoginService service;
@@ -68,6 +69,7 @@ class GoogleLoginServiceTest {
         jwtTokenProvider = Mockito.mock(JwtTokenProvider.class);
         branchRepository = Mockito.mock(BranchRepository.class);
         clientIpResolver = Mockito.mock(ClientIpResolver.class);
+        totpService = Mockito.mock(TotpService.class);
         workerService = Mockito.mock(WorkerService.class);
         passwordEncoder = Mockito.mock(org.springframework.security.crypto.password.PasswordEncoder.class);
         when(clientIpResolver.resolveClientIp(any())).thenReturn("127.0.0.1");
@@ -75,7 +77,7 @@ class GoogleLoginServiceTest {
         service = new GoogleLoginService(
                 googleIdTokenService, workerRepository, sessionRepository,
                 workerRoleService, jwtTokenProvider, branchRepository, clientIpResolver,
-                workerService, passwordEncoder);
+                totpService, workerService, passwordEncoder);
         ReflectionTestUtils.setField(service, "bindSubOnFirstLogin", true);
     }
 

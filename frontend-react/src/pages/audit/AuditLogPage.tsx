@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Shield, Search, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Shield, Search, ChevronLeft, ChevronRight, X, Download } from 'lucide-react'
 import { auditLogApi } from '../../services/api/index'
 import type { AuditLog } from '../../services/api/index'
 import { logger } from '../../utils/logger';
@@ -45,6 +45,9 @@ export default function AuditLogPage() {
   const [page, setPage] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null)
+  const [trailLogs, setTrailLogs] = useState<AuditLog[]>([])
+  const [trailLoading, setTrailLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const loadLogs = useCallback(async () => {
     try {
@@ -54,15 +57,10 @@ export default function AuditLogPage() {
 
       let result: { content: AuditLog[]; totalElements: number }
 
-      if (actionFilter) {
-        result = await auditLogApi.getByAction(actionFilter, from, to, page, 50)
-      } else if (workerFilter) {
-        result = await auditLogApi.getByWorker(workerFilter, from, to, page, 50)
-      } else if (branchFilter) {
+      if (branchFilter) {
         result = await auditLogApi.getByBranch(branchFilter, from, to, page, 50)
       } else {
-        // Fallback: általános dátum szűrés (rendszer logok)
-        result = await auditLogApi.getAll(from, to, page, 50)
+        result = await auditLogApi.search(from, to, workerFilter, undefined, actionFilter, searchTerm, page, 50)
       }
 
       setLogs(Array.isArray(result?.content) ? result.content : [])
@@ -72,20 +70,59 @@ export default function AuditLogPage() {
     } finally {
       setLoading(false)
     }
-  }, [fromDate, toDate, actionFilter, workerFilter, branchFilter, page])
+  }, [fromDate, toDate, actionFilter, workerFilter, branchFilter, searchTerm, page])
 
   useEffect(() => {
     void loadLogs()
   }, [loadLogs])
 
-  // Szűrt logok (kliens oldali kereséssel)
-  const filteredLogs = logs.filter(log =>
-    searchTerm === '' ||
-    log.action?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.entityType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.branchName?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  useEffect(() => {
+    if (!selectedLog?.entityType || !selectedLog.entityId) {
+      setTrailLogs([])
+      return
+    }
+
+    let active = true
+    setTrailLoading(true)
+    auditLogApi.getTrail(selectedLog.entityType, selectedLog.entityId)
+      .then((rows) => {
+        if (active) setTrailLogs(Array.isArray(rows) ? rows : [])
+      })
+      .catch((error) => {
+        if (active) {
+          logger.error('AuditLogPage', 'Hiba az audit trail betöltésekor:', error)
+          setTrailLogs([])
+        }
+      })
+      .finally(() => {
+        if (active) setTrailLoading(false)
+      })
+
+    return () => { active = false }
+  }, [selectedLog])
+
+  const filteredLogs = logs
+
+  const exportCsv = async () => {
+    try {
+      setExporting(true)
+      const from = fromDate ? `${fromDate}T00:00:00` : undefined
+      const to = toDate ? `${toDate}T23:59:59` : undefined
+      const blob = await auditLogApi.exportCsv(from, to)
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'audit_export.csv'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      logger.error('AuditLogPage', 'Hiba az audit export során:', error)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   // Akció badge szín
   const getActionColor = (action: string): string => {
@@ -135,9 +172,20 @@ export default function AuditLogPage() {
           <Shield className="text-primary-600" />
           {t('audit.auditLogErzekenyMuveletek')}
         </h1>
-        <span className="text-sm text-gray-500">
-          {t('audit.osszesen')}{totalElements} {t('common.bejegyzes')}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">
+            {t('audit.osszesen')}{totalElements} {t('common.bejegyzes')}
+          </span>
+          <button
+            type="button"
+            onClick={() => void exportCsv()}
+            disabled={exporting}
+            className="form-button flex items-center gap-2"
+          >
+            <Download size={16} />
+            CSV export
+          </button>
+        </div>
       </div>
 
       {/* Szűrők */}
@@ -338,6 +386,33 @@ export default function AuditLogPage() {
                   </pre>
                 ) : null}
                 {renderDiff(selectedLog.oldValue, selectedLog.newValue)}
+              </div>
+
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Audit trail</h4>
+                {trailLoading ? (
+                  <p className="text-sm text-gray-500">Betöltés...</p>
+                ) : trailLogs.length === 0 ? (
+                  <p className="text-sm text-gray-500">{t('common.noData')}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {trailLogs.map((entry) => (
+                      <div key={entry.id} className="rounded border border-gray-200 p-2 text-sm">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getActionColor(entry.action)}`}>
+                            {entry.action}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(entry.createdAt).toLocaleString('hu-HU')}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-xs text-gray-600">
+                          {entry.userName || '—'} · {entry.branchName || '—'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>

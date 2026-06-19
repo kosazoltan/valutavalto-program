@@ -13,6 +13,7 @@ import hu.puzzleir.valuta.dto.cashregister.CashRegisterStornoRequest;
 import hu.puzzleir.valuta.entity.CashRegisterEvent;
 import hu.puzzleir.valuta.entity.CashRegisterEventType;
 import hu.puzzleir.valuta.repository.CashRegisterEventRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -123,16 +125,10 @@ public class CashRegisterService {
         Branch branch = findBranch(request.getBranchId());
 
         // Eredeti bizonylat esemény keresése + cross-branch védelem
-        CashRegisterEvent originalEvent = cashRegisterEventRepository.findById(request.getOriginalReceiptId())
+        CashRegisterEvent originalEvent = cashRegisterEventRepository
+                .findByIdAndBranchId(request.getOriginalReceiptId(), request.getBranchId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Eredeti bizonylat esemény nem található: " + request.getOriginalReceiptId()));
-
-        // Cross-branch sztornó védelem: eredeti bizonylat ugyanahhoz az irodához kell tartozzon
-        if (!originalEvent.getBranch().getId().equals(request.getBranchId())) {
-            throw new IllegalArgumentException(
-                    "Sztornó nem engedélyezett: az eredeti bizonylat más irodához tartozik (original=" +
-                    originalEvent.getBranch().getId() + ", requested=" + request.getBranchId() + ")");
-        }
 
         String comPort = resolveNavComPort();
         String originalReceipt = originalEvent.getReceiptNumber() != null ? originalEvent.getReceiptNumber() : "UNKNOWN";
@@ -319,7 +315,11 @@ public class CashRegisterService {
     // ============ HELPERS ============
 
     private Branch findBranch(UUID branchId) {
-        return branchRepository.findById(branchId)
+        UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
+        Optional<Branch> branch = companyId != null
+                ? branchRepository.findByIdAndCompanyId(branchId, companyId)
+                : branchRepository.findById(branchId);
+        return branch
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
     }
 

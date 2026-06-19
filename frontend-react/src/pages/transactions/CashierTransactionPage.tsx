@@ -5,7 +5,7 @@ import { useFKeyHotkey } from '../../hooks/useFKeyHotkey'
 import { AlertTriangle } from 'lucide-react'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
-import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi, receiptApi, handlingFeeConfigApi } from '../../services/api/index'
+import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi, receiptApi, handlingFeeConfigApi, discountThresholdApi } from '../../services/api/index'
 import type { HandlingFeeConfig } from '../../services/api/index'
 import { computeHandlingFee } from '../../utils/handlingFee'
 import { api } from '../../services/api/client'
@@ -148,6 +148,15 @@ export default function CashierTransactionPage() {
   const [showFeeDialog, setShowFeeDialog] = useState(false)
   const [feeInput, setFeeInput] = useState('')
   const [discountInput, setDiscountInput] = useState('')
+  const [discountApprovalInfo, setDiscountApprovalInfo] = useState<{
+    requiredLevel?: string
+    workerLevel?: string
+    maxAllowedPercent?: number
+    canApprove?: boolean
+    exceedsMaxCap?: boolean
+  } | null>(null)
+  const [discountApprovalLoading, setDiscountApprovalLoading] = useState(false)
+  const [discountApprovalError, setDiscountApprovalError] = useState<string | null>(null)
   // FK-KEZDÍJ (2026-06-02): kezelési díj módosítás (override). A szerver validálja az engedély-
   // mátrixot; itt csak a kliens-választás (típus/jogcím/kártyaszám) — HALF/WAIVED-nél a szerver
   // számolja a végösszeget, SPECIAL-nál a feeInput az egyedi díj.
@@ -158,6 +167,7 @@ export default function CashierTransactionPage() {
   // szerint AUTOMATIKUSAN számolódik (ezrelékes/sávos) — a szerver eddig is ezzel könyvelt,
   // de a képernyő/helyi bizonylat 0-t mutatott. A konfigot a pénztáros read-only kérheti le.
   const [feeConfig, setFeeConfig] = useState<HandlingFeeConfig | null>(null)
+  const [autoFeeDiscountLabel, setAutoFeeDiscountLabel] = useState<string | null>(null)
 
   // Exchange rates from API
   const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([])
@@ -254,13 +264,44 @@ export default function CashierTransactionPage() {
     return () => { cancelled = true }
   }, [])
 
-  // FK-KEZDIJ B.1: az AUTOMATIKUS díj a konfigból (ezrelékes/sávos) — a képernyő-összesítő
-  // és a helyi bizonylat UGYANAZT mutatja, amit a szerver könyvel. Override (Felezés/
-  // Elengedés/SPECIAL egyedi díj) alatt nem írjuk felül a kézi/szerveres értéket.
+  // FK-KEZDIJ B.1 + DiscountThreshold contract: az AUTOMATIKUS díj a konfigból
+  // (ezrelékes/sávos) indul, majd a backend /discount-threshold/apply szerződés
+  // alkalmazza a BIGARFVALT/KISARFVALT automatikus küszöbkedvezményt/felárat.
+  // Endpoint-hiba esetén fail-open: marad a baseFee, hogy a kassza ne akadjon meg;
+  // a backend tranzakciórögzítés továbbra is autoritatívan újraszámol.
   useEffect(() => {
-    if (!feeConfig || feeOverrideType) return
+    if (!feeConfig || feeOverrideType) {
+      setAutoFeeDiscountLabel(null)
+      return
+    }
+    let cancelled = false
     const auto = computeHandlingFee(subtotal, feeConfig)
-    if (auto !== null) setHandlingFee(auto)
+    if (auto === null) {
+      setAutoFeeDiscountLabel(null)
+      return
+    }
+    setHandlingFee(auto)
+    setAutoFeeDiscountLabel(null)
+    if (subtotal <= 0) return
+
+    discountThresholdApi.apply(subtotal, auto)
+      .then((result) => {
+        if (cancelled) return
+        const adjusted = roundHuf(result.adjustedFee ?? auto)
+        setHandlingFee(adjusted)
+        setAutoFeeDiscountLabel(
+          result.discountCode
+            ? `${result.discountName || result.discountCode}: ${formatNum(auto)} -> ${formatNum(adjusted)} HUF`
+            : null,
+        )
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setAutoFeeDiscountLabel(null)
+          logger.warn('CashierTransactionPage', 'Discount threshold apply failed; base handling fee kept:', err)
+        }
+      })
+    return () => { cancelled = true }
   }, [subtotal, feeConfig, feeOverrideType])
 
   // Batch2-B (Fabulya-teszt 2026-06-12): betöltött díj-konfig mellett a kézi díj-mező
@@ -269,11 +310,59 @@ export default function CashierTransactionPage() {
   // backend 403 / hálózati hiba → feeConfig=null) a korábbi kézi viselkedés él.
   const feeInputLocked = feeConfig !== null && feeOverrideType !== 'SPECIAL'
 
-  const applyFeeDialog = () => {
+  useEffect(() => {
+    if (!showFeeDialog) return
+    const discountPercent = Math.max(0, parseFloat(discountInput) || 0)
+    if (discountPercent <= 0) {
+      setDiscountApprovalInfo(null)
+      setDiscountApprovalError(null)
+      return
+    }
+
+    let cancelled = false
+    const timerId = window.setTimeout(() => {
+      setDiscountApprovalLoading(true)
+      setDiscountApprovalError(null)
+      api.get('/discount-approval/required-level', { params: { discountPercent } })
+        .then((response) => {
+          if (!cancelled) {
+            setDiscountApprovalInfo(response.data as typeof discountApprovalInfo)
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setDiscountApprovalInfo(null)
+            setDiscountApprovalError('Kedvezmény-jóváhagyás ellenőrzése sikertelen.')
+            logger.warn('CashierTransactionPage', 'Discount approval required-level failed:', err)
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setDiscountApprovalLoading(false)
+        })
+    }, 250)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timerId)
+    }
+  }, [discountInput, showFeeDialog])
+
+  const applyFeeDialog = async () => {
+    const nextDiscount = Math.max(0, parseFloat(discountInput) || 0)
+    if (nextDiscount > 0) {
+      try {
+        setDiscountApprovalError(null)
+        await api.post('/discount-approval/validate', null, { params: { discountPercent: nextDiscount } })
+      } catch (err) {
+        setDiscountApprovalError('A backend nem engedélyezte ezt a kedvezményt a jelenlegi dolgozói szinttel.')
+        logger.warn('CashierTransactionPage', 'Discount approval validate failed:', err)
+        return
+      }
+    }
     if (!feeInputLocked) {
       setHandlingFee(Math.max(0, parseInt(feeInput, 10) || 0))
     }
-    setDiscount(Math.min(15, Math.max(0, parseFloat(discountInput) || 0)))
+    setDiscount(nextDiscount)
     setShowFeeDialog(false)
   }
 
@@ -1419,7 +1508,7 @@ export default function CashierTransactionPage() {
                 min={0}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    applyFeeDialog()
+                    void applyFeeDialog()
                   } else if (e.key === 'Escape') {
                     setFeeOverrideType(''); setFeeOverrideReason(''); setCardNumber('')
                     setShowFeeDialog(false)
@@ -1437,6 +1526,11 @@ export default function CashierTransactionPage() {
                   })}
                 </p>
               )}
+              {autoFeeDiscountLabel && (
+                <p className="mt-1 text-xs font-medium text-green-700" data-testid="auto-fee-discount">
+                  Automatikus küszöbkedvezmény: {autoFeeDiscountLabel}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('transactions.kedvezmeny')}</label>
@@ -1449,13 +1543,39 @@ export default function CashierTransactionPage() {
                 autoFocus={feeInputLocked}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    applyFeeDialog()
+                    void applyFeeDialog()
                   } else if (e.key === 'Escape') {
                     setFeeOverrideType(''); setFeeOverrideReason(''); setCardNumber('')
                     setShowFeeDialog(false)
                   }
                 }}
               />
+              {discountApprovalLoading && (
+                <p className="mt-1 text-xs text-gray-500">Kedvezmény jóváhagyási szint ellenőrzése...</p>
+              )}
+              {discountApprovalInfo && (
+                <div
+                  className={`mt-2 rounded border p-2 text-xs ${
+                    discountApprovalInfo.canApprove
+                      ? 'border-green-200 bg-green-50 text-green-800'
+                      : 'border-amber-200 bg-amber-50 text-amber-900'
+                  }`}
+                  data-testid="discount-approval-info"
+                >
+                  Szükséges szint: {discountApprovalInfo.requiredLevel ?? '-'}; dolgozói szint: {discountApprovalInfo.workerLevel ?? '-'}.
+                  {discountApprovalInfo.exceedsMaxCap && (
+                    <span> Maximum: {discountApprovalInfo.maxAllowedPercent ?? '-'}%.</span>
+                  )}
+                  {!discountApprovalInfo.canApprove && !discountApprovalInfo.exceedsMaxCap && (
+                    <span> Magasabb jóváhagyási szint szükséges.</span>
+                  )}
+                </div>
+              )}
+              {discountApprovalError && (
+                <div className="mt-2 rounded border border-red-200 bg-red-50 p-2 text-xs text-red-800" data-testid="discount-approval-error">
+                  {discountApprovalError}
+                </div>
+              )}
             </div>
             {/* FK-KEZDÍJ (2026-06-02): kezelési díj módosítás (override) — engedély-mátrix. */}
             <div className="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-2">
@@ -1506,7 +1626,7 @@ export default function CashierTransactionPage() {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={applyFeeDialog}
+                onClick={() => void applyFeeDialog()}
                 className="flex-1 py-2.5 rounded-lg text-white font-semibold"
                 style={{ backgroundColor: 'var(--primary)' }}
               >
@@ -1719,6 +1839,12 @@ export default function CashierTransactionPage() {
                 <span className="text-gray-600 dark:text-gray-400">{t('transactions.kezelesiDij')}</span>
                 <span className="font-mono font-semibold">{formatNum(handlingFee)} HUF</span>
               </div>
+              {autoFeeDiscountLabel && (
+                <div className="flex justify-between gap-3 text-xs text-green-700">
+                  <span>Automatikus díjkedvezmény</span>
+                  <span className="text-right">{autoFeeDiscountLabel}</span>
+                </div>
+              )}
               {discount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">{t('transactions.kedvezmeny2')}{discount}%):</span>

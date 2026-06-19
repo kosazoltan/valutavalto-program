@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.PasswordResetToken;
+import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.PasswordResetTokenRepository;
@@ -15,9 +16,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -44,9 +48,22 @@ class PasswordResetServiceTest {
 
     @InjectMocks private PasswordResetService service;
 
+    private static final UUID COMPANY_ID = UUID.randomUUID();
+
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(service, "frontendBaseUrl", "https://excvaluta.com");
+    }
+
+    @Test
+    @DisplayName("requestForgotPassword: írási tranzakcióban fut, mert reset tokent ment és takarít")
+    void requestForgotPassword_usesWriteTransaction() throws Exception {
+        Method method = PasswordResetService.class.getMethod("requestForgotPassword", String.class);
+
+        Transactional tx = method.getAnnotation(Transactional.class);
+
+        assertThat(tx).isNotNull();
+        assertThat(tx.readOnly()).isFalse();
     }
 
     @Test
@@ -81,6 +98,7 @@ class PasswordResetServiceTest {
                 .id(42L)
                 .name("Teszt Elek")
                 .email("test@example.com")
+                .company(company())
                 .active(true)
                 .build();
         when(workerRepository.findByEmail("test@example.com")).thenReturn(Optional.of(worker));
@@ -88,7 +106,9 @@ class PasswordResetServiceTest {
         String token = service.requestForgotPassword("test@example.com");
 
         assertThat(token).isNotBlank();
-        verify(resetTokenRepository).save(any(PasswordResetToken.class));
+        ArgumentCaptor<PasswordResetToken> tokenCaptor = ArgumentCaptor.forClass(PasswordResetToken.class);
+        verify(resetTokenRepository).save(tokenCaptor.capture());
+        assertThat(tokenCaptor.getValue().getCompanyId()).isEqualTo(COMPANY_ID);
 
         ArgumentCaptor<String> toCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> subjectCaptor = ArgumentCaptor.forClass(String.class);
@@ -111,6 +131,7 @@ class PasswordResetServiceTest {
                 .id(7L)
                 .name("Email Nelkul")
                 .email(null)
+                .company(company())
                 .active(true)
                 .build();
         // findByEmail-bol jott vissza, de a worker.email null -> edge case (DB inkonzisztencia)
@@ -153,6 +174,7 @@ class PasswordResetServiceTest {
                 .id(99L)
                 .name("Mixed Case")
                 .email("mixed@example.com")
+                .company(company())
                 .active(true)
                 .build();
         when(workerRepository.findByEmail("mixed@example.com")).thenReturn(Optional.of(worker));
@@ -181,14 +203,16 @@ class PasswordResetServiceTest {
                 .id(11L)
                 .name("Reset Teszt")
                 .email("reset@example.com")
+                .company(company())
                 .active(true)
                 .build();
         PasswordResetToken resetToken = PasswordResetToken.builder()
                 .workerId(11L)
+                .companyId(COMPANY_ID)
                 .expiresAt(Instant.now().plusSeconds(60))
                 .build();
         when(resetTokenRepository.findByTokenHashAndUsedAtIsNull(anyString())).thenReturn(Optional.of(resetToken));
-        when(workerRepository.findById(11L)).thenReturn(Optional.of(worker));
+        when(workerRepository.findByIdAndCompanyId(11L, COMPANY_ID)).thenReturn(Optional.of(worker));
         when(passwordEncoder.encode("newPassword123")).thenReturn("$2a$encoded$");
 
         service.resetPassword("valid-reset-token", "newPassword123");
@@ -196,6 +220,8 @@ class PasswordResetServiceTest {
         assertThat(resetToken.getUsedAt()).isNotNull();
         verify(resetTokenRepository).save(resetToken);
         verify(passwordEncoder).encode("newPassword123");
+        verify(workerRepository).findByIdAndCompanyId(11L, COMPANY_ID);
+        verify(workerRepository, never()).findById(11L);
         verify(workerRepository).save(worker);
         assertThat(worker.getPasswordHash()).isEqualTo("$2a$encoded$");
         assertThat(worker.getPasswordChangedAt()).isNotNull();
@@ -208,16 +234,18 @@ class PasswordResetServiceTest {
                 .id(13L)
                 .name("Egyszer Hasznal")
                 .email("consume@example.com")
+                .company(company())
                 .active(true)
                 .build();
         PasswordResetToken resetToken = PasswordResetToken.builder()
                 .workerId(13L)
+                .companyId(COMPANY_ID)
                 .expiresAt(Instant.now().plusSeconds(60))
                 .build();
         when(resetTokenRepository.findByTokenHashAndUsedAtIsNull(anyString()))
                 .thenReturn(Optional.of(resetToken))
                 .thenReturn(Optional.empty());
-        when(workerRepository.findById(13L)).thenReturn(Optional.of(worker));
+        when(workerRepository.findByIdAndCompanyId(13L, COMPANY_ID)).thenReturn(Optional.of(worker));
         when(passwordEncoder.encode(anyString())).thenReturn("$2a$x$");
 
         service.resetPassword("consume-token", "first123");
@@ -231,6 +259,10 @@ class PasswordResetServiceTest {
     private static String eqIgnoreNull(String value) {
         // Kisegitő helper hogy ne kelljen importalni az ArgumentMatchers-eq()-t a tobbi mellett
         return org.mockito.ArgumentMatchers.eq(value);
+    }
+
+    private static Company company() {
+        return Company.builder().id(COMPANY_ID).build();
     }
 
     private static <T> T any(Class<T> type) {

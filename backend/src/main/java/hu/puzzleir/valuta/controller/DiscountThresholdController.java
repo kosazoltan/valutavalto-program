@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.entity.FeeDiscount;
 import hu.puzzleir.valuta.service.DiscountThresholdService;
+import hu.puzzleir.valuta.util.HungarianRounding;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,7 @@ import java.util.Optional;
  */
 @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
-@RequestMapping("/api/discount-threshold")
+@RequestMapping({"/api/v1/discount-threshold", "/api/discount-threshold"})
 @RequiredArgsConstructor
 @Tag(name = "Kedvezmény küszöb", description = "Automatikus kedvezmény/felár nagy/kis összeg alapján")
 public class DiscountThresholdController {
@@ -57,7 +58,8 @@ public class DiscountThresholdController {
         Optional<FeeDiscount> discount = thresholdService.resolveDiscount(hufAmount);
 
         if (discount.isPresent()) {
-            BigDecimal adjustedFee = thresholdService.applyDiscount(originalFee, discount.get());
+            BigDecimal adjustedFee = HungarianRounding.roundToFive(
+                    thresholdService.applyDiscount(originalFee, discount.get()));
             return ResponseEntity.ok(Map.of(
                     "originalFee", originalFee,
                     "adjustedFee", adjustedFee,
@@ -68,7 +70,7 @@ public class DiscountThresholdController {
 
         return ResponseEntity.ok(Map.of(
                 "originalFee", originalFee,
-                "adjustedFee", originalFee,
+                "adjustedFee", HungarianRounding.roundToFive(originalFee),
                 "discountCode", "",
                 "discountName", "Nincs automatikus kedvezmény"
         ));

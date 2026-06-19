@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sun, AlertTriangle, Loader2, CheckCircle, Coins } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
-import { dailySessionApi, cashBalanceApi } from '../../services/api/index'
+import { dailySessionApi, cashBalanceApi, sessionOpenApi } from '../../services/api/index'
 import type { CashBalance } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { clearPersistedToken } from '../../services/api/index'
@@ -30,6 +30,8 @@ export default function DayOpenPage() {
   const [balanceError, setBalanceError] = useState<string | null>(null)
   const [opening, setOpening] = useState(false)
   const [alreadyOpen, setAlreadyOpen] = useState(false)
+  const [openWarnings, setOpenWarnings] = useState<string[]>([])
+  const [sessionOpeningBalances, setSessionOpeningBalances] = useState<Record<string, number> | null>(null)
   const [showDenomination, setShowDenomination] = useState(false)
   const [denomQuantities, setDenomQuantities] = useState<Record<number, number>>(
     () => Object.fromEntries(HUF_DENOMINATIONS.map((d) => [d, 0]))
@@ -52,6 +54,15 @@ export default function DayOpenPage() {
         return
       }
 
+      if (worker?.branchId) {
+        try {
+          setOpenWarnings(await sessionOpenApi.validateOpen(String(worker.branchId)))
+        } catch (err) {
+          logger.warn('DayOpenPage', 'Napnyitas validacio sikertelen:', err)
+          setOpenWarnings(['A napnyitási validáció nem kérdezhető le.'])
+        }
+      }
+
       // Készlet lekérés
       try {
         const bal = await cashBalanceApi.list()
@@ -66,7 +77,7 @@ export default function DayOpenPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [worker?.branchId])
 
   useEffect(() => {
     checkAndLoad()
@@ -78,9 +89,25 @@ export default function DayOpenPage() {
       return
     }
 
+    const workerId = Number(worker.id)
+    const branchId = String(worker.branchId ?? '')
+    if (!Number.isFinite(workerId) || !branchId) {
+      toast.error('Napnyitás sikertelen', 'Hiányzó pénztáros vagy iroda azonosító.')
+      return
+    }
+
     setOpening(true)
     try {
-      await dailySessionApi.open()
+      const openedSession = await sessionOpenApi.open({ workerId, branchId })
+      if (openedSession.warnings?.length) {
+        setOpenWarnings(openedSession.warnings)
+      }
+      try {
+        setSessionOpeningBalances(await sessionOpenApi.getOpeningBalance(openedSession.sessionId))
+      } catch (err) {
+        logger.warn('DayOpenPage', 'Session nyito keszlet lekerdezes sikertelen:', err)
+        setOpenWarnings((prev) => [...prev, 'A session megnyílt, de a nyitó készlet nem kérdezhető le.'])
+      }
       toast.success('Nap megnyitva', `${new Date().toLocaleDateString('hu-HU')} — ${worker.fullName}`)
       navigate('/cashier')
     } catch (err: unknown) {
@@ -102,6 +129,7 @@ export default function DayOpenPage() {
 
   const hufBalance = balances.find((b) => b.currencyCode === 'HUF')
   const foreignBalances = balances.filter((b) => b.currencyCode !== 'HUF')
+  const sessionOpeningBalanceRows = Object.entries(sessionOpeningBalances ?? {})
 
   if (loading) {
     return (
@@ -146,6 +174,38 @@ export default function DayOpenPage() {
             <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
               <p className="text-xs text-amber-800">{balanceError}</p>
+            </div>
+          )}
+
+          {openWarnings.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-2" data-testid="session-open-warnings">
+              <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-amber-900">
+                <AlertTriangle className="h-4 w-4" />
+                Napnyitási figyelmeztetés
+              </div>
+              <ul className="space-y-1 text-xs text-amber-800">
+                {openWarnings.map((warning) => (
+                  <li key={warning}>- {warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {sessionOpeningBalanceRows.length > 0 && (
+            <div className="rounded-lg border border-green-200 bg-green-50 p-2 shadow-sm" data-testid="session-opening-balances">
+              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-green-700">
+                Backend nyitó készlet
+              </h3>
+              <div className="grid grid-cols-2 gap-x-3">
+                {sessionOpeningBalanceRows.map(([currencyCode, amount]) => (
+                  <div key={currencyCode} className="flex items-center justify-between px-1 py-0.5 text-xs">
+                    <span className="font-medium text-green-800">{currencyCode}</span>
+                    <span className="text-green-900">
+                      {Number(amount).toLocaleString('hu-HU', { maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

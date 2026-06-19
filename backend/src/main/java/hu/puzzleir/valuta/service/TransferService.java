@@ -224,7 +224,7 @@ public class TransferService {
             throw new ValidationException("Csak függőben lévő vagy szállítás alatt lévő átadás fogadható!");
         }
 
-        Worker toWorker = workerRepository.findById(workerId)
+        Worker toWorker = workerRepository.findByIdAndCompanyId(workerId, transfer.getCompanyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található: " + workerId));
 
         // HIGH FIX #10: Objects.equals használata — biztos összehasonlítás LAZY branch esetén is

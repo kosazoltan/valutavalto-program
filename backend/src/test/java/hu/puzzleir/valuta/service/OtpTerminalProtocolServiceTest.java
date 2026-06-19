@@ -3,6 +3,8 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.dto.pos.PosTransactionResult;
 import hu.puzzleir.valuta.entity.PosTerminal;
 import hu.puzzleir.valuta.repository.PosTerminalRepository;
+import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,6 +13,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.lang.reflect.Method;
@@ -42,6 +46,11 @@ class OtpTerminalProtocolServiceTest {
     private static final char STX = (char) 0x02;
     private static final char ETX = (char) 0x03;
     private static final char FS  = (char) 0x1C;
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     // ============================================================
     // Segédmetódusok reflexiós hívásokhoz
@@ -266,6 +275,39 @@ class OtpTerminalProtocolServiceTest {
 
         assertThat(addr.host()).isEqualTo("10.0.1.50");
         assertThat(addr.port()).isEqualTo(9300);
+    }
+
+    @Test
+    @DisplayName("PosTerminalConfigService: bejelentkezett felhasználónál branch szerint scope-ol")
+    void posTerminalConfigService_authenticatedResolutionScopesByBranch() {
+        PosTerminalRepository repo = mock(PosTerminalRepository.class);
+        PosTerminalConfigService configService = new PosTerminalConfigService(repo);
+        ReflectionTestUtils.setField(configService, "defaultHost", "127.0.0.1");
+        ReflectionTestUtils.setField(configService, "defaultPort", 9100);
+
+        UUID companyId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+        UUID terminalId = UUID.randomUUID();
+        UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken("W0001", null, List.of());
+        auth.setDetails(new WorkerAuthenticationDetails(1L, companyId, branchId, "CASHIER"));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        PosTerminal terminal = PosTerminal.builder()
+                .id(terminalId)
+                .terminalId("TERM-SCOPED")
+                .ipAddress("10.0.1.60")
+                .port(9301)
+                .branchId(branchId)
+                .build();
+        when(repo.findByIdAndBranchId(terminalId, branchId)).thenReturn(Optional.of(terminal));
+
+        PosTerminalConfigService.TerminalAddress addr = configService.resolve(terminalId);
+
+        assertThat(addr.host()).isEqualTo("10.0.1.60");
+        assertThat(addr.port()).isEqualTo(9301);
+        verify(repo).findByIdAndBranchId(terminalId, branchId);
+        verify(repo, never()).findById(terminalId);
     }
 
     @Test

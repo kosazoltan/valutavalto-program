@@ -23,7 +23,7 @@ import java.util.UUID;
  */
 @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
-@RequestMapping("/api/seal-numbers")
+@RequestMapping({"/api/v1/seal-numbers", "/api/seal-numbers"})
 @RequiredArgsConstructor
 @Tag(name = "Plomba szám", description = "Plomba szám generálás és nyilvántartás")
 public class SealNumberController {

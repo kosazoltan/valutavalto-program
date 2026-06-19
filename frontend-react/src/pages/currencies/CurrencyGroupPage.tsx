@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Layers, Search, RefreshCw, Plus, Edit2, Trash2, AlertTriangle } from 'lucide-react'
-import { api } from '../../services/api/index'
+import { currencyGroupApi } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
@@ -8,24 +8,47 @@ import { useTranslation } from 'react-i18next'
 
 interface CurrencyGroupItem {
   id: string | number
+  code?: string
   name?: string
   description?: string
-  currencyCount?: string
+  currencyIds?: string
+  isActive?: boolean
+}
+
+interface CurrencyGroupForm {
+  id?: string | number
+  code: string
+  name: string
+  description: string
+  currencyIds: string
+  isActive: boolean
+}
+
+function currencyCount(currencyIds?: string): string | number {
+  if (!currencyIds) return '-'
+  try {
+    return safeArray<unknown>(JSON.parse(currencyIds)).length
+  } catch {
+    return '-'
+  }
 }
 
 export default function CurrencyGroupPage() {
   const { t } = useTranslation()
   const [items, setItems] = useState<CurrencyGroupItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [form, setForm] = useState<CurrencyGroupForm | null>(null)
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<CurrencyGroupItem[]>('/currency-groups')
-      setItems(safeArray<typeof items[0]>(response.data))
+      const data = await currencyGroupApi.list()
+      setItems(safeArray<typeof items[0]>(data))
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('CurrencyGroupPage', 'Betöltési hiba:', err)
@@ -39,6 +62,55 @@ export default function CurrencyGroupPage() {
     void loadData()
   }, [loadData])
 
+  const openForm = (item?: CurrencyGroupItem) => {
+    setForm({
+      id: item?.id,
+      code: item?.code ?? '',
+      name: item?.name ?? '',
+      description: item?.description ?? '',
+      currencyIds: item?.currencyIds ?? '',
+      isActive: item?.isActive ?? true,
+    })
+    setMessage(null)
+    setError(null)
+  }
+
+  const saveGroup = async () => {
+    if (!form) return
+    if (!form.code.trim() || !form.name.trim()) {
+      setError('Kód és név megadása kötelező.')
+      return
+    }
+
+    const payload = {
+      code: form.code.trim().toUpperCase(),
+      name: form.name.trim(),
+      description: form.description.trim() || null,
+      currencyIds: form.currencyIds.trim() || null,
+      isActive: form.isActive,
+    }
+
+    try {
+      setSaving(true)
+      setError(null)
+      if (form.id) {
+        await currencyGroupApi.update(form.id, payload)
+        setMessage('Valutacsoport frissítve.')
+      } else {
+        await currencyGroupApi.create(payload)
+        setMessage('Valutacsoport létrehozva.')
+      }
+      setForm(null)
+      await loadData()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      setError(msg)
+      logger.error('CurrencyGroupPage', 'Mentési hiba:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const filtered = items.filter(item => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
@@ -50,7 +122,9 @@ export default function CurrencyGroupPage() {
   const handleDelete = async (id: string | number) => {
     if (!confirm('Biztosan törli?')) return
     try {
-      await api.delete(`/currency-groups/${id}`)
+      setError(null)
+      await currencyGroupApi.remove(id)
+      setMessage('Valutacsoport törölve.')
       await loadData()
     } catch (err) {
       const msg = getErrorMessage(err)
@@ -70,11 +144,71 @@ export default function CurrencyGroupPage() {
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button className="form-button-primary flex items-center gap-1">
+          <button onClick={() => openForm()} className="form-button-primary flex items-center gap-1">
             <Plus className="h-4 w-4" />{t('common.new')}
           </button>
         </div>
       </div>
+
+      {form && (
+        <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
+          <h2 className="text-base font-semibold">{form.id ? 'Valutacsoport szerkesztése' : 'Új valutacsoport'}</h2>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <div>
+              <label htmlFor="currency-group-code" className="form-label">Kód</label>
+              <input
+                id="currency-group-code"
+                value={form.code}
+                onChange={(e) => setForm((current) => current ? { ...current, code: e.target.value } : current)}
+                className="form-input w-full uppercase"
+                maxLength={20}
+              />
+            </div>
+            <div>
+              <label htmlFor="currency-group-name" className="form-label">Név</label>
+              <input
+                id="currency-group-name"
+                value={form.name}
+                onChange={(e) => setForm((current) => current ? { ...current, name: e.target.value } : current)}
+                className="form-input w-full"
+              />
+            </div>
+            <div>
+              <label htmlFor="currency-group-description" className="form-label">Leírás</label>
+              <input
+                id="currency-group-description"
+                value={form.description}
+                onChange={(e) => setForm((current) => current ? { ...current, description: e.target.value } : current)}
+                className="form-input w-full"
+              />
+            </div>
+            <div>
+              <label htmlFor="currency-group-currency-ids" className="form-label">Valuta ID-k JSON</label>
+              <input
+                id="currency-group-currency-ids"
+                value={form.currencyIds}
+                onChange={(e) => setForm((current) => current ? { ...current, currencyIds: e.target.value } : current)}
+                className="form-input w-full font-mono"
+                placeholder="[1,2,3]"
+              />
+            </div>
+            <label className="flex items-end gap-2 pb-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.isActive}
+                onChange={(e) => setForm((current) => current ? { ...current, isActive: e.target.checked } : current)}
+              />
+              Aktív
+            </label>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => void saveGroup()} disabled={saving} className="form-button-primary">
+              {saving ? 'Mentés...' : 'Mentés'}
+            </button>
+            <button type="button" onClick={() => setForm(null)} className="form-button">Mégse</button>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
@@ -96,28 +230,38 @@ export default function CurrencyGroupPage() {
         </div>
       )}
 
+      {message && (
+        <div className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          {message}
+        </div>
+      )}
+
       <div className="data-grid overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('competitors.nev')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Kód</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('currencies.leiras')}</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('currencies.valutakSzama')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.active')}</th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('competitors.muveletek')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
             ) : filtered.map(item => (
               <tr key={item.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm">{item.name ?? '-'}</td>
+                <td className="px-4 py-3 text-sm font-mono font-semibold">{item.code ?? '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.description ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.currencyCount ?? '-'}</td>
+                <td className="px-4 py-3 text-sm">{currencyCount(item.currencyIds)}</td>
+                <td className="px-4 py-3 text-sm">{item.isActive ? 'Igen' : 'Nem'}</td>
                 <td className="px-4 py-3 text-right">
-                  <button className="form-button mr-2 p-1 text-blue-600" title="Szerkesztés">
+                  <button onClick={() => openForm(item)} className="form-button mr-2 p-1 text-blue-600" title="Szerkesztés">
                     <Edit2 className="h-4 w-4" />
                   </button>
                   <button onClick={() => handleDelete(item.id)} className="form-button p-1 text-red-600" title="Törlés">

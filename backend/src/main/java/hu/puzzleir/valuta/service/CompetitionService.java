@@ -139,9 +139,12 @@ public class CompetitionService {
     }
 
     private CompetitionEntryDto toEntryDto(WorkerCompetitionEntry entity) {
-        String workerName = workerRepository.findById(entity.getWorkerId())
-            .map(Worker::getName)
-            .orElse("Ismeretlen");
+        UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
+        String workerName = companyId != null
+            ? workerRepository.findByIdAndCompanyId(entity.getWorkerId(), companyId)
+                .map(Worker::getName)
+                .orElse("Ismeretlen")
+            : "Ismeretlen";
 
         return CompetitionEntryDto.builder()
             .id(entity.getId())

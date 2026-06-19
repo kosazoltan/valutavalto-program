@@ -28,12 +28,86 @@ interface VaultStockRow {
   closing: number | null
 }
 
+interface BanknoteInventoryRow {
+  id: number
+  currencyId?: number | null
+  currencyCode: string
+  faceValue: number
+  quantity: number
+  totalValue?: number | null
+  minQuantity?: number | null
+  maxQuantity?: number | null
+  lowStock?: boolean
+  overStock?: boolean
+  lastCountedAt?: string | null
+  lastCountedBy?: string | null
+}
+
+interface CashBalanceRow {
+  branchId?: string | null
+  branchName?: string | null
+  currencyId?: number | string | null
+  currencyCode?: string | null
+  currencyName?: string | null
+  currentBalance?: number | string | null
+  openingBalance?: number | string | null
+  lowBalanceAlert?: boolean
+  highBalanceAlert?: boolean
+}
+
+interface StockMatrixDto {
+  matrix?: Record<string, Record<string, number | string | null> | null> | null
+}
+
+interface InventoryMovementRow {
+  id?: number | null
+  fromBranchName?: string | null
+  toBranchName?: string | null
+  currencyCode?: string | null
+  amount?: number | string | null
+  statusDisplay?: string | null
+  status?: string | null
+  movementTypeDisplay?: string | null
+  movementType?: string | null
+  createdAt?: string | null
+}
+
+interface InventoryBalanceDto {
+  currencyCode?: string | null
+  openingBalance?: number | string | null
+  closingBalance?: number | string | null
+  totalIn?: number | string | null
+  totalOut?: number | string | null
+  date?: string | null
+}
+
+interface RegenerationResultDto {
+  discrepancyCount?: number | null
+  correctedCount?: number | null
+  regeneratedAt?: string | null
+  regeneratedByName?: string | null
+}
+
+type InventoryOperationType = 'bankWithdraw' | 'bankDeposit' | 'transfer' | 'correction'
+
 function formatCurrency(value: number | null | undefined, code?: string): string {
   if (value == null) return '—'
   const opts: Intl.NumberFormatOptions = code === 'HUF'
     ? { maximumFractionDigits: 0 }
     : { maximumFractionDigits: 2 }
   return value.toLocaleString('hu-HU', opts)
+}
+
+function formatAmount(value: number | string | null | undefined, code?: string | null): string {
+  if (value == null || value === '') return '—'
+  const numeric = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(numeric)) return String(value)
+  return formatCurrency(numeric, code ?? undefined)
+}
+
+function num(value: number | string | null | undefined): number {
+  const parsed = typeof value === 'number' ? value : Number(String(value ?? '').replace(',', '.'))
+  return Number.isFinite(parsed) ? parsed : 0
 }
 
 /** Change-detection kulcs: csak a megjelenített számszerű mezők számítanak. */
@@ -47,6 +121,34 @@ export default function InventoryPage() {
   const { t } = useTranslation()
   const worker = useAuthStore(s => s.worker)
   const [rows, setRows] = useState<VaultStockRow[]>([])
+  const [banknoteRows, setBanknoteRows] = useState<BanknoteInventoryRow[]>([])
+  const [lowStockRows, setLowStockRows] = useState<BanknoteInventoryRow[]>([])
+  const [overStockRows, setOverStockRows] = useState<BanknoteInventoryRow[]>([])
+  const [banknoteError, setBanknoteError] = useState<string | null>(null)
+  const [banknoteActionMessage, setBanknoteActionMessage] = useState<string | null>(null)
+  const [banknoteActionLoading, setBanknoteActionLoading] = useState(false)
+  const [selectedBanknoteId, setSelectedBanknoteId] = useState<number | null>(null)
+  const [banknoteQuantity, setBanknoteQuantity] = useState('1')
+  const [thresholdMin, setThresholdMin] = useState('')
+  const [thresholdMax, setThresholdMax] = useState('')
+  const [branchStockRows, setBranchStockRows] = useState<CashBalanceRow[]>([])
+  const [stockMatrixInfo, setStockMatrixInfo] = useState({ branches: 0, currencies: 0 })
+  const [movementRows, setMovementRows] = useState<InventoryMovementRow[]>([])
+  const [movementLogRows, setMovementLogRows] = useState<InventoryMovementRow[]>([])
+  const [selectedMovementDetail, setSelectedMovementDetail] = useState<InventoryMovementRow | null>(null)
+  const [movementDetailLoadingId, setMovementDetailLoadingId] = useState<number | null>(null)
+  const [inventoryOperationType, setInventoryOperationType] = useState<InventoryOperationType>('bankWithdraw')
+  const [inventoryCurrencyId, setInventoryCurrencyId] = useState('')
+  const [inventoryAmount, setInventoryAmount] = useState('')
+  const [inventoryTargetBranchId, setInventoryTargetBranchId] = useState('')
+  const [inventoryNotes, setInventoryNotes] = useState('')
+  const [inventoryOperationMessage, setInventoryOperationMessage] = useState<string | null>(null)
+  const [inventoryOperationLoading, setInventoryOperationLoading] = useState(false)
+  const [movementActionId, setMovementActionId] = useState<string | null>(null)
+  const [regenerationRunning, setRegenerationRunning] = useState(false)
+  const [dailyBalance, setDailyBalance] = useState<InventoryBalanceDto | null>(null)
+  const [lastRegeneration, setLastRegeneration] = useState<RegenerationResultDto | null>(null)
+  const [operationalInventoryError, setOperationalInventoryError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
@@ -72,6 +174,107 @@ export default function InventoryPage() {
     }
   }, [])
 
+  const loadBanknoteInventory = useCallback(async () => {
+    if (!worker?.branchId) {
+      setBanknoteRows([])
+      setLowStockRows([])
+      setOverStockRows([])
+      setBanknoteError(null)
+      return
+    }
+
+    try {
+      setBanknoteError(null)
+      const [inventoryResponse, lowResponse, overResponse] = await Promise.all([
+        api.get<BanknoteInventoryRow[]>(`/banknote-inventory/branch/${worker.branchId}`),
+        api.get<BanknoteInventoryRow[]>(`/banknote-inventory/branch/${worker.branchId}/low-stock`),
+        api.get<BanknoteInventoryRow[]>(`/banknote-inventory/branch/${worker.branchId}/over-stock`),
+      ])
+      const nextRows = safeArray<BanknoteInventoryRow>(inventoryResponse.data)
+      setBanknoteRows(nextRows)
+      setLowStockRows(safeArray<BanknoteInventoryRow>(lowResponse.data))
+      setOverStockRows(safeArray<BanknoteInventoryRow>(overResponse.data))
+      setSelectedBanknoteId((current) => current ?? nextRows[0]?.id ?? null)
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('InventoryPage', 'Címletszintű készlet betöltési hiba:', err)
+      setBanknoteError(msg)
+      setBanknoteRows([])
+      setLowStockRows([])
+      setOverStockRows([])
+    }
+  }, [worker?.branchId])
+
+  const loadOperationalInventory = useCallback(async () => {
+    if (!worker?.branchId) {
+      setBranchStockRows([])
+      setStockMatrixInfo({ branches: 0, currencies: 0 })
+      setMovementRows([])
+      setMovementLogRows([])
+      setDailyBalance(null)
+      setLastRegeneration(null)
+      setOperationalInventoryError(null)
+      return
+    }
+
+    const date = new Date().toISOString().slice(0, 10)
+
+    try {
+      setOperationalInventoryError(null)
+      const [
+        branchStockResponse,
+        matrixResponse,
+        movementsResponse,
+        movementLogResponse,
+        dailyBalanceResponse,
+        regenerationResponse,
+      ] = await Promise.all([
+        api.get<CashBalanceRow[]>(`/inventory/stock/${worker.branchId}`),
+        api.get<StockMatrixDto>('/inventory/matrix'),
+        api.get<{ content?: InventoryMovementRow[] } | InventoryMovementRow[]>('/inventory/movements', {
+          params: { branchId: worker.branchId, size: 5, sort: 'createdAt,desc' },
+        }),
+        api.get<InventoryMovementRow[]>('/inventory-movements/movement-log', {
+          params: { branchId: worker.branchId, date },
+        }),
+        api.get<InventoryBalanceDto>('/inventory-movements/daily-balance', {
+          params: { branchId: worker.branchId, date },
+        }),
+        api.get<RegenerationResultDto>('/inventory/regeneration/last', {
+          params: { branchId: worker.branchId },
+        }),
+      ])
+
+      const matrix = matrixResponse.data?.matrix ?? {}
+      const currencyCodes = new Set<string>()
+      Object.values(matrix).forEach((branchCurrencies) => {
+        Object.keys(branchCurrencies ?? {}).forEach((code) => currencyCodes.add(code))
+      })
+
+      const movementData = movementsResponse.data
+      const movementContent = Array.isArray(movementData) ? movementData : movementData?.content
+
+      setBranchStockRows(safeArray<CashBalanceRow>(branchStockResponse.data))
+      const firstCurrencyId = safeArray<CashBalanceRow>(branchStockResponse.data).find((row) => row.currencyId != null)?.currencyId
+      setInventoryCurrencyId((current) => current || (firstCurrencyId == null ? '' : String(firstCurrencyId)))
+      setStockMatrixInfo({ branches: Object.keys(matrix).length, currencies: currencyCodes.size })
+      setMovementRows(safeArray<InventoryMovementRow>(movementContent))
+      setMovementLogRows(safeArray<InventoryMovementRow>(movementLogResponse.data))
+      setDailyBalance(dailyBalanceResponse.data ?? null)
+      setLastRegeneration(regenerationResponse.data ?? null)
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('InventoryPage', 'Készlet riportok betöltési hiba:', err)
+      setOperationalInventoryError(msg)
+      setBranchStockRows([])
+      setStockMatrixInfo({ branches: 0, currencies: 0 })
+      setMovementRows([])
+      setMovementLogRows([])
+      setDailyBalance(null)
+      setLastRegeneration(null)
+    }
+  }, [worker?.branchId])
+
   // FR-3: WebSocket-invalidációra csendben re-fetch, és CSAK akkor frissít, ha a
   // (territory-scope-olt) válasz ténylegesen változott → más iroda/értéktár mozgása
   // (ami a saját scope-olt nézetet nem érinti) nem okoz látható frissítést.
@@ -91,13 +294,232 @@ export default function InventoryPage() {
 
   useEffect(() => {
     void loadData()
-  }, [loadData])
+    void loadBanknoteInventory()
+    void loadOperationalInventory()
+  }, [loadData, loadBanknoteInventory, loadOperationalInventory])
 
   useVaultStockUpdates(refreshIfChanged)
 
   const totalHufClosing = rows
     .filter(r => r.currencyCode === 'HUF')
     .reduce((sum, r) => sum + (r.closing ?? 0), 0)
+
+  const selectedBanknote = banknoteRows.find((row) => row.id === selectedBanknoteId) ?? banknoteRows[0]
+  const parsedBanknoteQuantity = Math.max(0, Number.parseInt(banknoteQuantity, 10) || 0)
+
+  const runBanknoteAction = async (
+    action: 'add' | 'remove' | 'count' | 'thresholds',
+  ) => {
+    if (!worker?.branchId || !selectedBanknote) {
+      setBanknoteActionMessage('Nincs kiválasztott címletsor.')
+      return
+    }
+    if ((action === 'add' || action === 'remove' || action === 'count') && parsedBanknoteQuantity <= 0) {
+      setBanknoteActionMessage('Adj meg pozitív darabszámot.')
+      return
+    }
+
+    setBanknoteActionLoading(true)
+    setBanknoteActionMessage(null)
+    try {
+      if (action === 'add') {
+        await api.post(`/banknote-inventory/branch/${worker.branchId}/add`, null, {
+          params: {
+            currencyId: selectedBanknote.currencyId,
+            currencyCode: selectedBanknote.currencyCode,
+            faceValue: selectedBanknote.faceValue,
+            quantity: parsedBanknoteQuantity,
+          },
+        })
+        setBanknoteActionMessage('Címletkészlet növelve.')
+      } else if (action === 'remove') {
+        await api.post(`/banknote-inventory/branch/${worker.branchId}/remove`, null, {
+          params: {
+            currencyId: selectedBanknote.currencyId,
+            faceValue: selectedBanknote.faceValue,
+            quantity: parsedBanknoteQuantity,
+          },
+        })
+        setBanknoteActionMessage('Címletkészlet csökkentve.')
+      } else if (action === 'count') {
+        await api.post(`/banknote-inventory/${selectedBanknote.id}/count`, null, {
+          params: {
+            actualQuantity: parsedBanknoteQuantity,
+            workerId: worker.workerCode ?? worker.id ?? '',
+          },
+        })
+        setBanknoteActionMessage('Tényleges darabszám rögzítve.')
+      } else {
+        const minQuantity = thresholdMin.trim() ? Number.parseInt(thresholdMin, 10) : undefined
+        const maxQuantity = thresholdMax.trim() ? Number.parseInt(thresholdMax, 10) : undefined
+        await api.put(`/banknote-inventory/${selectedBanknote.id}/thresholds`, null, {
+          params: { minQuantity, maxQuantity },
+        })
+        setBanknoteActionMessage('Címlet riasztási küszöbök mentve.')
+      }
+      await loadBanknoteInventory()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('InventoryPage', 'Címletszintű készlet művelet sikertelen:', err)
+      setBanknoteActionMessage(msg)
+    } finally {
+      setBanknoteActionLoading(false)
+    }
+  }
+
+  const loadMovementDetail = async (movementId: number | null | undefined) => {
+    if (movementId == null) return
+    try {
+      setMovementDetailLoadingId(movementId)
+      setOperationalInventoryError(null)
+      const response = await api.get<InventoryMovementRow>(`/inventory/movements/${movementId}`)
+      setSelectedMovementDetail(response.data ?? null)
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('InventoryPage', 'Készletmozgás részlet betöltési hiba:', err)
+      setOperationalInventoryError(msg)
+    } finally {
+      setMovementDetailLoadingId(null)
+    }
+  }
+
+  const parsedInventoryAmount = () => {
+    const parsed = Number(String(inventoryAmount).replace(',', '.'))
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+  }
+
+  const parsedInventoryCurrencyId = () => {
+    const parsed = Number(inventoryCurrencyId)
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+  }
+
+  const submitInventoryOperation = async () => {
+    const branchId = worker?.branchId
+    const currencyId = parsedInventoryCurrencyId()
+    const amount = parsedInventoryAmount()
+    const notes = inventoryNotes.trim()
+
+    if (!branchId) {
+      setInventoryOperationMessage('Nincs saját telephely azonosító a készletművelethez.')
+      return
+    }
+    if (currencyId == null) {
+      setInventoryOperationMessage('Adj meg érvényes valuta azonosítót.')
+      return
+    }
+    if (amount == null || (inventoryOperationType !== 'correction' && amount <= 0)) {
+      setInventoryOperationMessage('Adj meg érvényes, pozitív összeget.')
+      return
+    }
+    if (inventoryOperationType === 'transfer' && !inventoryTargetBranchId.trim()) {
+      setInventoryOperationMessage('Átadásnál kötelező a cél telephely azonosító.')
+      return
+    }
+    if (inventoryOperationType === 'correction' && !notes) {
+      setInventoryOperationMessage('Korrekciónál kötelező az indoklás.')
+      return
+    }
+
+    setInventoryOperationLoading(true)
+    setInventoryOperationMessage(null)
+    try {
+      if (inventoryOperationType === 'bankWithdraw') {
+        await api.post('/inventory/bank-withdraw', {
+          branchId,
+          currencyId,
+          amount,
+          notes: notes || undefined,
+        })
+      } else if (inventoryOperationType === 'bankDeposit') {
+        await api.post('/inventory/bank-deposit', {
+          branchId,
+          currencyId,
+          amount,
+          notes: notes || undefined,
+        })
+      } else if (inventoryOperationType === 'transfer') {
+        await api.post('/inventory/transfer', {
+          fromBranchId: branchId,
+          toBranchId: inventoryTargetBranchId.trim(),
+          currencyId,
+          amount,
+          notes: notes || undefined,
+        })
+      } else {
+        await api.post('/inventory/correction', {
+          branchId,
+          currencyId,
+          newAmount: amount,
+          reason: notes,
+        })
+      }
+      setInventoryOperationMessage('Készletművelet rögzítve.')
+      await loadOperationalInventory()
+      await loadData()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('InventoryPage', 'Készletművelet sikertelen:', err)
+      setInventoryOperationMessage(msg)
+    } finally {
+      setInventoryOperationLoading(false)
+    }
+  }
+
+  const runMovementAction = async (
+    movement: InventoryMovementRow,
+    action: 'approve' | 'receive' | 'cancel',
+  ) => {
+    if (movement.id == null) return
+
+    const key = `${movement.id}:${action}`
+    setMovementActionId(key)
+    setInventoryOperationMessage(null)
+    try {
+      if (action === 'approve') {
+        await api.post(`/inventory/${movement.id}/approve`)
+      } else if (action === 'receive') {
+        await api.post(`/inventory/${movement.id}/receive`, {
+          receivedAmount: num(movement.amount),
+        })
+      } else {
+        await api.post(`/inventory/${movement.id}/cancel`)
+      }
+      setInventoryOperationMessage('Készletmozgás státusza frissítve.')
+      await loadOperationalInventory()
+      await loadData()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('InventoryPage', 'Készletmozgás státusz művelet sikertelen:', err)
+      setInventoryOperationMessage(msg)
+    } finally {
+      setMovementActionId(null)
+    }
+  }
+
+  const runInventoryRegeneration = async () => {
+    if (!worker?.branchId) {
+      setInventoryOperationMessage('Nincs saját telephely azonosító a regeneráláshoz.')
+      return
+    }
+
+    setRegenerationRunning(true)
+    setInventoryOperationMessage(null)
+    try {
+      const response = await api.post<RegenerationResultDto>('/inventory/regeneration/run', null, {
+        params: { branchId: worker.branchId },
+      })
+      setLastRegeneration(response.data ?? null)
+      setInventoryOperationMessage('Készlet regenerálás lefutott.')
+      await loadOperationalInventory()
+      await loadData()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('InventoryPage', 'Készlet regenerálás sikertelen:', err)
+      setInventoryOperationMessage(msg)
+    } finally {
+      setRegenerationRunning(false)
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -139,6 +561,20 @@ export default function InventoryPage() {
         </div>
       )}
 
+      {banknoteError && (
+        <div className="no-print form-error flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4" />
+          Címletszintű készlet betöltési hiba: {banknoteError}
+        </div>
+      )}
+
+      {operationalInventoryError && (
+        <div className="no-print form-error flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4" />
+          Készlet riportok betöltési hiba: {operationalInventoryError}
+        </div>
+      )}
+
       {/* HUF összesen kiemelt kártya */}
       <div className="no-print rounded-lg bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 p-4 shadow-sm">
         <div className="flex items-center justify-between gap-4">
@@ -157,9 +593,223 @@ export default function InventoryPage() {
         </div>
       </div>
 
+      <section className="no-print form-panel p-0">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
+          <div>
+            <h2 className="text-sm font-bold text-secondary-900">Mobil készlet-riportok</h2>
+            <div className="text-xs text-gray-500">Backend: inventory + inventory-movements / saját telephely</div>
+          </div>
+          <button type="button" onClick={() => void loadOperationalInventory()} className="form-button h-8 text-xs flex items-center gap-1">
+            <RefreshCw className="h-3 w-3" />
+            Riportok frissítése
+          </button>
+        </div>
+        <div className="border-b border-gray-200 bg-white px-3 py-3" data-testid="inventory-operation-panel">
+          <div className="grid gap-2 lg:grid-cols-[160px_120px_120px_minmax(180px,1fr)_minmax(180px,1fr)_auto] lg:items-end">
+            <label className="block">
+              <span className="form-label">Művelet</span>
+              <select
+                className="form-input w-full"
+                value={inventoryOperationType}
+                onChange={(event) => setInventoryOperationType(event.target.value as InventoryOperationType)}
+                aria-label="Készletművelet típusa"
+              >
+                <option value="bankWithdraw">Bankból kivét</option>
+                <option value="bankDeposit">Bankba befizetés</option>
+                <option value="transfer">Irodák közti átadás</option>
+                <option value="correction">Korrekció</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="form-label">Valuta ID</span>
+              <input
+                className="form-input w-full font-mono"
+                inputMode="numeric"
+                value={inventoryCurrencyId}
+                onChange={(event) => setInventoryCurrencyId(event.target.value)}
+                placeholder="Valuta ID"
+              />
+            </label>
+            <label className="block">
+              <span className="form-label">{inventoryOperationType === 'correction' ? 'Új egyenleg' : 'Összeg'}</span>
+              <input
+                className="form-input w-full font-mono"
+                inputMode="decimal"
+                value={inventoryAmount}
+                onChange={(event) => setInventoryAmount(event.target.value)}
+                placeholder={inventoryOperationType === 'correction' ? 'Új egyenleg' : 'Összeg'}
+              />
+            </label>
+            <label className="block">
+              <span className="form-label">Cél telephely</span>
+              <input
+                className="form-input w-full font-mono"
+                value={inventoryTargetBranchId}
+                onChange={(event) => setInventoryTargetBranchId(event.target.value)}
+                disabled={inventoryOperationType !== 'transfer'}
+                placeholder="Csak átadásnál"
+              />
+            </label>
+            <label className="block">
+              <span className="form-label">{inventoryOperationType === 'correction' ? 'Indoklás' : 'Megjegyzés'}</span>
+              <input
+                className="form-input w-full"
+                value={inventoryNotes}
+                onChange={(event) => setInventoryNotes(event.target.value)}
+                placeholder={inventoryOperationType === 'correction' ? 'Kötelező indoklás' : 'Opcionális'}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => void submitInventoryOperation()}
+              disabled={inventoryOperationLoading}
+              className="form-button-primary h-9 text-xs"
+            >
+              {inventoryOperationLoading ? 'Mentés...' : 'Művelet rögzítése'}
+            </button>
+          </div>
+          {inventoryOperationMessage && (
+            <p className="mt-2 text-xs text-gray-600">{inventoryOperationMessage}</p>
+          )}
+        </div>
+        <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded border border-gray-200 bg-white p-3">
+            <div className="text-xs uppercase text-gray-500">Saját pénztárkészlet</div>
+            <div className="mt-1 text-xl font-bold text-secondary-900">{branchStockRows.length}</div>
+            <div className="mt-1 text-xs text-gray-600">
+              {branchStockRows[0]
+                ? `${branchStockRows[0].currencyCode ?? '-'}: ${formatAmount(branchStockRows[0].currentBalance, branchStockRows[0].currencyCode)}`
+                : 'Nincs sor'}
+            </div>
+          </div>
+          <div className="rounded border border-gray-200 bg-white p-3">
+            <div className="text-xs uppercase text-gray-500">Készletmátrix</div>
+            <div className="mt-1 text-xl font-bold text-secondary-900">
+              {stockMatrixInfo.branches} / {stockMatrixInfo.currencies}
+            </div>
+            <div className="mt-1 text-xs text-gray-600">telephely / valuta</div>
+          </div>
+          <div className="rounded border border-gray-200 bg-white p-3">
+            <div className="text-xs uppercase text-gray-500">Napi egyenleg</div>
+            <div className="mt-1 text-xl font-bold text-secondary-900">
+              {formatAmount(dailyBalance?.closingBalance, dailyBalance?.currencyCode)}
+            </div>
+            <div className="mt-1 text-xs text-gray-600">
+              Be: {formatAmount(dailyBalance?.totalIn, dailyBalance?.currencyCode)} · Ki: {formatAmount(dailyBalance?.totalOut, dailyBalance?.currencyCode)}
+            </div>
+          </div>
+          <div className="rounded border border-gray-200 bg-white p-3">
+            <div className="text-xs uppercase text-gray-500">Utolsó regenerálás</div>
+            <div className="mt-1 text-xl font-bold text-secondary-900">
+              {lastRegeneration?.discrepancyCount ?? 0} eltérés
+            </div>
+            <div className="mt-1 text-xs text-gray-600">
+              Javítva: {lastRegeneration?.correctedCount ?? 0}
+            </div>
+            <button
+              type="button"
+              onClick={() => void runInventoryRegeneration()}
+              disabled={regenerationRunning}
+              className="mt-2 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-700 disabled:opacity-60"
+            >
+              {regenerationRunning ? 'Regenerálás...' : 'Regenerálás futtatása'}
+            </button>
+          </div>
+        </div>
+        <div className="grid gap-3 border-t border-gray-200 p-3 lg:grid-cols-2">
+          <div>
+            <div className="mb-2 text-xs font-semibold uppercase text-gray-500">Mozgások</div>
+            <div className="space-y-2">
+              {movementRows.slice(0, 3).map((movement, idx) => (
+                <div key={movement.id ?? idx} className="rounded border border-gray-200 bg-white px-3 py-2 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-secondary-900">{movement.currencyCode ?? '-'}</span>
+                    <span className="font-mono">{formatAmount(movement.amount, movement.currencyCode)}</span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-2 text-gray-600">
+                    <span>{movement.movementTypeDisplay ?? movement.movementType ?? 'Mozgás'} · {movement.statusDisplay ?? movement.status ?? '-'}</span>
+                    {movement.id != null && (
+                      <button
+                        type="button"
+                        onClick={() => void loadMovementDetail(movement.id)}
+                        disabled={movementDetailLoadingId === movement.id}
+                        className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-60"
+                      >
+                        {movementDetailLoadingId === movement.id ? 'Betöltés...' : 'Részlet'}
+                      </button>
+                    )}
+                  </div>
+                  {movement.id != null && (
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void runMovementAction(movement, 'approve')}
+                        disabled={movement.status !== 'PENDING' || movementActionId === `${movement.id}:approve`}
+                        className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-50"
+                        aria-label={`Készletmozgás #${movement.id} jóváhagyása`}
+                      >
+                        Jóváhagy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void runMovementAction(movement, 'receive')}
+                        disabled={!['IN_TRANSIT', 'APPROVED'].includes(movement.status ?? '') || movementActionId === `${movement.id}:receive`}
+                        className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-50"
+                        aria-label={`Készletmozgás #${movement.id} fogadása`}
+                      >
+                        Fogad
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void runMovementAction(movement, 'cancel')}
+                        disabled={movement.status !== 'PENDING' || movementActionId === `${movement.id}:cancel`}
+                        className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-50"
+                        aria-label={`Készletmozgás #${movement.id} visszavonása`}
+                      >
+                        Visszavon
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {movementRows.length === 0 && <div className="text-xs text-gray-500">Nincs mozgás adat.</div>}
+            </div>
+            {selectedMovementDetail && (
+              <div className="mt-3 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-950" data-testid="inventory-movement-detail">
+                <div className="font-semibold">Mozgás részlete #{selectedMovementDetail.id}</div>
+                <div className="mt-1 grid gap-1 sm:grid-cols-2">
+                  <span>Valuta: {selectedMovementDetail.currencyCode ?? '-'}</span>
+                  <span>Összeg: {formatAmount(selectedMovementDetail.amount, selectedMovementDetail.currencyCode)}</span>
+                  <span>Státusz: {selectedMovementDetail.statusDisplay ?? selectedMovementDetail.status ?? '-'}</span>
+                  <span>Típus: {selectedMovementDetail.movementTypeDisplay ?? selectedMovementDetail.movementType ?? '-'}</span>
+                </div>
+              </div>
+            )}
+          </div>
+          <div>
+            <div className="mb-2 text-xs font-semibold uppercase text-gray-500">Napi mozgásnapló</div>
+            <div className="space-y-2">
+              {movementLogRows.slice(0, 3).map((movement, idx) => (
+                <div key={movement.id ?? idx} className="rounded border border-gray-200 bg-white px-3 py-2 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-secondary-900">{movement.currencyCode ?? '-'}</span>
+                    <span className="font-mono">{formatAmount(movement.amount, movement.currencyCode)}</span>
+                  </div>
+                  <div className="mt-1 text-gray-600">
+                    {(movement.fromBranchName ?? '-') + ' -> ' + (movement.toBranchName ?? '-')}
+                  </div>
+                </div>
+              ))}
+              {movementLogRows.length === 0 && <div className="text-xs text-gray-500">Nincs napi mozgásnapló adat.</div>}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Vault flow tábla */}
       <div className="form-panel p-0">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr className="text-xs uppercase text-gray-600">
               <th className="px-3 py-2 text-left w-20">{t('common.code')}</th>
@@ -211,7 +861,148 @@ export default function InventoryPage() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
+
+      <section className="form-panel p-0">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
+          <div>
+            <h2 className="text-sm font-bold text-secondary-900">Címletszintű értéktári készlet</h2>
+            <div className="text-xs text-gray-500">Backend: banknote-inventory / saját telephely</div>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="rounded border border-gray-200 bg-white px-2 py-1">{banknoteRows.length} címlet</span>
+            {lowStockRows.length > 0 && (
+              <span className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-amber-800">
+                Alacsony: {lowStockRows.length}
+              </span>
+            )}
+            {overStockRows.length > 0 && (
+              <span className="rounded border border-blue-300 bg-blue-50 px-2 py-1 text-blue-800">
+                Túl magas: {overStockRows.length}
+              </span>
+            )}
+          </div>
+        </div>
+        {banknoteRows.length > 0 && (
+          <div className="no-print border-b border-gray-200 bg-white px-3 py-3">
+            <div className="grid gap-2 lg:grid-cols-[minmax(220px,1fr)_120px_minmax(220px,1fr)_auto] lg:items-end">
+              <label className="block">
+                <span className="form-label">Címletsor</span>
+                <select
+                  className="form-input w-full"
+                  value={selectedBanknote?.id ?? ''}
+                  onChange={(event) => setSelectedBanknoteId(Number(event.target.value))}
+                  aria-label="Címletszintű készletsor kiválasztása"
+                >
+                  {banknoteRows.map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.currencyCode} {formatCurrency(row.faceValue, row.currencyCode)} · {row.quantity} db
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="form-label">Darab</span>
+                <input
+                  className="form-input w-full font-mono"
+                  inputMode="numeric"
+                  value={banknoteQuantity}
+                  onChange={(event) => setBanknoteQuantity(event.target.value)}
+                  placeholder="Darab"
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="form-label">Min.</span>
+                  <input
+                    className="form-input w-full font-mono"
+                    inputMode="numeric"
+                    value={thresholdMin}
+                    onChange={(event) => setThresholdMin(event.target.value)}
+                    placeholder="Min."
+                  />
+                </label>
+                <label className="block">
+                  <span className="form-label">Max.</span>
+                  <input
+                    className="form-input w-full font-mono"
+                    inputMode="numeric"
+                    value={thresholdMax}
+                    onChange={(event) => setThresholdMax(event.target.value)}
+                    placeholder="Max."
+                  />
+                </label>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="form-button h-8 text-xs" disabled={banknoteActionLoading} onClick={() => void runBanknoteAction('add')}>
+                  Bevét
+                </button>
+                <button type="button" className="form-button h-8 text-xs" disabled={banknoteActionLoading} onClick={() => void runBanknoteAction('remove')}>
+                  Kiad
+                </button>
+                <button type="button" className="form-button h-8 text-xs" disabled={banknoteActionLoading} onClick={() => void runBanknoteAction('count')}>
+                  Leltárdarab
+                </button>
+                <button type="button" className="form-button-primary h-8 text-xs" disabled={banknoteActionLoading} onClick={() => void runBanknoteAction('thresholds')}>
+                  Küszöb mentése
+                </button>
+              </div>
+            </div>
+            {banknoteActionMessage && (
+              <p className="mt-2 text-xs text-gray-600">{banknoteActionMessage}</p>
+            )}
+          </div>
+        )}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] text-sm">
+            <thead className="border-b border-gray-200 bg-white text-xs uppercase text-gray-600">
+              <tr>
+                <th className="px-3 py-2 text-left">Valuta</th>
+                <th className="px-3 py-2 text-right">Címlet</th>
+                <th className="px-3 py-2 text-right">Darab</th>
+                <th className="px-3 py-2 text-right">Összesen</th>
+                <th className="px-3 py-2 text-right">Min.</th>
+                <th className="px-3 py-2 text-right">Max.</th>
+                <th className="px-3 py-2 text-left">Státusz</th>
+              </tr>
+            </thead>
+            <tbody>
+              {banknoteRows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-3 py-6 text-center text-sm text-gray-500">
+                    Nincs címletszintű banknote_inventory adat ehhez a telephelyhez.
+                  </td>
+                </tr>
+              ) : banknoteRows.map((row, idx) => {
+                const status = row.lowStock
+                  ? 'Alacsony'
+                  : row.overStock
+                    ? 'Túl magas'
+                    : 'Rendben'
+                const statusClass = row.lowStock
+                  ? 'border-amber-300 bg-amber-50 text-amber-800'
+                  : row.overStock
+                    ? 'border-blue-300 bg-blue-50 text-blue-800'
+                    : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                return (
+                  <tr key={row.id} className={`${idx % 2 === 1 ? 'bg-gray-50' : ''} border-b border-gray-100 last:border-0`}>
+                    <td className="px-3 py-1.5 font-mono font-bold text-blue-700">{row.currencyCode}</td>
+                    <td className="px-3 py-1.5 text-right font-mono">{formatCurrency(row.faceValue, row.currencyCode)}</td>
+                    <td className="px-3 py-1.5 text-right font-mono">{row.quantity.toLocaleString('hu-HU')}</td>
+                    <td className="px-3 py-1.5 text-right font-mono font-semibold">{formatCurrency(row.totalValue, row.currencyCode)}</td>
+                    <td className="px-3 py-1.5 text-right font-mono text-gray-600">{row.minQuantity ?? '-'}</td>
+                    <td className="px-3 py-1.5 text-right font-mono text-gray-600">{row.maxQuantity ?? '-'}</td>
+                    <td className="px-3 py-1.5">
+                      <span className={`rounded border px-2 py-1 text-xs font-semibold ${statusClass}`}>{status}</span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {rows.length > 0 && rows[0]?.opening == null && (
         <div className="no-print form-panel bg-amber-50 border-amber-200 flex items-start gap-2 text-xs text-amber-900">

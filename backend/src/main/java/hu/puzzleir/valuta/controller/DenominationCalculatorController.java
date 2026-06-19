@@ -18,7 +18,7 @@ import java.util.Map;
  * Legacy: KELLCIM — optimális címlet összetétel javaslat.
  */
 @RestController
-@RequestMapping("/api/denomination-calculator")
+@RequestMapping({"/api/v1/denomination-calculator", "/api/denomination-calculator"})
 @RequiredArgsConstructor
 @Tag(name = "Címlet kalkulátor", description = "Optimális címlet összetétel számítás")
 @PreAuthorize("isAuthenticated()")

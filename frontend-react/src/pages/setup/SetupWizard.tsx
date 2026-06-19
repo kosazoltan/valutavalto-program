@@ -17,7 +17,7 @@ import {
   WifiOff,
   XCircle,
 } from 'lucide-react'
-import { publicApi } from '../../services/api/index'
+import { publicApi, type GoogleConfigStatus } from '../../services/api/index'
 import { humanizeError } from '../../utils/errorHandling'
 import type { ElectronAppMode } from '../../types/appMode'
 import { appModeLabel } from '../../utils/appModeRoles'
@@ -235,6 +235,9 @@ export default function SetupWizard() {
   const [googleSetup, setGoogleSetup] = useState<SetupGoogleIdentifyResponse | null>(null)
   const [googleSetupLoading, setGoogleSetupLoading] = useState(false)
   const [googleSetupError, setGoogleSetupError] = useState<string | null>(null)
+  const [googleConfigStatus, setGoogleConfigStatus] = useState<GoogleConfigStatus | null>(null)
+  const [googleConfigStatusLoading, setGoogleConfigStatusLoading] = useState(false)
+  const [googleConfigStatusError, setGoogleConfigStatusError] = useState<string | null>(null)
   const [selectedSharedWorkerCode, setSelectedSharedWorkerCode] = useState('')
   const [offlineMode, setOfflineMode] = useState(false)
   const [appModeChoice, setAppModeChoice] = useState<ElectronAppMode>('penztar')
@@ -349,25 +352,26 @@ export default function SetupWizard() {
     selectedWorkerCode?: string
     bindGoogleSubject?: boolean
   }): Promise<SetupGoogleIdentifyResponse> => {
-    const url = `${normalizeApiBase(apiUrl)}/public/setup/google-identify`
-    const body = JSON.stringify({
+    const apiBase = normalizeApiBase(apiUrl)
+    const request = {
       idToken: payload.idToken,
       companyCode: companyCode.trim(),
       appMode: appModeChoice,
       selectedWorkerCode: payload.selectedWorkerCode,
       bindGoogleSubject: payload.bindGoogleSubject === true,
-    })
+    }
     // Idempotency-Key: a google-identify ugyanazzal az id_token-nel termeszetszeruleg idempotens
     // (ugyanazt a dolgozot azonositja / ugyanazt a subjectet koti). A kulcs jelzi az api-proxy-nak,
     // hogy ez a POST retry-biztos (ESET-MITM reset ellen ujraprobalhato, duplikacio-kockazat nelkul).
     const idempotencyKey = crypto.randomUUID()
 
     if (window.electronAPI?.apiRequest) {
+      const url = `${apiBase}/public/setup/google-identify`
       const result = await window.electronAPI.apiRequest({
         method: 'POST',
         url,
         headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'Idempotency-Key': idempotencyKey },
-        body,
+        body: JSON.stringify(request),
         timeoutMs: 15000,
       })
       const parsed = result.body ? JSON.parse(result.body) as SetupGoogleIdentifyResponse & { message?: string; error?: string } : null
@@ -387,17 +391,31 @@ export default function SetupWizard() {
       return parsed
     }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body,
-    })
-    const parsed = await response.json().catch(() => null) as (SetupGoogleIdentifyResponse & { message?: string }) | null
-    if (!response.ok || !parsed) {
-      throw new Error(parsed?.message || `HTTP ${response.status}`)
-    }
-    return parsed
+    return publicApi.identifyGoogleSetup(request, { apiBase, idempotencyKey })
   }, [apiUrl, appModeChoice, companyCode])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadGoogleConfigStatus = async () => {
+      try {
+        setGoogleConfigStatusLoading(true)
+        setGoogleConfigStatusError(null)
+        const status = await publicApi.getGoogleConfigStatus(normalizeApiBase(apiUrl))
+        if (!cancelled) setGoogleConfigStatus(status)
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setGoogleConfigStatus(null)
+          setGoogleConfigStatusError(humanizeError(err))
+        }
+      } finally {
+        if (!cancelled) setGoogleConfigStatusLoading(false)
+      }
+    }
+    void loadGoogleConfigStatus()
+    return () => {
+      cancelled = true
+    }
+  }, [apiUrl])
 
   const applyGoogleSetup = useCallback((response: SetupGoogleIdentifyResponse) => {
     setGoogleSetup(response)
@@ -842,6 +860,9 @@ export default function SetupWizard() {
               googleSetup={googleSetup}
               googleSetupLoading={googleSetupLoading}
               googleSetupError={googleSetupError}
+              googleConfigStatus={googleConfigStatus}
+              googleConfigStatusLoading={googleConfigStatusLoading}
+              googleConfigStatusError={googleConfigStatusError}
               selectedSharedWorkerCode={selectedSharedWorkerCode}
               onSelectedSharedWorkerCodeChange={setSelectedSharedWorkerCode}
               onGoogleLogin={handleGoogleSetupLogin}
@@ -1058,6 +1079,9 @@ function WelcomeStep(props: {
   googleSetup: SetupGoogleIdentifyResponse | null
   googleSetupLoading: boolean
   googleSetupError: string | null
+  googleConfigStatus: GoogleConfigStatus | null
+  googleConfigStatusLoading: boolean
+  googleConfigStatusError: string | null
   selectedSharedWorkerCode: string
   onSelectedSharedWorkerCodeChange: (value: string) => void
   onGoogleLogin: () => void
@@ -1068,6 +1092,9 @@ function WelcomeStep(props: {
     googleSetup,
     googleSetupLoading,
     googleSetupError,
+    googleConfigStatus,
+    googleConfigStatusLoading,
+    googleConfigStatusError,
     selectedSharedWorkerCode,
     onSelectedSharedWorkerCodeChange,
     onGoogleLogin,
@@ -1085,6 +1112,29 @@ function WelcomeStep(props: {
         Jelentkezzen be Google fiókkal. A rendszer az email alapján azonosítja a fiókot,
         a szerepkört és a telepítendő működési módot.
       </p>
+
+      <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm text-slate-700">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-semibold text-slate-900">Google OAuth konfiguráció</span>
+          {googleConfigStatusLoading && <Loader2 className="h-4 w-4 animate-spin text-slate-500" />}
+        </div>
+        {googleConfigStatus ? (
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div>
+              Web kliens: <span className="font-semibold">{googleConfigStatus.webConfigured ? 'beállítva' : 'nincs beállítva'}</span>
+              {googleConfigStatus.webPrefix && <span className="ml-1 text-slate-500">({googleConfigStatus.webPrefix})</span>}
+            </div>
+            <div>
+              Desktop kliens: <span className="font-semibold">{googleConfigStatus.desktopConfigured ? 'beállítva' : 'nincs beállítva'}</span>
+              {googleConfigStatus.desktopPrefix && <span className="ml-1 text-slate-500">({googleConfigStatus.desktopPrefix})</span>}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-2 text-slate-500">
+            {googleConfigStatusError || 'A konfiguráció státusza még nem érhető el.'}
+          </div>
+        )}
+      </div>
 
       <button
         type="button"

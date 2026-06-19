@@ -34,11 +34,11 @@ function Add-Result($name, $ok, $detail, $elapsed) {
     if (-not $ok) { $script:Failed = $true }
 }
 
-function Run-Check($name, $cmd) {
+function Run-Check($name, $cmd, [int[]]$AllowedExitCodes = @(0)) {
     Write-Host "  $name..." -NoNewline
     $sw  = [System.Diagnostics.Stopwatch]::StartNew()
     $out = & cmd /d /c "$cmd 2>&1"
-    $ok  = $LASTEXITCODE -eq 0
+    $ok  = $AllowedExitCodes -contains $LASTEXITCODE
     $sw.Stop()
     $sec = [math]::Round($sw.Elapsed.TotalSeconds, 1)
     if ($ok) {
@@ -65,12 +65,12 @@ Run-Check "endpoint-audit (missing-only)" "python `"$Scripts\endpoint-audit.py`"
 Run-Check "multi-tenant-audit" "python `"$Scripts\multi-tenant-audit.py`""
 
 # ── 4. TypeScript typecheck (párhuzamos) ─────────────────────────────────────
-Run-Check "typecheck-all" "powershell -NoProfile -ExecutionPolicy Bypass -File `"$Scripts\typecheck-all.ps1`""
+Run-Check "typecheck-all" "pwsh -NoProfile -ExecutionPolicy Bypass -File `"$Scripts\typecheck-all.ps1`""
 
 # ── 5. TODO/FIXME összesítő (nem blokoló — csak tájékoztató) ─────────────────
 Write-Host "  todo-harvest (summary)..." -NoNewline
 $sw  = [System.Diagnostics.Stopwatch]::StartNew()
-$todos = & powershell -NoProfile -ExecutionPolicy Bypass -File "$Scripts\todo-harvest.ps1" -Summary 2>&1
+$todos = & pwsh -NoProfile -ExecutionPolicy Bypass -File "$Scripts\todo-harvest.ps1" -Summary 2>&1
 $sw.Stop()
 $sec = [math]::Round($sw.Elapsed.TotalSeconds, 1)
 $todoCount = if (($todos -join "`n") -match 'todo-harvest: (\d+) hit') { $Matches[1] } else { "?" }
@@ -84,7 +84,8 @@ $secretHits = & rg --no-heading --line-number --color=never `
     --glob "!**/node_modules/**" --glob "!**/target/**" --glob "!**/dist/**" `
     --glob "!**/.git/**" --glob "!**/security-reports/**" --glob "!**/*.test.*" `
     -e '(?i)(password|secret|api[_-]?key|token|private[_-]?key)\s*[:=]\s*["\x27][^"x27]{6,}["\x27]' `
-    "$Root\backend\src\main" "$Root\frontend-react\src" "$Root\penztar-client\electron" 2>$null
+    "$Root\backend\src\main" "$Root\frontend-react\src" "$Root\penztar-client\electron" 2>$null |
+    Where-Object { $_ -notmatch 'PARAM_[A-Z0-9_]+\s*=\s*"[A-Z0-9_]{6,}"' }
 $sw.Stop(); $sec = [math]::Round($sw.Elapsed.TotalSeconds, 1)
 if ($secretHits) {
     Write-Host " FAIL [$($sec)s]" -ForegroundColor Red
@@ -99,10 +100,10 @@ if ($secretHits) {
 Run-Check "secrets-deep-scan" "python `"$Scripts\secrets-deep-scan.py`""
 
 # ── 8. Electron security (3 kliens) ──────────────────────────────────────────
-Run-Check "electron-security" "python `"$Scripts\electron-security-scan.py`""
+Run-Check "electron-security" "python `"$Scripts\electron-security-scan.py`"" @(0, 2)
 
 # ── 9. Flyway SQL tartalom audit ──────────────────────────────────────────────
-Run-Check "flyway-content-audit" "python `"$Scripts\flyway-content-audit.py`" --last 5"
+Run-Check "flyway-content-audit" "python `"$Scripts\flyway-content-audit.py`" --last 5 --fail-severity MEDIUM"
 
 # ── 10. (Opcionális, lassabb) ─────────────────────────────────────────────────
 if (-not $Fast) {

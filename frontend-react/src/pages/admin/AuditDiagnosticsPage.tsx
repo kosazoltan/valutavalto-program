@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   auditDiagnosticsApi,
+  diagnosticsApi,
   type AuditLogEntry,
+  type DiagnosticsHealth,
   type ErrorCodeCatalog,
   type HashChainIntegrityResponse,
+  type StaticAuditCheck,
 } from '../../services/api/diagnostics'
 import { vvLogger } from '../../utils/vvLogger'
 
@@ -22,10 +25,16 @@ import { vvLogger } from '../../utils/vvLogger'
  */
 export default function AuditDiagnosticsPage() {
   const [entries, setEntries] = useState<AuditLogEntry[]>([])
+  const [errorEntries, setErrorEntries] = useState<AuditLogEntry[]>([])
   const [catalog, setCatalog] = useState<ErrorCodeCatalog | null>(null)
   const [traceQuery, setTraceQuery] = useState('')
   const [traceResults, setTraceResults] = useState<AuditLogEntry[] | null>(null)
   const [integrity, setIntegrity] = useState<HashChainIntegrityResponse | null>(null)
+  const [staticAuditToken, setStaticAuditToken] = useState('')
+  const [staticAuditChecks, setStaticAuditChecks] = useState<StaticAuditCheck[] | null>(null)
+  const [staticAuditLoading, setStaticAuditLoading] = useState(false)
+  const [staticAuditError, setStaticAuditError] = useState<string | null>(null)
+  const [health, setHealth] = useState<DiagnosticsHealth | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedEntry, setSelectedEntry] = useState<AuditLogEntry | null>(null)
@@ -34,12 +43,16 @@ export default function AuditDiagnosticsPage() {
     setLoading(true)
     setError(null)
     try {
-      const [recent, codes] = await Promise.all([
+      const [recent, recentErrors, codes, healthStatus] = await Promise.all([
+        auditDiagnosticsApi.recent(100),
         auditDiagnosticsApi.recentErrors(100),
         auditDiagnosticsApi.errorCodes(),
+        diagnosticsApi.health(),
       ])
       setEntries(recent)
+      setErrorEntries(recentErrors)
       setCatalog(codes)
+      setHealth(healthStatus)
     } catch (err) {
       vvLogger.error(
         'VV-TECH-002',
@@ -80,6 +93,20 @@ export default function AuditDiagnosticsPage() {
     }
   }
 
+  const onRunStaticAudit = async () => {
+    try {
+      setStaticAuditLoading(true)
+      setStaticAuditError(null)
+      setStaticAuditChecks(await auditDiagnosticsApi.staticAudit(staticAuditToken))
+    } catch (err) {
+      vvLogger.error('VV-TECH-002', 'admin.diagnostics.static_audit_failed', err)
+      setStaticAuditChecks(null)
+      setStaticAuditError(err instanceof Error ? err.message : 'Ismeretlen hiba a static audit futtatasnal')
+    } finally {
+      setStaticAuditLoading(false)
+    }
+  }
+
   if (loading) {
     return <div className="p-6">Audit-diagnosztikai adatok betoltese...</div>
   }
@@ -103,6 +130,112 @@ export default function AuditDiagnosticsPage() {
           AI-olvashato belso log+audit modul - utolso 100 esemeny + hash-chain integritas-check
         </p>
       </header>
+
+      <section className="grid gap-3 sm:grid-cols-3" data-testid="diagnostics-health-panel">
+        <div className={`rounded border p-4 ${health?.ok ? 'border-green-200 bg-green-50 text-green-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+          <div className="text-sm font-semibold">Diagnostics ingest</div>
+          <div className="mt-2 text-2xl font-bold">{health?.ok ? 'OK' : 'Nincs adat'}</div>
+        </div>
+        <div className="rounded border border-gray-200 bg-white p-4">
+          <div className="text-sm font-semibold text-gray-700">DB-ben rögzített klienshibák</div>
+          <div className="mt-2 text-2xl font-bold text-gray-900">{health?.totalReportedErrors ?? 0}</div>
+        </div>
+        <div className="rounded border border-gray-200 bg-white p-4">
+          <div className="text-sm font-semibold text-gray-700">Katalógus</div>
+          <div className="mt-2 text-2xl font-bold text-gray-900">{catalog?.totalCodes ?? 0}</div>
+        </div>
+      </section>
+
+      {/* Static audit: /api/static-audit (nem /api/v1) */}
+      <section className="bg-white shadow rounded p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold">Static audit</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              DB kapcsolat, kotelezo kornyezeti valtozok es mail konfiguracio gyors ellenorzese.
+            </p>
+          </div>
+          <div className="grid w-full gap-2 md:w-auto md:min-w-[24rem] md:grid-cols-[minmax(0,1fr)_auto]">
+            <label className="min-w-0">
+              <span className="sr-only">Static audit admin token</span>
+              <input
+                type="password"
+                value={staticAuditToken}
+                onChange={(e) => setStaticAuditToken(e.target.value)}
+                placeholder="Static audit admin token"
+                className="w-full min-w-0 rounded border px-3 py-2 text-sm"
+                autoComplete="off"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={onRunStaticAudit}
+              disabled={staticAuditLoading}
+              className="min-h-10 rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+            >
+              {staticAuditLoading ? 'Futtatas...' : 'Static audit futtatasa'}
+            </button>
+          </div>
+        </div>
+
+        {staticAuditError && (
+          <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            Static audit hiba: {staticAuditError}
+          </div>
+        )}
+
+        {staticAuditChecks && (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3" data-testid="static-audit-results">
+            {staticAuditChecks.map((check) => (
+              <div
+                key={check.name}
+                className={`rounded border p-3 ${
+                  check.pass
+                    ? 'border-green-200 bg-green-50 text-green-900'
+                    : 'border-red-200 bg-red-50 text-red-900'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 break-words text-sm font-semibold">{check.name}</div>
+                  <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold">
+                    {check.pass ? 'OK' : 'FAIL'}
+                  </span>
+                </div>
+                <div className="mt-2 break-words text-xs">{check.detail ?? '-'}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Utolso hibas audit-bejegyzesek */}
+      <section className="bg-white shadow rounded p-4">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg font-semibold">Hibas audit-esemenyek</h2>
+          <span className="text-sm text-gray-600">{errorEntries.length} ERROR / WARN / FATAL sor</span>
+        </div>
+        {errorEntries.length === 0 ? (
+          <p className="mt-3 rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+            Nincs friss hibas audit-bejegyzes.
+          </p>
+        ) : (
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            {errorEntries.slice(0, 4).map((e) => (
+              <div key={e.id} className="rounded border border-amber-200 bg-amber-50 px-3 py-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 break-words text-sm font-semibold text-amber-900">
+                    {e.eventType ?? e.action ?? e.id}
+                  </div>
+                  <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-semibold text-amber-800">
+                    {e.action ?? 'AUDIT'}
+                  </span>
+                </div>
+                <div className="mt-1 break-all font-mono text-xs text-amber-800">{e.traceId ?? e.id}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Hash-chain integritas check */}
       <section className="bg-white shadow rounded p-4">

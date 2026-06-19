@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
   REQUESTED: { label: 'Jóváhagyásra vár', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
+  AWAITING_SECOND_APPROVAL: { label: 'Második jóváhagyásra vár', color: 'bg-orange-100 text-orange-700', icon: Clock },
   APPROVED: { label: 'Jóváhagyva', color: 'bg-blue-100 text-blue-700', icon: CheckCircle },
   REJECTED: { label: 'Elutasítva', color: 'bg-red-100 text-red-700', icon: XCircle },
   EXPORTING: { label: 'Export folyamatban', color: 'bg-purple-100 text-purple-700', icon: Download },
@@ -16,6 +17,9 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Ch
 
 function fmtDt(s?: string) { return s ? new Date(s).toLocaleString('hu-HU') : '—' }
 function fmtSize(b?: number) { return b != null ? (b / 1024 / 1024).toFixed(1) + ' MB' : '—' }
+function isAwaitingSecondApproval(request: CameraExportRequest) {
+  return request.status === 'AWAITING_SECOND_APPROVAL'
+}
 
 export default function CameraExportPage() {
   const { t } = useTranslation()
@@ -79,7 +83,10 @@ export default function CameraExportPage() {
 
   const handleApprove = async (id: string) => {
     try {
-      const res = await cameraExportApi.approve(id)
+      const request = pending.find((item) => item.id === id) ?? selected
+      const res = request && isAwaitingSecondApproval(request)
+        ? await cameraExportApi.approveSecond(id)
+        : await cameraExportApi.approve(id)
       setSelected(res.data); loadPending(); loadCustody(id)
     } catch (err) { setError(getErrorMessage(err)) }
   }
@@ -181,7 +188,9 @@ export default function CameraExportPage() {
                 <span className="ml-2 text-gray-500 text-xs">{t('camera.indok')}{r.reason}</span>
               </div>
               <div className="flex gap-1">
-                <button onClick={() => handleApprove(r.id)} className="btn-primary text-xs px-2 py-1">{t('common.approve')}</button>
+                <button onClick={() => handleApprove(r.id)} className="btn-primary text-xs px-2 py-1">
+                  {isAwaitingSecondApproval(r) ? 'Második jóváhagyás' : t('common.approve')}
+                </button>
                 <button onClick={() => handleReject(r.id)} className="btn-secondary text-xs px-2 py-1">{t('common.reject')}</button>
               </div>
             </div>
@@ -225,6 +234,7 @@ export default function CameraExportPage() {
                   <div>{t('camera.kerte')}{selected.requestedBy}</div>
                   <div>{t('camera.indok')}{selected.reason}</div>
                   {selected.approvedBy && <div>{t('camera.jovahagyta')} {selected.approvedBy} ({fmtDt(selected.approvedAt)})</div>}
+                  {selected.secondApprovedBy && <div>{t('camera.masodikJovahagyo')} {selected.secondApprovedBy} ({fmtDt(selected.secondApprovedAt)})</div>}
                   {selected.rejectionReason && <div className="text-red-600">{t('common.reject')} {selected.rejectionReason}</div>}
                   {selected.exportPath && <div>{t('commissions.export')} {selected.exportPath}</div>}
                   {selected.exportSizeBytes && <div>{t('documents.meret')} {fmtSize(selected.exportSizeBytes)}</div>}

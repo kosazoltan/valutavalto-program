@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Monitor, RefreshCw, Plus, Edit2, Trash2, Power, PowerOff, Eye, Wifi, WifiOff } from 'lucide-react'
-import { exchangeRateDisplayApi, ExchangeRateDisplay } from '../../services/api/index'
+import { Monitor, RefreshCw, Edit2, Power, PowerOff, Eye, Wifi, WifiOff } from 'lucide-react'
+import { exchangeRateDisplayApi, type ExchangeRateDisplay, type ExchangeRateDisplayPreviewRow } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -37,7 +37,7 @@ const emptyForm: DisplayForm = {
   refreshInterval: 30,
   rowCount: 8,
   columnCount: 3,
-  currencyIds: 'EUR,USD,GBP,CHF',
+  currencyIds: '1,2,3,4',
   showBuyRate: true,
   showSellRate: true,
   showMiddleRate: false,
@@ -53,6 +53,22 @@ const DISPLAY_TYPES = [
   { value: 'CUSTOM', label: 'Egyedi' },
 ]
 
+const formatCurrencyIdsForForm = (value?: string | null): string => {
+  const text = value?.trim() ?? ''
+  if (!text) return ''
+  if (text.startsWith('[') && text.endsWith(']')) {
+    return text.slice(1, -1).trim()
+  }
+  return text
+}
+
+const serializeCurrencyIdsForBackend = (value: string): string => {
+  const text = value.trim()
+  if (!text) return '[]'
+  if (text.startsWith('[') && text.endsWith(']')) return text
+  return `[${text}]`
+}
+
 export default function ExchangeRateDisplayPage() {
   const { t } = useTranslation()
   const [displays, setDisplays] = useState<ExchangeRateDisplay[]>([])
@@ -63,7 +79,7 @@ export default function ExchangeRateDisplayPage() {
   const [form, setForm] = useState<DisplayForm>(emptyForm)
   const [saving, setSaving] = useState(false)
   const [previewId, setPreviewId] = useState<string | null>(null)
-  const [previewData, setPreviewData] = useState<Array<{currency: string; buyRate: string; sellRate: string}>>([])
+  const [previewData, setPreviewData] = useState<ExchangeRateDisplayPreviewRow[]>([])
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
@@ -86,15 +102,14 @@ export default function ExchangeRateDisplayPage() {
     try {
       setSaving(true)
       setError(null)
-      if (editingId) {
-        const payload: Partial<ExchangeRateDisplay> = { ...form, currencyIds: form.currencyIds.split(',').map(s => s.trim()) }
-        await exchangeRateDisplayApi.updateDisplay(editingId, payload)
-        toast.success('Kijelző frissítve')
-      } else {
-        const payload: Partial<ExchangeRateDisplay> = { ...form, currencyIds: form.currencyIds.split(',').map(s => s.trim()) }
-        await exchangeRateDisplayApi.create(payload)
-        toast.success('Kijelző létrehozva')
+      if (!editingId) return
+      const payload: Partial<ExchangeRateDisplay> = {
+        displayName: form.displayName,
+        currencyIds: serializeCurrencyIdsForBackend(form.currencyIds),
+        refreshInterval: form.refreshInterval,
       }
+      await exchangeRateDisplayApi.updateDisplay(editingId, payload)
+      toast.success('Kijelző frissítve')
       setShowForm(false)
       setEditingId(null)
       setForm(emptyForm)
@@ -121,7 +136,7 @@ export default function ExchangeRateDisplayPage() {
       refreshInterval: display.refreshInterval || 30,
       rowCount: display.rowCount || 8,
       columnCount: display.columnCount || 3,
-      currencyIds: (display.currencyIds || []).join(',') || 'EUR,USD,GBP,CHF',
+      currencyIds: formatCurrencyIdsForForm(display.currencyIds) || '1,2,3,4',
       showBuyRate: display.showBuyRate !== false,
       showSellRate: display.showSellRate !== false,
       showMiddleRate: display.showMiddleRate || false,
@@ -129,18 +144,6 @@ export default function ExchangeRateDisplayPage() {
       brightness: display.brightness || 80,
     })
     setShowForm(true)
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Biztosan törli ezt a kijelzőt?')) return
-    try {
-      setError(null)
-      await exchangeRateDisplayApi.delete(id)
-      toast.success('Kijelző törölve')
-      await loadData()
-    } catch (err) {
-      setError(getErrorMessage(err))
-    }
   }
 
   const handleToggleActive = async (display: ExchangeRateDisplay) => {
@@ -167,8 +170,7 @@ export default function ExchangeRateDisplayPage() {
   const handlePreview = async (display: ExchangeRateDisplay) => {
     if (previewId === display.id) { setPreviewId(null); setPreviewData([]); return }
     try {
-      const rates = await exchangeRateDisplayApi.getCurrentRates(display.id)
-      setPreviewData(safeArray(rates))
+      setPreviewData(await exchangeRateDisplayApi.getCurrentRates(display.id))
       setPreviewId(display.id)
     } catch (err) {
       logger.error('ExchangeRateDisplayPage', 'Előnézet hiba:', err)
@@ -180,9 +182,6 @@ export default function ExchangeRateDisplayPage() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold flex items-center gap-2"><Monitor />{t('display.arfolyamKijelzok')}</h1>
-        <button onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm) }} className="form-button-primary">
-          <Plus size={16} />{t('display.ujKijelzo')}
-        </button>
       </div>
 
       {error && (
@@ -192,7 +191,7 @@ export default function ExchangeRateDisplayPage() {
       {/* Form */}
       {showForm && (
         <div className="form-panel space-y-3 border-2 border-blue-200">
-          <h2 className="font-semibold">{editingId ? 'Kijelző szerkesztése' : 'Új kijelző'}</h2>
+          <h2 className="font-semibold">Kijelző szerkesztése</h2>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="form-label">{t('display.kijelzoNeve')}</label>
@@ -235,7 +234,7 @@ export default function ExchangeRateDisplayPage() {
             <div><label className="form-label">{t('display.frissitesiIdoMp')}</label><input className="form-input" type="number" min={5} max={3600} value={form.refreshInterval} onChange={e => setForm({...form, refreshInterval: Number(e.target.value)})} /></div>
             <div><label className="form-label">{t('display.sorokSzama')}</label><input className="form-input" type="number" min={1} max={20} value={form.rowCount} onChange={e => setForm({...form, rowCount: Number(e.target.value)})} /></div>
             <div><label className="form-label">{t('display.oszlopokSzama')}</label><input className="form-input" type="number" min={2} max={6} value={form.columnCount} onChange={e => setForm({...form, columnCount: Number(e.target.value)})} /></div>
-            <div className="col-span-2"><label className="form-label">{t('display.devizakVesszovelElvalasztva')}</label><input className="form-input" value={form.currencyIds} onChange={e => setForm({...form, currencyIds: e.target.value})} placeholder="EUR,USD,GBP,CHF" /></div>
+            <div className="col-span-2"><label className="form-label">{t('display.devizakVesszovelElvalasztva')}</label><input className="form-input" value={form.currencyIds} onChange={e => setForm({...form, currencyIds: e.target.value})} placeholder="1,2,3,4" /></div>
             <div><label className="form-label">{t('display.fenyero')}</label><input className="form-input" type="range" min={0} max={100} value={form.brightness} onChange={e => setForm({...form, brightness: Number(e.target.value)})} /><span className="text-sm ml-2">{form.brightness}%</span></div>
             <div className="col-span-3 flex gap-4">
               <label className="flex items-center gap-1"><input type="checkbox" checked={form.showBuyRate} onChange={e => setForm({...form, showBuyRate: e.target.checked})} />{t('cashier.buy')}</label>
@@ -290,7 +289,6 @@ export default function ExchangeRateDisplayPage() {
                           </button>
                           <button onClick={() => handleRefresh(d.id)} className="form-button text-xs" title="Azonnali frissítés"><RefreshCw size={12} /></button>
                           <button onClick={() => void handlePreview(d)} className="form-button text-xs" title="Előnézet"><Eye size={12} /></button>
-                          <button onClick={() => handleDelete(d.id)} className="form-button text-xs text-red-600" title="Törlés"><Trash2 size={12} /></button>
                         </div>
                       </td>
                     </tr>

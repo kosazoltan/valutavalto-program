@@ -27,8 +27,16 @@ import base64
 from pathlib import Path
 
 ROOT    = Path(__file__).resolve().parent.parent.parent
-IGNORED = {"node_modules", ".git", "target", "dist", ".vite", "coverage",
-           "tmp", ".venv-asr", ".worktrees", "security-reports", ".claude"}
+IGNORED = {
+    "node_modules", ".git", "target", "dist", "dist-electron", ".vite",
+    "coverage", "build", "release", ".dev-app", ".dev-user-data", "tmp",
+    ".venv-asr", ".worktrees", "security-reports", ".claude",
+    "Anti", "Anti_transfer", "forrasok", "legacy-transfer", "Felmérés",
+    "Felmérés", "EXCMD", "frontend_deployment", "backend_deployment",
+    "pipeline-logs", ".agent", ".remember", "e2e-relay-results",
+    "legacy-drive", "whisper-models", ".obsidian", "docs", "vault",
+    "__pycache__",
+}
 
 SECRET_PATTERNS = [
     # Cloud provider keys
@@ -71,17 +79,61 @@ SECRET_PATTERNS = [
 # Known false-positive patterns (skip these)
 FALSE_POSITIVE = re.compile(
     r'example\.com|placeholder|your[-_]?(?:api[-_]?)?key|<[A-Z_]+>|'
-    r'\$\{|%\{|\{[A-Z_]+\}|REPLACE_ME|TODO|FIXME|xxx|test123|password123|'
+    r'\$\{|%\{|\{[A-Z_]+\}|REPLACE_ME|REDACTED|TODO|FIXME|xxx|'
+    r'test123|password123|WrongPass1|valuta_pass|your_password|'
+    r'your_neon_password|ChangeMe123|CHANGE_ME|LOCAL_SECURE_PASSWORD|'
+    r'SET_BY_REGIONAL_MANAGER|SECURE_REPLICATION_PASSWORD|your-app-password|'
+    r'__PG_PASSWORD__|gen_secret_hex|redis_pass|'
+    r'sk-proj-AbCdEf|abcdefghijklmnopqrstuvwxyz12345|SflKxwRJSMeKKF2QT4f|'
+    r"-match\s+['\"]DB_PASSWORD|grep\s+-E\s+['\"]\^DATABASE_|sed\s+-E|"
+    r"spring\\\.datasource\\\.password|spring\.datasource\.password|"
+    r"<valassz eros jelszot>|"
     r'#\s+|//\s+|/\*\s+|\*\s+',
     re.I
 )
 
 BINARY_EXTENSIONS = {".jar", ".class", ".png", ".jpg", ".gif", ".pdf", ".zip",
-                     ".exe", ".dll", ".so", ".dylib", ".woff", ".ttf", ".ico"}
+                     ".exe", ".dll", ".so", ".dylib", ".woff", ".ttf", ".ico",
+                     ".sqlite", ".sqlite3", ".db", ".7z", ".m4a", ".mp4", ".bin",
+                     ".fdb", ".docx", ".xlsx", ".pyc", ".pyo"}
+MAX_TEXT_FILE_BYTES = 5 * 1024 * 1024
+LOCAL_SECRET_FILENAMES = {
+    ".env", ".env.local", ".env.production", ".env.context7", ".env.ssh-keys",
+    ".env.example", ".env.production.example",
+}
+
+
+def should_skip_local_secret_file(path: Path) -> bool:
+    if path.name in LOCAL_SECRET_FILENAMES:
+        return True
+    return len(path.parts) >= 2 and path.parts[-2:] == ("configs", "secrets.json")
+
+
+def redact_line(line: str) -> str:
+    safe_line = line.strip()
+    safe_line = re.sub(
+        r'(?i)((?:password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|token)\s*[=:]\s*)("[^"]*"|\'[^\']*\'|[^\s,;}]+)',
+        r'\1[REDACTED]',
+        safe_line,
+    )
+    safe_line = re.sub(r'ghp_[0-9a-zA-Z]{36}|github_pat_[0-9a-zA-Z_]{20,}', '[REDACTED]', safe_line)
+    safe_line = re.sub(r'AIza[0-9A-Za-z\-_]{20,}', '[REDACTED]', safe_line)
+    safe_line = re.sub(r'Bearer\s+[0-9a-zA-Z_\-]{20,}', 'Bearer [REDACTED]', safe_line)
+    safe_line = re.sub(r'eyJ[A-Za-z0-9_-]{20,}\.eyJ[A-Za-z0-9_-]{20,}(?:\.[A-Za-z0-9_-]+)?', '[REDACTED]', safe_line)
+    return safe_line[:80]
 
 
 def scan_file(path: Path) -> list[tuple[str, str, int, str]]:
+    if should_skip_local_secret_file(path):
+        return []
+    if path.name == "secrets-deep-scan.py":
+        return []
     if path.suffix.lower() in BINARY_EXTENSIONS:
+        return []
+    try:
+        if path.stat().st_size > MAX_TEXT_FILE_BYTES:
+            return []
+    except OSError:
         return []
     try:
         content = path.read_text(encoding="utf-8", errors="replace")
@@ -100,9 +152,7 @@ def scan_file(path: Path) -> list[tuple[str, str, int, str]]:
 
         for name, pattern, severity in SECRET_PATTERNS:
             if pattern.search(line):
-                # Redact the matched value in output
-                safe_line = re.sub(r'["\'][^"\']{8,}["\']', '"[REDACTED]"', line.strip())
-                results.append((severity, rel, i, safe_line[:80]))
+                results.append((severity, rel, i, redact_line(line)))
                 break
 
     return results

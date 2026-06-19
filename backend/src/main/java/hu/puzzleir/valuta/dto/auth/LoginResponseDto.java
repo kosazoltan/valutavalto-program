@@ -64,6 +64,14 @@ public class LoginResponseDto {
     private Boolean passwordChangeRequired = false;
 
     /**
+     * true ha a workerhez aktív TOTP MFA tartozik, és a frontendnek a login
+     * válasz tokenjével meg kell hívnia a /api/v1/mfa/verify vagy
+     * /api/v1/mfa/verify-backup endpointot a session véglegesítése előtt.
+     */
+    @Builder.Default
+    private Boolean mfaRequired = false;
+
+    /**
      * v2.1.4: A dolgozo canonical role-jaibol szarmazo engedelyezett Electron
      * appMode-ok. A frontend login utan ellenorzi: ha az aktualis Electron
      * appMode nincs a listaban -> 'Hozzaferes megtagadva' hiba.

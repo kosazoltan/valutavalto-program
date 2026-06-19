@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Settings, Building, Users, Printer, Database, Bell, Shield, Palette, Sliders, Loader2, FileText, AlertTriangle, Landmark, KeyRound } from 'lucide-react'
+import { Settings, Building, Users, Printer, Database, Bell, Shield, Palette, Sliders, Loader2, FileText, AlertTriangle, Landmark, KeyRound, Languages } from 'lucide-react'
 import SystemParameterPage from './SystemParameterPage'
 import PermissionPage from './PermissionPage'
 import RolePage from './RolePage'
@@ -8,6 +8,9 @@ import ReceiptTextSettingsPage from './ReceiptTextSettingsPage'
 import CashierBandSettingsPage from './CashierBandSettingsPage'
 import BankIntegrationStatusPage from './BankIntegrationStatusPage'
 import MfaEnrollmentPage from './MfaEnrollmentPage'
+import SupervisorPinSettingsPanel from './SupervisorPinSettingsPanel'
+import TranslationSettingsPage from './TranslationSettingsPage'
+import WorkerPasswordSettingsPanel from './WorkerPasswordSettingsPanel'
 import { ownCompanyApi, type OwnCompany } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
@@ -93,6 +96,7 @@ export default function SettingsPage() {
     { id: 'roles', name: 'Szerepkörök', icon: Users },
     { id: 'printing', name: 'Nyomtatás', icon: Printer },
     { id: 'receipt-texts', name: 'Bizonylat szövegek', icon: FileText },
+    { id: 'translations', name: 'Fordítások', icon: Languages },
     { id: 'cashier-band', name: 'Pénztárosi sáv', icon: AlertTriangle },
     { id: 'bank-integration', name: 'Bank integráció', icon: Landmark },
     { id: 'mfa', name: 'Kétfaktoros (MFA)', icon: KeyRound },
@@ -112,7 +116,7 @@ export default function SettingsPage() {
         </h1>
       </div>
 
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
         {/* Sidebar */}
         <div className="form-panel">
           <div className="space-y-1">
@@ -137,7 +141,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Content */}
-        <div className="col-span-4 form-panel">
+        <div className="form-panel lg:col-span-4">
           {activeTab === 'company' && (
             <div className="space-y-4">
               <h2 className="section-title">{t('settings.company')}</h2>
@@ -293,6 +297,10 @@ export default function SettingsPage() {
             <ReceiptTextSettingsPage />
           )}
 
+          {activeTab === 'translations' && (
+            <TranslationSettingsPage />
+          )}
+
           {activeTab === 'cashier-band' && (
             <CashierBandSettingsPage />
           )}
@@ -302,7 +310,10 @@ export default function SettingsPage() {
           )}
 
           {activeTab === 'mfa' && (
-            <MfaEnrollmentPage />
+            <div className="space-y-4">
+              <SupervisorPinSettingsPanel />
+              <MfaEnrollmentPage />
+            </div>
           )}
 
           {activeTab === 'database' && (
@@ -358,6 +369,7 @@ export default function SettingsPage() {
 
           {activeTab === 'security' && (
             <div className="space-y-4">
+              <WorkerPasswordSettingsPanel />
               <h2 className="section-title">{t('settings.biztonsagiBeallitasok')}</h2>
               <div className="space-y-3">
                 <div>

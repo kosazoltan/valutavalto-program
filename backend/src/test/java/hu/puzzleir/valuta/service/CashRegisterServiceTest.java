@@ -12,12 +12,16 @@ import hu.puzzleir.valuta.dto.nav.NavSendResult;
 import hu.puzzleir.valuta.entity.CashRegisterEvent;
 import hu.puzzleir.valuta.entity.CashRegisterEventType;
 import hu.puzzleir.valuta.repository.CashRegisterEventRepository;
+import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -51,6 +55,12 @@ class CashRegisterServiceTest {
     private SystemParameterService systemParameterService;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();
+    private static final UUID COMPANY_ID = UUID.randomUUID();
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     @BeforeEach
     void setUp() {
@@ -87,6 +97,29 @@ class CashRegisterServiceTest {
         assertThat(result.getRawResponse()).contains("OK");
         verify(navIntegrationService).sendQrCode(CashRegisterService.DAY_OPEN_COMMAND, "COM1");
         verify(cashRegisterEventRepository).save(any(CashRegisterEvent.class));
+    }
+
+    @Test
+    @DisplayName("openDay → bejelentkezett kontextusban company szerint scope-olt branch lookupot használ")
+    void openDayAuthenticatedScopesBranchByCompany() {
+        Branch branch = createBranch();
+        UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken("W0001", null, List.of());
+        auth.setDetails(new WorkerAuthenticationDetails(1L, COMPANY_ID, BRANCH_ID, "SUPERVISOR"));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Optional.of(branch));
+        when(cashRegisterEventRepository.save(any(CashRegisterEvent.class))).thenAnswer(inv -> {
+            CashRegisterEvent e = inv.getArgument(0);
+            if (e.getId() == null) e.setId(UUID.randomUUID());
+            return e;
+        });
+
+        CashRegisterEventDto result = service.openDay(BRANCH_ID);
+
+        assertThat(result.getBranchId()).isEqualTo(BRANCH_ID);
+        verify(branchRepository).findByIdAndCompanyId(BRANCH_ID, COMPANY_ID);
+        verify(branchRepository, never()).findById(BRANCH_ID);
     }
 
     @Test
@@ -246,7 +279,7 @@ class CashRegisterServiceTest {
                 .build();
 
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
-        when(cashRegisterEventRepository.findById(originalId)).thenReturn(Optional.of(original));
+        when(cashRegisterEventRepository.findByIdAndBranchId(originalId, BRANCH_ID)).thenReturn(Optional.of(original));
         when(navIntegrationService.sendTransaction(anyLong(), anyString())).thenReturn(
                 NavSendResult.builder().success(false).error("NAV bridge szimuláció tiltva").build());
         when(cashRegisterEventRepository.save(any(CashRegisterEvent.class))).thenAnswer(inv -> {
@@ -263,6 +296,8 @@ class CashRegisterServiceTest {
         assertThat(result.getEventType()).isEqualTo("STORNO");
         assertThat(result.getReceiptNumber()).isNull();
         assertThat(result.getRawResponse()).contains("ERROR", "Sztornó NAV továbbítás sikertelen");
+        verify(cashRegisterEventRepository).findByIdAndBranchId(originalId, BRANCH_ID);
+        verify(cashRegisterEventRepository, never()).findById(originalId);
     }
 
     @Test

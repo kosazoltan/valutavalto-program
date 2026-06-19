@@ -10,7 +10,9 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import {
+  centralReceivedDataApi,
   transferReconciliationApi,
+  type CentralReceivedDataOverview,
   type TransferReconciliationResult,
 } from '../../services/api'
 import { logger } from '../../utils/logger'
@@ -42,6 +44,7 @@ export default function ReceivedDataOverviewPage() {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<ReconFilter>('all')
   const [result, setResult] = useState<TransferReconciliationResult | null>(null)
+  const [receivedDataOverview, setReceivedDataOverview] = useState<CentralReceivedDataOverview | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasRun, setHasRun] = useState(false)
@@ -51,13 +54,18 @@ export default function ReceivedDataOverviewPage() {
     try {
       setLoading(true)
       setError(null)
-      const data = await transferReconciliationApi.run(startDate, endDate)
-      setResult(data)
+      const [reconciliation, receivedData] = await Promise.all([
+        transferReconciliationApi.run(startDate, endDate),
+        centralReceivedDataApi.status(startDate),
+      ])
+      setResult(reconciliation)
+      setReceivedDataOverview(receivedData)
       setHasRun(true)
     } catch (err) {
       logger.error('ReceivedDataOverviewPage', 'Egyeztetés futtatási hiba:', err)
       setError(getErrorMessage(err))
       setResult(null)
+      setReceivedDataOverview(null)
     } finally {
       setLoading(false)
     }
@@ -121,7 +129,7 @@ export default function ReceivedDataOverviewPage() {
             <ClipboardList className="h-5 w-5 text-slate-700" />
             <div>
               <h1 className="text-lg font-semibold text-slate-900">Beérkezett adatok áttekintése</h1>
-              <div className="text-xs text-slate-500">Pénztárak közötti pénzmozgások — egyeztetés</div>
+              <div className="text-xs text-slate-500">Beérkezett napi adatok és pénztárak közötti pénzmozgások — egyeztetés</div>
             </div>
           </div>
           <div className="flex gap-2">
@@ -154,6 +162,13 @@ export default function ReceivedDataOverviewPage() {
           <Metric label="Egyezik" value={result?.matchedRows ?? 0} tone="green" />
           <Metric label="Eltérés" value={result?.discrepancyRows ?? 0} tone="red" />
           <Metric label="Értesített értéktár" value={result?.notifiedBranches ?? 0} tone="amber" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4" data-testid="central-received-data-status">
+          <Metric label="Irodák" value={receivedDataOverview?.totalBranches ?? 0} />
+          <Metric label="Beérkezett jelentés" value={receivedDataOverview?.receivedReports ?? 0} tone="green" />
+          <Metric label="Hiányzó jelentés" value={receivedDataOverview?.missingReports ?? 0} tone="red" />
+          <Metric label="Kritikus zárás" value={receivedDataOverview?.criticalClosings ?? 0} tone="amber" />
         </div>
 
         <div className="rounded-md border border-slate-200 bg-white p-3">

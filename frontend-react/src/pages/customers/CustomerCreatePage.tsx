@@ -9,6 +9,7 @@ import {
   PRIVACY_NOTICE_VERSION,
   appendPrivacyNoticeAcknowledgement,
 } from '../../utils/privacyNotice'
+import type { Customer } from '../../services/api/transactions'
 
 export default function CustomerCreatePage() {
   const { t } = useTranslation()
@@ -19,6 +20,8 @@ export default function CustomerCreatePage() {
   const [privacyNoticeAccepted, setPrivacyNoticeAccepted] = useState(false)
   const [teaorSuggestions, setTeaorSuggestions] = useState<TeaorCode[]>([])
   const [teaorOpen, setTeaorOpen] = useState(false)
+  const [documentDuplicate, setDocumentDuplicate] = useState<Customer | null>(null)
+  const [documentChecking, setDocumentChecking] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     birthName: '',
@@ -86,6 +89,33 @@ export default function CustomerCreatePage() {
 
   const updateField = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+    if (field === 'documentNumber' || field === 'documentType') {
+      setDocumentDuplicate(null)
+    }
+  }
+
+  const checkDocumentDuplicate = async () => {
+    const documentNumber = formData.documentNumber.trim()
+    if (customerType !== 'person' || documentNumber.length < 3) {
+      setDocumentDuplicate(null)
+      return
+    }
+
+    const documentType = formData.documentType.toLowerCase()
+    try {
+      setDocumentChecking(true)
+      const existing = documentType.includes('útlev') || documentType.includes('utlev')
+        ? await customerApi.getByPassport(documentNumber)
+        : documentType.includes('személyi') || documentType.includes('szemelyi')
+          ? await customerApi.getByIdCard(documentNumber)
+          : await customerApi.getByDocumentNumber(documentNumber)
+      setDocumentDuplicate(existing)
+    } catch (err) {
+      setDocumentDuplicate(null)
+      logger.debug('CustomerCreatePage', 'Okmány duplikáció ellenőrzés: nincs találat vagy nem elérhető', err)
+    } finally {
+      setDocumentChecking(false)
+    }
   }
 
   const handleTeaorChange = (value: string) => {
@@ -115,7 +145,7 @@ export default function CustomerCreatePage() {
   return (
     <div className="space-y-3">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Link to="/customers" className="toolbar-button">
             <ArrowLeft size={18} />
@@ -137,7 +167,7 @@ export default function CustomerCreatePage() {
         {/* Customer Type Selection */}
         <div className="form-panel">
           <h2 className="section-title">{t('customers.ugyfelTipusa')}</h2>
-          <div className="flex gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <button
               type="button"
               onClick={() => setCustomerType('person')}
@@ -165,7 +195,7 @@ export default function CustomerCreatePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {/* Basic Info */}
           <div className="form-panel">
             <h2 className="section-title">
@@ -269,8 +299,30 @@ export default function CustomerCreatePage() {
               </div>
               <div>
                 <label className="form-label required">{t('common.documentNumber')}</label>
-                <input type="text" value={formData.documentNumber} onChange={(e) => updateField('documentNumber', e.target.value)} className="form-input font-mono" required data-testid="customer-create-document-number-input" />
+                <input
+                  type="text"
+                  value={formData.documentNumber}
+                  onChange={(e) => updateField('documentNumber', e.target.value)}
+                  onBlur={() => void checkDocumentDuplicate()}
+                  className="form-input font-mono"
+                  required
+                  data-testid="customer-create-document-number-input"
+                />
+                {documentChecking && (
+                  <p className="mt-1 text-xs text-gray-500">Okmány ellenőrzése...</p>
+                )}
               </div>
+              {documentDuplicate && (
+                <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="alert">
+                  <div className="font-semibold">Már létezik ügyfél ezzel az okmánnyal.</div>
+                  <div className="mt-1">
+                    {documentDuplicate.name} {documentDuplicate.customerCode ? `(${documentDuplicate.customerCode})` : ''}
+                  </div>
+                  <Link to={`/customers/${documentDuplicate.id}`} className="mt-2 inline-block font-medium text-amber-800 underline">
+                    Meglévő ügyfél megnyitása
+                  </Link>
+                </div>
+              )}
               <div>
                 <label className="form-label">{t('customers.okmanyErvenyessege')}</label>
                 <input type="date" value={formData.documentExpiry} onChange={(e) => updateField('documentExpiry', e.target.value)} className="form-input" />
@@ -319,12 +371,12 @@ export default function CustomerCreatePage() {
           </div>
 
           {/* Compliance */}
-          <div className="form-panel col-span-2">
+          <div className="form-panel lg:col-span-2">
             <h2 className="section-title flex items-center gap-2">
               <ShieldCheck size={16} />
               Compliance
             </h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               <div>
                 <label className="form-label required">Kiemelt közszereplő (PEP)</label>
                 <select
@@ -360,7 +412,7 @@ export default function CustomerCreatePage() {
         {/* Submit */}
         <div className="form-panel flex justify-end gap-2">
           <Link to="/customers" className="form-button">{t('common.cancel')}</Link>
-          <button type="submit" disabled={saving || !privacyNoticeAccepted || formData.isPep === null} className="form-button-primary flex items-center gap-1" data-testid="customer-create-save-button">
+          <button type="submit" disabled={saving || !privacyNoticeAccepted || formData.isPep === null || documentDuplicate != null} className="form-button-primary flex items-center gap-1" data-testid="customer-create-save-button">
             <Save size={16} />
             {saving ? 'Mentés...' : 'Mentés'}
           </button>

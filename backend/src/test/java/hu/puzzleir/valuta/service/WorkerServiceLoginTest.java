@@ -53,6 +53,7 @@ class WorkerServiceLoginTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private TokenBlacklistService tokenBlacklistService;
     @Mock private WorkerRoleService workerRoleService;
+    @Mock private TotpService totpService;
     @Mock private WorkerBranchAccessService workerBranchAccessService; // v2.4.5 B6
     @InjectMocks private WorkerService workerService;
 
@@ -379,6 +380,7 @@ class WorkerServiceLoginTest {
         when(workerRolePermissionRepository.findByRoleDefIdWithPermission(1)).thenReturn(List.of());
         when(jwtTokenProvider.generateToken(worker, "penztar", List.of())).thenReturn("jwt-token");
         when(jwtTokenProvider.getTokenIdFromToken("jwt-token")).thenReturn("token-id");
+        when(totpService.isMfaRequired(10L)).thenReturn(true);
 
         LoginResponseDto response = workerService.login(legacyLoginRequest("penztar"), "127.0.0.1", "test");
 
@@ -387,6 +389,7 @@ class WorkerServiceLoginTest {
         assertThat(response.getActiveRole()).isEqualTo("penztar");
         assertThat(response.getRoles()).containsExactly("penztar");
         assertThat(response.getRoles()).doesNotContain("ertektar");
+        assertThat(response.getMfaRequired()).isTrue();
     }
 
     @Test

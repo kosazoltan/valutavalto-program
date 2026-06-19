@@ -61,10 +61,16 @@ export interface LoginResponse {
   roleSelectionRequired?: boolean
   validAppModes?: string[]
   centralModules?: string[]
+  mfaRequired?: boolean
   // FK-ÉRTÉKTÁR (V285): intézményi fiók → dolgozóválasztó (nincs token, amíg nincs jelszavas 2. fázis).
   vaultWorkerSelectionRequired?: boolean
   vaultWorkers?: VaultWorkerOption[]
   vaultBranchName?: string
+}
+
+export interface MfaVerifyResponse {
+  verified: boolean
+  message: string
 }
 
 const refreshCookie = async (): Promise<{ token: string }> => {
@@ -96,6 +102,18 @@ export const authApi = {
   refreshToken: refreshCookie,
   selectRole: async (data: { token: string; roleCode: string; appMode?: string }): Promise<LoginResponse> => {
     const response = await api.post<LoginResponse>('/auth/login/select-role', data)
+    return response.data
+  },
+  verifyMfa: async (token: string, code: string, tokenType = 'Bearer'): Promise<MfaVerifyResponse> => {
+    const response = await api.post<MfaVerifyResponse>('/mfa/verify', { code }, {
+      headers: { Authorization: `${tokenType} ${token}` },
+    })
+    return response.data
+  },
+  verifyMfaBackup: async (token: string, code: string, tokenType = 'Bearer'): Promise<MfaVerifyResponse> => {
+    const response = await api.post<MfaVerifyResponse>('/mfa/verify-backup', { code }, {
+      headers: { Authorization: `${tokenType} ${token}` },
+    })
     return response.data
   },
   /**

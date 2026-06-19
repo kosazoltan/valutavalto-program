@@ -11,6 +11,9 @@ const mocks = vi.hoisted(() => ({
   closingWizardApiFinalize: vi.fn(),
   closingWizardApiCancel: vi.fn(),
   closingWizardApiSubmitDenominations: vi.fn(),
+  closingWizardApiCalculateDifferences: vi.fn(),
+  closingWizardApiGetReport: vi.fn(),
+  dailySessionApiValidateClosing: vi.fn(),
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -35,6 +38,11 @@ vi.mock('../../services/api/index', () => ({
     finalize: mocks.closingWizardApiFinalize,
     cancel: mocks.closingWizardApiCancel,
     submitDenominations: mocks.closingWizardApiSubmitDenominations,
+    calculateDifferences: mocks.closingWizardApiCalculateDifferences,
+    getReport: mocks.closingWizardApiGetReport,
+  },
+  dailySessionApi: {
+    validateClosing: mocks.dailySessionApiValidateClosing,
   },
 }))
 
@@ -112,6 +120,49 @@ describe('ClosingWizardPage', () => {
       createdAt: new Date().toISOString(),
     })
     mocks.closingWizardApiSubmitDenominations.mockResolvedValue({ total: 100000 })
+    mocks.closingWizardApiCalculateDifferences.mockResolvedValue([
+      {
+        currencyCode: 'HUF',
+        expected: 100000,
+        actual: 100000,
+        difference: 0,
+        status: 'OK',
+      },
+    ])
+    mocks.closingWizardApiGetReport.mockResolvedValue({
+      wizardId: 'wizard-1',
+      branchName: 'Korut',
+      closingDate: '2026-06-18',
+      closingType: 'DAILY',
+      transactionCount: 7,
+      buyCount: 4,
+      sellCount: 3,
+      reversalCount: 1,
+      buyTurnoverHuf: 1200000,
+      sellTurnoverHuf: 900000,
+      handlingFeeTotal: 15000,
+      openingBalanceHuf: 500000,
+      closingBalanceHuf: 620000,
+      inventory: [
+        {
+          currencyCode: 'HUF',
+          openingBalance: 500000,
+          currentBalance: 620000,
+          dailyChange: 120000,
+        },
+      ],
+    })
+    mocks.dailySessionApiValidateClosing.mockResolvedValue({
+      validationDate: '2026-06-18',
+      errorCode: 0,
+      errorMessage: 'Minden címletezés rendben',
+      allValid: true,
+      currencyDenominationOk: true,
+      handlingFeeDenominationOk: true,
+      westernUnionDenominationOk: true,
+      vatDenominationOk: true,
+      ecommerceDenominationOk: true,
+    })
   })
 
   it('oldal renderelésének ellenőrzése', () => {
@@ -261,8 +312,67 @@ describe('ClosingWizardPage', () => {
 
     // Verify steps 2-9 navigate calls happen
     await waitFor(() => {
+      expect(mocks.closingWizardApiCalculateDifferences).toHaveBeenCalledWith('wizard-1', { HUF: 100000 })
       // Step 1 was called in runStep1, steps 2-9 = 8 more calls
       expect(mocks.closingWizardApiNavigate).toHaveBeenCalledTimes(9) // 1 + 8
+    })
+  })
+
+  it('cimletezés után backend eltérés-számítást kér és megjeleníti az eredményt', async () => {
+    const user = await runStep1()
+
+    mocks.closingWizardApiNavigate.mockResolvedValue({
+      steps: [{ stepNumber: 2, completed: true }],
+    })
+    mocks.closingWizardApiCalculateDifferences.mockResolvedValue([
+      {
+        currencyCode: 'HUF',
+        expected: 100000,
+        actual: 120000,
+        difference: 20000,
+        status: 'DISCREPANCY',
+      },
+    ])
+
+    const inputs = screen.getAllByRole('spinbutton')
+    await user.clear(inputs[0]!)
+    await user.type(inputs[0]!, '6')
+    await user.click(screen.getByRole('button', { name: /Cimletezés rogzitese/i }))
+
+    await waitFor(() => {
+      expect(mocks.closingWizardApiCalculateDifferences).toHaveBeenCalledWith('wizard-1', { HUF: 120000 })
+      expect(screen.getByText('Eltérés ellenőrzés')).toBeInTheDocument()
+      expect(screen.getByTestId('closing-differences-table')).toHaveTextContent('DISCREPANCY')
+    })
+  })
+
+  it('betölti és megjeleníti a napi zárás előellenőrzés backend státuszát', async () => {
+    renderClosingWizardPage()
+
+    await waitFor(() => {
+      expect(mocks.dailySessionApiValidateClosing).toHaveBeenCalled()
+      expect(screen.getByText('Napi zárás előellenőrzés')).toBeInTheDocument()
+      expect(screen.getByText('Minden címletezés rendben')).toBeInTheDocument()
+    })
+  })
+
+  it('sikeres zárási lépések után betölti és megjeleníti a backend zárási riportot', async () => {
+    const user = await runStep1()
+
+    mocks.closingWizardApiNavigate.mockResolvedValue({
+      steps: [{ stepNumber: 2, completed: true }],
+    })
+
+    const inputs = screen.getAllByRole('spinbutton')
+    await user.clear(inputs[0]!)
+    await user.type(inputs[0]!, '2')
+    await user.click(screen.getByRole('button', { name: /Cimletezés rogzitese/i }))
+
+    await waitFor(() => {
+      expect(mocks.closingWizardApiGetReport).toHaveBeenCalledWith('wizard-1')
+      expect(screen.getByText('Zárási riport előnézet')).toBeInTheDocument()
+      expect(screen.getByText('Korut')).toBeInTheDocument()
+      expect(screen.getAllByText('HUF').length).toBeGreaterThanOrEqual(1)
     })
   })
 

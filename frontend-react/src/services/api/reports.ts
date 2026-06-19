@@ -94,6 +94,26 @@ export interface CashStatusReport {
   highBalanceAlerts: string[]
 }
 
+export interface DailyReportFull {
+  reportDate: string
+  branchId: string
+  branchCode?: string
+  branchName?: string
+  branchAddress?: string
+  taxId?: string
+  closingBalanceHuf?: number | string | null
+  closingBalanceForeign?: number | string | null
+  closingBalanceTotal?: number | string | null
+  currencyLines?: Array<Record<string, unknown>>
+  hufDenominations?: Array<Record<string, unknown>>
+  discountLines?: Array<Record<string, unknown>>
+  transactionCount?: number
+  buyCount?: number
+  sellCount?: number
+  reversalCount?: number
+  [key: string]: unknown
+}
+
 export const reportApi = {
   getDailyClosing: async (date?: string): Promise<DailyClosingReport> => {
     const params = date ? { date } : {}
@@ -125,6 +145,48 @@ export const reportApi = {
   getTodaySummary: async (): Promise<DailyClosingReport> => {
     const response = await api.get<DailyClosingReport>('/reports/today-summary')
     return response.data
+  },
+  getDailyFullReport: async (branchId: string, date: string): Promise<DailyReportFull> => {
+    const response = await api.get<DailyReportFull>(`/reports/daily/${branchId}/${date}/full`)
+    return response.data
+  },
+  exportDailyClosingPdf: async (branchId: string, date: string): Promise<Blob> => {
+    const response = await api.get(`/reports/daily/${branchId}/${date}/pdf`, {
+      responseType: 'blob',
+    })
+    return response.data as Blob
+  },
+  getMonthlyTurnover: async (year: number, month: number): Promise<unknown> => {
+    const response = await api.get('/reports/monthly-turnover', {
+      params: { year, month },
+    })
+    return response.data
+  },
+  getTransferReport: async (startDate: string, endDate: string): Promise<unknown> => {
+    const response = await api.get('/reports/transfers', {
+      params: { startDate, endDate },
+    })
+    return response.data
+  },
+  getHandlingFeeReport: async (startDate: string, endDate: string): Promise<unknown> => {
+    const response = await api.get('/reports/handling-fees', {
+      params: { startDate, endDate },
+    })
+    return response.data
+  },
+  exportMonthlyTurnoverCsv: async (year: number, month: number): Promise<Blob> => {
+    const response = await api.get('/reports/monthly-turnover/csv', {
+      params: { year, month },
+      responseType: 'blob',
+    })
+    return response.data as Blob
+  },
+  exportPeriodCsv: async (startDate: string, endDate: string): Promise<Blob> => {
+    const response = await api.get('/reports/period/csv', {
+      params: { startDate, endDate },
+      responseType: 'blob',
+    })
+    return response.data as Blob
   }
 }
 
@@ -155,15 +217,82 @@ export interface NavReport {
   transactions: NavReportableTransaction[]
 }
 
+export interface NavClosing {
+  id: string
+  closingDate: string
+  branchId?: string | null
+  closingType?: string | null
+  totalRevenue?: number | string | null
+  totalExpense?: number | string | null
+  handlingFeeTotal?: number | string | null
+  vatAmount?: number | string | null
+  status?: string | null
+  navReferenceNumber?: string | null
+  createdAt?: string | null
+}
+
+export interface NavClosingSummary {
+  branchId?: string | null
+  date?: string | null
+  totalRevenue?: number | string | null
+  totalExpense?: number | string | null
+  handlingFeeTotal?: number | string | null
+  vatAmount?: number | string | null
+  transactionCount?: number | string | null
+}
+
+interface PageResponse<T> {
+  content?: T[]
+}
+
 export const navReportApi = {
   /** Napi NAV riport (összesítő + jelenthető tranzakciók). Backend: GET /api/v1/nav-reports/daily?date */
   getDaily: async (date: string): Promise<NavReport> => {
     const response = await api.get<NavReport>('/nav-reports/daily', { params: { date } })
     return response.data
   },
+  /** Jelenthető tranzakciók tételes listája. Backend: GET /api/v1/nav-reports/reportable?date */
+  getReportable: async (date: string): Promise<NavReportableTransaction[]> => {
+    const response = await api.get<NavReportableTransaction[]>('/nav-reports/reportable', { params: { date } })
+    return response.data
+  },
   /** NAV CSV export. Backend: GET /api/v1/nav-reports/csv?date → text/csv. */
   exportCsv: async (date: string): Promise<Blob> => {
     const response = await api.get('/nav-reports/csv', { params: { date }, responseType: 'blob' })
+    return response.data as Blob
+  },
+  /** NAV zárások listája. Backend: GET /api/v1/nav/closings */
+  listClosings: async (params?: { dateFrom?: string; dateTo?: string; page?: number; size?: number }): Promise<NavClosing[]> => {
+    const response = await api.get<PageResponse<NavClosing> | NavClosing[]>('/nav/closings', {
+      params: {
+        page: params?.page ?? 0,
+        size: params?.size ?? 20,
+        dateFrom: params?.dateFrom,
+        dateTo: params?.dateTo,
+      },
+    })
+    const payload = response.data
+    return Array.isArray(payload) ? payload : payload.content ?? []
+  },
+  /** NAV zárás napi összesítő. Backend: GET /api/v1/nav/closings/{id}/summary */
+  getClosingSummary: async (id: string): Promise<NavClosingSummary> => {
+    const response = await api.get<NavClosingSummary>(`/nav/closings/${id}/summary`)
+    return response.data
+  },
+  /** Havi PTGSZLAH XML export. Backend: GET /api/v1/nav/closings/ptgszlah/monthly */
+  exportMonthlyPtgszlah: async (year: number, month: number): Promise<Blob> => {
+    const response = await api.get('/nav/closings/ptgszlah/monthly', {
+      params: { year, month },
+      responseType: 'blob',
+    })
+    return response.data as Blob
+  },
+  /** Egyedi időszakos PTGSZLAH XML export. Backend: GET /api/v1/nav/closings/ptgszlah/custom */
+  exportCustomPtgszlah: async (from: string, to: string): Promise<Blob> => {
+    const response = await api.get('/nav/closings/ptgszlah/custom', {
+      params: { from, to },
+      responseType: 'blob',
+    })
     return response.data as Blob
   },
 }
@@ -470,6 +599,32 @@ export const auditLogApi = {
     const response = await api.get<AuditLog[]>('/audit', { params: { entityId } })
     return response.data
   },
+  getTrail: async (entityType: string, entityId: string): Promise<AuditLog[]> => {
+    const response = await api.get<AuditLog[]>(
+      `/audit/trail/${encodeURIComponent(entityType)}/${encodeURIComponent(entityId)}`,
+    )
+    return response.data
+  },
+  search: async (
+    dateFrom?: string,
+    dateTo?: string,
+    workerId?: string,
+    entityType?: string,
+    action?: string,
+    keyword?: string,
+    page = 0,
+    size = 50,
+  ): Promise<{ content: AuditLog[]; totalElements: number }> => {
+    const params: Record<string, string | number> = { page, size }
+    if (dateFrom) params.dateFrom = dateFrom
+    if (dateTo) params.dateTo = dateTo
+    if (workerId) params.workerId = workerId
+    if (entityType) params.entityType = entityType
+    if (action) params.action = action
+    if (keyword) params.keyword = keyword
+    const response = await api.get('/audit/search', { params, _preservePaged: true } as Record<string, unknown>)
+    return response.data
+  },
   getByWorker: async (workerId: string, from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
@@ -497,6 +652,13 @@ export const auditLogApi = {
     if (to) params.to = to
     const response = await api.get('/logs/system', { params, _preservePaged: true } as Record<string, unknown>)
     return response.data
+  },
+  exportCsv: async (dateFrom?: string, dateTo?: string): Promise<Blob> => {
+    const params: Record<string, string> = {}
+    if (dateFrom) params.dateFrom = dateFrom
+    if (dateTo) params.dateTo = dateTo
+    const response = await api.get('/audit/export', { params, responseType: 'blob' })
+    return response.data as Blob
   },
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { Fragment, useEffect, useState, useCallback } from 'react'
 import { CheckCircle2, Send, XCircle, RefreshCw, AlertTriangle, FileText, Users, Clock } from 'lucide-react'
 import { exchangeRateMasterApi, type ExchangeRateMaster, type MasterRateStatus, type ExchangeRateDistribution } from '../../services/api/exchangeRateMaster'
 import { logger } from '../../utils/logger'
@@ -38,6 +38,7 @@ export default function RateMasterWorkflowPage() {
     const [loading, setLoading] = useState(true)
     const [err, setErr] = useState<string | null>(null)
     const [busyId, setBusyId] = useState<string | null>(null)
+    const [busyDistributionId, setBusyDistributionId] = useState<string | null>(null)
     const [expandedDistId, setExpandedDistId] = useState<string | null>(null)
     const [distData, setDistData] = useState<Record<string, ExchangeRateDistribution[]>>({})
 
@@ -68,6 +69,20 @@ export default function RateMasterWorkflowPage() {
             setErr(e instanceof Error ? e.message : String(e))
         } finally {
             setBusyId(null)
+        }
+    }
+
+    const handleAcknowledgeDistribution = async (rateId: string, distributionId: string) => {
+        setBusyDistributionId(distributionId)
+        setErr(null)
+        try {
+            await exchangeRateMasterApi.acknowledgeDistribution(distributionId)
+            const dist = await exchangeRateMasterApi.getDistributionStatus(rateId)
+            setDistData((prev) => ({ ...prev, [rateId]: dist }))
+        } catch (e) {
+            setErr(e instanceof Error ? e.message : String(e))
+        } finally {
+            setBusyDistributionId(null)
         }
     }
 
@@ -189,8 +204,8 @@ export default function RateMasterWorkflowPage() {
                         </thead>
                         <tbody>
                             {rates.map((r) => (
-                                <>
-                                    <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
+                                <Fragment key={r.id}>
+                                    <tr className="border-t border-slate-100 hover:bg-slate-50">
                                         <td className="px-4 py-3 font-mono font-bold">{r.currencyCode || r.currencyId}</td>
                                         <td className="px-4 py-3 text-right font-mono">{r.baseBuyRate?.toLocaleString('hu-HU', { maximumFractionDigits: 2 })}</td>
                                         <td className="px-4 py-3 text-right font-mono">{r.baseSellRate?.toLocaleString('hu-HU', { maximumFractionDigits: 2 })}</td>
@@ -270,6 +285,17 @@ export default function RateMasterWorkflowPage() {
                                                                 <div className="font-mono font-bold">{d.branchCode || d.branchId.slice(0, 8)}</div>
                                                                 <div className="text-xs opacity-75">{d.branchName}</div>
                                                                 <div className="mt-1 text-xxs">{d.status}</div>
+                                                                {d.status !== 'ACKNOWLEDGED' && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => void handleAcknowledgeDistribution(r.id, d.id)}
+                                                                        disabled={busyDistributionId === d.id}
+                                                                        className="mt-2 w-full rounded bg-white/80 px-2 py-1 text-xs font-semibold text-slate-800 hover:bg-white disabled:opacity-50"
+                                                                        data-testid={`exchange-rate-distribution-ack-${d.id}`}
+                                                                    >
+                                                                        {busyDistributionId === d.id ? 'Folyamatban...' : 'Visszaigazol'}
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         ))}
                                                     </div>
@@ -278,7 +304,7 @@ export default function RateMasterWorkflowPage() {
                                         </tr>
                                         );
                                     })()}
-                                </>
+                                </Fragment>
                             ))}
                         </tbody>
                     </table>

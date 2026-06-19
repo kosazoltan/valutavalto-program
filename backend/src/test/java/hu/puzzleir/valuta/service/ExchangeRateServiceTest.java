@@ -208,4 +208,47 @@ class ExchangeRateServiceTest {
                     .containsExactly("EUR", "USD");
         }
     }
+
+    @Test
+    @DisplayName("applyDiscount — company-scope-olt árfolyamot használ")
+    void applyDiscountScopesRateByCompany() {
+        Currency eur = Currency.builder().id(4L).code("EUR").build();
+        ExchangeRate rate = ExchangeRate.builder()
+                .id(10L)
+                .currency(eur)
+                .baseBuyRate(new BigDecimal("400.00"))
+                .baseSellRate(new BigDecimal("410.00"))
+                .validDate(LocalDate.now())
+                .validTime(LocalTime.now())
+                .active(true)
+                .build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(exchangeRateRepository.findByIdAndCompanyId(10L, COMPANY_ID)).thenReturn(Optional.of(rate));
+
+            ExchangeRate result = service.applyDiscount(10L, new BigDecimal("1.0"));
+
+            assertThat(result.getBaseBuyRate()).isEqualByComparingTo("404.000000");
+            assertThat(result.getBaseSellRate()).isEqualByComparingTo("405.900000");
+            verify(exchangeRateRepository).findByIdAndCompanyId(10L, COMPANY_ID);
+            verify(exchangeRateRepository, never()).findById(10L);
+        }
+    }
+
+    @Test
+    @DisplayName("applyDiscount — idegen cég árfolyamát nem tölti be scope nélkül")
+    void applyDiscountRejectsRateOutsideCurrentCompany() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(exchangeRateRepository.findByIdAndCompanyId(99L, COMPANY_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.applyDiscount(99L, new BigDecimal("1.0")))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Árfolyam nem található");
+
+            verify(exchangeRateRepository).findByIdAndCompanyId(99L, COMPANY_ID);
+            verify(exchangeRateRepository, never()).findById(99L);
+        }
+    }
 }

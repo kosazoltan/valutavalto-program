@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -31,15 +32,17 @@ class AmlApprovalControllerTest {
 
     private static final Long CASHIER_ID = 10L;
     private static final Long APPROVER_ID = 20L;
+    private static final UUID COMPANY_ID = UUID.randomUUID();
 
     @Test
     void verifyApproverSucceedsForValidSeniorApproverWithCorrectPin() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentWorkerId).thenReturn(CASHIER_ID);
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             when(amlApprovalService.isValidSeniorApprover(APPROVER_ID)).thenReturn(true);
             when(supervisorPinService.verifyPin(eq(APPROVER_ID), eq("1234"), any(), any())).thenReturn(true);
             Worker approver = Worker.builder().name("Teszt Supervisor").build();
-            when(workerRepository.findById(APPROVER_ID)).thenReturn(Optional.of(approver));
+            when(workerRepository.findByIdAndCompanyId(APPROVER_ID, COMPANY_ID)).thenReturn(Optional.of(approver));
 
             ResponseEntity<Map<String, Object>> resp = controller.verifyApprover(
                     Map.of("approverWorkerId", 20, "pin", "1234", "approvalSessionId", "sess-1",
@@ -51,6 +54,8 @@ class AmlApprovalControllerTest {
                     .containsEntry("approverName", "Teszt Supervisor");
             // Codex P1: PIN OK → SINGLE-USE grant kiállítása a sessionhöz ÉS a jóváhagyott ügyfélhez kötve.
             verify(amlApprovalService).issueApprovalGrant(eq(APPROVER_ID), eq("sess-1"), eq("Teszt Ügyfél"));
+            verify(workerRepository).findByIdAndCompanyId(APPROVER_ID, COMPANY_ID);
+            verify(workerRepository, never()).findById(APPROVER_ID);
         }
     }
 

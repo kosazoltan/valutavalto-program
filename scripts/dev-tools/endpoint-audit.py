@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-endpoint-audit.py — Lista az összes Spring REST végpontot + biztonsági annotáció-ellenőrzés.
+endpoint-audit.py — Lista az összes Spring REST végpontot + effektív auth-ellenőrzés.
 
 Replaces: AI review "missing @PreAuthorize" findings + manual SecurityConfig audit.
 
@@ -22,7 +22,9 @@ from dataclasses import dataclass, field
 
 ROOT       = Path(__file__).resolve().parent.parent.parent
 CTRL_DIR   = ROOT / "backend" / "src" / "main" / "java"
-ALLOW_FILE = ROOT / "backend" / "src" / "main" / "java"  # SecurityConfig permitAll list
+SECURITY_CONFIG = (
+    CTRL_DIR / "hu" / "puzzleir" / "valuta" / "config" / "SecurityConfig.java"
+)
 
 HTTP_ANNOTATIONS = re.compile(
     r'@(GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping|RequestMapping)'
@@ -34,6 +36,11 @@ SECURITY_ANNOTATIONS = re.compile(
 )
 CLASS_MAPPING = re.compile(r'@RequestMapping\s*\(\s*["\']([^"\']+)["\']')
 CLASS_NAME    = re.compile(r'public\s+class\s+(\w+)')
+PERMIT_ALL_BLOCK = re.compile(
+    r'\.requestMatchers\s*\((.*?)\)\s*\.permitAll\s*\(\s*\)',
+    re.S,
+)
+STRING_LITERAL = re.compile(r'"([^"]+)"')
 
 
 @dataclass
@@ -143,6 +150,38 @@ def parse_controller(java_file: Path) -> list[Endpoint]:
     return results
 
 
+def load_security_config() -> tuple[list[str], bool]:
+    if not SECURITY_CONFIG.exists():
+        return [], False
+    content = SECURITY_CONFIG.read_text(encoding="utf-8", errors="replace")
+    permit_all_patterns: list[str] = []
+    for block in PERMIT_ALL_BLOCK.findall(content):
+        permit_all_patterns.extend(STRING_LITERAL.findall(block))
+    compact = re.sub(r"\s+", "", content)
+    default_authenticated = ".anyRequest().authenticated()" in compact
+    return permit_all_patterns, default_authenticated
+
+
+def matches_security_pattern(pattern: str, path: str) -> bool:
+    normalized_pattern = pattern.rstrip("/") or "/"
+    normalized_path = path.rstrip("/") or "/"
+    if normalized_pattern.endswith("/**"):
+        prefix = normalized_pattern[:-3].rstrip("/")
+        return normalized_path == prefix or normalized_path.startswith(prefix + "/")
+    return normalized_path == normalized_pattern
+
+
+def apply_http_security(endpoints: list[Endpoint]) -> None:
+    permit_all_patterns, default_authenticated = load_security_config()
+    for endpoint in endpoints:
+        if endpoint.security != "NONE":
+            continue
+        if any(matches_security_pattern(pattern, endpoint.path) for pattern in permit_all_patterns):
+            endpoint.security = "PermitAll (SecurityConfig)"
+        elif default_authenticated:
+            endpoint.security = "Authenticated (SecurityConfig default)"
+
+
 def main():
     args       = sys.argv[1:]
     missing_only = "--missing-only" in args
@@ -156,6 +195,7 @@ def main():
     all_endpoints: list[Endpoint] = []
     for c in controllers:
         all_endpoints.extend(parse_controller(c))
+    apply_http_security(all_endpoints)
 
     if not all_endpoints:
         print("No mapped endpoints found.")
@@ -175,7 +215,7 @@ def main():
 
     if missing_only:
         if not unsecured:
-            print("endpoint-audit: all endpoints have security annotations.")
+            print("endpoint-audit: all endpoints have effective security.")
             sys.exit(0)
         print(f"endpoint-audit: {len(unsecured)} UNSECURED endpoint(s):\n")
         for e in unsecured:

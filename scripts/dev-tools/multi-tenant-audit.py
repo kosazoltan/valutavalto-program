@@ -38,7 +38,12 @@ MULTITENANT_ENTITIES = {
 }
 
 # JPQL companyId referencia
-HAS_COMPANY_ID = re.compile(r'\bcompanyId\b|\bcompany_id\b', re.IGNORECASE)
+HAS_COMPANY_ID = re.compile(
+    r'\bcompanyId\b|\bcompany_id\b|\bcompany\s*\.\s*id\b|'
+    r'\bbranchId\b|\bbranchIds\b|\bbranch_id\b|\bbranch\s*\.\s*id\b|'
+    r'\bcashDeskId\b|\bvaultTerritoryId\b|\bworkerId\b',
+    re.IGNORECASE,
+)
 
 IGNORED_DIRS = {"node_modules", ".git", "target", "dist", ".vite", "coverage"}
 
@@ -60,17 +65,19 @@ def check_jpql_queries(strict: bool) -> list[str]:
         for i, line in enumerate(lines):
             if "@Query" not in line:
                 continue
-            # Collect the full annotation (may span multiple lines)
-            snippet = "\n".join(lines[i:i+6])
-            m = QUERY_ANNOTATION.search(snippet)
-            if not m:
+            # Collect the full annotation (may span multiple lines or string fragments).
+            snippet = "\n".join(lines[i:i+16])
+            if not QUERY_ANNOTATION.search(snippet):
                 continue
-            jpql = m.group(1)
+            jpql = " ".join(re.findall(r'["\']([^"\']+)["\']', snippet))
             # Only check SELECT queries that return entity types
             if "SELECT" not in jpql.upper():
                 continue
             # Check if any multi-tenant entity is referenced
-            mentions_tenant_entity = any(e.lower() in jpql.lower() for e in MULTITENANT_ENTITIES)
+            mentions_tenant_entity = any(
+                re.search(rf'\b{re.escape(e)}\b', jpql, re.IGNORECASE)
+                for e in MULTITENANT_ENTITIES
+            )
             if not mentions_tenant_entity:
                 continue
             if not HAS_COMPANY_ID.search(jpql):

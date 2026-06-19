@@ -154,7 +154,7 @@ public class CustomerController {
             return ResponseEntity.ok(customer != null ? List.of(customerMapper.toDto(customer)) : List.of());
         }
         if (query != null && !query.isBlank()) {
-            List<Customer> customers = customerService.searchByName(query);
+            List<Customer> customers = customerService.searchByNameOrDocument(query);
             List<CustomerDto> dtos = customers.stream()
                     .map(customerMapper::toDto)
                     .collect(Collectors.toList());

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Clock, Search, RefreshCw, AlertTriangle } from 'lucide-react'
+import { AlertTriangle, CalendarClock, Clock, RefreshCw, Search } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -11,8 +11,23 @@ interface RateHistoryItem {
   currencyCode?: string
   buyRate?: string
   sellRate?: string
+  mnbRate?: string
+  spread?: string
+  category?: string
+  effectiveFrom?: string
+  effectiveTo?: string
   validFrom?: string
   createdByName?: string
+}
+
+const getCurrentLocalDateTimeValue = (): string => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
 export default function RateHistoryPage() {
@@ -23,6 +38,11 @@ export default function RateHistoryPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [atDateCurrency, setAtDateCurrency] = useState('EUR')
+  const [atDateValue, setAtDateValue] = useState(getCurrentLocalDateTimeValue)
+  const [atDateResult, setAtDateResult] = useState<RateHistoryItem | null>(null)
+  const [atDateLoading, setAtDateLoading] = useState(false)
+  const [atDateError, setAtDateError] = useState<string | null>(null)
 
   // Fix 2026-04-24 (Issue #184): default utolso 30 nap + from/to parameter
   // A backend uj opcionalis currency paramot tamogat, ha nincs -> minden valuta
@@ -34,6 +54,9 @@ export default function RateHistoryPage() {
     const day = String(d.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
   }
+
+  const formatDateTimeDisplay = (value?: string): string =>
+    value ? new Date(value).toLocaleString('hu-HU') : '-'
 
   const loadData = useCallback(async () => {
     try {
@@ -61,6 +84,31 @@ export default function RateHistoryPage() {
     void loadData()
   }, [loadData])
 
+  const loadAtDateRate = async () => {
+    const currency = atDateCurrency.trim().toUpperCase()
+    if (!currency || !atDateValue) {
+      setAtDateError('Valuta és időpont megadása kötelező.')
+      return
+    }
+
+    try {
+      setAtDateLoading(true)
+      setAtDateError(null)
+      const response = await api.get<RateHistoryItem>('/rate-history/at-date', {
+        params: { currency, date: atDateValue }
+      })
+      setAtDateResult(response.data)
+      setAtDateCurrency(currency)
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('RateHistoryPage', 'Adott időpont árfolyam lekérdezési hiba:', err)
+      setAtDateError(msg)
+      setAtDateResult(null)
+    } finally {
+      setAtDateLoading(false)
+    }
+  }
+
   const filtered = items.filter(item => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
@@ -83,13 +131,13 @@ export default function RateHistoryPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-          <div className="flex gap-2">
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              className="form-input px-2 py-1" />
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              className="form-input px-2 py-1" />
-          </div>
+      <div className="flex flex-col gap-2 md:flex-row md:items-center">
+        <div className="grid grid-cols-2 gap-2 md:flex">
+          <input aria-label="Kezdő dátum" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+            className="form-input min-w-0 px-2 py-1" />
+          <input aria-label="Záró dátum" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+            className="form-input min-w-0 px-2 py-1" />
+        </div>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -102,6 +150,63 @@ export default function RateHistoryPage() {
         </div>
       </div>
 
+      <section className="rounded-lg border border-blue-100 bg-blue-50/70 p-3">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-900">
+          <CalendarClock className="h-4 w-4" />
+          {t('rates.adottIdopontbanErvenyesArfolyam')}
+        </div>
+        <div className="grid gap-2 md:grid-cols-[120px_minmax(220px,1fr)_auto]">
+          <input
+            aria-label="Adott időpont valuta"
+            value={atDateCurrency}
+            onChange={e => setAtDateCurrency(e.target.value.toUpperCase())}
+            className="form-input min-w-0 px-2 py-1"
+            maxLength={3}
+          />
+          <input
+            aria-label="Adott időpont"
+            type="datetime-local"
+            value={atDateValue}
+            onChange={e => setAtDateValue(e.target.value)}
+            className="form-input min-w-0 px-2 py-1"
+          />
+          <button
+            type="button"
+            onClick={() => void loadAtDateRate()}
+            disabled={atDateLoading}
+            className="form-button whitespace-nowrap px-3 py-2"
+          >
+            {t('rates.lekerdezes')}
+          </button>
+        </div>
+        {atDateError && (
+          <div className="mt-2 flex items-center gap-2 text-sm text-red-700">
+            <AlertTriangle className="h-4 w-4" />
+            {atDateError}
+          </div>
+        )}
+        {atDateResult && (
+          <div className="mt-3 grid gap-2 rounded-md bg-white p-3 text-sm shadow-sm md:grid-cols-4">
+            <div>
+              <div className="text-xs uppercase text-gray-500">{t('common.currency')}</div>
+              <div className="font-semibold text-gray-900">{atDateResult.currencyCode ?? atDateCurrency}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase text-gray-500">{t('rates.veteliArf')}</div>
+              <div className="font-semibold text-gray-900">{atDateResult.buyRate ?? '-'}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase text-gray-500">{t('rates.eladasiArf')}</div>
+              <div className="font-semibold text-gray-900">{atDateResult.sellRate ?? '-'}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase text-gray-500">{t('rates.ervenyes')}</div>
+              <div className="font-semibold text-gray-900">{formatDateTimeDisplay(atDateResult.effectiveFrom ?? atDateResult.validFrom)}</div>
+            </div>
+          </div>
+        )}
+      </section>
+
       {error && (
         <div className="form-error flex items-center gap-2">
           <AlertTriangle className="h-4 w-4" />
@@ -109,7 +214,37 @@ export default function RateHistoryPage() {
         </div>
       )}
 
-      <div className="data-grid overflow-x-auto">
+      <div className="space-y-2 md:hidden">
+        {loading ? (
+          <div className="rounded-md border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">Betöltés...</div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-md border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</div>
+        ) : filtered.map(item => (
+          <article key={item.id} className="rounded-md border border-gray-200 bg-white p-3 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-xs uppercase text-gray-500">{t('common.currency')}</div>
+                <div className="text-base font-semibold text-gray-900">{item.currencyCode ?? '-'}</div>
+              </div>
+              <div className="text-right text-xs text-gray-500">
+                {formatDateTimeDisplay(item.effectiveFrom ?? item.validFrom)}
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <div className="text-xs uppercase text-gray-500">{t('rates.veteliArf')}</div>
+                <div className="font-semibold text-gray-900">{item.buyRate ?? '-'}</div>
+              </div>
+              <div>
+                <div className="text-xs uppercase text-gray-500">{t('rates.eladasiArf')}</div>
+                <div className="font-semibold text-gray-900">{item.sellRate ?? '-'}</div>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="data-grid hidden overflow-x-auto md:block">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -130,7 +265,7 @@ export default function RateHistoryPage() {
                 <td className="px-4 py-3 text-sm">{item.currencyCode ?? '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.buyRate ?? '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.sellRate ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.validFrom ? new Date(item.validFrom).toLocaleString('hu-HU') : '-'}</td>
+                <td className="px-4 py-3 text-sm">{formatDateTimeDisplay(item.effectiveFrom ?? item.validFrom)}</td>
                 <td className="px-4 py-3 text-sm">{item.createdByName ?? '-'}</td>
               </tr>
             ))}

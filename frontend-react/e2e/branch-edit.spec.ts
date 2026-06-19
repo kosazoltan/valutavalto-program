@@ -104,6 +104,32 @@ async function loginWithBranchMocks(page: Page, capture: PutCapture, branchOverr
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(branch) })
     }
 
+    if (path.endsWith(`/branches/${branch.id}/path`) && method === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([branch]) })
+    }
+
+    if (path.endsWith(`/branches/${branch.id}/children`) && method === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+    }
+
+    if (path.endsWith(`/admin/branches/${branch.id}`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: branch.id,
+          code: branch.code,
+          name: branch.name,
+          active: branch.isActive,
+          companyName: worker.companyName,
+          workerCount: 3,
+          totalInventoryHuf: 0,
+          lastSyncAt: null,
+          openingHours: 'H-P 09:00-17:00',
+        }),
+      })
+    }
+
     if (path.endsWith(`/branches/${branch.id}`) && method === 'PUT') {
       capture.body = route.request().postDataJSON() as Record<string, unknown>
       return route.fulfill({

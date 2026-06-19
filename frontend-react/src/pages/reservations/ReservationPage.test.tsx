@@ -6,11 +6,25 @@ import ReservationPage from './ReservationPage'
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
+  reservationList: vi.fn(),
+  reservationCreate: vi.fn(),
+  reservationCancel: vi.fn(),
+  reservationCancelByCompany: vi.fn(),
+  reservationFulfill: vi.fn(),
+  reservationReceipt: vi.fn(),
   search: vi.fn(),
 }))
 
 vi.mock('@/services/api/index', () => ({
   api: { get: mocks.get, post: mocks.post },
+  reservationsApi: {
+    list: mocks.reservationList,
+    create: mocks.reservationCreate,
+    cancel: mocks.reservationCancel,
+    cancelByCompany: mocks.reservationCancelByCompany,
+    fulfill: mocks.reservationFulfill,
+    receipt: mocks.reservationReceipt,
+  },
 }))
 
 vi.mock('@/services/api/transactions', () => ({
@@ -45,18 +59,22 @@ describe('ReservationPage — backend kontraktus', () => {
     localStorage.setItem('branchId', 'b-uuid')
     mocks.get.mockResolvedValue({ data: [activeReservation] })
     mocks.post.mockResolvedValue({ data: activeReservation })
+    mocks.reservationList.mockResolvedValue([activeReservation])
+    mocks.reservationCreate.mockResolvedValue(activeReservation)
+    mocks.reservationCancel.mockResolvedValue(activeReservation)
+    mocks.reservationCancelByCompany.mockResolvedValue(activeReservation)
+    mocks.reservationFulfill.mockResolvedValue(activeReservation)
+    mocks.reservationReceipt.mockResolvedValue(new Blob(['pdf'], { type: 'application/pdf' }))
   })
 
-  it('az aktív fül a GET /reservations/active?branchId=... végpontot hívja', async () => {
+  it('az aktív fül a reservationsApi.list({ branchId }) backend wrapperre köt', async () => {
     render(
       <MemoryRouter>
         <ReservationPage />
       </MemoryRouter>
     )
     await waitFor(() => {
-      expect(mocks.get).toHaveBeenCalledWith('/reservations/active', {
-        params: { branchId: 'b-uuid' },
-      })
+      expect(mocks.reservationList).toHaveBeenCalledWith({ branchId: 'b-uuid' })
     })
     // A foglaló sora megjelenik (valutakód nem fordított érték)
     expect(await screen.findByText('B000042')).toBeInTheDocument()
@@ -69,7 +87,7 @@ describe('ReservationPage — backend kontraktus', () => {
         <ReservationPage />
       </MemoryRouter>
     )
-    await waitFor(() => expect(mocks.get).toHaveBeenCalled())
+    await waitFor(() => expect(mocks.reservationList).toHaveBeenCalled())
     const getUrls = mocks.get.mock.calls.map((c) => String(c[0]))
     expect(getUrls.some((u) => u.includes('/branch/'))).toBe(false)
     expect(getUrls.some((u) => u.includes('/today'))).toBe(false)

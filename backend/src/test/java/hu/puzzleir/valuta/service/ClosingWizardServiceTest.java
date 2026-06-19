@@ -36,6 +36,7 @@ class ClosingWizardServiceTest {
     @InjectMocks private ClosingWizardService service;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();
+    private static final UUID COMPANY_ID = UUID.randomUUID();
 
     @Test
     @DisplayName("startWizard — mar van aktiv varazslo → hiba")
@@ -52,6 +53,31 @@ class ClosingWizardServiceTest {
         assertThatThrownBy(() -> service.startWizard(BRANCH_ID, null, "DAILY", 1L))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("aktív");
+    }
+
+    @Test
+    @DisplayName("startWizard — bejelentkezett kontextusban branch és worker company-scope-pal töltődik")
+    void startWizard_authenticatedScopesBranchAndWorkerByCompany() {
+        Branch branch = Branch.builder().id(BRANCH_ID).build();
+        Worker worker = Worker.builder().id(1L).build();
+        ClosingWizard existing = ClosingWizard.builder().id(UUID.randomUUID()).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_ID);
+            when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Optional.of(branch));
+            when(workerRepository.findByIdAndCompanyId(1L, COMPANY_ID)).thenReturn(Optional.of(worker));
+            when(closingWizardRepository.findByBranchIdAndStatus(eq(BRANCH_ID), any()))
+                    .thenReturn(List.of(existing));
+
+            assertThatThrownBy(() -> service.startWizard(BRANCH_ID, null, "DAILY", 1L))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("aktív");
+
+            verify(branchRepository).findByIdAndCompanyId(BRANCH_ID, COMPANY_ID);
+            verify(workerRepository).findByIdAndCompanyId(1L, COMPANY_ID);
+            verify(branchRepository, never()).findById(BRANCH_ID);
+            verify(workerRepository, never()).findById(1L);
+        }
     }
 
     @Test

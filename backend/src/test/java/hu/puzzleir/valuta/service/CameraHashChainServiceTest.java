@@ -67,7 +67,7 @@ class CameraHashChainServiceTest {
 
         when(hashRepository.findByBranchIdAndCameraIdOrderBySequenceNumberAsc(branchId, cameraId))
                 .thenReturn(List.of(entry));
-        when(recordingRepository.findById(recordingId)).thenReturn(Optional.of(recording));
+        when(recordingRepository.findByIdAndBranchId(recordingId, branchId)).thenReturn(Optional.of(recording));
 
         assertTrue(service.verifyChain(branchId, cameraId));
     }
@@ -106,7 +106,7 @@ class CameraHashChainServiceTest {
 
         when(hashRepository.findByBranchIdAndCameraIdOrderBySequenceNumberAsc(branchId, cameraId))
                 .thenReturn(List.of(entry));
-        when(recordingRepository.findById(recordingId)).thenReturn(Optional.of(recording));
+        when(recordingRepository.findByIdAndBranchId(recordingId, branchId)).thenReturn(Optional.of(recording));
 
         assertFalse(service.verifyChain(branchId, cameraId));
     }

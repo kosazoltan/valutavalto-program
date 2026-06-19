@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -35,10 +37,15 @@ public class ErrorMailerService {
 
     private final ErrorLogRepository errorLogRepo;
     private final JavaMailSender mailSender;
+    private final PlatformTransactionManager transactionManager;
 
-    public ErrorMailerService(ErrorLogRepository errorLogRepo, JavaMailSender mailSender) {
+    public ErrorMailerService(
+            ErrorLogRepository errorLogRepo,
+            JavaMailSender mailSender,
+            PlatformTransactionManager transactionManager) {
         this.errorLogRepo = errorLogRepo;
         this.mailSender = mailSender;
+        this.transactionManager = transactionManager;
     }
 
     // ── Fingerprint ──────────────────────────────────────────────────────────
@@ -106,54 +113,9 @@ public class ErrorMailerService {
         String severity = determineSeverity(req);
         String now = Instant.now().toString();
 
-        Optional<ErrorLog> existing = errorLogRepo.findByFingerprint(fp);
-        ErrorLog entry;
+        ErrorLog entry = saveOrUpdateErrorLog(req, fp, severity);
 
-        if (existing.isPresent()) {
-            entry = existing.get();
-            entry.setOccurrenceCount(entry.getOccurrenceCount() + 1);
-            entry.setLastSeenAt(Instant.now());
-            entry.setSeverity(severity);
-        } else {
-            entry = ErrorLog.builder()
-                .id(UUID.randomUUID().toString())
-                .fingerprint(fp)
-                .errorType(req.getErrorType() != null ? req.getErrorType() : "unknown")
-                .severity(severity)
-                .message(req.getMessage() != null ? req.getMessage() : "")
-                .stack(req.getStack())
-                .commitSha(req.getCommitSha())
-                .appName(APP_NAME)
-                .repoPath(REPO_PATH)
-                .environment("production")
-                .url(req.getUrl())
-                .requestId(req.getRequestId())
-                .requestMethod(req.getRequestMethod())
-                .requestBody(req.getRequestBody())
-                .userId(req.getUserId())
-                .userEmail(req.getUserEmail())
-                .browser(req.getBrowser())
-                .occurrenceCount(1)
-                .firstSeenAt(Instant.now())
-                .lastSeenAt(Instant.now())
-                .emailSent(false)
-                .resolved(false)
-                .createdAt(Instant.now())
-                .build();
-        }
-
-        // Email cooldown: 5 perc
-        boolean shouldEmail = true;
-        if (entry.isEmailSent() && entry.getEmailSentAt() != null) {
-            long diffSec = Instant.now().getEpochSecond() - entry.getEmailSentAt().getEpochSecond();
-            if (diffSec < 300) {
-                shouldEmail = false;
-            }
-        }
-
-        errorLogRepo.save(entry);
-
-        if (shouldEmail) {
+        if (shouldSendEmail(entry)) {
             try {
                 String hmac = signEmailPayload(fp, now);
                 String html = buildEmailHtml(req, fp, severity, now, hmac);
@@ -166,13 +128,71 @@ public class ErrorMailerService {
                 helper.setText(html, true);
                 mailSender.send(msg);
 
-                entry.setEmailSent(true);
-                entry.setEmailSentAt(Instant.now());
-                errorLogRepo.save(entry);
+                markEmailSent(entry.getId());
             } catch (Exception e) {
                 log.warn("Failed to send error email for fingerprint {}: {}", fp, e.getMessage());
             }
         }
+    }
+
+    private ErrorLog saveOrUpdateErrorLog(ErrorReportRequest req, String fp, String severity) {
+        return new TransactionTemplate(transactionManager).execute(status -> {
+            Optional<ErrorLog> existing = errorLogRepo.findByFingerprint(fp);
+
+            ErrorLog entry;
+            if (existing.isPresent()) {
+                entry = existing.get();
+                entry.setOccurrenceCount(entry.getOccurrenceCount() + 1);
+                entry.setLastSeenAt(Instant.now());
+                entry.setSeverity(severity);
+            } else {
+                entry = ErrorLog.builder()
+                    .id(UUID.randomUUID().toString())
+                    .fingerprint(fp)
+                    .errorType(req.getErrorType() != null ? req.getErrorType() : "unknown")
+                    .severity(severity)
+                    .message(req.getMessage() != null ? req.getMessage() : "")
+                    .stack(req.getStack())
+                    .commitSha(req.getCommitSha())
+                    .appName(APP_NAME)
+                    .repoPath(REPO_PATH)
+                    .environment("production")
+                    .url(req.getUrl())
+                    .requestId(req.getRequestId())
+                    .requestMethod(req.getRequestMethod())
+                    .requestBody(req.getRequestBody())
+                    .userId(req.getUserId())
+                    .userEmail(req.getUserEmail())
+                    .browser(req.getBrowser())
+                    .occurrenceCount(1)
+                    .firstSeenAt(Instant.now())
+                    .lastSeenAt(Instant.now())
+                    .emailSent(false)
+                    .resolved(false)
+                    .createdAt(Instant.now())
+                    .build();
+            }
+
+            return errorLogRepo.save(entry);
+        });
+    }
+
+    private boolean shouldSendEmail(ErrorLog entry) {
+        if (!entry.isEmailSent() || entry.getEmailSentAt() == null) {
+            return true;
+        }
+        long diffSec = Instant.now().getEpochSecond() - entry.getEmailSentAt().getEpochSecond();
+        return diffSec >= 300;
+    }
+
+    private void markEmailSent(String entryId) {
+        new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+            errorLogRepo.findById(entryId).ifPresent(entry -> {
+                entry.setEmailSent(true);
+                entry.setEmailSentAt(Instant.now());
+                errorLogRepo.save(entry);
+            })
+        );
     }
 
     private String buildEmailHtml(ErrorReportRequest req, String fp, String severity, String timestamp, String hmac) {

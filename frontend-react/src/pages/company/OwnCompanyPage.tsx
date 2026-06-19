@@ -1,9 +1,18 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Building, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
-import { ownCompanyApi, OwnCompany } from '../../services/api/index'
+import { adminCompanyApi, ownCompanyApi, AdminCompanyDetails, OwnCompany } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger';
 import { useTranslation } from 'react-i18next'
+
+const toAdminCompanyUpdate = (data: Partial<OwnCompany>) => ({
+  name: data.name,
+  taxNumber: data.taxNumber,
+  registrationNumber: data.registrationNumber,
+  address: data.address,
+  phone: data.phone,
+  email: data.email,
+})
 
 export default function OwnCompanyPage() {
   const { t } = useTranslation()
@@ -12,6 +21,7 @@ export default function OwnCompanyPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingCompany, setEditingCompany] = useState<OwnCompany | null>(null)
+  const [adminDetails, setAdminDetails] = useState<Record<string, AdminCompanyDetails>>({})
   const [formData, setFormData] = useState<Partial<OwnCompany>>({
     name: '',
     taxNumber: '',
@@ -44,6 +54,17 @@ export default function OwnCompanyPage() {
       setLoading(true)
       const data = await ownCompanyApi.list()
       setCompanies(data)
+      const details = await Promise.all(
+        data.map(async company => {
+          try {
+            return [company.id, await adminCompanyApi.getDetails(company.id)] as const
+          } catch (error) {
+            logger.warn('OwnCompanyPage', `Admin cég részlet nem elérhető: ${company.id}`, error)
+            return null
+          }
+        }),
+      )
+      setAdminDetails(Object.fromEntries(details.filter((item): item is readonly [string, AdminCompanyDetails] => item !== null)))
     } catch (error) {
       logger.error('OwnCompanyPage', 'Hiba az adatok betöltésekor:', error)
     } finally {
@@ -67,6 +88,9 @@ export default function OwnCompanyPage() {
     try {
       if (editingCompany) {
         await ownCompanyApi.update(editingCompany.id, formData)
+        if (adminDetails[editingCompany.id]) {
+          await adminCompanyApi.updateCompany(editingCompany.id, toAdminCompanyUpdate(formData))
+        }
       } else {
         await ownCompanyApi.create(formData)
       }
@@ -96,12 +120,12 @@ export default function OwnCompanyPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Building />
           {t('company.sajatCegek')}
         </h1>
-        <button onClick={handleCreate} className="form-button-primary flex items-center gap-2">
+        <button onClick={handleCreate} className="form-button-primary flex items-center justify-center gap-2">
           <Plus size={16} />
           {t('company.ujCeg')}
         </button>
@@ -118,7 +142,7 @@ export default function OwnCompanyPage() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3">
           <div className="bg-white rounded-lg p-4 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">{editingCompany ? 'Cég szerkesztése' : 'Új cég'}</h2>
@@ -126,23 +150,23 @@ export default function OwnCompanyPage() {
             </div>
             <div className="space-y-4">
               <div><label className="form-label">{t('common.nameRequired')}</label><input type="text" className="form-input" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} /></div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label className="form-label">{t('common.taxNumber')}</label><input type="text" className="form-input" value={formData.taxNumber || ''} onChange={(e) => setFormData({ ...formData, taxNumber: e.target.value })} /></div>
                 <div><label className="form-label">{t('common.companyRegNumber')}</label><input type="text" className="form-input" value={formData.registrationNumber || ''} onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })} /></div>
               </div>
               <div><label className="form-label">{t('common.address')}</label><input type="text" className="form-input" value={formData.address || ''} onChange={(e) => setFormData({ ...formData, address: e.target.value })} /></div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label className="form-label">{t('common.phone')}</label><input type="text" className="form-input" value={formData.phone || ''} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} /></div>
                 <div><label className="form-label">{t('common.email')}</label><input type="email" className="form-input" value={formData.email || ''} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></div>
               </div>
               <div><label className="form-label">{t('company.szamlaszam')}</label><input type="text" className="form-input" value={formData.bankAccountNumber || ''} onChange={(e) => setFormData({ ...formData, bankAccountNumber: e.target.value })} /></div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label className="form-label">IBAN</label><input type="text" className="form-input" value={formData.iban || ''} onChange={(e) => setFormData({ ...formData, iban: e.target.value })} /></div>
                 <div><label className="form-label">SWIFT</label><input type="text" className="form-input" value={formData.swift || ''} onChange={(e) => setFormData({ ...formData, swift: e.target.value })} /></div>
               </div>
               <div><label className="form-label">{t('company.engedelySzam')}</label><input type="text" className="form-input" value={formData.licenseNumber || ''} onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })} /></div>
               <div><label className="flex items-center gap-2"><input type="checkbox" className="rounded" checked={formData.isActive ?? true} onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })} /><span>{t('common.active')}</span></label></div>
-              <div className="flex justify-end gap-2 pt-4 border-t">
+              <div className="flex flex-col gap-2 pt-4 border-t sm:flex-row sm:justify-end">
                 <button onClick={() => { setShowForm(false); setEditingCompany(null) }} className="form-button">{t('common.cancel')}</button>
                 <button onClick={handleSave} className="form-button-primary flex items-center gap-2"><Save size={16} />{t('common.save')}</button>
               </div>
@@ -151,34 +175,93 @@ export default function OwnCompanyPage() {
         </div>
       )}
 
-      <div className="form-panel">
+      <div className="form-panel hidden overflow-x-auto md:block">
         <table className="data-grid w-full">
           <thead>
-            <tr><th>{t('common.name')}</th><th>{t('common.taxNumber')}</th><th>{t('common.companyRegNumber')}</th><th>{t('common.email')}</th><th>{t('common.phone')}</th><th>{t('common.status')}</th><th>{t('common.actions')}</th></tr>
+            <tr><th>{t('common.name')}</th><th>{t('common.taxNumber')}</th><th>{t('common.companyRegNumber')}</th><th>Admin statisztika</th><th>{t('common.email')}</th><th>{t('common.phone')}</th><th>{t('common.status')}</th><th>{t('common.actions')}</th></tr>
           </thead>
           <tbody>
             {filteredCompanies.length === 0 ? (
-              <tr><td colSpan={7} className="text-center text-gray-500 py-4">{t('common.noResult')}</td></tr>
+              <tr><td colSpan={8} className="text-center text-gray-500 py-4">{t('common.noResult')}</td></tr>
             ) : (
-              filteredCompanies.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.name}</td>
-                  <td>{c.taxNumber || '-'}</td>
-                  <td>{c.registrationNumber || '-'}</td>
-                  <td>{c.email || '-'}</td>
-                  <td>{c.phone || '-'}</td>
-                  <td><span className={`badge ${c.isActive ? 'badge-green' : 'badge-red'}`}>{c.isActive ? 'Aktív' : 'Inaktív'}</span></td>
-                  <td>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleEdit(c)} className="form-button text-xs"><Edit size={12} />{t('common.edit')}</button>
-                      <button onClick={() => handleDelete(c.id)} className="form-button text-xs text-red-600"><Trash2 size={12} />{t('common.delete')}</button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+              filteredCompanies.map((c) => {
+                const details = adminDetails[c.id]
+                return (
+                  <tr key={c.id}>
+                    <td>{c.name}</td>
+                    <td>{c.taxNumber || '-'}</td>
+                    <td>{c.registrationNumber || '-'}</td>
+                    <td>
+                      {details ? (
+                        <div className="text-xs text-gray-700" data-testid={`company-admin-stats-${c.id}`}>
+                          <div>{details.activeBranchCount} aktív fiók</div>
+                          <div>{details.totalWorkerCount} dolgozó</div>
+                          <div>{details.dailyTurnoverHuf.toLocaleString('hu-HU')} HUF ma</div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">Nincs admin adat</span>
+                      )}
+                    </td>
+                    <td>{c.email || '-'}</td>
+                    <td>{c.phone || '-'}</td>
+                    <td><span className={`badge ${c.isActive ? 'badge-green' : 'badge-red'}`}>{c.isActive ? 'Aktív' : 'Inaktív'}</span></td>
+                    <td>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleEdit(c)} className="form-button text-xs"><Edit size={12} />{t('common.edit')}</button>
+                        <button onClick={() => handleDelete(c.id)} className="form-button text-xs text-red-600"><Trash2 size={12} />{t('common.delete')}</button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="space-y-3 md:hidden">
+        {filteredCompanies.length === 0 ? (
+          <div className="form-panel text-center text-gray-500">{t('common.noResult')}</div>
+        ) : (
+          filteredCompanies.map(company => {
+            const details = adminDetails[company.id]
+            return (
+              <div key={company.id} className="form-panel space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-gray-900">{company.name}</div>
+                    <div className="text-xs text-gray-500">{company.taxNumber || '-'}</div>
+                  </div>
+                  <span className={`badge ${company.isActive ? 'badge-green' : 'badge-red'}`}>{company.isActive ? 'Aktív' : 'Inaktív'}</span>
+                </div>
+                <div className="grid grid-cols-1 gap-2 text-sm">
+                  <div><span className="text-gray-500">{t('common.companyRegNumber')}:</span> {company.registrationNumber || '-'}</div>
+                  <div><span className="text-gray-500">{t('common.email')}:</span> {company.email || '-'}</div>
+                  <div><span className="text-gray-500">{t('common.phone')}:</span> {company.phone || '-'}</div>
+                </div>
+                {details && (
+                  <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900" data-testid={`company-admin-stats-mobile-${company.id}`}>
+                    <div className="font-semibold">Admin statisztika</div>
+                    <div className="mt-1 grid grid-cols-1 gap-1">
+                      <span>{details.activeBranchCount} aktív fiók</span>
+                      <span>{details.totalWorkerCount} dolgozó</span>
+                      <span>{details.dailyTurnoverHuf.toLocaleString('hu-HU')} HUF ma</span>
+                    </div>
+                    {details.branches?.length > 0 && (
+                      <div className="mt-2 text-xs">
+                        Fiókok: {details.branches.slice(0, 3).map(branch => branch.code || branch.name).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => handleEdit(company)} className="form-button justify-center text-xs"><Edit size={12} />{t('common.edit')}</button>
+                  <button onClick={() => handleDelete(company.id)} className="form-button justify-center text-xs text-red-600"><Trash2 size={12} />{t('common.delete')}</button>
+                </div>
+              </div>
+            )
+          })
+        )}
       </div>
     </div>
   )

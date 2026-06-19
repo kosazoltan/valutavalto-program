@@ -110,6 +110,7 @@ export default function AttendancePage() {
 function MyAttendanceTab({ from, to }: { from: string; to: string }) {
     const [entries, setEntries] = useState<WorkerAttendanceDto[]>([])
     const [loading, setLoading] = useState(true)
+    const [saving, setSaving] = useState(false)
     const [err, setErr] = useState<string | null>(null)
     const [reloadTick, setReloadTick] = useState(0)
     const refresh = useCallback(() => setReloadTick(t => t + 1), [])
@@ -130,14 +131,75 @@ function MyAttendanceTab({ from, to }: { from: string; to: string }) {
         return () => { cancelled = true }
     }, [from, to, reloadTick])
 
+    const activeEntry = entries.find(e => !e.logoutAt)
+
+    const recordLogin = async () => {
+        try {
+            setSaving(true)
+            setErr(null)
+            await workerAttendanceApi.login()
+            refresh()
+        } catch (e) {
+            logger.error('Attendance', 'login record err', e)
+            setErr(e instanceof Error ? e.message : String(e))
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const recordLogout = async () => {
+        if (!activeEntry) return
+        try {
+            setSaving(true)
+            setErr(null)
+            await workerAttendanceApi.logout(activeEntry.id)
+            refresh()
+        } catch (e) {
+            logger.error('Attendance', 'logout record err', e)
+            setErr(e instanceof Error ? e.message : String(e))
+        } finally {
+            setSaving(false)
+        }
+    }
+
     return (
-        <AttendanceList
-            entries={entries}
-            loading={loading}
-            err={err}
-            onRefresh={refresh}
-            showWorkerName={false}
-        />
+        <div className="space-y-3">
+            <div className="form-panel p-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <div className="text-sm font-semibold text-secondary-900">Jelenléti állapot</div>
+                    <div className="text-xs text-secondary-500">
+                        {activeEntry ? `Nyitott session: ${formatDateTime(activeEntry.loginAt)}` : 'Nincs nyitott jelenléti session'}
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        className="form-button-primary flex items-center gap-1"
+                        onClick={() => void recordLogin()}
+                        disabled={saving || loading || Boolean(activeEntry)}
+                    >
+                        <LogIn size={14} />
+                        Bejelentkezés rögzítése
+                    </button>
+                    <button
+                        type="button"
+                        className="form-button flex items-center gap-1"
+                        onClick={() => void recordLogout()}
+                        disabled={saving || loading || !activeEntry}
+                    >
+                        <LogOut size={14} />
+                        Kijelentkezés rögzítése
+                    </button>
+                </div>
+            </div>
+            <AttendanceList
+                entries={entries}
+                loading={loading || saving}
+                err={err}
+                onRefresh={refresh}
+                showWorkerName={false}
+            />
+        </div>
     )
 }
 

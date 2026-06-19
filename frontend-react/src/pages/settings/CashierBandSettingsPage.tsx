@@ -53,7 +53,7 @@ export default function CashierBandSettingsPage() {
     setLoading(true)
     try {
       // CASHIER_CUSTOM_RATE_* paraméterek a TRANSACTION kategóriában vannak
-      const list = await systemParameterApi.getByCategory('TRANSACTION')
+      const list = await systemParameterApi.getManagedByCategory('TRANSACTION')
       const map = new Map<string, SystemParameter>()
       const values = new Map<string, string>()
       for (const p of list) {
@@ -114,15 +114,22 @@ export default function CashierBandSettingsPage() {
 
     setSaving(true)
     try {
-      let savedCount = 0
+      const updates: Record<string, string> = {}
       for (const field of CASHIER_FIELDS) {
         const newValue = editValues.get(field.key)
         const existing = params.get(field.key)
         if (existing && newValue !== undefined && newValue !== existing.parameterValue) {
-          await systemParameterApi.update(existing.id, { parameterValue: newValue })
-          savedCount++
+          updates[field.key] = newValue
         }
       }
+      const changedKeys = Object.keys(updates)
+      if (changedKeys.length === 1) {
+        const key = changedKeys[0]!
+        await systemParameterApi.updateByKey(key, { value: updates[key]! })
+      } else if (changedKeys.length > 1) {
+        await systemParameterApi.bulkUpdate(updates)
+      }
+      const savedCount = changedKeys.length
       if (savedCount > 0) {
         toast.success('Mentve', `${savedCount} pénztárosi sáv beállítás frissítve`)
       } else {

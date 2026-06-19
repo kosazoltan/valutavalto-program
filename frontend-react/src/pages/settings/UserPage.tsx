@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Users, Plus, Edit, Trash2, Search, X, Save, Key } from 'lucide-react'
-import { userApi, UserDetail, UserCreateRequest, UserUpdateRequest, roleApi, Role } from '../../services/api/index'
+import { Users, Plus, Edit, Trash2, Search, X, Save, Key, ShieldOff } from 'lucide-react'
+import { userApi, UserDetail, UserCreateRequest, UserUpdateRequest, roleApi, Role, mfaAdminApi } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger';
 import { useTranslation } from 'react-i18next'
@@ -17,6 +17,7 @@ export default function UserPage() {
   const [editingUser, setEditingUser] = useState<UserDetail | null>(null)
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null)
   const [newPassword, setNewPassword] = useState('')
+  const [mfaDisablingUserId, setMfaDisablingUserId] = useState<string | null>(null)
   const [formData, setFormData] = useState<UserCreateRequest>({
     username: '',
     email: '',
@@ -222,6 +223,29 @@ export default function UserPage() {
     } catch (err) {
       logger.error('UserPage', 'Felhasználó archiválási hiba:', err)
       setError('Hiba történt az archiválás során')
+    }
+  }
+
+  const handleDisableMfa = async (user: UserDetail) => {
+    if (!user.workerId) {
+      toast.warning('Hiányzó dolgozó', 'Ehhez a felhasználóhoz nincs dolgozó azonosító.')
+      return
+    }
+    if (!confirm(`Biztosan letiltja az MFA-t ennél a dolgozónál: ${user.username}?`)) {
+      return
+    }
+
+    try {
+      setError(null)
+      setMfaDisablingUserId(user.id)
+      const response = await mfaAdminApi.disable(user.workerId)
+      toast.success('MFA letiltva', response.message)
+      await loadData()
+    } catch (err) {
+      logger.error('UserPage', 'MFA letiltási hiba:', err)
+      setError('Hiba történt az MFA letiltása során')
+    } finally {
+      setMfaDisablingUserId(null)
     }
   }
 
@@ -506,6 +530,16 @@ export default function UserPage() {
                         <Key size={12} />
                         {t('auth.password')}
                       </button>
+                      {user.workerId && (
+                        <button
+                          onClick={() => void handleDisableMfa(user)}
+                          disabled={mfaDisablingUserId === user.id}
+                          className="form-button text-xs text-amber-700 flex items-center gap-1 disabled:opacity-50"
+                        >
+                          <ShieldOff size={12} />
+                          {mfaDisablingUserId === user.id ? 'MFA...' : 'MFA letiltás'}
+                        </button>
+                      )}
                       <button
                         onClick={() => handleArchive(user.id)}
                         className="form-button text-xs text-orange-600 flex items-center gap-1"

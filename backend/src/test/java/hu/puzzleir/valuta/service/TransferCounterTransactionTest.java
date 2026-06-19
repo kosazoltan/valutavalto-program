@@ -168,7 +168,7 @@ class TransferCounterTransactionTest {
         // Given
         Transfer transfer = createTransfer(Transfer.TransferDirection.F, Transfer.TransferStatus.PENDING);
         when(transferRepository.findById(1L)).thenReturn(Optional.of(transfer));
-        when(workerRepository.findById(TO_WORKER_ID)).thenReturn(Optional.of(toWorker));
+        when(workerRepository.findByIdAndCompanyId(TO_WORKER_ID, COMPANY_ID)).thenReturn(Optional.of(toWorker));
         setupCashBalanceMock(TO_BRANCH_ID, toBalance);
         when(receiptSequenceService.generateReceiptNumber(eq(TO_BRANCH_ID), eq(TransactionType.TRANSFER_IN)))
                 .thenReturn("U002000001");
@@ -193,6 +193,8 @@ class TransferCounterTransactionTest {
 
         // Fogadó kassza növekedett
         assertThat(toBalance.getCurrentBalance()).isEqualByComparingTo(new BigDecimal("5500.00"));
+        verify(workerRepository).findByIdAndCompanyId(TO_WORKER_ID, COMPANY_ID);
+        verify(workerRepository, never()).findById(TO_WORKER_ID);
     }
 
     // === U mód tesztek ===
@@ -421,6 +423,7 @@ class TransferCounterTransactionTest {
         return Transfer.builder()
                 .id(1L)
                 .transferNumber("TR-20260319-0001")
+                .companyId(COMPANY_ID)
                 .fromBranch(fromBranch)
                 .toBranch(toBranch)
                 .fromWorker(fromWorker)

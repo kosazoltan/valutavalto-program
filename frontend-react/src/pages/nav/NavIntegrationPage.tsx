@@ -1,10 +1,9 @@
-import { useState, useCallback } from 'react'
-import { Printer, Send, RefreshCw, CheckCircle, XCircle, Clock, FileText, AlertTriangle } from 'lucide-react'
+import { useState } from 'react'
+import { Printer, Send, CheckCircle, XCircle, FileText, AlertTriangle } from 'lucide-react'
 import { navIntegrationApi } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
-import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
 
 interface NavResult {
@@ -14,35 +13,14 @@ interface NavResult {
   timestamp?: string
 }
 
-interface NavStatus {
-  deviceConnected: boolean
-  lastCommunication?: string
-  firmwareVersion?: string
-  serialNumber?: string
-  pendingCount: number
-}
-
 export default function NavIntegrationPage() {
   const { t } = useTranslation()
-  const worker = useAuthStore((state) => state.worker)
-  const branchId = worker?.branchId || ''
-
   const [transactionId, setTransactionId] = useState('')
   const [comPort, setComPort] = useState('COM1')
   const [result, setResult] = useState<NavResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
-  const [status, setStatus] = useState<NavStatus | null>(null)
   const [history, setHistory] = useState<NavResult[]>([])
-
-  const loadStatus = useCallback(async () => {
-    try {
-      const data = await navIntegrationApi.getStatus(branchId)
-      setStatus(data as NavStatus)
-    } catch {
-      setStatus(null)
-    }
-  }, [branchId])
 
   const handleSend = async () => {
     if (!transactionId) { toast.warning('Tranzakció ID szükséges'); return }
@@ -66,50 +44,13 @@ export default function NavIntegrationPage() {
     }
   }
 
-  const handleRetry = async () => {
-    try {
-      setError(null)
-      await navIntegrationApi.retryFailed(branchId)
-      toast.success('Újraküldés elindítva')
-    } catch (err) {
-      toast.error('Hiba', getErrorMessage(err))
-    }
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold flex items-center gap-2"><Printer />{t('nav.navPenztargepIntegracio')}</h1>
-        <button onClick={() => void loadStatus()} className="form-button"><RefreshCw size={16} />{t('nav.statuszFrissites')}</button>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded"><AlertTriangle size={16} className="inline" /> {error}</div>}
-
-      {/* Device status */}
-      {status && (
-        <div className="form-panel">
-          <h2 className="font-semibold mb-2">{t('nav.eszkozAllapot')}</h2>
-          <div className="grid grid-cols-4 gap-3 text-sm">
-            <div>
-              <span className="text-gray-500">{t('nav.kapcsolat')}</span>{' '}
-              {status.deviceConnected ? <span className="badge badge-green"><CheckCircle size={10} className="inline" /> {t('common.online')}</span> : <span className="badge badge-red"><XCircle size={10} className="inline" /> {t('foertektar.offline')}</span>}
-            </div>
-            <div><span className="text-gray-500">{t('nav.sorozatszam')}</span> {status.serialNumber || '-'}</div>
-            <div><span className="text-gray-500">{t('nav.firmware')}</span> {status.firmwareVersion || '-'}</div>
-            <div>
-              <span className="text-gray-500">{t('nav.fuggo')}</span>{' '}
-              {status.pendingCount > 0 ? (
-                <span className="badge badge-yellow">{status.pendingCount} {t('camera.tranzakcio')}</span>
-              ) : (
-                <span className="badge badge-green">0</span>
-              )}
-            </div>
-          </div>
-          {status.lastCommunication && (
-            <div className="text-xs text-gray-400 mt-1"><Clock size={10} className="inline" />{t('nav.utolsoKommunikacio')}{new Date(status.lastCommunication).toLocaleString('hu-HU')}</div>
-          )}
-        </div>
-      )}
 
       {/* Send form */}
       <div className="form-panel space-y-3">
@@ -128,9 +69,6 @@ export default function NavIntegrationPage() {
           <div className="flex items-end gap-2">
             <button onClick={() => void handleSend()} disabled={sending} className="form-button-primary">
               <Send size={16} /> {sending ? 'Küldés...' : 'Küldés'}
-            </button>
-            <button onClick={() => void handleRetry()} className="form-button">
-              <RefreshCw size={16} />{t('nav.sikertelenekUjrakuldese')}
             </button>
           </div>
         </div>

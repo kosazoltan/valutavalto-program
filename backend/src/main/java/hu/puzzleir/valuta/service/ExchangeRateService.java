@@ -238,7 +238,8 @@ public class ExchangeRateService {
      */
     @Transactional(readOnly = true)
     public ExchangeRate applyDiscount(Long rateId, BigDecimal discountPercent) {
-        ExchangeRate rate = exchangeRateRepository.findById(rateId)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        ExchangeRate rate = exchangeRateRepository.findByIdAndCompanyId(rateId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Árfolyam nem található"));
 
         // 2% feletti kedvezményhez supervisor jog kell

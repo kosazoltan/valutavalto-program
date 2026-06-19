@@ -1,33 +1,71 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Upload, Search, RefreshCw, AlertTriangle } from 'lucide-react'
-import { api } from '../../services/api/index'
+import type { ChangeEvent } from 'react'
+import { Upload, Search, RefreshCw, AlertTriangle, PlayCircle, RotateCcw } from 'lucide-react'
+import { api, configExportApi, type ConfigBundleDto, type ConfigImportResultDto } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import { useAuthStore } from '../../stores/authStore'
+import { toast } from '../../components/ui/toaster'
 
 interface DataImportItem {
   id: string | number
   importType?: string
-  fileName?: string
+  sourceFile?: string
   status?: string
-  recordCount?: string
-  importedAt?: string
+  totalRecords?: number
+  importedRecords?: number
+  failedRecords?: number
+  errorLog?: string
+  completedAt?: string
+  createdAt?: string
+}
+
+const todayIso = () => new Date().toISOString().slice(0, 10)
+
+function readFileText(file: File): Promise<string> {
+  if (typeof file.text === 'function') {
+    return file.text()
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result ?? ''))
+    reader.onerror = () => reject(reader.error ?? new Error('A fájl nem olvasható.'))
+    reader.readAsText(file)
+  })
 }
 
 export default function DataImportPage() {
   const { t } = useTranslation()
+  const branchId = useAuthStore((state) => state.worker?.branchId)
   const [items, setItems] = useState<DataImportItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [importDate, setImportDate] = useState(todayIso)
+  const [fromDate, setFromDate] = useState(todayIso)
+  const [toDate, setToDate] = useState(todayIso)
+  const [busyAction, setBusyAction] = useState<string | null>(null)
+  const [configImportResult, setConfigImportResult] = useState<ConfigImportResultDto | null>(null)
 
   const loadData = useCallback(async () => {
+    if (!branchId) {
+      setItems([])
+      setError('Az adatimport történethez bejelentkezett telephely szükséges.')
+      setLoading(false)
+      return
+    }
+
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<DataImportItem[]>('/data-import')
-      setItems(safeArray<typeof items[0]>(response.data))
+      const response = await api.get<{ content?: DataImportItem[] } | DataImportItem[]>('/data-import/history', {
+        params: { branchId },
+      })
+      const rows = Array.isArray(response.data) ? response.data : response.data?.content
+      setItems(safeArray<DataImportItem>(rows))
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('DataImportPage', 'Betöltési hiba:', err)
@@ -35,11 +73,97 @@ export default function DataImportPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [branchId])
 
   useEffect(() => {
     void loadData()
   }, [loadData])
+
+  const runImport = async (kind: 'daily-closing' | 'inventory' | 'transactions' | 'full') => {
+    if (!branchId) {
+      setError('Az import indításához bejelentkezett telephely szükséges.')
+      return
+    }
+    if (kind === 'full' && !window.confirm('Biztosan teljes adatimportot indít a bejelentkezett telephelyre?')) {
+      return
+    }
+
+    try {
+      setBusyAction(kind)
+      setError(null)
+      const basePayload = { branchId }
+      if (kind === 'daily-closing') {
+        await api.post('/data-import/daily-closing', { ...basePayload, date: importDate })
+      } else if (kind === 'inventory') {
+        await api.post('/data-import/inventory', basePayload)
+      } else if (kind === 'transactions') {
+        await api.post('/data-import/transactions', { ...basePayload, fromDate, toDate })
+      } else {
+        await api.post('/data-import/full', basePayload)
+      }
+      toast.success('Import elindítva')
+      await loadData()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('DataImportPage', 'Import indítási hiba:', err)
+      setError(msg)
+      toast.error('Import hiba', msg)
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  const retryImport = async (id: DataImportItem['id']) => {
+    try {
+      const importId = String(id)
+      setBusyAction(`retry:${importId}`)
+      setError(null)
+      await api.post(`/data-import/${importId}/retry`)
+      toast.success('Import újrapróbálás elindítva')
+      await loadData()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('DataImportPage', 'Import újrapróbálási hiba:', err)
+      setError(msg)
+      toast.error('Újrapróbálás hiba', msg)
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  const importConfigFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (!branchId) {
+      setError('A konfiguráció importhoz bejelentkezett telephely szükséges.')
+      return
+    }
+    if (!window.confirm('Biztosan importálja a kiválasztott telephelyi konfigurációt? A művelet rendszerbeállításokat módosíthat.')) {
+      return
+    }
+
+    try {
+      setBusyAction('config-import')
+      setError(null)
+      setConfigImportResult(null)
+      const bundle = JSON.parse(await readFileText(file)) as ConfigBundleDto
+      const result = await configExportApi.importBranch(branchId, bundle)
+      setConfigImportResult(result)
+      if (result.success) {
+        toast.success('Konfiguráció import kész')
+      } else {
+        toast.error('Konfiguráció import hiba', result.errors?.join(', ') || 'A backend hibát jelzett.')
+      }
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('DataImportPage', 'Konfiguráció import hiba:', err)
+      setError(msg)
+      toast.error('Konfiguráció import hiba', msg)
+    } finally {
+      setBusyAction(null)
+    }
+  }
 
   const filtered = items.filter(item => {
     if (!searchTerm) return true
@@ -76,6 +200,114 @@ export default function DataImportPage() {
         </div>
       </div>
 
+      <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+        <label className="block">
+          <span className="form-label">Import dátum</span>
+          <input
+            type="date"
+            value={importDate}
+            onChange={(e) => setImportDate(e.target.value)}
+            className="form-input"
+          />
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block">
+            <span className="form-label">Tranzakció kezdete</span>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="form-input"
+            />
+          </label>
+          <label className="block">
+            <span className="form-label">Tranzakció vége</span>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="form-input"
+            />
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void runImport('daily-closing')}
+            disabled={busyAction !== null || !branchId}
+            className="form-button flex items-center gap-2"
+          >
+            <PlayCircle className="h-4 w-4" />
+            Napi zárás
+          </button>
+          <button
+            type="button"
+            onClick={() => void runImport('inventory')}
+            disabled={busyAction !== null || !branchId}
+            className="form-button flex items-center gap-2"
+          >
+            <PlayCircle className="h-4 w-4" />
+            Készlet
+          </button>
+          <button
+            type="button"
+            onClick={() => void runImport('transactions')}
+            disabled={busyAction !== null || !branchId}
+            className="form-button flex items-center gap-2"
+          >
+            <PlayCircle className="h-4 w-4" />
+            Tranzakciók
+          </button>
+          <button
+            type="button"
+            onClick={() => void runImport('full')}
+            disabled={busyAction !== null || !branchId}
+            className="form-button flex items-center gap-2"
+          >
+            <PlayCircle className="h-4 w-4" />
+            Teljes import
+          </button>
+        </div>
+      </div>
+
+      <section className="rounded border border-blue-200 bg-blue-50 p-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-blue-950">Konfiguráció import</h2>
+            <p className="mt-1 text-sm text-blue-800">
+              Korábban exportált telephelyi konfiguráció JSON betöltése a bejelentkezett telephelyre.
+            </p>
+          </div>
+          <label className={`form-button inline-flex cursor-pointer items-center gap-2 ${busyAction !== null || !branchId ? 'pointer-events-none opacity-60' : ''}`}>
+            <Upload className="h-4 w-4" />
+            Config JSON import
+            <input
+              type="file"
+              accept="application/json,.json"
+              className="sr-only"
+              disabled={busyAction !== null || !branchId}
+              onChange={(event) => void importConfigFile(event)}
+            />
+          </label>
+        </div>
+        {configImportResult && (
+          <div className={`mt-3 rounded border p-3 text-sm ${configImportResult.success ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-red-200 bg-red-50 text-red-900'}`}>
+            <div className="font-semibold">
+              {configImportResult.success ? 'Import sikeres' : 'Import hibával zárult'}
+            </div>
+            <div className="mt-1">
+              Paraméter: {configImportResult.importedSystemParams}, árfolyam: {configImportResult.importedRateSettings}, kerekítés: {configImportResult.importedRoundingRules}, sablon: {configImportResult.importedPrintTemplates}, LED: {configImportResult.ledConfigImported ? 'igen' : 'nem'}
+            </div>
+            {configImportResult.warnings?.length ? (
+              <div className="mt-2">Figyelmeztetés: {configImportResult.warnings.join(', ')}</div>
+            ) : null}
+            {configImportResult.errors?.length ? (
+              <div className="mt-2">Hiba: {configImportResult.errors.join(', ')}</div>
+            ) : null}
+          </div>
+        )}
+      </section>
+
       {error && (
         <div className="form-error flex items-center gap-2">
           <AlertTriangle className="h-4 w-4" />
@@ -92,20 +324,36 @@ export default function DataImportPage() {
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('backup.allapot')}</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('import.rekordok')}</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('import.importalva')}</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
             ) : filtered.map(item => (
               <tr key={item.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm">{item.importType ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.fileName ?? '-'}</td>
+                <td className="px-4 py-3 text-sm">
+                  {item.sourceFile ?? '-'}
+                  {item.errorLog ? <div className="mt-1 text-xs text-red-600">{item.errorLog}</div> : null}
+                </td>
                 <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.recordCount ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.importedAt ? new Date(item.importedAt).toLocaleString('hu-HU') : '-'}</td>
+                <td className="px-4 py-3 text-sm">{item.importedRecords ?? 0} / {item.totalRecords ?? 0}{item.failedRecords ? ` (${item.failedRecords} hiba)` : ''}</td>
+                <td className="px-4 py-3 text-sm">{item.completedAt || item.createdAt ? new Date(item.completedAt ?? item.createdAt ?? '').toLocaleString('hu-HU') : '-'}</td>
+                <td className="px-4 py-3 text-right text-sm">
+                  <button
+                    type="button"
+                    onClick={() => void retryImport(item.id)}
+                    disabled={busyAction !== null || item.status !== 'FAILED'}
+                    className="form-button inline-flex items-center gap-2"
+                    title="Újrapróbálás"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Retry
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

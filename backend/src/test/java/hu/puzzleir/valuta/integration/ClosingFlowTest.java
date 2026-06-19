@@ -69,6 +69,7 @@ class ClosingFlowTest {
 
     private static final UUID BRANCH_ID = UUID.randomUUID();
     private static final UUID CASH_DESK_ID = UUID.randomUUID();
+    private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final Long WORKER_ID = 1L;
 
     private Branch branch;
@@ -80,15 +81,17 @@ class ClosingFlowTest {
         branch.setId(BRANCH_ID);
         branch.setCode("B01");
         branch.setName("Teszt Iroda");
+        branch.setCompany(Company.builder().id(COMPANY_ID).build());
 
         worker = new Worker();
         worker.setId(WORKER_ID);
         worker.setName("Teszt Pénztáros");
+        worker.setCompany(Company.builder().id(COMPANY_ID).build());
 
         // IDOR-guard (audit 2026-06-15): assertOwnWizard SecurityUtils.getCurrentBranchId()-t hív
         // (navigate/complete/cancel/getStep). A hívó branch-e == a wizard branch-e (BRANCH_ID).
         WorkerAuthenticationDetails details =
-                new WorkerAuthenticationDetails(WORKER_ID, UUID.randomUUID(), BRANCH_ID, "PENZTAROS");
+                new WorkerAuthenticationDetails(WORKER_ID, COMPANY_ID, BRANCH_ID, "PENZTAROS");
         TestingAuthenticationToken auth = new TestingAuthenticationToken("t", "x", "ROLE_PENZTAROS");
         auth.setDetails(details);
         SecurityContextHolder.getContext().setAuthentication(auth);
@@ -106,8 +109,8 @@ class ClosingFlowTest {
         @Test
         @DisplayName("testClosingWizard_happyPath — varázsló indítás, lépések, befejezés")
         void testClosingWizard_happyPath() {
-            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
-            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+            when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Optional.of(branch));
+            when(workerRepository.findByIdAndCompanyId(WORKER_ID, COMPANY_ID)).thenReturn(Optional.of(worker));
             when(closingWizardRepository.findByBranchIdAndStatus(BRANCH_ID, WizardStatus.IN_PROGRESS))
                     .thenReturn(Collections.emptyList());
             when(closingWizardRepository.save(any(ClosingWizard.class))).thenAnswer(inv -> {
@@ -153,7 +156,7 @@ class ClosingFlowTest {
             ClosingWizard wizard = createWizard(wizardId, 5, WizardStatus.IN_PROGRESS);
 
             when(closingWizardRepository.findByIdWithSteps(wizardId)).thenReturn(Optional.of(wizard));
-            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+            when(workerRepository.findByIdAndCompanyId(WORKER_ID, COMPANY_ID)).thenReturn(Optional.of(worker));
             when(closingWizardRepository.save(any(ClosingWizard.class))).thenAnswer(inv -> inv.getArgument(0));
 
             ClosingWizardDto dto = closingWizardService.complete(wizardId, WORKER_ID);
@@ -189,9 +192,9 @@ class ClosingFlowTest {
 
             // Branch lookup a auto-create-hez
             hu.puzzleir.valuta.entity.Company company = new hu.puzzleir.valuta.entity.Company();
-            company.setId(UUID.randomUUID());
+            company.setId(COMPANY_ID);
             branch.setCompany(company);
-            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Optional.of(branch));
 
             when(denominationBalanceRepository.findByCashDeskIdAndDenominationId(eq(BRANCH_ID), any()))
                     .thenReturn(Optional.empty());
@@ -279,8 +282,8 @@ class ClosingFlowTest {
         @Test
         @DisplayName("testClosingWizard_duplicateActive — már van aktív varázsló")
         void testClosingWizard_duplicateActive() {
-            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
-            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+            when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Optional.of(branch));
+            when(workerRepository.findByIdAndCompanyId(WORKER_ID, COMPANY_ID)).thenReturn(Optional.of(worker));
 
             ClosingWizard existing = createWizard(UUID.randomUUID(), 1, WizardStatus.IN_PROGRESS);
             when(closingWizardRepository.findByBranchIdAndStatus(BRANCH_ID, WizardStatus.IN_PROGRESS))

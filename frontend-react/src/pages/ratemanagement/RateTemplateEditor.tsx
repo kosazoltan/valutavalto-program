@@ -48,6 +48,9 @@ export default function RateTemplateEditor() {
   const [selectedWorkgroup, setSelectedWorkgroup] = useState<string>('')
   const [editing, setEditing] = useState<RateTemplate | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingTemplateId, setLoadingTemplateId] = useState<string | null>(null)
+  const [batchPublishing, setBatchPublishing] = useState(false)
+  const [publishNotes, setPublishNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const fetchWorkgroups = useCallback(async () => {
@@ -133,6 +136,19 @@ export default function RateTemplateEditor() {
     }
   }, [editing, fetchTemplates])
 
+  const editTemplate = useCallback(async (id: string) => {
+    setError(null)
+    setLoadingTemplateId(id)
+    try {
+      const res = await api.get<RateTemplate>(`/rate-management/templates/${id}`)
+      setEditing(res.data)
+    } catch {
+      setError('Sablon részleteinek lekérése sikertelen')
+    } finally {
+      setLoadingTemplateId(null)
+    }
+  }, [])
+
   const approveTemplate = useCallback(async (id: string) => {
     setError(null)
     try {
@@ -152,6 +168,36 @@ export default function RateTemplateEditor() {
       setError('Publikálás sikertelen')
     }
   }, [fetchTemplates])
+
+  const publishWorkgroupTemplates = useCallback(async () => {
+    if (!selectedWorkgroup) {
+      setError('Munkacsoport kiválasztása kötelező')
+      return
+    }
+    const templateIds = templates
+      .filter((tpl) => tpl.id && (tpl.status === 'DRAFT' || tpl.status === 'APPROVED'))
+      .map((tpl) => tpl.id!)
+    if (templateIds.length === 0) {
+      setError('Nincs publikálható DRAFT vagy APPROVED sablon a munkacsoportban')
+      return
+    }
+
+    setError(null)
+    setBatchPublishing(true)
+    try {
+      await api.post('/rate-management/publish', {
+        workgroupId: selectedWorkgroup,
+        templateIds,
+        notes: publishNotes.trim() || undefined,
+      })
+      setPublishNotes('')
+      void fetchTemplates()
+    } catch {
+      setError('Munkacsoport publikálás sikertelen')
+    } finally {
+      setBatchPublishing(false)
+    }
+  }, [fetchTemplates, publishNotes, selectedWorkgroup, templates])
 
   const revokeTemplate = useCallback(async (id: string) => {
     setError(null)
@@ -237,6 +283,22 @@ export default function RateTemplateEditor() {
         >
           <Plus className="h-4 w-4 mr-1" />
           {t('ratemanagement.ujSablon')}
+        </button>
+        <input
+          className="min-w-[220px] rounded border px-3 py-2 text-sm"
+          value={publishNotes}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPublishNotes(e.target.value)}
+          placeholder="Publikálási megjegyzés"
+          aria-label="Publikálási megjegyzés"
+        />
+        <button
+          className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          onClick={() => void publishWorkgroupTemplates()}
+          disabled={batchPublishing || !selectedWorkgroup}
+          data-testid="rate-management-publish-batch"
+        >
+          <Send className="h-4 w-4 mr-1" />
+          {batchPublishing ? 'Publikálás...' : 'Munkacsoport publikálása'}
         </button>
       </div>
 
@@ -407,9 +469,10 @@ export default function RateTemplateEditor() {
                     <>
                       <button
                         className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
-                        onClick={() => setEditing(tpl)}
+                        onClick={() => tpl.id && void editTemplate(tpl.id)}
+                        disabled={loadingTemplateId === tpl.id}
                       >
-                        {t('ratemanagement.szerkesztes')}
+                        {loadingTemplateId === tpl.id ? t('common.loading') : t('ratemanagement.szerkesztes')}
                       </button>
                       <button
                         className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"

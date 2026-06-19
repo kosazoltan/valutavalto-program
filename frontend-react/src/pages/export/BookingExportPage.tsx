@@ -46,11 +46,15 @@ export default function BookingExportPage() {
 
   useEffect(() => { void loadBranches() }, [loadBranches])
 
-  async function downloadCsv(path: string, params: Record<string, string>, filename: string) {
+  async function downloadCsv(path: '/booking/daily' | '/booking/monthly' | '/booking/inventory', params: Record<string, string>, filename: string) {
     if (!branchId) { setError('Valassz penztari egyseget (branch)'); return }
     try {
       setBusy(path); setError(null); setInfo(null)
-      const response = await api.get(path, { params: { branchId, ...params }, responseType: 'blob' })
+      const response = path === '/booking/daily'
+        ? await api.get('/booking/daily', { params: { branchId, ...params }, responseType: 'blob' })
+        : path === '/booking/monthly'
+        ? await api.get('/booking/monthly', { params: { branchId, ...params }, responseType: 'blob' })
+        : await api.get('/booking/inventory', { params: { branchId, ...params }, responseType: 'blob' })
       const blob = new Blob([response.data as BlobPart], { type: 'text/csv;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')

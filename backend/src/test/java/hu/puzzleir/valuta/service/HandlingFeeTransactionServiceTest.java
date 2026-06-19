@@ -17,7 +17,9 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -60,6 +62,18 @@ class HandlingFeeTransactionServiceTest {
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    @DisplayName("calculateFee: írási tranzakcióban fut, mert transactionId esetén kezelési díjat ment")
+    void calculateFee_usesWriteTransaction() throws Exception {
+        Method method = HandlingFeeTransactionService.class.getMethod(
+                "calculateFee", Long.class, BigDecimal.class);
+
+        Transactional tx = method.getAnnotation(Transactional.class);
+
+        assertThat(tx).isNotNull();
+        assertThat(tx.readOnly()).isFalse();
     }
 
     // =====================================================================

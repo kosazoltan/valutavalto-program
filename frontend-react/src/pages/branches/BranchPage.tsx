@@ -42,6 +42,18 @@ interface Branch {
   hasPos?: boolean
   closedSaturday?: boolean
   closedSunday?: boolean
+  workerCount?: number
+  dailyTurnoverHuf?: number
+  lastSyncAt?: string | null
+  syncStatus?: string
+}
+
+interface AdminBranchStats {
+  id: string
+  workerCount?: number
+  dailyTurnoverHuf?: number
+  lastSyncAt?: string | null
+  syncStatus?: string
 }
 
 /** FK-020: szolgáltatás-jelölő badge a lista soraiban. Aktív = színes, inaktív = szürke. */
@@ -106,8 +118,28 @@ export default function BranchPage() {
       setError(null)
       // FK-020 / FK-016: a Központi Munkaállomás (clientType=CENTRAL) kizárja a virtuális
       // partnereket -> a 65 pénztár + 8 értéktár (73 valós iroda) jelenik meg.
-      const res = await api.get('/branches', { params: { clientType: 'CENTRAL' } })
-      setBranches(safeArray<Branch>(res.data))
+      const [branchesResult, adminStatsResult] = await Promise.allSettled([
+        api.get('/branches', { params: { clientType: 'CENTRAL' } }),
+        api.get<AdminBranchStats[]>('/admin/branches'),
+      ])
+
+      if (branchesResult.status === 'rejected') {
+        throw branchesResult.reason
+      }
+
+      const statsById = new Map(
+        adminStatsResult.status === 'fulfilled'
+          ? safeArray<AdminBranchStats>(adminStatsResult.value.data).map((item) => [item.id, item])
+          : [],
+      )
+      if (adminStatsResult.status === 'rejected') {
+        logger.error('BranchPage', 'admin branch stats load error', adminStatsResult.reason)
+      }
+
+      setBranches(safeArray<Branch>(branchesResult.value.data).map((branch) => ({
+        ...branch,
+        ...statsById.get(branch.id),
+      })))
     } catch (err) {
       logger.error('BranchPage', 'load error', err)
       setError(getErrorMessage(err))
@@ -152,6 +184,19 @@ export default function BranchPage() {
     }
   }
 
+  const renderStats = (b: Branch) => (
+    <div className="text-sm">
+      <div>{b.workerCount != null ? `${b.workerCount} fő` : '-'}</div>
+      <div className="text-xs text-gray-500">
+        {b.syncStatus === 'SYNCED'
+          ? `Sync: ${b.lastSyncAt ? new Date(b.lastSyncAt).toLocaleDateString('hu-HU') : 'rendben'}`
+          : b.syncStatus === 'NEVER'
+            ? 'Sync: nincs'
+            : 'Sync: -'}
+      </div>
+    </div>
+  )
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -162,15 +207,15 @@ export default function BranchPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="flex items-center gap-2 text-xl font-bold text-gray-800">
           <Building2 />
           Pénztár Törzs Adatbázis
           <span className="text-sm font-normal text-gray-500" data-testid="branch-count">
             ({filtered.length} pénztár)
           </span>
         </h1>
-        <button onClick={() => navigate('/admin/branches/new')} className="form-button-primary flex items-center gap-2">
+        <button onClick={() => navigate('/admin/branches/new')} className="form-button-primary flex min-h-10 items-center justify-center gap-2">
           <Plus size={16} />
           Új pénztár
         </button>
@@ -194,7 +239,7 @@ export default function BranchPage() {
             />
           </div>
           <select
-            className="form-input w-auto"
+            className="form-input w-full sm:w-auto"
             value={territoryFilter}
             onChange={(e) => setTerritoryFilter(e.target.value)}
             aria-label="Területi szűrő"
@@ -216,7 +261,7 @@ export default function BranchPage() {
         </div>
       </div>
 
-      <div className="form-panel">
+      <div className="form-panel hidden md:block">
         <table className="data-grid w-full">
           <thead>
             <tr>
@@ -225,6 +270,7 @@ export default function BranchPage() {
               <th>Terület</th>
               <th>Szolgáltatások</th>
               <th>Kontakt</th>
+              <th>Admin stat</th>
               <th>{t('common.status')}</th>
               <th>{t('branches.ertektar')}</th>
               <th>{t('common.actions')}</th>
@@ -233,7 +279,7 @@ export default function BranchPage() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center text-gray-500 py-4">{t('common.noResult')}</td>
+                <td colSpan={9} className="text-center text-gray-500 py-4">{t('common.noResult')}</td>
               </tr>
             ) : (
               filtered.map((b) => (
@@ -254,6 +300,7 @@ export default function BranchPage() {
                     {b.phone ? <div className="text-gray-500">{b.phone}</div> : null}
                     {!b.email && !b.phone ? <span className="text-gray-400">-</span> : null}
                   </td>
+                  <td>{renderStats(b)}</td>
                   <td>
                     <span className={`badge ${b.isActive ? 'badge-green' : 'badge-red'}`}>
                       {b.isActive ? 'Aktív' : 'Inaktív'}
@@ -295,6 +342,80 @@ export default function BranchPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="grid gap-3 md:hidden">
+        {filtered.length === 0 ? (
+          <div className="form-panel text-center text-gray-500">{t('common.noResult')}</div>
+        ) : (
+          filtered.map((b) => (
+            <div key={b.id} className="form-panel space-y-3" data-testid="branch-mobile-card">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-mono text-xs text-blue-700">{b.code}</div>
+                  <div className="font-semibold text-gray-900">{b.name}</div>
+                  {b.shortName ? <div className="text-xs text-gray-500">{b.shortName}</div> : null}
+                </div>
+                <span className={`badge ${b.isActive ? 'badge-green' : 'badge-red'}`}>
+                  {b.isActive ? 'Aktív' : 'Inaktív'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">Terület</div>
+                  <div>{b.region ?? '-'}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">Admin stat</div>
+                  {renderStats(b)}
+                </div>
+                <div className="col-span-2">
+                  <div className="text-xs font-semibold uppercase text-gray-500">Kontakt</div>
+                  {b.email ? <div className="break-all">{b.email}</div> : null}
+                  {b.phone ? <div className="text-gray-500">{b.phone}</div> : null}
+                  {!b.email && !b.phone ? <span className="text-gray-400">-</span> : null}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-1">
+                <ServiceBadge label="ÁFA" active={b.hasAfa ?? false} />
+                <ServiceBadge label="WU" active={b.hasWu ?? false} />
+                <ServiceBadge label="MG" active={b.hasMg ?? false} />
+                <ServiceBadge label="POS" active={b.hasPos ?? false} />
+              </div>
+
+              <label className="inline-flex items-center gap-2 cursor-pointer" title="Értéktári fiók">
+                <input
+                  type="checkbox"
+                  checked={b.isVault ?? false}
+                  onChange={() => void handleToggleVault(b)}
+                  className="form-checkbox h-4 w-4"
+                />
+                <span className={`text-xs font-semibold ${b.isVault ? 'text-blue-700' : 'text-gray-400'}`}>
+                  Értéktár: {b.isVault ? 'IGEN' : 'nem'}
+                </span>
+              </label>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => openEdit(b)}
+                  className="form-button flex min-h-10 items-center justify-center gap-1 text-xs"
+                >
+                  <Edit size={12} />
+                  {t('common.edit')}
+                </button>
+                <button
+                  onClick={() => handleDelete(b.id)}
+                  className="form-button flex min-h-10 items-center justify-center gap-1 text-xs text-red-600"
+                >
+                  <Trash2 size={12} />
+                  {t('common.delete')}
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   )

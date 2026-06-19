@@ -39,6 +39,10 @@ const VOUCHER_TYPES: { value: VatRefundType; label: string; description: string 
 
 const VAT_PERCENT_OPTIONS = [0, 5, 18, 27]
 
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 function formatCurrency(amount: number | undefined | null): string {
   if (amount == null) return '0'
   return amount.toLocaleString('hu-HU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
@@ -50,6 +54,7 @@ export default function VatRefundPage() {
   const [records, setRecords] = useState<VatRefundItem[]>([])
   const [showNewModal, setShowNewModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState<VatRefundItem | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [stornoTarget, setStornoTarget] = useState<VatRefundItem | null>(null)
   const [stornoSubmitting, setStornoSubmitting] = useState(false)
@@ -91,6 +96,7 @@ export default function VatRefundPage() {
   useHotkeys('escape', () => {
     setShowNewModal(false)
     setShowDetailModal(null)
+    setDetailLoading(false)
     setStornoTarget(null)
   }, { enableOnFormTags: true })
 
@@ -159,6 +165,32 @@ export default function VatRefundPage() {
     }
   }, [stornoTarget, fetchData])
 
+  const fetchDailyData = useCallback(async () => {
+    try {
+      setLoading(true)
+      const today = todayIsoDate()
+      const data = await ertektarApi.getDailyVatRefunds(today).catch(() => [])
+      setRecords(safeArray<VatRefundItem>(data))
+    } catch (err) {
+      logger.error('VatRefundPage', 'Daily fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const openDetail = useCallback(async (record: VatRefundItem) => {
+    setShowDetailModal(record)
+    setDetailLoading(true)
+    try {
+      const detail = await ertektarApi.getVatRefund(record.id)
+      setShowDetailModal(detail)
+    } catch (err) {
+      logger.error('VatRefundPage', 'Detail fetch error:', err)
+    } finally {
+      setDetailLoading(false)
+    }
+  }, [])
+
   const filtered = records.filter((r) => {
     if (typeFilter !== 'all' && r.voucherType !== typeFilter) return false
     if (customerFilter && !(r.customerName ?? '').toLowerCase().includes(customerFilter.toLowerCase())) return false
@@ -185,6 +217,9 @@ export default function VatRefundPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => void fetchDailyData()} className="form-button h-8 text-xs">
+            {t('common.today', 'Mai nap')}
+          </button>
           <button onClick={() => void fetchData()} className="form-button h-8 text-xs">
             <RefreshCw size={14} />
           </button>
@@ -239,21 +274,80 @@ export default function VatRefundPage() {
 
       {/* Table */}
       <div className="form-panel">
-        <table className="data-grid w-full">
-          <thead>
-            <tr>
-              <th className="w-24">{t('treasury.sorszam')}</th>
-              <th className="w-36">{t('common.type')}</th>
-              <th className="w-44">{t('treasury.ugyfelCeg')}</th>
-              <th className="text-right w-28">{t('treasury.bruttoFt')}</th>
-              <th className="text-right w-28">{t('treasury.afaFt')}</th>
-              <th className="text-right w-16">{t('treasury.afa')}</th>
-              <th className="w-24">{t('common.status')}</th>
-              <th className="w-28">{t('common.date')}</th>
-              <th className="w-12"></th>
-            </tr>
-          </thead>
-          <tbody>
+        <div className="space-y-2 md:hidden">
+          {filtered.length === 0 && (
+            <p className="rounded border border-secondary-200 bg-secondary-50 p-3 text-center text-sm text-secondary-500">
+              {t('common.noResult')}
+            </p>
+          )}
+          {filtered.map((r) => {
+            const TypeIcon = VOUCHER_TYPE_ICONS[r.voucherType]
+            return (
+              <div key={r.id} className={`rounded border border-secondary-200 bg-white p-3 ${r.isReversed ? 'opacity-60' : ''}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="break-words font-mono text-xs font-semibold text-secondary-900">{r.serialNumber}</div>
+                    <div className="mt-1 flex items-center gap-1 text-xs text-secondary-600">
+                      <TypeIcon size={13} className="text-primary-500 shrink-0" />
+                      <span>{VOUCHER_TYPE_LABELS[r.voucherType]}</span>
+                    </div>
+                  </div>
+                  <span className={`badge ${r.isReversed ? 'badge-orange' : 'badge-green'}`}>
+                    {r.isReversed ? 'Sztornó' : 'Aktív'}
+                  </span>
+                </div>
+                <div className="mt-2 text-sm font-semibold text-secondary-800">
+                  {r.customerName || r.companyName || '-'}
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-secondary-500">{t('treasury.bruttoFt')}</span>
+                    <div className="font-mono font-semibold">{formatCurrency(r.grossAmount)} {t('components.ft')}</div>
+                  </div>
+                  <div>
+                    <span className="text-secondary-500">{t('treasury.afaFt')}</span>
+                    <div className="font-mono">{formatCurrency(r.vatAmount)} {t('components.ft')}</div>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <span className="text-xs text-secondary-500">{r.transactionDate}</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      className="text-primary-600 hover:text-primary-700"
+                      title="Részletek"
+                      aria-label={`Részletek ${r.serialNumber}`}
+                      onClick={() => void openDetail(r)}
+                    >
+                      <Eye size={16} />
+                    </button>
+                    {!r.isReversed && (
+                      <button className="text-red-500 hover:text-red-700" title="Sztornó" onClick={() => setStornoTarget(r)}>
+                        <XCircle size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
+          <table className="data-grid w-full">
+            <thead>
+              <tr>
+                <th className="w-24">{t('treasury.sorszam')}</th>
+                <th className="w-36">{t('common.type')}</th>
+                <th className="w-44">{t('treasury.ugyfelCeg')}</th>
+                <th className="text-right w-28">{t('treasury.bruttoFt')}</th>
+                <th className="text-right w-28">{t('treasury.afaFt')}</th>
+                <th className="text-right w-16">{t('treasury.afa')}</th>
+                <th className="w-24">{t('common.status')}</th>
+                <th className="w-28">{t('common.date')}</th>
+                <th className="w-12"></th>
+              </tr>
+            </thead>
+            <tbody>
             {filtered.length === 0 && (
               <tr><td colSpan={9} className="text-center text-sm text-secondary-400 py-8">{t('common.noResult')}</td></tr>
             )}
@@ -279,7 +373,12 @@ export default function VatRefundPage() {
                   </td>
                   <td className="text-xs">{r.transactionDate}</td>
                   <td className="flex items-center gap-1">
-                    <button className="text-primary-600 hover:text-primary-700" title="Részletek" onClick={() => setShowDetailModal(r)}>
+                    <button
+                      className="text-primary-600 hover:text-primary-700"
+                      title="Részletek"
+                      aria-label={`Részletek ${r.serialNumber}`}
+                      onClick={() => void openDetail(r)}
+                    >
                       <Eye size={15} />
                     </button>
                     {!r.isReversed && (
@@ -291,8 +390,9 @@ export default function VatRefundPage() {
                 </tr>
               )
             })}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* New Record Modal */}
@@ -400,6 +500,11 @@ export default function VatRefundPage() {
               <Receipt size={20} className="text-primary-600" />
               {showDetailModal.serialNumber}
             </h2>
+            {detailLoading && (
+              <div className="mb-3 rounded border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs text-secondary-600">
+                Részletadatok frissítése...
+              </div>
+            )}
             <div className="space-y-2 text-sm">
               <DetailRow label="Típus" value={VOUCHER_TYPE_LABELS[showDetailModal.voucherType]} />
               <DetailRow label="Státusz" value={showDetailModal.isReversed ? 'Sztornó' : 'Aktív'} />

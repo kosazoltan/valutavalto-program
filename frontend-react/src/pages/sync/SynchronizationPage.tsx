@@ -1,23 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { RefreshCw, Download, Upload, Clock, CheckCircle, XCircle, AlertTriangle, Database, Server } from 'lucide-react'
-import { synchronizationApi } from '../../services/api/index'
+import { RefreshCw, Download, Upload, Clock, XCircle, Server, Database } from 'lucide-react'
+import { api, synchronizationApi } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
-
-interface SyncLog {
-  id: string
-  direction: 'UPLOAD' | 'DOWNLOAD'
-  status: 'SUCCESS' | 'FAILED' | 'IN_PROGRESS' | 'PARTIAL'
-  recordsSynced: number
-  recordsFailed: number
-  startedAt: string
-  completedAt?: string
-  errorMessage?: string
-  entityTypes: string[]
-}
 
 interface SyncStatus {
   lastSync: string | null
@@ -28,16 +16,77 @@ interface SyncStatus {
   localVersion: string
 }
 
+interface DataCollectionStatus {
+  id?: string
+  branchId?: string
+  collectionDate?: string
+  status: string
+  collectionType?: string
+  transactionCount?: number
+  totalBuyHuf?: number
+  totalSellHuf?: number
+  completedAt?: string
+  errorMessage?: string
+}
+
+interface BranchSyncStatus {
+  branchId?: string
+  lastSyncAt?: string | null
+  lastSuccessfulSyncAt?: string | null
+  status?: string
+  pendingUpload?: number
+  pendingDownload?: number
+  pendingCount?: number
+  errorMessage?: string | null
+  [key: string]: unknown
+}
+
+interface BranchSyncLog {
+  id?: string
+  branchId?: string
+  syncType?: string
+  direction?: string
+  status?: string
+  startedAt?: string
+  completedAt?: string | null
+  recordsSynced?: number
+  errorMessage?: string | null
+  [key: string]: unknown
+}
+
+interface FtpSyncLog {
+  id?: string
+  branchId?: string
+  direction?: string
+  fileName?: string
+  status?: string
+  fileSizeBytes?: number
+  startedAt?: string
+  completedAt?: string | null
+  errorMessage?: string | null
+}
+
 export default function SynchronizationPage() {
   const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
+  const activeRole = useAuthStore((state) => state.activeRole)
   const branchId = worker?.branchId || ''
   const workerId = worker?.id ? String(worker.id) : ''
+  const isAdmin = activeRole === 'ADMIN' || worker?.role === 'ADMIN'
 
-  const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [dataCollecting, setDataCollecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [syncLogs, setSyncLogs] = useState<SyncLog[]>([])
+  const [dataCollectionError, setDataCollectionError] = useState<string | null>(null)
+  const [dataCollectionRows, setDataCollectionRows] = useState<DataCollectionStatus[]>([])
+  const [dataCollectionBranchId, setDataCollectionBranchId] = useState(branchId)
+  const [ftpActionLoading, setFtpActionLoading] = useState<string | null>(null)
+  const [branchSyncStatus, setBranchSyncStatus] = useState<BranchSyncStatus | null>(null)
+  const [branchSyncHistory, setBranchSyncHistory] = useState<BranchSyncLog[]>([])
+  const [ftpSyncHistory, setFtpSyncHistory] = useState<FtpSyncLog[]>([])
+  const [branchSyncLoading, setBranchSyncLoading] = useState(false)
+  const [branchSyncActionLoading, setBranchSyncActionLoading] = useState<string | null>(null)
+  const [branchSyncError, setBranchSyncError] = useState<string | null>(null)
   const [status, setStatus] = useState<SyncStatus>({
     lastSync: null,
     pendingUpload: 0,
@@ -65,29 +114,63 @@ export default function SynchronizationPage() {
 
   const loadStatus = useCallback(async () => {
     try {
-      setLoading(true)
       setError(null)
-      const [shouldSync, logs] = await Promise.all([
-        synchronizationApi.shouldSync().catch(() => ({ shouldSync: false, pendingCount: 0 })),
-        synchronizationApi.getLogs().catch(() => []),
-      ])
+      const shouldSync = await synchronizationApi.shouldSync().catch(() => ({ shouldSync: false, pendingCount: 0 }))
       setStatus(prev => ({
         ...prev,
         pendingUpload: shouldSync.pendingCount || 0,
         isOnline: true,
       }))
-      setSyncLogs(logs as SyncLog[])
     } catch (err) {
       logger.error('SynchronizationPage', 'Státusz betöltési hiba:', err)
       setStatus(prev => ({ ...prev, isOnline: false }))
-    } finally {
-      setLoading(false)
     }
   }, [])
 
+  const loadDataCollectionStatus = useCallback(async () => {
+    if (!isAdmin) return
+    try {
+      setDataCollectionError(null)
+      const response = await api.get<DataCollectionStatus[]>('/data-collection/status')
+      setDataCollectionRows(response.data ?? [])
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      setDataCollectionError(msg)
+      logger.error('SynchronizationPage', 'Adatgyűjtés státusz betöltési hiba:', err)
+    }
+  }, [isAdmin])
+
+  const loadBranchSyncDetails = useCallback(async () => {
+    if (!isAdmin || !dataCollectionBranchId.trim()) return
+    const selectedBranchId = dataCollectionBranchId.trim()
+    try {
+      setBranchSyncLoading(true)
+      setBranchSyncError(null)
+      const [statusResult, historyResult, ftpHistoryResult] = await Promise.all([
+        api.get<BranchSyncStatus>(`/sync/status/${selectedBranchId}`),
+        api.get<{ content?: BranchSyncLog[] } | BranchSyncLog[]>(`/sync/history/${selectedBranchId}`, {
+          params: { page: 0, size: 5 },
+          _preservePaged: true,
+        } as Record<string, unknown>),
+        api.get<FtpSyncLog[]>(`/ftp-sync/history/${selectedBranchId}`),
+      ])
+      setBranchSyncStatus(statusResult.data ?? null)
+      setBranchSyncHistory(extractPagedContent<BranchSyncLog>(historyResult.data))
+      setFtpSyncHistory(Array.isArray(ftpHistoryResult.data) ? ftpHistoryResult.data : [])
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      setBranchSyncError(msg)
+      logger.error('SynchronizationPage', 'Branch sync status/history betöltési hiba:', err)
+    } finally {
+      setBranchSyncLoading(false)
+    }
+  }, [dataCollectionBranchId, isAdmin])
+
   useEffect(() => {
     void loadStatus()
-  }, [loadStatus])
+    void loadDataCollectionStatus()
+    void loadBranchSyncDetails()
+  }, [loadBranchSyncDetails, loadDataCollectionStatus, loadStatus])
 
   const autoSyncRef = useRef<ReturnType<typeof setInterval> | null>(null)
   useEffect(() => {
@@ -123,20 +206,124 @@ export default function SynchronizationPage() {
     }
   }
 
+  const todayIso = () => new Date().toISOString().slice(0, 10)
+
+  const handleCollectBranch = async () => {
+    if (!dataCollectionBranchId.trim()) {
+      toast.warning('Hiányzó iroda', 'Adjon meg branch UUID-t az adatgyűjtéshez')
+      return
+    }
+    try {
+      setDataCollecting(true)
+      setDataCollectionError(null)
+      const response = await api.post<DataCollectionStatus>('/data-collection/collect', {
+        branchId: dataCollectionBranchId.trim(),
+        date: todayIso(),
+      }, { validateStatus: () => true })
+      if (response.status >= 400 && response.status !== 503) throw new Error(`HTTP ${response.status}`)
+      setDataCollectionRows([response.data])
+      toast.success('Adatgyűjtés elindítva', response.data.status)
+      await loadBranchSyncDetails()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      setDataCollectionError(msg)
+      toast.error('Adatgyűjtési hiba', msg)
+    } finally {
+      setDataCollecting(false)
+    }
+  }
+
+  const handleCollectAll = async () => {
+    try {
+      setDataCollecting(true)
+      setDataCollectionError(null)
+      const response = await api.post<DataCollectionStatus[]>('/data-collection/collect-all', {
+        date: todayIso(),
+      }, { validateStatus: () => true })
+      if (response.status >= 400 && response.status !== 503) throw new Error(`HTTP ${response.status}`)
+      setDataCollectionRows(response.data ?? [])
+      toast.success('Adatgyűjtés lefutott', `${response.data?.length ?? 0} iroda`)
+      await loadBranchSyncDetails()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      setDataCollectionError(msg)
+      toast.error('Adatgyűjtési hiba', msg)
+    } finally {
+      setDataCollecting(false)
+    }
+  }
+
+  const handleRetryFailed = async () => {
+    try {
+      setDataCollecting(true)
+      setDataCollectionError(null)
+      const response = await api.post<{ retriedCount: number }>('/data-collection/retry')
+      toast.success('Újrapróbálás kész', `${response.data.retriedCount} sikertelen gyűjtés újrapróbálva`)
+      await loadDataCollectionStatus()
+      await loadBranchSyncDetails()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      setDataCollectionError(msg)
+      toast.error('Újrapróbálási hiba', msg)
+    } finally {
+      setDataCollecting(false)
+    }
+  }
+
+  const runFtpSync = async (kind: 'rates' | 'daily-report' | 'transactions') => {
+    const selectedBranchId = dataCollectionBranchId.trim()
+    if (!selectedBranchId) {
+      toast.warning('Hiányzó iroda', 'Adjon meg branch UUID-t az FTP szinkronhoz')
+      return
+    }
+    try {
+      setFtpActionLoading(kind)
+      setDataCollectionError(null)
+      const response = await api.post<{ success?: boolean; message?: string; fileName?: string }>(`/ftp-sync/${kind}/${selectedBranchId}`, null, {
+        validateStatus: () => true,
+      })
+      if (response.status >= 400 && response.status !== 503) throw new Error(`HTTP ${response.status}`)
+      const label = response.data?.fileName || response.data?.message || kind
+      toast.success('FTP szinkron elindítva', label)
+      await loadBranchSyncDetails()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      setDataCollectionError(msg)
+      toast.error('FTP szinkron hiba', msg)
+    } finally {
+      setFtpActionLoading(null)
+    }
+  }
+
+  const runBranchSync = async (kind: 'rates' | 'transactions' | 'inventory' | 'full') => {
+    const selectedBranchId = dataCollectionBranchId.trim()
+    if (!selectedBranchId) {
+      toast.warning('Hiányzó iroda', 'Adjon meg branch UUID-t a branch szinkronhoz')
+      return
+    }
+    try {
+      setBranchSyncActionLoading(kind)
+      setBranchSyncError(null)
+      const response = await api.post<BranchSyncLog>(`/sync/${kind}/${selectedBranchId}`, null, {
+        validateStatus: () => true,
+      })
+      if (response.status >= 400 && response.status !== 503) throw new Error(`HTTP ${response.status}`)
+      const label = response.data?.status || kind
+      toast.success('Branch szinkron lefutott', label)
+      await loadBranchSyncDetails()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      setBranchSyncError(msg)
+      toast.error('Branch szinkron hiba', msg)
+    } finally {
+      setBranchSyncActionLoading(null)
+    }
+  }
+
   const toggleEntity = (entity: string) => {
     setSelectedEntities(prev =>
       prev.includes(entity) ? prev.filter(e => e !== entity) : [...prev, entity]
     )
-  }
-
-  const getStatusBadge = (s: string) => {
-    switch (s) {
-      case 'SUCCESS': return <span className="badge badge-green"><CheckCircle size={10} className="inline" />{t('common.success')}</span>
-      case 'FAILED': return <span className="badge badge-red"><XCircle size={10} className="inline" />{t('darius.sikertelen')}</span>
-      case 'IN_PROGRESS': return <span className="badge badge-blue"><RefreshCw size={10} className="inline animate-spin" />{t('common.inProgress')}</span>
-      case 'PARTIAL': return <span className="badge badge-yellow"><AlertTriangle size={10} className="inline" />{t('sync.reszleges')}</span>
-      default: return <span className="badge badge-gray">{s}</span>
-    }
   }
 
   return (
@@ -155,7 +342,7 @@ export default function SynchronizationPage() {
       )}
 
       {/* Status cards */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div className="form-panel text-center">
           <Upload size={20} className="mx-auto text-blue-500 mb-1" />
           <div className="text-lg font-bold">{status.pendingUpload}</div>
@@ -170,11 +357,6 @@ export default function SynchronizationPage() {
           <Clock size={20} className="mx-auto text-gray-500 mb-1" />
           <div className="text-sm font-medium">{status.lastSync ? new Date(status.lastSync).toLocaleString('hu-HU') : 'Nincs adat'}</div>
           <div className="text-sm text-gray-500">{t('sync.utolsoSzinkron')}</div>
-        </div>
-        <div className="form-panel text-center">
-          <Database size={20} className="mx-auto text-purple-500 mb-1" />
-          <div className="text-sm font-medium">{syncLogs.length}</div>
-          <div className="text-sm text-gray-500">{t('sync.naploBejegyzes')}</div>
         </div>
       </div>
 
@@ -214,40 +396,244 @@ export default function SynchronizationPage() {
         </div>
       </div>
 
-      {/* Sync log */}
-      <div className="form-panel">
-        <h2 className="font-semibold mb-2">{t('sync.szinkronizaciosNaplo')}</h2>
-        {loading ? <div>Betöltés...</div> : syncLogs.length === 0 ? (
-          <div className="text-center text-gray-500 py-4">{t('sync.nincsSzinkronizaciosBejegyzes')}</div>
-        ) : (
-          <table className="data-grid w-full">
-            <thead>
-              <tr>
-                <th>{t('audit.idopont')}</th>
-                <th>{t('sync.irany')}</th>
-                <th>{t('sync.entitasok')}</th>
-                <th>{t('sync.szinkronizalva')}</th>
-                <th>{t('sync.hibas')}</th>
-                <th>{t('common.status')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {syncLogs.map(log => (
-                <tr key={log.id}>
-                  <td className="text-sm">{new Date(log.startedAt).toLocaleString('hu-HU')}</td>
-                  <td>
-                    {log.direction === 'UPLOAD' ? <><Upload size={12} className="inline" /> {t('sync.feltoltes')}</> : <><Download size={12} className="inline" /> {t('common.download')}</>}
-                  </td>
-                  <td className="text-sm">{(log.entityTypes || []).join(', ')}</td>
-                  <td className="font-mono">{log.recordsSynced}</td>
-                  <td className="font-mono text-red-600">{log.recordsFailed || 0}</td>
-                  <td>{getStatusBadge(log.status)}</td>
-                </tr>
+      {isAdmin && (
+        <div className="form-panel space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold flex items-center gap-2">
+              <Database size={16} />
+              Központi adatgyűjtés
+            </h2>
+            <button
+              type="button"
+              onClick={() => void loadDataCollectionStatus()}
+              className="form-button text-xs"
+              disabled={dataCollecting}
+            >
+              Státusz frissítése
+            </button>
+          </div>
+          {dataCollectionError && (
+            <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              {dataCollectionError}
+            </div>
+          )}
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="block min-w-[260px] flex-1">
+              <span className="form-label">Branch UUID</span>
+              <input
+                className="form-input"
+                value={dataCollectionBranchId}
+                onChange={(event) => setDataCollectionBranchId(event.target.value)}
+                placeholder="Iroda UUID"
+                data-testid="sync-branch-id"
+              />
+            </label>
+            <button type="button" onClick={() => void loadBranchSyncDetails()} disabled={branchSyncLoading || !dataCollectionBranchId.trim()} className="form-button">
+              Sync státusz
+            </button>
+            <button type="button" onClick={() => void handleCollectBranch()} disabled={dataCollecting} className="form-button">
+              Iroda gyűjtése
+            </button>
+            <button type="button" onClick={() => void handleCollectAll()} disabled={dataCollecting} className="form-button-primary">
+              Összes iroda gyűjtése
+            </button>
+            <button type="button" onClick={() => void handleRetryFailed()} disabled={dataCollecting} className="form-button">
+              Sikertelenek újra
+            </button>
+          </div>
+          <div className="rounded border border-blue-100 bg-blue-50 p-3">
+            <h3 className="mb-2 text-sm font-semibold text-blue-950">FTP szinkron műveletek</h3>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={() => void runFtpSync('rates')}
+                disabled={ftpActionLoading !== null || !dataCollectionBranchId.trim()}
+                className="form-button justify-center text-xs"
+                data-testid="ftp-sync-rates"
+              >
+                Árfolyam fájl
+              </button>
+              <button
+                type="button"
+                onClick={() => void runFtpSync('daily-report')}
+                disabled={ftpActionLoading !== null || !dataCollectionBranchId.trim()}
+                className="form-button justify-center text-xs"
+                data-testid="ftp-sync-daily-report"
+              >
+                Napi jelentés
+              </button>
+              <button
+                type="button"
+                onClick={() => void runFtpSync('transactions')}
+                disabled={ftpActionLoading !== null || !dataCollectionBranchId.trim()}
+                className="form-button justify-center text-xs"
+                data-testid="ftp-sync-transactions"
+              >
+                Tranzakció batch
+              </button>
+            </div>
+          </div>
+          <div className="rounded border border-gray-200 bg-gray-50 p-3" data-testid="branch-sync-panel">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">Branch szinkron állapot</h3>
+              {branchSyncLoading && <span className="text-xs text-gray-500">Betöltés...</span>}
+            </div>
+            {branchSyncError && (
+              <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-sm text-amber-800">
+                {branchSyncError}
+              </div>
+            )}
+            {branchSyncStatus ? (
+              <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+                <div className="rounded bg-white px-2 py-1">
+                  <div className="text-[10px] uppercase text-gray-500">Státusz</div>
+                  <div className="font-semibold">{branchSyncStatus.status ?? '-'}</div>
+                </div>
+                <div className="rounded bg-white px-2 py-1">
+                  <div className="text-[10px] uppercase text-gray-500">Utolsó sikeres sync</div>
+                  <div>{formatSyncDate(branchSyncStatus.lastSuccessfulSyncAt ?? branchSyncStatus.lastSyncAt)}</div>
+                </div>
+                <div className="rounded bg-white px-2 py-1">
+                  <div className="text-[10px] uppercase text-gray-500">Függő rekord</div>
+                  <div className="font-mono">{branchSyncStatus.pendingCount ?? ((branchSyncStatus.pendingUpload ?? 0) + (branchSyncStatus.pendingDownload ?? 0))}</div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">Nincs branch szinkron státusz betöltve.</p>
+            )}
+            <div className="mt-3 space-y-2">
+              {branchSyncHistory.length === 0 ? (
+                <p className="text-sm text-gray-500">Nincs sync történet.</p>
+              ) : branchSyncHistory.map((row, index) => (
+                <div key={row.id ?? `${row.startedAt}-${index}`} className="rounded bg-white px-2 py-1 text-sm" data-testid="branch-sync-history-row">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold">{row.syncType ?? row.direction ?? 'SYNC'}</span>
+                    <span className={`badge ${row.status === 'COMPLETED' ? 'badge-green' : row.status === 'FAILED' ? 'badge-red' : 'badge-blue'}`}>
+                      {row.status ?? '-'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {formatSyncDate(row.startedAt)} · {row.recordsSynced ?? 0} rekord
+                  </div>
+                  {row.errorMessage && <div className="text-xs text-red-700">{row.errorMessage}</div>}
+                </div>
               ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+            </div>
+            <div className="mt-3 border-t border-gray-200 pt-3" data-testid="branch-sync-actions">
+              <h4 className="mb-2 text-sm font-semibold">Branch sync műveletek</h4>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+                <button
+                  type="button"
+                  onClick={() => void runBranchSync('rates')}
+                  disabled={branchSyncActionLoading !== null || !dataCollectionBranchId.trim()}
+                  className="form-button justify-center text-xs"
+                  data-testid="branch-sync-rates"
+                >
+                  Árfolyamok
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void runBranchSync('transactions')}
+                  disabled={branchSyncActionLoading !== null || !dataCollectionBranchId.trim()}
+                  className="form-button justify-center text-xs"
+                  data-testid="branch-sync-transactions"
+                >
+                  Tranzakciók
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void runBranchSync('inventory')}
+                  disabled={branchSyncActionLoading !== null || !dataCollectionBranchId.trim()}
+                  className="form-button justify-center text-xs"
+                  data-testid="branch-sync-inventory"
+                >
+                  Készlet
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void runBranchSync('full')}
+                  disabled={branchSyncActionLoading !== null || !dataCollectionBranchId.trim()}
+                  className="form-button-primary justify-center text-xs"
+                  data-testid="branch-sync-full"
+                >
+                  Teljes
+                </button>
+              </div>
+            </div>
+            <div className="mt-3 border-t border-gray-200 pt-3" data-testid="ftp-sync-history">
+              <h4 className="mb-2 text-sm font-semibold">FTP szinkron történet</h4>
+              {ftpSyncHistory.length === 0 ? (
+                <p className="text-sm text-gray-500">Nincs FTP sync történet.</p>
+              ) : ftpSyncHistory.map((row, index) => (
+                <div key={row.id ?? `${row.fileName}-${index}`} className="rounded bg-white px-2 py-1 text-sm" data-testid="ftp-sync-history-row">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold">{row.direction ?? 'FTP'}</span>
+                    <span className={`badge ${row.status === 'COMPLETED' || row.status === 'SUCCESS' ? 'badge-green' : row.status === 'FAILED' ? 'badge-red' : 'badge-blue'}`}>
+                      {row.status ?? '-'}
+                    </span>
+                  </div>
+                  <div className="break-words text-xs text-gray-500">
+                    {row.fileName ?? '-'} · {formatSyncDate(row.startedAt)} · {formatBytes(row.fileSizeBytes)}
+                  </div>
+                  {row.errorMessage && <div className="text-xs text-red-700">{row.errorMessage}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="overflow-x-auto rounded border border-gray-200">
+            <table className="data-grid w-full min-w-[760px] text-sm">
+              <thead>
+                <tr>
+                  <th>Iroda</th>
+                  <th>Dátum</th>
+                  <th>Státusz</th>
+                  <th>Típus</th>
+                  <th className="text-right">Tranzakció</th>
+                  <th>Hiba</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dataCollectionRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-3 text-center text-gray-500">Nincs adatgyűjtési státusz.</td>
+                  </tr>
+                ) : dataCollectionRows.map((row, index) => (
+                  <tr key={row.id ?? `${row.branchId}-${row.collectionDate}-${index}`}>
+                    <td className="font-mono text-xs">{row.branchId ?? '-'}</td>
+                    <td>{row.collectionDate ?? '-'}</td>
+                    <td>
+                      <span className={`badge ${row.status === 'COMPLETED' ? 'badge-green' : row.status === 'FAILED' ? 'badge-red' : 'badge-blue'}`}>
+                        {row.status}
+                      </span>
+                    </td>
+                    <td>{row.collectionType ?? '-'}</td>
+                    <td className="text-right">{row.transactionCount ?? 0}</td>
+                    <td className="max-w-[220px] truncate" title={row.errorMessage ?? ''}>{row.errorMessage ?? '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
     </div>
   )
+}
+
+function extractPagedContent<T>(data: { content?: T[] } | T[] | null | undefined): T[] {
+  if (Array.isArray(data)) return data
+  if (Array.isArray(data?.content)) return data.content
+  return []
+}
+
+function formatSyncDate(value?: string | null): string {
+  if (!value) return '-'
+  return new Date(value).toLocaleString('hu-HU')
+}
+
+function formatBytes(value?: number): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '-'
+  if (value < 1024) return `${value} B`
+  return `${(value / 1024).toFixed(1)} KB`
 }

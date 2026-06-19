@@ -19,6 +19,8 @@ import java.util.UUID;
 @Repository
 public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long> {
 
+    Optional<ExchangeRate> findByIdAndCompanyId(Long id, UUID companyId);
+
     /**
      * Aktuális árfolyam egy valutához (legutolsó aktív)
      */

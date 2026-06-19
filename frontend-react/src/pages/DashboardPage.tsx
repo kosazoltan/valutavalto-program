@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeftRight, Users, TrendingUp, Wallet, FileText, AlertTriangle, ArrowUp, ArrowDown, Clock } from 'lucide-react'
+import { ArrowLeftRight, Users, TrendingUp, Wallet, FileText, AlertTriangle, ArrowUp, ArrowDown, Clock, Server } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { exchangeRateApi, type ExchangeRate } from '../services/api/exchange-rates'
-import { transactionApi, customerApi, type DailyTurnoverSummary } from '../services/api/transactions'
+import { api } from '../services/api/index'
 import { useAuthStore } from '../stores/authStore'
 import { useAppMode } from '../hooks/useAppMode'
 import { formatMillions } from './treasury/treasuryUtils'
-import { logger } from '../utils/logger'
 import { useTranslation } from 'react-i18next'
 
 // 2026-04-29 E-B3 fix: a "Árfolyam módosítás" Gyorsművelet-csempe csak a
@@ -18,14 +17,14 @@ const RATE_EDITOR_ROLES = ['foertektar', 'ugyvezeto'] as const
 interface DashboardStats {
   todayTransactions: number
   todayVolume: number
-  activeCustomers: number
-  pendingDeposits: number
+  activeBranches: number
+  alertCount: number
   // 2026-04-29 v2.3.11 (E-B1): a comparison-mezők NULL-ok ha nincs tegnapi adat,
   // 0 ha pontosan ugyanannyi, és valódi % különbség egyébként. Korábban a delta
   // Ft került ide, amit a UI "%-ban" jelenített meg → 46870% bizarr érték.
   yesterdayComparison: {
-    transactionsPct: number | null
-    volumePct: number | null
+    transactionsPct?: number | null
+    volumePct?: number | null
   }
 }
 
@@ -36,12 +35,75 @@ interface RecentTransaction {
   currency: string
   amount: number
   huf: number
-  customer: string
+  cashier: string
   status: string
+}
+
+interface DashboardSummary {
+  todayVolume?: number
+  activeBranches?: number
+  openTransactions?: number
+  alertCount?: number
+  currencyVolumes?: Record<string, number>
+  recentTransactions?: Array<{
+    id?: number
+    receiptNumber?: string
+    type?: string
+    currencyCode?: string
+    amount?: number
+    hufAmount?: number
+    cashierName?: string
+    createdAt?: string
+  }>
+}
+
+interface HealthResponse {
+  status?: string
+  timestamp?: string
+  uptime?: string
+  version?: string
+  db?: string
+  database?: {
+    connected?: boolean
+    responseTimeMs?: number
+    activeConnections?: number
+  }
+  jvm?: {
+    heapUsed?: number
+    heapMax?: number
+    threads?: number
+    gcCount?: number
+  }
+  name?: string
+  buildTime?: string
+  gitCommit?: string
+  environment?: string
+  javaVersion?: string
+}
+
+interface SystemHealthPanelState {
+  status: string
+  db: string
+  uptime: string
+  version: string
+  appName: string
+  environment: string
+  javaVersion: string
+  dbResponseTimeMs?: number
+  activeConnections?: number
+  heapUsed?: number
+  heapMax?: number
+  threads?: number
 }
 
 // Fő devizák a dashboardra (top 4)
 const DASHBOARD_CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF']
+
+function formatBytes(value?: number): string {
+  if (value == null || !Number.isFinite(value) || value < 0) return '—'
+  if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`
+  return `${Math.round(value / 1024 / 1024)} MB`
+}
 
 export default function DashboardPage() {
   const { t } = useTranslation()
@@ -50,11 +112,13 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
     todayTransactions: 0,
     todayVolume: 0,
-    activeCustomers: 0,
-    pendingDeposits: 0,
-    yesterdayComparison: { transactionsPct: null, volumePct: null }
+    activeBranches: 0,
+    alertCount: 0,
+    yesterdayComparison: {}
   })
   const [recentTransactions, setRecentTransactions] = useState<RecentTransaction[]>([])
+  const [systemHealth, setSystemHealth] = useState<SystemHealthPanelState | null>(null)
+  const [systemHealthError, setSystemHealthError] = useState<string | null>(null)
 
   // E-B3: árfolyam módosítás csak foertektar/ugyvezeto-nek (mode='full')
   // A `roles` selector dependency triggereli a re-render-t login/role-change után.
@@ -84,88 +148,73 @@ export default function DashboardPage() {
 
     const fetchDashboardData = async () => {
       try {
-        // Valódi napi forgalom az API-ból
-        const turnover: DailyTurnoverSummary = await transactionApi.getDailyTurnover()
-        const totalTx = (turnover.totalBuyCount || 0) + (turnover.totalSellCount || 0)
-        const totalVol = (turnover.totalBuyHuf || 0) + (turnover.totalSellHuf || 0)
-
-        // 2026-04-29 v2.3.12 (E-B15): a valódi aktív customer-szám lekérése.
-        // Korábban: `Math.ceil(totalTx * 0.7)` heurisztika → KPI 2, lista 0 inkonzisztens.
-        // Most: `customerApi.getActive().length` — UGYANAZT az endpoint-ot használja
-        // mint a CustomerListPage, így a számok egyeznek.
-        // 2026-04-29 v2.3.12 Sourcery #274 follow-up: silent catch helyett logger.warn,
-        // hogy a customer KPI silent failure-jét detektálni tudjuk az electron-log-ban.
-        let activeCustomerCount = 0
-        try {
-          const activeList = await customerApi.getActive()
-          activeCustomerCount = Array.isArray(activeList) ? activeList.length : 0
-        } catch (err) {
-          logger.warn('DashboardPage', 'customerApi.getActive() failed, KPI 0 marad:', err)
-        }
-
-        // Tegnapi adatok az összehasonlításhoz
-        const yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
-        const yStr = yesterday.toISOString().split('T')[0]
-        let yTx = 0, yVol = 0
-        try {
-          const yTurnover = await transactionApi.getDailyTurnover(yStr)
-          yTx = (yTurnover.totalBuyCount || 0) + (yTurnover.totalSellCount || 0)
-          yVol = (yTurnover.totalBuyHuf || 0) + (yTurnover.totalSellHuf || 0)
-        } catch { /* tegnapi adat nem elérhető — 0 marad */ }
-
-        // 2026-04-29 v2.3.11 (E-B1): valódi %-különbség számítás NaN/Infinity guard-dal.
-        // - yesterdayValue = 0 + todayValue = 0  → 0% (nincs változás)
-        // - yesterdayValue = 0 + todayValue > 0 → null (nincs alap, "—" megjelenítés)
-        // - yesterdayValue > 0                  → ((today - yesterday) / yesterday) * 100
-        const computePct = (today: number, yesterday: number): number | null => {
-          if (yesterday === 0) return today === 0 ? 0 : null
-          return Math.round(((today - yesterday) / yesterday) * 100)
-        }
+        const response = await api.get<DashboardSummary>('/dashboard/summary')
+        const summary = response.data ?? {}
 
         setStats({
-          todayTransactions: totalTx,
-          todayVolume: totalVol,
-          activeCustomers: activeCustomerCount, // 2026-04-29 v2.3.12 (E-B15): valódi customer-szám, NEM heurisztika
-          pendingDeposits: turnover.totalReversalCount || 0,
-          yesterdayComparison: {
-            transactionsPct: computePct(totalTx, yTx),
-            volumePct: computePct(totalVol, yVol)
-          }
+          todayTransactions: summary.openTransactions ?? 0,
+          todayVolume: summary.todayVolume ?? 0,
+          activeBranches: summary.activeBranches ?? 0,
+          alertCount: summary.alertCount ?? 0,
+          yesterdayComparison: {}
         })
-      } catch {
-        // API hiba esetén 0 értékek maradnak
-      }
-
-      try {
-        // Legutóbbi tranzakciók az API-ból
-        const page = await transactionApi.list({ size: 5 })
-        const txList = (page.content || []).map((tx, idx) => ({
+        const txList = (summary.recentTransactions ?? []).slice(0, 5).map((tx, idx) => ({
           id: idx + 1,
-          // v2.5.54 #9 fix: a "Legutóbbi tranzakciók" eddig CSAK időt (HH:MM) mutatott, dátum nélkül.
-          // Most a dátum (MM-DD, év nélkül a kompaktságért) is megjelenik az IDŐ oszlopban.
-          time: [
-            tx.transactionDate ? tx.transactionDate.substring(5) : '',
-            tx.transactionTime ? tx.transactionTime.substring(0, 5) : '',
-          ].filter(Boolean).join(' '),
-          type: tx.transactionType || '',
+          time: tx.createdAt ? tx.createdAt.replace('T', ' ').slice(5, 16) : '',
+          type: tx.type || '',
           currency: tx.currencyCode || '',
-          amount: tx.currencyAmount || 0,
+          amount: tx.amount || 0,
           huf: tx.hufAmount || 0,
-          // 2026-04-29 v2.3.12 (E-B2): a "Ügyfél" oszlop a customerName-et használja,
-          // NEM a workerName-et (pénztáros). Ha nincs customerName (anonim walk-in),
-          // akkor a workerCode jelenik meg (audit-nyomvonal: ki végezte).
-          customer: tx.customerName || (tx.workerCode ? `[${tx.workerCode}]` : ''),
-          status: (tx.status || 'COMPLETED').toLowerCase()
+          cashier: tx.cashierName || '',
+          status: 'completed'
         }))
         setRecentTransactions(txList)
       } catch {
+        setStats({
+          todayTransactions: 0,
+          todayVolume: 0,
+          activeBranches: 0,
+          alertCount: 0,
+          yesterdayComparison: {}
+        })
         setRecentTransactions([])
+      }
+    }
+
+    const fetchSystemHealth = async () => {
+      try {
+        const [healthResponse, detailedResponse, infoResponse] = await Promise.all([
+          api.get<HealthResponse>('/health'),
+          api.get<HealthResponse>('/health/detailed'),
+          api.get<HealthResponse>('/health/info'),
+        ])
+        const health = healthResponse.data ?? {}
+        const detailed = detailedResponse.data ?? {}
+        const info = infoResponse.data ?? {}
+        setSystemHealth({
+          status: health.status ?? detailed.status ?? 'UNKNOWN',
+          db: health.db ?? (detailed.database?.connected ? 'connected' : 'disconnected'),
+          uptime: health.uptime ?? detailed.uptime ?? '—',
+          version: info.version ?? health.version ?? detailed.version ?? '—',
+          appName: info.name ?? 'valuta-backend',
+          environment: info.environment ?? 'default',
+          javaVersion: info.javaVersion ?? '—',
+          dbResponseTimeMs: detailed.database?.responseTimeMs,
+          activeConnections: detailed.database?.activeConnections,
+          heapUsed: detailed.jvm?.heapUsed,
+          heapMax: detailed.jvm?.heapMax,
+          threads: detailed.jvm?.threads,
+        })
+        setSystemHealthError(null)
+      } catch {
+        setSystemHealth(null)
+        setSystemHealthError('Nem elérhető')
       }
     }
 
     fetchRates()
     fetchDashboardData()
+    fetchSystemHealth()
   }, [])
   return (
     <div className="space-y-3">
@@ -182,7 +231,7 @@ export default function DashboardPage() {
       </div>
 
       {/* MODERN KPI Cards - Compact */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <StatCard
           icon={ArrowLeftRight}
           label="Mai tranzakciók"
@@ -199,23 +248,45 @@ export default function DashboardPage() {
         />
         <StatCard
           icon={Users}
-          label="Aktív ügyfelek"
-          value={stats.activeCustomers}
+          label="Aktív irodák"
+          value={stats.activeBranches}
           color="info"
         />
         <StatCard
           icon={AlertTriangle}
-          label="Függő foglalók"
-          value={stats.pendingDeposits}
+          label="Riasztások"
+          value={stats.alertCount}
           color="warning"
-          urgent={stats.pendingDeposits > 0}
+          urgent={stats.alertCount > 0}
         />
       </div>
 
+      <div className="form-panel">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-1.5 text-sm font-bold text-secondary-900">
+            <Server size={16} className="text-blue-600" />
+            Rendszerállapot
+          </h2>
+          <span className={`rounded border px-2 py-1 text-xs font-semibold ${
+            systemHealth?.status === 'UP'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              : 'border-amber-200 bg-amber-50 text-amber-700'
+          }`}>
+            {systemHealth?.status ?? systemHealthError ?? 'Betöltés...'}
+          </span>
+        </div>
+        <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+          <HealthInfo label="Backend" value={systemHealth?.appName ?? '—'} detail={`v${systemHealth?.version ?? '—'}`} />
+          <HealthInfo label="Adatbázis" value={systemHealth?.db ?? '—'} detail={systemHealth?.dbResponseTimeMs != null ? `${systemHealth.dbResponseTimeMs} ms` : '—'} />
+          <HealthInfo label="JVM" value={formatBytes(systemHealth?.heapUsed)} detail={`${formatBytes(systemHealth?.heapMax)} max · ${systemHealth?.threads ?? '—'} szál`} />
+          <HealthInfo label="Környezet" value={systemHealth?.environment ?? '—'} detail={`Java ${systemHealth?.javaVersion ?? '—'} · ${systemHealth?.uptime ?? '—'}`} />
+        </div>
+      </div>
+
       {/* Main Content Grid */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid gap-3 lg:grid-cols-3">
         {/* Current rates - Spans 2 columns */}
-        <div className="col-span-2 form-panel">
+        <div className="form-panel lg:col-span-2">
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-sm font-bold text-secondary-900 flex items-center gap-1.5">
               <TrendingUp size={16} className="text-success-600" />
@@ -225,7 +296,8 @@ export default function DashboardPage() {
               {t('misc.reszletek')}
             </Link>
           </div>
-          <table className="data-grid w-full">
+          <div className="overflow-x-auto">
+          <table className="data-grid w-full min-w-[560px]">
             <thead>
               <tr>
                 <th>{t('common.deviza')}</th>
@@ -260,6 +332,7 @@ export default function DashboardPage() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Quick actions - Compact card */}
@@ -306,7 +379,8 @@ export default function DashboardPage() {
             {t('misc.osszes')}
           </Link>
         </div>
-        <table className="data-grid w-full">
+        <div className="overflow-x-auto">
+        <table className="data-grid w-full min-w-[720px]">
           <thead>
             <tr>
               <th>{t('misc.ido')}</th>
@@ -314,7 +388,7 @@ export default function DashboardPage() {
               <th>{t('common.deviza')}</th>
               <th className="text-right">{t('common.amount')}</th>
               <th className="text-right">{t('stockSnapshot.hufValue')}</th>
-              <th>{t('common.customer')}</th>
+              <th>Pénztáros</th>
               <th>{t('common.status')}</th>
             </tr>
           </thead>
@@ -334,7 +408,7 @@ export default function DashboardPage() {
                 </td>
                 <td className="text-right font-mono font-semibold">{tx.amount.toLocaleString()}</td>
                 <td className="text-right font-mono">{tx.huf.toLocaleString()} {t('components.ft')}</td>
-                <td className="text-secondary-700">{tx.customer}</td>
+                <td className="text-secondary-700">{tx.cashier}</td>
                 <td>
                   <span className={`badge ${
                     tx.status === 'completed' ? 'badge-green' : 'badge-yellow'
@@ -346,7 +420,18 @@ export default function DashboardPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
+    </div>
+  )
+}
+
+function HealthInfo({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded border border-gray-200 bg-white px-3 py-2">
+      <div className="text-[11px] font-semibold uppercase text-secondary-500">{label}</div>
+      <div className="mt-0.5 truncate font-semibold text-secondary-900">{value}</div>
+      <div className="mt-0.5 truncate text-secondary-500">{detail}</div>
     </div>
   )
 }

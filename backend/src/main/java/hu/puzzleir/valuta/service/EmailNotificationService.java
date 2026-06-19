@@ -41,12 +41,24 @@ public class EmailNotificationService {
      */
     @Async
     public void sendToWorker(Long workerId, String subject, String body) {
+        sendToWorker(workerId, null, subject, body);
+    }
+
+    /**
+     * Email küldése egy worker-nek cég-scope-pal.
+     */
+    @Async
+    public void sendToWorker(Long workerId, UUID companyId, String subject, String body) {
         if (!emailEnabled) {
             log.debug("Email notification kikapcsolva, skip: worker={}", workerId);
             return;
         }
+        if (companyId == null) {
+            log.warn("Email notification worker lookup kihagyva company scope nélkül: worker={}", workerId);
+            return;
+        }
 
-        workerRepository.findById(workerId).ifPresent(worker -> {
+        workerRepository.findByIdAndCompanyId(workerId, companyId).ifPresent(worker -> {
             if (worker.getEmail() != null && !worker.getEmail().isBlank()) {
                 sendEmail(worker.getEmail(), subject, body);
             } else {

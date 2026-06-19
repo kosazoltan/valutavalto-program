@@ -16,6 +16,7 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.WorkerMfaRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -34,6 +35,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * TOTP (Time-based One-Time Password, RFC 6238) szolgáltatás.
@@ -63,7 +65,11 @@ public class TotpService {
      * Visszaadja a Base32 secret + Google-Auth Otpauth URL + QR code Base64 PNG.
      */
     public EnrollmentResponse startEnrollment(Long workerId) {
-        Worker worker = workerRepository.findById(workerId)
+        UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
+        Optional<Worker> workerOpt = companyId != null
+                ? workerRepository.findByIdAndCompanyId(workerId, companyId)
+                : workerRepository.findById(workerId);
+        Worker worker = workerOpt
                 .orElseThrow(() -> new ResourceNotFoundException("Worker nem található: " + workerId));
 
         // Codex P1 #568: ha már enrolled+enabled, NE írjuk felül a meglévő secret-et

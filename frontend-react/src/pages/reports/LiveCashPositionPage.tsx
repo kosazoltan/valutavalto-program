@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '@/services/api/index';
+import { api, cashBalanceApi, type DetailedCashPosition } from '@/services/api/index';
 import { safeArray } from '@/utils/safeArray';
 
 interface CurrencyLine {
@@ -24,6 +24,7 @@ const fmt = (n: number) => (n ?? 0).toLocaleString('hu-HU');
 export default function LiveCashPositionPage() {
   const navigate = useNavigate();
   const [data, setData] = useState<LiveCashPosition | null>(null);
+  const [position, setPosition] = useState<DetailedCashPosition | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // FR-PA-04: külön "Kezelési díj nyomtatása" — ilyenkor csak a díj-blokk nyomtatódik (CSS print-mód).
@@ -33,11 +34,16 @@ export default function LiveCashPositionPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get('/reports/live-cash-position');
+      const [response, detailedPosition] = await Promise.all([
+        api.get('/reports/live-cash-position'),
+        cashBalanceApi.getDetailedPosition().catch(() => null),
+      ]);
       setData(response?.data ?? null);
+      setPosition(detailedPosition);
     } catch {
       setError('A pillanatnyi pénztárállás lekérése sikertelen.');
       setData(null);
+      setPosition(null);
     } finally {
       setLoading(false);
     }
@@ -68,6 +74,9 @@ export default function LiveCashPositionPage() {
 
   const lines = safeArray<CurrencyLine>(data?.lines);
   const feeHuf = data?.handlingFeeHuf ?? 0;
+  const totalHufValue = position?.totalHufValue ?? 0;
+  const totalDailyChangeHuf = position?.totalDailyChangeHuf ?? 0;
+  const alertCount = (position?.lowBalanceAlerts ?? 0) + (position?.highBalanceAlerts ?? 0);
 
   return (
     <div className="container mx-auto p-4">
@@ -95,6 +104,31 @@ export default function LiveCashPositionPage() {
 
       {data?.date && (
         <div className="mb-2 text-sm text-gray-600">Dátum: {data.date}</div>
+      )}
+
+      {position && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 print:hidden">
+          <div className="bg-white rounded border p-3">
+            <div className="text-xs text-gray-500">Készlet HUF-egyenérték</div>
+            <div className="text-lg font-bold text-gray-900">{fmt(totalHufValue)} Ft</div>
+          </div>
+          <div className="bg-white rounded border p-3">
+            <div className="text-xs text-gray-500">Napi változás HUF</div>
+            <div className={`text-lg font-bold ${totalDailyChangeHuf >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+              {fmt(totalDailyChangeHuf)} Ft
+            </div>
+          </div>
+          <div className="bg-white rounded border p-3">
+            <div className="text-xs text-gray-500">Valuták</div>
+            <div className="text-lg font-bold text-gray-900">{position.currencyCount}</div>
+          </div>
+          <div className="bg-white rounded border p-3">
+            <div className="text-xs text-gray-500">Készlet riasztások</div>
+            <div className={`text-lg font-bold ${alertCount > 0 ? 'text-amber-700' : 'text-gray-900'}`}>
+              {alertCount}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* FR-PA-04: külön kezelési-díj bizonylat — csak fee-print módban látszik (egyébként a teljes táblázat). */}

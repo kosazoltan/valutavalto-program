@@ -90,6 +90,8 @@ export default function BankOrderPage() {
   const [referenceLoading, setReferenceLoading] = useState(false)
   const [wuLimit, setWuLimit] = useState<WuDailyLimit | null>(null)
   const [wuLimitError, setWuLimitError] = useState<string | null>(null)
+  const [wuLimitUseAmount, setWuLimitUseAmount] = useState('')
+  const [wuLimitUseSaving, setWuLimitUseSaving] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
   // E-B8 (#279): a Készlet pillanatkép „Sürgősségi banki kivét" gombja
@@ -133,6 +135,33 @@ export default function BankOrderPage() {
     } catch (err) {
       logger.error('BankOrderPage', 'WU napi keret hiba:', err)
       setWuLimitError(getErrorMessage(err))
+    }
+  }
+
+  const handleUseWuLimit = async () => {
+    const amountUsd = Number(wuLimitUseAmount.replace(/\s/g, '').replace(',', '.'))
+    if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
+      setWuLimitError('Pozitív USD összeget kell megadni a WU napi keret kézi felhasználásához.')
+      return
+    }
+    if (!confirm(`Biztosan rögzíti a WU napi keret kézi felhasználását: ${amountUsd} USD?`)) {
+      return
+    }
+
+    setWuLimitUseSaving(true)
+    setWuLimitError(null)
+    try {
+      await api.post('/western-union/daily-limit/use', {
+        amountUsd,
+        businessDate: wuLimit?.businessDate,
+      })
+      setWuLimitUseAmount('')
+      await loadWuLimit()
+    } catch (err) {
+      logger.error('BankOrderPage', 'WU napi keret kézi felhasználás hiba:', err)
+      setWuLimitError(getErrorMessage(err))
+    } finally {
+      setWuLimitUseSaving(false)
     }
   }
 
@@ -311,6 +340,26 @@ export default function BankOrderPage() {
             </div>
           </div>
         )}
+        <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:items-end">
+          <label className="block text-sm">
+            <span className="mb-1 block text-xs font-semibold text-gray-600">Kézi fallback felhasználás (USD)</span>
+            <input
+              value={wuLimitUseAmount}
+              onChange={(event) => setWuLimitUseAmount(event.target.value)}
+              inputMode="decimal"
+              className="w-full rounded border px-3 py-2 text-sm sm:w-56"
+              placeholder="0.00"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => void handleUseWuLimit()}
+            disabled={wuLimitUseSaving}
+            className="rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {wuLimitUseSaving ? 'Rögzítés...' : 'Keret felhasználás'}
+          </button>
+        </div>
       </section>
 
       {error && (

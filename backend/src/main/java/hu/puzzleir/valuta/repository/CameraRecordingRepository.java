@@ -8,10 +8,13 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface CameraRecordingRepository extends JpaRepository<CameraRecording, UUID> {
+    Optional<CameraRecording> findByIdAndBranchId(UUID id, UUID branchId);
+
     List<CameraRecording> findByBranchIdAndCameraIdAndStartTimeBetween(
         UUID branchId, String cameraId, LocalDateTime start, LocalDateTime end);
 

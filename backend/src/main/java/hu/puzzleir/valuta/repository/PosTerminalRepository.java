@@ -13,6 +13,8 @@ public interface PosTerminalRepository extends JpaRepository<PosTerminal, UUID> 
 
     List<PosTerminal> findByBranchIdAndIsActiveTrueOrderByTerminalNameAsc(UUID branchId);
 
+    Optional<PosTerminal> findByIdAndBranchId(UUID id, UUID branchId);
+
     Optional<PosTerminal> findByTerminalId(String terminalId);
 
     List<PosTerminal> findByIsActiveTrueOrderByTerminalNameAsc();

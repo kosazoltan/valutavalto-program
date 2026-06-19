@@ -17,9 +17,13 @@ const tabs = [
 
 type TabKey = (typeof tabs)[number]['key']
 
-export default function RateCreationDashboard() {
+interface RateCreationDashboardProps {
+  initialTab?: TabKey
+}
+
+export default function RateCreationDashboard({ initialTab = 'settlement' }: RateCreationDashboardProps) {
   const { t } = useTranslation()
-  const [activeTab, setActiveTab] = useState<TabKey>('settlement')
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
 
   return (
     <div className="space-y-3">

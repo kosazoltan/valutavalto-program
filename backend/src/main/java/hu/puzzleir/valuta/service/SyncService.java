@@ -94,8 +94,7 @@ public class SyncService {
 
     private SyncLogDto performSync(UUID branchId, SyncLog.SyncType syncType, SyncLog.SyncDirection direction) {
         UUID effectiveBranch = resolveBranch(branchId);
-        Branch branch = branchRepository.findById(effectiveBranch)
-                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + effectiveBranch));
+        Branch branch = findBranchInCurrentCompany(effectiveBranch);
 
         SyncLog syncLog = SyncLog.builder()
                 .branch(branch)
@@ -169,9 +168,8 @@ public class SyncService {
         };
     }
 
-        private int countCurrentRates(UUID branchId) {
-        Branch branch = branchRepository.findById(branchId)
-            .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+    private int countCurrentRates(UUID branchId) {
+        Branch branch = findBranchInCurrentCompany(branchId);
 
         return exchangeRateRepository.findAllActiveRates(branch.getCompany().getId(), branchId)
             .stream()
@@ -181,7 +179,13 @@ public class SyncService {
                 (first, second) -> first,
                 LinkedHashMap::new))
             .size();
-        }
+    }
+
+    private Branch findBranchInCurrentCompany(UUID branchId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return branchRepository.findByIdAndCompanyId(branchId, companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+    }
 
     private UUID resolveBranch(UUID branchId) {
         UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();

@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.PosTerminal;
 import hu.puzzleir.valuta.repository.PosTerminalRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,7 +42,10 @@ public class PosTerminalConfigService {
      */
     public TerminalAddress resolve(UUID terminalId) {
         if (terminalId != null) {
-            Optional<PosTerminal> opt = posTerminalRepository.findById(terminalId);
+            UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
+            Optional<PosTerminal> opt = branchId != null
+                    ? posTerminalRepository.findByIdAndBranchId(terminalId, branchId)
+                    : posTerminalRepository.findById(terminalId);
             if (opt.isPresent()) {
                 PosTerminal terminal = opt.get();
                 String host = (terminal.getIpAddress() != null && !terminal.getIpAddress().isBlank())

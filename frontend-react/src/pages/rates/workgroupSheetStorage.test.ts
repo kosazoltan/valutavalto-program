@@ -11,6 +11,8 @@ import {
   saveGroupRateValuesToOfflineDb,
   loadGroupRateValuesFromOfflineDb,
   persistGroupRateValues,
+  exportRateMakerSheetSnapshot,
+  importRateMakerSheetSnapshot,
 } from './workgroupSheetStorage'
 import type { WgValues } from './workgroupSheetFormula'
 
@@ -67,6 +69,44 @@ describe('loadSheet0ByCurrency', () => {
     const s = memStorage()
     s.setItem('arfolyamkeszito.mainSheet.v1', '{nem json')
     expect(loadSheet0ByCurrency(s).size).toBe(0)
+  })
+})
+
+describe('rate-maker szerveroldali munkaív snapshot', () => {
+  it('csak az árfolyamkészítő localStorage kulcsokat exportálja', () => {
+    const s = memStorage()
+    s.setItem('arfolyamkeszito.mainSheet.v1', '[{"currency":"EUR"}]')
+    s.setItem('arfolyamkeszito.workgroupSheet.rates.v1.g-1', '{"1.buyRate":"400"}')
+    s.setItem('mainRateSheet.bandBase', 'settlement')
+    s.setItem('auth_token', 'nem-exportalhato')
+
+    const snapshot = exportRateMakerSheetSnapshot(s)
+
+    expect(snapshot.version).toBe(1)
+    expect(snapshot.entries).toEqual({
+      'arfolyamkeszito.mainSheet.v1': '[{"currency":"EUR"}]',
+      'arfolyamkeszito.workgroupSheet.rates.v1.g-1': '{"1.buyRate":"400"}',
+      'mainRateSheet.bandBase': 'settlement',
+    })
+  })
+
+  it('importnál eldobja az idegen kulcsokat és a hibás snapshotot', () => {
+    const s = memStorage()
+    const imported = importRateMakerSheetSnapshot(JSON.stringify({
+      version: 1,
+      savedAt: '2026-06-18T10:00:00',
+      entries: {
+        'arfolyamkeszito.mainSheet.v1': '[{"currency":"EUR"}]',
+        auth_token: 'tilos',
+        'arfolyamkeszito.workgroupSheet.formulas.v1.g-1': '{"1.buyRate":"J-1"}',
+      },
+    }), s)
+
+    expect(imported).toBe(2)
+    expect(s.getItem('arfolyamkeszito.mainSheet.v1')).toBe('[{"currency":"EUR"}]')
+    expect(s.getItem('arfolyamkeszito.workgroupSheet.formulas.v1.g-1')).toBe('{"1.buyRate":"J-1"}')
+    expect(s.getItem('auth_token')).toBeNull()
+    expect(importRateMakerSheetSnapshot('{nem json', s)).toBe(0)
   })
 })
 

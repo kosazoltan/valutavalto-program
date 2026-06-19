@@ -207,6 +207,12 @@ public class CustomerService {
         return customerRepository.searchByName(companyId, name);
     }
 
+    @Transactional(readOnly = true)
+    public List<Customer> searchByNameOrDocument(String query) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return customerRepository.searchByNameOrDocument(companyId, query);
+    }
+
     /**
      * VIP ügyfelek listázása
      */

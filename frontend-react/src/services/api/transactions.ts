@@ -73,6 +73,33 @@ export interface CustomerCreateRequest {
   notes?: string
 }
 
+export interface CustomerRestriction {
+  id: string
+  customerId: number
+  restrictionType: 'BLOCKED' | 'SUSPICIOUS' | 'WATCH_LIST' | 'ANNUAL_LIMIT' | string
+  reason: string
+  addedBy?: number
+  addedAt?: string
+  expiresAt?: string | null
+  active: boolean
+}
+
+export interface CreateCustomerRestrictionRequest {
+  restrictionType: CustomerRestriction['restrictionType']
+  reason: string
+  expiresAt?: string | null
+}
+
+export interface CustomerScreeningLog {
+  id: string
+  customerId?: number
+  screeningType: string
+  result: string
+  details?: string
+  screenedAt?: string
+  screenedBy?: number
+}
+
 export const customerApi = {
   create: async (data: CustomerCreateRequest): Promise<Customer> => {
     const response = await api.post<Customer>('/customers', data)
@@ -95,12 +122,20 @@ export const customerApi = {
     const response = await api.get<Customer>(`/customers/document/${documentNumber}`)
     return response.data
   },
+  getByIdCard: async (idCardNumber: string): Promise<Customer> => {
+    const response = await api.get<Customer>(`/customers/id-card/${idCardNumber}`)
+    return response.data
+  },
+  getByPassport: async (passportNumber: string): Promise<Customer> => {
+    const response = await api.get<Customer>(`/customers/passport/${passportNumber}`)
+    return response.data
+  },
   getByCode: async (customerCode: string): Promise<Customer> => {
     const response = await api.get<Customer>(`/customers/code/${customerCode}`)
     return response.data
   },
   search: async (name: string): Promise<Customer[]> => {
-    const response = await api.get<Customer[]>('/customers/search', { params: { name } })
+    const response = await api.get<Customer[]>('/customers', { params: { query: name } })
     return response.data
   },
   getVip: async (): Promise<Customer[]> => {
@@ -111,12 +146,43 @@ export const customerApi = {
     const response = await api.get<Customer[]>('/customers/active')
     return response.data
   },
+  merge: async (primaryId: number, duplicateId: number): Promise<Customer> => {
+    const response = await api.post<Customer>('/customers/merge', { primaryId, duplicateId })
+    return response.data
+  },
   deactivate: async (id: number): Promise<void> => {
     await api.post(`/customers/${id}/deactivate`)
   },
   activate: async (id: number): Promise<void> => {
     await api.post(`/customers/${id}/activate`)
   }
+}
+
+export const customerControlApi = {
+  getRestrictions: async (id: number): Promise<CustomerRestriction[]> => {
+    const response = await api.get<CustomerRestriction[]>(`/customer-control/${id}/restrictions`)
+    return response.data
+  },
+  addRestriction: async (
+    id: number,
+    data: CreateCustomerRestrictionRequest,
+  ): Promise<CustomerRestriction> => {
+    const response = await api.post<CustomerRestriction>(`/customer-control/${id}/restrict`, data)
+    return response.data
+  },
+  removeRestriction: async (restrictionId: string): Promise<void> => {
+    await api.delete(`/customer-control/restrictions/${restrictionId}`)
+  },
+  getAnnualTotal: async (id: number, year?: number): Promise<number> => {
+    const response = await api.get<number>(`/customer-control/${id}/annual-total`, {
+      params: year ? { year } : undefined,
+    })
+    return response.data
+  },
+  getScreeningLog: async (id: number): Promise<CustomerScreeningLog[]> => {
+    const response = await api.get<CustomerScreeningLog[]>(`/customer-control/${id}/screening-log`)
+    return response.data
+  },
 }
 
 export interface TeaorCode {
@@ -554,6 +620,52 @@ export interface CurrencyTotalBalance {
   branchCount: number
 }
 
+export interface CompanyCurrencyPosition {
+  currencyCode: string
+  totalBalance: number
+  branchCount: number
+  hufValue: number
+}
+
+export interface CompanyCashPosition {
+  companyId: string
+  timestamp: string
+  currencyPositions: CompanyCurrencyPosition[]
+  grandTotalHuf: number
+}
+
+export interface CashPositionItem {
+  currencyId: number
+  currencyCode: string
+  currencyName: string
+  currentBalance: number
+  openingBalance: number
+  dailyChange: number
+  buyRate?: number
+  sellRate?: number
+  midRate: number
+  hufValue: number
+  openingHufValue: number
+  dailyChangeHuf: number
+  minBalance?: number
+  maxBalance?: number
+  isLowBalance: boolean
+  isHighBalance: boolean
+  lastTransactionAt?: string
+}
+
+export interface DetailedCashPosition {
+  branchId: string
+  timestamp: string
+  items: CashPositionItem[]
+  totalHufValue: number
+  totalOpeningHufValue: number
+  totalDailyChangeHuf: number
+  currencyCount: number
+  lowBalanceAlerts: number
+  highBalanceAlerts: number
+}
+
 export const cashBalanceApi = {
   list: async (): Promise<CashBalance[]> => {
     const response = await api.get<CashBalance[]>('/cash-balances')
@@ -593,8 +705,18 @@ export const cashBalanceApi = {
     const response = await api.get<BranchBalanceSummary>('/cash-balances/summary')
     return response.data
   },
+  getDetailedPosition: async (): Promise<DetailedCashPosition> => {
+    const response = await api.get<DetailedCashPosition>('/cash-balances/position')
+    return response.data
+  },
   getCompanyTotals: async (): Promise<CurrencyTotalBalance[]> => {
     const response = await api.get<CurrencyTotalBalance[]>('/cash-balances/company-totals')
+    return response.data
+  },
+  getCompanyPosition: async (): Promise<CompanyCashPosition> => {
+    const response = await api.get<CompanyCashPosition>('/cash-balances/company-position', {
+      _skipGlobal403Toast: true,
+    })
     return response.data
   }
 }
@@ -721,6 +843,52 @@ export interface DailySession {
   updatedAt?: string
 }
 
+export interface DailyClosingValidation {
+  validationDate: string
+  errorCode: number
+  errorMessage: string
+  allValid: boolean
+  currencyDenominationOk: boolean
+  handlingFeeDenominationOk: boolean
+  westernUnionDenominationOk: boolean
+  vatDenominationOk: boolean
+  ecommerceDenominationOk: boolean
+}
+
+export interface SessionOpenRequest {
+  workerId: number
+  branchId: string
+}
+
+export interface SessionOpenData {
+  sessionId: number
+  branchId: string
+  branchName?: string
+  workerId: number
+  workerName?: string
+  sessionDate: string
+  status: string
+  openedAt?: string
+  closedAt?: string | null
+  openingBalances?: Record<string, number>
+  warnings?: string[]
+}
+
+export const sessionOpenApi = {
+  open: async (request: SessionOpenRequest): Promise<SessionOpenData> => {
+    const response = await api.post<SessionOpenData>('/sessions/open', request)
+    return response.data
+  },
+  getOpeningBalance: async (sessionId: number): Promise<Record<string, number>> => {
+    const response = await api.get<Record<string, number>>(`/sessions/opening-balance/${sessionId}`)
+    return response.data
+  },
+  validateOpen: async (branchId: string): Promise<string[]> => {
+    const response = await api.get<string[]>(`/sessions/validate-open/${branchId}`)
+    return response.data
+  },
+}
+
 export const dailySessionApi = {
   open: async (): Promise<DailySession> => {
     const response = await api.post<DailySession>('/daily-sessions/open')
@@ -748,6 +916,10 @@ export const dailySessionApi = {
     const response = await api.get<DailySession[]>('/daily-sessions/history', {
       params: { startDate, endDate }
     })
+    return response.data
+  },
+  validateClosing: async (): Promise<DailyClosingValidation> => {
+    const response = await api.get<DailyClosingValidation>('/daily-sessions/validate-closing')
     return response.data
   }
 }
@@ -879,6 +1051,38 @@ export interface ClosingWizardStep {
   stepData: Record<string, unknown>
 }
 
+export interface ClosingWizardInventoryItem {
+  currencyCode: string
+  openingBalance?: number
+  currentBalance?: number
+  dailyChange?: number
+}
+
+export interface ClosingWizardReport {
+  wizardId: string
+  branchName: string
+  closingDate: string
+  closingType: string
+  transactionCount?: number
+  buyCount?: number
+  sellCount?: number
+  reversalCount?: number
+  buyTurnoverHuf?: number
+  sellTurnoverHuf?: number
+  handlingFeeTotal?: number
+  openingBalanceHuf?: number
+  closingBalanceHuf?: number
+  inventory?: ClosingWizardInventoryItem[]
+}
+
+export interface ClosingWizardDifference {
+  currencyCode: string
+  expected: number | string
+  actual: number | string
+  difference: number | string
+  status: 'OK' | 'DISCREPANCY' | string
+}
+
 export const closingWizardApi = {
   start: async (branchId: string, cashDeskId: string | undefined, closingType: string, workerId: string): Promise<ClosingWizard> => {
     const response = await api.post<ClosingWizard>('/closing-wizard/start', null, {
@@ -922,6 +1126,17 @@ export const closingWizardApi = {
   /** Submit denomination counts — body: { "HUF": { 500: 3, 1000: 5, ... } } */
   submitDenominations: async (wizardId: string, denomCounts: Record<string, Record<number, number>>): Promise<Record<string, unknown>> => {
     const response = await api.post<Record<string, unknown>>(`/closing-wizard/${wizardId}/denominations`, denomCounts)
+    return response.data
+  },
+  calculateDifferences: async (
+    wizardId: string,
+    physicalCounts: Record<string, number>,
+  ): Promise<ClosingWizardDifference[]> => {
+    const response = await api.post<ClosingWizardDifference[]>(`/closing-wizard/${wizardId}/differences`, physicalCounts)
+    return response.data
+  },
+  getReport: async (wizardId: string): Promise<ClosingWizardReport> => {
+    const response = await api.get<ClosingWizardReport>(`/closing-wizard/${wizardId}/report`)
     return response.data
   }
 }
@@ -1030,13 +1245,32 @@ export const authorizedRepresentativeApi = {
     )
     return response.data
   },
+  create: async (customerId: string, request: RepresentativeRegistrationRequest): Promise<AuthorizedRepresentative> => {
+    const response = await api.post<AuthorizedRepresentative>('/authorized-representatives', request, {
+      params: { customerId },
+    })
+    return response.data
+  },
   findByCustomer: async (customerId: string): Promise<AuthorizedRepresentative[]> => {
     const response = await api.get<AuthorizedRepresentative[]>(`/authorized-representatives/customer/${customerId}`)
+    return response.data
+  },
+  list: async (customerId?: string): Promise<AuthorizedRepresentative[]> => {
+    const response = await api.get<AuthorizedRepresentative[]>('/authorized-representatives', {
+      params: customerId ? { customerId } : undefined,
+    })
     return response.data
   },
   getById: async (id: string): Promise<AuthorizedRepresentative> => {
     const response = await api.get<AuthorizedRepresentative>(`/authorized-representatives/${id}`)
     return response.data
+  },
+  update: async (id: string, request: RepresentativeRegistrationRequest): Promise<AuthorizedRepresentative> => {
+    const response = await api.put<AuthorizedRepresentative>(`/authorized-representatives/${id}`, request)
+    return response.data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/authorized-representatives/${id}`)
   },
   createAuthorization: async (representativeId: string, request: AuthorizationCreateRequest, workerId: number): Promise<Authorization> => {
     const response = await api.post<Authorization>(
@@ -1062,17 +1296,9 @@ export const authorizedRepresentativeApi = {
     )
     return response.data
   },
-  verifyForTransaction: async (documentNumber: string, operationDid: string, amount?: number): Promise<{ authorized: boolean; representativeId?: string; authorizationId?: string }> => {
-    const response = await api.post(
-      '/authorized-representatives/verify-for-transaction',
-      null,
-      { params: { documentNumber, operationDid, amount } }
-    )
-    return response.data
-  },
-  recordTransaction: async (representativeId: string, authorizationId: string, transactionId: string, workerId: string, branchId: string): Promise<void> => {
+  recordTransaction: async (representativeId: string, action: string, transactionId?: string): Promise<void> => {
     await api.post('/authorized-representatives/record-transaction', null, {
-      params: { representativeId, authorizationId, transactionId, workerId, branchId }
+      params: { representativeId, action, transactionId }
     })
   },
   suspendAuthorization: async (authorizationId: string, workerId: number, reason: string): Promise<Authorization> => {
@@ -1189,6 +1415,15 @@ export interface ShipmentCreateRequest {
   sealNumber: string
 }
 
+export interface ShipmentUpdateRequest {
+  fromBranchId: string
+  toBranchId: string
+  deliveryDate?: string
+  notes?: string
+  carrierName: string
+  sealNumber: string
+}
+
 /**
  * AI review (Codex PR #187 P1): backend ShipmentRequest entity mezonevek ELTERNEK
  * a frontend ShipmentRequest interface-tol. A normalizer leforditja a backend
@@ -1293,16 +1528,24 @@ export const shipmentRequestApi = {
     const response = await api.post<Record<string, unknown>>('/shipments', payload)
     return normalizeShipmentRequest(response.data)
   },
-  /**
-   * @deprecated Sourcery PR #180 + PR #187 improvement: backend
-   *   `/shipment-requests/{}/prepare` NEM letezik. Promise<never> return-tipus
-   *   TypeScript compile-time jelzesre.
-   */
-  prepare: async (_requestId: string, _sourceCashDeskId: string, _targetCashDeskId: string, _workerId: string): Promise<never> => {
-    throw new Error('shipmentRequestApi.prepare() DEPRECATED: backend /shipment-requests/{}/prepare endpoint nem letezik.')
-  },
   submit: async (requestId: string): Promise<ShipmentRequest> => {
     const response = await api.post<Record<string, unknown>>(`/shipments/${requestId}/submit`)
+    return normalizeShipmentRequest(response.data)
+  },
+  get: async (requestId: string): Promise<ShipmentRequest> => {
+    const response = await api.get<Record<string, unknown>>(`/shipments/${requestId}`)
+    return normalizeShipmentRequest(response.data)
+  },
+  update: async (requestId: string, request: ShipmentUpdateRequest): Promise<ShipmentRequest> => {
+    const payload = {
+      fromBranchId: request.fromBranchId,
+      toBranchId: request.toBranchId,
+      deliveryDate: request.deliveryDate || undefined,
+      notes: request.notes?.trim() || undefined,
+      carrierName: request.carrierName.trim(),
+      sealNumber: request.sealNumber.trim(),
+    }
+    const response = await api.put<Record<string, unknown>>(`/shipments/${requestId}`, payload)
     return normalizeShipmentRequest(response.data)
   },
   // Fix 2026-04-24: a backend /api/v1/shipments endpoint-ot hasznalja.
@@ -1350,6 +1593,14 @@ export const shipmentRequestApi = {
       { params: { workerId, reason } }
     )
     return response.data
+  },
+  deliver: async (requestId: string): Promise<ShipmentRequest> => {
+    const response = await api.post<Record<string, unknown>>(`/shipments/${requestId}/deliver`)
+    return normalizeShipmentRequest(response.data)
+  },
+  cancel: async (requestId: string): Promise<ShipmentRequest> => {
+    const response = await api.post<Record<string, unknown>>(`/shipments/${requestId}/cancel`)
+    return normalizeShipmentRequest(response.data)
   }
 }
 
@@ -1523,6 +1774,21 @@ export const transferApi = {
   }
 }
 
+// ================== SEAL NUMBER API ==================
+
+export interface SealNumberPreview {
+  sealNumber: string
+}
+
+export const sealNumberApi = {
+  getNext: async (branchCode: string): Promise<SealNumberPreview> => {
+    const response = await api.get<SealNumberPreview>('/seal-numbers/next', {
+      params: { branchCode },
+    })
+    return response.data
+  },
+}
+
 // ================== HANDOVER SHEET API ==================
 
 export interface CurrencyAmounts {
@@ -1645,6 +1911,18 @@ export const receiptApi = {
   },
   print: async (id: string): Promise<void> => {
     await api.post(`/receipts/${id}/print`)
+  },
+  downloadTransactionPdf: async (transactionId: string | number): Promise<Blob> => {
+    const response = await api.get<Blob>(`/receipts/transaction/${transactionId}/pdf`, { responseType: 'blob' })
+    return response.data
+  },
+  downloadTransactionEscPos: async (transactionId: string | number): Promise<Blob> => {
+    const response = await api.get<Blob>(`/receipts/transaction/${transactionId}/escpos`, { responseType: 'blob' })
+    return response.data
+  },
+  downloadClosingPdf: async (closingId: string): Promise<Blob> => {
+    const response = await api.get<Blob>(`/receipts/closing/${closingId}/pdf`, { responseType: 'blob' })
+    return response.data
   }
 }
 

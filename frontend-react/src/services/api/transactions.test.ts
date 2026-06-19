@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { transactionApi, transferApi } from './transactions'
+import { authorizedRepresentativeApi, closingWizardApi, customerApi, dailySessionApi, sessionOpenApi, transactionApi, transferApi } from './transactions'
 import { api } from './client'
 
 vi.mock('./client', () => {
@@ -20,6 +20,8 @@ vi.mock('./client', () => {
 const mockApi = api as unknown as {
   post: ReturnType<typeof vi.fn>
   get: ReturnType<typeof vi.fn>
+  put: ReturnType<typeof vi.fn>
+  delete: ReturnType<typeof vi.fn>
 }
 
 const mockTransaction = {
@@ -172,6 +174,95 @@ describe('transactionApi', () => {
   })
 })
 
+describe('customerApi', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('search: uses POS-compatible /customers query endpoint for name or document search', async () => {
+    mockApi.get.mockResolvedValue({ data: [] })
+
+    await customerApi.search('123456AB')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/customers', { params: { query: '123456AB' } })
+  })
+
+  it('getByIdCard: calls the id-card lookup endpoint', async () => {
+    mockApi.get.mockResolvedValue({ data: { id: 77, name: 'Teszt Ügyfél' } })
+
+    await customerApi.getByIdCard('123456AB')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/customers/id-card/123456AB')
+  })
+
+  it('getByPassport: calls the passport lookup endpoint', async () => {
+    mockApi.get.mockResolvedValue({ data: { id: 88, name: 'Passport Ügyfél' } })
+
+    await customerApi.getByPassport('PA123456')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/customers/passport/PA123456')
+  })
+
+  it('merge: calls POST /customers/merge with primary and duplicate ids', async () => {
+    mockApi.post.mockResolvedValue({ data: { id: 42, name: 'Elsődleges ügyfél' } })
+
+    await customerApi.merge(42, 99)
+
+    expect(mockApi.post).toHaveBeenCalledWith('/customers/merge', { primaryId: 42, duplicateId: 99 })
+  })
+})
+
+describe('authorizedRepresentativeApi', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('list: calls the top-level GET /authorized-representatives endpoint', async () => {
+    mockApi.get.mockResolvedValue({ data: [] })
+
+    await authorizedRepresentativeApi.list()
+
+    expect(mockApi.get).toHaveBeenCalledWith('/authorized-representatives', { params: undefined })
+  })
+
+  it('list: passes optional customerId filter to GET /authorized-representatives', async () => {
+    mockApi.get.mockResolvedValue({ data: [] })
+
+    await authorizedRepresentativeApi.list('123')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/authorized-representatives', { params: { customerId: '123' } })
+  })
+
+  it('create: calls legacy POST /authorized-representatives with customerId param', async () => {
+    const created = {
+      id: 'rep-1',
+      customerId: 123,
+      fullName: 'Teszt Meghatalmazott',
+      documentNumber: 'AB123456',
+      isActive: true,
+      registeredAt: '2026-06-18T10:00:00',
+    }
+    mockApi.post.mockResolvedValue({ data: created })
+
+    const result = await authorizedRepresentativeApi.create('123', {
+      name: 'Teszt Meghatalmazott',
+      documentType: 'Személyi igazolvány',
+      documentNumber: 'AB123456',
+      authorizationStart: '2026-06-18',
+    })
+
+    expect(mockApi.post).toHaveBeenCalledWith('/authorized-representatives', {
+      name: 'Teszt Meghatalmazott',
+      documentType: 'Személyi igazolvány',
+      documentNumber: 'AB123456',
+      authorizationStart: '2026-06-18',
+    }, {
+      params: { customerId: '123' },
+    })
+    expect(result).toEqual(created)
+  })
+})
+
 describe('transferApi storno contract', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -210,6 +301,124 @@ describe('transferApi storno contract', () => {
   })
 })
 
+describe('closingWizardApi report contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('getReport: calls GET /closing-wizard/{wizardId}/report', async () => {
+    mockApi.get.mockResolvedValue({
+      data: {
+        wizardId: 'wizard-1',
+        branchName: 'Korut',
+        closingDate: '2026-06-18',
+        closingType: 'DAILY',
+        transactionCount: 7,
+        inventory: [{ currencyCode: 'HUF', currentBalance: 620000 }],
+      },
+    })
+
+    const result = await closingWizardApi.getReport('wizard-1')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/closing-wizard/wizard-1/report')
+    expect(result.branchName).toBe('Korut')
+    expect(result.inventory?.[0]?.currencyCode).toBe('HUF')
+  })
+
+  it('calculateDifferences: calls POST /closing-wizard/{wizardId}/differences with physical counts', async () => {
+    mockApi.post.mockResolvedValue({
+      data: [
+        {
+          currencyCode: 'HUF',
+          expected: 100000,
+          actual: 120000,
+          difference: 20000,
+          status: 'DISCREPANCY',
+        },
+      ],
+    })
+
+    const result = await closingWizardApi.calculateDifferences('wizard-1', { HUF: 120000 })
+
+    expect(mockApi.post).toHaveBeenCalledWith('/closing-wizard/wizard-1/differences', { HUF: 120000 })
+    expect(result[0]?.status).toBe('DISCREPANCY')
+  })
+})
+
+describe('dailySessionApi closing validation contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('validateClosing: calls GET /daily-sessions/validate-closing', async () => {
+    mockApi.get.mockResolvedValue({
+      data: {
+        validationDate: '2026-06-18',
+        errorCode: 0,
+        errorMessage: 'Minden címletezés rendben',
+        allValid: true,
+        currencyDenominationOk: true,
+        handlingFeeDenominationOk: true,
+        westernUnionDenominationOk: true,
+        vatDenominationOk: true,
+        ecommerceDenominationOk: true,
+      },
+    })
+
+    const result = await dailySessionApi.validateClosing()
+
+    expect(mockApi.get).toHaveBeenCalledWith('/daily-sessions/validate-closing')
+    expect(result.allValid).toBe(true)
+  })
+})
+
+describe('sessionOpenApi backend contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('open: calls POST /sessions/open with worker and branch identifiers', async () => {
+    mockApi.post.mockResolvedValue({
+      data: {
+        sessionId: 42,
+        branchId: '11111111-1111-1111-1111-111111111111',
+        workerId: 77,
+        sessionDate: '2026-06-19',
+        status: 'OPEN',
+      },
+    })
+
+    const result = await sessionOpenApi.open({
+      workerId: 77,
+      branchId: '11111111-1111-1111-1111-111111111111',
+    })
+
+    expect(mockApi.post).toHaveBeenCalledWith('/sessions/open', {
+      workerId: 77,
+      branchId: '11111111-1111-1111-1111-111111111111',
+    })
+    expect(result.sessionId).toBe(42)
+  })
+
+  it('getOpeningBalance: calls GET /sessions/opening-balance/{sessionId}', async () => {
+    mockApi.get.mockResolvedValue({ data: { HUF: 125000, EUR: 500 } })
+
+    const result = await sessionOpenApi.getOpeningBalance(42)
+
+    expect(mockApi.get).toHaveBeenCalledWith('/sessions/opening-balance/42')
+    expect(result.HUF).toBe(125000)
+  })
+
+  it('validateOpen: calls GET /sessions/validate-open/{branchId}', async () => {
+    mockApi.get.mockResolvedValue({ data: ['Van nyitott zárási eltérés.'] })
+
+    const result = await sessionOpenApi.validateOpen('11111111-1111-1111-1111-111111111111')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/sessions/validate-open/11111111-1111-1111-1111-111111111111')
+    expect(result).toEqual(['Van nyitott zárási eltérés.'])
+  })
+})
+
 import { receiptApi } from './transactions'
 
 describe('receiptApi cancelled transaction receipt', () => {
@@ -237,6 +446,36 @@ describe('receiptApi cancelled transaction receipt', () => {
 
     expect(mockApi.post).toHaveBeenCalledWith('/receipts/cancelled-transaction', request)
     expect(result.receiptType).toBe('CANCELLED_TRANSACTION')
+  })
+
+  it('calls GET /receipts/transaction/:id/pdf as blob', async () => {
+    const blob = new Blob(['pdf'], { type: 'application/pdf' })
+    mockApi.get.mockResolvedValue({ data: blob })
+
+    const result = await receiptApi.downloadTransactionPdf(42)
+
+    expect(mockApi.get).toHaveBeenCalledWith('/receipts/transaction/42/pdf', { responseType: 'blob' })
+    expect(result).toBe(blob)
+  })
+
+  it('calls GET /receipts/transaction/:id/escpos as blob', async () => {
+    const blob = new Blob(['escpos'], { type: 'application/octet-stream' })
+    mockApi.get.mockResolvedValue({ data: blob })
+
+    const result = await receiptApi.downloadTransactionEscPos(42)
+
+    expect(mockApi.get).toHaveBeenCalledWith('/receipts/transaction/42/escpos', { responseType: 'blob' })
+    expect(result).toBe(blob)
+  })
+
+  it('calls GET /receipts/closing/:closingId/pdf as blob', async () => {
+    const blob = new Blob(['closing'], { type: 'application/pdf' })
+    mockApi.get.mockResolvedValue({ data: blob })
+
+    const result = await receiptApi.downloadClosingPdf('closing-1')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/receipts/closing/closing-1/pdf', { responseType: 'blob' })
+    expect(result).toBe(blob)
   })
 })
 
@@ -291,6 +530,35 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
     const result = await shipmentRequestApi.submit('shipment-1')
     expect(mockApi.post).toHaveBeenCalledWith('/shipments/shipment-1/submit')
     expect(result.requestStatus).toBe('SUBMITTED')
+  })
+
+  it('get: a /shipments/{id} detail endpointot hivja', async () => {
+    mockApi.get.mockResolvedValue({ data: { id: 'shipment-1', status: 'APPROVED' } })
+    const result = await shipmentRequestApi.get('shipment-1')
+    expect(mockApi.get).toHaveBeenCalledWith('/shipments/shipment-1')
+    expect(result.requestStatus).toBe('APPROVED')
+  })
+
+  it('update: a PUT /shipments/{id} endpointot hivja DRAFT szerkeszteshez', async () => {
+    mockApi.put.mockResolvedValue({ data: { id: 'shipment-1', status: 'DRAFT', notes: 'uj megjegyzes' } })
+    const result = await shipmentRequestApi.update('shipment-1', {
+      fromBranchId: 'BR-A',
+      toBranchId: 'BR-B',
+      deliveryDate: '2026-06-20',
+      notes: ' uj megjegyzes ',
+      carrierName: ' Teszt Szallito ',
+      sealNumber: ' PL-999 ',
+    })
+
+    expect(mockApi.put).toHaveBeenCalledWith('/shipments/shipment-1', {
+      fromBranchId: 'BR-A',
+      toBranchId: 'BR-B',
+      deliveryDate: '2026-06-20',
+      notes: 'uj megjegyzes',
+      carrierName: 'Teszt Szallito',
+      sealNumber: 'PL-999',
+    })
+    expect(result.requestStatus).toBe('DRAFT')
   })
 
   it('findByStatus: a /shipments endpoint-ot hivja status param-mal', async () => {
@@ -358,5 +626,19 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
         params: expect.objectContaining({ workerId: 'worker-1', reason: 'teszt ok' })
       })
     )
+  })
+
+  it('deliver: a /shipments/{id}/deliver workflow endpointot hivja', async () => {
+    mockApi.post.mockResolvedValue({ data: { id: 'shipment-1', status: 'DELIVERED' } })
+    const result = await shipmentRequestApi.deliver('shipment-1')
+    expect(mockApi.post).toHaveBeenCalledWith('/shipments/shipment-1/deliver')
+    expect(result.requestStatus).toBe('DELIVERED')
+  })
+
+  it('cancel: a /shipments/{id}/cancel workflow endpointot hivja', async () => {
+    mockApi.post.mockResolvedValue({ data: { id: 'shipment-1', status: 'CANCELLED' } })
+    const result = await shipmentRequestApi.cancel('shipment-1')
+    expect(mockApi.post).toHaveBeenCalledWith('/shipments/shipment-1/cancel')
+    expect(result.requestStatus).toBe('CANCELLED')
   })
 })

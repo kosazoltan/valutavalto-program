@@ -33,7 +33,10 @@ export function shouldRequireDailySession(appMode: AppMode): boolean {
 export default function MainLayout() {
   const { t } = useTranslation()
   const featureFlags = useFeatureFlags()
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === 'undefined') return true
+    return window.matchMedia('(min-width: 768px)').matches
+  })
   const [sessionChecking, setSessionChecking] = useState(true)
   const [sessionReady, setSessionReady] = useState(false)
   const [sessionInfo, setSessionInfo] = useState<DailySession | null>(null)
@@ -128,8 +131,14 @@ export default function MainLayout() {
     navigate('/login')
   }
 
+  const closeMobileSidebar = () => {
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+      setSidebarOpen(false)
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-form-bg flex">
+    <div className="min-h-screen bg-form-bg flex flex-col md:flex-row">
       {/* Napnyitás hiba dialógus — csak ha az automatikus nyitás nem sikerült */}
       {showSessionDialog && !sessionReady && sessionError === 'redirect-day-open' && (
         <Navigate to="/cashdesk/day-open" replace />
@@ -186,21 +195,19 @@ export default function MainLayout() {
       {/* MODERN Sidebar */}
       <aside
         className={`${
-          sidebarOpen ? 'w-64' : 'w-16'
+          sidebarOpen ? 'w-full md:w-64' : 'h-12 w-full overflow-hidden md:h-auto md:w-16 md:overflow-visible'
         } bg-secondary-900 text-white transition-all duration-300 ease-in-out flex flex-col shadow-xl`}
       >
         {/* Logo/Header */}
         <div className="h-12 px-3 flex items-center justify-between border-b border-secondary-700">
-          {sidebarOpen && (
-            <div className="flex items-center gap-1.5">
-              <Building2 size={18} className="text-accent-400" />
-              <div className="flex flex-col leading-tight">
-                <span className="font-bold text-sm">{t('layout.appName')}</span>
-                {/* FR-FM-01 (b5-fomenu hibalista): verziószám a fejlécen. */}
-                <span className="text-[10px] text-secondary-300 font-mono">v{import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__}</span>
-              </div>
+          <div className={`${sidebarOpen ? 'flex' : 'flex md:hidden'} items-center gap-1.5`}>
+            <Building2 size={18} className="text-accent-400" />
+            <div className="flex flex-col leading-tight">
+              <span className="font-bold text-sm">{t('layout.appName')}</span>
+              {/* FR-FM-01 (b5-fomenu hibalista): verziószám a fejlécen. */}
+              <span className="text-[10px] text-secondary-300 font-mono">v{import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__}</span>
             </div>
-          )}
+          </div>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2 hover:bg-secondary-700 rounded-lg transition-colors"
@@ -210,7 +217,7 @@ export default function MainLayout() {
         </div>
 
         {/* Navigation Groups */}
-        <nav className="flex-1 py-2 overflow-y-auto">
+        <nav className={`${sidebarOpen ? 'block' : 'hidden md:block'} flex-1 py-2 overflow-y-auto`}>
           {menuGroups
             .filter((group) => isMenuGroupVisible(group, menuVisibilityCtx))
             .map((group) => (
@@ -229,6 +236,7 @@ export default function MainLayout() {
                   // v2.5.54 #11 + Codex #904: `end` CSAK a prefix-szülő útvonalakra (pl. /rates),
                   // hogy ne ütközzön a /rates/history-val; a sima menüpontok szülő-highlightja megmarad.
                   end={parentPrefixPaths.has(item.path)}
+                  onClick={closeMobileSidebar}
                   className={({ isActive }) =>
                     `flex items-center gap-2 px-4 py-1.5 text-xs font-medium transition-all duration-200 ${
                       isActive 
@@ -246,7 +254,7 @@ export default function MainLayout() {
         </nav>
 
         {/* User info & Logout */}
-        <div className="border-t border-secondary-700 p-2">
+        <div className={`${sidebarOpen ? 'block' : 'hidden md:block'} border-t border-secondary-700 p-2`}>
           {sidebarOpen && user && (
             <div className="mb-2 px-2 py-1.5 bg-secondary-800 rounded-lg">
               <div className="flex items-center gap-1.5">
@@ -273,8 +281,8 @@ export default function MainLayout() {
           zsugorodását, így a .app-print-content (overflow-auto) lesz az EGYETLEN vízszintes scroll. */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* MODERN Header Bar */}
-        <header className="no-print h-10 bg-white border-b border-form-border flex items-center justify-between px-4 shadow-sm">
-          <div className="flex items-center gap-3">
+        <header className="no-print min-h-10 bg-white border-b border-form-border flex flex-col gap-2 px-4 py-2 shadow-sm md:flex-row md:items-center md:justify-between md:py-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             <div className="text-xs">
               <span className="text-secondary-500">{t('layout.branchLabel')}</span>
               <span className="ml-1 font-semibold text-secondary-900">{user?.branchName || t('layout.centralFallback')}</span>
@@ -294,7 +302,7 @@ export default function MainLayout() {
             )}
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 flex-wrap items-center gap-4">
             {/* v2.1.4: Uton levo csomagok badge */}
             <TransitBadge />
 
@@ -340,8 +348,8 @@ export default function MainLayout() {
         </div>
 
         {/* MODERN Status bar */}
-        <div className="status-bar">
-          <div className="flex items-center gap-4">
+        <div className="status-bar flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-4">
             <span className="flex items-center gap-2">
               <span className="w-2 h-2 bg-success-500 rounded-full animate-pulse"></span>
               <span className="text-success-700 font-medium">{t('layout.online')}</span>

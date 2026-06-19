@@ -18,10 +18,12 @@ const mocks = vi.hoisted(() => ({
   dailySessionIsOpen: vi.fn(),
   cashBalanceList: vi.fn(),
   createCancelledTransaction: vi.fn(),
+  apiGet: vi.fn(),
   apiPost: vi.fn(),
   printReceipt: vi.fn(),
   // FK-KEZDIJ PR #1103: konfig-lekérés — elutasítva (offline ág, nincs auto-díj).
   handlingFeeConfigGet: vi.fn().mockRejectedValue(new Error('not mocked')),
+  discountThresholdApply: vi.fn(),
   toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() },
 }))
 
@@ -43,10 +45,11 @@ vi.mock('../../services/api/index', () => ({
   // FK-KEZDIJ PR #1103: a konfig-lekérés mockja — elutasítva = offline viselkedés
   // (nincs auto-díj); a print-tesztek viselkedését nem érinti.
   handlingFeeConfigApi: { get: mocks.handlingFeeConfigGet },
+  discountThresholdApi: { apply: mocks.discountThresholdApply },
 }))
 
 vi.mock('../../services/api/client', () => ({
-  api: { post: mocks.apiPost },
+  api: { get: mocks.apiGet, post: mocks.apiPost },
 }))
 
 vi.mock('../../stores/authStore', () => {
@@ -154,8 +157,26 @@ describe('CashierTransactionPage — sikertelen nyomtatásnál a bizonylat-modal
     mocks.exchangeRateList.mockResolvedValue([EUR_RATE])
     mocks.getCashierRateQuota.mockResolvedValue({ limit: 5, used: 0, remaining: 5, minAmountHuf: 400000 })
     mocks.cashBalanceList.mockResolvedValue([{ currencyCode: 'HUF', currentBalance: 10_000_000 }])
+    mocks.apiGet.mockResolvedValue({
+      data: {
+        discountPercent: 3,
+        requiredLevel: 'SUPERVISOR',
+        workerLevel: 'MANAGER',
+        maxAllowedPercent: 15,
+        exceedsMaxCap: false,
+        canApprove: true,
+      },
+    })
     mocks.apiPost.mockResolvedValue({ data: { requiresApproval: false } })
     mocks.buy.mockResolvedValue({ receiptNumber: 'V076100001' })
+    mocks.discountThresholdApply.mockImplementation((_hufAmount: number, originalFee: number) =>
+      Promise.resolve({
+        originalFee,
+        adjustedFee: originalFee,
+        discountCode: '',
+        discountName: 'Nincs automatikus kedvezmény',
+      }),
+    )
     electronWindow.electronAPI = { printReceipt: mocks.printReceipt }
   })
 
@@ -218,4 +239,57 @@ describe('CashierTransactionPage — sikertelen nyomtatásnál a bizonylat-modal
     expect(screen.getByText('Mégse (ESC)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Nyomtatás' })).toBeEnabled()
   }, 15000)
+
+  it('F9 kedvezmény dialógus backend required-level és validate hívással alkalmaz kedvezményt', async () => {
+    render(<CashierTransactionPage />)
+
+    fireEvent.keyDown(document, { key: 'F9', code: 'F9' })
+    await screen.findByText('Kezelési díj / Kedvezmény')
+
+    const discountInput = screen.getAllByRole('spinbutton')[1]!
+    fireEvent.change(discountInput, { target: { value: '3' } })
+
+    await waitFor(() => expect(mocks.apiGet).toHaveBeenCalledWith(
+      '/discount-approval/required-level',
+      { params: { discountPercent: 3 } },
+    ))
+    expect(await screen.findByTestId('discount-approval-info')).toHaveTextContent('Szükséges szint: SUPERVISOR')
+
+    fireEvent.click(screen.getByText('Alkalmaz'))
+    await waitFor(() => expect(mocks.apiPost).toHaveBeenCalledWith(
+      '/discount-approval/validate',
+      null,
+      { params: { discountPercent: 3 } },
+    ))
+  })
+
+  it('automatikus kezelési díj után a backend discount-threshold apply eredményét mutatja', async () => {
+    mocks.handlingFeeConfigGet.mockResolvedValueOnce({
+      feeType: 'BRACKET',
+      perMilleRate: 0,
+      perMilleMaxAmount: null,
+      brackets: [{ bracketOrder: 1, upperLimit: 999_999_999, feeAmount: 1000, active: true }],
+    })
+    mocks.discountThresholdApply.mockResolvedValueOnce({
+      originalFee: 1000,
+      adjustedFee: 500,
+      discountCode: 'NAGY_OSSZEG',
+      discountName: 'Nagy összegű kedvezmény',
+    })
+
+    render(<CashierTransactionPage />)
+
+    const currencyInput = await screen.findByTestId('currency-input-0')
+    await waitFor(() => expect(currencyInput).toHaveAttribute('data-rates', '1'))
+
+    fireEvent.change(currencyInput, { target: { value: 'EUR' } })
+    fireEvent.change(screen.getAllByPlaceholderText('0')[0]!, { target: { value: '100' } })
+
+    await waitFor(() => expect(mocks.discountThresholdApply).toHaveBeenCalledWith(39_150, 1000))
+    fireEvent.keyDown(document, { key: 'F9', code: 'F9' })
+    await screen.findByText('Kezelési díj / Kedvezmény')
+
+    expect(await screen.findByTestId('auto-fee-discount')).toHaveTextContent('Nagy összegű kedvezmény')
+    expect(screen.getAllByRole('spinbutton')[0]).toHaveValue(500)
+  })
 })

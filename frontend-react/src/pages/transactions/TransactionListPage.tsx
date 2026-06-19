@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, Plus, FileText, Printer, Eye, XCircle, ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react'
-import { transactionApi, type Transaction, type TransactionTypeName } from '../../services/api/transactions'
+import { Search, Plus, FileText, Printer, Eye, XCircle, ChevronLeft, ChevronRight, Loader2, RefreshCw, FileDown } from 'lucide-react'
+import { receiptApi, transactionApi, type Transaction, type TransactionTypeName } from '../../services/api/transactions'
 import type { PagedResponse } from '../../services/api/client'
 import { toast } from '../../components/ui/toaster'
 import { isElectron, getElectronAPI } from '../../utils/electron'
@@ -37,6 +37,17 @@ function formatDate(dateStr: string, timeStr?: string): string {
 function formatNumber(n: number | null | undefined, decimals = 2): string {
   if (n === null || n === undefined) return '—'
   return n.toLocaleString('hu-HU', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+}
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }
 
 export default function TransactionListPage() {
@@ -172,6 +183,30 @@ export default function TransactionListPage() {
   const handleSearch = () => {
     setPage(0)
     fetchTransactions()
+  }
+
+  const downloadReceiptPdf = async (tx: Transaction) => {
+    if (tx.id <= 0) return
+    try {
+      const blob = await receiptApi.downloadTransactionPdf(tx.id)
+      downloadBlob(blob, `bizonylat-${tx.id}.pdf`)
+      toast.success('Bizonylat PDF letöltése elindítva')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Nem sikerült a bizonylat PDF letöltése'
+      toast.error(msg)
+    }
+  }
+
+  const downloadReceiptEscPos = async (tx: Transaction) => {
+    if (tx.id <= 0) return
+    try {
+      const blob = await receiptApi.downloadTransactionEscPos(tx.id)
+      downloadBlob(blob, `bizonylat-${tx.id}.bin`)
+      toast.success('ESC/POS bizonylat letöltése elindítva')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Nem sikerült az ESC/POS bizonylat letöltése'
+      toast.error(msg)
+    }
   }
 
   return (
@@ -379,8 +414,19 @@ export default function TransactionListPage() {
                         </button>
                         <button
                           className="toolbar-button"
-                          title="Nyomtatás"
-                          data-testid={`print-tx-${tx.id}`}
+                          title={tx.id > 0 ? 'Bizonylat PDF letöltés' : 'Bizonylat PDF csak szinkronizált tranzakcióhoz érhető el'}
+                          onClick={() => void downloadReceiptPdf(tx)}
+                          disabled={tx.id <= 0}
+                          data-testid={`receipt-pdf-tx-${tx.id}`}
+                        >
+                          <FileDown size={14} />
+                        </button>
+                        <button
+                          className="toolbar-button"
+                          title={tx.id > 0 ? 'ESC/POS bizonylat letöltés' : 'ESC/POS csak szinkronizált tranzakcióhoz érhető el'}
+                          onClick={() => void downloadReceiptEscPos(tx)}
+                          disabled={tx.id <= 0}
+                          data-testid={`receipt-escpos-tx-${tx.id}`}
                         >
                           <Printer size={14} />
                         </button>

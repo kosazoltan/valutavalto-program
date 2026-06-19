@@ -18,7 +18,11 @@ vi.mock('react-router-dom', async () => {
 const mockGetById = vi.fn()
 const mockUpdate = vi.fn()
 const mockGetByCategory = vi.fn()
+const mockApiGet = vi.fn()
 vi.mock('../../services/api/index', () => ({
+  api: {
+    get: (...args: unknown[]) => mockApiGet(...args),
+  },
   branchApi: {
     getById: (...args: unknown[]) => mockGetById(...args),
     update: (...args: unknown[]) => mockUpdate(...args),
@@ -71,6 +75,40 @@ describe('BranchEditPage — FK-022 Iroda adatainak szerkesztése', () => {
       { id: 'r1', code: 'SZEGED', name: 'Szeged', nameHu: 'Szeged' },
       { id: 'r2', code: 'PECS', name: 'Pécs', nameHu: 'Pécs' },
     ])
+    mockApiGet.mockReset().mockImplementation((path: string) => {
+      if (path === '/branches/b-1/path') {
+        return Promise.resolve({
+          data: [
+            { id: 'root-1', code: 'HQ', name: 'Központ' },
+            { id: 'vault-1', code: 'SZG-ERT', name: 'Szeged Értéktár' },
+            ACTIVE_BRANCH,
+          ],
+        })
+      }
+      if (path === '/branches/b-1/children') {
+        return Promise.resolve({
+          data: [
+            { id: 'child-1', code: 'BR028', name: 'Szeged Árkád' },
+          ],
+        })
+      }
+      if (path === '/admin/branches/b-1') {
+        return Promise.resolve({
+          data: {
+            id: 'b-1',
+            code: 'BR027',
+            name: 'Szeged Tesco',
+            active: true,
+            companyName: 'Exclusive Best Change',
+            workerCount: 7,
+            totalInventoryHuf: 1234567,
+            lastSyncAt: '2026-06-18T08:15:00',
+            openingHours: 'H-P: 08:00-18:00',
+          },
+        })
+      }
+      return Promise.resolve({ data: [] })
+    })
   })
 
   it('FR-1: a form 5 logikai csoportban, a meglévő iroda adataival előtöltve jelenik meg', async () => {
@@ -86,6 +124,31 @@ describe('BranchEditPage — FK-022 Iroda adatainak szerkesztése', () => {
     expect(screen.getByLabelText(/Terület \/ Régió/)).toHaveValue('SZEGED')
     expect(screen.getByRole('checkbox', { name: /ÁFA-visszatérítés/ })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: /Vasárnap zárva/ })).toBeChecked()
+  })
+
+  it('megjeleníti a backend szervezeti útvonalat és közvetlen alirodákat', async () => {
+    renderPage()
+    await waitLoaded()
+
+    expect(mockApiGet).toHaveBeenCalledWith('/branches/b-1/path')
+    expect(mockApiGet).toHaveBeenCalledWith('/branches/b-1/children')
+    expect(screen.getByText('Szervezeti kapcsolat')).toBeInTheDocument()
+    expect(screen.getByText('HQ - Központ')).toBeInTheDocument()
+    expect(screen.getByText('SZG-ERT - Szeged Értéktár')).toBeInTheDocument()
+    expect(screen.getByText('BR027 - Szeged Tesco')).toBeInTheDocument()
+    expect(screen.getByText('BR028 - Szeged Árkád')).toBeInTheDocument()
+  })
+
+  it('megjeleníti a CompanyAdminController branch részlet statisztikáit', async () => {
+    renderPage()
+    await waitLoaded()
+
+    expect(mockApiGet).toHaveBeenCalledWith('/admin/branches/b-1')
+    expect(screen.getByText('Admin statisztika')).toBeInTheDocument()
+    expect(screen.getByText('Exclusive Best Change')).toBeInTheDocument()
+    expect(screen.getByText('7 fő')).toBeInTheDocument()
+    expect(screen.getByText('1 234 567 Ft')).toBeInTheDocument()
+    expect(screen.getByText('H-P: 08:00-18:00')).toBeInTheDocument()
   })
 
   it('FR-3: a pénztár kódja read-only, és nem kerül a mentési payloadba', async () => {

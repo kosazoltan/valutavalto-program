@@ -46,6 +46,11 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     boolean existsByIdAndCompanyId(UUID id, UUID companyId);
 
     /**
+     * Fiók betöltése cég-scope-pal, ha a hívónak magát az entitást kell használnia.
+     */
+    Optional<Branch> findByIdAndCompanyId(UUID id, UUID companyId);
+
+    /**
      * Összes aktív fiók lekérdezése (GLOBALIS - minden ceg).
      *
      * <p><b>FIGYELEM:</b> multi-tenant kontextusban NE hasznald!

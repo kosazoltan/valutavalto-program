@@ -5,6 +5,7 @@ import DashboardPage from './DashboardPage'
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
+  apiGet: vi.fn(),
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -15,37 +16,56 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-vi.mock('../services/api/transactions', () => ({
-  transactionApi: {
-    getDailyTurnover: vi.fn().mockResolvedValue({
-      totalBuyCount: 30,
-      totalSellCount: 17,
-      totalBuyHuf: 8000000,
-      totalSellHuf: 4500000,
-      totalHandlingFees: 25000,
-      totalReversalCount: 3,
-    }),
-    list: vi.fn().mockResolvedValue({
-      // 2026-04-29 v2.3.12 (E-B2 fix): a Dashboard "Ügyfél" oszlop most a `customerName`-et
-      // mutatja (NEM a workerName-et). A mock-ban customerName-t használunk a teszt-asszerzió-hoz.
-      content: [
-        { transactionType: 'BUY', currencyCode: 'EUR', currencyAmount: 500, hufAmount: 195750, customerName: 'Kiss János', workerName: 'KOSA', workerCode: 'KOSA', transactionTime: '10:45:00', status: 'COMPLETED' },
-        { transactionType: 'SELL', currencyCode: 'USD', currencyAmount: 1000, hufAmount: 358200, customerName: 'Nagy Péter', workerName: 'KOSA', workerCode: 'KOSA', transactionTime: '10:32:00', status: 'COMPLETED' },
-        { transactionType: 'BUY', currencyCode: 'GBP', currencyAmount: 200, hufAmount: 91000, customerName: 'Szabó Anna', workerName: 'KOSA', workerCode: 'KOSA', transactionTime: '10:15:00', status: 'COMPLETED' },
-      ],
-      totalElements: 3,
-      totalPages: 1,
-      number: 0,
-      size: 5,
-    }),
-  },
-  customerApi: {
-    getActive: vi.fn().mockResolvedValue([
-      { id: 1, name: 'Kiss János', active: true },
-      { id: 2, name: 'Nagy Péter', active: true },
-    ]),
+vi.mock('../services/api/index', () => ({
+  api: {
+    get: mocks.apiGet,
   },
 }))
+
+function setupApiGet() {
+  mocks.apiGet.mockImplementation((path: string) => {
+      if (path === '/dashboard/summary') {
+        return Promise.resolve({
+          data: {
+            todayVolume: 12500000,
+            openTransactions: 47,
+            activeBranches: 9,
+            alertCount: 3,
+            currencyVolumes: { EUR: 8000000, USD: 4500000 },
+            recentTransactions: [
+              { id: 1, type: 'BUY', currencyCode: 'EUR', amount: 500, hufAmount: 195750, cashierName: 'Kiss János', createdAt: '2026-03-27T10:45:00' },
+              { id: 2, type: 'SELL', currencyCode: 'USD', amount: 1000, hufAmount: 358200, cashierName: 'Nagy Péter', createdAt: '2026-03-27T10:32:00' },
+              { id: 3, type: 'BUY', currencyCode: 'GBP', amount: 200, hufAmount: 91000, cashierName: 'Szabó Anna', createdAt: '2026-03-27T10:15:00' },
+            ],
+            branchSyncStatuses: [],
+          },
+        })
+      }
+      if (path === '/health') {
+        return Promise.resolve({ data: { status: 'UP', db: 'connected', uptime: '1h 2m 3s', version: '2.0.0' } })
+      }
+      if (path === '/health/detailed') {
+        return Promise.resolve({
+          data: {
+            status: 'UP',
+            database: { connected: true, responseTimeMs: 12, activeConnections: 2 },
+            jvm: { heapUsed: 67108864, heapMax: 536870912, threads: 24 },
+          },
+        })
+      }
+      if (path === '/health/info') {
+        return Promise.resolve({
+          data: {
+            name: 'valuta-backend',
+            version: '2.0.0',
+            environment: 'test',
+            javaVersion: '21',
+          },
+        })
+      }
+      return Promise.resolve({ data: [] })
+    })
+}
 
 vi.mock('../services/api/exchange-rates', () => ({
   exchangeRateApi: {
@@ -88,6 +108,7 @@ function renderDashboardPage() {
 describe('DashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    setupApiGet()
   })
 
   it('oldal renderelésének ellenőrzése', () => {
@@ -100,17 +121,34 @@ describe('DashboardPage', () => {
     renderDashboardPage()
     expect(screen.getByText('Mai tranzakciók')).toBeInTheDocument()
     expect(screen.getByText('Mai forgalom')).toBeInTheDocument()
-    expect(screen.getByText('Aktív ügyfelek')).toBeInTheDocument()
-    expect(screen.getByText('Függő foglalók')).toBeInTheDocument()
+    expect(screen.getByText('Aktív irodák')).toBeInTheDocument()
+    expect(screen.getByText('Riasztások')).toBeInTheDocument()
   })
 
   it('KPI értékeket helyesen jeleníti meg', async () => {
     renderDashboardPage()
     await waitFor(() => {
-      expect(screen.getByText('47')).toBeInTheDocument() // totalBuyCount(30) + totalSellCount(17)
-      expect(screen.getByText('12.5M Ft')).toBeInTheDocument() // (8M+4.5M)/1M = 12.5M
-      expect(screen.getByText('3')).toBeInTheDocument() // totalReversalCount
+      expect(screen.getByText('47')).toBeInTheDocument()
+      expect(screen.getByText('12.5M Ft')).toBeInTheDocument()
+      expect(screen.getByText('9')).toBeInTheDocument()
+      expect(screen.getByText('3')).toBeInTheDocument()
     })
+  })
+
+  it('rendszerállapot panelt a health backend endpointokból tölti', async () => {
+    renderDashboardPage()
+
+    await waitFor(() => {
+      expect(mocks.apiGet).toHaveBeenCalledWith('/health')
+      expect(mocks.apiGet).toHaveBeenCalledWith('/health/detailed')
+      expect(mocks.apiGet).toHaveBeenCalledWith('/health/info')
+    })
+    expect(screen.getByText('Rendszerállapot')).toBeInTheDocument()
+    expect(screen.getByText('valuta-backend')).toBeInTheDocument()
+    expect(screen.getByText('connected')).toBeInTheDocument()
+    expect(screen.getByText('12 ms')).toBeInTheDocument()
+    expect(screen.getByText('test')).toBeInTheDocument()
+    expect(screen.getByText(/Java 21/)).toBeInTheDocument()
   })
 
   it('árfolyam táblázatot jeleníti meg', async () => {

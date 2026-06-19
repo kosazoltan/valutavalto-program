@@ -1,0 +1,58 @@
+contract: "NAV zárási eltérés frontend bekötés"
+date: "2026-06-19"
+status: "VÁZLAT"
+
+scope:
+  goal: >
+    A meglévő backend NAV zárási eltérés végpontokhoz célzott, mobilon is
+    használható frontend megjelenítés készítése úgy, hogy a pénztáros a NAV
+    pénztárgépen látott záró HUF összeget ellenőrizhesse, eltérés esetén pedig
+    csak jogosult felhasználó adhasson indokolt jóváhagyást.
+  backend_endpoints:
+    - "POST /api/v1/nav/closings/validate-amount"
+    - "POST /api/v1/nav/closings/{id}/approve-discrepancy"
+
+non_goals:
+  - "NAV zárás automatikus létrehozása a frontendből."
+  - "NAV beküldés automatizálása vagy jóváhagyási szabály enyhítése."
+  - "Backend pénzügyi számítás, jogosultság vagy multi-tenant guard módosítása."
+  - "Cash-register X/Z report vagy fizikai pénztárgép parancs indítása."
+
+preconditions:
+  - "branchId: kötelező, UUID, a kiválasztott NAV zárás branchId értékéből származik."
+  - "date: kötelező, YYYY-MM-DD, a kiválasztott NAV zárás closingDate értékéből származik."
+  - "navAmount: kötelező, véges, nem negatív HUF összeg, legfeljebb 2 tizedesjegy."
+  - "approveDiscrepancy csak validate-amount válasz closingId értékével hívható."
+  - "approveDiscrepancy justification: kötelező, trim után legalább 20 karakter."
+
+postconditions:
+  - "validate-amount nem módosít adatot; a backend readOnly tranzakcióban számol."
+  - "validate-amount válaszban a frontend megjeleníti: NAV összeg, rendszer összeg, eltérés, egyezik-e."
+  - "isMatch=true esetén a UI zöld egyezést mutat, és nem kér indoklást."
+  - "isMatch=false esetén a UI piros eltérést mutat, és külön indoklás mezőt jelenít meg."
+  - "approve-discrepancy siker után a UI újratölti a NAV zárás listát/összesítőt."
+
+invariants:
+  - "A frontend nem számol saját rendszerösszeget, csak a backend eredményét jeleníti meg."
+  - "A frontend nem enged üres vagy 20 karakternél rövidebb indoklást beküldeni."
+  - "A frontend nem hív approve-discrepancy végpontot validációs eredmény nélkül."
+  - "A backend 4xx/5xx hibaüzenetét a meglévő getErrorMessage/getBlobErrorMessage mintával kell kezelni."
+
+error_contracts:
+  - "Hiányzó branchId/date/navAmount -> kliensoldali validációs hiba, nincs HTTP hívás."
+  - "navAmount negatív vagy nem szám -> kliensoldali validációs hiba, nincs HTTP hívás."
+  - "Eltérés + rövid indoklás -> kliensoldali validációs hiba, nincs approve HTTP hívás."
+  - "Backend ResourceNotFound/ValidationException -> toast vagy inline hiba, állapot nem tekinthető jóváhagyottnak."
+  - "Jogosultsági hiba -> inline hiba, nincs retry loop."
+
+behavioral:
+  - "A művelet desktop és 390x844 mobil viewporton nem okozhat vízszintes oldal-overflow-t."
+  - "A validate gomb ismételhető, de folyamatban lévő hívás alatt disabled."
+  - "Az approve gomb csak eltéréses validációs eredmény és érvényes indoklás mellett aktív."
+  - "Auditálhatóság: a frontend nem rejti el a backend által visszaadott closingId/branch/date kontextust."
+
+derived_tests:
+  - "Vitest: navAmount validáció nem hív backendet hibás bemenetre."
+  - "Vitest: validate-amount hívás pontos params értékekkel fut, és megjelenik az eltérés."
+  - "Vitest: approve-discrepancy csak 20+ karakteres indoklással hívódik."
+  - "Playwright: NAV riport mobil viewporton validál, eltérést megjelenít, és nincs vízszintes overflow."

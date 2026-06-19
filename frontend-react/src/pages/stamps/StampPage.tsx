@@ -1,32 +1,75 @@
 import { useState, useEffect, useCallback } from 'react'
-import { FileCheck2, Search, RefreshCw, Plus, Edit2, Trash2, AlertTriangle } from 'lucide-react'
+import { FileCheck2, Search, RefreshCw, Plus, Link as LinkIcon, AlertTriangle } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
 
-interface StampItem {
-  id: string | number
-  stampNumber?: string
-  branchName?: string
-  stampType?: string
-  isUsed?: boolean
+interface StampBatchItem {
+  id: string
+  branchId?: string
+  serialPrefix?: string
+  serialStart?: number
+  serialEnd?: number
+  totalCount?: number
+  usedCount?: number
+  receivedAt?: string
+  receivedBy?: string
+  note?: string
+}
+
+interface StampAssignmentItem {
+  id: string
+  batchId?: string
+  serialNumber?: string
+  transactionId?: number
+  assignedAt?: string
+  assignedBy?: string
+}
+
+interface BatchForm {
+  serialPrefix: string
+  serialStart: string
+  serialEnd: string
+  note: string
+}
+
+interface AssignForm {
+  serialNumber: string
+  transactionId: string
+}
+
+function fmtDate(value?: string): string {
+  if (!value) return '-'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('hu-HU')
 }
 
 export default function StampPage() {
   const { t } = useTranslation()
-  const [items, setItems] = useState<StampItem[]>([])
+  const branchId = useAuthStore((state) => state.worker?.branchId ?? '')
+  const [items, setItems] = useState<StampBatchItem[]>([])
+  const [usedItems, setUsedItems] = useState<StampAssignmentItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [batchForm, setBatchForm] = useState<BatchForm | null>(null)
+  const [assignForm, setAssignForm] = useState<AssignForm | null>(null)
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<StampItem[]>('/stamps')
-      setItems(safeArray<typeof items[0]>(response.data))
+      const [inventoryResponse, usedResponse] = await Promise.all([
+        api.get<StampBatchItem[]>('/stamps/inventory'),
+        api.get<StampAssignmentItem[]>('/stamps/used'),
+      ])
+      setItems(safeArray<StampBatchItem>(inventoryResponse.data))
+      setUsedItems(safeArray<StampAssignmentItem>(usedResponse.data))
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('StampPage', 'Betöltési hiba:', err)
@@ -48,15 +91,74 @@ export default function StampPage() {
     )
   })
 
-  const handleDelete = async (id: string | number) => {
-    if (!confirm('Biztosan törli?')) return
+  const openBatchForm = () => {
+    setBatchForm({ serialPrefix: '', serialStart: '', serialEnd: '', note: '' })
+    setMessage(null)
+    setError(null)
+  }
+
+  const openAssignForm = () => {
+    setAssignForm({ serialNumber: '', transactionId: '' })
+    setMessage(null)
+    setError(null)
+  }
+
+  const saveBatch = async () => {
+    if (!batchForm) return
+    if (!branchId) {
+      setError('Hiányzó iroda azonosító.')
+      return
+    }
+    if (!batchForm.serialPrefix.trim() || !batchForm.serialStart.trim() || !batchForm.serialEnd.trim()) {
+      setError('Előtag, kezdő és záró sorszám megadása kötelező.')
+      return
+    }
+
     try {
-      await api.delete(`/stamps/${id}`)
+      setSaving(true)
+      setError(null)
+      await api.post('/stamps/receive', {
+        branchId,
+        serialPrefix: batchForm.serialPrefix.trim().toUpperCase(),
+        serialStart: Number(batchForm.serialStart),
+        serialEnd: Number(batchForm.serialEnd),
+        note: batchForm.note.trim() || undefined,
+      })
+      setMessage('Matrica batch felvéve.')
+      setBatchForm(null)
       await loadData()
     } catch (err) {
       const msg = getErrorMessage(err)
+      logger.error('StampPage', 'Batch felvételi hiba:', err)
       setError(msg)
-      logger.error('StampPage', 'Törlési hiba:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const assignStamp = async () => {
+    if (!assignForm) return
+    if (!assignForm.serialNumber.trim() || !assignForm.transactionId.trim()) {
+      setError('Matrica sorszám és tranzakció ID megadása kötelező.')
+      return
+    }
+
+    try {
+      setSaving(true)
+      setError(null)
+      await api.post('/stamps/assign', {
+        serialNumber: assignForm.serialNumber.trim(),
+        transactionId: Number(assignForm.transactionId),
+      })
+      setMessage('Matrica hozzárendelve.')
+      setAssignForm(null)
+      await loadData()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('StampPage', 'Hozzárendelési hiba:', err)
+      setError(msg)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -71,11 +173,62 @@ export default function StampPage() {
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button className="form-button-primary flex items-center gap-1">
-            <Plus className="h-4 w-4" />{t('common.new')}
+          <button onClick={openAssignForm} className="form-button flex items-center gap-1">
+            <LinkIcon className="h-4 w-4" />Hozzárendelés
+          </button>
+          <button onClick={openBatchForm} className="form-button-primary flex items-center gap-1">
+            <Plus className="h-4 w-4" />Új batch
           </button>
         </div>
       </div>
+
+      {batchForm && (
+        <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
+          <h2 className="text-base font-semibold">Új matrica batch</h2>
+          <div className="grid gap-3 md:grid-cols-4">
+            <div>
+              <label htmlFor="stamp-prefix" className="form-label">Előtag</label>
+              <input id="stamp-prefix" value={batchForm.serialPrefix} onChange={(e) => setBatchForm((current) => current ? { ...current, serialPrefix: e.target.value } : current)} className="form-input w-full uppercase" />
+            </div>
+            <div>
+              <label htmlFor="stamp-start" className="form-label">Kezdő sorszám</label>
+              <input id="stamp-start" value={batchForm.serialStart} onChange={(e) => setBatchForm((current) => current ? { ...current, serialStart: e.target.value } : current)} className="form-input w-full" inputMode="numeric" />
+            </div>
+            <div>
+              <label htmlFor="stamp-end" className="form-label">Záró sorszám</label>
+              <input id="stamp-end" value={batchForm.serialEnd} onChange={(e) => setBatchForm((current) => current ? { ...current, serialEnd: e.target.value } : current)} className="form-input w-full" inputMode="numeric" />
+            </div>
+            <div>
+              <label htmlFor="stamp-note" className="form-label">Megjegyzés</label>
+              <input id="stamp-note" value={batchForm.note} onChange={(e) => setBatchForm((current) => current ? { ...current, note: e.target.value } : current)} className="form-input w-full" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => void saveBatch()} disabled={saving} className="form-button-primary">{saving ? 'Mentés...' : 'Mentés'}</button>
+            <button type="button" onClick={() => setBatchForm(null)} className="form-button">Mégse</button>
+          </div>
+        </div>
+      )}
+
+      {assignForm && (
+        <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
+          <h2 className="text-base font-semibold">Matrica hozzárendelése tranzakcióhoz</h2>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div>
+              <label htmlFor="stamp-serial" className="form-label">Matrica sorszám</label>
+              <input id="stamp-serial" value={assignForm.serialNumber} onChange={(e) => setAssignForm((current) => current ? { ...current, serialNumber: e.target.value } : current)} className="form-input w-full" placeholder="ABC-123" />
+            </div>
+            <div>
+              <label htmlFor="stamp-transaction" className="form-label">Tranzakció ID</label>
+              <input id="stamp-transaction" value={assignForm.transactionId} onChange={(e) => setAssignForm((current) => current ? { ...current, transactionId: e.target.value } : current)} className="form-input w-full" inputMode="numeric" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => void assignStamp()} disabled={saving} className="form-button-primary">{saving ? 'Mentés...' : 'Mentés'}</button>
+            <button type="button" onClick={() => setAssignForm(null)} className="form-button">Mégse</button>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
@@ -97,40 +250,69 @@ export default function StampPage() {
         </div>
       )}
 
+      {message && (
+        <div className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          {message}
+        </div>
+      )}
+
       <div className="data-grid overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('stamps.belyegSzam')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('led.penztar')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('backup.tipus')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Előtag</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Tartomány</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Összes</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('stamps.felhasznalva')}</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('competitors.muveletek')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Felvéve</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Megjegyzés</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
             ) : filtered.map(item => (
               <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.stampNumber ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.branchName ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.stampType ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.isUsed ? 'Igen' : 'Nem'}</td>
-                <td className="px-4 py-3 text-right">
-                  <button className="form-button mr-2 p-1 text-blue-600" title="Szerkesztés">
-                    <Edit2 className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => handleDelete(item.id)} className="form-button p-1 text-red-600" title="Törlés">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </td>
+                <td className="px-4 py-3 text-sm font-mono font-semibold">{item.serialPrefix ?? '-'}</td>
+                <td className="px-4 py-3 text-sm font-mono">{item.serialStart ?? '-'} - {item.serialEnd ?? '-'}</td>
+                <td className="px-4 py-3 text-sm">{item.totalCount ?? '-'}</td>
+                <td className="px-4 py-3 text-sm">{item.usedCount ?? 0}</td>
+                <td className="px-4 py-3 text-sm">{fmtDate(item.receivedAt)}</td>
+                <td className="px-4 py-3 text-sm">{item.note ?? '-'}</td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="rounded border border-gray-200 bg-white p-3">
+        <h2 className="mb-3 text-base font-semibold">Felhasznált matricák</h2>
+        <div className="data-grid overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('stamps.belyegSzam')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Tranzakció ID</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Hozzárendelve</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Felhasználó</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {usedItems.length === 0 ? (
+                <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
+              ) : usedItems.map(item => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm font-mono font-semibold">{item.serialNumber ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.transactionId ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{fmtDate(item.assignedAt)}</td>
+                  <td className="px-4 py-3 text-sm">{item.assignedBy ?? '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="text-sm text-gray-500">

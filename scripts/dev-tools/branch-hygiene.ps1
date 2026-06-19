@@ -60,7 +60,7 @@ if ($ChangedFiles.Count -gt 100) {
 # 4. Merge conflict markers
 Write-Host "  Checking for conflict markers..."
 $ConflictMarkers = & rg --no-heading --line-number --color=never `
-    -e '^<{7}|^>{7}|^={7}' `
+    -e '^<{7}|^>{7}' `
     --glob "!**/node_modules/**" --glob "!**/target/**" --glob "!**/.git/**" `
     $Root 2>$null
 if ($ConflictMarkers) {

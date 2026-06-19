@@ -72,7 +72,7 @@ public class NotificationService {
         log.info("Értesítés küldése: worker={}, title={}, type={}", workerId, title, type);
         Notification n = send(String.valueOf(workerId), title, message, type != null ? type : "INFO");
         // Email is küldünk (aszinkron, nem blokkolja a tranzakciót)
-        emailNotificationService.sendToWorker(workerId, title, message);
+        emailNotificationService.sendToWorker(workerId, SecurityUtils.getCurrentCompanyIdOrNull(), title, message);
         return n;
     }
 

@@ -65,11 +65,9 @@ public class ClosingWizardService {
      * Zárási varázsló indítása
      */
     public ClosingWizardDto startWizard(UUID branchId, UUID cashDeskId, String closingTypeStr, Long workerId) {
-        Branch branch = branchRepository.findById(branchId)
-                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+        Branch branch = findBranchInCurrentCompany(branchId);
 
-        Worker worker = workerRepository.findById(workerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található: " + workerId));
+        Worker worker = findWorkerInCurrentCompany(workerId);
 
         // Ellenőrzés: nincs-e már aktív varázsló
         List<ClosingWizard> activeWizards = closingWizardRepository.findByBranchIdAndStatus(branchId, WizardStatus.IN_PROGRESS);
@@ -208,8 +206,7 @@ public class ClosingWizardService {
             throw new ValidationException("Ez a varázsló már nem aktív!");
         }
 
-        Worker worker = workerRepository.findById(workerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található: " + workerId));
+        Worker worker = findWorkerInCurrentCompany(workerId);
 
         // M-1: Ellenőrizzük, hogy minden lépés ténylegesen végrehajtva lett-e
         if (wizard.getSteps() == null || wizard.getSteps().isEmpty()) {
@@ -348,8 +345,7 @@ public class ClosingWizardService {
         Denomination denomination = denominationRepository
                 .findByBranchIdAndCurrencyIdAndFaceValue(branchId, currency.getId(), faceValue)
                 .orElseGet(() -> {
-                    Branch branch = branchRepository.findById(branchId)
-                            .orElseThrow(() -> new ResourceNotFoundException("Iroda nem talalhato: " + branchId));
+                    Branch branch = findBranchInCurrentCompany(branchId);
                     // HUF szabaly: >= 200 Ft bankjegy, < 200 Ft erme; nem-HUF-ra is BANKNOTE default.
                     DenominationType denomType = faceValue.compareTo(BigDecimal.valueOf(200)) >= 0
                             ? DenominationType.BANKNOTE
@@ -380,6 +376,22 @@ public class ClosingWizardService {
         balance.setTotalValue(subtotal);
         balance.setDenominationCategory(DenominationCategory.EVENING);
         denominationBalanceRepository.save(balance);
+    }
+
+    private Branch findBranchInCurrentCompany(UUID branchId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
+        Optional<Branch> branch = companyId != null
+                ? branchRepository.findByIdAndCompanyId(branchId, companyId)
+                : branchRepository.findById(branchId);
+        return branch.orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+    }
+
+    private Worker findWorkerInCurrentCompany(Long workerId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
+        Optional<Worker> worker = companyId != null
+                ? workerRepository.findByIdAndCompanyId(workerId, companyId)
+                : workerRepository.findById(workerId);
+        return worker.orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található: " + workerId));
     }
 
     /**

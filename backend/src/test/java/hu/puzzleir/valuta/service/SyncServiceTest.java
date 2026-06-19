@@ -87,6 +87,8 @@ class SyncServiceTest {
         auth.setDetails(details);
         SecurityContextHolder.getContext().setAuthentication(auth);
         when(branchRepository.existsByIdAndCompanyId(any(), any())).thenReturn(true);
+        lenient().when(branchRepository.findByIdAndCompanyId(eq(BRANCH_ID), eq(COMPANY_ID)))
+                .thenReturn(Optional.of(createBranch()));
     }
 
     private Branch createBranch() {

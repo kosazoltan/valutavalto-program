@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CheckCircle2, Megaphone, Plus, Search, X } from 'lucide-react'
+import { CheckCircle2, Download, Megaphone, Plus, Search, Upload, X } from 'lucide-react'
 import { api } from '@/services/api/index'
 import { safeArray } from '@/utils/safeArray'
 import { toast } from '../../components/ui/toaster'
@@ -29,10 +29,18 @@ interface Circular {
   acknowledgmentCount?: number
 }
 
-type CircularTab = 'active' | 'archived' | 'GENERAL' | 'REGULATION' | 'SECURITY_ALERT' | 'INVENTORY'
+interface CircularTypeOption {
+  type: string
+  description?: string
+  defaultTarget?: string
+  defaultPriority?: string
+}
 
-const tabs: Array<{ id: CircularTab; label: string }> = [
+type CircularTab = string
+
+const fallbackTabs: Array<{ id: CircularTab; label: string }> = [
   { id: 'active', label: 'Aktív' },
+  { id: 'relevant', label: 'Irodához releváns' },
   { id: 'GENERAL', label: 'Általános' },
   { id: 'REGULATION', label: 'Szabályzat' },
   { id: 'SECURITY_ALERT', label: 'Biztonság' },
@@ -87,6 +95,7 @@ function formatDate(value?: string): string {
 export default function CircularPage() {
   const [circulars, setCirculars] = useState<Circular[]>([])
   const [unacknowledged, setUnacknowledged] = useState<Circular[]>([])
+  const [legacyUnacknowledged, setLegacyUnacknowledged] = useState<Circular[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<CircularTab>('active')
   const [searchTerm, setSearchTerm] = useState('')
@@ -94,20 +103,40 @@ export default function CircularPage() {
   const [selectedCircular, setSelectedCircular] = useState<Circular | null>(null)
   const [showViewDialog, setShowViewDialog] = useState(false)
   const [formData, setFormData] = useState(emptyForm)
+  const [typeOptions, setTypeOptions] = useState<CircularTypeOption[]>([])
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
+  const [serverSearchActive, setServerSearchActive] = useState(false)
+
+  const tabs = useMemo<Array<{ id: CircularTab; label: string }>>(() => {
+    if (typeOptions.length === 0) return fallbackTabs
+    return [
+      { id: 'active', label: 'Aktív' },
+      { id: 'relevant', label: 'Irodához releváns' },
+      ...typeOptions.map((option) => ({
+        id: option.type,
+        label: typeLabels[option.type] ?? option.description ?? option.type,
+      })),
+      { id: 'archived', label: 'Archivált' },
+    ]
+  }, [typeOptions])
 
   const loadCirculars = useCallback(async () => {
     setLoading(true)
     try {
       const path = activeTab === 'active'
         ? '/circulars/active'
+        : activeTab === 'relevant'
+        ? '/circulars/relevant'
         : activeTab === 'archived'
         ? '/circulars/archived'
         : `/circulars/by-type/${activeTab}`
       const response = await api.get<Circular[]>(path)
       setCirculars(safeArray<Circular>(response.data))
+      setServerSearchActive(false)
     } catch (err) {
       toast.error('Körlevél betöltési hiba', getErrorMessage(err))
       setCirculars([])
+      setServerSearchActive(false)
     } finally {
       setLoading(false)
     }
@@ -115,26 +144,68 @@ export default function CircularPage() {
 
   const loadUnacknowledged = useCallback(async () => {
     try {
-      const response = await api.get<Circular[]>('/circulars/my-unacknowledged')
-      setUnacknowledged(safeArray<Circular>(response.data))
+      const [myResponse, legacyResponse] = await Promise.all([
+        api.get<Circular[]>('/circulars/my-unacknowledged'),
+        api.get<Circular[]>('/circulars/unacknowledged'),
+      ])
+      setUnacknowledged(safeArray<Circular>(myResponse.data))
+      setLegacyUnacknowledged(safeArray<Circular>(legacyResponse.data))
     } catch {
       setUnacknowledged([])
+      setLegacyUnacknowledged([])
+    }
+  }, [])
+
+  const loadTypes = useCallback(async () => {
+    try {
+      const response = await api.get<CircularTypeOption[]>('/circulars/types')
+      setTypeOptions(safeArray<CircularTypeOption>(response.data))
+    } catch {
+      setTypeOptions([])
     }
   }, [])
 
   useEffect(() => {
+    void loadTypes()
     void loadCirculars()
     void loadUnacknowledged()
-  }, [loadCirculars, loadUnacknowledged])
+  }, [loadCirculars, loadTypes, loadUnacknowledged])
 
   const filteredCirculars = useMemo(() => {
     const term = searchTerm.trim().toLowerCase()
+    if (serverSearchActive) return circulars
     if (!term) return circulars
     return circulars.filter((circular) =>
       [documentNumber(circular), circular.title, circular.circularType, circular.category, circular.createdByName]
         .some((value) => value && value.toLowerCase().includes(term)),
     )
-  }, [circulars, searchTerm])
+  }, [circulars, searchTerm, serverSearchActive])
+
+  const handleTabChange = useCallback((tab: CircularTab) => {
+    setActiveTab(tab)
+    setServerSearchActive(false)
+  }, [])
+
+  const handleServerSearch = useCallback(async () => {
+    const query = searchTerm.trim()
+    if (!query) {
+      await loadCirculars()
+      return
+    }
+
+    setLoading(true)
+    try {
+      const response = await api.get<Circular[]>('/circulars/search', { params: { q: query } })
+      setCirculars(safeArray<Circular>(response.data))
+      setServerSearchActive(true)
+    } catch (err) {
+      toast.error('Körlevél keresési hiba', getErrorMessage(err))
+      setCirculars([])
+      setServerSearchActive(false)
+    } finally {
+      setLoading(false)
+    }
+  }, [loadCirculars, searchTerm])
 
   const handleArchive = useCallback(async (id: number) => {
     if (!window.confirm('Biztosan archiválja a dokumentumot?')) return
@@ -158,27 +229,73 @@ export default function CircularPage() {
     }
   }, [loadCirculars, loadUnacknowledged])
 
+  const handleGlobalAcknowledge = useCallback(async (id: number) => {
+    try {
+      await api.post(`/circulars/${id}/acknowledge`)
+      await loadCirculars()
+      await loadUnacknowledged()
+      toast.success('Körlevél globálisan nyugtázva')
+    } catch (err) {
+      toast.error('Globális nyugtázási hiba', getErrorMessage(err))
+    }
+  }, [loadCirculars, loadUnacknowledged])
+
+  const closeCreateDialog = useCallback(() => {
+    setShowCreateDialog(false)
+    setFormData(emptyForm)
+    setAttachmentFile(null)
+  }, [])
+
+  const downloadAttachment = useCallback(async (circular: Circular) => {
+    try {
+      const response = await api.get<Blob>(`/circulars/${circular.id}/attachment`, { responseType: 'blob' })
+      const blob = response.data
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = circular.attachmentFilename ?? `korlevel-${circular.id}`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      toast.error('Csatolmány letöltési hiba', getErrorMessage(err))
+    }
+  }, [])
+
   const handleCreateSubmit = useCallback(async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     try {
-      await api.post('/circulars/typed', {
+      const createPayload = {
         title: formData.title,
         content: formData.content,
         urgent: formData.urgent,
         requiresAcknowledgment: formData.requiresAcknowledgment,
-        circularType: formData.circularType,
-        target: 'ALL_BRANCHES',
-        priority: formData.urgent ? 'URGENT' : 'NORMAL',
-        registrationNumber: null,
-      })
-      setShowCreateDialog(false)
-      setFormData(emptyForm)
+      }
+      const useSimpleCreate = formData.circularType === 'GENERAL' && !attachmentFile
+      const response = useSimpleCreate
+        ? await api.post<Circular>('/circulars', createPayload)
+        : await api.post<Circular>('/circulars/typed', {
+            ...createPayload,
+            circularType: formData.circularType,
+            target: 'ALL_BRANCHES',
+            priority: formData.urgent ? 'URGENT' : 'NORMAL',
+            registrationNumber: null,
+          })
+      if (attachmentFile) {
+        const uploadData = new FormData()
+        uploadData.append('file', attachmentFile)
+        await api.post(`/circulars/${response.data.id}/attachment`, uploadData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+      }
+      closeCreateDialog()
       await loadCirculars()
       toast.success('Körlevél létrehozva')
     } catch (err) {
       toast.error('Létrehozási hiba', getErrorMessage(err))
     }
-  }, [formData, loadCirculars])
+  }, [attachmentFile, closeCreateDialog, formData, loadCirculars])
 
   return (
     <div className="h-full min-h-0 overflow-y-auto bg-slate-100">
@@ -222,12 +339,37 @@ export default function CircularPage() {
           </section>
         )}
 
+        {legacyUnacknowledged.length > 0 && (
+          <section className="rounded-md border border-blue-200 bg-blue-50 p-3">
+            <div className="mb-2 text-sm font-semibold text-blue-800">
+              Globálisan nem nyugtázott körlevelek: {legacyUnacknowledged.length}
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              {legacyUnacknowledged.slice(0, 4).map((circular) => (
+                <div key={circular.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-blue-100 bg-white px-3 py-2">
+                  <div>
+                    <span className="font-mono text-xs text-slate-500">{documentNumber(circular)}</span>
+                    <span className="ml-2 text-sm font-semibold text-slate-900">{circular.title}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleGlobalAcknowledge(circular.id)}
+                    className="rounded border border-blue-300 px-2 py-1 text-xs font-semibold text-blue-800 hover:bg-blue-50"
+                  >
+                    Globális nyugtázás
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
           <div className="flex flex-wrap items-center gap-2">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`rounded border px-3 py-1.5 text-xs font-semibold ${
                   activeTab === tab.id ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                 }`}
@@ -236,15 +378,29 @@ export default function CircularPage() {
               </button>
             ))}
           </div>
-          <label className="mt-3 flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-            <Search size={16} />
-            <input
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
-              placeholder="Keresés iktatószám, cím, típus vagy készítő alapján"
-            />
-          </label>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <label className="flex min-w-[260px] flex-1 items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              <Search size={16} />
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                placeholder="Keresés iktatószám, cím, típus vagy készítő alapján"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => void handleServerSearch()}
+              className="rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Iktatószám keresés
+            </button>
+          </div>
+          {serverSearchActive && (
+            <div className="mt-2 text-xs text-slate-500">
+              Backend iktatószám keresés eredménye: {filteredCirculars.length} dokumentum
+            </div>
+          )}
         </section>
 
         <section className="overflow-x-auto rounded-md border border-slate-200 bg-white shadow-sm">
@@ -271,7 +427,16 @@ export default function CircularPage() {
                   <td className="px-3 py-2 font-mono text-xs text-slate-600">{documentNumber(circular)}</td>
                   <td className="px-3 py-2">
                     <div className="font-semibold text-slate-900">{circular.title}</div>
-                    {circular.attachmentFilename && <div className="text-xs text-slate-500">{circular.attachmentFilename}</div>}
+                    {circular.attachmentFilename && (
+                      <button
+                        type="button"
+                        onClick={() => void downloadAttachment(circular)}
+                        className="mt-1 inline-flex items-center gap-1 text-xs text-blue-700 hover:underline"
+                      >
+                        <Download size={12} />
+                        {circular.attachmentFilename}
+                      </button>
+                    )}
                   </td>
                   <td className="px-3 py-2">{typeLabels[circular.circularType ?? ''] ?? circular.circularType ?? '-'}</td>
                   <td className="px-3 py-2">
@@ -306,40 +471,57 @@ export default function CircularPage() {
           <form onSubmit={handleCreateSubmit} className="w-full max-w-3xl rounded-md bg-white p-4 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Új körlevél</h2>
-              <button type="button" onClick={() => setShowCreateDialog(false)}><X size={20} /></button>
+              <button type="button" onClick={closeCreateDialog}><X size={20} /></button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
-                <label className="mb-1 block text-xs font-semibold text-slate-600">Cím</label>
-                <input className="w-full rounded border px-3 py-2 text-sm" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
+                <label htmlFor="circular-title" className="mb-1 block text-xs font-semibold text-slate-600">Cím</label>
+                <input id="circular-title" className="w-full rounded border px-3 py-2 text-sm" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">Típus</label>
-                <select className="w-full rounded border px-3 py-2 text-sm" value={formData.circularType} onChange={(e) => setFormData({ ...formData, circularType: e.target.value })}>
-                  {Object.entries(typeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                <label htmlFor="circular-type" className="mb-1 block text-xs font-semibold text-slate-600">Típus</label>
+                <select id="circular-type" className="w-full rounded border px-3 py-2 text-sm" value={formData.circularType} onChange={(e) => setFormData({ ...formData, circularType: e.target.value })}>
+                  {(typeOptions.length > 0 ? typeOptions : Object.keys(typeLabels).map<CircularTypeOption>((type) => ({ type }))).map((option) => (
+                    <option key={option.type} value={option.type}>
+                      {typeLabels[option.type] ?? option.description ?? option.type}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-600">Sürgős</label>
-                <label className="flex h-[38px] items-center gap-2 rounded border px-3 text-sm">
-                  <input type="checkbox" checked={formData.urgent} onChange={(e) => setFormData({ ...formData, urgent: e.target.checked })} />
+                <label htmlFor="circular-urgent" className="flex h-[38px] items-center gap-2 rounded border px-3 text-sm">
+                  <input id="circular-urgent" type="checkbox" checked={formData.urgent} onChange={(e) => setFormData({ ...formData, urgent: e.target.checked })} />
                   Azonnali nyugtázás
                 </label>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-600">Kötelező nyugtázás</label>
-                <label className="flex h-[38px] items-center gap-2 rounded border px-3 text-sm">
-                  <input type="checkbox" checked={formData.requiresAcknowledgment} onChange={(e) => setFormData({ ...formData, requiresAcknowledgment: e.target.checked })} />
+                <label htmlFor="circular-requires-acknowledgment" className="flex h-[38px] items-center gap-2 rounded border px-3 text-sm">
+                  <input id="circular-requires-acknowledgment" type="checkbox" checked={formData.requiresAcknowledgment} onChange={(e) => setFormData({ ...formData, requiresAcknowledgment: e.target.checked })} />
                   Tranzakció-blokkoló
                 </label>
               </div>
               <div className="col-span-2">
-                <label className="mb-1 block text-xs font-semibold text-slate-600">Tartalom</label>
-                <textarea className="h-56 w-full rounded border px-3 py-2 text-sm" value={formData.content} onChange={(e) => setFormData({ ...formData, content: e.target.value })} required />
+                <label htmlFor="circular-content" className="mb-1 block text-xs font-semibold text-slate-600">Tartalom</label>
+                <textarea id="circular-content" className="h-56 w-full rounded border px-3 py-2 text-sm" value={formData.content} onChange={(e) => setFormData({ ...formData, content: e.target.value })} required />
+              </div>
+              <div className="col-span-2">
+                <label className="mb-1 block text-xs font-semibold text-slate-600">Csatolmány</label>
+                <label className="flex cursor-pointer items-center gap-2 rounded border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
+                  <Upload size={16} />
+                  <span>{attachmentFile ? attachmentFile.name : 'ODT, DOCX vagy PDF fájl kiválasztása'}</span>
+                  <input
+                    type="file"
+                    accept=".odt,.docx,.pdf,application/pdf,application/vnd.oasis.opendocument.text,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    className="sr-only"
+                    onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
+                  />
+                </label>
               </div>
             </div>
             <div className="mt-4 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowCreateDialog(false)} className="rounded border px-4 py-2 text-sm hover:bg-slate-50">Mégse</button>
+              <button type="button" onClick={closeCreateDialog} className="rounded border px-4 py-2 text-sm hover:bg-slate-50">Mégse</button>
               <button type="submit" className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Létrehozás</button>
             </div>
           </form>
@@ -365,6 +547,18 @@ export default function CircularPage() {
             <div className="max-h-[46vh] overflow-y-auto whitespace-pre-wrap rounded border border-slate-200 bg-slate-50 p-3 text-sm leading-6">
               {selectedCircular.content}
             </div>
+            {selectedCircular.attachmentFilename && (
+              <div className="mt-3 rounded border border-slate-200 bg-white p-3 text-sm">
+                <button
+                  type="button"
+                  onClick={() => void downloadAttachment(selectedCircular)}
+                  className="inline-flex items-center gap-2 text-blue-700 hover:underline"
+                >
+                  <Download size={16} />
+                  {selectedCircular.attachmentFilename}
+                </button>
+              </div>
+            )}
             <div className="mt-4 flex justify-between gap-2">
               <button onClick={() => setShowViewDialog(false)} className="rounded border px-4 py-2 text-sm hover:bg-slate-50">Bezárás</button>
               {!selectedCircular.acknowledged && !selectedCircular.archived && (

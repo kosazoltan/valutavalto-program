@@ -69,6 +69,7 @@ public class GoogleLoginService {
     private final JwtTokenProvider jwtTokenProvider;
     private final BranchRepository branchRepository;
     private final ClientIpResolver clientIpResolver;
+    private final TotpService totpService;
     // FK-ÉRTÉKTÁR (V285): a kétlépcsős belépés jelszó-fázisához — lockout-újrahasználat + bcrypt match.
     private final WorkerService workerService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
@@ -394,6 +395,7 @@ public class GoogleLoginService {
                 .permissions(permissions)
                 .roleSelectionRequired(roleSelectionRequired)
                 .passwordChangeRequired(false)  // Google loginban nincs jelszo-policy
+                .mfaRequired(totpService.isMfaRequired(worker.getId()))
                 .validAppModes(validAppModes)
                 .centralModules(centralModules)
                 .build();

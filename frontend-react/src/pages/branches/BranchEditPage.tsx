@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AlertCircle, ArrowLeft, Building2, Save } from 'lucide-react'
-import { branchApi, dictionaryApi, type BranchInfo, type BranchUpdateRequest, type DictionaryEntry } from '../../services/api/index'
+import { api, branchApi, dictionaryApi, type BranchInfo, type BranchUpdateRequest, type DictionaryEntry } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { Check, Section } from './branchFormShared'
@@ -35,6 +35,27 @@ type FormState = {
   tartosanZarva: boolean
 }
 
+type BranchAdminDetails = {
+  id: string
+  code: string
+  name: string
+  active: boolean
+  companyName?: string
+  workerCount?: number
+  totalInventoryHuf?: number
+  lastSyncAt?: string | null
+  openingHours?: string | null
+}
+
+const formatHuf = (value: number) => `${value.toLocaleString('hu-HU')} Ft`
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) return 'nincs adat'
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return value
+  return parsed.toLocaleString('hu-HU')
+}
+
 function formFromBranch(b: BranchInfo): FormState {
   return {
     name: b.name ?? '',
@@ -65,6 +86,9 @@ export default function BranchEditPage() {
   const [branch, setBranch] = useState<BranchInfo | null>(null)
   const [form, setForm] = useState<FormState | null>(null)
   const [regions, setRegions] = useState<DictionaryEntry[]>([])
+  const [branchPath, setBranchPath] = useState<BranchInfo[]>([])
+  const [childBranches, setChildBranches] = useState<BranchInfo[]>([])
+  const [adminDetails, setAdminDetails] = useState<BranchAdminDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -74,12 +98,24 @@ export default function BranchEditPage() {
   useEffect(() => {
     if (!id) return
     let active = true
-    Promise.all([branchApi.getById(id), dictionaryApi.getByCategory('REGION')])
-      .then(([loaded, regionList]) => {
+    Promise.all([
+      branchApi.getById(id),
+      dictionaryApi.getByCategory('REGION'),
+      api.get<BranchInfo[]>(`/branches/${id}/path`),
+      api.get<BranchInfo[]>(`/branches/${id}/children`),
+      api.get<BranchAdminDetails>(`/admin/branches/${id}`).catch((err: unknown) => {
+        logger.error('BranchEditPage', 'Admin branch részlet betöltési hiba:', err)
+        return null
+      }),
+    ])
+      .then(([loaded, regionList, pathResponse, childrenResponse, adminResponse]) => {
         if (!active) return
         setBranch(loaded)
         setForm(formFromBranch(loaded))
         setRegions(regionList.filter((r) => r.code !== 'IRODA'))
+        setBranchPath(pathResponse.data ?? [])
+        setChildBranches(childrenResponse.data ?? [])
+        setAdminDetails(adminResponse?.data ?? null)
       })
       .catch((err) => {
         if (!active) return
@@ -191,6 +227,77 @@ export default function BranchEditPage() {
 
       {form && branch && (
         <form onSubmit={submit} className="space-y-4">
+          <Section title="Szervezeti kapcsolat">
+            <div className="md:col-span-2 space-y-3">
+              <div>
+                <div className="text-xs font-semibold uppercase text-gray-500">Útvonal</div>
+                <div className="mt-1 flex flex-wrap items-center gap-1 text-sm text-gray-700" data-testid="branch-path">
+                  {branchPath.length > 0
+                    ? branchPath.map((item, index) => (
+                        <span key={item.id} className="inline-flex items-center gap-1">
+                          <span className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-medium">
+                            {item.code} - {item.name}
+                          </span>
+                          {index < branchPath.length - 1 && <span className="text-gray-400">/</span>}
+                        </span>
+                      ))
+                    : <span className="text-gray-500">Nincs szervezeti útvonal adat.</span>}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase text-gray-500">Közvetlen alirodák</div>
+                <div className="mt-1 flex flex-wrap gap-2" data-testid="branch-children">
+                  {childBranches.length > 0
+                    ? childBranches.map((item) => (
+                        <span key={item.id} className="rounded border border-blue-100 bg-blue-50 px-2 py-1 text-sm font-medium text-blue-800">
+                          {item.code} - {item.name}
+                        </span>
+                      ))
+                    : <span className="text-sm text-gray-500">Nincs közvetlen aliroda.</span>}
+                </div>
+              </div>
+            </div>
+          </Section>
+
+          <Section title="Admin statisztika">
+            {adminDetails ? (
+              <>
+                <div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">Cég</div>
+                  <div className="mt-1 text-sm font-medium text-gray-800">{adminDetails.companyName ?? '-'}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">Státusz</div>
+                  <div className="mt-1">
+                    <span className={`badge ${adminDetails.active ? 'badge-green' : 'badge-red'}`}>
+                      {adminDetails.active ? 'Aktív' : 'Inaktív'}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">Aktív munkatársak</div>
+                  <div className="mt-1 text-sm font-medium text-gray-800">{adminDetails.workerCount ?? 0} fő</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">Teljes készlet HUF</div>
+                  <div className="mt-1 text-sm font-medium text-gray-800">{formatHuf(adminDetails.totalInventoryHuf ?? 0)}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">Utolsó szinkron</div>
+                  <div className="mt-1 text-sm font-medium text-gray-800">{formatDateTime(adminDetails.lastSyncAt)}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">Nyitvatartás</div>
+                  <div className="mt-1 text-sm font-medium text-gray-800">{adminDetails.openingHours ?? '-'}</div>
+                </div>
+              </>
+            ) : (
+              <div className="md:col-span-2 text-sm text-gray-500">
+                Admin statisztika nem érhető el.
+              </div>
+            )}
+          </Section>
+
           {/* 1. Alapadatok */}
           <Section title="1. Alapadatok">
             <label className="block">

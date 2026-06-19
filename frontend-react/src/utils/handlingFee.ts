@@ -13,10 +13,9 @@ import { roundHuf } from './rounding'
  *  - mindkettő után 5 Ft-ra kerekítés (HungarianRounding.roundToFive == roundHuf szabály:
  *    0-2→0, 3-7→5, 8-9→10).
  *
- * ISMERT KORLÁT (dokumentált defer): a szerver-oldali DiscountThresholdService
- * (BIGARFVALT/KISARFVALT automatikus díj-kedvezmény nagy összegeknél) itt NEM tükrözött —
- * ha aktív küszöb-kedvezmény van, a szerver díja ennyivel eltérhet. A bizonylat-újranyomtatás
- * a szinkron utáni szerver-értékkel már pontos.
+ * A DiscountThresholdService (BIGARFVALT/KISARFVALT automatikus díj-kedvezmény/felár)
+ * nem ebben a tiszta lokális tükörfüggvényben él: a pénztáros UI a baseFee után a
+ * `/discount-threshold/apply` backend szerződésen kéri le az autoritatív küszöbhatást.
  */
 export function computeHandlingFee(hufAmount: number, config: HandlingFeeConfig | null): number | null {
   if (!config) return null

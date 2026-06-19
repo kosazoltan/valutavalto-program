@@ -55,6 +55,7 @@ public class WorkerService {
     private final WorkerRoleAssignmentRepository roleAssignmentRepository;
     private final WorkerRolePermissionRepository rolePermissionRepository;
     private final TokenBlacklistService tokenBlacklistService;
+    private final TotpService totpService;
     // v2.4.5 (B6): branchId override engedélyezésének ellenőrzéséhez.
     private final WorkerBranchAccessService workerBranchAccessService;
 
@@ -529,6 +530,7 @@ public class WorkerService {
                 .permissions(permissions)
                 .roleSelectionRequired(roleSelectionRequired)
                 .passwordChangeRequired(worker.getPasswordChangedAt() == null)
+                .mfaRequired(totpService.isMfaRequired(worker.getId()))
                 .validAppModes(validAppModes)
                 .centralModules(centralModules)
                 .build();

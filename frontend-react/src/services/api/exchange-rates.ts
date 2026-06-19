@@ -26,6 +26,33 @@ export interface ExchangeRate {
   createdAt: string
 }
 
+export interface RateApproval {
+  id?: string
+  branchId?: string
+  branchName?: string
+  currencyCode: string
+  oldBuyRate?: number | string | null
+  oldSellRate?: number | string | null
+  newBuyRate?: number | string | null
+  newSellRate?: number | string | null
+  status?: string | null
+  requestedById?: number | null
+  requestedByName?: string | null
+  approvedById?: number | null
+  approvedByName?: string | null
+  requestedAt?: string | null
+  approvedAt?: string | null
+  reason?: string | null
+}
+
+export interface RequestRateChangeRequest {
+  branchId: string
+  currencyCode: string
+  newBuyRate: number
+  newSellRate: number
+  reason?: string
+}
+
 export interface CreateExchangeRateRequest {
   currencyId: number
   baseBuyRate: number
@@ -40,6 +67,32 @@ export interface CreateExchangeRateRequest {
   limit3BuyRate?: number
   limit3SellRate?: number
   officialRate?: number
+}
+
+export interface ParsedCurrencyRate {
+  currencyCode: string
+  buyRate?: number | string | null
+  sellRate?: number | string | null
+  mnbRate?: number | string | null
+  discountBuy?: number | string | null
+  discountSell?: number | string | null
+  f1Buy?: number | string | null
+  f1Sell?: number | string | null
+  chiefTreasurerBuy?: number | string | null
+  chiefTreasurerSell?: number | string | null
+}
+
+export interface ParsedRateFile {
+  rates: ParsedCurrencyRate[]
+  parsedAt?: string | null
+  parsedLineCount: number
+  skippedLineCount: number
+}
+
+function createRateFileFormData(file: File): FormData {
+  const formData = new FormData()
+  formData.append('file', file)
+  return formData
 }
 
 export const exchangeRateApi = {
@@ -76,7 +129,47 @@ export const exchangeRateApi = {
       params: { currencyId, startDate, endDate }
     })
     return response.data
+  },
+  uploadRateFile: async (file: File): Promise<ParsedRateFile> => {
+    const response = await api.post<ParsedRateFile>('/exchange-rates/upload-rate-file', createRateFileFormData(file), {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  },
+  importRateFile: async (file: File): Promise<ExchangeRate[]> => {
+    const response = await api.post<ExchangeRate[]>('/exchange-rates/import-rate-file', createRateFileFormData(file), {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
   }
+}
+
+export const rateApprovalApi = {
+  request: async (data: RequestRateChangeRequest): Promise<RateApproval> => {
+    const response = await api.post<RateApproval>('/rate-approvals/request', data)
+    return response.data
+  },
+  approve: async (id: string): Promise<RateApproval> => {
+    const response = await api.post<RateApproval>(`/rate-approvals/${id}/approve`)
+    return response.data
+  },
+  reject: async (id: string, reason?: string): Promise<RateApproval> => {
+    const response = await api.post<RateApproval>(
+      `/rate-approvals/${id}/reject`,
+      reason?.trim() ? { reason: reason.trim() } : undefined,
+    )
+    return response.data
+  },
+  pending: async (): Promise<RateApproval[]> => {
+    const response = await api.get<RateApproval[]>('/rate-approvals/pending')
+    return response.data
+  },
+  history: async (branchId?: string): Promise<RateApproval[]> => {
+    const response = await api.get<RateApproval[]>('/rate-approvals/history', {
+      params: branchId ? { branchId } : undefined,
+    })
+    return response.data
+  },
 }
 
 // Legacy alias for backward compatibility
@@ -185,6 +278,10 @@ export interface RateCreationDTO {
   notes?: string
 }
 
+export interface PrepareAllRatesResult {
+  [key: string]: unknown
+}
+
 export interface GroupRateDTO {
   id: string
   currencyGroupId: string
@@ -239,6 +336,22 @@ export interface LocalRateMakerBootstrapDTO {
   idempotencyRequired: boolean
   overview: RateOverviewDTO
   workgroups: WorkgroupDetailDTO[]
+}
+
+export interface RateMakerSheetDTO {
+  sheetJson: string
+  version: number
+  source: string | null
+  deviceId: string | null
+  updatedBy: number | null
+  updatedAt: string | null
+}
+
+export interface RateMakerSheetUpdateRequest {
+  sheetJson: string
+  source?: 'rate-maker' | 'central' | string
+  deviceId?: string
+  baseVersion?: number | null
 }
 
 export interface RateOverviewDTO {
@@ -355,6 +468,23 @@ export const rateCreationApi = {
     const response = await api.get<LocalRateMakerBootstrapDTO>('/local-rate-maker/bootstrap')
     return response.data
   },
+  getLocalRateMakerSheet: async (): Promise<RateMakerSheetDTO | null> => {
+    const response = await api.get<RateMakerSheetDTO | ''>('/local-rate-maker/sheet', {
+      validateStatus: (status) => status === 200 || status === 204,
+    })
+    if (response.status === 204 || !response.data) return null
+    return response.data as RateMakerSheetDTO
+  },
+  putLocalRateMakerSheet: async (sheetJson: string, request: Omit<RateMakerSheetUpdateRequest, 'sheetJson'> = {}): Promise<RateMakerSheetDTO> => {
+    const payload: RateMakerSheetUpdateRequest = {
+      sheetJson,
+      source: request.source ?? (import.meta.env.VITE_APP_FLAVOR === 'rate-maker' ? 'rate-maker' : 'central'),
+      deviceId: request.deviceId ?? await getRateMakerDeviceId(),
+      ...(request.baseVersion != null ? { baseVersion: request.baseVersion } : {}),
+    }
+    const response = await api.put<RateMakerSheetDTO>('/local-rate-maker/sheet', payload)
+    return response.data
+  },
   getOverview: async (): Promise<RateOverviewDTO> => {
     const response = await api.get<RateOverviewDTO>('/rate-creation/overview')
     return response.data
@@ -363,33 +493,20 @@ export const rateCreationApi = {
     const response = await api.get<WorkgroupDetailDTO[]>('/rate-creation/workgroups')
     return response.data
   },
+  getBankRates: async (): Promise<BankRateDTO[]> => {
+    const response = await api.get<BankRateDTO[]>('/rate-creation/bank-rates')
+    return response.data
+  },
+  getCompetitorRates: async (): Promise<CompetitorRateDTO[]> => {
+    const response = await api.get<CompetitorRateDTO[]>('/rate-creation/competitor-rates')
+    return response.data
+  },
   prepareRateCreation: async (currencyId: string): Promise<RateCreationDTO> => {
     const response = await api.get<RateCreationDTO>(`/rate-creation/prepare/${currencyId}`)
     return response.data
   },
-  prepareAllCurrencies: async (): Promise<RateCreationDTO[]> => {
-    const response = await api.get<RateCreationDTO[]>('/rate-creation/prepare/all')
-    return response.data
-  },
-  recordCompetitorRate: async (data: {
-    competitorId: string
-    currencyId: string
-    buyRate: number
-    sellRate: number
-    source?: string
-  }): Promise<CompetitorRateDTO> => {
-    const response = await api.post<CompetitorRateDTO>('/rate-creation/competitor-rates', data)
-    return response.data
-  },
-  recordBankRate: async (data: {
-    bankId: string
-    currencyId: string
-    buyRate: number
-    sellRate: number
-    middleRate?: number
-    source?: string
-  }): Promise<BankRateDTO> => {
-    const response = await api.post<BankRateDTO>('/rate-creation/bank-rates', data)
+  prepareAllCurrencies: async (): Promise<PrepareAllRatesResult> => {
+    const response = await api.post<PrepareAllRatesResult>('/rate-creation/prepare/all')
     return response.data
   },
   publishGroupRate: async (data: PublishGroupRateRequest): Promise<void | LocalRatePublishResponse> => {
@@ -423,7 +540,16 @@ export interface CurrencyGroupDTO {
   code: string
   name: string
   description?: string
+  currencyIds?: string | null
   sortOrder?: number
+  isActive: boolean
+}
+
+export interface CurrencyGroupSaveDTO {
+  code: string
+  name: string
+  description?: string | null
+  currencyIds?: string | null
   isActive: boolean
 }
 
@@ -435,7 +561,18 @@ export const currencyGroupApi = {
   getById: async (id: string): Promise<CurrencyGroupDTO> => {
     const response = await api.get<CurrencyGroupDTO>(`/currency-groups/${id}`)
     return response.data
-  }
+  },
+  create: async (data: CurrencyGroupSaveDTO): Promise<CurrencyGroupDTO> => {
+    const response = await api.post<CurrencyGroupDTO>('/currency-groups', data)
+    return response.data
+  },
+  update: async (id: string | number, data: CurrencyGroupSaveDTO): Promise<CurrencyGroupDTO> => {
+    const response = await api.put<CurrencyGroupDTO>(`/currency-groups/${id}`, data)
+    return response.data
+  },
+  remove: async (id: string | number): Promise<void> => {
+    await api.delete(`/currency-groups/${id}`)
+  },
 }
 
 // ================== RATE WORKGROUPS API ==================
@@ -481,10 +618,6 @@ export const rateWorkgroupApi = {
     const response = await api.get<RateWorkgroupDTO[]>('/rate-management/workgroups')
     return response.data
   },
-  getById: async (id: string): Promise<RateWorkgroupDTO> => {
-    const response = await api.get<RateWorkgroupDTO>(`/rate-management/workgroups/${id}`)
-    return response.data
-  },
   create: async (data: RateWorkgroupSaveDTO): Promise<RateWorkgroupDTO> => {
     const response = await api.post<RateWorkgroupDTO>('/rate-management/workgroups', data)
     return response.data
@@ -510,8 +643,16 @@ export interface CompetitorDTO {
   website?: string
   apiUrl?: string
   notes?: string
+  branchId?: string | null
   isActive: boolean
   sortOrder?: number
+}
+
+export interface CompetitorSaveDTO {
+  name: string
+  website?: string | null
+  branchId?: string | null
+  isActive: boolean
 }
 
 export const competitorApi = {
@@ -522,7 +663,122 @@ export const competitorApi = {
   getById: async (id: string): Promise<CompetitorDTO> => {
     const response = await api.get<CompetitorDTO>(`/competitors/${id}`)
     return response.data
-  }
+  },
+  create: async (data: CompetitorSaveDTO): Promise<CompetitorDTO> => {
+    const response = await api.post<CompetitorDTO>('/competitors', data)
+    return response.data
+  },
+  update: async (id: string | number, data: CompetitorSaveDTO): Promise<CompetitorDTO> => {
+    const response = await api.put<CompetitorDTO>(`/competitors/${id}`, data)
+    return response.data
+  },
+  remove: async (id: string | number): Promise<void> => {
+    await api.delete(`/competitors/${id}`)
+  },
+}
+
+// ================== EXCHANGE RATE POLLING API ==================
+
+export interface ExchangeRatePollingStatus {
+  lastPollTime?: string | null
+  lastPollSuccess: boolean
+  lastPollError?: string | null
+  lastPollUpdatedCount: number
+  lastPollSource: string
+}
+
+export interface ExchangeRatePollingSource {
+  id: number
+  name: string
+  url?: string
+  pollIntervalMinutes?: number
+  active: boolean
+  lastSuccessAt?: string | null
+  lastErrorAt?: string | null
+  lastError?: string | null
+  successCount?: number
+  errorCount?: number
+}
+
+export type EcbRateSnapshot = Record<string, number | string>
+
+export interface ApplyMarginsRequest {
+  currencyId: number
+  spread: number
+}
+
+export interface UpdateExchangeRateSourceRequest {
+  pollIntervalMinutes?: number
+  active?: boolean
+}
+
+export interface ExchangeRatePollingMessage {
+  message: string
+}
+
+export const exchangeRatePollingApi = {
+  status: async (): Promise<ExchangeRatePollingStatus> => {
+    const response = await api.get<ExchangeRatePollingStatus>('/rates/polling/status')
+    return response.data
+  },
+  sources: async (): Promise<ExchangeRatePollingSource[]> => {
+    const response = await api.get<ExchangeRatePollingSource[]>('/rates/polling/sources')
+    return response.data
+  },
+  ecbRates: async (): Promise<EcbRateSnapshot> => {
+    const response = await api.get<EcbRateSnapshot>('/rates/polling/ecb')
+    return response.data
+  },
+  trigger: async (): Promise<ExchangeRatePollingMessage> => {
+    const response = await api.post<ExchangeRatePollingMessage>('/rates/polling/trigger')
+    return response.data
+  },
+  applyMargins: async (data: ApplyMarginsRequest): Promise<ExchangeRatePollingMessage> => {
+    const response = await api.post<ExchangeRatePollingMessage>('/rates/polling/apply-margins', data)
+    return response.data
+  },
+  updateSource: async (id: number, data: UpdateExchangeRateSourceRequest): Promise<ExchangeRatePollingSource> => {
+    const response = await api.put<ExchangeRatePollingSource>(`/rates/polling/sources/${id}`, data)
+    return response.data
+  },
+}
+
+// ================== ROUNDING RULES API ==================
+
+export type RoundingDirection = 'BUY' | 'SELL'
+
+export interface RoundingRule {
+  id?: number | null
+  currencyCode: string
+  precisionValue: number | string
+  smallThreshold: number | string
+  largeThreshold: number | string
+  smallRounding: string
+  largeRounding: string
+}
+
+export interface RoundingResult {
+  original: number | string
+  rounded: number | string
+}
+
+export const roundingRuleApi = {
+  list: async (): Promise<RoundingRule[]> => {
+    const response = await api.get<RoundingRule[]>('/rounding-rules')
+    return response.data
+  },
+  getByCurrencyCode: async (currencyCode: string, amount: number): Promise<RoundingRule> => {
+    const response = await api.get<RoundingRule>(`/rounding-rules/${currencyCode}`, {
+      params: { amount },
+    })
+    return response.data
+  },
+  round: async (currencyCode: string, amount: number, direction: RoundingDirection): Promise<RoundingResult> => {
+    const response = await api.post<RoundingResult>('/rounding-rules/round', null, {
+      params: { currencyCode, amount, direction },
+    })
+    return response.data
+  },
 }
 
 // ================== EXCHANGE RATE DISPLAY API ==================
@@ -530,7 +786,7 @@ export const competitorApi = {
 export interface ExchangeRateDisplay {
   id: string
   displayName: string
-  currencyIds: string[]
+  currencyIds: string
   refreshInterval: number
   isActive: boolean
   displayType?: string
@@ -548,23 +804,49 @@ export interface ExchangeRateDisplay {
   showFlag?: boolean
 }
 
+export interface ExchangeRateDisplayRateRow {
+  currencyId?: number
+  currencyCode?: string
+  currencyName?: string
+  baseBuyRate?: number
+  baseSellRate?: number
+  buyRate?: string | number
+  sellRate?: string | number
+}
+
+interface ExchangeRateDisplayCurrentRatesResponse {
+  displayId: string
+  displayName: string
+  rates: ExchangeRateDisplayRateRow[]
+  refreshInterval: number
+  generatedAt: string
+}
+
+export interface ExchangeRateDisplayPreviewRow {
+  currency: string
+  buyRate: string
+  sellRate: string
+}
+
+const formatDisplayRate = (value: string | number | undefined): string => {
+  if (value == null || value === '') return '-'
+  return typeof value === 'number' ? value.toFixed(2) : value
+}
+
 export const exchangeRateDisplayApi = {
   list: async (): Promise<ExchangeRateDisplay[]> => {
     const response = await api.get<ExchangeRateDisplay[]>('/exchange-rate-display')
     return response.data
   },
-  create: async (data: Partial<ExchangeRateDisplay>): Promise<ExchangeRateDisplay> => {
-    const response = await api.post<ExchangeRateDisplay>('/exchange-rate-display', data)
-    return response.data
-  },
-  getCurrentRates: async (displayId: string): Promise<Array<{currency: string; buyRate: string; sellRate: string}>> => {
-    const response = await api.get<Array<{currency: string; buyRate: string; sellRate: string}>>(`/exchange-rate-display/${displayId}/current-rates`)
-    return response.data
+  getCurrentRates: async (displayId: string): Promise<ExchangeRateDisplayPreviewRow[]> => {
+    const response = await api.get<ExchangeRateDisplayCurrentRatesResponse>(`/exchange-rate-display/${displayId}/current-rates`)
+    return (response.data.rates ?? []).map((rate) => ({
+      currency: rate.currencyCode ?? rate.currencyName ?? String(rate.currencyId ?? '-'),
+      buyRate: formatDisplayRate(rate.baseBuyRate ?? rate.buyRate),
+      sellRate: formatDisplayRate(rate.baseSellRate ?? rate.sellRate),
+    }))
   },
   updateDisplay: async (displayId: string, data: Partial<ExchangeRateDisplay>): Promise<void> => {
     await api.post(`/exchange-rate-display/${displayId}/update`, data)
-  },
-  delete: async (id: string): Promise<void> => {
-    await api.delete(`/exchange-rate-display/${id}`)
   }
 }

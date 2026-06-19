@@ -25,6 +25,14 @@ interface LicenseResponse {
   remainingDays?: number
 }
 
+interface LicenseStatusResponse {
+  status?: string
+  remainingDays?: number
+  maxBranches?: number
+  maxWorkers?: number
+  features?: string
+}
+
 function parseFeatures(s: string | undefined): string[] {
   if (!s) return []
   // Comma, semicolon vagy pipe separator fallback
@@ -34,20 +42,44 @@ function parseFeatures(s: string | undefined): string[] {
 export default function LicensePage() {
   const { t } = useTranslation()
   const [license, setLicense] = useState<LicenseResponse | null>(null)
+  const [status, setStatus] = useState<LicenseStatusResponse | null>(null)
+  const [licenseKey, setLicenseKey] = useState('')
   const [loading, setLoading] = useState(true)
+  const [activating, setActivating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<LicenseResponse>('/license/current')
-      setLicense(response.data ?? null)
+      const [statusResult, licenseResult] = await Promise.allSettled([
+        api.get<LicenseStatusResponse>('/license/status'),
+        api.get<LicenseResponse>('/license/current'),
+      ])
+
+      if (statusResult.status === 'fulfilled') {
+        setStatus(statusResult.value.data ?? null)
+      } else {
+        logger.error('LicensePage', 'Statusz betoltesi hiba:', statusResult.reason)
+        setStatus(null)
+      }
+
+      if (licenseResult.status === 'fulfilled') {
+        setLicense(licenseResult.value.data ?? null)
+      } else {
+        logger.error('LicensePage', 'Aktualis licenc betoltesi hiba:', licenseResult.reason)
+        setLicense(null)
+        if (statusResult.status === 'rejected') {
+          setError(getErrorMessage(licenseResult.reason))
+        }
+      }
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('LicensePage', 'Betoltesi hiba:', err)
       setError(msg)
       setLicense(null)
+      setStatus(null)
     } finally {
       setLoading(false)
     }
@@ -56,7 +88,33 @@ export default function LicensePage() {
   useEffect(() => { void loadData() }, [loadData])
 
   const active = license?.isActive ?? false
-  const features = parseFeatures(license?.features)
+  const features = parseFeatures(license?.features ?? status?.features)
+
+  const activateLicense = async () => {
+    const trimmedKey = licenseKey.trim()
+    if (!trimmedKey) {
+      setError('Licenckulcs megadása kötelező.')
+      setMessage(null)
+      return
+    }
+
+    try {
+      setActivating(true)
+      setError(null)
+      setMessage(null)
+      const response = await api.post<LicenseResponse>('/license/activate', { licenseKey: trimmedKey })
+      setLicense(response.data ?? null)
+      setLicenseKey('')
+      setMessage('Licenc aktiválva.')
+      await loadData()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('LicensePage', 'Aktivalasi hiba:', err)
+      setError(msg)
+    } finally {
+      setActivating(false)
+    }
+  }
 
   return (
     <div className="form-panel space-y-4">
@@ -79,8 +137,64 @@ export default function LicensePage() {
         </div>
       )}
 
+      {message && (
+        <div className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          {message}
+        </div>
+      )}
+
+      <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
+        <h2 className="text-base font-semibold">Licenc státusz</h2>
+        <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-4">
+          <div>
+            <div className="text-gray-500">Státusz</div>
+            <div className="font-semibold">{status?.status ?? '-'}</div>
+          </div>
+          <div>
+            <div className="text-gray-500">{t('licenses.hatralevoNapok')}</div>
+            <div className="font-mono">{status?.remainingDays ?? '-'}</div>
+          </div>
+          <div>
+            <div className="text-gray-500">{t('licenses.maxPenztariEgyseg')}</div>
+            <div className="font-mono">{status?.maxBranches ?? '-'}</div>
+          </div>
+          <div>
+            <div className="text-gray-500">{t('licenses.maxDolgozo')}</div>
+            <div className="font-mono">{status?.maxWorkers ?? '-'}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
+        <h2 className="text-base font-semibold">Licenc aktiválás</h2>
+        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+          <div>
+            <label htmlFor="license-key" className="form-label">Licenckulcs</label>
+            <input
+              id="license-key"
+              type="text"
+              value={licenseKey}
+              onChange={(event) => setLicenseKey(event.target.value)}
+              className="form-input w-full font-mono"
+              placeholder="XXXX-XXXX-XXXX"
+              autoComplete="off"
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={() => void activateLicense()}
+              disabled={activating || !licenseKey.trim()}
+              className="form-button w-full md:w-auto"
+            >
+              {activating ? 'Aktiválás...' : 'Aktiválás'}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {loading ? (
-        <div className="text-center text-sm text-gray-500 py-8">Betoltes...</div>
+        <div className="text-center text-sm text-gray-500 py-8">Betöltés...</div>
       ) : !license ? (
         <div className="text-center text-sm text-gray-500 py-8">{t('licenses.nincsAktivLicenc')}</div>
       ) : (

@@ -1,9 +1,9 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Lock, Check, X, Loader2, Minus, ChevronLeft, Coins } from 'lucide-react'
+import { AlertTriangle, Lock, Check, X, Loader2, Minus, ChevronLeft, Coins, RefreshCw } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
-import { closingWizardApi } from '../../services/api/index'
-import type { ClosingWizard } from '../../services/api/transactions'
+import { closingWizardApi, dailySessionApi } from '../../services/api/index'
+import type { ClosingWizard, ClosingWizardDifference, ClosingWizardReport, DailyClosingValidation } from '../../services/api/transactions'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -67,6 +67,12 @@ export default function ClosingWizardPage() {
     [denomQuantities],
   )
   const [denomSubmitted, setDenomSubmitted] = useState(false)
+  const [closingDifferences, setClosingDifferences] = useState<ClosingWizardDifference[]>([])
+  const [closingReport, setClosingReport] = useState<ClosingWizardReport | null>(null)
+  const [reportLoading, setReportLoading] = useState(false)
+  const [closingValidation, setClosingValidation] = useState<DailyClosingValidation | null>(null)
+  const [validationLoading, setValidationLoading] = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
   // Wizard pauses after step 1 for denomination input
   const [waitingForDenom, setWaitingForDenom] = useState(false)
@@ -77,6 +83,23 @@ export default function ClosingWizardPage() {
 
   // Finalize requires ALL steps PASS **and** denomination submitted
   const canFinalize = completedCount === steps.length && failedCount === 0 && denomSubmitted
+
+  const loadClosingValidation = useCallback(async () => {
+    setValidationLoading(true)
+    setValidationError(null)
+    try {
+      setClosingValidation(await dailySessionApi.validateClosing())
+    } catch (err) {
+      setClosingValidation(null)
+      setValidationError(getErrorMessage(err))
+    } finally {
+      setValidationLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadClosingValidation()
+  }, [loadClosingValidation])
 
   /** Run backend steps from `from` to `to` (0-indexed). Returns true if all passed. */
   const runSteps = useCallback(async (wizId: string, from: number, to: number): Promise<boolean> => {
@@ -141,6 +164,9 @@ export default function ClosingWizardPage() {
     }
 
     setIsRunning(true)
+    setClosingReport(null)
+    setClosingDifferences([])
+    setReportLoading(false)
     toast.info('Napzárás indítása', 'Wizard indítása folyamatban...')
 
     try {
@@ -180,12 +206,13 @@ export default function ClosingWizardPage() {
 
     setIsRunning(true)
 
+    const hufDenoms: Record<number, number> = {}
+    for (const [faceValue, qty] of Object.entries(denomQuantities)) {
+      if (qty > 0) hufDenoms[Number(faceValue)] = qty
+    }
+
     // Submit denomination data to backend before continuing
     try {
-      const hufDenoms: Record<number, number> = {}
-      for (const [faceValue, qty] of Object.entries(denomQuantities)) {
-        if (qty > 0) hufDenoms[Number(faceValue)] = qty
-      }
       await closingWizardApi.submitDenominations(wizardId, { HUF: hufDenoms })
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Cimletezés rögzítés sikertelen'
@@ -194,13 +221,36 @@ export default function ClosingWizardPage() {
       return
     }
 
+    try {
+      setClosingDifferences(await closingWizardApi.calculateDifferences(wizardId, { HUF: denomTotal }))
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : t('closing.elteresEllenorzesHiba')
+      toast.error(t('closing.elteresEllenorzesHiba'), errorMsg)
+      setIsRunning(false)
+      return
+    }
+
     setDenomSubmitted(true)
     setWaitingForDenom(false)
 
     // Run steps 2-9
-    await runSteps(wizardId, 1, steps.length - 1)
+    const stepsOk = await runSteps(wizardId, 1, steps.length - 1)
+    if (stepsOk) {
+      setReportLoading(true)
+      try {
+        setClosingReport(await closingWizardApi.getReport(wizardId))
+        await loadClosingValidation()
+      } catch (err) {
+        toast.error('Zárási riport hiba', getErrorMessage(err))
+        setClosingReport(null)
+      } finally {
+        setReportLoading(false)
+      }
+    } else {
+      setClosingReport(null)
+    }
     setIsRunning(false)
-  }, [wizardId, denomQuantities, steps.length, runSteps])
+  }, [wizardId, denomQuantities, denomTotal, steps.length, runSteps, loadClosingValidation, t])
 
   const handleFinalize = useCallback(async () => {
     if (!canFinalize || !wizardId || !worker) return
@@ -257,6 +307,9 @@ export default function ClosingWizardPage() {
     setWizardId(null)
     setWaitingForDenom(false)
     setDenomSubmitted(false)
+    setClosingReport(null)
+    setClosingDifferences([])
+    setReportLoading(false)
     setDenomQuantities(Object.fromEntries(HUF_DENOMINATIONS.map((d) => [d, 0])))
   }, [wizardId])
 
@@ -324,6 +377,55 @@ export default function ClosingWizardPage() {
               style={{ width: `${progress}%` }}
             />
           </div>
+        </div>
+
+        <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+          <div className="mb-3 flex items-start justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Napi zárás előellenőrzés</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Címletezési és zárási készültség
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadClosingValidation()}
+              disabled={validationLoading}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700"
+              aria-label="Napi zárás előellenőrzés frissítése"
+            >
+              <RefreshCw className={`h-4 w-4 ${validationLoading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          {validationError ? (
+            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{validationError}</span>
+            </div>
+          ) : closingValidation ? (
+            <>
+              <div className={`mb-2 rounded-md border p-2 text-sm ${
+                closingValidation.allValid
+                  ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200'
+                  : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200'
+              }`}>
+                {closingValidation.errorMessage || (closingValidation.allValid ? 'Minden címletezés rendben' : 'Zárási ellenőrzés nem teljes')}
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
+                <ValidationPill label="Valuta" ok={closingValidation.currencyDenominationOk} />
+                <ValidationPill label="Kezelési díj" ok={closingValidation.handlingFeeDenominationOk} />
+                <ValidationPill label="Western Union" ok={closingValidation.westernUnionDenominationOk} />
+                <ValidationPill label="ÁFA" ok={closingValidation.vatDenominationOk} />
+                <ValidationPill label="E-kereskedelem" ok={closingValidation.ecommerceDenominationOk} />
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Előellenőrzés betöltése...
+            </div>
+          )}
         </div>
 
         {/* ELLENORZESI LISTA */}
@@ -409,6 +511,101 @@ export default function ClosingWizardPage() {
                   {t('closing.cimletezesRogzitve')}{denomTotal.toLocaleString('hu-HU')} {t('common.ft')}
                 </span>
               </div>
+            )}
+          </div>
+        )}
+
+        {closingDifferences.length > 0 && (
+          <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+            <div className="mb-3">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('closing.elteresEllenorzes')}</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {t('closing.elteresEllenorzesLeiras')}
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-xs" data-testid="closing-differences-table">
+                <thead className="bg-gray-50 text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">
+                  <tr>
+                    <th className="px-2 py-1 font-semibold">{t('common.currency')}</th>
+                    <th className="px-2 py-1 text-right font-semibold">{t('closing.elvart')}</th>
+                    <th className="px-2 py-1 text-right font-semibold">{t('closing.tenyleges')}</th>
+                    <th className="px-2 py-1 text-right font-semibold">{t('closing.elteres')}</th>
+                    <th className="px-2 py-1 text-right font-semibold">{t('closing.statusz')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {closingDifferences.map((item) => (
+                    <tr key={item.currencyCode} className="border-t border-gray-100 dark:border-gray-700">
+                      <td className="px-2 py-1 font-semibold">{item.currencyCode}</td>
+                      <td className="px-2 py-1 text-right">{formatAmount(item.expected)}</td>
+                      <td className="px-2 py-1 text-right">{formatAmount(item.actual)}</td>
+                      <td className={`px-2 py-1 text-right font-semibold ${item.status === 'OK' ? 'text-green-700' : 'text-amber-700'}`}>
+                        {formatAmount(item.difference)}
+                      </td>
+                      <td className="px-2 py-1 text-right">{item.status === 'OK' ? t('closing.nincsElteres') : item.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {(reportLoading || closingReport) && (
+          <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white">Zárási riport előnézet</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Backend riport a véglegesítés előtti ellenőrzéshez
+                </p>
+              </div>
+              {reportLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+            </div>
+
+            {closingReport && (
+              <>
+                <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
+                  <ReportMetric label="Iroda" value={closingReport.branchName} />
+                  <ReportMetric label="Zárás dátuma" value={closingReport.closingDate} />
+                  <ReportMetric label="Típus" value={closingReport.closingType} />
+                  <ReportMetric label="Tranzakció" value={closingReport.transactionCount ?? 0} />
+                  <ReportMetric label="Vétel" value={closingReport.buyCount ?? 0} />
+                  <ReportMetric label="Eladás" value={closingReport.sellCount ?? 0} />
+                  <ReportMetric label="Sztornó" value={closingReport.reversalCount ?? 0} />
+                  <ReportMetric label="Kezelési díj" value={`${formatHuf(closingReport.handlingFeeTotal)} Ft`} />
+                  <ReportMetric label="Vételi forgalom" value={`${formatHuf(closingReport.buyTurnoverHuf)} Ft`} />
+                  <ReportMetric label="Eladási forgalom" value={`${formatHuf(closingReport.sellTurnoverHuf)} Ft`} />
+                  <ReportMetric label="Nyitó HUF" value={`${formatHuf(closingReport.openingBalanceHuf)} Ft`} />
+                  <ReportMetric label="Záró HUF" value={`${formatHuf(closingReport.closingBalanceHuf)} Ft`} />
+                </div>
+
+                {closingReport.inventory && closingReport.inventory.length > 0 && (
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="min-w-full text-left text-xs">
+                      <thead className="bg-gray-50 text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">
+                        <tr>
+                          <th className="px-2 py-1 font-semibold">Valuta</th>
+                          <th className="px-2 py-1 text-right font-semibold">Nyitó</th>
+                          <th className="px-2 py-1 text-right font-semibold">Aktuális</th>
+                          <th className="px-2 py-1 text-right font-semibold">Változás</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {closingReport.inventory.slice(0, 8).map((item) => (
+                          <tr key={item.currencyCode} className="border-t border-gray-100 dark:border-gray-700">
+                            <td className="px-2 py-1 font-semibold">{item.currencyCode}</td>
+                            <td className="px-2 py-1 text-right">{formatNumber(item.openingBalance)}</td>
+                            <td className="px-2 py-1 text-right">{formatNumber(item.currentBalance)}</td>
+                            <td className="px-2 py-1 text-right">{formatNumber(item.dailyChange)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -514,6 +711,46 @@ export default function ClosingWizardPage() {
             </div>
           </div>
         )}
+    </div>
+  )
+}
+
+function formatNumber(value: number | undefined | null): string {
+  return (value ?? 0).toLocaleString('hu-HU')
+}
+
+function formatAmount(value: number | string | undefined | null): string {
+  if (value === null || value === undefined) return '0'
+  const parsed = typeof value === 'number' ? value : Number(String(value).replace(',', '.'))
+  return Number.isFinite(parsed) ? parsed.toLocaleString('hu-HU') : String(value)
+}
+
+function formatHuf(value: number | undefined | null): string {
+  return formatNumber(value)
+}
+
+function ReportMetric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="min-w-0 rounded-md bg-gray-50 p-2 dark:bg-gray-900/40">
+      <div className="text-[11px] leading-tight text-gray-500 dark:text-gray-400">{label}</div>
+      <div className="mt-1 break-words text-sm font-semibold leading-tight text-gray-900 dark:text-gray-100">
+        {value}
+      </div>
+    </div>
+  )
+}
+
+function ValidationPill({ label, ok }: { label: string; ok: boolean }) {
+  return (
+    <div
+      className={`flex min-h-9 items-center justify-between gap-2 rounded-md border px-2 py-1 ${
+        ok
+          ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200'
+          : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200'
+      }`}
+    >
+      <span className="min-w-0 truncate font-medium">{label}</span>
+      {ok ? <Check className="h-3.5 w-3.5 shrink-0" /> : <X className="h-3.5 w-3.5 shrink-0" />}
     </div>
   )
 }

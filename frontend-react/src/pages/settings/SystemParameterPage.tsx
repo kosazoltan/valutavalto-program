@@ -89,7 +89,10 @@ export default function SystemParameterPage() {
     try {
       setError(null)
       if (editingParameter) {
-        await systemParameterApi.update(editingParameter.id, formData)
+        await systemParameterApi.update(editingParameter.id, {
+          parameterValue: formData.parameterValue,
+          description: formData.description,
+        })
       } else {
         await systemParameterApi.create(formData)
       }

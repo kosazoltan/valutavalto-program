@@ -25,6 +25,36 @@ const worker = {
   companyName: 'Exclusive Best Change',
 }
 
+const currencyRows = [
+  { id: 1, code: 'EUR', name: 'Euró', decimals: 2, displayOrder: 1, active: true },
+  { id: 2, code: 'USD', name: 'US Dollár', decimals: 2, displayOrder: 2, active: true },
+]
+
+const exchangeRateRows = [
+  {
+    id: 1,
+    currencyId: 1,
+    currencyCode: 'EUR',
+    currencyName: 'Euró',
+    baseBuyRate: 391.5,
+    baseSellRate: 398.5,
+    officialRate: 391.25,
+    validTime: '10:30',
+    createdAt: '2026-06-18T10:30:00',
+  },
+  {
+    id: 2,
+    currencyId: 2,
+    currencyCode: 'USD',
+    currencyName: 'US Dollár',
+    baseBuyRate: 358.2,
+    baseSellRate: 365.8,
+    officialRate: 358.15,
+    validTime: '10:30',
+    createdAt: '2026-06-18T10:30:00',
+  },
+]
+
 /**
  * Bejelentkezés a rate-manager flow-hoz. Visszaadja, hogy a login sikeresen
  * elnavigált-e a central-workstation-re. Ha a backend nem elérhető (pl. CI E2E
@@ -38,26 +68,6 @@ async function loginForRates(page: Page): Promise<boolean> {
     activeRole: 'ADMIN',
     permissions: ['RATE_READ', 'RATE_WRITE'],
   })
-
-  const mockRates = {
-    content: [
-      { id: 1, sourceCurrency: 'EUR', targetCurrency: 'HUF', buyRate: 400, sellRate: 410 },
-      { id: 2, sourceCurrency: 'USD', targetCurrency: 'HUF', buyRate: 350, sellRate: 360 },
-    ],
-    data: [
-      { id: 1, sourceCurrency: 'EUR', targetCurrency: 'HUF', buyRate: 400, sellRate: 410 },
-      { id: 2, sourceCurrency: 'USD', targetCurrency: 'HUF', buyRate: 350, sellRate: 360 },
-    ],
-    rates: [
-      { id: 1, sourceCurrency: 'EUR', targetCurrency: 'HUF', buyRate: 400, sellRate: 410 },
-      { id: 2, sourceCurrency: 'USD', targetCurrency: 'HUF', buyRate: 350, sellRate: 360 },
-    ],
-    total: 2,
-    totalElements: 2,
-    totalPages: 1,
-    number: 0,
-    size: 20,
-  }
 
   await page.route('**/api/v1/**', async route => {
     const url = new URL(route.request().url())
@@ -81,6 +91,14 @@ async function loginForRates(page: Page): Promise<boolean> {
       })
     }
 
+    if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
+    }
+
     if (path.endsWith('/workers/me') && method === 'GET') {
       return route.fulfill({
         status: 200,
@@ -89,12 +107,139 @@ async function loginForRates(page: Page): Promise<boolean> {
       })
     }
 
-    if (path.includes('/rates') && method === 'GET') {
+    if (path.endsWith('/currencies') && method === 'GET') {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(mockRates),
+        body: JSON.stringify(currencyRows),
       })
+    }
+
+    if (path.endsWith('/exchange-rates') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(exchangeRateRows),
+      })
+    }
+
+    if (path.endsWith('/calculator/matrix') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ EUR: { USD: 1.07 }, USD: { EUR: 0.93 } }),
+      })
+    }
+
+    if (path.endsWith('/rates/polling/status') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          lastPollTime: '2026-06-18T08:00:00',
+          lastPollSuccess: true,
+          lastPollError: null,
+          lastPollUpdatedCount: 12,
+          lastPollSource: 'MNB',
+        }),
+      })
+    }
+
+    if (path.endsWith('/rates/polling/sources') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { id: 1, name: 'MNB', active: true, pollIntervalMinutes: 60 },
+          { id: 2, name: 'ECB', active: false, pollIntervalMinutes: 1440 },
+        ]),
+      })
+    }
+
+    if (path.endsWith('/rates/polling/ecb') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ USD: 358.2, CHF: 412.4 }),
+      })
+    }
+
+    if (path.endsWith('/rates/polling/trigger') && method === 'POST') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'MNB árfolyam polling elindítva' }),
+      })
+    }
+
+    if (path.endsWith('/rates/polling/apply-margins') && method === 'POST') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Margin sikeresen alkalmazva' }),
+      })
+    }
+
+    if (path.endsWith('/exchange-rates/upload-rate-file') && method === 'POST') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          rates: [
+            {
+              currencyCode: 'EUR',
+              buyRate: 390,
+              sellRate: 399,
+              mnbRate: 394,
+              discountBuy: 391,
+              discountSell: 398,
+            },
+          ],
+          parsedAt: '2026-06-18T10:00:00',
+          parsedLineCount: 1,
+          skippedLineCount: 0,
+        }),
+      })
+    }
+
+    if (path.endsWith('/exchange-rates/import-rate-file') && method === 'POST') {
+      return route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify(exchangeRateRows),
+      })
+    }
+
+    if (path.match(/\/api\/v1\/rates\/polling\/sources\/\d+$/) && method === 'PUT') {
+      const id = Number(path.split('/').at(-1))
+      let body: { active?: boolean; pollIntervalMinutes?: number }
+      try {
+        body = route.request().postDataJSON() as { active?: boolean; pollIntervalMinutes?: number }
+      } catch {
+        body = {}
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id,
+          name: id === 1 ? 'MNB' : 'ECB',
+          active: body.active ?? true,
+          pollIntervalMinutes: body.pollIntervalMinutes ?? 60,
+        }),
+      })
+    }
+
+    if (path.endsWith('/rate-creation/bank-rates') && method === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+    }
+
+    if (path.endsWith('/rate-creation/competitor-rates') && method === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+    }
+
+    if (path.endsWith('/rounding-rules') && method === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     }
 
     // Default: üres
@@ -106,10 +251,18 @@ async function loginForRates(page: Page): Promise<boolean> {
   })
 
   await page.goto('/login')
-  const textboxes = page.getByRole('textbox')
-  await textboxes.nth(0).fill('EBC')
-  await textboxes.nth(1).fill('RATE_MANAGER')
-  await page.locator('input[type="password"]').fill('1234')
+  const companyInput = page.getByTestId('login-company-code')
+  const workerInput = page.getByTestId('login-worker-code')
+  const passwordInput = page.getByTestId('login-password')
+  await expect(companyInput).toBeVisible()
+  await expect(workerInput).toBeVisible()
+  await expect(passwordInput).toBeVisible()
+  await companyInput.fill('EBC')
+  await workerInput.fill('RATE_MANAGER')
+  await passwordInput.fill('1234')
+  await expect(companyInput).toHaveValue('EBC')
+  await expect(workerInput).toHaveValue('RATE_MANAGER')
+  await expect(passwordInput).toHaveValue('1234')
   await page.getByRole('button', { name: /Bejelentkezés/i }).click()
 
   // Backend elérhető? Ha a login nem navigál el (ECONNREFUSED az E2E-env-ben),
@@ -192,4 +345,74 @@ test('árfolyam adatok betöltődnek (keine backend esetén graceful skip)', asy
   }
 
   expect(true).toBe(true)
+})
+
+test('árfolyam polling vezérlő meghívja a backend trigger, margin és source update route-okat', async ({ page }) => {
+  const loggedIn = await loginForRates(page)
+  if (!loggedIn) {
+    test.skip(true, 'backend nem elérhető (login nem navigált central-workstation-re) — E2E graceful skip')
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/rates', { waitUntil: 'domcontentloaded' })
+
+  const panel = page.getByTestId('rate-polling-control-panel')
+  await expect(panel).toBeVisible()
+  await expect(panel.getByText('Árfolyam polling vezérlés')).toBeVisible()
+
+  const triggerRequest = page.waitForRequest(request =>
+    request.method() === 'POST' && request.url().includes('/rates/polling/trigger')
+  )
+  await panel.getByRole('button', { name: 'MNB polling indítása' }).click()
+  await triggerRequest
+  await expect(page.getByText('MNB árfolyam polling elindítva')).toBeVisible()
+
+  await panel.getByLabel('Spread').fill('3,5')
+  const marginRequest = page.waitForRequest(request =>
+    request.method() === 'POST' && request.url().includes('/rates/polling/apply-margins')
+  )
+  await panel.getByRole('button', { name: 'Alkalmaz' }).click()
+  const margin = await marginRequest
+  expect(margin.postDataJSON()).toMatchObject({ currencyId: 1, spread: 3.5 })
+
+  const activeRequest = page.waitForRequest(request =>
+    request.method() === 'PUT' && request.url().includes('/rates/polling/sources/2')
+  )
+  await panel.getByRole('checkbox').nth(1).click()
+  const active = await activeRequest
+  expect(active.postDataJSON()).toMatchObject({ active: true })
+
+  const intervalRequest = page.waitForRequest(request =>
+    request.method() === 'PUT' && request.url().includes('/rates/polling/sources/2')
+  )
+  await panel.getByLabel('ECB polling intervallum').selectOption('60')
+  const interval = await intervalRequest
+  expect(interval.postDataJSON()).toMatchObject({ pollIntervalMinutes: 60 })
+
+  const filePanel = page.getByTestId('rate-file-import-panel')
+  await expect(filePanel).toBeVisible()
+  await filePanel.getByTestId('rate-file-input').setInputFiles({
+    name: 'GETARF.DAT',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('GETARF'),
+  })
+  const previewRequest = page.waitForRequest(request =>
+    request.method() === 'POST' && request.url().includes('/exchange-rates/upload-rate-file')
+  )
+  await filePanel.getByRole('button', { name: /Előnézet/i }).click()
+  await previewRequest
+  await expect(filePanel.getByText('1 feldolgozott sor, 0 kihagyott sor.')).toBeVisible()
+  await expect(filePanel.getByText('EUR')).toBeVisible()
+
+  const importRequest = page.waitForRequest(request =>
+    request.method() === 'POST' && request.url().includes('/exchange-rates/import-rate-file')
+  )
+  await filePanel.getByRole('button', { name: /Import/i }).click()
+  await importRequest
+  await expect(filePanel.getByText('2 árfolyam importálva.')).toBeVisible()
+
+  const horizontalOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  )
+  expect(horizontalOverflow).toBe(false)
 })

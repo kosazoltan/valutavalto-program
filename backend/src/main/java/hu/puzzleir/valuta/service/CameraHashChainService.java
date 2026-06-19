@@ -144,7 +144,7 @@ public class CameraHashChainService {
             }
 
             // Chain hash újraszámítás és ellenőrzés
-            String recordingStartTime = recordingRepository.findById(entry.getRecordingId())
+            String recordingStartTime = recordingRepository.findByIdAndBranchId(entry.getRecordingId(), branchId)
                 .map(CameraRecording::getStartTime)
                 .map(LocalDateTime::toString)
                 .orElse("null");

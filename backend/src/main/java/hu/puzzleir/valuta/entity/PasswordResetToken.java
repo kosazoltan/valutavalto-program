@@ -13,6 +13,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Password reset token persistence.
@@ -40,6 +41,9 @@ public class PasswordResetToken {
 
     @Column(name = "worker_id", nullable = false)
     private Long workerId;
+
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
 
     @Column(name = "issued_at", nullable = false)
     private Instant issuedAt;

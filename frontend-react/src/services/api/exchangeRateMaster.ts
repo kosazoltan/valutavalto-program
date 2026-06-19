@@ -116,4 +116,9 @@ export const exchangeRateMasterApi = {
     const response = await api.get<ExchangeRateDistribution[]>(`/exchange-rate-master/${id}/distribution`)
     return response.data ?? []
   },
+
+  /** Pénztári elosztás-visszaigazolás regisztrálása. */
+  acknowledgeDistribution: async (distributionId: string): Promise<void> => {
+    await api.post(`/exchange-rate-master/distribution/${distributionId}/acknowledge`)
+  },
 }

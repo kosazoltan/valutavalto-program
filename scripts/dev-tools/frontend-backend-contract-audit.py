@@ -1,0 +1,844 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+frontend-backend-contract-audit.py -- static REST wiring audit.
+
+Facts checked:
+  - backend @RestController HTTP mappings
+  - high-confidence frontend REST calls with literal URL paths
+
+Exit:
+  0 = no unmatched frontend REST call
+  1 = at least one frontend call has no matching backend method/path
+
+Notes:
+  - Backend endpoints not referenced from literal frontend calls are reported as
+    INFO, because several endpoints are webhooks, downloads, admin-only tools,
+    diagnostics, or intentionally backend-only workflows.
+  - Dynamic calls where the path is a variable are listed separately as
+    unresolved; those require manual review.
+"""
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterable
+
+
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+ROOT = Path(__file__).resolve().parent.parent.parent
+BACKEND = ROOT / "backend" / "src" / "main" / "java"
+
+FRONTEND_ROOTS = [
+    ROOT / "frontend-react" / "src",
+    ROOT / "penztar-client" / "electron",
+    ROOT / "penztar-client" / "src",
+    ROOT / "penztar-client" / "main.js",
+    ROOT / "arfolyam-keszito-client" / "src",
+    ROOT / "arfolyam-keszito-client" / "electron",
+    ROOT / "kozponti-client" / "src",
+    ROOT / "kozponti-client" / "electron",
+]
+
+SOURCE_SUFFIXES = {".ts", ".tsx", ".js", ".jsx"}
+SKIP_DIR_NAMES = {"node_modules", "dist", "dist-electron", "build", "coverage", ".vite"}
+SKIP_FILE_MARKERS = {
+    ".test.",
+    ".spec.",
+    ".stories.",
+}
+SKIP_FILE_NAMES = {
+    "setupTests.ts",
+    "setupTests.tsx",
+    "setup.ts",
+    "setup.tsx",
+}
+
+REST_CTRL = re.compile(r"@RestController\b")
+CLASS_NAME = re.compile(r"\bclass\s+(\w+)")
+METHOD_SIG = re.compile(
+    r"^\s*(?:public|protected)\s+(?:[\w.<>\[\], ?]+)\s+(\w+)\s*\(",
+)
+MAPPING_START = re.compile(r"@(RequestMapping|GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping)\b")
+REQUEST_METHOD = re.compile(r"RequestMethod\.([A-Z]+)")
+STRING_LITERAL = re.compile(r'"([^"]*)"')
+QUOTED_PATH_LITERAL = re.compile(r"""['"`](/[^'"`?]+)(?:\?[^'"`]*)?['"`]""")
+
+API_CALL = re.compile(
+    r"\b(?:api|axios|client|http)\s*\.\s*"
+    r"(?P<method>get|post|put|delete|patch)\s*"
+    r"(?:<[^()\n]*>)?\s*\(\s*"
+    r"(?P<quote>['\"`])(?P<path>[^'\"`]+)(?P=quote)",
+    re.IGNORECASE,
+)
+RATE_MAKER_REQUEST = re.compile(
+    r"\brequest\s*(?:<[^;\n()]*>)?\s*\(\s*"
+    r"[^,\n]+,\s*['\"](?P<method>GET|POST|PUT|DELETE|PATCH)['\"]\s*,\s*"
+    r"(?P<quote>['\"`])(?P<path>[^'\"`]+)(?P=quote)",
+)
+SYNC_ENGINE_CALL = re.compile(
+    r"\bhttp(?P<method>Get|Post|Put|Delete|Patch)\s*(?:<[^;\n()]*>)?\s*\(\s*"
+    r"`\$\{[^}]+\}(?P<path>/[^`?]+)(?:\?[^`]*)?`",
+)
+FETCH_START = re.compile(r"\bfetch\s*\(")
+FETCH_METHOD = re.compile(r"\bmethod\s*:\s*['\"`](GET|POST|PUT|DELETE|PATCH)['\"`]", re.IGNORECASE)
+JSX_SRC_API_URL = re.compile(r"\bsrc\s*=\s*\{\s*`(?P<path>/api(?:/v1)?/[^`?]+)(?:\?[^`]*)?`")
+DOM_SRC_API_URL = re.compile(r"\.src\s*=\s*`(?P<path>/api(?:/v1)?/[^`?]+)(?:\?[^`]*)?`")
+
+# Framework/proxy endpoints that are configured outside @RestController.
+SYNTHETIC_BACKEND_ENDPOINTS = {
+    ("GET", "/actuator/health"),
+    ("GET", "/actuator/info"),
+    ("GET", "/actuator/prometheus"),
+}
+
+
+@dataclass(frozen=True)
+class Endpoint:
+    method: str
+    path: str
+    source: str
+    line: int
+    owner: str
+
+
+@dataclass(frozen=True)
+class FrontendCall:
+    method: str
+    path: str
+    source: str
+    line: int
+    kind: str
+
+
+@dataclass(frozen=True)
+class UnresolvedCall:
+    source: str
+    line: int
+    expression: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class BackendReferenceClass:
+    category: str
+    evidence: str
+
+
+def rel(path: Path) -> str:
+    return str(path.resolve().relative_to(ROOT)).replace("\\", "/")
+
+
+def iter_source_files() -> Iterable[Path]:
+    for root in FRONTEND_ROOTS:
+        if not root.exists():
+            continue
+        if root.is_file():
+            yield root
+            continue
+        for path in root.rglob("*"):
+            if path.is_dir():
+                continue
+            if any(part in SKIP_DIR_NAMES for part in path.parts):
+                continue
+            if path.name in SKIP_FILE_NAMES or any(marker in path.name for marker in SKIP_FILE_MARKERS):
+                continue
+            if path.suffix.lower() in SOURCE_SUFFIXES:
+                yield path
+
+
+def collect_global_path_constants(paths: Iterable[Path]) -> dict[str, list[str]]:
+    constants: dict[str, list[str]] = {}
+    for path in paths:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for match in re.finditer(
+            r"\b(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*=\s*['\"`]([^'\"`]+)['\"`]",
+            text,
+        ):
+            normalized = normalize_path(match.group(2))
+            if normalized:
+                constants.setdefault(match.group(1), []).append(normalized)
+    return constants
+
+
+def normalize_path(raw_path: str) -> str | None:
+    path = raw_path.strip()
+    if not path:
+        return "/"
+    if path.startswith(("http://", "https://", "file://", "app://")):
+        return None
+    if "${" in path and "}" not in path:
+        path = path.split("${", 1)[0]
+    path = re.sub(r"\$\{[^}]+\}", "{param}", path)
+    path = path.split("?", 1)[0].split("#", 1)[0]
+    if not path.startswith("/"):
+        return None
+    path = re.sub(r"/+", "/", path)
+    for prefix in ("/api/v1", "/api"):
+        if path == prefix:
+            path = "/"
+        elif path.startswith(prefix + "/"):
+            path = path[len(prefix):]
+            break
+    if len(path) > 1 and path.endswith("/"):
+        path = path.rstrip("/")
+    return path
+
+
+def normalize_url_like_path(raw_path: str) -> str | None:
+    path = raw_path.strip()
+    if not path:
+        return None
+    path = re.sub(r"\$\{[^}]+\}", "{base}", path)
+    for prefix in ("/api/v1", "/api"):
+        if path == prefix:
+            return "/"
+        index = path.find(prefix + "/")
+        if index >= 0:
+            return normalize_path(path[index:])
+    return normalize_path(path)
+
+
+def path_to_pattern(path: str) -> tuple[str, ...]:
+    normalized = normalize_path(path)
+    if normalized is None:
+        return tuple()
+    parts: list[str] = []
+    for part in normalized.strip("/").split("/"):
+        if not part:
+            continue
+        if (
+            part.startswith("{")
+            and part.endswith("}")
+            or part.startswith(":")
+            or "{param}" in part
+            or re.fullmatch(r"\d+", part)
+        ):
+            parts.append("*")
+        else:
+            parts.append(part)
+    return tuple(parts)
+
+
+def paths_match(frontend: str, backend: str) -> bool:
+    fp = path_to_pattern(frontend)
+    bp = path_to_pattern(backend)
+    if len(fp) != len(bp):
+        return False
+    return all(a == b or a == "*" or b == "*" for a, b in zip(fp, bp))
+
+
+def collect_annotation(lines: list[str], start: int) -> tuple[str, int]:
+    text = lines[start].strip()
+    open_count = text.count("(") - text.count(")")
+    end = start
+    while open_count > 0 and end + 1 < len(lines):
+        end += 1
+        text += " " + lines[end].strip()
+        open_count += lines[end].count("(") - lines[end].count(")")
+    return text, end
+
+
+def mapping_paths(annotation: str) -> list[str]:
+    literals = [s for s in STRING_LITERAL.findall(annotation) if s == "" or s.startswith("/")]
+    if not literals:
+        return [""]
+    return literals
+
+
+def mapping_methods(kind: str, annotation: str) -> list[str]:
+    if kind == "RequestMapping":
+        methods = REQUEST_METHOD.findall(annotation)
+        return methods or ["ANY"]
+    return [kind.replace("Mapping", "").upper()]
+
+
+def join_paths(base: str, sub: str) -> str:
+    joined = f"{base.rstrip('/')}/{sub.lstrip('/')}"
+    joined = "/" + joined.strip("/")
+    normalized = normalize_path(joined)
+    return normalized or joined
+
+
+def parse_backend_controller(path: Path) -> list[Endpoint]:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if not REST_CTRL.search(text):
+        return []
+
+    lines = text.splitlines()
+    class_match = CLASS_NAME.search(text)
+    owner = class_match.group(1) if class_match else path.stem
+
+    class_line = 0
+    for i, line in enumerate(lines):
+        if re.search(r"\bclass\s+\w+", line):
+            class_line = i
+            break
+
+    base_paths = [""]
+    i = max(0, class_line - 20)
+    while i < class_line:
+        if "@RequestMapping" in lines[i]:
+            annotation, end = collect_annotation(lines, i)
+            base_paths = mapping_paths(annotation)
+            i = end + 1
+            continue
+        i += 1
+
+    endpoints: list[Endpoint] = []
+    i = 0
+    while i < len(lines):
+        start_match = MAPPING_START.search(lines[i])
+        if not start_match:
+            i += 1
+            continue
+
+        annotation, end = collect_annotation(lines, i)
+        kind = start_match.group(1)
+        paths = mapping_paths(annotation)
+        methods = mapping_methods(kind, annotation)
+
+        sig_index = end + 1
+        while sig_index < min(len(lines), end + 25):
+            if METHOD_SIG.match(lines[sig_index]):
+                for base in base_paths:
+                    for sub in paths:
+                        full_path = join_paths(base, sub)
+                        for method in methods:
+                            if method != "ANY":
+                                endpoints.append(
+                                    Endpoint(method, full_path, rel(path), i + 1, owner),
+                                )
+                break
+            if MAPPING_START.search(lines[sig_index]) or re.search(r"\bclass\s+\w+", lines[sig_index]):
+                break
+            sig_index += 1
+        i = max(end + 1, sig_index)
+
+    return endpoints
+
+
+def parse_backend_endpoints() -> list[Endpoint]:
+    endpoints: list[Endpoint] = []
+    for path in BACKEND.rglob("*.java"):
+        endpoints.extend(parse_backend_controller(path))
+    for method, path in SYNTHETIC_BACKEND_ENDPOINTS:
+        endpoints.append(Endpoint(method, path, "spring-actuator", 0, "Actuator"))
+    unique: dict[tuple[str, str, str], Endpoint] = {}
+    for ep in endpoints:
+        unique[(ep.method, ep.path, ep.owner)] = ep
+    return sorted(unique.values(), key=lambda ep: (ep.path, ep.method, ep.source, ep.line))
+
+
+def line_number(text: str, index: int) -> int:
+    return text.count("\n", 0, index) + 1
+
+
+def local_variable_paths(text: str, variable_name: str, position: int) -> list[str]:
+    before = text[:position]
+    assignments = list(re.finditer(
+        rf"\b(?:const|let)\s+{re.escape(variable_name)}\s*=\s*(?P<expr>[\s\S]*?)(?:\n\s*(?:const|let|if|try|await|return)|;)",
+        before,
+    ))
+    if not assignments:
+        return []
+    expr = assignments[-1].group("expr")
+    result: list[str] = []
+    for raw in QUOTED_PATH_LITERAL.findall(expr):
+        normalized = normalize_path(raw)
+        if normalized:
+            result.append(normalized)
+    return sorted(set(result))
+
+
+def normalize_template_path(raw: str) -> str | None:
+    templated = re.sub(r"\$\{[^}]+\}", "{id}", raw)
+    return normalize_path(templated)
+
+
+def local_template_variable_paths(text: str, variable_name: str, position: int) -> list[str]:
+    before = text[:position]
+    assignments = list(re.finditer(
+        rf"\b(?:const|let)\s+{re.escape(variable_name)}\s*=\s*`(?P<path>/[^`?]+)(?:\?[^`]*)?`",
+        before,
+    ))
+    result: list[str] = []
+    for assignment in assignments:
+        normalized = normalize_template_path(assignment.group("path"))
+        if normalized:
+            result.append(normalized)
+    return sorted(set(result))
+
+
+def local_fetch_variable_paths(text: str, variable_name: str, position: int) -> list[str]:
+    before = text[:position]
+    assignments = list(re.finditer(
+        rf"\b(?:const|let)\s+{re.escape(variable_name)}\s*=\s*(?P<quote>['\"`])(?P<path>[^'\"`]+)(?P=quote)",
+        before,
+    ))
+    result: list[str] = []
+    for assignment in assignments:
+        normalized = normalize_url_like_path(assignment.group("path"))
+        if normalized:
+            result.append(normalized)
+    return sorted(set(result))
+
+
+def find_matching_paren(text: str, open_index: int) -> int | None:
+    depth = 0
+    quote: str | None = None
+    escaped = False
+    for index in range(open_index, len(text)):
+        char = text[index]
+        if quote:
+            if escaped:
+                escaped = False
+                continue
+            if char == "\\":
+                escaped = True
+                continue
+            if char == quote:
+                quote = None
+            continue
+        if char in {"'", '"', "`"}:
+            quote = char
+            continue
+        if char == "(":
+            depth += 1
+            continue
+        if char == ")":
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
+
+
+def split_first_argument(args: str) -> tuple[str, str]:
+    quote: str | None = None
+    escaped = False
+    depth = 0
+    for index, char in enumerate(args):
+        if quote:
+            if escaped:
+                escaped = False
+                continue
+            if char == "\\":
+                escaped = True
+                continue
+            if char == quote:
+                quote = None
+            continue
+        if char in {"'", '"', "`"}:
+            quote = char
+            continue
+        if char in "([{":
+            depth += 1
+            continue
+        if char in ")]}":
+            depth = max(0, depth - 1)
+            continue
+        if char == "," and depth == 0:
+            return args[:index].strip(), args[index + 1:].strip()
+    return args.strip(), ""
+
+
+def frontend_fetch_calls(text: str) -> list[tuple[str, str, int]]:
+    result: list[tuple[str, str, int]] = []
+    for match in FETCH_START.finditer(text):
+        open_index = text.find("(", match.start())
+        close_index = find_matching_paren(text, open_index)
+        if close_index is None:
+            continue
+        first_arg, options = split_first_argument(text[open_index + 1:close_index])
+        method_match = FETCH_METHOD.search(options)
+        method = method_match.group(1).upper() if method_match else "GET"
+
+        resolved_paths: list[str] = []
+        literal_match = re.fullmatch(r"(?P<quote>['\"`])(?P<path>[^'\"`]+)(?P=quote)", first_arg, re.DOTALL)
+        if literal_match:
+            normalized = normalize_url_like_path(literal_match.group("path"))
+            if normalized:
+                resolved_paths.append(normalized)
+        elif re.fullmatch(r"[A-Za-z_$][\w$]*", first_arg):
+            resolved_paths.extend(local_fetch_variable_paths(text, first_arg, match.start()))
+
+        for resolved_path in sorted(set(resolved_paths)):
+            result.append((method, resolved_path, match.start()))
+    return result
+
+
+def frontend_api_url_gets(text: str) -> list[tuple[str, str, int]]:
+    result: list[tuple[str, str, int]] = []
+    for regex in (JSX_SRC_API_URL, DOM_SRC_API_URL):
+        for match in regex.finditer(text):
+            normalized = normalize_template_path(match.group("path"))
+            if normalized:
+                result.append(("GET", normalized, match.start()))
+    return result
+
+
+def frontend_http_json_with_retry_calls(text: str) -> list[tuple[str, str, int]]:
+    result: list[tuple[str, str, int]] = []
+    for match in re.finditer(r"\bhttpJsonWithRetry\b", text):
+        open_index = text.find("(", match.start())
+        if open_index < 0:
+            continue
+        close_index = find_matching_paren(text, open_index)
+        if close_index is None:
+            continue
+        first_arg, options = split_first_argument(text[open_index + 1:close_index])
+        template_match = re.fullmatch(r"`\$\{[^}]+\}(?P<path>/[^`?]+)(?:\?[^`]*)?`", first_arg.strip(), re.DOTALL)
+        if not template_match:
+            continue
+        normalized = normalize_template_path(template_match.group("path"))
+        if not normalized:
+            continue
+        method_match = FETCH_METHOD.search(options)
+        method = method_match.group(1).upper() if method_match else "GET"
+        result.append((method, normalized, match.start()))
+    return result
+
+
+def enclosing_function_parameter_call_fragments(text: str, parameter_name: str, position: int) -> list[str]:
+    before = text[:position]
+    function_matches = list(re.finditer(
+        r"\b(?:const|let)\s+(?P<name>[A-Za-z_$][\w$]*)\s*=\s*"
+        r"(?:async\s*)?\((?P<params>[^)]*)\)\s*=>",
+        before,
+    ))
+    if not function_matches:
+        return []
+
+    function_match = function_matches[-1]
+    params = [
+        param.strip().split(":", 1)[0].strip()
+        for param in function_match.group("params").split(",")
+    ]
+    if not params or params[0] != parameter_name:
+        return []
+
+    function_name = function_match.group("name")
+    result: list[str] = []
+    call_pattern = re.compile(
+        rf"\b{re.escape(function_name)}\s*\(\s*"
+        r"(?P<quote>['\"`])(?P<path>[^'\"`]+)(?P=quote)",
+    )
+    for call in call_pattern.finditer(text):
+        if function_match.start() <= call.start() <= position:
+            continue
+        fragment = re.sub(r"\$\{[^}]+\}", "{id}", call.group("path")).strip("/")
+        if fragment:
+            result.append(fragment)
+    return sorted(set(result))
+
+
+def template_base_api_calls(text: str) -> list[tuple[str, str, int]]:
+    result: list[tuple[str, str, int]] = []
+    call_pattern = re.compile(
+        r"\bapi\s*\.\s*(?P<method>get|post|put|delete|patch)\s*(?:<[^()\n]*>)?\s*\(\s*"
+        r"`\$\{(?P<variable>[A-Za-z_$][\w$]*)\}(?P<suffix>/[^`?]+)(?:\?[^`]*)?`",
+        re.IGNORECASE,
+    )
+    for match in call_pattern.finditer(text):
+        bases = local_template_variable_paths(text, match.group("variable"), match.start())
+        suffix = match.group("suffix")
+        for base in bases:
+            parameter_only = re.fullmatch(r"/\$\{(?P<parameter>[A-Za-z_$][\w$]*)\}", suffix)
+            if parameter_only:
+                fragments = enclosing_function_parameter_call_fragments(
+                    text,
+                    parameter_only.group("parameter"),
+                    match.start(),
+                )
+                for fragment in fragments:
+                    result.append((match.group("method").upper(), join_paths(base, fragment), match.start()))
+                continue
+            if "${" in suffix:
+                continue
+            result.append((match.group("method").upper(), join_paths(base, suffix), match.start()))
+    return result
+
+
+def function_parameter_literal_paths(text: str, variable_name: str, position: int) -> list[str]:
+    before = text[:position]
+    function_matches = list(re.finditer(
+        r"\b(?:async\s+)?function\s+(?P<name>[A-Za-z_$][\w$]*)\s*"
+        r"(?:<[^()\n]*>)?\s*\((?P<params>[^)]*)\)",
+        before,
+    ))
+    if not function_matches:
+        return []
+
+    function_match = function_matches[-1]
+    params = [
+        param.strip().split(":", 1)[0].strip()
+        for param in function_match.group("params").split(",")
+    ]
+    if not params or params[0] != variable_name:
+        return []
+
+    function_name = function_match.group("name")
+    result: list[str] = []
+    call_pattern = re.compile(
+        rf"\b{re.escape(function_name)}\s*(?:<[^()\n]*>)?\s*\(\s*"
+        r"(?P<quote>['\"`])(?P<path>[^'\"`]+)(?P=quote)",
+    )
+    for call in call_pattern.finditer(text):
+        if function_match.start() <= call.start() <= position:
+            continue
+        normalized = normalize_path(call.group("path"))
+        if normalized:
+            result.append(normalized)
+    return sorted(set(result))
+
+
+def extract_frontend_calls(
+    path: Path,
+    global_path_constants: dict[str, list[str]],
+) -> tuple[list[FrontendCall], list[UnresolvedCall]]:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    calls: list[FrontendCall] = []
+    unresolved: list[UnresolvedCall] = []
+
+    for regex, kind in (
+        (API_CALL, "api-call"),
+        (RATE_MAKER_REQUEST, "rate-maker-request"),
+        (SYNC_ENGINE_CALL, "sync-engine"),
+    ):
+        for match in regex.finditer(text):
+            raw_path = match.group("path")
+            normalized = normalize_path(raw_path)
+            if normalized is None:
+                continue
+            method = match.group("method").upper()
+            if method in {"GET", "POST", "PUT", "DELETE", "PATCH"}:
+                calls.append(FrontendCall(method, normalized, rel(path), line_number(text, match.start()), kind))
+
+    for method, resolved_path, position in template_base_api_calls(text):
+        calls.append(FrontendCall(method, resolved_path, rel(path), line_number(text, position), "resolved-template-base"))
+
+    for method, resolved_path, position in frontend_fetch_calls(text):
+        calls.append(FrontendCall(method, resolved_path, rel(path), line_number(text, position), "fetch-call"))
+
+    for method, resolved_path, position in frontend_api_url_gets(text):
+        calls.append(FrontendCall(method, resolved_path, rel(path), line_number(text, position), "api-url-src"))
+
+    for method, resolved_path, position in frontend_http_json_with_retry_calls(text):
+        calls.append(FrontendCall(method, resolved_path, rel(path), line_number(text, position), "http-json-with-retry"))
+
+    # High-confidence variable-path api calls. Resolve only simple local/global constants.
+    variable_call = re.compile(
+        r"\bapi\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^()\n]*>)?\s*\(\s*([A-Za-z_$][\w$]*)",
+    )
+    for match in variable_call.finditer(text):
+        method = match.group(1).upper()
+        variable_name = match.group(2)
+        resolved = local_variable_paths(text, variable_name, match.start())
+        if not resolved:
+            resolved = global_path_constants.get(variable_name, [])
+        if not resolved:
+            resolved = function_parameter_literal_paths(text, variable_name, match.start())
+        if resolved:
+            for resolved_path in resolved:
+                calls.append(FrontendCall(method, resolved_path, rel(path), line_number(text, match.start()), "resolved-variable"))
+            continue
+        unresolved.append(
+            UnresolvedCall(
+                rel(path),
+                line_number(text, match.start()),
+                match.group(0).strip(),
+                "variable path",
+            ),
+        )
+
+    unique: dict[tuple[str, str, str, int, str], FrontendCall] = {}
+    for call in calls:
+        unique[(call.method, call.path, call.source, call.line, call.kind)] = call
+    return list(unique.values()), unresolved
+
+
+def parse_frontend_calls() -> tuple[list[FrontendCall], list[UnresolvedCall]]:
+    calls: list[FrontendCall] = []
+    unresolved: list[UnresolvedCall] = []
+    source_files = list(iter_source_files())
+    global_path_constants = collect_global_path_constants(source_files)
+    for path in source_files:
+        file_calls, file_unresolved = extract_frontend_calls(path, global_path_constants)
+        calls.extend(file_calls)
+        unresolved.extend(file_unresolved)
+    return sorted(calls, key=lambda c: (c.source, c.line, c.method, c.path)), unresolved
+
+
+def find_unmatched(
+    frontend_calls: list[FrontendCall],
+    backend_endpoints: list[Endpoint],
+) -> list[tuple[FrontendCall, list[Endpoint]]]:
+    unmatched: list[tuple[FrontendCall, list[Endpoint]]] = []
+    for call in frontend_calls:
+        same_method = [ep for ep in backend_endpoints if ep.method == call.method]
+        if any(paths_match(call.path, ep.path) for ep in same_method):
+            continue
+        same_path_other_method = [ep for ep in backend_endpoints if paths_match(call.path, ep.path)]
+        unmatched.append((call, same_path_other_method))
+    return unmatched
+
+
+def unreferenced_backend(
+    backend_endpoints: list[Endpoint],
+    frontend_calls: list[FrontendCall],
+) -> list[Endpoint]:
+    result: list[Endpoint] = []
+    for ep in backend_endpoints:
+        if ep.source == "spring-actuator":
+            continue
+        if not any(call.method == ep.method and paths_match(call.path, ep.path) for call in frontend_calls):
+            result.append(ep)
+    return result
+
+
+def classify_backend_reference(ep: Endpoint) -> BackendReferenceClass:
+    path = ep.path
+    owner = ep.owner.lower()
+    first = path.strip("/").split("/", 1)[0] if path.strip("/") else ""
+
+    if ep.method == "POST" and path == "/notifications/{id}/mark-read":
+        return BackendReferenceClass(
+            "backend-only/legacy-alias",
+            "Legacy alias for the canonical PUT /notifications/{id}/read endpoint, which is used by the frontend.",
+        )
+    if ep.method == "POST" and path == "/monitoring/heartbeat":
+        return BackendReferenceClass(
+            "integration-or-device",
+            "Branch heartbeat ingest endpoint; monitored by frontend dashboard via /monitoring/dashboard, /online, and /offline.",
+        )
+    if ep.method == "POST" and path == "/sync/events":
+        return BackendReferenceClass(
+            "integration-or-callback",
+            "Inbound sync event receiver with mandatory Idempotency-Key; driven by sync/outbox clients, not by a human UI control.",
+        )
+    if ep.method == "POST" and path in {
+        "/daily-closing/execute",
+        "/daily-sessions/close-with-validation",
+        "/daily-sessions/{sessionId}/close",
+    }:
+        return BackendReferenceClass(
+            "backend-only/legacy-compat",
+            "Legacy/POS-compatible closing path; the user-facing closing UI is the closing-wizard flow.",
+        )
+    if ep.method == "POST" and path == "/error-log":
+        return BackendReferenceClass(
+            "backend-only/diagnostics",
+            "HMAC-signed operational error-log ingest endpoint; unsigned browser UI calls are intentionally rejected.",
+        )
+    if ep.method == "POST" and path in {"/cash-balances/init-branch/{branchId}", "/cash-balances/init-all-branches"}:
+        return BackendReferenceClass(
+            "backend-only/admin-maintenance",
+            "Idempotent cash-balance initialization/retrofit endpoint; normal branch/session flows auto-initialize balances.",
+        )
+    if path in {"/nav/closings/validate-amount", "/nav/closings/{id}/approve-discrepancy"}:
+        return BackendReferenceClass(
+            "ui-candidate/financial-contract-required",
+            "NAV closing discrepancy control is a cashier/supervisor workflow; frontend binding requires an approved financial contract/spec.",
+        )
+    if path in {"/nav/closings/daily", "/nav/closings/{id}/submit"}:
+        return BackendReferenceClass(
+            "workflow-action/financial-admin",
+            "State-changing NAV fiscal workflow action; do not expose without explicit role/approval flow and contract evidence.",
+        )
+    if path.endswith("/callback"):
+        return BackendReferenceClass("integration-or-callback", "External OAuth/webhook callback endpoint; normally reached by third-party redirect, not by frontend REST.")
+    if path.startswith("/auth/"):
+        return BackendReferenceClass("backend-only/auth-session", "Auth/session bootstrap endpoint; often used indirectly or before app routes.")
+    if first in {"actuator", "diagnostics"} or "diagnostics" in owner:
+        return BackendReferenceClass("backend-only/diagnostics", "Operational diagnostics/health endpoint.")
+    if any(token in path for token in ("/download", "/export", "/excel", "/txt", "/csv")):
+        return BackendReferenceClass("ui-candidate/export-download", "Export/download endpoint should have an explicit launcher if user-facing.")
+    if first in {"camera", "cash-register", "pos-terminal", "pos-terminal-stub", "nav", "bank-api-config", "western-union-stub"}:
+        return BackendReferenceClass("integration-or-device", "External device/integration endpoint; may be driven by Electron/backend jobs.")
+    if ep.method in {"POST", "PUT", "PATCH", "DELETE"} and any(
+        token in path for token in (
+            "/approve", "/reject", "/execute", "/cancel", "/restore", "/retry", "/revoke",
+            "/publish", "/acknowledge", "/receive", "/storno", "/toggle", "/assign",
+            "/resolve", "/register", "/sync", "/close", "/open",
+        )
+    ):
+        return BackendReferenceClass("workflow-action", "State-changing workflow action; requires matching UI control or documented backend-only trigger.")
+    if ep.method == "GET" and re.search(r"/\{[^}]+\}$", path):
+        return BackendReferenceClass("ui-candidate/detail", "Detail read endpoint; usually expected behind list/detail navigation if user-facing.")
+    if ep.method == "GET":
+        return BackendReferenceClass("ui-candidate/list-or-view", "Read endpoint with no literal frontend caller found.")
+    return BackendReferenceClass("ui-candidate/mutation", "Mutation endpoint with no literal frontend caller found.")
+
+
+def unreferenced_summary(unreferenced: list[Endpoint]) -> dict[str, int]:
+    summary: dict[str, int] = {}
+    for ep in unreferenced:
+        category = classify_backend_reference(ep).category
+        summary[category] = summary.get(category, 0) + 1
+    return dict(sorted(summary.items(), key=lambda item: (-item[1], item[0])))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--show-unreferenced", action="store_true")
+    parser.add_argument("--show-unreferenced-summary", action="store_true")
+    parser.add_argument("--show-unresolved", action="store_true")
+    parser.add_argument("--limit", type=int, default=40)
+    args = parser.parse_args()
+
+    backend_endpoints = parse_backend_endpoints()
+    frontend_calls, unresolved = parse_frontend_calls()
+    unmatched = find_unmatched(frontend_calls, backend_endpoints)
+    unreferenced = unreferenced_backend(backend_endpoints, frontend_calls)
+
+    print("frontend-backend-contract-audit:")
+    print(f"  backend endpoints: {len(backend_endpoints)}")
+    print(f"  frontend literal REST calls: {len(frontend_calls)}")
+    print(f"  frontend unresolved dynamic calls: {len(unresolved)}")
+    print(f"  unmatched frontend REST calls: {len(unmatched)}")
+    print(f"  backend endpoints not referenced by literal calls: {len(unreferenced)}")
+
+    if unmatched:
+        print("\nUNMATCHED FRONTEND CALLS")
+        for call, alternatives in unmatched[: args.limit]:
+            alt = ""
+            if alternatives:
+                methods = ", ".join(sorted({ep.method for ep in alternatives}))
+                alt = f" (path exists with method(s): {methods})"
+            print(f"  {call.method:6s} {call.path:55s} {call.source}:{call.line} [{call.kind}]{alt}")
+        if len(unmatched) > args.limit:
+            print(f"  ... {len(unmatched) - args.limit} more")
+
+    if args.show_unresolved and unresolved:
+        print("\nUNRESOLVED DYNAMIC FRONTEND CALLS")
+        for item in unresolved[: args.limit]:
+            print(f"  {item.source}:{item.line} {item.reason}: {item.expression}")
+        if len(unresolved) > args.limit:
+            print(f"  ... {len(unresolved) - args.limit} more")
+
+    if args.show_unreferenced and unreferenced:
+        if args.show_unreferenced_summary:
+            print("\nUNREFERENCED BACKEND SUMMARY")
+            for category, count in unreferenced_summary(unreferenced).items():
+                print(f"  {category:32s} {count}")
+
+        print("\nUNREFERENCED BACKEND ENDPOINTS")
+        for ep in unreferenced[: args.limit]:
+            classification = classify_backend_reference(ep)
+            print(f"  {ep.method:6s} {ep.path:55s} {ep.source}:{ep.line} {ep.owner} [{classification.category}]")
+        if len(unreferenced) > args.limit:
+            print(f"  ... {len(unreferenced) - args.limit} more")
+
+    if unmatched:
+        return 1
+
+    print("\nOK: every high-confidence frontend REST call matched a backend method/path.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -51,6 +51,8 @@ import {
   loadGroupRateValuesFromOfflineDb,
   saveGroupRateValuesToOfflineDbAwait,
   isGroupRateOfflineDbAvailable,
+  exportRateMakerSheetSnapshot,
+  importRateMakerSheetSnapshot,
 } from './workgroupSheetStorage'
 import { useTranslation } from 'react-i18next'
 
@@ -125,6 +127,7 @@ export default function RateCreationPage() {
   // FK02-E (FR-6, FR-9): a J (elszámoló / officialRate) szerver-alapértéke valutánként (currencyId →
   // szám). A J cella üres (nincs override) állapotban ezt mutatja; ürítéskor erre áll vissza.
   const serverOfficialRateRef = useRef<Record<number, number | null>>({})
+  const serverSheetVersionRef = useRef<number | null>(null)
   const [selectedWgIndex, setSelectedWgIndex] = useState<number>(0)
   /**
    * FK-02/03/04 (Kasza Helga / Bali Henriett 2026-05-28): a régi „bal oldali sávos"
@@ -419,7 +422,18 @@ export default function RateCreationPage() {
       let wgData: WorkgroupDetailDTO[]
 
       if (isLocalRateMakerApp) {
-        const bootstrap = await rateCreationApi.getLocalRateMakerBootstrap()
+        const [bootstrap, serverSheet] = await Promise.all([
+          rateCreationApi.getLocalRateMakerBootstrap(),
+          rateCreationApi.getLocalRateMakerSheet().catch((sheetErr: unknown) => {
+            logger.warn('RateCreationPage', 'Szerveroldali rate-maker munkaív betöltése sikertelen — helyi állapot marad', sheetErr)
+            return null
+          }),
+        ])
+        if (serverSheet?.sheetJson) {
+          const imported = importRateMakerSheetSnapshot(serverSheet.sheetJson)
+          logger.info('RateCreationPage', `Szerveroldali rate-maker munkaív importálva: ${imported} localStorage kulcs`)
+        }
+        serverSheetVersionRef.current = serverSheet?.version ?? null
         overviewData = bootstrap.overview
         wgData = bootstrap.workgroups
       } else {
@@ -438,7 +452,7 @@ export default function RateCreationPage() {
       setWorkgroups(orderedWg)
       setSelectedWgIndex((current) => (orderedWg[current] ? current : 0))
 
-      const editableRates: EditableRate[] = overviewData.currencies.map((c: RateOverviewItem) => ({
+      const editableRates: EditableRate[] = (overviewData.currencies ?? []).map((c: RateOverviewItem) => ({
         currencyId: c.currencyId,
         currencyCode: c.currencyCode,
         currencyName: c.currencyName,
@@ -487,6 +501,23 @@ export default function RateCreationPage() {
   }, [isLocalRateMakerApp])
 
   useEffect(() => { void loadData() }, [loadData])
+
+  useEffect(() => {
+    if (!isLocalRateMakerApp || loading || !overview || rates.length === 0) return
+    const timer = window.setTimeout(() => {
+      const snapshot = exportRateMakerSheetSnapshot()
+      const sheetJson = JSON.stringify(snapshot)
+      void rateCreationApi.putLocalRateMakerSheet(sheetJson, {
+        source: 'rate-maker',
+        baseVersion: serverSheetVersionRef.current,
+      }).then((saved) => {
+        serverSheetVersionRef.current = saved.version ?? null
+      }).catch((sheetErr: unknown) => {
+        logger.warn('RateCreationPage', 'Szerveroldali rate-maker munkaív mentése sikertelen — helyi állapot marad', sheetErr)
+      })
+    }, 1500)
+    return () => window.clearTimeout(timer)
+  }, [isLocalRateMakerApp, loading, overview, rates, formulas, reloadVersion, selectedWg?.id])
 
   // FK02-B / FR-11, FR-12: a pillanatnyi (perzisztált) fix-érték store a snapshothoz/visszaállításhoz.
   const currentSavedRateValues = useCallback((): Record<string, string> => {

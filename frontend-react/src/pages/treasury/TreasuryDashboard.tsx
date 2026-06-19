@@ -9,8 +9,24 @@ import {
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { AxiosError } from 'axios'
-import { transactionApi, cashBalanceApi, dailySessionApi } from '../../services/api/index'
-import type { DailyTurnoverSummary, CashBalance, DailySession } from '../../services/api/index'
+import { transactionApi, cashBalanceApi, dailySessionApi, treasuryApi, ertektarApi } from '../../services/api/index'
+import type {
+  DailyTurnoverSummary,
+  CashBalance,
+  CompanyCashPosition,
+  DailySession,
+  TreasuryDashboardSummary,
+  TreasuryBranchComparison,
+  TreasurySubmissionStatus,
+  TreasuryBankFlow,
+  TreasuryAggregate,
+  BranchStatusResponse,
+  ErtektarConsolidatedReport,
+  BankTransaction,
+  ErtektarCollection,
+  ErtektarDistribution,
+  VaultOperationStatus,
+} from '../../services/api/index'
 import { formatInteger, formatMillions } from './treasuryUtils'
 import { DashboardSkeleton } from './LoadingSkeleton'
 import { logger } from '../../utils/logger'
@@ -38,9 +54,23 @@ export default function TreasuryDashboard() {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [turnover, setTurnover] = useState<DailyTurnoverSummary | null>(null)
-  const [balances, setBalances] = useState<CashBalance[]>([])
+  const [companyPosition, setCompanyPosition] = useState<CompanyCashPosition | null>(null)
   const [topBranches, setTopBranches] = useState<BranchRanking[]>([])
   const [closingStatuses, setClosingStatuses] = useState<BranchClosing[]>([])
+  const [treasurySummary, setTreasurySummary] = useState<TreasuryDashboardSummary | null>(null)
+  const [branchComparison, setBranchComparison] = useState<TreasuryBranchComparison[]>([])
+  const [submissionStatus, setSubmissionStatus] = useState<TreasurySubmissionStatus[]>([])
+  const [bankFlow, setBankFlow] = useState<TreasuryBankFlow[]>([])
+  const [branchGroupSummary, setBranchGroupSummary] = useState<TreasuryAggregate[]>([])
+  const [companySummary, setCompanySummary] = useState<TreasuryAggregate[]>([])
+  const [ertektarBranches, setErtektarBranches] = useState<BranchStatusResponse[]>([])
+  const [ertektarConsolidatedReport, setErtektarConsolidatedReport] = useState<ErtektarConsolidatedReport | null>(null)
+  const [ertektarCollections, setErtektarCollections] = useState<ErtektarCollection[]>([])
+  const [ertektarDistributions, setErtektarDistributions] = useState<ErtektarDistribution[]>([])
+  const [ertektarBankTransactions, setErtektarBankTransactions] = useState<BankTransaction[]>([])
+  const [statusAction, setStatusAction] = useState<string | null>(null)
+  const [statusActionError, setStatusActionError] = useState<string | null>(null)
+  const [treasuryApiRestricted, setTreasuryApiRestricted] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(new Date())
   // v2.5.3: ha a /cash-balances/company endpoint 403-at ad (csak MANAGER+ ADMIN
   // hozzáfér), a UI "Korlátozott jogosultság" panellel jelzi a SUPERVISOR
@@ -50,7 +80,25 @@ export default function TreasuryDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [turnoverData, balanceDataRaw] = await Promise.all([
+      setCompanyBalanceRestricted(false)
+      setTreasuryApiRestricted(false)
+
+      const [
+        turnoverData,
+        balanceDataRaw,
+        companyPositionData,
+        treasuryDashboardData,
+        branchComparisonData,
+        submissionStatusData,
+        bankFlowData,
+        branchGroupSummaryData,
+        companySummaryData,
+        ertektarBranchesData,
+        ertektarConsolidatedReportData,
+        ertektarCollectionsData,
+        ertektarDistributionsData,
+        ertektarBankTransactionsData,
+      ] = await Promise.all([
         transactionApi.getDailyTurnover().catch(() => null),
         cashBalanceApi.getCompanyBalances().catch((err: unknown) => {
           if (err instanceof AxiosError && err.response?.status === 403) {
@@ -58,11 +106,94 @@ export default function TreasuryDashboard() {
           }
           return []
         }),
+        cashBalanceApi.getCompanyPosition().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setCompanyBalanceRestricted(true)
+          }
+          return null
+        }),
+        treasuryApi.dashboard().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return null
+        }),
+        treasuryApi.branchComparison().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return []
+        }),
+        treasuryApi.submissionStatus().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return []
+        }),
+        treasuryApi.bankFlow().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return []
+        }),
+        treasuryApi.branchGroupSummary().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return []
+        }),
+        treasuryApi.companySummary().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return []
+        }),
+        treasuryApi.ertektarBranches().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return {}
+        }),
+        treasuryApi.ertektarConsolidatedReport().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return null
+        }),
+        ertektarApi.getCollections().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return []
+        }),
+        ertektarApi.getDistributions().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return []
+        }),
+        ertektarApi.getBankTransactions().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return []
+        }),
       ])
 
       if (turnoverData) setTurnover(turnoverData)
+      setCompanyPosition(companyPositionData)
+      setTreasurySummary(treasuryDashboardData)
+      setBranchComparison(safeArray<TreasuryBranchComparison>(branchComparisonData))
+      setSubmissionStatus(safeArray<TreasurySubmissionStatus>(submissionStatusData))
+      setBankFlow(safeArray<TreasuryBankFlow>(bankFlowData))
+      setBranchGroupSummary(safeArray<TreasuryAggregate>(branchGroupSummaryData))
+      setCompanySummary(safeArray<TreasuryAggregate>(companySummaryData))
+      setErtektarBranches(Object.values(ertektarBranchesData ?? {}))
+      setErtektarConsolidatedReport(ertektarConsolidatedReportData)
+      setErtektarCollections(safeArray<ErtektarCollection>(ertektarCollectionsData))
+      setErtektarDistributions(safeArray<ErtektarDistribution>(ertektarDistributionsData))
+      setErtektarBankTransactions(safeArray<BankTransaction>(ertektarBankTransactionsData))
       const balanceData = safeArray<CashBalance>(balanceDataRaw)
-      setBalances(balanceData)
 
       const branchMap = new Map<string, { id: string; name: string; total: number }>()
       for (const b of balanceData) {
@@ -131,16 +262,60 @@ export default function TreasuryDashboard() {
 
   useHotkeys('r', () => void fetchData(), { enableOnFormTags: false })
 
+  const updateErtektarStatus = async (
+    kind: 'collection' | 'distribution' | 'bankTransaction',
+    id: number,
+    status: VaultOperationStatus,
+  ) => {
+    if (!window.confirm(`Biztosan ${status} státuszra állítja az értéktári tételt?`)) return
+
+    const actionKey = `${kind}:${id}:${status}`
+    try {
+      setStatusAction(actionKey)
+      setStatusActionError(null)
+      if (kind === 'collection') {
+        await ertektarApi.updateCollectionStatus(id, status)
+      } else if (kind === 'distribution') {
+        await ertektarApi.updateDistributionStatus(id, status)
+      } else {
+        await ertektarApi.updateBankTransactionStatus(id, status)
+      }
+      await fetchData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Értéktári státuszváltás sikertelen.'
+      setStatusActionError(message)
+      logger.error('TreasuryDashboard', 'Ertektar status update error:', err)
+    } finally {
+      setStatusAction(null)
+    }
+  }
+
   if (loading) return <DashboardSkeleton />
 
   const totalTx = (turnover?.totalBuyCount ?? 0) + (turnover?.totalSellCount ?? 0)
   const totalVolume = (turnover?.totalBuyHuf ?? 0) + (turnover?.totalSellHuf ?? 0)
   const totalCustomers = turnover?.totalBuyCount ?? 0
-  const totalStockValue = balances.reduce((sum, b) => sum + b.currentBalance, 0)
+  const totalStockValue = companyPosition?.grandTotalHuf ?? 0
 
   const closedCount = closingStatuses.filter((s) => s.closingStatus === 'CLOSED').length
   const inProgressCount = closingStatuses.filter((s) => s.closingStatus === 'IN_PROGRESS').length
   const notClosedCount = closingStatuses.filter((s) => s.closingStatus === 'NOT_CLOSED').length
+  const submittedCount = submissionStatus.filter((s) => s.submitted).length
+  const missingSubmissionCount = submissionStatus.filter((s) => !s.submitted).length
+  const topBackendBranches = [...branchComparison]
+    .sort((a, b) => Number(b.totalProfit ?? 0) - Number(a.totalProfit ?? 0))
+    .slice(0, 3)
+  const topBankFlow = bankFlow[0]
+  const topBranchGroup = branchGroupSummary[0]
+  const topCompanySummary = companySummary[0]
+  const ertektarOnlineCount = ertektarBranches.filter((b) => b.isOnline ?? b.online).length
+  const ertektarOfflineCount = ertektarBranches.filter((b) => !(b.isOnline ?? b.online)).length
+  const ertektarOpenAlerts = ertektarBranches.reduce((sum, b) => sum + (b.openAlerts ?? 0), 0)
+  const consolidatedTotals = ertektarConsolidatedReport?.totals
+  const consolidatedBranchCount = ertektarConsolidatedReport?.branches?.length ?? 0
+  const openCollections = ertektarCollections.filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED').slice(0, 3)
+  const openDistributions = ertektarDistributions.filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED').slice(0, 3)
+  const openBankTransactions = ertektarBankTransactions.filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED').slice(0, 3)
 
   return (
     <div className="space-y-3">
@@ -180,9 +355,121 @@ export default function TreasuryDashboard() {
         </div>
       )}
 
+      {treasuryApiRestricted && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-start gap-2">
+          <Lock size={18} className="text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-semibold text-amber-900">{t('treasury.dedikaltTreasuryApiKorlatozott')}</p>
+            <p className="text-xs text-amber-800">{t('treasury.treasuryOsszesitokManagerVagyAdmin')}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="form-panel">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-5">
+          <SummaryCard
+            label="Backend treasury összesítő"
+            value={`${formatInteger(treasurySummary?.totalTransactionCount ?? 0)} db`}
+            detail={`${formatMillions(Number(treasurySummary?.totalProfit ?? 0))} profit`}
+          />
+          <SummaryCard
+            label="Fiók összehasonlítás"
+            value={`${formatInteger(branchComparison.length)} iroda`}
+            detail={topBackendBranches[0]?.branchName ?? topBackendBranches[0]?.branchCode ?? 'Nincs adat'}
+          />
+          <SummaryCard
+            label="Beküldési státusz"
+            value={`${submittedCount}/${submissionStatus.length}`}
+            detail={missingSubmissionCount > 0 ? `${missingSubmissionCount} hiányzó jelentés` : 'Minden jelentés beérkezett'}
+          />
+          <SummaryCard
+            label="Értéktári pénztár monitoring"
+            value={`${ertektarOnlineCount}/${ertektarBranches.length} online`}
+            detail={ertektarOfflineCount > 0 ? `${ertektarOfflineCount} offline, ${ertektarOpenAlerts} riasztás` : `${ertektarOpenAlerts} nyitott riasztás`}
+          />
+          <SummaryCard
+            label="Értéktári konszolidált riport"
+            value={`${formatInteger(consolidatedTotals?.totalTransactions ?? 0)} db`}
+            detail={`${formatMillions(Number(consolidatedTotals?.totalHufTurnover ?? 0))} / ${consolidatedBranchCount} iroda`}
+          />
+        </div>
+      </div>
+
+      <div className="form-panel">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <SummaryCard
+            label="Bankflow összesítő"
+            value={topBankFlow?.currencyCode ?? 'Nincs adat'}
+            detail={topBankFlow ? `${formatMillions(Number(topBankFlow.netFlow ?? 0))} nettó` : 'Nincs bankflow adat'}
+          />
+          <SummaryCard
+            label="Fiókcsoport összesítő"
+            value={`${formatInteger(branchGroupSummary.length)} csoport`}
+            detail={topBranchGroup?.name ?? topBranchGroup?.code ?? 'Nincs adat'}
+          />
+          <SummaryCard
+            label="Cégösszesítő"
+            value={`${formatInteger(companySummary.length)} egység`}
+            detail={topCompanySummary ? `${formatMillions(Number(topCompanySummary.totalProfit ?? 0))} profit` : 'Nincs adat'}
+          />
+        </div>
+      </div>
+
+      <div className="form-panel" data-testid="ertektar-status-control">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-base font-bold text-secondary-900">Értéktári státusz kontroll</h2>
+          <span className="text-xs text-secondary-500">
+            {openCollections.length + openDistributions.length + openBankTransactions.length} nyitott tétel
+          </span>
+        </div>
+        {statusActionError && (
+          <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {statusActionError}
+          </div>
+        )}
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          <StatusQueue
+            title="Begyűjtés"
+            rows={openCollections.map((row) => ({
+              id: row.id,
+              status: row.status,
+              primary: row.sourceBranchName ?? row.sourceBranchCode ?? `#${row.id}`,
+              secondary: `${row.currencyCode ?? '-'} ${formatInteger(Number(row.amount ?? 0))}`,
+            }))}
+            kind="collection"
+            busyKey={statusAction}
+            onUpdate={updateErtektarStatus}
+          />
+          <StatusQueue
+            title="Szétosztás"
+            rows={openDistributions.map((row) => ({
+              id: row.id,
+              status: row.status,
+              primary: row.lines?.[0]?.targetBranchName ?? row.lines?.[0]?.targetBranchCode ?? `#${row.id}`,
+              secondary: `${row.lines?.length ?? 0} sor`,
+            }))}
+            kind="distribution"
+            busyKey={statusAction}
+            onUpdate={updateErtektarStatus}
+          />
+          <StatusQueue
+            title="Banki tranzakció"
+            rows={openBankTransactions.map((row) => ({
+              id: row.id,
+              status: row.status,
+              primary: `${row.transactionType} ${row.currencyCode}`,
+              secondary: `${formatInteger(Number(row.amount ?? 0))} / ${row.bankName ?? '-'}`,
+            }))}
+            kind="bankTransaction"
+            busyKey={statusAction}
+            onUpdate={updateErtektarStatus}
+          />
+        </div>
+      </div>
+
       {/* Compact data row — egyszerű számok, nincs grafikon */}
       <div className="form-panel">
-        <div className="grid grid-cols-4 gap-x-6 gap-y-2 text-sm">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2 xl:grid-cols-4">
           <DataRow label="Mai tranzakciók" value={`${formatInteger(totalTx)} db`} />
           <DataRow label="Napi forgalom" value={formatMillions(totalVolume)} accent />
           <DataRow label="Kiszolgált ügyfelek" value={`${formatInteger(totalCustomers)} fő`} />
@@ -200,7 +487,7 @@ export default function TreasuryDashboard() {
       </div>
 
       {/* TOP Irodák — egyszerű lista, nincs progress bar */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="form-panel">
           <h2 className="text-base font-bold text-secondary-900 mb-3 flex items-center gap-2">
             <Trophy size={18} className="text-accent-600" />
@@ -269,6 +556,76 @@ export default function TreasuryDashboard() {
   )
 }
 
+interface StatusQueueRow {
+  id: number
+  status: string
+  primary: string
+  secondary: string
+}
+
+function StatusQueue({
+  title,
+  rows,
+  kind,
+  busyKey,
+  onUpdate,
+}: {
+  title: string
+  rows: StatusQueueRow[]
+  kind: 'collection' | 'distribution' | 'bankTransaction'
+  busyKey: string | null
+  onUpdate: (kind: 'collection' | 'distribution' | 'bankTransaction', id: number, status: VaultOperationStatus) => void
+}) {
+  const targetStatuses: VaultOperationStatus[] = ['IN_PROGRESS', 'COMPLETED', 'REJECTED']
+
+  return (
+    <section className="rounded-lg border border-secondary-100 bg-white p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="text-sm font-bold text-secondary-900">{title}</h3>
+        <span className="text-xs text-secondary-500">{rows.length} nyitott</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          Nincs nyitott tétel.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((row) => (
+            <div key={row.id} className="rounded border border-secondary-100 bg-secondary-50 p-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="break-words text-sm font-semibold text-secondary-900">{row.primary}</div>
+                  <div className="text-xs text-secondary-500">{row.secondary}</div>
+                </div>
+                <span className="shrink-0 rounded bg-white px-2 py-1 text-[11px] font-semibold text-secondary-700">
+                  {row.status}
+                </span>
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-1.5">
+                {targetStatuses.map((status) => {
+                  const actionKey = `${kind}:${row.id}:${status}`
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      className="min-h-9 rounded border border-secondary-200 bg-white px-2 text-[11px] font-semibold text-secondary-800 disabled:opacity-50"
+                      disabled={row.status === status || busyKey === actionKey}
+                      onClick={() => onUpdate(kind, row.id, status)}
+                      aria-label={`${title} #${row.id} státusz ${status}`}
+                    >
+                      {busyKey === actionKey ? '...' : status}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function DataRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="flex justify-between items-baseline border-b border-secondary-100 pb-1.5">
@@ -276,6 +633,16 @@ function DataRow({ label, value, accent }: { label: string; value: string; accen
       <span className={`font-mono font-semibold ${accent ? 'text-primary-700' : 'text-secondary-900'}`}>
         {value}
       </span>
+    </div>
+  )
+}
+
+function SummaryCard({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-lg border border-secondary-100 bg-white p-3">
+      <div className="text-xs font-semibold uppercase text-secondary-500">{label}</div>
+      <div className="mt-1 text-xl font-bold text-secondary-900">{value}</div>
+      <div className="mt-1 text-xs text-secondary-500">{detail}</div>
     </div>
   )
 }

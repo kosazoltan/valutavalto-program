@@ -48,7 +48,17 @@ export interface ErrorSummary {
   generatedAt: string
 }
 
+export interface DiagnosticsHealth {
+  ok: boolean
+  totalReportedErrors: number
+}
+
 export const diagnosticsApi = {
+  health: async (): Promise<DiagnosticsHealth> => {
+    const response = await api.get<DiagnosticsHealth>('/diagnostics/health')
+    return response.data
+  },
+
   listErrors: async (page = 0, size = 50): Promise<ErrorLogPage> => {
     // _preservePaged: a backend Page<ClientErrorLog>-ot ad; e flag nélkül az axios
     // interceptor content-tömbbé bontaná → az ErrorMonitorPage .content/.totalPages
@@ -122,6 +132,12 @@ export interface HashChainIntegrityResponse {
   message: string
 }
 
+export interface StaticAuditCheck {
+  name: string
+  pass: boolean
+  detail?: string
+}
+
 export interface FrontendLogEntry {
   level: 'ERROR' | 'WARN'
   eventType: string
@@ -136,6 +152,13 @@ export interface FrontendLogEntry {
 }
 
 export const auditDiagnosticsApi = {
+  recent: async (limit = 100): Promise<AuditLogEntry[]> => {
+    const response = await api.get<AuditLogEntry[]>('/diagnostics/audit/recent', {
+      params: { limit },
+    })
+    return response.data
+  },
+
   recentErrors: async (limit = 100): Promise<AuditLogEntry[]> => {
     const response = await api.get<AuditLogEntry[]>('/diagnostics/audit/recent-errors', {
       params: { limit },
@@ -170,5 +193,15 @@ export const auditDiagnosticsApi = {
 
   forwardLog: async (entry: FrontendLogEntry): Promise<void> => {
     await api.post('/diagnostics/audit/log', entry)
+  },
+
+  staticAudit: async (adminToken?: string): Promise<StaticAuditCheck[]> => {
+    const v1Base = String(api.defaults.baseURL ?? '')
+    const staticAuditBase = v1Base.replace(/\/api\/v1$/, '/api')
+    const response = await api.get<StaticAuditCheck[]>('/static-audit', {
+      baseURL: staticAuditBase || undefined,
+      headers: adminToken?.trim() ? { 'X-Admin-Token': adminToken.trim() } : undefined,
+    })
+    return response.data
   },
 }

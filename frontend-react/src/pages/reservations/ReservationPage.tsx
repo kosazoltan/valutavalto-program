@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { api } from '@/services/api/index';
+import { api, reservationsApi } from '@/services/api/index';
 import { customerApi, type Customer } from '@/services/api/transactions';
 import { safeArray } from '@/utils/safeArray';
 import { useTranslation } from 'react-i18next'
@@ -61,8 +61,7 @@ export default function ReservationPage() {
       const branchId = localStorage.getItem('branchId') || '';
       let data: Reservation[] = [];
       if (activeTab === 'expired') {
-        const response = await api.get('/reservations/expired');
-        data = response?.data || [];
+        data = await reservationsApi.list({ status: 'EXPIRED' }) as unknown as Reservation[];
       } else {
         // A backend UUID branchId-t vár; üres érték → 400. Ilyenkor üres lista (nincs hívás).
         if (!branchId) {
@@ -70,8 +69,7 @@ export default function ReservationPage() {
           return;
         }
         // active + expiring egyaránt az aktív listából (a backend nem ad külön végpontot)
-        const response = await api.get('/reservations/active', { params: { branchId } });
-        data = response?.data || [];
+        data = await reservationsApi.list({ branchId }) as unknown as Reservation[];
         if (activeTab === 'expiring') {
           const limit = Date.now() + EXPIRING_SOON_HOURS * 3600 * 1000;
           data = safeArray<Reservation>(data).filter(
@@ -98,11 +96,8 @@ export default function ReservationPage() {
   // G14: Foglaló-bizonylat (átvétel / visszafizetés) PDF letöltése. Visszaad: sikeres volt-e (retry-hez).
   const handleDownloadReceipt = useCallback(async (id: number, refund: boolean): Promise<boolean> => {
     try {
-      const response = await api.get(`/reservations/${id}/receipt`, {
-        params: { refund },
-        responseType: 'blob',
-      });
-      const url = URL.createObjectURL(response.data as Blob);
+      const blob = await reservationsApi.receipt(id, refund);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `foglalo-${refund ? 'visszafizetes' : 'atvetel'}-${id}.pdf`;
@@ -119,7 +114,7 @@ export default function ReservationPage() {
 
   const handleFulfill = useCallback(async (id: number) => {
     try {
-      await api.post(`/reservations/${id}/fulfill`);
+      await reservationsApi.fulfill(id);
       // Codex P2 (#1032): a teljesített foglaló a listából eltűnik (csak ACTIVE/expired töltődik), ezért a
       // kötelező BESZÁMÍTÁSI bizonylatot (FR-14, refund=false) RÖGTÖN a teljesítés után letöltjük — ez az
       // egyetlen elérhető nyomtatási út a FULFILLED állapotú foglalóhoz a termék-flow-ban. Ha a letöltés
@@ -143,7 +138,7 @@ export default function ReservationPage() {
     const reason = prompt('Lemondás oka (ügyfél miatt — a letét nem jár vissza):');
     if (reason === null || !reason.trim()) return;
     try {
-      await api.post(`/reservations/${id}/cancel-by-customer`, { reason: reason.trim() });
+      await reservationsApi.cancel(id, reason.trim());
       void loadReservations();
     } catch {
       // noop
@@ -160,7 +155,7 @@ export default function ReservationPage() {
       return;
     }
     try {
-      await api.post(`/reservations/${id}/cancel-by-company`, { reason: reason.trim(), supervisorWorkerId });
+      await reservationsApi.cancelByCompany(id, { reason: reason.trim(), supervisorWorkerId });
       void loadReservations();
     } catch {
       // noop
@@ -407,7 +402,7 @@ function CreateReservationForm({
     }
     setSubmitting(true);
     try {
-      await api.post('/reservations', {
+      await reservationsApi.create({
         customerId: selectedCustomer.id,
         currencyCode: formData.currencyCode,
         amount: parseFloat(formData.amount),

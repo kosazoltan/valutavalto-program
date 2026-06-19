@@ -1,4 +1,4 @@
-import { Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, ShieldAlert, LayoutDashboard, Download, Camera, Package, ClipboardCheck, Building2, MonitorCheck } from "lucide-react"
+import { Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, ShieldAlert, LayoutDashboard, Download, Camera, Package, ClipboardCheck, Building2, MonitorCheck, Smartphone } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { canonicalizeRoleForAppMode } from "../utils/appModeRoles"
 import type { AppMode } from "../types/appMode"
@@ -38,6 +38,7 @@ export const menuGroups: MenuGroup[] = [
     modes: ["full"],
     items: [
       { path: "/central-workstation", label: "Irányítóközpont", icon: MonitorCheck },
+      { path: "/mobile", label: "Mobil felügyelet", icon: Smartphone },
       { path: "/central/closing-control", label: "Zárás beérkezés", icon: ClipboardCheck },
       { path: "/central/received-data", label: "Beérkezett adatok", icon: FileText },
     ],
@@ -68,6 +69,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/cashdesk/day-open", label: "Napnyitás", icon: Sun },
       { path: "/transactions/cashier", label: "Valuta vétel / eladás", icon: ArrowLeftRight },
       { path: "/transactions/conversion", label: "Konverzió", icon: ArrowLeftRight },
+      { path: "/trades", label: "Irodaközi trade", icon: ArrowLeftRight },
       { path: "/cashdesk", label: "Kassza / készlet", icon: Wallet },
       { path: "/cashdesk/denominations", label: "Címletezés", icon: FileText },
       // EXCMD b5 FR-KC-05: zárási címletezések választó-menüje.
@@ -98,6 +100,7 @@ export const menuGroups: MenuGroup[] = [
       // EGY egységes menüpontba. A "Cél iroda" dropdown 3 csoportos (saját terület
       // pénztárai + társ értéktárak + 10 fix banki/speciális partner).
       { path: "/shipments", label: "Átadás-átvétel", icon: ArrowLeftRight },
+      { path: "/trades", label: "Irodaközi trade", icon: ArrowLeftRight },
       { path: "/transfer-documents", label: "Szállítólevelek", icon: FileText },
       { path: "/transit", label: "Úton lévő csomagok", icon: ArrowLeftRight },
       { path: "/inventory", label: "Értéktári készlet", icon: Wallet },
@@ -188,6 +191,7 @@ export const menuGroups: MenuGroup[] = [
     modes: ["full"],
     items: [
       { path: "/customers", label: "Ügyfélkezelés", icon: Users },
+      { path: "/representatives", label: "Meghatalmazottak", icon: Users },
     ],
   },
   {
@@ -211,6 +215,7 @@ export const menuGroups: MenuGroup[] = [
       { path: "/scheduler", label: "Ütemező", icon: FileText, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
       { path: "/email-settings", label: "E-mail beállítások", icon: Settings, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
       { path: "/handling-fee-config", label: "Kezelési költség beállítások", icon: Wallet, canonicalRoles: ["ugyvezeto", "irodavezeto", "belso_ellenor"] },
+      { path: "/packaging", label: "Göngyöleg nyilvántartás", icon: Package, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
     ],
   },
   {

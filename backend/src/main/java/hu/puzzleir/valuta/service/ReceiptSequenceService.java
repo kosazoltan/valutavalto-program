@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.entity.ReceiptSequence;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.repository.ReceiptSequenceRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -65,7 +67,7 @@ public class ReceiptSequenceService {
     @Transactional(propagation = Propagation.MANDATORY)
     public String generateReceiptNumber(UUID branchId, TransactionType transactionType) {
         // Branch kód lekérése
-        Branch branch = branchRepository.findById(branchId)
+        Branch branch = findBranchInCurrentCompany(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Branch nem található: " + branchId));
 
         String branchCode = extractBranchCode(branch.getCode());
@@ -204,6 +206,14 @@ public class ReceiptSequenceService {
     }
 
     // ============ HELPER METHODS ============
+
+    private Optional<Branch> findBranchInCurrentCompany(UUID branchId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
+        if (companyId == null) {
+            return branchRepository.findById(branchId);
+        }
+        return branchRepository.findByIdAndCompanyId(branchId, companyId);
+    }
 
     /**
      * Branch kódból 3 jegyű számot képez (0-paddelt).

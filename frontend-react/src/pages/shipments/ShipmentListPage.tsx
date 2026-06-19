@@ -1,15 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import { Package, Eye, CheckCircle, XCircle, AlertCircle, ArrowUpFromLine, ArrowDownToLine, Printer } from 'lucide-react'
-import { shipmentRequestApi, ShipmentRequest } from '../../services/api/index'
+import { Link } from 'react-router-dom'
+import { Package, Eye, CheckCircle, XCircle, AlertCircle, ArrowUpFromLine, ArrowDownToLine, Printer, Pencil, Save } from 'lucide-react'
+import { shipmentRequestApi, ShipmentRequest, ShipmentUpdateRequest } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger';
 import { useTranslation } from 'react-i18next'
 
+interface ShipmentEditDraft {
+  deliveryDate: string
+  carrierName: string
+  sealNumber: string
+  notes: string
+}
+
 export default function ShipmentListPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const worker = useAuthStore((state) => state.worker)
   const branchId = worker?.branchId || ''
 
@@ -17,6 +23,9 @@ export default function ShipmentListPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('SUBMITTED')
+  const [selectedShipment, setSelectedShipment] = useState<ShipmentRequest | null>(null)
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState<ShipmentEditDraft | null>(null)
 
   const loadShipments = useCallback(async (): Promise<void> => {
     try {
@@ -77,6 +86,97 @@ export default function ShipmentListPage() {
       setLoading(false)
     }
   }
+
+  const handleOpenDetails = async (shipmentId: string): Promise<void> => {
+    try {
+      setDetailLoadingId(shipmentId)
+      setError(null)
+      setSelectedShipment(await shipmentRequestApi.get(shipmentId))
+      setEditDraft(null)
+    } catch (err) {
+      const errorMessage = getErrorMessage(err)
+      setError(errorMessage)
+      logger.error('ShipmentListPage', 'Failed to load shipment details:', err)
+    } finally {
+      setDetailLoadingId(null)
+    }
+  }
+
+  const handleDeliver = async (shipmentId: string): Promise<void> => {
+    if (!confirm('Biztosan kézbesítettként jelöli ezt a szállítmány igényt?')) return
+
+    try {
+      setLoading(true)
+      await shipmentRequestApi.deliver(shipmentId)
+      await loadShipments()
+    } catch (err) {
+      const errorMessage = getErrorMessage(err)
+      setError(errorMessage)
+      logger.error('ShipmentListPage', 'Failed to deliver shipment:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCancel = async (shipmentId: string): Promise<void> => {
+    if (!confirm('Biztosan visszavonja ezt a szállítmány igényt?')) return
+
+    try {
+      setLoading(true)
+      await shipmentRequestApi.cancel(shipmentId)
+      await loadShipments()
+    } catch (err) {
+      const errorMessage = getErrorMessage(err)
+      setError(errorMessage)
+      logger.error('ShipmentListPage', 'Failed to cancel shipment:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStartEdit = (shipment: ShipmentRequest): void => {
+    setEditDraft({
+      deliveryDate: dateInputValue(shipment.requestedDeliveryDate),
+      carrierName: shipment.carrierName || '',
+      sealNumber: shipment.sealNumber || '',
+      notes: shipment.notes || '',
+    })
+  }
+
+  const handleSaveEdit = async (): Promise<void> => {
+    if (!selectedShipment || !editDraft) return
+    if (selectedShipment.requestStatus !== 'DRAFT') {
+      setError('Csak vázlat szállítmánykérés módosítható.')
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+      const payload: ShipmentUpdateRequest = {
+        fromBranchId: selectedShipment.requestingBranchId || selectedShipment.sourceBranchId || '',
+        toBranchId: selectedShipment.targetBranchId,
+        deliveryDate: editDraft.deliveryDate || undefined,
+        carrierName: editDraft.carrierName,
+        sealNumber: editDraft.sealNumber,
+        notes: editDraft.notes,
+      }
+      const updated = await shipmentRequestApi.update(selectedShipment.id, payload)
+      setSelectedShipment(updated)
+      setEditDraft(null)
+      await loadShipments()
+    } catch (err) {
+      const errorMessage = getErrorMessage(err)
+      setError(errorMessage)
+      logger.error('ShipmentListPage', 'Failed to update shipment:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const canCancel = (status: string): boolean => status !== 'DELIVERED' && status !== 'CANCELLED'
+  const canDeliver = (status: string): boolean => status === 'APPROVED' || status === 'IN_TRANSIT'
+  const canEdit = (status: string): boolean => status === 'DRAFT'
 
   // Backend enum: DRAFT, SUBMITTED, APPROVED, IN_TRANSIT, DELIVERED, CANCELLED (ShipmentRequestStatus.java)
   const getStatusBadge = (status: string) => {
@@ -173,6 +273,139 @@ export default function ShipmentListPage() {
         </div>
       )}
 
+      {selectedShipment && (
+        <div className="form-panel border-blue-200 bg-blue-50" data-testid="shipment-detail-panel">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-blue-950">
+                {t('shipments.szallitmanyReszletei', { requestNumber: selectedShipment.requestNumber })}
+              </h2>
+              <p className="text-sm text-blue-900">
+                {selectedShipment.requestingBranchName || selectedShipment.requestingBranchId} → {selectedShipment.targetBranchName || selectedShipment.targetBranchId}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedShipment(null)}
+              className="form-button text-xs"
+            >
+              {t('common.close')}
+            </button>
+          </div>
+          <div className="grid gap-2 text-sm md:grid-cols-4">
+            <DetailLine label="Státusz" value={selectedShipment.requestStatus} />
+            <DetailLine label="Kézbesítés" value={formatDate(selectedShipment.requestedDeliveryDate)} />
+            <DetailLine label="Szállító" value={selectedShipment.carrierName || '-'} />
+            <DetailLine label="Plomba" value={selectedShipment.sealNumber || '-'} />
+          </div>
+          {selectedShipment.notes && (
+            <div className="mt-3 rounded border border-blue-100 bg-white px-3 py-2 text-sm text-blue-950">
+              {selectedShipment.notes}
+            </div>
+          )}
+          {canEdit(selectedShipment.requestStatus) && (
+            <div className="mt-3 border-t border-blue-100 pt-3">
+              {editDraft ? (
+                <div className="space-y-3 rounded border border-blue-100 bg-white p-3">
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <label className="form-label">
+                      {t('shipments.kezbesitesiDatum')}
+                      <input
+                        type="date"
+                        className="form-input mt-1"
+                        value={editDraft.deliveryDate}
+                        data-testid="shipment-edit-delivery-date"
+                        onChange={(event) => setEditDraft({ ...editDraft, deliveryDate: event.target.value })}
+                      />
+                    </label>
+                    <label className="form-label">
+                      {t('shipments.szallito')}
+                      <input
+                        type="text"
+                        className="form-input mt-1"
+                        value={editDraft.carrierName}
+                        data-testid="shipment-edit-carrier"
+                        onChange={(event) => setEditDraft({ ...editDraft, carrierName: event.target.value })}
+                      />
+                    </label>
+                    <label className="form-label">
+                      {t('shipments.plomba')}
+                      <input
+                        type="text"
+                        className="form-input mt-1"
+                        value={editDraft.sealNumber}
+                        data-testid="shipment-edit-seal"
+                        onChange={(event) => setEditDraft({ ...editDraft, sealNumber: event.target.value })}
+                      />
+                    </label>
+                  </div>
+                  <label className="form-label block">
+                    {t('common.note')}
+                    <textarea
+                      className="form-input mt-1 min-h-20"
+                      value={editDraft.notes}
+                      data-testid="shipment-edit-notes"
+                      onChange={(event) => setEditDraft({ ...editDraft, notes: event.target.value })}
+                    />
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="form-button-primary"
+                      data-testid="shipment-save-edit"
+                      onClick={() => void handleSaveEdit()}
+                      disabled={loading}
+                    >
+                      <Save size={16} />
+                      {t('common.save')}
+                    </button>
+                    <button
+                      type="button"
+                      className="form-button"
+                      onClick={() => setEditDraft(null)}
+                      disabled={loading}
+                    >
+                      {t('common.cancel')}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="form-button"
+                  title={t('common.edit')}
+                  data-testid="shipment-start-edit"
+                  onClick={() => handleStartEdit(selectedShipment)}
+                >
+                  <Pencil size={16} />
+                  {t('common.edit')}
+                </button>
+              )}
+            </div>
+          )}
+          {selectedShipment.items && selectedShipment.items.length > 0 && (
+            <div className="mt-3 overflow-x-auto">
+              <table className="data-grid w-full bg-white text-sm">
+                <thead>
+                  <tr>
+                    <th>{t('common.currency')}</th>
+                    <th className="text-right">{t('common.amount')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedShipment.items.map((item) => (
+                    <tr key={item.id ?? `${item.currencyId}-${item.requestedAmount}`}>
+                      <td>{item.currencyCode ?? item.currencyId}</td>
+                      <td className="text-right">{formatAmount(item.requestedAmount ?? item.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div className="form-panel text-center py-8 text-gray-500">
           Betöltés...
@@ -214,9 +447,10 @@ export default function ShipmentListPage() {
                   <td className="no-print">
                     <div className="flex gap-1">
                       <button
-                        onClick={() => navigate(`/shipments/${shipment.id}`)}
+                        onClick={() => void handleOpenDetails(shipment.id)}
                         className="toolbar-button"
                         title="Részletek"
+                        disabled={detailLoadingId === shipment.id}
                       >
                         <Eye size={14} />
                       </button>
@@ -240,13 +474,24 @@ export default function ShipmentListPage() {
                           </button>
                         </>
                       )}
-                      {shipment.requestStatus === 'APPROVED' && (
+                      {canDeliver(shipment.requestStatus) && (
                         <button
-                          onClick={() => navigate(`/shipments/${shipment.id}/prepare`)}
+                          onClick={() => void handleDeliver(shipment.id)}
                           className="toolbar-button text-blue-600"
-                          title="Előkészítés"
+                          title="Kézbesítés"
+                          disabled={loading}
                         >
                           <Package size={14} />
+                        </button>
+                      )}
+                      {canCancel(shipment.requestStatus) && (
+                        <button
+                          onClick={() => void handleCancel(shipment.id)}
+                          className="toolbar-button text-red-700"
+                          title="Visszavonás"
+                          disabled={loading}
+                        >
+                          <XCircle size={14} />
                         </button>
                       )}
                     </div>
@@ -259,5 +504,31 @@ export default function ShipmentListPage() {
       )}
     </div>
   )
+}
+
+function dateInputValue(value: string | undefined): string {
+  if (!value) return ''
+  if (!value.includes('T')) return value
+  const [datePart] = value.split('T')
+  return datePart || value
+}
+
+function DetailLine({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded border border-blue-100 bg-white px-3 py-2">
+      <div className="text-xs text-blue-700">{label}</div>
+      <div className="mt-0.5 break-words font-semibold text-blue-950">{value}</div>
+    </div>
+  )
+}
+
+function formatDate(value: string | undefined): string {
+  if (!value) return '-'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('hu-HU')
+}
+
+function formatAmount(value: number | undefined): string {
+  return (value ?? 0).toLocaleString('hu-HU')
 }
 

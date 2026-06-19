@@ -44,6 +44,7 @@ public class HandlingFeeTransactionService {
     /**
      * Sávos díj számítás: tiered fee.
      */
+    @Transactional(rollbackFor = Exception.class)
     public HandlingFeeTransactionDto calculateFee(Long transactionId, BigDecimal hufAmount) {
         BigDecimal fee;
         if (hufAmount.compareTo(FIFTY_K) <= 0) {

@@ -5,9 +5,11 @@ import { formatInteger } from '../../utils/numberFormat'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger';
 import { useTranslation } from 'react-i18next'
+import { useAuthStore } from '../../stores/authStore'
 
 export default function ContributionPage() {
   const { t } = useTranslation()
+  const branchId = useAuthStore((state) => state.worker?.branchId ?? '')
   const [contributions, setContributions] = useState<Contribution[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -40,12 +42,16 @@ export default function ContributionPage() {
   }
 
   const handleFilterByPeriod = async () => {
+    if (!branchId) {
+      toast.warning('Hiányzó fiók', 'A járulék időszakos szűréséhez fiók azonosító szükséges')
+      return
+    }
     if (!startDate || !endDate) {
       toast.warning('Hiányzó adatok', 'Kérjük, adja meg az időszakot')
       return
     }
     try {
-      const data = await contributionApi.getByPeriod(startDate, endDate)
+      const data = await contributionApi.getByPeriod(branchId, startDate, endDate)
       setContributions(data)
     } catch (error) {
       logger.error('ContributionPage', 'Hiba a szűréskor:', error)

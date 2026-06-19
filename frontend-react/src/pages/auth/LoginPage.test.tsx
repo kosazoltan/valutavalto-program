@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   authLogin: vi.fn(),
   authSelectRole: vi.fn(),
   authGoogleLogin: vi.fn(),
+  authVerifyMfa: vi.fn(),
+  authVerifyMfaBackup: vi.fn(),
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -40,6 +42,8 @@ vi.mock('../../services/api/index', () => ({
     login: mocks.authLogin,
     selectRole: mocks.authSelectRole,
     googleLogin: mocks.authGoogleLogin,
+    verifyMfa: mocks.authVerifyMfa,
+    verifyMfaBackup: mocks.authVerifyMfaBackup,
   },
 }))
 
@@ -183,5 +187,71 @@ describe('LoginPage', () => {
       null,
     )
     expect(mocks.navigate).toHaveBeenCalledWith('/cashier')
+  })
+
+  it('MFA-köteles belépésnél csak sikeres TOTP ellenőrzés után perzisztál sessiont', async () => {
+    mocks.authLogin.mockResolvedValue({
+      ...baseResponse,
+      mfaRequired: true,
+    })
+    mocks.authVerifyMfa.mockResolvedValue({ verified: true, message: 'MFA verification sikeres' })
+    const user = userEvent.setup()
+
+    renderLoginPage()
+
+    const workerInput = screen.getAllByRole('textbox')[1]!
+    const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement
+    await user.type(workerInput, 'ab12')
+    await user.type(passwordInput, 'secret')
+    await user.click(screen.getByRole('button', { name: 'Bejelentkezés' }))
+
+    expect(await screen.findByTestId('login-mfa-code')).toBeInTheDocument()
+    expect(mocks.loginStore).not.toHaveBeenCalled()
+
+    await user.type(screen.getByTestId('login-mfa-code'), '123456')
+    await user.click(screen.getByRole('button', { name: 'MFA ellenőrzés' }))
+
+    await waitFor(() => {
+      expect(mocks.authVerifyMfa).toHaveBeenCalledWith('jwt-token', '123456', 'Bearer')
+    })
+    expect(mocks.loginStore).toHaveBeenCalledWith(
+      baseResponse.worker,
+      'jwt-token',
+      'Bearer',
+      baseResponse.expiresAt,
+      'CASHIER',
+      baseResponse.permissions,
+      ['CASHIER'],
+      false,
+      null,
+    )
+    expect(mocks.navigate).toHaveBeenCalledWith('/cashier')
+  })
+
+  it('MFA backup módnál a backup verify backend szerződést hívja', async () => {
+    mocks.authLogin.mockResolvedValue({
+      ...baseResponse,
+      mfaRequired: true,
+    })
+    mocks.authVerifyMfaBackup.mockResolvedValue({ verified: true, message: 'Backup kód elfogadva' })
+    const user = userEvent.setup()
+
+    renderLoginPage()
+
+    const workerInput = screen.getAllByRole('textbox')[1]!
+    const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement
+    await user.type(workerInput, 'ab12')
+    await user.type(passwordInput, 'secret')
+    await user.click(screen.getByRole('button', { name: 'Bejelentkezés' }))
+
+    await user.click(await screen.findByRole('button', { name: 'Backup kód használata' }))
+    await user.type(screen.getByTestId('login-mfa-code'), '12345678')
+    await user.click(screen.getByRole('button', { name: 'MFA ellenőrzés' }))
+
+    await waitFor(() => {
+      expect(mocks.authVerifyMfaBackup).toHaveBeenCalledWith('jwt-token', '12345678', 'Bearer')
+    })
+    expect(mocks.authVerifyMfa).not.toHaveBeenCalled()
+    expect(mocks.loginStore).toHaveBeenCalled()
   })
 })

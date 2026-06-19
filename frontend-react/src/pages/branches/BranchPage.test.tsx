@@ -34,6 +34,14 @@ const BRANCHES = [
 function mockApi() {
   mockGet.mockImplementation((url: string) => {
     if (typeof url === 'string' && url === '/branches') return Promise.resolve({ data: BRANCHES })
+    if (typeof url === 'string' && url === '/admin/branches') {
+      return Promise.resolve({
+        data: [
+          { id: '1', workerCount: 5, dailyTurnoverHuf: 0, lastSyncAt: '2026-06-18T08:00:00', syncStatus: 'SYNCED' },
+          { id: '2', workerCount: 3, dailyTurnoverHuf: 0, lastSyncAt: null, syncStatus: 'NEVER' },
+        ],
+      })
+    }
     // dictionary dropdownok a form-hoz
     return Promise.resolve({ data: [] })
   })
@@ -51,9 +59,9 @@ describe('BranchPage — FK-020 Pénztár Törzs Adatbázis lista', () => {
 
   it('FR-2/FR-9: alapból csak az aktív irodákat listázza + darabszám', async () => {
     renderPage()
-    await waitFor(() => expect(screen.getByText('Szeged Tesco')).toBeInTheDocument())
-    expect(screen.getByText('Pécs Tesco')).toBeInTheDocument()
-    expect(screen.getByText('Békéscsaba Tesco')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getAllByText('Szeged Tesco').length).toBeGreaterThan(0))
+    expect(screen.getAllByText('Pécs Tesco').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Békéscsaba Tesco').length).toBeGreaterThan(0)
     // inaktív alapból NEM látszik
     expect(screen.queryByText('Régi bezárt iroda')).not.toBeInTheDocument()
     // darabszám = 3
@@ -62,40 +70,49 @@ describe('BranchPage — FK-020 Pénztár Törzs Adatbázis lista', () => {
 
   it('FR-2: clientType=CENTRAL paraméterrel kéri a listát (virtuálisok kizárása)', async () => {
     renderPage()
-    await waitFor(() => expect(screen.getByText('Szeged Tesco')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByText('Szeged Tesco').length).toBeGreaterThan(0))
     expect(mockGet).toHaveBeenCalledWith('/branches', { params: { clientType: 'CENTRAL' } })
+  })
+
+  it('az admin statisztikás branch szerződést is lekéri és megjeleníti', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getAllByText('Szeged Tesco').length).toBeGreaterThan(0))
+
+    expect(mockGet).toHaveBeenCalledWith('/admin/branches')
+    expect(screen.getAllByText('5 fő').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Sync:/).length).toBeGreaterThan(0)
   })
 
   it('FR-3: szabad szöveges keresés névre/címre szűr', async () => {
     renderPage()
-    await waitFor(() => expect(screen.getByText('Szeged Tesco')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByText('Szeged Tesco').length).toBeGreaterThan(0))
     fireEvent.change(screen.getByLabelText('Keresés'), { target: { value: 'Pécs' } })
-    expect(screen.getByText('Pécs Tesco')).toBeInTheDocument()
+    expect(screen.getAllByText('Pécs Tesco').length).toBeGreaterThan(0)
     expect(screen.queryByText('Szeged Tesco')).not.toBeInTheDocument()
     expect(screen.getByTestId('branch-count')).toHaveTextContent('1 pénztár')
   })
 
   it('FR-4: területi szűrő region szerint szűr', async () => {
     renderPage()
-    await waitFor(() => expect(screen.getByText('Szeged Tesco')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByText('Szeged Tesco').length).toBeGreaterThan(0))
     fireEvent.change(screen.getByLabelText('Területi szűrő'), { target: { value: 'SZEGED' } })
-    expect(screen.getByText('Szeged Tesco')).toBeInTheDocument()
+    expect(screen.getAllByText('Szeged Tesco').length).toBeGreaterThan(0)
     expect(screen.queryByText('Pécs Tesco')).not.toBeInTheDocument()
     expect(screen.queryByText('Békéscsaba Tesco')).not.toBeInTheDocument()
   })
 
   it('FR-5: "Inaktívak is" checkbox megjeleníti az inaktív irodát', async () => {
     renderPage()
-    await waitFor(() => expect(screen.getByText('Szeged Tesco')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByText('Szeged Tesco').length).toBeGreaterThan(0))
     fireEvent.click(screen.getByLabelText('Inaktívak is'))
-    expect(screen.getByText('Régi bezárt iroda')).toBeInTheDocument()
+    expect(screen.getAllByText('Régi bezárt iroda').length).toBeGreaterThan(0)
     expect(screen.getByTestId('branch-count')).toHaveTextContent('4 pénztár')
   })
 
   it('FR-6: szolgáltatás-badge-ek megjelennek (ÁFA/WU/MG/POS)', async () => {
     renderPage()
-    await waitFor(() => expect(screen.getByText('Szeged Tesco')).toBeInTheDocument())
-    const row = screen.getByText('Szeged Tesco').closest('tr') as HTMLElement
+    await waitFor(() => expect(screen.getAllByText('Szeged Tesco').length).toBeGreaterThan(0))
+    const row = screen.getAllByText('Szeged Tesco').map((node) => node.closest('tr')).find(Boolean) as HTMLElement
     // a Szeged sorban: ÁFA aktív (kék), WU aktív, MG/POS szürke — mind jelen van label-ként
     expect(within(row).getByText('ÁFA')).toBeInTheDocument()
     expect(within(row).getByText('WU')).toBeInTheDocument()

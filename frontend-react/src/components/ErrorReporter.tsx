@@ -26,7 +26,7 @@ export async function sendErrorReport(params: {
   severity?: string;
 }) {
   try {
-    const body = {
+    const legacyBody = {
       errorType: params.errorType ?? 'frontend_error',
       message: params.message ?? 'Unknown error',
       stack: params.stack,
@@ -36,10 +36,21 @@ export async function sendErrorReport(params: {
       breadcrumbs: [...breadcrumbs],
       timestamp: new Date().toISOString(),
     };
+    const diagnosticsBody = {
+      component: 'electron-renderer',
+      version: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : undefined,
+      osInfo: navigator.platform,
+      errorMessage: params.message ?? 'Unknown error',
+      stackTrace: params.stack,
+      context: legacyBody,
+    };
 
-    // Best-effort: API kliens proxy-n át, JWT header-rel
     const { api } = await import('../services/api/client');
-    await api.post('/error-report', body);
+    try {
+      await api.post('/diagnostics/error-report', diagnosticsBody);
+    } catch {
+      await api.post('/error-report', legacyBody);
+    }
   } catch {
     // Silently fail — error reporter must not crash
   }

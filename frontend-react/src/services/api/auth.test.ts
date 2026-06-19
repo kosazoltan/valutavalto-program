@@ -120,4 +120,28 @@ describe('authApi', () => {
       expect(result.token).toBe('new-token')
     })
   })
+
+  describe('MFA login verification', () => {
+    it('calls POST /mfa/verify with the temporary login token', async () => {
+      mockApi.post.mockResolvedValue({ data: { verified: true, message: 'ok' } })
+
+      const result = await authApi.verifyMfa('login-token', '123456')
+
+      expect(mockApi.post).toHaveBeenCalledWith('/mfa/verify', { code: '123456' }, {
+        headers: { Authorization: 'Bearer login-token' },
+      })
+      expect(result.verified).toBe(true)
+    })
+
+    it('calls POST /mfa/verify-backup with the temporary login token', async () => {
+      mockApi.post.mockResolvedValue({ data: { verified: true, message: 'backup ok' } })
+
+      const result = await authApi.verifyMfaBackup('login-token', '12345678')
+
+      expect(mockApi.post).toHaveBeenCalledWith('/mfa/verify-backup', { code: '12345678' }, {
+        headers: { Authorization: 'Bearer login-token' },
+      })
+      expect(result.message).toBe('backup ok')
+    })
+  })
 })

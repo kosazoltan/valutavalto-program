@@ -11,9 +11,10 @@ import {
   Banknote,
   PenLine,
   RefreshCw,
+  Wand2,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { transferApi, currencyApi, branchApi } from '../../services/api/index'
+import { transferApi, currencyApi, branchApi, sealNumberApi } from '../../services/api/index'
 import type { Transfer, Currency, CreateTransferRequest, BranchInfo } from '../../services/api/index'
 import {
   formatInteger,
@@ -34,6 +35,7 @@ import { validateCarrierSeal } from '../transfers/transferRules'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
+import { getErrorMessage } from '../../utils/errorHandling'
 import { useTranslation } from 'react-i18next'
 
 const MOVEMENT_TYPES = [
@@ -65,6 +67,7 @@ export default function MovementManager() {
   // FR-1..3 (átadás-átvétel): szállító neve + plombaszám — minden /transfers létrehozásnál kötelező.
   const [carrierName, setCarrierName] = useState('')
   const [sealNumber, setSealNumber] = useState('')
+  const [sealGenerating, setSealGenerating] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   // FK-013 follow-up (2026-06-01): a "Cél iroda" legördülő tartalma — a /branches/vault-counterparties
   // 3 csoportja (saját terület pénztárai / társ értéktárak / banki és speciális partnerek), mint a
@@ -218,6 +221,25 @@ export default function MovementManager() {
       logger.error('MovementManager', 'Create movement error:', err)
     }
   }, [toBranchId, currencyId, amount, movementType, notes, carrierName, sealNumber, fetchData, currencies, electronQueueAvailable, vaultCounterparties])
+
+  const generateSealNumber = useCallback(async () => {
+    const branchCode = worker?.branchCode?.trim()
+    if (!branchCode) {
+      setFormError('A plombaszám generálásához hiányzik a telephely kódja.')
+      return
+    }
+    try {
+      setSealGenerating(true)
+      setFormError(null)
+      const preview = await sealNumberApi.getNext(branchCode)
+      setSealNumber(preview.sealNumber)
+    } catch (err) {
+      setFormError(getErrorMessage(err))
+      logger.warn('MovementManager', 'Plombaszám generálási hiba:', err)
+    } finally {
+      setSealGenerating(false)
+    }
+  }, [worker?.branchCode])
 
   // Filtered history
   const filteredTransfers = allTransfers.filter((t) => {
@@ -557,14 +579,29 @@ export default function MovementManager() {
                 </div>
                 <div>
                   <label className="form-label">Plombaszám <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    maxLength={64}
-                    className="form-input w-full"
-                    placeholder="Plombaszám..."
-                    value={sealNumber}
-                    onChange={(e) => setSealNumber(e.target.value)}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      maxLength={64}
+                      className="form-input w-full"
+                      placeholder="Plombaszám..."
+                      value={sealNumber}
+                      onChange={(e) => setSealNumber(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="form-button shrink-0"
+                      onClick={() => void generateSealNumber()}
+                      disabled={sealGenerating || !worker?.branchCode}
+                    >
+                      {sealGenerating ? (
+                        <RefreshCw size={16} className="animate-spin" />
+                      ) : (
+                        <Wand2 size={16} />
+                      )}
+                      <span>Generálás</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 

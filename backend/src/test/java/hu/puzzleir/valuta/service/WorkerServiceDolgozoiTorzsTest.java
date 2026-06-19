@@ -54,6 +54,7 @@ class WorkerServiceDolgozoiTorzsTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private TokenBlacklistService tokenBlacklistService;
     @Mock private WorkerRoleService workerRoleService;
+    @Mock private TotpService totpService;
     @Mock private WorkerBranchAccessService workerBranchAccessService;
     @InjectMocks private WorkerService workerService;
 

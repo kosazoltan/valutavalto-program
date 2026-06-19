@@ -14,7 +14,7 @@ export default function NotificationPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showSend, setShowSend] = useState(false)
-  const [sendForm, setSendForm] = useState({ title: '', message: '', type: 'INFO', targetWorkerIds: '' })
+  const [sendForm, setSendForm] = useState({ title: '', message: '', type: 'INFO', workerId: '', channel: 'email' })
   const [filterType, setFilterType] = useState<string>('')
   const [filterRead, setFilterRead] = useState<string>('')
 
@@ -59,12 +59,28 @@ export default function NotificationPage() {
 
   const handleSend = async () => {
     if (!sendForm.title || !sendForm.message) { toast.warning('Cím és üzenet kötelező'); return }
+    const workerId = Number(sendForm.workerId)
+    if (!Number.isInteger(workerId) || workerId <= 0) { toast.warning('Címzett dolgozó ID kötelező'); return }
     try {
       setError(null)
-      await notificationApi.send({ ...sendForm })
+      if (sendForm.channel === 'in-app') {
+        await notificationApi.sendInApp({
+          userId: String(workerId),
+          title: sendForm.title,
+          message: sendForm.message,
+          type: sendForm.type,
+        })
+      } else {
+        await notificationApi.send({
+          workerId,
+          title: sendForm.title,
+          message: sendForm.message,
+          type: sendForm.type,
+        })
+      }
       toast.success('Értesítés elküldve')
       setShowSend(false)
-      setSendForm({ title: '', message: '', type: 'INFO', targetWorkerIds: '' })
+      setSendForm({ title: '', message: '', type: 'INFO', workerId: '', channel: 'email' })
       await loadData()
     } catch (err) {
       toast.error('Küldési hiba', getErrorMessage(err))
@@ -141,8 +157,15 @@ export default function NotificationPage() {
             <textarea className="form-input" rows={3} value={sendForm.message} onChange={e => setSendForm({ ...sendForm, message: e.target.value })} />
           </div>
           <div>
-            <label className="form-label">{t('notifications.cimzettDolgozoIdKVesszovelElvalasztvaUresSajat')}</label>
-            <input className="form-input" value={sendForm.targetWorkerIds} onChange={e => setSendForm({ ...sendForm, targetWorkerIds: e.target.value })} placeholder="pl. 1,2,3" />
+            <label className="form-label">{t('notifications.cimzettDolgozoId')}</label>
+            <input className="form-input" value={sendForm.workerId} onChange={e => setSendForm({ ...sendForm, workerId: e.target.value })} placeholder="pl. 1" />
+          </div>
+          <div>
+            <label className="form-label">Küldési mód</label>
+            <select className="form-input" value={sendForm.channel} onChange={e => setSendForm({ ...sendForm, channel: e.target.value })} data-testid="notification-channel">
+              <option value="email">In-app + email</option>
+              <option value="in-app">Csak in-app</option>
+            </select>
           </div>
           <div className="flex gap-2">
             <button onClick={() => void handleSend()} className="form-button-primary"><Mail size={16} />{t('common.send')}</button>

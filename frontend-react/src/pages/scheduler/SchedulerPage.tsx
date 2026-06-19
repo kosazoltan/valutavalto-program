@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Clock, Search, RefreshCw, Plus, Edit2, Trash2, AlertTriangle } from 'lucide-react'
+import { Clock, Search, RefreshCw, Plus, AlertTriangle, Play, Power } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -8,19 +8,32 @@ import { useTranslation } from 'react-i18next'
 
 interface SchedulerJobItem {
   id: string | number
-  jobName?: string
+  taskName?: string
   cronExpression?: string
-  lastRun?: string
-  nextRun?: string
+  taskType?: string
+  lastRunAt?: string
+  nextRunAt?: string
   isActive?: boolean
+  lastResult?: string | null
+  parameters?: string | null
+}
+
+interface SchedulerFormState {
+  taskName: string
+  cronExpression: string
+  taskType: string
+  parameters: string
 }
 
 export default function SchedulerPage() {
   const { t } = useTranslation()
   const [items, setItems] = useState<SchedulerJobItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [form, setForm] = useState<SchedulerFormState | null>(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -41,6 +54,78 @@ export default function SchedulerPage() {
     void loadData()
   }, [loadData])
 
+  const openNewForm = () => {
+    setError(null)
+    setMessage(null)
+    setForm({
+      taskName: '',
+      cronExpression: '0 0 * * * *',
+      taskType: 'HEALTH_CHECK',
+      parameters: '',
+    })
+  }
+
+  const createTask = async () => {
+    if (!form) return
+    try {
+      setSaving(true)
+      setError(null)
+      setMessage(null)
+      await api.post('/scheduler/tasks', {
+        taskName: form.taskName.trim(),
+        cronExpression: form.cronExpression.trim(),
+        taskType: form.taskType,
+        isActive: true,
+        parameters: form.parameters.trim() || null,
+      })
+      setForm(null)
+      setMessage('Ütemezett feladat létrehozva.')
+      await loadData()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('SchedulerPage', 'Létrehozási hiba:', err)
+      setError(msg)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const toggleTask = async (item: SchedulerJobItem) => {
+    try {
+      setSaving(true)
+      setError(null)
+      setMessage(null)
+      await api.put(`/scheduler/tasks/${item.id}/toggle`, null, {
+        params: { active: !item.isActive },
+      })
+      setMessage(item.isActive ? 'Feladat deaktiválva.' : 'Feladat aktiválva.')
+      await loadData()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('SchedulerPage', 'Aktív státusz váltási hiba:', err)
+      setError(msg)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const runNow = async (item: SchedulerJobItem) => {
+    try {
+      setSaving(true)
+      setError(null)
+      setMessage(null)
+      await api.post(`/scheduler/tasks/${item.id}/run-now`)
+      setMessage('Feladat manuális futtatása elindítva.')
+      await loadData()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('SchedulerPage', 'Manuális futtatási hiba:', err)
+      setError(msg)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const filtered = items.filter(item => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
@@ -48,18 +133,6 @@ export default function SchedulerPage() {
       v != null && String(v).toLowerCase().includes(term)
     )
   })
-
-  const handleDelete = async (id: string | number) => {
-    if (!confirm('Biztosan törli?')) return
-    try {
-      await api.delete(`/scheduler/tasks/${id}`)
-      await loadData()
-    } catch (err) {
-      const msg = getErrorMessage(err)
-      setError(msg)
-      logger.error('SchedulerPage', 'Törlési hiba:', err)
-    }
-  }
 
   return (
     <div className="form-panel space-y-4">
@@ -72,11 +145,47 @@ export default function SchedulerPage() {
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button className="form-button-primary flex items-center gap-1">
+          <button onClick={openNewForm} className="form-button-primary flex items-center gap-1">
             <Plus className="h-4 w-4" />{t('common.new')}
           </button>
         </div>
       </div>
+
+      {form && (
+        <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
+          <h2 className="text-base font-semibold">Új ütemezett feladat</h2>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <label htmlFor="scheduler-task-name" className="form-label">Feladat neve</label>
+              <input id="scheduler-task-name" value={form.taskName} onChange={(e) => setForm((current) => current ? { ...current, taskName: e.target.value } : current)} className="form-input w-full" />
+            </div>
+            <div>
+              <label htmlFor="scheduler-cron" className="form-label">Cron kifejezés</label>
+              <input id="scheduler-cron" value={form.cronExpression} onChange={(e) => setForm((current) => current ? { ...current, cronExpression: e.target.value } : current)} className="form-input w-full" />
+            </div>
+            <div>
+              <label htmlFor="scheduler-task-type" className="form-label">Feladattípus</label>
+              <select id="scheduler-task-type" value={form.taskType} onChange={(e) => setForm((current) => current ? { ...current, taskType: e.target.value } : current)} className="form-input w-full">
+                <option value="RATE_SYNC">RATE_SYNC</option>
+                <option value="BACKUP">BACKUP</option>
+                <option value="REPORT">REPORT</option>
+                <option value="CLOSING_REMINDER">CLOSING_REMINDER</option>
+                <option value="HEALTH_CHECK">HEALTH_CHECK</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="scheduler-parameters" className="form-label">Paraméterek JSON</label>
+              <input id="scheduler-parameters" value={form.parameters} onChange={(e) => setForm((current) => current ? { ...current, parameters: e.target.value } : current)} className="form-input w-full" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => void createTask()} disabled={saving || !form.taskName.trim() || !form.cronExpression.trim()} className="form-button-primary">
+              {saving ? 'Mentés...' : 'Mentés'}
+            </button>
+            <button type="button" onClick={() => setForm(null)} className="form-button">Mégse</button>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
@@ -98,36 +207,46 @@ export default function SchedulerPage() {
         </div>
       )}
 
+      {message && (
+        <div className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          {message}
+        </div>
+      )}
+
       <div className="data-grid overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('scheduler.feladat')}</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('scheduler.utemezes')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Típus</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('scheduler.utolsoFutas')}</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('scheduler.kovetkezoFutas')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Eredmény</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.active')}</th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
             ) : filtered.map(item => (
               <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.jobName ?? '-'}</td>
+                <td className="px-4 py-3 text-sm">{item.taskName ?? '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.cronExpression ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.lastRun ? new Date(item.lastRun).toLocaleString('hu-HU') : '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.nextRun ? new Date(item.nextRun).toLocaleString('hu-HU') : '-'}</td>
+                <td className="px-4 py-3 text-sm">{item.taskType ?? '-'}</td>
+                <td className="px-4 py-3 text-sm">{item.lastRunAt ? new Date(item.lastRunAt).toLocaleString('hu-HU') : '-'}</td>
+                <td className="px-4 py-3 text-sm">{item.nextRunAt ? new Date(item.nextRunAt).toLocaleString('hu-HU') : '-'}</td>
+                <td className="px-4 py-3 text-sm">{item.lastResult ?? '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.isActive ? 'Igen' : 'Nem'}</td>
-                <td className="px-4 py-3 text-right">
-                  <button className="form-button mr-2 p-1 text-blue-600" title="Szerkesztés">
-                    <Edit2 className="h-4 w-4" />
+                <td className="px-4 py-3 text-right whitespace-nowrap">
+                  <button onClick={() => void runNow(item)} disabled={saving} className="form-button mr-2 p-1 text-blue-600" title="Futtatás most">
+                    <Play className="h-4 w-4" />
                   </button>
-                  <button onClick={() => handleDelete(item.id)} className="form-button p-1 text-red-600" title="Törlés">
-                    <Trash2 className="h-4 w-4" />
+                  <button onClick={() => void toggleTask(item)} disabled={saving} className="form-button p-1 text-slate-700" title={item.isActive ? 'Deaktiválás' : 'Aktiválás'}>
+                    <Power className="h-4 w-4" />
                   </button>
                 </td>
               </tr>

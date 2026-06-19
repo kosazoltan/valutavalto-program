@@ -48,6 +48,22 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     );
 
     /**
+     * Ügyfelek keresése név vagy okmányszám alapján.
+     */
+    @Query("SELECT c FROM Customer c " +
+           "WHERE c.company.id = :companyId " +
+           "AND (" +
+           "LOWER(c.name) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(c.documentNumber) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(c.idCardNumber) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(c.passportNumber) LIKE LOWER(CONCAT('%', :query, '%'))" +
+           ")")
+    List<Customer> searchByNameOrDocument(
+        @Param("companyId") UUID companyId,
+        @Param("query") String query
+    );
+
+    /**
      * VIP ügyfelek
      */
     @Query("SELECT c FROM Customer c " +

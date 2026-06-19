@@ -332,6 +332,7 @@ public class ReservationService {
     public Reservation cancelByCompany(Long reservationId, String reason, Long supervisorWorkerId) {
         Long workerId = SecurityUtils.getCurrentWorkerId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
 
         // Validáció
         if (reason == null || reason.isBlank()) {
@@ -342,7 +343,7 @@ public class ReservationService {
         }
 
         // Supervisor ellenőrzés
-        Worker supervisor = workerRepository.findById(supervisorWorkerId)
+        Worker supervisor = workerRepository.findByIdAndCompanyId(supervisorWorkerId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Supervisor nem található: " + supervisorWorkerId));
         if (supervisor.getRole() != WorkerRole.SUPERVISOR
                 && supervisor.getRole() != WorkerRole.MANAGER
@@ -400,7 +401,7 @@ public class ReservationService {
         reservation = reservationRepository.save(reservation);
 
         // AuditLog
-        Worker worker = workerRepository.findById(workerId)
+        Worker worker = workerRepository.findByIdAndCompanyId(workerId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
         auditLogService.log(
                 "RESERVATION_CANCELLED_BY_COMPANY",

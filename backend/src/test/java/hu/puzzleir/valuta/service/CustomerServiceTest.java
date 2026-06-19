@@ -220,4 +220,21 @@ class CustomerServiceTest {
             assertThat(result).hasSize(2);
         }
     }
+
+    @Test
+    @DisplayName("searchByNameOrDocument — név vagy okmányszám keresés company scope-pal")
+    void testSearchByNameOrDocument() {
+        Customer c1 = Customer.builder().id(1L).name("Kovacs Janos").documentNumber("123456AB").build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(customerRepository.searchByNameOrDocument(COMPANY_ID, "123456AB"))
+                    .thenReturn(List.of(c1));
+
+            List<Customer> result = service.searchByNameOrDocument("123456AB");
+
+            assertThat(result).containsExactly(c1);
+            verify(customerRepository).searchByNameOrDocument(COMPANY_ID, "123456AB");
+        }
+    }
 }

@@ -32,6 +32,7 @@ const WorkersDatabasePage = lazy(() => import('./pages/workers/WorkersDatabasePa
 const TransitPage = lazy(() => import('./pages/transit/TransitPage'))
 const NotFoundPage = lazy(() => import('./pages/common/NotFoundPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const MobileOverviewPage = lazy(() => import('./pages/mobile/MobileOverviewPage'))
 const CentralWorkstationPage = lazy(() => import('./pages/central/CentralWorkstationPage'))
 const ClosingControlPage = lazy(() => import('./pages/central/ClosingControlPage'))
 const ReceivedDataOverviewPage = lazy(() => import('./pages/central/ReceivedDataOverviewPage'))
@@ -53,7 +54,8 @@ const CashierTransactionPage = lazy(() => import('./pages/transactions/CashierTr
 const CashierMainMenu = lazy(() => import('./pages/CashierMainMenu'))
 const ClosingWizardPage = lazy(() => import('./pages/closing/ClosingWizardPage'))
 const TransferPage = lazy(() => import('./pages/transfers/TransferPage'))
-// 2026-04-29 v2.3.15 (E-B8 banki workflow skeleton — teljes impl v2.4.0)
+const TradePage = lazy(() => import('./pages/trades/TradePage'))
+// E-B8 banki workflow — működő backend-integrált oldal.
 const BankOrderPage = lazy(() => import('./pages/bankorders/BankOrderPage'))
 const ErrorMonitorPage = lazy(() => import('./pages/admin/ErrorMonitorPage'))
 // V234 belso log+audit modul (2026-05-18)
@@ -77,6 +79,7 @@ const RepresentativeCreatePage = lazy(() => import('./pages/representatives/Repr
 const RepresentativeDetailPage = lazy(() => import('./pages/representatives/RepresentativeDetailPage'))
 const ShipmentListPage = lazy(() => import('./pages/shipments/ShipmentListPage'))
 const ShipmentNewPage = lazy(() => import('./pages/shipments/ShipmentNewPage'))
+const PackagingPage = lazy(() => import('./pages/packaging/PackagingPage'))
 const NewCashierBranchPage = lazy(() => import('./pages/branches/NewCashierBranchPage'))
 const NewVaultWorkerPage = lazy(() => import('./pages/vault-workers/NewVaultWorkerPage'))
 const WorkerCommissionPage = lazy(() => import('./pages/commissions/WorkerCommissionPage'))
@@ -487,6 +490,7 @@ export default function App() {
             <Route path="/central/closing-control" element={<ClosingControlPage />} />
             <Route path="/central/received-data" element={<ReceivedDataOverviewPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/mobile" element={<MenuRoleGate path="/mobile"><MobileOverviewPage /></MenuRoleGate>} />
             <Route path="/foertektar" element={<CentralVaultDashboard />} />
             <Route path="/rate-management/workflow" element={<RateMasterWorkflowPage />} />
             <Route path="/mnb/reports" element={<MnbReportsPage />} />
@@ -534,6 +538,7 @@ export default function App() {
           <Route path="/closing/wizard/:wizardId" element={<ClosingWizardPage />} />
           
           {/* Representatives */}
+          <Route path="/representatives" element={<RepresentativeListPage />} />
           <Route path="/customers/:customerId/representatives" element={<RepresentativeListPage />} />
           <Route path="/customers/:customerId/representatives/new" element={<RepresentativeCreatePage />} />
           <Route path="/customers/:customerId/representatives/:representativeId" element={<RepresentativeDetailPage />} />
@@ -541,6 +546,7 @@ export default function App() {
           {/* Shipments */}
           <Route path="/shipments" element={<ShipmentListPage />} />
           <Route path="/shipments/new" element={<ShipmentNewPage />} />
+          <Route path="/packaging" element={<PackagingPage />} />
 
           {/* Bali Henriett 2. pont (2026-05-27): manuális lakossági pénztár-felrögzítés
               értéktáros által (terület-hozzárendeléssel, hogy a területi szűrt listákban
@@ -595,7 +601,7 @@ export default function App() {
           {/* Transfers */}
           <Route path="/transfers" element={<TransferPage />} />
           <Route path="/transfers/:id" element={<TransferPage />} />
-          {/* 2026-04-29 v2.3.15 E-B8 banki workflow skeleton */}
+          {/* E-B8 banki workflow — backend-integrált oldal */}
           <Route path="/bank-orders" element={<BankOrderPage />} />
           
           {/* Reports */}
@@ -747,7 +753,8 @@ export default function App() {
 
           {/* === Árfolyam-kezelés Routes === */}
           <Route path="/rate-management" element={<RateCreationDashboard />} />
-          <Route path="/trade" element={<Navigate to="/cashier" replace />} />
+          <Route path="/trades" element={<TradePage />} />
+          <Route path="/trade" element={<Navigate to="/trades" replace />} />
 
           {/* === Sprint 7 Routes === */}
           <Route path="/currency-groups" element={<CurrencyGroupPage />} />

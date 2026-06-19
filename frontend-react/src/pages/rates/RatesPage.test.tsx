@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, beforeEach, it, expect } from 'vitest'
 import RatesPage from './RatesPage'
@@ -6,7 +6,24 @@ import RatesPage from './RatesPage'
 const mocks = vi.hoisted(() => ({
   exchangeRateApiList: vi.fn(),
   exchangeRateApiCreate: vi.fn(),
+  exchangeRateApiUploadRateFile: vi.fn(),
+  exchangeRateApiImportRateFile: vi.fn(),
+  rateApprovalRequest: vi.fn(),
   currencyApiList: vi.fn(),
+  calculatorMatrix: vi.fn(),
+  calculatorConvert: vi.fn(),
+  calculatorReverse: vi.fn(),
+  pollingStatus: vi.fn(),
+  pollingSources: vi.fn(),
+  pollingEcbRates: vi.fn(),
+  pollingTrigger: vi.fn(),
+  pollingApplyMargins: vi.fn(),
+  pollingUpdateSource: vi.fn(),
+  bankRates: vi.fn(),
+  competitorRates: vi.fn(),
+  roundingRulesList: vi.fn(),
+  roundingRuleGet: vi.fn(),
+  roundingRuleRound: vi.fn(),
   recordLocalAuditEvent: vi.fn(),
   logger: {
     error: vi.fn(),
@@ -22,9 +39,36 @@ vi.mock('../../services/api/index', () => ({
   exchangeRateApi: {
     list: mocks.exchangeRateApiList,
     create: mocks.exchangeRateApiCreate,
+    uploadRateFile: mocks.exchangeRateApiUploadRateFile,
+    importRateFile: mocks.exchangeRateApiImportRateFile,
+  },
+  rateApprovalApi: {
+    request: mocks.rateApprovalRequest,
   },
   currencyApi: {
     list: mocks.currencyApiList,
+  },
+  currencyCalculatorApi: {
+    matrix: mocks.calculatorMatrix,
+    convert: mocks.calculatorConvert,
+    reverse: mocks.calculatorReverse,
+  },
+  exchangeRatePollingApi: {
+    status: mocks.pollingStatus,
+    sources: mocks.pollingSources,
+    ecbRates: mocks.pollingEcbRates,
+    trigger: mocks.pollingTrigger,
+    applyMargins: mocks.pollingApplyMargins,
+    updateSource: mocks.pollingUpdateSource,
+  },
+  rateCreationApi: {
+    getBankRates: mocks.bankRates,
+    getCompetitorRates: mocks.competitorRates,
+  },
+  roundingRuleApi: {
+    list: mocks.roundingRulesList,
+    getByCurrencyCode: mocks.roundingRuleGet,
+    round: mocks.roundingRuleRound,
   },
 }))
 
@@ -82,13 +126,161 @@ describe('RatesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.exchangeRateApiList.mockResolvedValue(mockRates)
+    mocks.exchangeRateApiUploadRateFile.mockResolvedValue({
+      rates: [
+        {
+          currencyCode: 'EUR',
+          buyRate: 390,
+          sellRate: 399,
+          mnbRate: 394,
+          discountBuy: 391,
+          discountSell: 398,
+        },
+      ],
+      parsedAt: '2026-06-18T10:00:00',
+      parsedLineCount: 1,
+      skippedLineCount: 0,
+    })
+    mocks.exchangeRateApiImportRateFile.mockResolvedValue(mockRates)
+    mocks.rateApprovalRequest.mockResolvedValue({
+      id: 'approval-1',
+      branchId: 'branch-1',
+      currencyCode: 'EUR',
+      newBuyRate: 391.5,
+      newSellRate: 398.5,
+      status: 'PENDING',
+    })
     mocks.currencyApiList.mockResolvedValue(mockCurrencies)
+    mocks.calculatorMatrix.mockResolvedValue({
+      EUR: { USD: 1.07 },
+      USD: { EUR: 0.93 },
+    })
+    mocks.calculatorConvert.mockResolvedValue({
+      fromCurrency: 'EUR',
+      toCurrency: 'HUF',
+      fromAmount: 100,
+      toAmount: 39150,
+      appliedRate: 391.5,
+      spread: 7,
+      commission: 500,
+      direction: 'BUY',
+      roundingInfo: 'Kerekítés: EUR szabály alkalmazva',
+    })
+    mocks.calculatorReverse.mockResolvedValue({
+      currency: 'EUR',
+      hufAmount: 100000,
+      foreignAmount: 251.25,
+    })
+    mocks.pollingStatus.mockResolvedValue({
+      lastPollTime: '2026-06-18T08:00:00',
+      lastPollSuccess: true,
+      lastPollError: null,
+      lastPollUpdatedCount: 12,
+      lastPollSource: 'MNB',
+    })
+    mocks.pollingSources.mockResolvedValue([
+      { id: 1, name: 'MNB', active: true, pollIntervalMinutes: 60 },
+      { id: 2, name: 'ECB', active: false, pollIntervalMinutes: 1440 },
+    ])
+    mocks.pollingEcbRates.mockResolvedValue({
+      USD: 358.2,
+      CHF: 412.4,
+      GBP: 466.8,
+    })
+    mocks.pollingTrigger.mockResolvedValue({ message: 'MNB árfolyam polling elindítva' })
+    mocks.pollingApplyMargins.mockResolvedValue({ message: 'Margin sikeresen alkalmazva' })
+    mocks.pollingUpdateSource.mockImplementation((id: number, data: { active?: boolean; pollIntervalMinutes?: number }) => Promise.resolve({
+      id,
+      name: id === 1 ? 'MNB' : 'ECB',
+      active: data.active ?? true,
+      pollIntervalMinutes: data.pollIntervalMinutes ?? 60,
+    }))
+    mocks.bankRates.mockResolvedValue([
+      {
+        id: 'bank-rate-1',
+        bankId: 'bank-1',
+        bankCode: 'EBC',
+        bankName: 'EBC',
+        currencyId: '1',
+        currencyCode: 'EUR',
+        currencyName: 'Euró',
+        buyRate: 390.5,
+        sellRate: 399.5,
+        middleRate: 395,
+        validFrom: '2026-06-18T08:00:00',
+        isCurrent: true,
+        source: 'MNB',
+      },
+    ])
+    mocks.competitorRates.mockResolvedValue([
+      {
+        id: 'competitor-rate-1',
+        competitorId: 'competitor-1',
+        competitorCode: 'RIV',
+        competitorName: 'Rivális Change',
+        currencyId: '1',
+        currencyCode: 'EUR',
+        currencyName: 'Euró',
+        buyRate: 391,
+        sellRate: 400,
+        middleRate: 395.5,
+        recordedAt: '2026-06-18T08:05:00',
+        source: 'WEBSITE',
+      },
+    ])
+    mocks.roundingRulesList.mockResolvedValue([
+      {
+        id: 1,
+        currencyCode: 'EUR',
+        precisionValue: 0.01,
+        smallThreshold: 100,
+        largeThreshold: 10000,
+        smallRounding: 'UP',
+        largeRounding: 'DOWN',
+      },
+      {
+        id: 2,
+        currencyCode: 'USD',
+        precisionValue: 0.01,
+        smallThreshold: 100,
+        largeThreshold: 10000,
+        smallRounding: 'UP',
+        largeRounding: 'DOWN',
+      },
+    ])
+    mocks.roundingRuleGet.mockResolvedValue({
+      id: 1,
+      currencyCode: 'EUR',
+      precisionValue: 0.01,
+      smallThreshold: 100,
+      largeThreshold: 10000,
+      smallRounding: 'UP',
+      largeRounding: 'DOWN',
+    })
+    mocks.roundingRuleRound.mockResolvedValue({
+      original: 123.456,
+      rounded: 123.46,
+    })
     // Default: full mode + foertektar role (canEdit=true, MNB + Edit gombok látszanak)
     mocks.useAppMode.mockReturnValue({ mode: 'full' })
     mocks.useAuthStore.mockImplementation((selector: any) =>
       selector({
         hasCanonicalRole: (roles: readonly string[]) =>
           roles.includes('foertektar') || roles.includes('ugyvezeto'),
+        worker: {
+          id: 77,
+          branchId: 'branch-1',
+          workerCode: 'ADMIN',
+          firstName: 'Admin',
+          lastName: 'Teszt',
+          fullName: 'Admin Teszt',
+          role: 'ADMIN',
+          branchCode: 'BUD01',
+          branchName: 'Budapest 01',
+          companyId: 'company-1',
+          companyCode: 'EBC',
+          companyName: 'Exclusive Best Change',
+        },
       }),
     )
   })
@@ -119,8 +311,8 @@ describe('RatesPage', () => {
   it('árfolyamok táblázatban megjelenítése', async () => {
     render(<RatesPage />)
     await waitFor(() => {
-      expect(screen.getByText('EUR')).toBeInTheDocument()
-      expect(screen.getByText('USD')).toBeInTheDocument()
+      expect(screen.getAllByText('EUR').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('USD').length).toBeGreaterThan(0)
       // Currency names are in tooltip (title attribute on both <tr> and <span>)
       expect(screen.getAllByTitle(/Euró/).length).toBeGreaterThanOrEqual(1)
       expect(screen.getAllByTitle(/US Dollár/).length).toBeGreaterThanOrEqual(1)
@@ -131,9 +323,91 @@ describe('RatesPage', () => {
     render(<RatesPage />)
     await waitFor(() => {
       // Values are formatted with Hungarian comma (391,50)
-      expect(screen.getByText(/391[.,]50/)).toBeInTheDocument()
-      expect(screen.getByText(/398[.,]50/)).toBeInTheDocument()
-      expect(screen.getByText(/358[.,]20/)).toBeInTheDocument()
+      expect(screen.getAllByText(/391[.,]50/).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/398[.,]50/).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/358[.,]20/).length).toBeGreaterThan(0)
+    })
+  })
+
+  it('betöltéskor megjeleníti a polling státuszt és forrásokat', async () => {
+    render(<RatesPage />)
+    await waitFor(() => {
+      expect(mocks.pollingStatus).toHaveBeenCalled()
+      expect(mocks.pollingSources).toHaveBeenCalled()
+      expect(mocks.pollingEcbRates).toHaveBeenCalled()
+      expect(screen.getByText('Polling státusz')).toBeInTheDocument()
+      expect(screen.getByText('Frissített tételek')).toBeInTheDocument()
+      expect(screen.getByText('Árfolyam források')).toBeInTheDocument()
+      expect(screen.getByText('ECB snapshot')).toBeInTheDocument()
+      expect(screen.getByText('12')).toBeInTheDocument()
+      expect(screen.getAllByText('MNB').length).toBeGreaterThan(0)
+      expect(screen.getByText('1 / 2')).toBeInTheDocument()
+      expect(screen.getAllByText('USD').length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/358[.,]20/).length).toBeGreaterThan(0)
+    })
+  })
+
+  it('a polling vezérlő a trigger, margin és source update backend szerződéseket használja', async () => {
+    const user = userEvent.setup()
+    render(<RatesPage />)
+
+    const panel = await screen.findByTestId('rate-polling-control-panel')
+    expect(within(panel).getByText('Árfolyam polling vezérlés')).toBeInTheDocument()
+
+    await user.click(within(panel).getByRole('button', { name: 'MNB polling indítása' }))
+    await waitFor(() => {
+      expect(mocks.pollingTrigger).toHaveBeenCalled()
+      expect(screen.getByText('MNB árfolyam polling elindítva')).toBeInTheDocument()
+    })
+
+    await user.clear(within(panel).getByLabelText('Spread'))
+    await user.type(within(panel).getByLabelText('Spread'), '3,5')
+    await user.click(within(panel).getByRole('button', { name: 'Alkalmaz' }))
+    await waitFor(() => {
+      expect(mocks.pollingApplyMargins).toHaveBeenCalledWith({ currencyId: 1, spread: 3.5 })
+      expect(screen.getByText('Margin sikeresen alkalmazva')).toBeInTheDocument()
+    })
+
+    await user.click(within(panel).getAllByRole('checkbox')[1]!)
+    await waitFor(() => {
+      expect(mocks.pollingUpdateSource).toHaveBeenCalledWith(2, { active: true })
+    })
+
+    await user.selectOptions(within(panel).getByLabelText('ECB polling intervallum'), '60')
+    await waitFor(() => {
+      expect(mocks.pollingUpdateSource).toHaveBeenCalledWith(2, { pollIntervalMinutes: 60 })
+    })
+  })
+
+  it('betöltéskor megjeleníti a banki és versenytárs piaci árfolyam snapshotot', async () => {
+    render(<RatesPage />)
+    await waitFor(() => {
+      expect(mocks.bankRates).toHaveBeenCalled()
+      expect(mocks.competitorRates).toHaveBeenCalled()
+      expect(screen.getByText('Piaci összehasonlítás')).toBeInTheDocument()
+      expect(screen.getByText('Bank ráták')).toBeInTheDocument()
+      expect(screen.getByText('Versenytárs')).toBeInTheDocument()
+      expect(screen.getByText(/EBC EUR/)).toBeInTheDocument()
+      expect(screen.getByText(/RIV EUR/)).toBeInTheDocument()
+    })
+  })
+
+  it('betöltéskor megjeleníti a kerekítési szabálykártyákat és a próba backend végpontokat használja', async () => {
+    const user = userEvent.setup()
+    render(<RatesPage />)
+
+    await waitFor(() => {
+      expect(mocks.roundingRulesList).toHaveBeenCalled()
+      expect(screen.getByText('Kerekítési szabályok')).toBeInTheDocument()
+      expect(screen.getAllByTestId('rounding-rule-mobile-card').length).toBeGreaterThan(0)
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Kerekítés próba' }))
+
+    await waitFor(() => {
+      expect(mocks.roundingRuleGet).toHaveBeenCalledWith('EUR', 123.456)
+      expect(mocks.roundingRuleRound).toHaveBeenCalledWith('EUR', 123.456, 'BUY')
+      expect(screen.getByText('Kerekített eredmény')).toBeInTheDocument()
     })
   })
 
@@ -145,12 +419,32 @@ describe('RatesPage', () => {
     })
   })
 
+  it('árfolyam jóváhagyási kérelmet küld a bejelentkezett iroda branchId-jával', async () => {
+    const user = userEvent.setup()
+    render(<RatesPage />)
+
+    const editButtons = await screen.findAllByTitle('Szerkesztés')
+    await user.click(editButtons[0]!)
+    await user.click(await screen.findByTitle('Jóváhagyás kérés'))
+
+    await waitFor(() => {
+      expect(mocks.rateApprovalRequest).toHaveBeenCalledWith({
+        branchId: 'branch-1',
+        currencyCode: 'EUR',
+        newBuyRate: 391.5,
+        newSellRate: 398.5,
+        reason: 'Árfolyam módosítási kérelem: EUR',
+      })
+      expect(screen.getByText('EUR jóváhagyási kérelem elküldve (PENDING).')).toBeInTheDocument()
+    })
+  })
+
 
 
   it('frissítés gomb újra betölti az árfolyamokat', async () => {
     render(<RatesPage />)
     await waitFor(() => {
-      expect(screen.getByText('EUR')).toBeInTheDocument()
+      expect(screen.getAllByText('EUR').length).toBeGreaterThan(0)
     })
 
     const user = userEvent.setup()
@@ -183,7 +477,7 @@ describe('RatesPage', () => {
   it('download gomb letöltési funktionalitást biztosít', async () => {
     render(<RatesPage />)
     await waitFor(() => {
-      expect(screen.getByText('EUR')).toBeInTheDocument()
+      expect(screen.getAllByText('EUR').length).toBeGreaterThan(0)
     })
 
     const downloadButton = screen.getByRole('button', { name: /MNB letöltés/i })
@@ -202,11 +496,64 @@ describe('RatesPage', () => {
 
     render(<RatesPage />)
     await waitFor(() => {
-      expect(screen.getByText('EUR')).toBeInTheDocument()
+      expect(screen.getAllByText('EUR').length).toBeGreaterThan(0)
     })
     // BAM (árfolyam nélküli aktív) megjelenik a táblában (üres sorként).
     expect(screen.getByText('BAM')).toBeInTheDocument()
     // HUF bázisdeviza NEM jelenik meg a rátatáblában.
     expect(screen.queryByText('HUF')).not.toBeInTheDocument()
+  })
+
+  it('a deviza kalkulátor backend convert, reverse és matrix végpontokat használja', async () => {
+    const user = userEvent.setup()
+    render(<RatesPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Árfolyam kalkulátor')).toBeInTheDocument()
+      expect(mocks.calculatorMatrix).toHaveBeenCalled()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Számol' }))
+    await waitFor(() => {
+      expect(mocks.calculatorConvert).toHaveBeenCalledWith({
+        fromCurrency: 'EUR',
+        toCurrency: 'HUF',
+        amount: 100,
+        direction: 'BUY',
+      })
+      expect(screen.getByText('Átváltás eredménye')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Fordított' }))
+    await waitFor(() => {
+      expect(mocks.calculatorReverse).toHaveBeenCalledWith({
+        currency: 'EUR',
+        hufAmount: 100000,
+      })
+      expect(screen.getByText('Fordított kalkuláció')).toBeInTheDocument()
+    })
+  })
+
+  it('a GETARF árfolyamfájl előnézetet és importot backend wrapperen keresztül hívja', async () => {
+    const user = userEvent.setup()
+    render(<RatesPage />)
+
+    const panel = await screen.findByTestId('rate-file-import-panel')
+    const file = new File(['GETARF'], 'GETARF.DAT', { type: 'text/plain' })
+    await user.upload(within(panel).getByTestId('rate-file-input'), file)
+    await user.click(within(panel).getByRole('button', { name: /Előnézet/i }))
+
+    await waitFor(() => {
+      expect(mocks.exchangeRateApiUploadRateFile).toHaveBeenCalledWith(file)
+      expect(within(panel).getByText('1 feldolgozott sor, 0 kihagyott sor.')).toBeInTheDocument()
+      expect(within(panel).getByText('EUR')).toBeInTheDocument()
+    })
+
+    await user.click(within(panel).getByRole('button', { name: /Import/i }))
+
+    await waitFor(() => {
+      expect(mocks.exchangeRateApiImportRateFile).toHaveBeenCalledWith(file)
+      expect(within(panel).getByText('2 árfolyam importálva.')).toBeInTheDocument()
+    })
   })
 })

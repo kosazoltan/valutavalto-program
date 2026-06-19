@@ -15,9 +15,14 @@ interface StorageStats {
   newestDate?: string | null
 }
 
+interface UploadStatus {
+  pendingUploads: number
+}
+
 export default function CameraStatusPage() {
   const { t } = useTranslation()
   const [stats, setStats] = useState<StorageStats | null>(null)
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -31,10 +36,15 @@ export default function CameraStatusPage() {
         // Electron: lokális fájlrendszer statisztika
         const localStats = await window.electronAPI.cameraLocalStorageStats()
         setStats(localStats)
+        setUploadStatus(null)
       } else {
         // Böngésző: szerver API
-        const res = await api.get('/camera/admin/storage-stats')
-        setStats(res.data)
+        const [statsResult, uploadResult] = await Promise.all([
+          api.get('/camera/admin/storage-stats'),
+          api.get<UploadStatus>('/camera/admin/upload-status'),
+        ])
+        setStats(statsResult.data)
+        setUploadStatus(uploadResult.data)
       }
     } catch (err) {
       logger.error('CameraStatusPage', 'Státusz lekérés sikertelen:', err)
@@ -102,7 +112,7 @@ export default function CameraStatusPage() {
         <p>Betöltés...</p>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="p-4">
                 <p className="text-sm text-muted-foreground">{t('camera.felvetelek')}</p>
@@ -124,6 +134,15 @@ export default function CameraStatusPage() {
                 <p className="text-lg font-bold">
                   {stats?.oldestDate ?? '-'} -- {stats?.newestDate ?? '-'}
                 </p>
+              </div>
+            </div>
+            <div className="rounded-lg border bg-card shadow-sm">
+              <div className="p-4">
+                <p className="text-sm text-muted-foreground">{t('camera.feltoltesreVar')}</p>
+                <p className="text-3xl font-bold" data-testid="camera-pending-uploads">
+                  {uploadStatus?.pendingUploads ?? 0}
+                </p>
+                <p className="text-xs text-muted-foreground">{t('camera.szerverOldaliUploadSor')}</p>
               </div>
             </div>
           </div>

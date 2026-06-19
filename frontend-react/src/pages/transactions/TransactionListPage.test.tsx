@@ -9,6 +9,8 @@ import type { Transaction } from '../../services/api/transactions'
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   transactionApiList: vi.fn(),
+  receiptDownloadTransactionPdf: vi.fn(),
+  receiptDownloadTransactionEscPos: vi.fn(),
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -26,6 +28,11 @@ vi.mock('../../services/api/transactions', async () => {
     transactionApi: {
       ...actual.transactionApi,
       list: mocks.transactionApiList,
+    },
+    receiptApi: {
+      ...actual.receiptApi,
+      downloadTransactionPdf: mocks.receiptDownloadTransactionPdf,
+      downloadTransactionEscPos: mocks.receiptDownloadTransactionEscPos,
     },
   }
 })
@@ -163,6 +170,11 @@ describe('TransactionListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.transactionApiList.mockResolvedValue(mockPagedResponse)
+    mocks.receiptDownloadTransactionPdf.mockResolvedValue(new Blob(['pdf'], { type: 'application/pdf' }))
+    mocks.receiptDownloadTransactionEscPos.mockResolvedValue(new Blob(['escpos'], { type: 'application/octet-stream' }))
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:receipt')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
   })
 
   it('oldal renderelésének ellenőrzése', async () => {
@@ -319,6 +331,38 @@ describe('TransactionListPage', () => {
     await user.click(stornoButtons[0]!)
 
     expect(mocks.navigate).toHaveBeenCalledWith('/transactions/E001000001/storno')
+  })
+
+  it('bizonylat PDF letöltés a ReceiptController tranzakció PDF endpoint wrapperét hívja', async () => {
+    renderTransactionListPage()
+    const user = userEvent.setup()
+
+    await waitFor(() => {
+      expect(screen.getByText('Kiss János')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByTestId('receipt-pdf-tx-1'))
+
+    await waitFor(() => {
+      expect(mocks.receiptDownloadTransactionPdf).toHaveBeenCalledWith(1)
+      expect(URL.createObjectURL).toHaveBeenCalled()
+    })
+  })
+
+  it('ESC/POS bizonylat letöltés a ReceiptController escpos endpoint wrapperét hívja', async () => {
+    renderTransactionListPage()
+    const user = userEvent.setup()
+
+    await waitFor(() => {
+      expect(screen.getByText('Kiss János')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByTestId('receipt-escpos-tx-1'))
+
+    await waitFor(() => {
+      expect(mocks.receiptDownloadTransactionEscPos).toHaveBeenCalledWith(1)
+      expect(URL.createObjectURL).toHaveBeenCalled()
+    })
   })
 
   it('összeg összesítő helyesen mutatja az összes HUF összeget', async () => {

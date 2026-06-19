@@ -23,6 +23,7 @@ import java.util.Base64;
 import java.util.Optional;
 import java.util.HexFormat;
 import java.util.Locale;
+import java.util.UUID;
 
 /**
  * Elfelejtett-jelszo flow — persistent reset token storage.
@@ -65,7 +66,7 @@ public class PasswordResetService {
      * @return a generalt token (TESZT celu — production-ban csak logolni
      *         vagy email-ben kikuldeni, NE returnolni a API valaszban)
      */
-    @Transactional(readOnly = true)
+    @Transactional(rollbackFor = Exception.class)
     public String requestForgotPassword(String email) {
         if (email == null || email.isBlank()) {
             return null;
@@ -82,6 +83,11 @@ public class PasswordResetService {
             log.warn("Forgot password: inaktiv worker: emailHash={}", logHash(email));
             return null;
         }
+        UUID companyId = worker.getCompany() != null ? worker.getCompany().getId() : null;
+        if (companyId == null) {
+            log.error("Forgot password: worker company hianyzik, token generalas kihagyva: worker id={}", worker.getId());
+            return null;
+        }
 
         // Token generalasa
         byte[] randomBytes = new byte[32];
@@ -91,6 +97,7 @@ public class PasswordResetService {
         Instant now = Instant.now();
         resetTokenRepository.save(PasswordResetToken.builder()
                 .workerId(worker.getId())
+                .companyId(companyId)
                 .tokenHash(hashToken(token))
                 .issuedAt(now)
                 .expiresAt(now.plus(TOKEN_TTL))
@@ -164,7 +171,11 @@ public class PasswordResetService {
         resetToken.setUsedAt(now);
         resetTokenRepository.save(resetToken);
 
-        Worker worker = workerRepository.findById(resetToken.getWorkerId())
+        if (resetToken.getCompanyId() == null) {
+            throw new ValidationException("Ervenytelen vagy lejart token");
+        }
+
+        Worker worker = workerRepository.findByIdAndCompanyId(resetToken.getWorkerId(), resetToken.getCompanyId())
                 .orElseThrow(() -> new ValidationException("Worker not found"));
         worker.setPasswordHash(passwordEncoder.encode(newPassword));
         worker.setPasswordChangedAt(java.time.LocalDateTime.now());

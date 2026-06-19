@@ -17,7 +17,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -40,6 +41,7 @@ public class EmailSyncService {
     private final GmailOAuthConfig gmailOAuthConfig;
     private final GoogleAuthorizationCodeFlow googleAuthorizationCodeFlow;
     private final HttpTransport googleHttpTransport;
+    private final PlatformTransactionManager transactionManager;
 
     private static final String USER_ME = "me";
     private static final String APP_NAME = "Valutavalto-ERP";
@@ -65,19 +67,19 @@ public class EmailSyncService {
                 syncAccountMessages(account);
                 account.setLastSyncAt(LocalDateTime.now());
                 account.setSyncError(null);
-                emailAccountRepository.save(account);
+                saveAccountSyncState(account);
                 log.debug("Szinkronizáció sikeres: {}", account.getGmailAddress());
             } catch (Exception e) {
                 log.error("Email sync hiba: {}", account.getGmailAddress(), e);
                 account.setSyncError(e.getMessage());
-                emailAccountRepository.save(account);
+                saveAccountSyncState(account);
             }
         }
 
         // Régi cache bejegyzések törlése (>30 nap)
         try {
             LocalDateTime cutoff = LocalDateTime.now().minusDays(30);
-            emailCacheRepository.deleteByReceivedAtBefore(cutoff);
+            deleteOldCacheEntries(cutoff);
         } catch (Exception e) {
             log.warn("Régi cache törlés hiba", e);
         }
@@ -123,35 +125,47 @@ public class EmailSyncService {
     }
 
     private void upsertCacheEntry(EmailAccount account, Message msg) {
-        String gmailMessageId = msg.getId();
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            String gmailMessageId = msg.getId();
 
-        EmailCache cache = emailCacheRepository
-                .findByEmailAccountIdAndGmailMessageId(account.getId(), gmailMessageId)
-                .orElse(EmailCache.builder()
-                        .emailAccount(account)
-                        .gmailMessageId(gmailMessageId)
-                        .build());
+            EmailCache cache = emailCacheRepository
+                    .findByEmailAccountIdAndGmailMessageId(account.getId(), gmailMessageId)
+                    .orElse(EmailCache.builder()
+                            .emailAccount(account)
+                            .gmailMessageId(gmailMessageId)
+                            .build());
 
-        cache.setThreadId(msg.getThreadId());
-        cache.setSubject(getHeader(msg, "Subject"));
-        cache.setSenderAddress(getHeader(msg, "From"));
-        cache.setRecipients(getHeader(msg, "To"));
-        cache.setSnippet(msg.getSnippet());
-        cache.setIsRead(msg.getLabelIds() == null || !msg.getLabelIds().contains("UNREAD"));
-        cache.setHasAttachments(msg.getPayload() != null && msg.getPayload().getParts() != null &&
-                msg.getPayload().getParts().stream()
-                        .anyMatch(p -> p.getFilename() != null && !p.getFilename().isEmpty()));
-        cache.setIsStarred(msg.getLabelIds() != null && msg.getLabelIds().contains("STARRED"));
-        cache.setLabelIds(msg.getLabelIds() != null ? String.join(",", msg.getLabelIds()) : "");
+            cache.setThreadId(msg.getThreadId());
+            cache.setSubject(getHeader(msg, "Subject"));
+            cache.setSenderAddress(getHeader(msg, "From"));
+            cache.setRecipients(getHeader(msg, "To"));
+            cache.setSnippet(msg.getSnippet());
+            cache.setIsRead(msg.getLabelIds() == null || !msg.getLabelIds().contains("UNREAD"));
+            cache.setHasAttachments(msg.getPayload() != null && msg.getPayload().getParts() != null &&
+                    msg.getPayload().getParts().stream()
+                            .anyMatch(p -> p.getFilename() != null && !p.getFilename().isEmpty()));
+            cache.setIsStarred(msg.getLabelIds() != null && msg.getLabelIds().contains("STARRED"));
+            cache.setLabelIds(msg.getLabelIds() != null ? String.join(",", msg.getLabelIds()) : "");
 
-        if (msg.getInternalDate() != null) {
-            cache.setReceivedAt(LocalDateTime.ofInstant(
-                    Instant.ofEpochMilli(msg.getInternalDate()),
-                    ZoneId.systemDefault()));
-        }
-        cache.setCachedAt(LocalDateTime.now());
+            if (msg.getInternalDate() != null) {
+                cache.setReceivedAt(LocalDateTime.ofInstant(
+                        Instant.ofEpochMilli(msg.getInternalDate()),
+                        ZoneId.systemDefault()));
+            }
+            cache.setCachedAt(LocalDateTime.now());
 
-        emailCacheRepository.save(cache);
+            emailCacheRepository.save(cache);
+        });
+    }
+
+    private void saveAccountSyncState(EmailAccount account) {
+        new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                emailAccountRepository.save(account));
+    }
+
+    private void deleteOldCacheEntries(LocalDateTime cutoff) {
+        new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                emailCacheRepository.deleteByReceivedAtBefore(cutoff));
     }
 
     private String getHeader(Message msg, String headerName) {

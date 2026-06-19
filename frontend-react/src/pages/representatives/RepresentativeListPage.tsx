@@ -10,16 +10,18 @@ export default function RepresentativeListPage() {
   const { t } = useTranslation()
   const { customerId } = useParams<{ customerId: string }>()
   const navigate = useNavigate()
+  const isCustomerScoped = Boolean(customerId)
   const [representatives, setRepresentatives] = useState<AuthorizedRepresentative[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const loadRepresentatives = useCallback(async (): Promise<void> => {
-    if (!customerId) return
     try {
       setLoading(true)
       setError(null)
-      const data = await authorizedRepresentativeApi.findByCustomer(customerId)
+      const data = customerId
+        ? await authorizedRepresentativeApi.findByCustomer(customerId)
+        : await authorizedRepresentativeApi.list()
       setRepresentatives(data)
     } catch (err) {
       const errorMessage = getErrorMessage(err)
@@ -31,43 +33,36 @@ export default function RepresentativeListPage() {
   }, [customerId])
 
   useEffect(() => {
-    if (customerId) {
-      void loadRepresentatives()
-    }
+    void loadRepresentatives()
   }, [customerId, loadRepresentatives])
 
-  if (!customerId) {
-    return (
-      <div className="form-panel">
-        <div className="text-center text-gray-500 py-8">
-          {t('representatives.ugyfelIdHianyzik')}
-        </div>
-      </div>
-    )
-  }
-
   const customerName = representatives.length > 0 ? representatives[0]?.customerName : undefined
+  const detailPath = (rep: AuthorizedRepresentative) => `/customers/${rep.customerId}/representatives/${rep.id}`
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <Link to={`/customers/${customerId}`} className="toolbar-button">
-            <ArrowLeft size={18} />
-          </Link>
+          {isCustomerScoped && (
+            <Link to={`/customers/${customerId}`} className="toolbar-button">
+              <ArrowLeft size={18} />
+            </Link>
+          )}
           <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <Users />
             {t('customers.meghatalmazottak')}
             {customerName && <span className="text-base font-normal text-gray-500">— {customerName}</span>}
           </h1>
         </div>
-        <Link
-          to={`/customers/${customerId}/representatives/new`}
-          className="form-button-primary flex items-center gap-2"
-        >
-          <Plus size={16} />
-          {t('representatives.ujMeghatalmazott')}
-        </Link>
+        {isCustomerScoped && (
+          <Link
+            to={`/customers/${customerId}/representatives/new`}
+            className="form-button-primary flex items-center gap-2"
+          >
+            <Plus size={16} />
+            {t('representatives.ujMeghatalmazott')}
+          </Link>
+        )}
       </div>
 
       {error && (
@@ -89,11 +84,62 @@ export default function RepresentativeListPage() {
           {t('representatives.nincsenekMeghatalmazottak')}
         </div>
       ) : (
-        <div className="form-panel p-0">
+        <div className="form-panel">
+          <div className="space-y-3 md:hidden">
+            {representatives.map((rep) => (
+              <article key={rep.id} className="rounded border border-gray-200 bg-white p-3 shadow-sm">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-lg font-bold text-gray-900">{rep.fullName}</p>
+                    {!isCustomerScoped && (
+                      <p className="text-sm text-gray-500">Ügyfél ID: <span className="font-mono">{rep.customerId}</span></p>
+                    )}
+                  </div>
+                  <span className={`px-2 py-1 text-xs rounded ${
+                    rep.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                  }`}>
+                    {rep.isActive ? 'Aktív' : 'Inaktív'}
+                  </span>
+                </div>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                  <div>
+                    <dt className="text-gray-500">{t('common.documentNumber')}</dt>
+                    <dd className="font-mono text-gray-900">{rep.documentNumber || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">{t('customers.okmanyTipus')}</dt>
+                    <dd className="text-gray-900">{rep.documentTypeDid || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">{t('display.kapcsolat')}</dt>
+                    <dd className="text-gray-900">{rep.relationshipDid || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">{t('rates.ervenyes')}</dt>
+                    <dd className="text-gray-900">
+                      {rep.authorizationStart ? new Date(rep.authorizationStart).toLocaleDateString('hu-HU') : '-'}
+                      {rep.authorizationEnd ? ` — ${new Date(rep.authorizationEnd).toLocaleDateString('hu-HU')}` : rep.authorizationStart ? ' — ∞' : ''}
+                    </dd>
+                  </div>
+                </dl>
+                <button
+                  type="button"
+                  onClick={() => navigate(detailPath(rep))}
+                  className="form-button mt-3 flex w-full items-center justify-center gap-2"
+                >
+                  <Eye size={14} />
+                  {t('common.details')}
+                </button>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
           <table className="data-grid w-full">
             <thead>
               <tr>
                 <th>{t('common.name')}</th>
+                {!isCustomerScoped && <th>Ügyfél ID</th>}
                 <th>{t('common.documentNumber')}</th>
                 <th>{t('customers.okmanyTipus')}</th>
                 <th>{t('display.kapcsolat')}</th>
@@ -106,6 +152,7 @@ export default function RepresentativeListPage() {
               {representatives.map((rep) => (
                 <tr key={rep.id}>
                   <td className="font-semibold">{rep.fullName}</td>
+                  {!isCustomerScoped && <td className="font-mono text-sm">{rep.customerId}</td>}
                   <td className="font-mono text-sm">{rep.documentNumber || '-'}</td>
                   <td>{rep.documentTypeDid || '-'}</td>
                   <td>{rep.relationshipDid || '-'}</td>
@@ -125,7 +172,7 @@ export default function RepresentativeListPage() {
                   <td>
                     <div className="flex gap-1">
                       <button
-                        onClick={() => navigate(`/customers/${customerId}/representatives/${rep.id}`)}
+                        onClick={() => navigate(detailPath(rep))}
                         className="toolbar-button"
                         title="Részletek"
                       >
@@ -137,6 +184,7 @@ export default function RepresentativeListPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>
