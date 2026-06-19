@@ -1,12 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { vi, describe, beforeEach, it, expect } from 'vitest'
 import ClosingWizardPage from './ClosingWizardPage'
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   closingWizardApiStart: vi.fn(),
+  closingWizardApiGet: vi.fn(),
+  closingWizardApiGetStep: vi.fn(),
   closingWizardApiNavigate: vi.fn(),
   closingWizardApiFinalize: vi.fn(),
   closingWizardApiCancel: vi.fn(),
@@ -34,6 +36,8 @@ vi.mock('react-router-dom', async () => {
 vi.mock('../../services/api/index', () => ({
   closingWizardApi: {
     start: mocks.closingWizardApiStart,
+    get: mocks.closingWizardApiGet,
+    getStep: mocks.closingWizardApiGetStep,
     navigate: mocks.closingWizardApiNavigate,
     finalize: mocks.closingWizardApiFinalize,
     cancel: mocks.closingWizardApiCancel,
@@ -71,14 +75,17 @@ const mockWorker = {
   companyId: 'c1',
 }
 
-function renderClosingWizardPage() {
+function renderClosingWizardPage(initialEntries = ['/closing/wizard']) {
   mocks.useAuthStore.mockImplementation((selector: any) =>
     selector({ worker: mockWorker }),
   )
 
   render(
-    <MemoryRouter>
-      <ClosingWizardPage />
+    <MemoryRouter initialEntries={initialEntries}>
+      <Routes>
+        <Route path="/closing/wizard" element={<ClosingWizardPage />} />
+        <Route path="/closing/wizard/:wizardId" element={<ClosingWizardPage />} />
+      </Routes>
     </MemoryRouter>,
   )
 }
@@ -151,6 +158,45 @@ describe('ClosingWizardPage', () => {
           dailyChange: 120000,
         },
       ],
+    })
+    mocks.closingWizardApiGet.mockResolvedValue({
+      id: 'wizard-1',
+      branchId: 'b1',
+      branchName: 'Korut',
+      closingDate: '2026-06-18',
+      closingType: 'DAILY',
+      currentStep: 2,
+      totalSteps: 9,
+      wizardStatus: 'IN_PROGRESS',
+      startedByWorkerId: '1',
+      startedByWorkerName: 'Teszt Felhasználó',
+      startedAt: '2026-06-18T18:00:00',
+      steps: [
+        {
+          stepNumber: 1,
+          stepTitle: 'Backend MTCN ellenőrzés',
+          stepDescription: 'Backendből betöltött első lépés',
+          completed: true,
+          canProceed: true,
+          stepData: {},
+        },
+        {
+          stepNumber: 2,
+          stepTitle: 'Backend címletezés',
+          stepDescription: 'Backendből betöltött aktuális lépés',
+          completed: false,
+          canProceed: true,
+          stepData: {},
+        },
+      ],
+    })
+    mocks.closingWizardApiGetStep.mockResolvedValue({
+      stepNumber: 2,
+      stepTitle: 'Backend címletezés',
+      stepDescription: 'Backendből betöltött aktuális lépés',
+      completed: false,
+      canProceed: true,
+      stepData: {},
     })
     mocks.dailySessionApiValidateClosing.mockResolvedValue({
       validationDate: '2026-06-18',
@@ -316,6 +362,18 @@ describe('ClosingWizardPage', () => {
       // Step 1 was called in runStep1, steps 2-9 = 8 more calls
       expect(mocks.closingWizardApiNavigate).toHaveBeenCalledTimes(9) // 1 + 8
     })
+  })
+
+  it('route wizardId alapján betölti a backend wizardot és az aktuális lépést', async () => {
+    renderClosingWizardPage(['/closing/wizard/wizard-1'])
+
+    await waitFor(() => {
+      expect(mocks.closingWizardApiGet).toHaveBeenCalledWith('wizard-1')
+      expect(mocks.closingWizardApiGetStep).toHaveBeenCalledWith('wizard-1', 2)
+    })
+
+    expect(screen.getByTestId('closing-wizard-current-step')).toHaveTextContent('Backend címletezés')
+    expect(screen.getByText('Backend MTCN ellenőrzés')).toBeInTheDocument()
   })
 
   it('cimletezés után backend eltérés-számítást kér és megjeleníti az eredményt', async () => {

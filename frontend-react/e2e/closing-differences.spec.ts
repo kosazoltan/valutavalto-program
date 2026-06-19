@@ -93,6 +93,59 @@ async function mockClosingApis(page: Page) {
       })
     }
 
+    if (path.endsWith(`/closing-wizard/${wizardId}`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: wizardId,
+          branchId: 'branch-1',
+          branchName: 'Budapest 01',
+          closingDate: '2026-06-18',
+          closingType: 'DAILY',
+          currentStep: 2,
+          totalSteps: 9,
+          wizardStatus: 'IN_PROGRESS',
+          startedByWorkerId: '77',
+          startedByWorkerName: 'Admin Teszt',
+          startedAt: '2026-06-18T18:00:00',
+          steps: [
+            {
+              stepNumber: 1,
+              stepTitle: 'Backend MTCN ellenőrzés',
+              stepDescription: 'Backendből betöltött első lépés',
+              completed: true,
+              canProceed: true,
+              stepData: {},
+            },
+            {
+              stepNumber: 2,
+              stepTitle: 'Backend címletezés',
+              stepDescription: 'Backendből betöltött aktuális lépés',
+              completed: false,
+              canProceed: true,
+              stepData: {},
+            },
+          ],
+        }),
+      })
+    }
+
+    if (path.endsWith(`/closing-wizard/${wizardId}/step/2`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          stepNumber: 2,
+          stepTitle: 'Backend címletezés',
+          stepDescription: 'Backendből betöltött aktuális lépés',
+          completed: false,
+          canProceed: true,
+          stepData: {},
+        }),
+      })
+    }
+
     if (path.endsWith(`/closing-wizard/${wizardId}/denominations`) && method === 'POST') {
       expect(await route.request().postDataJSON()).toEqual({ HUF: { 20000: 5 } })
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ total: 100000 }) })
@@ -169,6 +222,30 @@ test('zárási eltérés ellenőrzés mobil viewporton backend differences POST 
   await expect(page.getByTestId('closing-differences-table')).toContainText('HUF')
   await expect(page.getByTestId('closing-differences-table')).toContainText('Nincs eltérés')
   await expect(page.getByText('Zárási riport előnézet')).toBeVisible()
+
+  const horizontalOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  )
+  expect(horizontalOverflow).toBe(false)
+})
+
+test('zárási varázsló mobil viewporton route wizardId alapján backend detail és step endpointból tölt', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mockClosingApis(page)
+  await login(page)
+
+  const wizardRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === `/api/v1/closing-wizard/${wizardId}`
+  )
+  const stepRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === `/api/v1/closing-wizard/${wizardId}/step/2`
+  )
+  await page.goto(`/closing/wizard/${wizardId}`, { waitUntil: 'domcontentloaded' })
+  await wizardRequest
+  await stepRequest
+
+  await expect(page.getByTestId('closing-wizard-current-step')).toContainText('Backend címletezés')
+  await expect(page.getByText('Backend MTCN ellenőrzés')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

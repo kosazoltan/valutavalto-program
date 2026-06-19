@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { AlertTriangle, Lock, Check, X, Loader2, Minus, ChevronLeft, Coins, RefreshCw } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
 import { closingWizardApi, dailySessionApi } from '../../services/api/index'
-import type { ClosingWizard, ClosingWizardDifference, ClosingWizardReport, DailyClosingValidation } from '../../services/api/transactions'
+import type { ClosingWizard, ClosingWizardDifference, ClosingWizardReport, ClosingWizardStep, DailyClosingValidation } from '../../services/api/transactions'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -50,6 +50,7 @@ const INITIAL_STEPS: ClosingStep[] = [
 export default function ClosingWizardPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { wizardId: routeWizardId } = useParams<{ wizardId?: string }>()
   const worker = useAuthStore((s) => s.worker)
   const [steps, setSteps] = useState<ClosingStep[]>(INITIAL_STEPS)
   const [isRunning, setIsRunning] = useState(false)
@@ -73,6 +74,8 @@ export default function ClosingWizardPage() {
   const [closingValidation, setClosingValidation] = useState<DailyClosingValidation | null>(null)
   const [validationLoading, setValidationLoading] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [wizardLoading, setWizardLoading] = useState(false)
+  const [currentStepDetail, setCurrentStepDetail] = useState<ClosingWizardStep | null>(null)
 
   // Wizard pauses after step 1 for denomination input
   const [waitingForDenom, setWaitingForDenom] = useState(false)
@@ -100,6 +103,44 @@ export default function ClosingWizardPage() {
   useEffect(() => {
     void loadClosingValidation()
   }, [loadClosingValidation])
+
+  useEffect(() => {
+    if (!routeWizardId) return
+
+    let cancelled = false
+    const loadExistingWizard = async () => {
+      setWizardLoading(true)
+      try {
+        const wizard = await closingWizardApi.get(routeWizardId)
+        if (cancelled) return
+        setWizardId(wizard.id)
+        setClosingType(wizard.closingType)
+        setSteps((prev) => prev.map((step) => {
+          const backendStep = wizard.steps?.find((item) => item.stepNumber === step.id)
+          if (!backendStep) return step
+          return {
+            ...step,
+            label: backendStep.stepTitle || step.label,
+            status: backendStep.completed ? 'done' : 'pending',
+            message: backendStep.completed ? 'Rendben' : backendStep.stepDescription,
+          }
+        }))
+
+        const stepNumber = wizard.currentStep || 1
+        const stepDetail = await closingWizardApi.getStep(wizard.id, stepNumber)
+        if (!cancelled) setCurrentStepDetail(stepDetail)
+      } catch (err) {
+        if (!cancelled) toast.error('Zárási varázsló betöltése sikertelen', getErrorMessage(err))
+      } finally {
+        if (!cancelled) setWizardLoading(false)
+      }
+    }
+
+    void loadExistingWizard()
+    return () => {
+      cancelled = true
+    }
+  }, [routeWizardId])
 
   /** Run backend steps from `from` to `to` (0-indexed). Returns true if all passed. */
   const runSteps = useCallback(async (wizId: string, from: number, to: number): Promise<boolean> => {
@@ -427,6 +468,28 @@ export default function ClosingWizardPage() {
             </div>
           )}
         </div>
+
+        {(wizardLoading || currentStepDetail) && (
+          <div
+            className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200"
+            data-testid="closing-wizard-current-step"
+          >
+            <div className="mb-1 flex items-center gap-2 font-semibold">
+              {wizardLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Betöltött zárási varázsló
+            </div>
+            {currentStepDetail && (
+              <div className="space-y-1">
+                <div>
+                  Aktuális lépés: {currentStepDetail.stepNumber}. {currentStepDetail.stepTitle}
+                </div>
+                {currentStepDetail.stepDescription && (
+                  <div className="text-xs opacity-80">{currentStepDetail.stepDescription}</div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ELLENORZESI LISTA */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
