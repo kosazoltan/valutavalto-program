@@ -67,6 +67,26 @@ async function mockDenominationApis(page: Page) {
         { id: 10, currencyId: 1, currencyCode: 'EUR', faceValue: 50, denominationType: 'BANKNOTE', active: true },
         { id: 11, currencyId: 1, currencyCode: 'EUR', faceValue: 20, denominationType: 'BANKNOTE', active: true },
       ],
+      '/api/v1/denominations': [
+        { id: 10, currencyId: 1, currencyCode: 'EUR', faceValue: 50, denominationType: 'BANKNOTE', quantity: 0, active: true },
+        { id: 11, currencyId: 1, currencyCode: 'EUR', faceValue: 20, denominationType: 'BANKNOTE', quantity: 0, active: true },
+      ],
+      '/api/v1/denominations/code/EUR': [
+        { id: 10, currencyId: 1, currencyCode: 'EUR', faceValue: 50, denominationType: 'BANKNOTE', quantity: 0, active: true },
+        { id: 11, currencyId: 1, currencyCode: 'EUR', faceValue: 20, denominationType: 'BANKNOTE', quantity: 0, active: true },
+      ],
+      '/api/v1/denominations/alerts/low-stock': [
+        { id: 11, currencyId: 1, currencyCode: 'EUR', faceValue: 20, denominationType: 'BANKNOTE', quantity: 1, active: true },
+      ],
+      '/api/v1/denominations/summary/1': {
+        currencyId: 1,
+        currencyCode: 'EUR',
+        currencyName: 'Euró',
+        totalValue: 120,
+        banknoteCount: 2,
+        coinCount: 0,
+        denominationCount: 2,
+      },
       '/api/v1/cash-desks/cashdesk-1/denominations': [
         { denominationId: '10', currencyCode: 'EUR', quantity: 2, totalValue: 100 },
         { denominationId: '11', currencyCode: 'EUR', quantity: 1, totalValue: 20 },
@@ -83,6 +103,14 @@ async function mockDenominationApis(page: Page) {
     const body = bodies[path]
     if (body !== undefined) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
+    }
+
+    if (path.endsWith('/denominations/optimal-change') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ 50: 2, 20: 1, 10: 1 }),
+      })
     }
 
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
@@ -112,14 +140,36 @@ test('címletezés mobil viewporton használja az összes címlet és total endp
     request.method() === 'GET'
     && new URL(request.url()).pathname === '/api/v1/cash-desks/cashdesk-1/denominations/currency/1/total'
   )
+  const lowStockRequest = page.waitForRequest(request =>
+    request.method() === 'GET'
+    && new URL(request.url()).pathname === '/api/v1/denominations/alerts/low-stock'
+  )
+  const codeRequest = page.waitForRequest(request =>
+    request.method() === 'GET'
+    && new URL(request.url()).pathname === '/api/v1/denominations/code/EUR'
+  )
   await page.goto('/cashdesk/denominations', { waitUntil: 'domcontentloaded' })
   await allRequest
   await totalRequest
+  await lowStockRequest
+  await codeRequest
 
   await expect(page.getByText('Mentett:')).toBeVisible()
-  await expect(page.getByText('120,00', { exact: true })).toBeVisible()
+  await expect(page.getByText('120,00', { exact: true }).first()).toBeVisible()
   await expect(page.getByText('Sorok:')).toBeVisible()
+  await expect(page.getByText('Alacsony készlet:')).toBeVisible()
+  await expect(page.getByText('Kód ellenőrzés:')).toBeVisible()
   await expect(page.getByText('50 EUR')).toBeVisible()
+
+  const optimalRequest = page.waitForRequest(request =>
+    request.method() === 'GET'
+    && new URL(request.url()).pathname === '/api/v1/denominations/optimal-change'
+    && new URL(request.url()).searchParams.get('amount') === '130'
+  )
+  await page.getByPlaceholder('Összeg EUR').fill('130')
+  await page.getByRole('button', { name: /Optimális visszajáró/ }).click()
+  await optimalRequest
+  await expect(page.getByText(/50,00 x 2/)).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

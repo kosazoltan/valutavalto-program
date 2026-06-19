@@ -9,6 +9,7 @@ import {
   currencyApi,
   Denomination,
   Currency,
+  type DenominationSummary,
   type DenominationOptimization,
   type DenominationRule,
   type DenominationRuleSelectionPreview,
@@ -36,6 +37,13 @@ const denominationSummaryLabels = {
   rows: 'Sorok:',
   separator: '/',
   difference: 'Eltérés:',
+  masterRows: 'Törzs:',
+  lowStock: 'Alacsony készlet:',
+  currencySummary: 'Valuta összesítő:',
+  codeCheck: 'Kód ellenőrzés:',
+  optimalChangeButton: 'Optimális visszajáró',
+  optimalChangeTitle: 'Optimális visszajáró:',
+  noOptimalChange: 'Nincs kiadható visszajáró ehhez az összeghez.',
 }
 
 export default function DenominationPage() {
@@ -50,12 +58,19 @@ export default function DenominationPage() {
   const [denominationBalances, setDenominationBalances] = useState<DenominationBalanceDTO[]>([])
   const [allDenominationBalances, setAllDenominationBalances] = useState<DenominationBalanceDTO[]>([])
   const [serverCalculatedTotal, setServerCalculatedTotal] = useState<number | null>(null)
+  const [allMasterDenominations, setAllMasterDenominations] = useState<Denomination[]>([])
+  const [lowStockDenominations, setLowStockDenominations] = useState<Denomination[]>([])
+  const [codeDenominations, setCodeDenominations] = useState<Denomination[]>([])
+  const [denominationSummary, setDenominationSummary] = useState<DenominationSummary | null>(null)
   const [editingQuantities, setEditingQuantities] = useState<Record<number, number>>({})
   const [loading, setLoading] = useState(false)
   const [suggestionAmount, setSuggestionAmount] = useState('')
   const [suggestionLoading, setSuggestionLoading] = useState(false)
   const [suggestionMessage, setSuggestionMessage] = useState<string | null>(null)
   const [suggestionUsesStock, setSuggestionUsesStock] = useState(false)
+  const [optimalChange, setOptimalChange] = useState<Record<number, number> | null>(null)
+  const [optimalChangeLoading, setOptimalChangeLoading] = useState(false)
+  const [optimalChangeMessage, setOptimalChangeMessage] = useState<string | null>(null)
   const [optimizations, setOptimizations] = useState<DenominationOptimization[]>([])
   const [rules, setRules] = useState<DenominationRule[]>([])
   const [optimizationError, setOptimizationError] = useState<string | null>(null)
@@ -101,16 +116,25 @@ export default function DenominationPage() {
     if (!selectedCashDeskId || !selectedCurrencyId) return
     setLoading(true)
     try {
-      const [denoms, allBalances, balances, persistedTotal] = await Promise.all([
+      const selectedCurrencyCode = currencies.find(c => c.id === selectedCurrencyId)?.code
+      const [denoms, allBalances, balances, persistedTotal, allMaster, lowStock, summary, byCode] = await Promise.all([
         denominationApi.getByCurrencyId(selectedCurrencyId),
         denominationBalanceApi.getCashDeskDenominations(selectedCashDeskId),
         denominationBalanceApi.getCashDeskDenominationsByCurrency(selectedCashDeskId, String(selectedCurrencyId)),
         denominationBalanceApi.calculateTotalFromDenominations(selectedCashDeskId, String(selectedCurrencyId)),
+        denominationApi.list(),
+        denominationApi.getLowStockAlerts(),
+        denominationApi.getSummary(selectedCurrencyId),
+        selectedCurrencyCode ? denominationApi.getByCurrencyCode(selectedCurrencyCode) : Promise.resolve([] as Denomination[]),
       ])
       setDenominations(denoms)
       setAllDenominationBalances(allBalances)
       setDenominationBalances(balances)
       setServerCalculatedTotal(persistedTotal)
+      setAllMasterDenominations(allMaster)
+      setLowStockDenominations(lowStock)
+      setDenominationSummary(summary)
+      setCodeDenominations(byCode)
 
       // Egyetlen, determinisztikus state-írás: minden címlet 0, felülírva a mentettekkel.
       // (Az összesítő ebből DERIVÁLT useMemo — külön nem kell beállítani.)
@@ -123,10 +147,14 @@ export default function DenominationPage() {
     } catch (error) {
       logger.error('DenominationPage', 'Címletezés betöltése sikertelen:', error)
       setServerCalculatedTotal(null)
+      setAllMasterDenominations([])
+      setLowStockDenominations([])
+      setDenominationSummary(null)
+      setCodeDenominations([])
     } finally {
       setLoading(false)
     }
-  }, [selectedCashDeskId, selectedCurrencyId])
+  }, [currencies, selectedCashDeskId, selectedCurrencyId])
 
   useEffect(() => {
     void loadCurrencies()
@@ -226,6 +254,29 @@ export default function DenominationPage() {
       setSuggestionMessage(getErrorMessage(error))
     } finally {
       setSuggestionLoading(false)
+    }
+  }
+
+  const handleOptimalChange = async () => {
+    const amount = Number(suggestionAmount.replace(/\s/g, '').replace(',', '.'))
+    if (!selectedCurrencyId || !Number.isFinite(amount) || amount <= 0) {
+      setOptimalChange(null)
+      setOptimalChangeMessage('Adj meg pozitív összeget az optimális visszajáróhoz.')
+      return
+    }
+
+    setOptimalChangeLoading(true)
+    setOptimalChangeMessage(null)
+    try {
+      const result = await denominationApi.getOptimalChange(selectedCurrencyId, amount)
+      setOptimalChange(result)
+      setOptimalChangeMessage(Object.keys(result).length === 0 ? denominationSummaryLabels.noOptimalChange : null)
+    } catch (error) {
+      logger.error('DenominationPage', 'Optimális visszajáró számítás sikertelen:', error)
+      setOptimalChange(null)
+      setOptimalChangeMessage(getErrorMessage(error))
+    } finally {
+      setOptimalChangeLoading(false)
     }
   }
 
@@ -467,6 +518,26 @@ export default function DenominationPage() {
                   {denominationSummaryLabels.difference} <span className="font-mono font-semibold">{formatDecimal(serverTotalDiff, 2, 2)}</span> {selectedCurrency.code}
                 </div>
               )}
+              <div className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600">
+                {denominationSummaryLabels.masterRows} <span className="font-semibold text-gray-900">{allMasterDenominations.length}</span>
+              </div>
+              <div className="px-3 py-1 bg-orange-50 border border-orange-200 rounded-lg text-xs text-orange-800">
+                {denominationSummaryLabels.lowStock} <span className="font-semibold">{lowStockDenominations.length}</span>
+              </div>
+              {denominationSummary && (
+                <div className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600">
+                  {denominationSummaryLabels.currencySummary} <span className="font-mono font-semibold text-gray-900">
+                    {formatDecimal(denominationSummary.totalValue, 2, 2)}
+                  </span> {denominationSummary.currencyCode}
+                  <span className="text-gray-400"> · </span>
+                  <span className="font-semibold text-gray-900">
+                    {denominationSummary.banknoteCount}/{denominationSummary.coinCount}
+                  </span>
+                </div>
+              )}
+              <div className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600">
+                {denominationSummaryLabels.codeCheck} <span className="font-semibold text-gray-900">{codeDenominations.length}</span>
+              </div>
             </div>
           )}
         </div>
@@ -515,6 +586,15 @@ export default function DenominationPage() {
                 <Calculator size={14} className={suggestionLoading ? 'animate-pulse' : ''} />
                 Javaslat alkalmazása
               </button>
+              <button
+                type="button"
+                className="form-button flex items-center gap-1 h-9 text-sm"
+                onClick={() => void handleOptimalChange()}
+                disabled={optimalChangeLoading || !suggestionAmount.trim()}
+              >
+                <Calculator size={14} className={optimalChangeLoading ? 'animate-pulse' : ''} />
+                {denominationSummaryLabels.optimalChangeButton}
+              </button>
             </div>
             <label className="mt-2 flex items-center gap-2 text-xs text-gray-600">
               <input
@@ -526,6 +606,18 @@ export default function DenominationPage() {
             </label>
             {suggestionMessage && (
               <p className="mt-1 text-xs text-gray-600">{suggestionMessage}</p>
+            )}
+            {optimalChange && Object.keys(optimalChange).length > 0 && (
+              <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+                <span className="font-semibold">{denominationSummaryLabels.optimalChangeTitle}</span>{' '}
+                {Object.entries(optimalChange)
+                  .sort(([a], [b]) => Number(b) - Number(a))
+                  .map(([faceValue, quantity]) => `${formatDecimal(Number(faceValue), 2, 2)} x ${quantity}`)
+                  .join(', ')}
+              </div>
+            )}
+            {optimalChangeMessage && (
+              <p className="mt-1 text-xs text-amber-700">{optimalChangeMessage}</p>
             )}
           </div>
           <p className="text-xs text-gray-500 md:max-w-xs">

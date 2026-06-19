@@ -4,7 +4,12 @@ import DenominationPage from './DenominationPage'
 
 const mocks = vi.hoisted(() => ({
   currencyGetActive: vi.fn(),
+  denominationList: vi.fn(),
   denominationGetByCurrencyId: vi.fn(),
+  denominationGetByCurrencyCode: vi.fn(),
+  denominationGetLowStockAlerts: vi.fn(),
+  denominationGetSummary: vi.fn(),
+  denominationGetOptimalChange: vi.fn(),
   balancesGetAll: vi.fn(),
   balancesGetByCurrency: vi.fn(),
   balancesCalculateTotal: vi.fn(),
@@ -49,7 +54,12 @@ vi.mock('../../services/api/index', () => ({
     getActive: mocks.currencyGetActive,
   },
   denominationApi: {
+    list: mocks.denominationList,
     getByCurrencyId: mocks.denominationGetByCurrencyId,
+    getByCurrencyCode: mocks.denominationGetByCurrencyCode,
+    getLowStockAlerts: mocks.denominationGetLowStockAlerts,
+    getSummary: mocks.denominationGetSummary,
+    getOptimalChange: mocks.denominationGetOptimalChange,
   },
   denominationBalanceApi: {
     getCashDeskDenominations: mocks.balancesGetAll,
@@ -83,6 +93,29 @@ describe('DenominationPage', () => {
       { id: 11, currencyId: 1, currencyCode: 'EUR', faceValue: 20, denominationType: 'BANKNOTE', quantity: 0, active: true },
       { id: 12, currencyId: 1, currencyCode: 'EUR', faceValue: 10, denominationType: 'BANKNOTE', quantity: 0, active: true },
     ])
+    mocks.denominationList.mockResolvedValue([
+      { id: 10, currencyId: 1, currencyCode: 'EUR', faceValue: 50, denominationType: 'BANKNOTE', quantity: 0, active: true },
+      { id: 11, currencyId: 1, currencyCode: 'EUR', faceValue: 20, denominationType: 'BANKNOTE', quantity: 0, active: true },
+      { id: 12, currencyId: 1, currencyCode: 'EUR', faceValue: 10, denominationType: 'BANKNOTE', quantity: 0, active: true },
+    ])
+    mocks.denominationGetByCurrencyCode.mockResolvedValue([
+      { id: 10, currencyId: 1, currencyCode: 'EUR', faceValue: 50, denominationType: 'BANKNOTE', quantity: 0, active: true },
+      { id: 11, currencyId: 1, currencyCode: 'EUR', faceValue: 20, denominationType: 'BANKNOTE', quantity: 0, active: true },
+      { id: 12, currencyId: 1, currencyCode: 'EUR', faceValue: 10, denominationType: 'BANKNOTE', quantity: 0, active: true },
+    ])
+    mocks.denominationGetLowStockAlerts.mockResolvedValue([
+      { id: 12, currencyId: 1, currencyCode: 'EUR', faceValue: 10, denominationType: 'BANKNOTE', quantity: 1, active: true },
+    ])
+    mocks.denominationGetSummary.mockResolvedValue({
+      currencyId: 1,
+      currencyCode: 'EUR',
+      currencyName: 'Euró',
+      totalValue: 120,
+      banknoteCount: 3,
+      coinCount: 0,
+      denominationCount: 3,
+    })
+    mocks.denominationGetOptimalChange.mockResolvedValue({ 50: 2, 20: 1, 10: 1 })
     mocks.balancesGetAll.mockResolvedValue([
       { denominationId: '10', currencyCode: 'EUR', quantity: 2, totalValue: 100 },
       { denominationId: '11', currencyCode: 'EUR', quantity: 1, totalValue: 20 },
@@ -175,7 +208,11 @@ describe('DenominationPage', () => {
     await screen.findByText('50 EUR')
     expect(mocks.balancesGetAll).toHaveBeenCalledWith('branch-1')
     expect(mocks.balancesCalculateTotal).toHaveBeenCalledWith('branch-1', '1')
-    expect(screen.getByText('120,00')).toBeInTheDocument()
+    expect(mocks.denominationList).toHaveBeenCalled()
+    expect(mocks.denominationGetLowStockAlerts).toHaveBeenCalled()
+    expect(mocks.denominationGetSummary).toHaveBeenCalledWith(1)
+    expect(mocks.denominationGetByCurrencyCode).toHaveBeenCalledWith('EUR')
+    expect(screen.getAllByText('120,00').length).toBeGreaterThanOrEqual(2)
     expect(screen.getAllByText('2')).toHaveLength(2)
     fireEvent.change(screen.getByPlaceholderText('Összeg EUR'), { target: { value: '130' } })
     fireEvent.click(screen.getByText('Javaslat alkalmazása'))
@@ -185,6 +222,21 @@ describe('DenominationPage', () => {
       expect(screen.getByDisplayValue('2')).toBeInTheDocument()
       expect(screen.getAllByDisplayValue('1')).toHaveLength(2)
       expect(screen.getByText('Címletjavaslat alkalmazva.')).toBeInTheDocument()
+    })
+  })
+
+  it('az optimális visszajáró backend számítást is megjeleníti', async () => {
+    render(<DenominationPage />)
+
+    await screen.findByText('50 EUR')
+    fireEvent.change(screen.getByPlaceholderText('Összeg EUR'), { target: { value: '130' } })
+    fireEvent.click(screen.getByRole('button', { name: /Optimális visszajáró/ }))
+
+    await waitFor(() => {
+      expect(mocks.denominationGetOptimalChange).toHaveBeenCalledWith(1, 130)
+      expect(screen.getByText(/50,00 x 2/)).toBeInTheDocument()
+      expect(screen.getByText(/20,00 x 1/)).toBeInTheDocument()
+      expect(screen.getByText(/10,00 x 1/)).toBeInTheDocument()
     })
   })
 
