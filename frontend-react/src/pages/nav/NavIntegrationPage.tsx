@@ -20,6 +20,7 @@ export default function NavIntegrationPage() {
   const [result, setResult] = useState<NavResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
+  const [receiving, setReceiving] = useState(false)
   const [history, setHistory] = useState<NavResult[]>([])
 
   const handleSend = async () => {
@@ -44,6 +45,29 @@ export default function NavIntegrationPage() {
     }
   }
 
+  const handleReceiveReceiptNumber = async () => {
+    try {
+      setReceiving(true)
+      setError(null)
+      const receiptNumber = await navIntegrationApi.receiveReceiptNumber(comPort)
+      const received: NavResult = receiptNumber
+        ? { success: true, receiptNumber, timestamp: new Date().toISOString() }
+        : { success: false, error: 'A NAV pénztárgép nem adott vissza nyugtaszámot', timestamp: new Date().toISOString() }
+      setResult(received)
+      setHistory(prev => [received, ...prev].slice(0, 20))
+      if (received.success) {
+        toast.success('Nyugtaszám fogadva', `Bizonylatszám: ${received.receiptNumber}`)
+      } else {
+        setError(received.error ?? 'Nyugtaszám fogadása sikertelen')
+      }
+    } catch (err) {
+      logger.error('NavIntegrationPage', 'NAV nyugtaszám fogadási hiba:', err)
+      setError(getErrorMessage(err))
+    } finally {
+      setReceiving(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -55,7 +79,7 @@ export default function NavIntegrationPage() {
       {/* Send form */}
       <div className="form-panel space-y-3">
         <h2 className="font-semibold">{t('nav.tranzakcioKuldeseNavPenztargepre')}</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
             <label className="form-label">{t('nav.tranzakcioId')}</label>
             <input className="form-input" value={transactionId} onChange={e => setTransactionId(e.target.value)} placeholder="Tranzakció azonosító" />
@@ -66,9 +90,12 @@ export default function NavIntegrationPage() {
               {['COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8'].map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
-          <div className="flex items-end gap-2">
+          <div className="flex flex-wrap items-end gap-2">
             <button onClick={() => void handleSend()} disabled={sending} className="form-button-primary">
               <Send size={16} /> {sending ? 'Küldés...' : 'Küldés'}
+            </button>
+            <button onClick={() => void handleReceiveReceiptNumber()} disabled={receiving} className="form-button">
+              <Printer size={16} /> {receiving ? 'Fogadás...' : 'Nyugtaszám fogadása'}
             </button>
           </div>
         </div>
@@ -89,19 +116,21 @@ export default function NavIntegrationPage() {
       {history.length > 0 && (
         <div className="form-panel">
           <h2 className="font-semibold mb-2 flex items-center gap-2"><FileText size={18} />{t('nav.kuldesiElozmenyekSession')}</h2>
-          <table className="data-grid w-full">
-            <thead><tr><th>{t('audit.idopont')}</th><th>{t('cashier.receiptNumber')}</th><th>{t('common.status')}</th><th>{t('common.error')}</th></tr></thead>
-            <tbody>
-              {history.map((h) => (
-                <tr key={`${h.timestamp ?? ''}-${h.receiptNumber ?? ''}`}>
-                  <td className="text-sm">{h.timestamp ? new Date(h.timestamp).toLocaleString('hu-HU') : new Date().toLocaleString('hu-HU')}</td>
-                  <td className="font-mono">{h.receiptNumber || '-'}</td>
-                  <td>{h.success ? <span className="badge badge-green">OK</span> : <span className="badge badge-red">HIBA</span>}</td>
-                  <td className="text-sm text-red-600">{h.error || '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="data-grid min-w-full">
+              <thead><tr><th>{t('audit.idopont')}</th><th>{t('cashier.receiptNumber')}</th><th>{t('common.status')}</th><th>{t('common.error')}</th></tr></thead>
+              <tbody>
+                {history.map((h) => (
+                  <tr key={`${h.timestamp ?? ''}-${h.receiptNumber ?? ''}`}>
+                    <td className="text-sm">{h.timestamp ? new Date(h.timestamp).toLocaleString('hu-HU') : new Date().toLocaleString('hu-HU')}</td>
+                    <td className="font-mono">{h.receiptNumber || '-'}</td>
+                    <td>{h.success ? <span className="badge badge-green">OK</span> : <span className="badge badge-red">HIBA</span>}</td>
+                    <td className="text-sm text-red-600">{h.error || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

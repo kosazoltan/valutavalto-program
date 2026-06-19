@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { adminCompanyApi, branchApi, cameraExportApi, commissionCalculationApi, documentScannerApi, handlingFeeConfigApi, handlingFeeTransactionApi, mfaAdminApi, notificationApi, ownCompanyApi, posTerminalApi, supervisorPinApi, systemParameterApi, turnoverApi, workerCommissionApi, workerPasswordApi } from './settings'
+import { adminCompanyApi, branchApi, cameraExportApi, commissionCalculationApi, documentScannerApi, handlingFeeConfigApi, handlingFeeTransactionApi, mfaAdminApi, navIntegrationApi, notificationApi, ownCompanyApi, posTerminalApi, supervisorPinApi, systemParameterApi, turnoverApi, workerCommissionApi, workerPasswordApi } from './settings'
 import { api } from './client'
 
 vi.mock('./client', () => {
@@ -505,6 +505,22 @@ describe('cameraExportApi backend contract', () => {
     await cameraExportApi.approveSecond('request-1')
 
     expect(mockApi.post).toHaveBeenCalledWith('/camera/export/request-1/approve-second')
+  })
+})
+
+describe('navIntegrationApi backend contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockApi.get.mockResolvedValue({ data: 'REC-20260618' })
+  })
+
+  it('receiveReceiptNumber calls the NAV receipt number endpoint with COM port', async () => {
+    const result = await navIntegrationApi.receiveReceiptNumber('COM3')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/nav-integration/receive-receipt-number', {
+      params: { comPort: 'COM3' },
+    })
+    expect(result).toBe('REC-20260618')
   })
 })
 
