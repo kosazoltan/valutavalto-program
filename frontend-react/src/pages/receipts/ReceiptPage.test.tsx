@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   receiptList: vi.fn(),
   receiptGetById: vi.fn(),
   receiptPrint: vi.fn(),
+  receiptDownloadClosingPdf: vi.fn(),
   getPendingReceiptDrafts: vi.fn(),
   getReprintableReceiptDrafts: vi.fn(),
   printPendingReceiptDraft: vi.fn(),
@@ -15,31 +16,34 @@ const mocks = vi.hoisted(() => ({
   loggerError: vi.fn(),
 }))
 
+const authState = vi.hoisted(() => ({
+  worker: {
+    id: 77,
+    workerCode: 'ADMIN',
+    firstName: 'Admin',
+    lastName: 'Teszt',
+    fullName: 'Admin Teszt',
+    role: 'ADMIN',
+    branchId: 'branch-1',
+    branchCode: 'BUD01',
+    branchName: 'Budapest 01',
+    companyId: 'company-1',
+    companyCode: 'EBC',
+    companyName: 'Exclusive Best Change',
+  },
+}))
+
 vi.mock('../../services/api/index', () => ({
   receiptApi: {
     list: mocks.receiptList,
     getById: mocks.receiptGetById,
     print: mocks.receiptPrint,
+    downloadClosingPdf: mocks.receiptDownloadClosingPdf,
   },
 }))
 
 vi.mock('../../stores/authStore', () => ({
-  useAuthStore: (selector: (state: unknown) => unknown) => selector({
-    worker: {
-      id: 77,
-      workerCode: 'ADMIN',
-      firstName: 'Admin',
-      lastName: 'Teszt',
-      fullName: 'Admin Teszt',
-      role: 'ADMIN',
-      branchId: 'branch-1',
-      branchCode: 'BUD01',
-      branchName: 'Budapest 01',
-      companyId: 'company-1',
-      companyCode: 'EBC',
-      companyName: 'Exclusive Best Change',
-    },
-  }),
+  useAuthStore: (selector: (state: unknown) => unknown) => selector(authState),
 }))
 
 vi.mock('../../utils/electron', () => ({
@@ -93,9 +97,13 @@ const receiptDetail = {
 describe('ReceiptPage backend detail contract', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    URL.createObjectURL = vi.fn(() => 'blob:closing-pdf')
+    URL.revokeObjectURL = vi.fn()
+    HTMLAnchorElement.prototype.click = vi.fn()
     mocks.receiptList.mockResolvedValue([receiptFromList])
     mocks.receiptGetById.mockResolvedValue(receiptDetail)
     mocks.receiptPrint.mockResolvedValue(undefined)
+    mocks.receiptDownloadClosingPdf.mockResolvedValue(new Blob(['closing'], { type: 'application/pdf' }))
     mocks.getPendingReceiptDrafts.mockResolvedValue([])
     mocks.getReprintableReceiptDrafts.mockResolvedValue([])
   })
@@ -114,5 +122,23 @@ describe('ReceiptPage backend detail contract', () => {
     })
     expect(await screen.findByText('backend-detail-content')).toBeInTheDocument()
     expect(screen.getByText(/Backend Detail Ügyfél/)).toBeInTheDocument()
+  })
+
+  it('zárási PDF letöltéskor a ReceiptController closing PDF wrapperét hívja', async () => {
+    const user = userEvent.setup()
+    render(<ReceiptPage />)
+
+    await waitFor(() => {
+      expect(mocks.receiptList).toHaveBeenCalled()
+    })
+
+    await user.type(await screen.findByLabelText('Zárás azonosító'), 'closing-1')
+    await user.click(screen.getByTestId('receipt-closing-pdf-download'))
+
+    await waitFor(() => {
+      expect(mocks.receiptDownloadClosingPdf).toHaveBeenCalledWith('closing-1')
+      expect(URL.createObjectURL).toHaveBeenCalled()
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:closing-pdf')
+    })
   })
 })

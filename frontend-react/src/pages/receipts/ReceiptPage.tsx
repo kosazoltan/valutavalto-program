@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Receipt as ReceiptIcon, Search, Printer, Eye, Clock, ChevronDown, ChevronRight, X } from 'lucide-react'
+import { Receipt as ReceiptIcon, Search, Printer, Eye, Clock, ChevronDown, ChevronRight, X, Download } from 'lucide-react'
 import { receiptApi, Receipt } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
@@ -82,6 +82,17 @@ const HUF_FORMATTER = new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 0 
 /** HUF összeg hu-HU formázása (pl. "10 000 000"); üres érték → "—". */
 export const formatHuf = (hufAmount?: number | null): string =>
   typeof hufAmount === 'number' && Number.isFinite(hufAmount) ? HUF_FORMATTER.format(hufAmount) : '—'
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
 
 type CancelledReceiptContent = {
   receiptNumber?: unknown
@@ -357,6 +368,8 @@ export default function ReceiptPage() {
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null)
   const [selectedDraft, setSelectedDraft] = useState<PendingReceiptDraft | null>(null)
   const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
+  const [closingPdfId, setClosingPdfId] = useState('')
+  const [closingPdfLoading, setClosingPdfLoading] = useState(false)
 
   const loadData = useCallback(async (): Promise<void> => {
     try {
@@ -453,6 +466,25 @@ export default function ReceiptPage() {
     }
   }, [t])
 
+  const downloadClosingPdf = useCallback(async (): Promise<void> => {
+    const closingId = closingPdfId.trim()
+    if (!closingId) {
+      toast.error('Adja meg a zárás azonosítóját')
+      return
+    }
+    setClosingPdfLoading(true)
+    try {
+      const blob = await receiptApi.downloadClosingPdf(closingId)
+      downloadBlob(blob, `zaras-${closingId}.pdf`)
+      toast.success('Zárási bizonylat PDF letöltése elindítva')
+    } catch (err) {
+      toast.error('Nem sikerült a zárási bizonylat PDF letöltése', getErrorMessage(err))
+      logger.error('ReceiptPage', 'Failed to download closing PDF:', err)
+    } finally {
+      setClosingPdfLoading(false)
+    }
+  }, [closingPdfId])
+
   // Sourcery (#1039 nitpick): a lista „Újranyomtatás" gombja KÖZVETLENÜL nyomtasson (1 klikk, ESC/POS),
   // ne csak előnézetet nyisson (a printer-ikon + címke azonnali nyomtatást sugall). Az előnézet az
   // „Előnézet" (szem) gombbal érhető el. Hibát toast-tal jelzünk (nem dobunk, mert ez közvetlen akció).
@@ -506,6 +538,29 @@ export default function ReceiptPage() {
       </div>
 
       <div className="form-panel">
+        <div className="mb-3 flex flex-wrap items-end gap-2 border-b pb-3">
+          <div className="min-w-[220px]">
+            <label className="form-label" htmlFor="closing-pdf-id">Zárás azonosító</label>
+            <input
+              id="closing-pdf-id"
+              type="text"
+              className="form-input"
+              value={closingPdfId}
+              onChange={(e) => setClosingPdfId(e.target.value)}
+              placeholder="pl. closing-2026-06-19"
+            />
+          </div>
+          <button
+            type="button"
+            className="form-button text-sm"
+            data-testid="receipt-closing-pdf-download"
+            disabled={closingPdfLoading}
+            onClick={() => void downloadClosingPdf()}
+          >
+            <Download size={14} />
+            {closingPdfLoading ? 'Letöltés...' : 'Zárási PDF'}
+          </button>
+        </div>
         <div className="flex flex-wrap gap-4">
           <div className="flex-1 min-w-[200px]">
             <label className="form-label">{t('common.search')}</label>
