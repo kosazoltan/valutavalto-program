@@ -130,6 +130,12 @@ export const exchangeRateApi = {
     })
     return response.data
   },
+  getHistoryByCode: async (currencyCode: string, startDate: string, endDate: string): Promise<ExchangeRate[]> => {
+    const response = await api.get<ExchangeRate[]>('/exchange-rates/history', {
+      params: { currencyCode, startDate, endDate }
+    })
+    return response.data
+  },
   uploadRateFile: async (file: File): Promise<ParsedRateFile> => {
     const response = await api.post<ParsedRateFile>('/exchange-rates/upload-rate-file', createRateFileFormData(file), {
       headers: { 'Content-Type': 'multipart/form-data' },

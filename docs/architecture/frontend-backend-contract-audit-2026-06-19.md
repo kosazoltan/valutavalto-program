@@ -61,12 +61,12 @@ Latest verified result:
 
 ```text
 backend endpoints: 991
-frontend literal REST calls: 1028
-frontend production UI/app referenced REST calls: 920
+frontend literal REST calls: 1029
+frontend production UI/app referenced REST calls: 924
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
-backend endpoints not referenced by production UI/app calls: 104
+backend endpoints not referenced by production UI/app calls: 100
 ```
 
 Route/page audit result:
@@ -236,11 +236,16 @@ proven used by UI/app" follow-up work.
   currency management workflow uses backend search and backend code-detail
   lookup instead of only the full currency list, with rate-maker mobile render
   coverage.
+- Wired the routed RateHistoryPage canonical read controls to
+  `GET /exchange-rates/code/{currencyCode}`, `GET /exchange-rates/buy-rate`,
+  `GET /exchange-rates/sell-rate`, and `GET /exchange-rates/history` so the
+  rate history view can verify current backend rates, amount-specific buy/sell
+  calculations and canonical rate history, with mobile render coverage.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 104 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 104 confirmed UX
+The stricter audit currently reports 100 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 100 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens.
@@ -248,11 +253,11 @@ valid library surface rather than visible screens.
 Current summary:
 
 ```text
-ui-candidate/list-or-view        25
-ui-candidate/detail              8
 ui-candidate/mutation            25
+ui-candidate/list-or-view        22
 integration-or-device            15
 backend-only/legacy-compat       8
+ui-candidate/detail              7
 workflow-action                  7
 backend-only/auth-session        3
 backend-only/admin-maintenance   2
@@ -428,6 +433,12 @@ npx.cmd vitest run src/pages/rates/components/CurrencyManagerModal.test.tsx
 npx.cmd eslint src/pages/rates/components/CurrencyManagerModal.tsx src/pages/rates/components/CurrencyManagerModal.test.tsx e2e/currency-manager-backend-reads.spec.ts
 npm.cmd run type-check
 $env:VITE_APP_FLAVOR='rate-maker'; $env:PLAYWRIGHT_E2E_PORT='3131'; npx.cmd playwright test e2e/currency-manager-backend-reads.spec.ts --config=playwright.config.ts
+npm.cmd run build
+python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 120
+npx.cmd vitest run src/pages/rates/RateHistoryPage.test.tsx
+npx.cmd eslint src/pages/rates/RateHistoryPage.tsx src/pages/rates/RateHistoryPage.test.tsx src/services/api/exchange-rates.ts e2e/rate-history-exchange-rate-reads.spec.ts
+npm.cmd run type-check
+npx.cmd playwright test e2e/rate-history-exchange-rate-reads.spec.ts --config=playwright.config.ts
 npm.cmd run build
 python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 120
 ```

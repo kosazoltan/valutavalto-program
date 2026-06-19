@@ -5,6 +5,10 @@ import RateHistoryPage from './RateHistoryPage'
 
 const mocks = vi.hoisted(() => ({
   apiGet: vi.fn(),
+  getByCurrencyCode: vi.fn(),
+  getBuyRateForAmount: vi.fn(),
+  getSellRateForAmount: vi.fn(),
+  getHistoryByCode: vi.fn(),
   loggerError: vi.fn(),
 }))
 
@@ -20,9 +24,46 @@ vi.mock('../../utils/logger', () => ({
   },
 }))
 
+vi.mock('../../services/api/exchange-rates', () => ({
+  exchangeRateApi: {
+    getByCurrencyCode: mocks.getByCurrencyCode,
+    getBuyRateForAmount: mocks.getBuyRateForAmount,
+    getSellRateForAmount: mocks.getSellRateForAmount,
+    getHistoryByCode: mocks.getHistoryByCode,
+  },
+}))
+
 describe('RateHistoryPage backend kapcsolatok', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.getByCurrencyCode.mockResolvedValue({
+      id: 10,
+      currencyId: 1,
+      currencyCode: 'EUR',
+      currencyName: 'Euró',
+      validDate: '2026-06-18',
+      validTime: '09:00:00',
+      baseBuyRate: 391.5,
+      baseSellRate: 398.5,
+      active: true,
+      createdAt: '2026-06-18T09:00:00',
+    })
+    mocks.getBuyRateForAmount.mockResolvedValue(392.1)
+    mocks.getSellRateForAmount.mockResolvedValue(399.2)
+    mocks.getHistoryByCode.mockResolvedValue([
+      {
+        id: 11,
+        currencyId: 1,
+        currencyCode: 'EUR',
+        currencyName: 'Euró',
+        validDate: '2026-06-17',
+        validTime: '09:00:00',
+        baseBuyRate: 390.5,
+        baseSellRate: 397.5,
+        active: true,
+        createdAt: '2026-06-17T09:00:00',
+      },
+    ])
     mocks.apiGet.mockImplementation((url: string) => {
       if (url === '/rate-history') {
         return Promise.resolve({
@@ -85,5 +126,30 @@ describe('RateHistoryPage backend kapcsolatok', () => {
       expect(screen.getByText('358.20')).toBeInTheDocument()
       expect(screen.getByText('365.80')).toBeInTheDocument()
     })
+  })
+
+  it('canonical exchange-rates read endpointokat használ kód, összegárfolyam és history lekérdezéshez', async () => {
+    const user = userEvent.setup()
+    render(<RateHistoryPage />)
+
+    await screen.findAllByText('EUR')
+    fireEvent.change(screen.getByLabelText('Árfolyam ellenőrzés valuta'), {
+      target: { value: 'eur' },
+    })
+    fireEvent.change(screen.getByLabelText('Árfolyam ellenőrzés HUF összeg'), {
+      target: { value: '100000' },
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Árfolyam ellenőrzés' }))
+
+    await waitFor(() => {
+      expect(mocks.getByCurrencyCode).toHaveBeenCalledWith('EUR')
+      expect(mocks.getBuyRateForAmount).toHaveBeenCalledWith(1, 100000)
+      expect(mocks.getSellRateForAmount).toHaveBeenCalledWith(1, 100000)
+      expect(mocks.getHistoryByCode).toHaveBeenCalledWith('EUR', expect.any(String), expect.any(String))
+    })
+    expect(screen.getByText('392.1')).toBeInTheDocument()
+    expect(screen.getByText('399.2')).toBeInTheDocument()
+    expect(screen.getByText(/Előzmény találatok/)).toHaveTextContent('Előzmény találatok: 1')
   })
 })

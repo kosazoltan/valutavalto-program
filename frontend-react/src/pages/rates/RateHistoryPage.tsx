@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import { exchangeRateApi, type ExchangeRate } from '../../services/api/exchange-rates'
 
 interface RateHistoryItem {
   id: string | number
@@ -43,6 +44,14 @@ export default function RateHistoryPage() {
   const [atDateResult, setAtDateResult] = useState<RateHistoryItem | null>(null)
   const [atDateLoading, setAtDateLoading] = useState(false)
   const [atDateError, setAtDateError] = useState<string | null>(null)
+  const [canonicalCurrencyCode, setCanonicalCurrencyCode] = useState('EUR')
+  const [canonicalHufAmount, setCanonicalHufAmount] = useState('100000')
+  const [canonicalRate, setCanonicalRate] = useState<ExchangeRate | null>(null)
+  const [canonicalBuyRate, setCanonicalBuyRate] = useState<number | null>(null)
+  const [canonicalSellRate, setCanonicalSellRate] = useState<number | null>(null)
+  const [canonicalHistory, setCanonicalHistory] = useState<ExchangeRate[]>([])
+  const [canonicalLoading, setCanonicalLoading] = useState(false)
+  const [canonicalError, setCanonicalError] = useState<string | null>(null)
 
   // Fix 2026-04-24 (Issue #184): default utolso 30 nap + from/to parameter
   // A backend uj opcionalis currency paramot tamogat, ha nincs -> minden valuta
@@ -106,6 +115,47 @@ export default function RateHistoryPage() {
       setAtDateResult(null)
     } finally {
       setAtDateLoading(false)
+    }
+  }
+
+  const loadCanonicalExchangeRate = async () => {
+    const currencyCode = canonicalCurrencyCode.trim().toUpperCase()
+    const hufAmount = Number(canonicalHufAmount)
+    const today = new Date()
+    const defaultFrom = new Date(today)
+    defaultFrom.setDate(today.getDate() - 30)
+    const startDate = dateFrom || formatLocalDate(defaultFrom)
+    const endDate = dateTo || formatLocalDate(today)
+
+    if (!currencyCode || !Number.isFinite(hufAmount) || hufAmount <= 0) {
+      setCanonicalError('Valuta és pozitív HUF összeg megadása kötelező.')
+      return
+    }
+
+    try {
+      setCanonicalLoading(true)
+      setCanonicalError(null)
+      const currentRate = await exchangeRateApi.getByCurrencyCode(currencyCode)
+      const [buyRate, sellRate, history] = await Promise.all([
+        exchangeRateApi.getBuyRateForAmount(currentRate.currencyId, hufAmount),
+        exchangeRateApi.getSellRateForAmount(currentRate.currencyId, hufAmount),
+        exchangeRateApi.getHistoryByCode(currencyCode, startDate, endDate),
+      ])
+      setCanonicalRate(currentRate)
+      setCanonicalBuyRate(buyRate)
+      setCanonicalSellRate(sellRate)
+      setCanonicalHistory(history)
+      setCanonicalCurrencyCode(currencyCode)
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('RateHistoryPage', 'Canonical árfolyam lekérdezési hiba:', err)
+      setCanonicalError(msg)
+      setCanonicalRate(null)
+      setCanonicalBuyRate(null)
+      setCanonicalSellRate(null)
+      setCanonicalHistory([])
+    } finally {
+      setCanonicalLoading(false)
     }
   }
 
@@ -213,6 +263,73 @@ export default function RateHistoryPage() {
           {error}
         </div>
       )}
+
+      <section className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-3">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-900">
+          <Search className="h-4 w-4" />
+          {t('rates.canonicalArfolyamEllenorzes')}
+        </div>
+        <div className="grid gap-2 md:grid-cols-[120px_minmax(160px,1fr)_auto]">
+          <input
+            aria-label="Árfolyam ellenőrzés valuta"
+            value={canonicalCurrencyCode}
+            onChange={e => setCanonicalCurrencyCode(e.target.value.toUpperCase())}
+            className="form-input min-w-0 px-2 py-1"
+            maxLength={3}
+          />
+          <input
+            aria-label="Árfolyam ellenőrzés HUF összeg"
+            type="number"
+            min="1"
+            value={canonicalHufAmount}
+            onChange={e => setCanonicalHufAmount(e.target.value)}
+            className="form-input min-w-0 px-2 py-1"
+          />
+          <button
+            type="button"
+            onClick={() => void loadCanonicalExchangeRate()}
+            disabled={canonicalLoading}
+            className="form-button whitespace-nowrap px-3 py-2"
+          >
+            {canonicalLoading ? 'Betöltés...' : 'Árfolyam ellenőrzés'}
+          </button>
+        </div>
+        {canonicalError && (
+          <div className="mt-2 flex items-center gap-2 text-sm text-red-700">
+            <AlertTriangle className="h-4 w-4" />
+            {canonicalError}
+          </div>
+        )}
+        {canonicalRate && (
+          <div className="mt-3 grid gap-2 rounded-md bg-white p-3 text-sm shadow-sm md:grid-cols-5">
+            <div>
+              <div className="text-xs uppercase text-gray-500">{t('common.currency')}</div>
+              <div className="font-semibold text-gray-900">{canonicalRate.currencyCode}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase text-gray-500">{t('rates.veteliArf')}</div>
+              <div className="font-semibold text-gray-900">{canonicalRate.baseBuyRate}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase text-gray-500">{t('rates.eladasiArf')}</div>
+              <div className="font-semibold text-gray-900">{canonicalRate.baseSellRate}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase text-gray-500">{t('rates.hufVetel')}</div>
+              <div className="font-semibold text-gray-900">{canonicalBuyRate ?? '-'}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase text-gray-500">{t('rates.hufEladas')}</div>
+              <div className="font-semibold text-gray-900">{canonicalSellRate ?? '-'}</div>
+            </div>
+          </div>
+        )}
+        {canonicalHistory.length > 0 && (
+          <div className="mt-2 text-xs text-emerald-900">
+            {t('rates.canonicalHistoryTalalatok')}: {canonicalHistory.length}
+          </div>
+        )}
+      </section>
 
       <div className="space-y-2 md:hidden">
         {loading ? (
