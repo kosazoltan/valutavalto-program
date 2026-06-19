@@ -113,6 +113,21 @@ async function mockDenominationApis(page: Page) {
       })
     }
 
+    if (path.endsWith('/denominations/validate') && method === 'POST') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          currencyId: 1,
+          currencyCode: 'EUR',
+          expectedBalance: Number(url.searchParams.get('expectedBalance') ?? '0'),
+          actualBalance: 120,
+          difference: 0,
+          isValid: true,
+        }),
+      })
+    }
+
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
   })
 }
@@ -170,6 +185,18 @@ test('címletezés mobil viewporton használja az összes címlet és total endp
   await page.getByRole('button', { name: /Optimális visszajáró/ }).click()
   await optimalRequest
   await expect(page.getByText(/50,00 x 2/)).toBeVisible()
+
+  const validateRequest = page.waitForRequest(request => {
+    const url = new URL(request.url())
+    return request.method() === 'POST'
+      && url.pathname === '/api/v1/denominations/validate'
+      && url.searchParams.get('currencyId') === '1'
+      && url.searchParams.get('expectedBalance') === '120'
+  })
+  await page.getByPlaceholder('Elvárt egyenleg EUR').fill('120')
+  await page.getByRole('button', { name: 'Validálás' }).click()
+  await validateRequest
+  await expect(page.getByText('Címletezés rendben: 120,00 EUR.')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

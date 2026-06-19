@@ -68,6 +68,9 @@ export default function DenominationPage() {
   const [suggestionLoading, setSuggestionLoading] = useState(false)
   const [suggestionMessage, setSuggestionMessage] = useState<string | null>(null)
   const [suggestionUsesStock, setSuggestionUsesStock] = useState(false)
+  const [validationExpectedBalance, setValidationExpectedBalance] = useState('')
+  const [validationLoading, setValidationLoading] = useState(false)
+  const [validationMessage, setValidationMessage] = useState<string | null>(null)
   const [optimalChange, setOptimalChange] = useState<Record<number, number> | null>(null)
   const [optimalChangeLoading, setOptimalChangeLoading] = useState(false)
   const [optimalChangeMessage, setOptimalChangeMessage] = useState<string | null>(null)
@@ -277,6 +280,31 @@ export default function DenominationPage() {
       setOptimalChangeMessage(getErrorMessage(error))
     } finally {
       setOptimalChangeLoading(false)
+    }
+  }
+
+  const handleValidateDenominations = async () => {
+    const expectedBalance = Number(validationExpectedBalance.replace(/\s/g, '').replace(',', '.'))
+    if (!selectedCurrencyId || !Number.isFinite(expectedBalance) || expectedBalance < 0) {
+      setValidationMessage('Adj meg nem negatív elvárt egyenleget a címletvalidáláshoz.')
+      return
+    }
+
+    setValidationLoading(true)
+    setValidationMessage(null)
+    try {
+      const result = await denominationApi.validate(selectedCurrencyId, expectedBalance)
+      const difference = formatDecimal(Number(result.difference), 2, 2)
+      setValidationMessage(
+        result.isValid
+          ? `Címletezés rendben: ${formatDecimal(Number(result.actualBalance), 2, 2)} ${result.currencyCode}.`
+          : `Eltérés: ${difference} ${result.currencyCode}. Tényleges: ${formatDecimal(Number(result.actualBalance), 2, 2)}.`,
+      )
+    } catch (error) {
+      logger.error('DenominationPage', 'Címletvalidálás sikertelen:', error)
+      setValidationMessage(getErrorMessage(error))
+    } finally {
+      setValidationLoading(false)
     }
   }
 
@@ -622,6 +650,40 @@ export default function DenominationPage() {
           </div>
           <p className="text-xs text-gray-500 md:max-w-xs">
             A javaslat a backend címletkalkulátorából érkezik, majd a betöltött címletsorok darabszámait tölti.
+          </p>
+        </div>
+      )}
+
+      {selectedCurrency && (
+        <div className="form-panel flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div className="min-w-0">
+            <label className="form-label">Címletezés validálás</label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <NumberInput
+                value={validationExpectedBalance}
+                onChange={setValidationExpectedBalance}
+                className="form-input w-full sm:w-48 font-mono"
+                placeholder={`Elvárt egyenleg ${selectedCurrency.code}`}
+                allowDecimals
+                allowNegative={false}
+                min={0}
+              />
+              <button
+                type="button"
+                className="form-button flex items-center gap-1 h-9 text-sm"
+                onClick={() => void handleValidateDenominations()}
+                disabled={validationLoading || !validationExpectedBalance.trim()}
+              >
+                <Calculator size={14} className={validationLoading ? 'animate-pulse' : ''} />
+                Validálás
+              </button>
+            </div>
+            {validationMessage && (
+              <p className="mt-1 text-xs text-gray-600">{validationMessage}</p>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 md:max-w-xs">
+            Az ellenőrzés a backend címletvalidálását hívja az aktuális valuta és a megadott elvárt egyenleg alapján.
           </p>
         </div>
       )}

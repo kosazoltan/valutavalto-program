@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   denominationGetLowStockAlerts: vi.fn(),
   denominationGetSummary: vi.fn(),
   denominationGetOptimalChange: vi.fn(),
+  denominationValidate: vi.fn(),
   balancesGetAll: vi.fn(),
   balancesGetByCurrency: vi.fn(),
   balancesCalculateTotal: vi.fn(),
@@ -60,6 +61,7 @@ vi.mock('../../services/api/index', () => ({
     getLowStockAlerts: mocks.denominationGetLowStockAlerts,
     getSummary: mocks.denominationGetSummary,
     getOptimalChange: mocks.denominationGetOptimalChange,
+    validate: mocks.denominationValidate,
   },
   denominationBalanceApi: {
     getCashDeskDenominations: mocks.balancesGetAll,
@@ -116,6 +118,14 @@ describe('DenominationPage', () => {
       denominationCount: 3,
     })
     mocks.denominationGetOptimalChange.mockResolvedValue({ 50: 2, 20: 1, 10: 1 })
+    mocks.denominationValidate.mockResolvedValue({
+      currencyId: 1,
+      currencyCode: 'EUR',
+      expectedBalance: 120,
+      actualBalance: 120,
+      difference: 0,
+      isValid: true,
+    })
     mocks.balancesGetAll.mockResolvedValue([
       { denominationId: '10', currencyCode: 'EUR', quantity: 2, totalValue: 100 },
       { denominationId: '11', currencyCode: 'EUR', quantity: 1, totalValue: 20 },
@@ -237,6 +247,19 @@ describe('DenominationPage', () => {
       expect(screen.getByText(/50,00 x 2/)).toBeInTheDocument()
       expect(screen.getByText(/20,00 x 1/)).toBeInTheDocument()
       expect(screen.getByText(/10,00 x 1/)).toBeInTheDocument()
+    })
+  })
+
+  it('az elvárt egyenleget a backend címletvalidálásra küldi', async () => {
+    render(<DenominationPage />)
+
+    await screen.findByText('50 EUR')
+    fireEvent.change(screen.getByPlaceholderText('Elvárt egyenleg EUR'), { target: { value: '120' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Validálás' }))
+
+    await waitFor(() => {
+      expect(mocks.denominationValidate).toHaveBeenCalledWith(1, 120)
+      expect(screen.getByText('Címletezés rendben: 120,00 EUR.')).toBeInTheDocument()
     })
   })
 
