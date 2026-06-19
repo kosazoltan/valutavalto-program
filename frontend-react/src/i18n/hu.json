@@ -1284,6 +1284,7 @@
     "bizonylatReszletek": "Bizonylat részletek",
     "bizonylatok": "Bizonylatok",
     "bizonylatszam": "Bizonylatszám:",
+    "detailLoadError": "Hiba történt a bizonylat részleteinek betöltése során",
     "ezekABizonylatokHelyilegVeglegesSzigoruSzamadasuSorszammalRendelkeznekNgm232014ASzerverSzinkronFolyamatbanVanASorszamNemFogMegvaltozniCsakASzerverOldaliAuditNaploEgeszulKi": "Ezek a bizonylatok helyileg végleges szigorú számadású sorszámmal rendelkeznek (NGM 23/2014). A szerver-szinkron folyamatban van — a sorszám NEM fog megváltozni, csak a szerver-oldali audit-napló egészül ki.",
     "filter": {
       "allDisabled": "Szűrés kikapcsolva (összes)",

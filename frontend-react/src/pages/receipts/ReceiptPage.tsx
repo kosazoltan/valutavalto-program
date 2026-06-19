@@ -356,6 +356,7 @@ export default function ReceiptPage() {
   }, [customerFilters])
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null)
   const [selectedDraft, setSelectedDraft] = useState<PendingReceiptDraft | null>(null)
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
 
   const loadData = useCallback(async (): Promise<void> => {
     try {
@@ -437,6 +438,20 @@ export default function ReceiptPage() {
       logger.error('ReceiptPage', 'Failed to print receipt:', err)
     }
   }
+
+  const openReceiptDetails = useCallback(async (receipt: Receipt): Promise<void> => {
+    setDetailLoadingId(receipt.id)
+    try {
+      const detailed = await receiptApi.getById(receipt.id)
+      setSelectedReceipt(detailed)
+    } catch (err) {
+      const errorMessage = getErrorMessage(err)
+      toast.error(t('receipts.detailLoadError'), errorMessage)
+      logger.error('ReceiptPage', 'Failed to load receipt details:', err)
+    } finally {
+      setDetailLoadingId(null)
+    }
+  }, [t])
 
   // Sourcery (#1039 nitpick): a lista „Újranyomtatás" gombja KÖZVETLENÜL nyomtasson (1 klikk, ESC/POS),
   // ne csak előnézetet nyisson (a printer-ikon + címke azonnali nyomtatást sugall). Az előnézet az
@@ -722,7 +737,13 @@ export default function ReceiptPage() {
                   <td><span className={`badge ${r.isPrinted ? 'badge-green' : 'badge-yellow'}`}>{r.isPrinted ? 'Igen' : 'Nem'}</span></td>
                   <td>
                     <div className="flex gap-2">
-                      <button onClick={() => setSelectedReceipt(r)} className="form-button text-xs"><Eye size={12} />{t('common.details')}</button>
+                      <button
+                        onClick={() => void openReceiptDetails(r)}
+                        className="form-button text-xs"
+                        disabled={detailLoadingId === r.id}
+                      >
+                        <Eye size={12} />{t('common.details')}
+                      </button>
                       {!r.isPrinted && <button onClick={() => handlePrint(r)} className="form-button text-xs"><Printer size={12} />{t('common.print')}</button>}
                     </div>
                   </td>
