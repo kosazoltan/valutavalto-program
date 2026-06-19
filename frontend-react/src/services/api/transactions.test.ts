@@ -223,6 +223,24 @@ describe('customerApi', () => {
     })
   })
 
+  it('getStats: calls GET /customers/:id/stats', async () => {
+    mockApi.get.mockResolvedValue({ data: { customerId: 42, totalTransactions: 3 } })
+
+    await customerApi.getStats(42)
+
+    expect(mockApi.get).toHaveBeenCalledWith('/customers/42/stats')
+  })
+
+  it('getHistory: calls GET /customers/:id/history with optional date params', async () => {
+    mockApi.get.mockResolvedValue({ data: { customerId: 42, totalTransactions: 2 } })
+
+    await customerApi.getHistory(42, { from: '2026-06-01', to: '2026-06-19' })
+
+    expect(mockApi.get).toHaveBeenCalledWith('/customers/42/history', {
+      params: { from: '2026-06-01', to: '2026-06-19' },
+    })
+  })
+
   it('getByIdCard: calls the id-card lookup endpoint', async () => {
     mockApi.get.mockResolvedValue({ data: { id: 77, name: 'Teszt Ügyfél' } })
 

@@ -8,7 +8,14 @@ import CustomerDetailPage from './CustomerDetailPage'
 import { useAuthStore } from '../../stores/authStore'
 
 const mocks = vi.hoisted(() => ({
-  customerApi: { getById: vi.fn(), markEdd: vi.fn(), update: vi.fn(), merge: vi.fn() },
+  customerApi: {
+    getById: vi.fn(),
+    getStats: vi.fn(),
+    getHistory: vi.fn(),
+    markEdd: vi.fn(),
+    update: vi.fn(),
+    merge: vi.fn(),
+  },
   customerControlApi: {
     getRestrictions: vi.fn(),
     addRestriction: vi.fn(),
@@ -72,6 +79,26 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
     mocks.customerControlApi.getRestrictions.mockResolvedValue([])
     mocks.customerControlApi.getAnnualTotal.mockResolvedValue(0)
     mocks.customerControlApi.getScreeningLog.mockResolvedValue([])
+    mocks.customerApi.getStats.mockResolvedValue({
+      customerId: 42,
+      customerName: 'Teszt Elek',
+      totalTransactions: 3,
+      totalVolumeHuf: 1250000,
+      averageAmount: 416667,
+      firstVisit: '2026-01-05',
+      lastVisit: '2026-06-18',
+      preferredCurrency: 'EUR',
+    })
+    mocks.customerApi.getHistory.mockResolvedValue({
+      customerId: 42,
+      customerName: 'Teszt Elek',
+      totalTransactions: 2,
+      totalVolumeHuf: 850000,
+      averageAmount: 425000,
+      firstVisit: '2026-06-01',
+      lastVisit: '2026-06-18',
+      preferredCurrency: 'USD',
+    })
     mocks.amlApi.customerRisk.mockResolvedValue({
       customerId: '42',
       customerName: 'Teszt Elek',
@@ -176,6 +203,48 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
     expect(screen.getByText('Fokozott figyelés')).toBeInTheDocument()
     expect(screen.getByText('Gyanú-bejelentés teszt')).toBeInTheDocument()
     expect(screen.getByText('Igen')).toBeInTheDocument()
+  })
+
+  it('betölti és dátumszűrővel frissíti a CustomerController stats/history read endpointokat', async () => {
+    mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER })
+    mocks.customerApi.getHistory.mockResolvedValueOnce({
+      customerId: 42,
+      customerName: 'Teszt Elek',
+      totalTransactions: 2,
+      totalVolumeHuf: 850000,
+      averageAmount: 425000,
+      firstVisit: '2026-06-01',
+      lastVisit: '2026-06-18',
+      preferredCurrency: 'USD',
+    }).mockResolvedValueOnce({
+      customerId: 42,
+      customerName: 'Teszt Elek',
+      totalTransactions: 1,
+      totalVolumeHuf: 500000,
+      averageAmount: 500000,
+      firstVisit: '2026-06-10',
+      lastVisit: '2026-06-10',
+      preferredCurrency: 'CHF',
+    })
+
+    renderPage()
+
+    await waitFor(() => expect(mocks.customerApi.getStats).toHaveBeenCalledWith(42))
+    expect(mocks.customerApi.getHistory).toHaveBeenCalledWith(42, undefined)
+    expect(await screen.findByTestId('customer-backend-stats')).toHaveTextContent('1 250 000 Ft')
+    expect(screen.getByTestId('customer-history-stats')).toHaveTextContent('850 000 Ft')
+    expect(screen.getByTestId('customer-history-stats')).toHaveTextContent('USD')
+
+    fireEvent.change(screen.getByTestId('customer-history-from'), { target: { value: '2026-06-10' } })
+    fireEvent.change(screen.getByTestId('customer-history-to'), { target: { value: '2026-06-19' } })
+    fireEvent.click(screen.getByText('Időszak frissítése'))
+
+    await waitFor(() => expect(mocks.customerApi.getHistory).toHaveBeenLastCalledWith(42, {
+      from: '2026-06-10',
+      to: '2026-06-19',
+    }))
+    expect(await screen.findByText('500 000 Ft')).toBeInTheDocument()
+    expect(screen.getByText('CHF')).toBeInTheDocument()
   })
 
   it('supervisor korlátozást rögzít és deaktivál a customer-control API-n', async () => {

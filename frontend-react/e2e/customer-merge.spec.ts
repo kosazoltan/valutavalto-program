@@ -96,6 +96,41 @@ async function mockCustomerApis(page: Page) {
       })
     }
 
+    if (path === '/api/v1/customers/42/stats' && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          customerId: 42,
+          customerName: 'Elsődleges Ügyfél',
+          totalTransactions: 3,
+          totalVolumeHuf: 1250000,
+          averageAmount: 416667,
+          firstVisit: '2026-01-05',
+          lastVisit: '2026-06-18',
+          preferredCurrency: 'EUR',
+        }),
+      })
+    }
+
+    if (path === '/api/v1/customers/42/history' && method === 'GET') {
+      const filtered = url.searchParams.get('from') === '2026-06-10'
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          customerId: 42,
+          customerName: 'Elsődleges Ügyfél',
+          totalTransactions: filtered ? 1 : 2,
+          totalVolumeHuf: filtered ? 500000 : 850000,
+          averageAmount: filtered ? 500000 : 425000,
+          firstVisit: filtered ? '2026-06-10' : '2026-06-01',
+          lastVisit: filtered ? '2026-06-10' : '2026-06-18',
+          preferredCurrency: filtered ? 'CHF' : 'USD',
+        }),
+      })
+    }
+
     const bodyByPath: Record<string, unknown> = {
       '/api/v1/customer-control/42/restrictions': [],
       '/api/v1/customer-control/42/annual-total': 0,
@@ -136,7 +171,32 @@ test('ügyfél-összevonási panel renderel és a backend szerződést hívja', 
   await mockCustomerApis(page)
   await login(page)
 
+  const statsRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/42/stats'
+  )
+  const historyRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/42/history'
+  )
   await page.goto('/customers/42', { waitUntil: 'domcontentloaded' })
+  await Promise.all([statsRequest, historyRequest])
+  await expect(page.getByTestId('customer-backend-stats')).toContainText('1 250 000 Ft')
+  await expect(page.getByTestId('customer-history-stats')).toContainText('850 000 Ft')
+  await expect(page.getByTestId('customer-history-stats')).toContainText('USD')
+
+  const filteredHistoryRequest = page.waitForRequest(request => {
+    const url = new URL(request.url())
+    return request.method() === 'GET'
+      && url.pathname === '/api/v1/customers/42/history'
+      && url.searchParams.get('from') === '2026-06-10'
+      && url.searchParams.get('to') === '2026-06-19'
+  })
+  await page.getByTestId('customer-history-from').fill('2026-06-10')
+  await page.getByTestId('customer-history-to').fill('2026-06-19')
+  await page.getByRole('button', { name: 'Időszak frissítése' }).click()
+  await filteredHistoryRequest
+  await expect(page.getByTestId('customer-history-stats')).toContainText('500 000 Ft')
+  await expect(page.getByTestId('customer-history-stats')).toContainText('CHF')
+
   await expect(page.getByTestId('customer-merge-panel')).toBeVisible()
   await expect(page.getByText('Ügyfél duplikátum összevonás')).toBeVisible()
   await expect(page.getByTestId('duplicate-customer-id-input')).toBeVisible()

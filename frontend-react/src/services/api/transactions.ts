@@ -53,6 +53,17 @@ export interface CustomerRanking {
   rank: number
 }
 
+export interface CustomerStats {
+  customerId: number
+  customerName: string
+  totalTransactions: number
+  totalVolumeHuf: number
+  averageAmount: number
+  firstVisit?: string | null
+  lastVisit?: string | null
+  preferredCurrency?: string | null
+}
+
 export interface CustomerCreateRequest {
   name: string
   birthName?: string
@@ -160,6 +171,14 @@ export const customerApi = {
   },
   getTop: async (params?: { branchId?: string; from?: string; to?: string; limit?: number }): Promise<CustomerRanking[]> => {
     const response = await api.get<CustomerRanking[]>('/customers/top', { params })
+    return response.data
+  },
+  getStats: async (id: number): Promise<CustomerStats> => {
+    const response = await api.get<CustomerStats>(`/customers/${id}/stats`)
+    return response.data
+  },
+  getHistory: async (id: number, params?: { from?: string; to?: string }): Promise<CustomerStats> => {
+    const response = await api.get<CustomerStats>(`/customers/${id}/history`, { params })
     return response.data
   },
   getActive: async (): Promise<Customer[]> => {

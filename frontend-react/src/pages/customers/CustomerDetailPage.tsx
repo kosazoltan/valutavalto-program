@@ -11,6 +11,7 @@ import {
   CustomerCreateRequest,
   CustomerRestriction,
   CustomerScreeningLog,
+  CustomerStats,
 } from '../../services/api/transactions'
 import { amlApi, CustomerRiskProfile } from '../../services/api/aml'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -40,6 +41,12 @@ export default function CustomerDetailPage() {
   const [annualTotal, setAnnualTotal] = useState<number | null>(null)
   const [controlLoading, setControlLoading] = useState(false)
   const [controlError, setControlError] = useState<string | null>(null)
+  const [backendStats, setBackendStats] = useState<CustomerStats | null>(null)
+  const [historyStats, setHistoryStats] = useState<CustomerStats | null>(null)
+  const [historyFrom, setHistoryFrom] = useState('')
+  const [historyTo, setHistoryTo] = useState('')
+  const [statsLoading, setStatsLoading] = useState(false)
+  const [statsError, setStatsError] = useState<string | null>(null)
   const [amlRiskProfile, setAmlRiskProfile] = useState<CustomerRiskProfile | null>(null)
   const [structuringDetected, setStructuringDetected] = useState<boolean | null>(null)
   const [restrictionType, setRestrictionType] = useState<CustomerRestriction['restrictionType']>('WATCH_LIST')
@@ -81,6 +88,28 @@ export default function CustomerDetailPage() {
     }
   }, [canManageRestrictions])
 
+  const loadCustomerStats = useCallback(async (customerId: number, range?: { from?: string; to?: string }) => {
+    try {
+      setStatsLoading(true)
+      setStatsError(null)
+      const params = {
+        ...(range?.from ? { from: range.from } : {}),
+        ...(range?.to ? { to: range.to } : {}),
+      }
+      const [nextStats, nextHistory] = await Promise.all([
+        customerApi.getStats(customerId),
+        customerApi.getHistory(customerId, Object.keys(params).length > 0 ? params : undefined),
+      ])
+      setBackendStats(nextStats)
+      setHistoryStats(nextHistory)
+    } catch (err) {
+      setStatsError(getErrorMessage(err))
+      logger.error('CustomerDetailPage', 'Customer stats data load failed:', err)
+    } finally {
+      setStatsLoading(false)
+    }
+  }, [])
+
   const handleMarkEdd = async () => {
     if (!id || !eddReasonInput.trim()) {
       setEddError(t('customers.eddMarkReasonRequired'))
@@ -111,6 +140,7 @@ export default function CustomerDetailPage() {
         const data = await customerApi.getById(numericId)
         setCustomer(data)
         void loadControlData(numericId)
+        void loadCustomerStats(numericId)
       } catch (err) {
         setError(getErrorMessage(err))
         logger.error('CustomerDetailPage', 'Failed to load customer:', err)
@@ -119,7 +149,7 @@ export default function CustomerDetailPage() {
       }
     }
     void load()
-  }, [id, loadControlData])
+  }, [id, loadControlData, loadCustomerStats])
 
   const handleSave = async () => {
     if (!customer || !id) return
@@ -224,6 +254,14 @@ export default function CustomerDetailPage() {
     }
   }
 
+  const handleRefreshHistory = async () => {
+    if (!id) return
+    await loadCustomerStats(Number(id), {
+      from: historyFrom || undefined,
+      to: historyTo || undefined,
+    })
+  }
+
   const formatHuf = (value: number | null) => (
     value === null ? '-' : `${Number(value).toLocaleString('hu-HU')} Ft`
   )
@@ -234,6 +272,10 @@ export default function CustomerDetailPage() {
 
   const formatDateTime = (value?: string | null) => (
     value ? new Date(value).toLocaleString('hu-HU') : '-'
+  )
+
+  const formatDate = (value?: string | null) => (
+    value ? new Date(value).toLocaleDateString('hu-HU') : '-'
   )
 
   const restrictionTypeLabel = (value: string) => ({
@@ -404,11 +446,45 @@ export default function CustomerDetailPage() {
 
         {/* Stats Card */}
         <div className="form-panel">
-          <h2 className="section-title">{t('customers.statisztika')}</h2>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="section-title">{t('customers.statisztika')}</h2>
+            {statsLoading && (
+              <span className="flex items-center gap-1 text-xs text-gray-500">
+                <Loader2 size={12} className="animate-spin" />
+                {t('customers.statsLoading')}
+              </span>
+            )}
+          </div>
+          {statsError && (
+            <div className="mb-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+              {statsError}
+            </div>
+          )}
           <div className="space-y-3">
             <div className="bg-blue-50 p-3 rounded">
               <div className="text-sm text-blue-600">{t('customers.osszesTranzakcio')}</div>
               <div className="text-lg font-bold text-blue-800">{customer.transactionCount ?? 0}</div>
+            </div>
+            <div className="rounded border border-indigo-100 bg-indigo-50 p-3" data-testid="customer-backend-stats">
+              <div className="text-sm font-semibold text-indigo-800">{t('customers.backendStats')}</div>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <div className="text-indigo-700">{t('customers.totalVolume')}</div>
+                  <div className="font-bold text-indigo-950">{formatOptionalHuf(backendStats?.totalVolumeHuf)}</div>
+                </div>
+                <div>
+                  <div className="text-indigo-700">{t('customers.averageAmount')}</div>
+                  <div className="font-bold text-indigo-950">{formatOptionalHuf(backendStats?.averageAmount)}</div>
+                </div>
+                <div>
+                  <div className="text-indigo-700">{t('customers.firstVisit')}</div>
+                  <div className="font-semibold text-indigo-950">{formatDate(backendStats?.firstVisit)}</div>
+                </div>
+                <div>
+                  <div className="text-indigo-700">{t('customers.preferredCurrency')}</div>
+                  <div className="font-semibold text-indigo-950">{backendStats?.preferredCurrency || '-'}</div>
+                </div>
+              </div>
             </div>
             {customer.lastTransactionDate && (
               <div className="bg-gray-50 p-3 rounded">
@@ -421,6 +497,57 @@ export default function CustomerDetailPage() {
                 </div>
               </div>
             )}
+            <div className="rounded border border-gray-200 p-3" data-testid="customer-history-stats">
+              <div className="mb-2 text-sm font-semibold text-gray-800">{t('customers.historyStats')}</div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <label className="block">
+                  <span className="form-label">{t('customers.historyFrom')}</span>
+                  <input
+                    type="date"
+                    value={historyFrom}
+                    onChange={(event) => setHistoryFrom(event.target.value)}
+                    className="form-input"
+                    data-testid="customer-history-from"
+                  />
+                </label>
+                <label className="block">
+                  <span className="form-label">{t('customers.historyTo')}</span>
+                  <input
+                    type="date"
+                    value={historyTo}
+                    onChange={(event) => setHistoryTo(event.target.value)}
+                    className="form-input"
+                    data-testid="customer-history-to"
+                  />
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleRefreshHistory()}
+                className="form-button mt-2 w-full"
+                disabled={statsLoading}
+              >
+                {t('customers.historyRefresh')}
+              </button>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <div className="text-gray-600">{t('customers.osszesTranzakcio')}</div>
+                  <div className="font-bold text-gray-900">{historyStats?.totalTransactions ?? '-'}</div>
+                </div>
+                <div>
+                  <div className="text-gray-600">{t('customers.totalVolume')}</div>
+                  <div className="font-bold text-gray-900">{formatOptionalHuf(historyStats?.totalVolumeHuf)}</div>
+                </div>
+                <div>
+                  <div className="text-gray-600">{t('customers.lastVisit')}</div>
+                  <div className="font-semibold text-gray-900">{formatDate(historyStats?.lastVisit)}</div>
+                </div>
+                <div>
+                  <div className="text-gray-600">{t('customers.preferredCurrency')}</div>
+                  <div className="font-semibold text-gray-900">{historyStats?.preferredCurrency || '-'}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
