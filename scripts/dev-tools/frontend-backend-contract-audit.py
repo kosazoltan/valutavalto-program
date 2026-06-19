@@ -970,6 +970,11 @@ def classify_backend_reference(ep: Endpoint) -> BackendReferenceClass:
             "backend-only/alternate-admin-api",
             "Admin branch detail/update endpoint; the routed branch editor uses GET /admin/branches/{id} for stats and canonical PUT /branches/{id} for edits.",
         )
+    if ep.method == "POST" and path == "/branches":
+        return BackendReferenceClass(
+            "backend-only/alternate-admin-api",
+            "Full CreateBranchDto admin/főértéktári create contract; the routed new-branch page uses /branches/simple-cashier for the current user-facing office/cashier creation flow.",
+        )
     if ep.method == "GET" and path in {"/audit", "/audit/worker/{id}", "/audit/action/{action}"}:
         return BackendReferenceClass(
             "backend-only/legacy-compat",
@@ -1070,6 +1075,23 @@ def classify_backend_reference(ep: Endpoint) -> BackendReferenceClass:
         return BackendReferenceClass(
             "workflow-action/financial-admin",
             "State-changing monthly close/archive workflow; the routed MonthlyClosingPage currently reads reports and HRK flows, while exposing canonical monthly close requires explicit role/approval flow and financial contract evidence.",
+        )
+    if ep.method == "POST" and path in {"/ertektar/transfers", "/ertektar/receipts", "/ertektar/corrections"}:
+        return BackendReferenceClass(
+            "ui-candidate/financial-contract-required",
+            "Értéktár create request endpoint; the routed TreasuryDashboard currently exposes a read-only ledger for transfers/receipts/corrections, and write binding requires an approved stock/finance workflow contract.",
+        )
+    if ep.method == "POST" and path in {
+        "/ertektar/transfers/{id}/supervisor-approve",
+        "/ertektar/transfers/{id}/complete",
+        "/ertektar/transfers/{id}/reject",
+        "/ertektar/receipts/{id}/finalize",
+        "/ertektar/corrections/{id}/approve",
+        "/ertektar/corrections/{id}/reject",
+    }:
+        return BackendReferenceClass(
+            "workflow-action/financial-admin",
+            "Értéktár stock movement/status workflow action; existing UI lists the records but does not execute these actions, and exposing them requires explicit role/approval flow plus financial contract evidence.",
         )
     if path.endswith("/callback"):
         return BackendReferenceClass("integration-or-callback", "External OAuth/webhook callback endpoint; normally reached by third-party redirect, not by frontend REST.")
