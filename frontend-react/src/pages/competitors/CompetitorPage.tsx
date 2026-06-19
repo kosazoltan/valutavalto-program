@@ -11,8 +11,8 @@ import { toast } from '../../components/ui/toaster'
 interface CompetitorItem {
   id: string | number
   name?: string
-  website?: string
-  branchId?: string
+  website?: string | null
+  branchId?: string | null
   isActive?: boolean
 }
 
@@ -82,6 +82,7 @@ export default function CompetitorPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<CompetitorItem | null>(null)
+  const [editingLoadingId, setEditingLoadingId] = useState<string | number | null>(null)
   const [form, setForm] = useState<CompetitorForm>(() => emptyForm(currentBranchId))
   const [saving, setSaving] = useState(false)
   const [competitions, setCompetitions] = useState<CompetitionItem[]>([])
@@ -171,7 +172,7 @@ export default function CompetitorPage() {
     setError(null)
   }
 
-  const openEdit = (item: CompetitorItem) => {
+  const openEditForm = (item: CompetitorItem) => {
     setFormOpen(true)
     setEditing(item)
     setForm({
@@ -181,6 +182,22 @@ export default function CompetitorPage() {
       isActive: item.isActive ?? true,
     })
     setError(null)
+  }
+
+  const openEdit = async (item: CompetitorItem) => {
+    try {
+      setEditingLoadingId(item.id)
+      setError(null)
+      const detail = await competitorApi.getById(String(item.id))
+      openEditForm(detail)
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      setError(msg)
+      logger.error('CompetitorPage', 'Részletek betöltési hiba:', err)
+      toast.error('Részletek betöltési hiba', msg)
+    } finally {
+      setEditingLoadingId(null)
+    }
   }
 
   const cancelEdit = () => {
@@ -561,8 +578,13 @@ export default function CompetitorPage() {
                 <td className="px-4 py-3 text-sm font-mono text-xs">{item.branchId ?? '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.isActive ? 'Igen' : 'Nem'}</td>
                 <td className="px-4 py-3 text-right">
-                  <button onClick={() => openEdit(item)} className="form-button mr-2 p-1 text-blue-600" title="Szerkesztés">
-                    <Edit2 className="h-4 w-4" />
+                  <button
+                    onClick={() => void openEdit(item)}
+                    className="form-button mr-2 p-1 text-blue-600"
+                    title="Szerkesztés"
+                    disabled={editingLoadingId === item.id}
+                  >
+                    <Edit2 className={`h-4 w-4 ${editingLoadingId === item.id ? 'animate-pulse' : ''}`} />
                   </button>
                   <button onClick={() => handleDelete(item.id)} className="form-button p-1 text-red-600" title="Törlés">
                     <Trash2 className="h-4 w-4" />
