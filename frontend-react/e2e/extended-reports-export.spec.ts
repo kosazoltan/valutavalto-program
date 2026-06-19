@@ -289,7 +289,7 @@ test('napi zárás teljes riport és PDF export mobil nézetből backend endpoin
   )
   await page.getByRole('button', { name: /Riport generálása/i }).click()
   await dailyFullRequest
-  await expect(page.getByText('Budapest 01')).toBeVisible()
+  await expect(page.locator('pre').filter({ hasText: '"branchName": "Budapest 01"' })).toBeVisible()
 
   const pdfRequest = page.waitForRequest(request =>
     request.method() === 'GET' && request.url().includes('/reports/daily/branch-1/2026-06-18/pdf')

@@ -138,7 +138,7 @@ test('havi zárás részletei mobil nézetben lekérik a backend report endpoint
   await login(page)
 
   await page.goto('/closing/monthly', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByText('Budapest 01')).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Budapest 01' })).toBeVisible()
 
   const detailRequest = page.waitForRequest(request =>
     request.method() === 'GET'
