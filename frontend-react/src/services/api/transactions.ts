@@ -773,13 +773,6 @@ export interface CashDesk {
   isActive: boolean
 }
 
-export interface CashDeskStatus {
-  isOpen: boolean
-  openedAt?: string
-  openedBy?: string
-  balances: CashBalance[]
-}
-
 // Legacy alias
 export const cashDeskApi = {
   list: async (): Promise<CashDesk[]> => {
@@ -807,10 +800,6 @@ export const cashDeskApi = {
           isActive: cashDesk.is_active === 1,
         }))
     }
-  },
-  getStatus: async (): Promise<CashDeskStatus> => {
-    const balances = await cashBalanceApi.list()
-    return { isOpen: true, balances }
   }
 }
 
