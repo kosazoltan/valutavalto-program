@@ -41,14 +41,22 @@ const mockCustomers = [
 
 const mockGetActive = vi.fn()
 const mockSearch = vi.fn()
+const mockSearchByName = vi.fn()
 const mockGetByCode = vi.fn()
+const mockGetVip = vi.fn()
+const mockGetFrequent = vi.fn()
+const mockGetTop = vi.fn()
 const mockDeactivate = vi.fn()
 
 vi.mock('../../services/api/transactions', () => ({
   customerApi: {
     getActive: (...args: unknown[]) => mockGetActive(...args),
     search: (...args: unknown[]) => mockSearch(...args),
+    searchByName: (...args: unknown[]) => mockSearchByName(...args),
     getByCode: (...args: unknown[]) => mockGetByCode(...args),
+    getVip: (...args: unknown[]) => mockGetVip(...args),
+    getFrequent: (...args: unknown[]) => mockGetFrequent(...args),
+    getTop: (...args: unknown[]) => mockGetTop(...args),
     deactivate: (...args: unknown[]) => mockDeactivate(...args),
   },
 }))
@@ -75,7 +83,15 @@ describe('CustomerListPage', () => {
         ),
       )
     })
+    mockSearchByName.mockResolvedValue([{ ...mockCustomers[1], customerCode: 'U000002' }])
     mockGetByCode.mockResolvedValue({ ...mockCustomers[0], customerCode: 'U000001' })
+    mockGetVip.mockResolvedValue([{ ...mockCustomers[2], name: 'VIP Lista Ügyfél', isVip: true }])
+    mockGetFrequent.mockResolvedValue([
+      { customerId: 2, customerName: 'Gyakori Lista Ügyfél', transactionCount: 9, totalVolumeHuf: 2500000, rank: 1 },
+    ])
+    mockGetTop.mockResolvedValue([
+      { customerId: 4, customerName: 'Top Lista Ügyfél', transactionCount: 7, totalVolumeHuf: 3100000, rank: 1 },
+    ])
     mockDeactivate.mockResolvedValue(undefined)
   })
 
@@ -108,6 +124,36 @@ describe('CustomerListPage', () => {
       expect(mockGetByCode).toHaveBeenCalledWith('U000001')
     })
     expect(await screen.findByText('U000001')).toBeInTheDocument()
+  })
+
+  it('ügyfél gyorslistákat backend read endpointokról tölti', async () => {
+    renderCustomerListPage()
+
+    await waitFor(() => {
+      expect(mockGetVip).toHaveBeenCalled()
+      expect(mockGetFrequent).toHaveBeenCalledWith({ minTx: 5 })
+      expect(mockGetTop).toHaveBeenCalledWith({ limit: 5 })
+    })
+
+    expect(await screen.findByTestId('customer-vip-count')).toHaveTextContent('1')
+    expect(screen.getByTestId('customer-frequent-count')).toHaveTextContent('1')
+    expect(screen.getByTestId('customer-top-count')).toHaveTextContent('1')
+    expect(screen.getByText('VIP Lista Ügyfél')).toBeInTheDocument()
+    expect(screen.getByText('Gyakori Lista Ügyfél')).toBeInTheDocument()
+    expect(screen.getByText('Top Lista Ügyfél')).toBeInTheDocument()
+  })
+
+  it('név szerinti legacy keresés a /customers/search wrapperre köt', async () => {
+    renderCustomerListPage()
+    await waitFor(() => expect(screen.getByText('Kiss János')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    const searchInput = screen.getByPlaceholderText(/Keresés név vagy okmányszám alapján/)
+    await user.type(searchInput, 'Nagy')
+    await user.click(screen.getByRole('button', { name: 'Név szerinti keresés' }))
+
+    await waitFor(() => expect(mockSearchByName).toHaveBeenCalledWith('Nagy'))
+    expect(screen.getByText('Nagy Péter')).toBeInTheDocument()
   })
 
   it('összes ügyfél megjelenítése alapértelmezésben', async () => {

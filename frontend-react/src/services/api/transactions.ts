@@ -45,6 +45,14 @@ export interface Customer {
   updatedAt?: string
 }
 
+export interface CustomerRanking {
+  customerId: number
+  customerName: string
+  transactionCount: number
+  totalVolumeHuf: number
+  rank: number
+}
+
 export interface CustomerCreateRequest {
   name: string
   birthName?: string
@@ -138,8 +146,20 @@ export const customerApi = {
     const response = await api.get<Customer[]>('/customers', { params: { query: name } })
     return response.data
   },
+  searchByName: async (name: string): Promise<Customer[]> => {
+    const response = await api.get<Customer[]>('/customers/search', { params: { name } })
+    return response.data
+  },
   getVip: async (): Promise<Customer[]> => {
     const response = await api.get<Customer[]>('/customers/vip')
+    return response.data
+  },
+  getFrequent: async (params?: { branchId?: string; minTx?: number }): Promise<CustomerRanking[]> => {
+    const response = await api.get<CustomerRanking[]>('/customers/frequent', { params })
+    return response.data
+  },
+  getTop: async (params?: { branchId?: string; from?: string; to?: string; limit?: number }): Promise<CustomerRanking[]> => {
+    const response = await api.get<CustomerRanking[]>('/customers/top', { params })
     return response.data
   },
   getActive: async (): Promise<Customer[]> => {

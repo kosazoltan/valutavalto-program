@@ -187,6 +187,42 @@ describe('customerApi', () => {
     expect(mockApi.get).toHaveBeenCalledWith('/customers', { params: { query: '123456AB' } })
   })
 
+  it('searchByName: calls the legacy GET /customers/search endpoint', async () => {
+    mockApi.get.mockResolvedValue({ data: [] })
+
+    await customerApi.searchByName('Kiss')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/customers/search', { params: { name: 'Kiss' } })
+  })
+
+  it('getVip: calls GET /customers/vip', async () => {
+    mockApi.get.mockResolvedValue({ data: [] })
+
+    await customerApi.getVip()
+
+    expect(mockApi.get).toHaveBeenCalledWith('/customers/vip')
+  })
+
+  it('getFrequent: calls GET /customers/frequent with params', async () => {
+    mockApi.get.mockResolvedValue({ data: [] })
+
+    await customerApi.getFrequent({ minTx: 5, branchId: 'branch-1' })
+
+    expect(mockApi.get).toHaveBeenCalledWith('/customers/frequent', {
+      params: { minTx: 5, branchId: 'branch-1' },
+    })
+  })
+
+  it('getTop: calls GET /customers/top with params', async () => {
+    mockApi.get.mockResolvedValue({ data: [] })
+
+    await customerApi.getTop({ limit: 5, from: '2026-06-01', to: '2026-06-19' })
+
+    expect(mockApi.get).toHaveBeenCalledWith('/customers/top', {
+      params: { limit: 5, from: '2026-06-01', to: '2026-06-19' },
+    })
+  })
+
   it('getByIdCard: calls the id-card lookup endpoint', async () => {
     mockApi.get.mockResolvedValue({ data: { id: 77, name: 'Teszt Ügyfél' } })
 

@@ -81,6 +81,74 @@ async function mockApis(page: Page) {
       })
     }
 
+    if (path === '/api/v1/customers/search' && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 3,
+            customerCode: 'U000003',
+            name: 'Backend Név Ügyfél',
+            birthDate: '1981-04-10',
+            nationality: 'Magyar',
+            documentType: 'Személyi ig.',
+            documentNumber: 'NEV123',
+            phone: '+36302223333',
+            isCompany: false,
+            active: true,
+            isVip: false,
+            transactionCount: 3,
+            createdAt: '2026-06-19T08:00:00',
+          },
+        ]),
+      })
+    }
+
+    if (path === '/api/v1/customers/vip' && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 4,
+            customerCode: 'U000004',
+            name: 'VIP Ügyfél',
+            birthDate: '1970-01-01',
+            nationality: 'Magyar',
+            documentType: 'Útlevél',
+            documentNumber: 'VIP123',
+            phone: '+36304445555',
+            isCompany: false,
+            active: true,
+            isVip: true,
+            transactionCount: 14,
+            createdAt: '2026-06-19T08:00:00',
+          },
+        ]),
+      })
+    }
+
+    if (path === '/api/v1/customers/frequent' && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { customerId: 5, customerName: 'Gyakori Ügyfél', transactionCount: 9, totalVolumeHuf: 2200000, rank: 1 },
+        ]),
+      })
+    }
+
+    if (path === '/api/v1/customers/top' && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { customerId: 6, customerName: 'Top Ügyfél', transactionCount: 11, totalVolumeHuf: 5400000, rank: 1 },
+        ]),
+      })
+    }
+
     if (path === '/api/v1/customers/active' && method === 'GET') {
       return route.fulfill({
         status: 200,
@@ -124,9 +192,23 @@ test('ügyfél lista mobil nézetben ügyfélkód alapján backend detail lookup
   await mockApis(page)
   await login(page)
 
+  const vipRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/vip'
+  )
+  const frequentRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/frequent'
+  )
+  const topRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/top'
+  )
   await page.goto('/customers', { waitUntil: 'domcontentloaded' })
+  await Promise.all([vipRequest, frequentRequest, topRequest])
   await expect(page.getByRole('heading', { name: 'Ügyfelek' })).toBeVisible()
   await expect(page.getByText('Lista Ügyfél')).toBeVisible()
+  await expect(page.getByTestId('customer-highlight-panel')).toBeVisible()
+  await expect(page.getByText('VIP Ügyfél')).toBeVisible()
+  await expect(page.getByText('Gyakori Ügyfél')).toBeVisible()
+  await expect(page.getByText('Top Ügyfél')).toBeVisible()
 
   const codeRequest = page.waitForRequest(request =>
     request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/code/U000001'
@@ -137,6 +219,14 @@ test('ügyfél lista mobil nézetben ügyfélkód alapján backend detail lookup
 
   await expect(page.getByText('Backend Kód Ügyfél')).toBeVisible()
   await expect(page.getByText('U000001')).toBeVisible()
+
+  const nameRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/search'
+  )
+  await page.getByPlaceholder('Keresés név vagy okmányszám alapján...').fill('Backend')
+  await page.getByRole('button', { name: 'Név szerinti keresés' }).click()
+  await nameRequest
+  await expect(page.getByText('Backend Név Ügyfél')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

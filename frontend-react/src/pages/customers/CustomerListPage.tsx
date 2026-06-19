@@ -1,16 +1,24 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, Search, Plus, Edit, Eye, AlertCircle, Loader2 } from 'lucide-react'
-import { customerApi, Customer } from '../../services/api/transactions'
+import { Users, Search, Plus, Edit, Eye, AlertCircle, Loader2, Star, Trophy } from 'lucide-react'
+import { customerApi, Customer, CustomerRanking } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+
+interface CustomerHighlights {
+  vip: Customer[]
+  frequent: CustomerRanking[]
+  top: CustomerRanking[]
+}
 
 export default function CustomerListPage() {
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [customerCodeSearch, setCustomerCodeSearch] = useState('')
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [highlights, setHighlights] = useState<CustomerHighlights>({ vip: [], frequent: [], top: [] })
+  const [highlightsLoading, setHighlightsLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,6 +44,26 @@ export default function CustomerListPage() {
     return () => clearTimeout(timer)
   }, [loadCustomers, search])
 
+  useEffect(() => {
+    const loadHighlights = async () => {
+      try {
+        setHighlightsLoading(true)
+        const [vip, frequent, top] = await Promise.all([
+          customerApi.getVip(),
+          customerApi.getFrequent({ minTx: 5 }),
+          customerApi.getTop({ limit: 5 }),
+        ])
+        setHighlights({ vip, frequent, top })
+      } catch (err) {
+        logger.error('CustomerListPage', 'Failed to load customer highlights:', err)
+      } finally {
+        setHighlightsLoading(false)
+      }
+    }
+
+    void loadHighlights()
+  }, [])
+
   const handleDeactivate = async (id: number) => {
     if (!confirm('Biztosan inaktiválja az ügyfelet?')) return
     try {
@@ -43,6 +71,23 @@ export default function CustomerListPage() {
       void loadCustomers()
     } catch (err) {
       setError(getErrorMessage(err))
+    }
+  }
+
+  const handleNameSearch = async () => {
+    const name = search.trim()
+    if (!name) return
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await customerApi.searchByName(name)
+      setCustomers(data)
+    } catch (err) {
+      setCustomers([])
+      setError(getErrorMessage(err))
+      logger.error('CustomerListPage', 'Failed to load customer search by name:', err)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -91,6 +136,14 @@ export default function CustomerListPage() {
             <button onClick={() => void loadCustomers()} className="form-button" aria-label={t('common.search')}>
               <Search size={16} />
             </button>
+            <button
+              onClick={() => void handleNameSearch()}
+              className="form-button"
+              aria-label={t('customers.nameSearch')}
+              title={t('customers.nameSearch')}
+            >
+              <Users size={16} />
+            </button>
           </div>
           <div className="flex gap-1">
             <input
@@ -103,6 +156,45 @@ export default function CustomerListPage() {
             <button onClick={() => void handleCustomerCodeSearch()} className="form-button" aria-label={t('customers.customerCodeSearch')}>
               <Search size={16} />
             </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3" data-testid="customer-highlight-panel">
+        <div className="rounded border border-yellow-200 bg-yellow-50 p-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-yellow-800">
+            <Star size={16} />
+            {t('customers.vipCustomers')}
+          </div>
+          <div className="mt-2 text-2xl font-bold text-gray-900" data-testid="customer-vip-count">
+            {highlightsLoading ? '-' : highlights.vip.length}
+          </div>
+          <div className="text-xs text-gray-600 truncate">
+            {highlights.vip[0]?.name || t('customers.noHighlightedCustomer')}
+          </div>
+        </div>
+        <div className="rounded border border-blue-200 bg-blue-50 p-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-blue-800">
+            <Users size={16} />
+            {t('customers.frequentCustomers')}
+          </div>
+          <div className="mt-2 text-2xl font-bold text-gray-900" data-testid="customer-frequent-count">
+            {highlightsLoading ? '-' : highlights.frequent.length}
+          </div>
+          <div className="text-xs text-gray-600 truncate">
+            {highlights.frequent[0]?.customerName || t('customers.noHighlightedCustomer')}
+          </div>
+        </div>
+        <div className="rounded border border-emerald-200 bg-emerald-50 p-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
+            <Trophy size={16} />
+            {t('customers.topCustomers')}
+          </div>
+          <div className="mt-2 text-2xl font-bold text-gray-900" data-testid="customer-top-count">
+            {highlightsLoading ? '-' : highlights.top.length}
+          </div>
+          <div className="text-xs text-gray-600 truncate">
+            {highlights.top[0]?.customerName || t('customers.noHighlightedCustomer')}
           </div>
         </div>
       </div>
