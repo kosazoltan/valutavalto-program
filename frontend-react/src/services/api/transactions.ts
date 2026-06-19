@@ -921,16 +921,6 @@ export const sessionOpenApi = {
 }
 
 export const dailySessionApi = {
-  open: async (): Promise<DailySession> => {
-    const response = await api.post<DailySession>('/daily-sessions/open')
-    return response.data
-  },
-  close: async (denominationVerified: boolean = false): Promise<DailySession> => {
-    const response = await api.post<DailySession>('/daily-sessions/close', null, {
-      params: { denominationVerified }
-    })
-    return response.data
-  },
   getCurrent: async (): Promise<DailySession> => {
     const response = await api.get<DailySession>('/daily-sessions/current')
     return response.data
