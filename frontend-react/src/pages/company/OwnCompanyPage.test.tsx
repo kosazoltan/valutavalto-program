@@ -5,6 +5,7 @@ import OwnCompanyPage from './OwnCompanyPage'
 
 const mocks = vi.hoisted(() => ({
   ownCompanyList: vi.fn(),
+  ownCompanyGetById: vi.fn(),
   ownCompanyCreate: vi.fn(),
   ownCompanyUpdate: vi.fn(),
   ownCompanyDelete: vi.fn(),
@@ -15,6 +16,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../services/api/index', () => ({
   ownCompanyApi: {
     list: (...args: unknown[]) => mocks.ownCompanyList(...args),
+    getById: (...args: unknown[]) => mocks.ownCompanyGetById(...args),
     create: (...args: unknown[]) => mocks.ownCompanyCreate(...args),
     update: (...args: unknown[]) => mocks.ownCompanyUpdate(...args),
     delete: (...args: unknown[]) => mocks.ownCompanyDelete(...args),
@@ -31,7 +33,7 @@ describe('OwnCompanyPage admin backend details', () => {
     mocks.ownCompanyList.mockResolvedValue([
       {
         id: 'company-1',
-        name: 'Exclusive Best Change Zrt.',
+        name: 'Lista szerinti EBC Zrt.',
         taxNumber: '12345678-2-06',
         registrationNumber: '06-10-000001',
         email: 'info@example.test',
@@ -39,6 +41,15 @@ describe('OwnCompanyPage admin backend details', () => {
         isActive: true,
       },
     ])
+    mocks.ownCompanyGetById.mockResolvedValue({
+      id: 'company-1',
+      name: 'Exclusive Best Change Zrt.',
+      taxNumber: '12345678-2-06',
+      registrationNumber: '06-10-000001',
+      email: 'info@example.test',
+      phone: '+361234567',
+      isActive: true,
+    })
     mocks.adminCompanyGetDetails.mockResolvedValue({
       id: 'company-1',
       code: 'EBC',
@@ -71,6 +82,7 @@ describe('OwnCompanyPage admin backend details', () => {
     const editButtons = screen.getAllByRole('button', { name: /Szerkesztés/i })
     expect(editButtons.length).toBeGreaterThan(0)
     await user.click(editButtons[0]!)
+    await waitFor(() => expect(mocks.ownCompanyGetById).toHaveBeenCalledWith('company-1'))
     const nameInput = screen.getByDisplayValue('Exclusive Best Change Zrt.')
     await user.clear(nameInput)
     await user.type(nameInput, 'Exclusive Best Change Kft.')

@@ -21,6 +21,7 @@ export default function OwnCompanyPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingCompany, setEditingCompany] = useState<OwnCompany | null>(null)
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [adminDetails, setAdminDetails] = useState<Record<string, AdminCompanyDetails>>({})
   const [formData, setFormData] = useState<Partial<OwnCompany>>({
     name: '',
@@ -78,10 +79,19 @@ export default function OwnCompanyPage() {
     setShowForm(true)
   }
 
-  const handleEdit = (company: OwnCompany) => {
-    setEditingCompany(company)
-    setFormData(company)
-    setShowForm(true)
+  const handleEdit = async (company: OwnCompany) => {
+    setDetailLoadingId(company.id)
+    try {
+      const detail = await ownCompanyApi.getById(company.id)
+      setEditingCompany(detail)
+      setFormData(detail)
+      setShowForm(true)
+    } catch (error) {
+      logger.error('OwnCompanyPage', 'Hiba a cég részlet betöltésekor:', error)
+      toast.error('Betöltési hiba', 'Hiba történt a cég részleteinek betöltése során')
+    } finally {
+      setDetailLoadingId(null)
+    }
   }
 
   const handleSave = async () => {
@@ -207,7 +217,13 @@ export default function OwnCompanyPage() {
                     <td><span className={`badge ${c.isActive ? 'badge-green' : 'badge-red'}`}>{c.isActive ? 'Aktív' : 'Inaktív'}</span></td>
                     <td>
                       <div className="flex gap-2">
-                        <button onClick={() => handleEdit(c)} className="form-button text-xs"><Edit size={12} />{t('common.edit')}</button>
+                        <button
+                          onClick={() => void handleEdit(c)}
+                          disabled={detailLoadingId === c.id}
+                          className="form-button text-xs disabled:opacity-50"
+                        >
+                          <Edit size={12} />{detailLoadingId === c.id ? 'Betöltés...' : t('common.edit')}
+                        </button>
                         <button onClick={() => handleDelete(c.id)} className="form-button text-xs text-red-600"><Trash2 size={12} />{t('common.delete')}</button>
                       </div>
                     </td>
@@ -255,7 +271,13 @@ export default function OwnCompanyPage() {
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => handleEdit(company)} className="form-button justify-center text-xs"><Edit size={12} />{t('common.edit')}</button>
+                  <button
+                    onClick={() => void handleEdit(company)}
+                    disabled={detailLoadingId === company.id}
+                    className="form-button justify-center text-xs disabled:opacity-50"
+                  >
+                    <Edit size={12} />{detailLoadingId === company.id ? 'Betöltés...' : t('common.edit')}
+                  </button>
                   <button onClick={() => handleDelete(company.id)} className="form-button justify-center text-xs text-red-600"><Trash2 size={12} />{t('common.delete')}</button>
                 </div>
               </div>

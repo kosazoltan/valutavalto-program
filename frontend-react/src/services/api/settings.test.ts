@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { adminCompanyApi, branchApi, cameraExportApi, commissionCalculationApi, documentScannerApi, handlingFeeConfigApi, handlingFeeTransactionApi, mfaAdminApi, notificationApi, posTerminalApi, supervisorPinApi, systemParameterApi, turnoverApi, workerPasswordApi } from './settings'
+import { adminCompanyApi, branchApi, cameraExportApi, commissionCalculationApi, documentScannerApi, handlingFeeConfigApi, handlingFeeTransactionApi, mfaAdminApi, notificationApi, ownCompanyApi, posTerminalApi, supervisorPinApi, systemParameterApi, turnoverApi, workerPasswordApi } from './settings'
 import { api } from './client'
 
 vi.mock('./client', () => {
@@ -113,6 +113,19 @@ describe('adminCompanyApi backend contract', () => {
       phone: '+36701234567',
       email: 'szeged@example.test',
     })
+  })
+})
+
+describe('ownCompanyApi backend contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockApi.get.mockResolvedValue({ data: { id: 'company-1' } })
+  })
+
+  it('getById calls OwnCompanyController ID detail endpoint', async () => {
+    await ownCompanyApi.getById('company-1')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/own-companies/company-1')
   })
 })
 
