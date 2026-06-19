@@ -176,6 +176,29 @@ describe('rateCreationApi', () => {
     expect(mockApi.get).toHaveBeenCalledWith('/rate-creation/competitor-rates')
   })
 
+  it('az egyedi valuta árfolyam-előkészítést a backend detail prepare végpontra köti', async () => {
+    const prepared = {
+      currencyId: '1',
+      currencyCode: 'EUR',
+      currencyName: 'Euró',
+      bankRates: [],
+      competitorRates: [],
+      recommendedBuyRate: 391.5,
+      recommendedSellRate: 398.5,
+      recommendedMiddleRate: 395,
+      minBuyRate: 390,
+      maxBuyRate: 392,
+      avgBuyRate: 391,
+      minSellRate: 398,
+      maxSellRate: 400,
+      avgSellRate: 399,
+    }
+    mockApi.get.mockResolvedValueOnce({ data: prepared })
+
+    await expect(rateCreationApi.prepareRateCreation('1')).resolves.toBe(prepared)
+    expect(mockApi.get).toHaveBeenCalledWith('/rate-creation/prepare/1')
+  })
+
   it('az összes árfolyam tervezet generálását a backend POST prepare/all szerződésre köti', async () => {
     const result = {
       generatedCount: 12,

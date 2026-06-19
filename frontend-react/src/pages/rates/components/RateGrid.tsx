@@ -89,6 +89,9 @@ interface RateGridProps {
   onCopyToGroups?: (cells: Array<{ currencyId: number; field: WgField; raw: string }>) => void
   /** FK02-B: szerkesztési jog — a kijelölés-toolbar csak írásjoggal jelenik meg. */
   canEdit?: boolean
+  /** Read-only backend előkészítő/javaslat lekérése az adott valutára. */
+  onPrepareRate?: (rate: EditableRate) => void
+  preparingCurrencyId?: number | null
   /**
    * FK02-E (FR-13, FR-14): a szétküldés (szinkron) AKTÍV idejére zárolja a táblázatot — egy
    * overlay blokkolja a szerkesztést és visszajelez. A zárolás KIZÁRÓLAG a szinkron műveletre
@@ -109,6 +112,8 @@ export default function RateGrid({
   onBulkApply,
   onCopyToGroups,
   canEdit = true,
+  onPrepareRate,
+  preparingCurrencyId = null,
   syncing = false,
 }: RateGridProps) {
   const { t } = useTranslation()
@@ -500,6 +505,18 @@ export default function RateGrid({
                   </td>
                   {EDITABLE_FIELDS.slice(1).map((field, i) => renderCell(field, i + 1))}
                   <td className="px-1 py-0 text-[9px]">
+                    {onPrepareRate && (
+                      <button
+                        type="button"
+                        data-testid={`rate-prepare-${r.currencyId}`}
+                        onClick={() => onPrepareRate(r)}
+                        disabled={preparingCurrencyId === r.currencyId}
+                        className="mb-0.5 rounded border border-blue-200 bg-blue-50 px-1 py-0.5 text-[9px] font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+                        title={`${r.currencyCode} backend árfolyam-előkészítés és ajánlás lekérése`}
+                      >
+                        {preparingCurrencyId === r.currencyId ? 'Betöltés...' : 'Javaslat'}
+                      </button>
+                    )}
                     {validationErrors[r.currencyId]?.map((err, ei) => (
                       <div key={ei} className="text-red-600 flex items-center gap-0.5">
                         <AlertTriangle size={8} className="flex-shrink-0" />

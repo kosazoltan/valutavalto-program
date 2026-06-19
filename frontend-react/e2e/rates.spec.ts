@@ -55,6 +55,69 @@ const exchangeRateRows = [
   },
 ]
 
+const rateCreationOverview = {
+  generatedAt: '2026-06-19T08:00:00',
+  currencies: [
+    {
+      currencyId: 1,
+      currencyCode: 'EUR',
+      currencyName: 'Euró',
+      displayOrder: 1,
+      currentBuyRate: 391.5,
+      currentSellRate: 398.5,
+      officialRate: 395,
+      limit1Amount: 50000,
+      limit1BuyRate: 392,
+      limit1SellRate: 398,
+      limit2Amount: 300000,
+      limit2BuyRate: 391,
+      limit2SellRate: 399,
+      limit3Amount: 1000000,
+      limit3BuyRate: 390,
+      limit3SellRate: 400,
+      buyMarginPercent: null,
+      sellMarginPercent: null,
+      spreadPercent: null,
+      middleRate: 395,
+      lastUpdated: '2026-06-19T07:30:00',
+      hasRate: true,
+    },
+  ],
+}
+
+const rateCreationWorkgroups = [
+  {
+    id: 'wg-1',
+    code: 'WG01',
+    name: 'Budapest központ',
+    legacyGroupNumber: 1,
+    active: true,
+    branches: [{ id: 'branch-1', code: 'BUD01', name: 'Budapest 01' }],
+    limit1Boundary: 50000,
+    limit2Boundary: 300000,
+    limit3Boundary: 1000000,
+    tileColor: 'sky',
+    protectionEnabled: true,
+  },
+]
+
+const preparedRateCreation = {
+  currencyId: '1',
+  currencyCode: 'EUR',
+  currencyName: 'Euró',
+  bankRates: [{ id: 'bank-1', bankCode: 'MNB', bankName: 'MNB', currencyCode: 'EUR', buyRate: 391, sellRate: 399, middleRate: 395, validFrom: '2026-06-19T08:00:00' }],
+  competitorRates: [{ id: 'competitor-1', competitorCode: 'RIV', competitorName: 'Rivális', currencyId: '1', currencyCode: 'EUR', currencyName: 'Euró', buyRate: 392, sellRate: 400, middleRate: 396, recordedAt: '2026-06-19T08:05:00' }],
+  recommendedBuyRate: 391.5,
+  recommendedSellRate: 398.5,
+  recommendedMiddleRate: 395,
+  minBuyRate: 390,
+  maxBuyRate: 392,
+  avgBuyRate: 391,
+  minSellRate: 398,
+  maxSellRate: 400,
+  avgSellRate: 399,
+}
+
 /**
  * Bejelentkezés a rate-manager flow-hoz. Visszaadja, hogy a login sikeresen
  * elnavigált-e a central-workstation-re. Ha a backend nem elérhető (pl. CI E2E
@@ -238,6 +301,18 @@ async function loginForRates(page: Page): Promise<boolean> {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     }
 
+    if (path.endsWith('/rate-creation/overview') && method === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rateCreationOverview) })
+    }
+
+    if (path.endsWith('/rate-creation/workgroups') && method === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rateCreationWorkgroups) })
+    }
+
+    if (path.endsWith('/rate-creation/prepare/1') && method === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(preparedRateCreation) })
+    }
+
     if (path.endsWith('/rounding-rules') && method === 'GET') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     }
@@ -410,6 +485,36 @@ test('árfolyam polling vezérlő meghívja a backend trigger, margin és source
   await filePanel.getByRole('button', { name: /Import/i }).click()
   await importRequest
   await expect(filePanel.getByText('2 árfolyam importálva.')).toBeVisible()
+
+  const horizontalOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  )
+  expect(horizontalOverflow).toBe(false)
+})
+
+test('árfolyamkészítés mobil nézetben a backend egyedi prepare endpointot használja', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const loggedIn = await loginForRates(page)
+  if (!loggedIn) {
+    test.skip(true, 'backend nem elérhető (login nem navigált central-workstation-re) — E2E graceful skip')
+  }
+
+  await page.goto('/rates/creation', { waitUntil: 'domcontentloaded' })
+  await page.getByRole('button', { name: /Budapest központ.*árfolyamlap megnyitása/i }).click()
+  await expect(page.getByTestId('rate-prepare-1')).toBeVisible()
+
+  const prepareRequest = page.waitForRequest(request => {
+    const url = new URL(request.url())
+    return request.method() === 'GET'
+      && url.pathname === '/api/v1/rate-creation/prepare/1'
+  })
+  await page.getByTestId('rate-prepare-1').click()
+  await prepareRequest
+
+  const panel = page.getByTestId('rate-prepare-panel')
+  await expect(panel.getByText('EUR - Euró')).toBeVisible()
+  await expect(panel.getByText('391.5')).toBeVisible()
+  await expect(panel.getByText('398.5')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

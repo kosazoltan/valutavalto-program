@@ -7,6 +7,7 @@ import {
   rateWorkgroupApi,
   RateOverviewDTO,
   RateOverviewItem,
+  type RateCreationDTO,
   WorkgroupDetailDTO,
   BranchListItem,
   type RateWorkgroupSaveDTO,
@@ -149,6 +150,9 @@ export default function RateCreationPage() {
   const [error, setError] = useState<string | null>(null)
   // T9.F: képletszintaxis-súgó (A–I / J–S / !Fxxx / #NNL) a csoport-lap szerkesztőhöz.
   const [showFormulaHelp, setShowFormulaHelp] = useState(false)
+  const [rateAdvice, setRateAdvice] = useState<RateCreationDTO | null>(null)
+  const [rateAdviceError, setRateAdviceError] = useState<string | null>(null)
+  const [rateAdviceLoadingId, setRateAdviceLoadingId] = useState<number | null>(null)
 
   // FK-04/C képletezés: felhasználói képletek (kulcs `${currencyId}.${field}`) csoportonként,
   // a kiszámolt cellánkénti hibák, és a 0-s lap / kereszt-csoport hivatkozás-kontextus.
@@ -417,6 +421,8 @@ export default function RateCreationPage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setRateAdvice(null)
+    setRateAdviceError(null)
     try {
       let overviewData: RateOverviewDTO
       let wgData: WorkgroupDetailDTO[]
@@ -499,6 +505,20 @@ export default function RateCreationPage() {
       setLoading(false)
     }
   }, [isLocalRateMakerApp])
+
+  const handlePrepareRate = useCallback(async (rate: EditableRate) => {
+    setRateAdviceLoadingId(rate.currencyId)
+    setRateAdviceError(null)
+    try {
+      const prepared = await rateCreationApi.prepareRateCreation(String(rate.currencyId))
+      setRateAdvice(prepared)
+    } catch (err) {
+      logger.error('RateCreationPage', 'Árfolyam-előkészítés betöltési hiba:', err)
+      setRateAdviceError('Backend árfolyam-javaslat betöltése sikertelen')
+    } finally {
+      setRateAdviceLoadingId(null)
+    }
+  }, [])
 
   useEffect(() => { void loadData() }, [loadData])
 
@@ -1229,6 +1249,8 @@ export default function RateCreationPage() {
           onBulkApply={applyBulkCells}
           onCopyToGroups={handleCopyToGroups}
           canEdit={canWriteRateCreation}
+          onPrepareRate={handlePrepareRate}
+          preparingCurrencyId={rateAdviceLoadingId}
           syncing={publishing}
         />
 
@@ -1264,6 +1286,36 @@ export default function RateCreationPage() {
               #{selectedWg?.legacyGroupNumber ?? '—'} · {selectedWg?.branches.length ?? 0} iroda
             </div>
           </button>
+
+          <div className="bg-white rounded border shadow-sm px-2 py-1.5 flex-shrink-0" data-testid="rate-prepare-panel">
+            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Backend javaslat</div>
+            {rateAdviceError && <div className="text-[10px] text-red-600">{rateAdviceError}</div>}
+            {rateAdvice ? (
+              <div className="space-y-1 text-[11px]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-gray-700">{rateAdvice.currencyCode} - {rateAdvice.currencyName}</span>
+                  <span className="rounded bg-blue-50 px-1.5 py-0.5 font-mono text-blue-800">{rateAdvice.recommendedMiddleRate}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1 font-mono">
+                  <div className="rounded bg-green-50 px-1.5 py-1 text-green-800">
+                    <div className="text-[9px] font-sans uppercase text-green-700">Ajánlott vétel</div>
+                    {rateAdvice.recommendedBuyRate}
+                  </div>
+                  <div className="rounded bg-red-50 px-1.5 py-1 text-red-800">
+                    <div className="text-[9px] font-sans uppercase text-red-700">Ajánlott eladás</div>
+                    {rateAdvice.recommendedSellRate}
+                  </div>
+                </div>
+                <div className="text-[10px] text-gray-500">
+                  Bank: {rateAdvice.bankRates.length} · Versenytárs: {rateAdvice.competitorRates.length}
+                </div>
+              </div>
+            ) : (
+              <div className="text-[10px] text-gray-500">
+                Valuta sorban kattints a Javaslat gombra a backend előkészítő adataihoz.
+              </div>
+            )}
+          </div>
 
           {/* Aktuális függvény (FR-RFM-22) + Kitöltési segítség (FR-RFM-23) */}
           <div className="bg-white rounded border shadow-sm px-2 py-1.5 flex-shrink-0">
