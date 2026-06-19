@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock,
   Eye,
+  Info,
   RefreshCw,
   Search,
   Send,
@@ -41,6 +42,8 @@ export default function ClosingControlPage() {
   const [filter, setFilter] = useState<ClosingViewFilter>('all')
   const [loading, setLoading] = useState(false)
   const [alertingBranchId, setAlertingBranchId] = useState<string | null>(null)
+  const [detailLoadingBranchId, setDetailLoadingBranchId] = useState<string | null>(null)
+  const [selectedBranchStatus, setSelectedBranchStatus] = useState<ClosingControlStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -85,6 +88,19 @@ export default function ClosingControlPage() {
       toast.error('Figyelmeztetés sikertelen', getErrorMessage(err))
     } finally {
       setAlertingBranchId(null)
+    }
+  }
+
+  const handleViewBranchStatus = async (row: ClosingControlStatus) => {
+    try {
+      setError(null)
+      setDetailLoadingBranchId(row.branchId)
+      setSelectedBranchStatus(await closingControlApi.getBranch(row.branchId, date))
+    } catch (err) {
+      logger.error('ClosingControlPage', 'Iroda zárási részletek betöltési hiba:', err)
+      setError(getErrorMessage(err))
+    } finally {
+      setDetailLoadingBranchId(null)
     }
   }
 
@@ -176,6 +192,44 @@ export default function ClosingControlPage() {
           </div>
         )}
 
+        {selectedBranchStatus && (
+          <div className="rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <div className="font-semibold">
+                  {selectedBranchStatus.branchCode ?? selectedBranchStatus.branchId.slice(0, 8)}
+                </div>
+                <div className="text-xs text-sky-700">
+                  {selectedBranchStatus.branchName ?? 'Névtelen iroda'}
+                  {selectedBranchStatus.branchCity ? `, ${selectedBranchStatus.branchCity}` : ''}
+                </div>
+              </div>
+              <div className="text-xs text-sky-700">{selectedBranchStatus.controlDate}</div>
+            </div>
+            <div className="grid gap-2 text-xs sm:grid-cols-3">
+              <div className={`rounded px-2 py-1.5 font-semibold ${selectedBranchStatus.dailyClosingDone ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                Napi zárás: {selectedBranchStatus.dailyClosingDone ? 'rendben' : 'hiányzik'}
+              </div>
+              <div className={`rounded px-2 py-1.5 font-semibold ${selectedBranchStatus.eveningClosingDone ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                Esti zárás: {selectedBranchStatus.eveningClosingDone ? 'rendben' : 'hiányzik'}
+              </div>
+              <div className={`rounded px-2 py-1.5 font-semibold ${selectedBranchStatus.navClosingDone ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                NAV zárás: {selectedBranchStatus.navClosingDone ? 'rendben' : 'hiányzik'}
+              </div>
+            </div>
+            {(selectedBranchStatus.lastTransactionAt || selectedBranchStatus.notes) && (
+              <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
+                {selectedBranchStatus.lastTransactionAt && (
+                  <div><span className="font-semibold">Utolsó tranzakció:</span> {selectedBranchStatus.lastTransactionAt}</div>
+                )}
+                {selectedBranchStatus.notes && (
+                  <div><span className="font-semibold">Megjegyzés:</span> {selectedBranchStatus.notes}</div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* FK-003 2. pont: kártyás/rácsos nézet — pénztárszám + név + összesített státusz */}
         {!loading && cards.length === 0 ? (
           <div className="rounded-md border border-slate-200 bg-white px-3 py-8 text-center text-sm text-slate-500">
@@ -198,6 +252,16 @@ export default function ClosingControlPage() {
                       </div>
                     </div>
                     <div className="flex shrink-0 gap-1">
+                      <button
+                        type="button"
+                        title="Részletek"
+                        aria-label={`Részletek lekérése — ${row.branchCode ?? row.branchName ?? row.branchId}`}
+                        onClick={() => void handleViewBranchStatus(row)}
+                        disabled={detailLoadingBranchId === row.branchId}
+                        className="rounded border border-sky-300 bg-sky-50 p-1.5 text-sky-800 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Info size={14} className={detailLoadingBranchId === row.branchId ? 'animate-pulse' : ''} />
+                      </button>
                       <button
                         type="button"
                         title="Napló"
