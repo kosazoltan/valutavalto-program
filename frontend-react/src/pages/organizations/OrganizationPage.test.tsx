@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getById: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
+  archive: vi.fn(),
   delete: vi.fn(),
   logger: {
     error: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock('../../services/api/index', () => ({
     getById: mocks.getById,
     create: mocks.create,
     update: mocks.update,
+    archive: mocks.archive,
     delete: mocks.delete,
   },
 }))
@@ -33,7 +35,9 @@ vi.mock('../../utils/logger', () => ({
 }))
 
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string) => (key === 'archiving.archivalas' ? 'Archiválás' : key),
+  }),
 }))
 
 const baseOrganizations = [
@@ -55,6 +59,7 @@ const baseOrganizations = [
 
 describe('OrganizationPage backend contract', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     vi.clearAllMocks()
     mocks.list.mockResolvedValue(baseOrganizations)
     mocks.getActive.mockResolvedValue([baseOrganizations[0]])
@@ -66,7 +71,9 @@ describe('OrganizationPage backend contract', () => {
     })
     mocks.create.mockResolvedValue(baseOrganizations[0])
     mocks.update.mockResolvedValue(baseOrganizations[0])
+    mocks.archive.mockResolvedValue(baseOrganizations[1])
     mocks.delete.mockResolvedValue(undefined)
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
   it('betöltéskor lekéri az aktív és gyökér szervezet backend listákat', async () => {
@@ -96,5 +103,18 @@ describe('OrganizationPage backend contract', () => {
       expect(screen.getByDisplayValue('Backend root részlet')).toBeInTheDocument()
       expect(screen.getByDisplayValue('Backend detail description')).toBeInTheDocument()
     })
+  })
+
+  it('archiváláskor a POST /organizations/{id}/archive wrapperre köt', async () => {
+    const user = userEvent.setup()
+    render(<OrganizationPage />)
+
+    await screen.findByText('ROOT')
+    await user.click(screen.getAllByRole('button', { name: /Archiválás/i })[0]!)
+
+    await waitFor(() => {
+      expect(mocks.archive).toHaveBeenCalledWith('org-1')
+    })
+    expect(window.confirm).toHaveBeenCalledWith('Biztosan archiválni szeretné ezt a szervezetet?')
   })
 })

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Building, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
+import { Archive, Building, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
 import { organizationApi, Organization } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
@@ -106,6 +106,18 @@ export default function OrganizationPage() {
     }
   }
 
+  const handleArchive = async (id: string) => {
+    if (!confirm('Biztosan archiválni szeretné ezt a szervezetet?')) return
+    try {
+      setError(null)
+      await organizationApi.archive(id)
+      await loadData()
+    } catch (err) {
+      logger.error('OrganizationPage', 'Archiválási hiba:', err)
+      setError('Hiba történt az archiválás során')
+    }
+  }
+
   if (loading) {
     return <div className="flex items-center justify-center h-64">Betöltés...</div>
   }
@@ -201,6 +213,9 @@ export default function OrganizationPage() {
                         className="form-button text-xs disabled:opacity-50"
                       >
                         <Edit size={12} className={detailLoadingId === o.id ? 'animate-pulse' : ''} />{t('common.edit')}
+                      </button>
+                      <button type="button" onClick={() => void handleArchive(o.id)} className="form-button text-xs text-amber-700">
+                        <Archive size={12} />{t('archiving.archivalas')}
                       </button>
                       <button type="button" onClick={() => handleDelete(o.id)} className="form-button text-xs text-red-600"><Trash2 size={12} />{t('common.delete')}</button>
                     </div>
