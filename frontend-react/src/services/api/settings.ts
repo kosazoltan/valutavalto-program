@@ -769,7 +769,6 @@ export interface BranchGroup {
 
 export const branchGroupApi = {
   list: async (): Promise<BranchGroup[]> => (await api.get<BranchGroup[]>('/branch-groups')).data,
-  getActive: async (): Promise<BranchGroup[]> => (await api.get<BranchGroup[]>('/branch-groups/active')).data,
   getRoots: async (): Promise<BranchGroup[]> => (await api.get<BranchGroup[]>('/branch-groups/roots')).data,
   getById: async (id: string): Promise<BranchGroup> => (await api.get<BranchGroup>(`/branch-groups/${id}`)).data,
   create: async (data: Partial<BranchGroup>, workerId: string): Promise<BranchGroup> => (await api.post<BranchGroup>('/branch-groups', data, { params: { workerId } })).data,
