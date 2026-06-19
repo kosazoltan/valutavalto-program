@@ -75,6 +75,14 @@ async function mockApis(page: Page) {
       })
     }
 
+    if (path.endsWith('/nav-integration/send-qr-code') && method === 'POST') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(true),
+      })
+    }
+
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
   })
 }
@@ -110,6 +118,18 @@ test('NAV integráció mobil nézetben fogadja a nyugtaszámot backend végpontr
 
   await expect(page.getByText('REC-20260618').first()).toBeVisible()
   await expect(page.getByText('Sikeres')).toBeVisible()
+
+  const qrRequest = page.waitForRequest(request => {
+    const url = new URL(request.url())
+    return request.method() === 'POST'
+      && url.pathname === '/api/v1/nav-integration/send-qr-code'
+      && url.searchParams.get('comPort') === 'COM3'
+      && url.searchParams.get('qrCode') === 'NAV-QR-001'
+  })
+  await page.getByLabel('QR kód').fill('NAV-QR-001')
+  await page.getByRole('button', { name: /QR kód küldése/i }).click()
+  await qrRequest
+  await expect(page.getByText('QR kód elküldve')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

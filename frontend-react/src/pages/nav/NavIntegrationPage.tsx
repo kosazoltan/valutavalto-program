@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Printer, Send, CheckCircle, XCircle, FileText, AlertTriangle } from 'lucide-react'
+import { Printer, Send, CheckCircle, XCircle, FileText, AlertTriangle, QrCode } from 'lucide-react'
 import { navIntegrationApi } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
@@ -16,10 +16,12 @@ interface NavResult {
 export default function NavIntegrationPage() {
   const { t } = useTranslation()
   const [transactionId, setTransactionId] = useState('')
+  const [qrCode, setQrCode] = useState('')
   const [comPort, setComPort] = useState('COM1')
   const [result, setResult] = useState<NavResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
+  const [sendingQr, setSendingQr] = useState(false)
   const [receiving, setReceiving] = useState(false)
   const [history, setHistory] = useState<NavResult[]>([])
 
@@ -68,6 +70,31 @@ export default function NavIntegrationPage() {
     }
   }
 
+  const handleSendQrCode = async () => {
+    if (!qrCode.trim()) { toast.warning('QR kód szükséges'); return }
+    try {
+      setSendingQr(true)
+      setError(null)
+      const success = await navIntegrationApi.sendQrCode(qrCode.trim(), comPort)
+      const qrResult: NavResult = success
+        ? { success: true, timestamp: new Date().toISOString() }
+        : { success: false, error: 'A NAV pénztárgép nem fogadta a QR kódot', timestamp: new Date().toISOString() }
+      setResult(qrResult)
+      setHistory(prev => [qrResult, ...prev].slice(0, 20))
+      if (qrResult.success) {
+        toast.success('QR kód elküldve', `Port: ${comPort}`)
+        setQrCode('')
+      } else {
+        setError(qrResult.error ?? 'QR kód küldése sikertelen')
+      }
+    } catch (err) {
+      logger.error('NavIntegrationPage', 'NAV QR-kód küldési hiba:', err)
+      setError(getErrorMessage(err))
+    } finally {
+      setSendingQr(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -96,6 +123,24 @@ export default function NavIntegrationPage() {
             </button>
             <button onClick={() => void handleReceiveReceiptNumber()} disabled={receiving} className="form-button">
               <Printer size={16} /> {receiving ? 'Fogadás...' : 'Nyugtaszám fogadása'}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 border-t pt-3 md:grid-cols-3">
+          <div className="md:col-span-2">
+            <label className="form-label" htmlFor="nav-qr-code">QR kód</label>
+            <input
+              id="nav-qr-code"
+              className="form-input"
+              value={qrCode}
+              onChange={e => setQrCode(e.target.value)}
+              placeholder="NAV QR kód tartalma"
+            />
+          </div>
+          <div className="flex items-end">
+            <button onClick={() => void handleSendQrCode()} disabled={sendingQr} className="form-button">
+              <QrCode size={16} /> {sendingQr ? 'QR küldés...' : 'QR kód küldése'}
             </button>
           </div>
         </div>
