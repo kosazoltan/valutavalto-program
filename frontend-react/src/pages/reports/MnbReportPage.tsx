@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { CalendarCheck, FileText, Search, RefreshCw, AlertTriangle, Eye } from 'lucide-react'
+import { CalendarCheck, Download, FileText, Search, RefreshCw, AlertTriangle, Eye } from 'lucide-react'
 import { mnbReportsApi, type MnbDailyReport, type MnbMonthlyReport, type MnbReport } from '../../services/api/mnbReports'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -23,6 +23,15 @@ function formatNumber(value: number | undefined) {
   return typeof value === 'number' ? value.toLocaleString('hu-HU') : '-'
 }
 
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function MnbReportPage() {
   const { t } = useTranslation()
   const [items, setItems] = useState<MnbReport[]>([])
@@ -32,6 +41,7 @@ export default function MnbReportPage() {
   const [validationMessages, setValidationMessages] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [summaryLoading, setSummaryLoading] = useState(false)
+  const [dailyXmlLoading, setDailyXmlLoading] = useState(false)
   const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -97,6 +107,21 @@ export default function MnbReportPage() {
     }
   }
 
+  const handleDownloadDailyXml = async () => {
+    try {
+      setDailyXmlLoading(true)
+      setError(null)
+      const blob = await mnbReportsApi.downloadDailyXml(reportDate)
+      downloadBlob(blob, `mnb_daily_${reportDate}.xml`)
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('MnbReportPage', 'MNB napi XML letöltési hiba:', err)
+      setError(msg)
+    } finally {
+      setDailyXmlLoading(false)
+    }
+  }
+
   const filtered = items.filter(item => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
@@ -153,6 +178,15 @@ export default function MnbReportPage() {
             >
               <CalendarCheck className={`h-4 w-4 ${summaryLoading ? 'animate-spin' : ''}`} />
               Read-only ellenőrzés
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleDownloadDailyXml()}
+              disabled={dailyXmlLoading}
+              className="form-button justify-center"
+            >
+              <Download className={`h-4 w-4 ${dailyXmlLoading ? 'animate-pulse' : ''}`} />
+              Napi XML
             </button>
           </div>
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">

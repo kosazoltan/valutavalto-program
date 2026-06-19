@@ -105,7 +105,7 @@ export const mnbReportsApi = {
 
     /** Napi riport XML download datum szerint. */
     downloadDailyXml: async (date: string): Promise<Blob> => {
-        const r = await api.get(`/mnb/reports/daily/xml?date=${date}`, { responseType: 'blob' })
+        const r = await api.get('/mnb/reports/daily/xml', { params: { date }, responseType: 'blob' })
         return r.data as unknown as Blob
     },
 

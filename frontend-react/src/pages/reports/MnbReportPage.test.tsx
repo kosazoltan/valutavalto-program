@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getDaily: vi.fn(),
   getMonthly: vi.fn(),
   validate: vi.fn(),
+  downloadDailyXml: vi.fn(),
   logger: {
     error: vi.fn(),
   },
@@ -21,6 +22,7 @@ vi.mock('../../services/api/mnbReports', () => ({
     getDaily: mocks.getDaily,
     getMonthly: mocks.getMonthly,
     validate: mocks.validate,
+    downloadDailyXml: mocks.downloadDailyXml,
   },
 }))
 
@@ -35,6 +37,9 @@ vi.mock('react-i18next', () => ({
 describe('MnbReportPage backend contract', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mnb-daily')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
     mocks.list.mockResolvedValue([
       {
         id: 'report-1',
@@ -72,6 +77,7 @@ describe('MnbReportPage backend contract', () => {
       currencyLines: [],
     })
     mocks.validate.mockResolvedValue(['Nincs hiányzó árfolyam'])
+    mocks.downloadDailyXml.mockResolvedValue(new Blob(['<mnb/>'], { type: 'application/xml' }))
   })
 
   it('részlet megnyitáskor a backend detail reprezentációt tölti be', async () => {
@@ -102,6 +108,21 @@ describe('MnbReportPage backend contract', () => {
       expect(mocks.validate).toHaveBeenCalledWith('2026-06-18')
       expect(screen.getByText('37')).toBeInTheDocument()
       expect(screen.getByText('Nincs hiányzó árfolyam')).toBeInTheDocument()
+    })
+  })
+
+  it('napi XML letöltéskor a date szerinti backend export endpointot hívja', async () => {
+    const user = userEvent.setup()
+    render(<MnbReportPage />)
+
+    await screen.findByText('2026-06-18')
+    await user.clear(screen.getByLabelText('MNB ellenőrzési nap'))
+    await user.type(screen.getByLabelText('MNB ellenőrzési nap'), '2026-06-18')
+    await user.click(screen.getByRole('button', { name: /Napi XML/i }))
+
+    await waitFor(() => {
+      expect(mocks.downloadDailyXml).toHaveBeenCalledWith('2026-06-18')
+      expect(URL.createObjectURL).toHaveBeenCalled()
     })
   })
 })

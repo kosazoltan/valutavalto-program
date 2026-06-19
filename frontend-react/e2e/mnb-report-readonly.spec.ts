@@ -116,6 +116,17 @@ async function mockApis(page: Page) {
       })
     }
 
+    if (path.endsWith('/mnb/reports/daily/xml') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/xml',
+        headers: {
+          'content-disposition': `attachment; filename=mnb_daily_${url.searchParams.get('date')}.xml`,
+        },
+        body: '<mnb><date>2026-06-18</date></mnb>',
+      })
+    }
+
     if (path.endsWith('/mnb/reports') && method === 'GET') {
       return route.fulfill({
         status: 200,
@@ -183,6 +194,15 @@ test('mnb riport oldal mobil nézetben read-only backend endpointokat használ',
 
   await expect(page.getByText('Nincs hiányzó árfolyam')).toBeVisible()
   await expect(page.getByText('37')).toBeVisible()
+
+  const dailyXmlRequest = page.waitForRequest(request => {
+    const url = new URL(request.url())
+    return request.method() === 'GET'
+      && url.pathname === '/api/v1/mnb/reports/daily/xml'
+      && url.searchParams.get('date') === '2026-06-18'
+  })
+  await page.getByRole('button', { name: /Napi XML/i }).click()
+  await dailyXmlRequest
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
