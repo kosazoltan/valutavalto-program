@@ -1139,12 +1139,6 @@ export const closingWizardApi = {
     const response = await api.get<string[]>('/closing-wizard/validate-transactions')
     return response.data
   },
-  complete: async (wizardId: string, workerId: string): Promise<ClosingWizard> => {
-    const response = await api.post<ClosingWizard>(`/closing-wizard/${wizardId}/complete`, null, {
-      params: { workerId }
-    })
-    return response.data
-  },
   cancel: async (wizardId: string): Promise<ClosingWizard> => {
     const response = await api.post<ClosingWizard>(`/closing-wizard/${wizardId}/cancel`)
     return response.data
