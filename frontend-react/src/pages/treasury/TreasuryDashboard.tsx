@@ -27,6 +27,9 @@ import type {
   ErtektarCollection,
   ErtektarDistribution,
   VaultOperationStatus,
+  VaultTransferItem,
+  MaterialReceiptItem,
+  StockCorrectionItem,
 } from '../../services/api/index'
 import { formatInteger, formatMillions } from './treasuryUtils'
 import { DashboardSkeleton } from './LoadingSkeleton'
@@ -72,6 +75,13 @@ export default function TreasuryDashboard() {
   const [ertektarCollections, setErtektarCollections] = useState<ErtektarCollection[]>([])
   const [ertektarDistributions, setErtektarDistributions] = useState<ErtektarDistribution[]>([])
   const [ertektarBankTransactions, setErtektarBankTransactions] = useState<BankTransaction[]>([])
+  const [ertektarTransfers, setErtektarTransfers] = useState<VaultTransferItem[]>([])
+  const [ertektarPendingTransfers, setErtektarPendingTransfers] = useState<VaultTransferItem[]>([])
+  const [materialReceipts, setMaterialReceipts] = useState<MaterialReceiptItem[]>([])
+  const [materialReceiptsIn, setMaterialReceiptsIn] = useState<MaterialReceiptItem[]>([])
+  const [materialReceiptsOut, setMaterialReceiptsOut] = useState<MaterialReceiptItem[]>([])
+  const [stockCorrections, setStockCorrections] = useState<StockCorrectionItem[]>([])
+  const [pendingStockCorrections, setPendingStockCorrections] = useState<StockCorrectionItem[]>([])
   const [statusAction, setStatusAction] = useState<string | null>(null)
   const [statusActionError, setStatusActionError] = useState<string | null>(null)
   const [treasuryApiRestricted, setTreasuryApiRestricted] = useState(false)
@@ -105,6 +115,13 @@ export default function TreasuryDashboard() {
         ertektarCollectionsData,
         ertektarDistributionsData,
         ertektarBankTransactionsData,
+        ertektarTransfersData,
+        ertektarPendingTransfersData,
+        materialReceiptsData,
+        materialReceiptsInData,
+        materialReceiptsOutData,
+        stockCorrectionsData,
+        pendingStockCorrectionsData,
       ] = await Promise.all([
         transactionApi.getDailyTurnover().catch(() => null),
         cashBalanceApi.getCompanyBalances().catch((err: unknown) => {
@@ -193,6 +210,48 @@ export default function TreasuryDashboard() {
           }
           return []
         }),
+        ertektarApi.getTransfers().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return []
+        }),
+        ertektarApi.getPendingTransfers().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return []
+        }),
+        ertektarApi.getReceipts().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return []
+        }),
+        ertektarApi.getReceiptsByType('B').catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return []
+        }),
+        ertektarApi.getReceiptsByType('K').catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return []
+        }),
+        ertektarApi.getCorrections().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return []
+        }),
+        ertektarApi.getPendingCorrections().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return []
+        }),
       ])
 
       if (turnoverData) setTurnover(turnoverData)
@@ -211,6 +270,13 @@ export default function TreasuryDashboard() {
       setErtektarCollections(safeArray<ErtektarCollection>(ertektarCollectionsData))
       setErtektarDistributions(safeArray<ErtektarDistribution>(ertektarDistributionsData))
       setErtektarBankTransactions(safeArray<BankTransaction>(ertektarBankTransactionsData))
+      setErtektarTransfers(safeArray<VaultTransferItem>(ertektarTransfersData))
+      setErtektarPendingTransfers(safeArray<VaultTransferItem>(ertektarPendingTransfersData))
+      setMaterialReceipts(safeArray<MaterialReceiptItem>(materialReceiptsData))
+      setMaterialReceiptsIn(safeArray<MaterialReceiptItem>(materialReceiptsInData))
+      setMaterialReceiptsOut(safeArray<MaterialReceiptItem>(materialReceiptsOutData))
+      setStockCorrections(safeArray<StockCorrectionItem>(stockCorrectionsData))
+      setPendingStockCorrections(safeArray<StockCorrectionItem>(pendingStockCorrectionsData))
       const balanceData = safeArray<CashBalance>(balanceDataRaw)
 
       const branchMap = new Map<string, { id: string; name: string; total: number }>()
@@ -337,6 +403,9 @@ export default function TreasuryDashboard() {
   const openCollections = ertektarCollections.filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED').slice(0, 3)
   const openDistributions = ertektarDistributions.filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED').slice(0, 3)
   const openBankTransactions = ertektarBankTransactions.filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED').slice(0, 3)
+  const recentTransfers = ertektarTransfers.slice(0, 3)
+  const recentReceipts = materialReceipts.slice(0, 3)
+  const recentCorrections = stockCorrections.slice(0, 3)
 
   return (
     <div className="space-y-3">
@@ -498,6 +567,47 @@ export default function TreasuryDashboard() {
         </div>
       </div>
 
+      <div className="form-panel" data-testid="ertektar-readonly-ledger">
+        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-base font-bold text-secondary-900">Értéktári bizonylat és korrekció áttekintés</h2>
+          <span className="text-xs text-secondary-500">
+            {formatInteger(ertektarTransfers.length + materialReceipts.length + stockCorrections.length)} listázott tétel
+          </span>
+        </div>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          <ReadOnlyQueue
+            title="Áttételek"
+            summary={`${formatInteger(ertektarPendingTransfers.length)} függő / ${formatInteger(ertektarTransfers.length)} összes`}
+            rows={recentTransfers.map((row) => ({
+              id: row.id,
+              primary: row.transferNumber,
+              secondary: `${row.currencyCode} ${formatInteger(Number(row.amount ?? 0))}`,
+              status: row.status,
+            }))}
+          />
+          <ReadOnlyQueue
+            title="Anyagbizonylatok"
+            summary={`${formatInteger(materialReceiptsIn.length)} bevét / ${formatInteger(materialReceiptsOut.length)} kiadás`}
+            rows={recentReceipts.map((row) => ({
+              id: row.id,
+              primary: row.receiptNumber,
+              secondary: `${row.receiptType} ${formatInteger(row.lines?.length ?? 0)} sor`,
+              status: row.status,
+            }))}
+          />
+          <ReadOnlyQueue
+            title="Készletkorrekciók"
+            summary={`${formatInteger(pendingStockCorrections.length)} függő / ${formatInteger(stockCorrections.length)} összes`}
+            rows={recentCorrections.map((row) => ({
+              id: row.id,
+              primary: `${row.entityType} ${row.entityId}`,
+              secondary: `${row.currencyCode} ${formatInteger(Number(row.difference ?? 0))}`,
+              status: row.status,
+            }))}
+          />
+        </div>
+      </div>
+
       {/* Compact data row — egyszerű számok, nincs grafikon */}
       <div className="form-panel">
         <div className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2 xl:grid-cols-4">
@@ -648,6 +758,53 @@ function StatusQueue({
                     </button>
                   )
                 })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+interface ReadOnlyQueueRow {
+  id: number
+  primary: string
+  secondary: string
+  status: string
+}
+
+function ReadOnlyQueue({
+  title,
+  summary,
+  rows,
+}: {
+  title: string
+  summary: string
+  rows: ReadOnlyQueueRow[]
+}) {
+  return (
+    <section className="rounded-lg border border-secondary-100 bg-white p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="text-sm font-bold text-secondary-900">{title}</h3>
+        <span className="text-xs text-secondary-500">{summary}</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="rounded border border-secondary-200 bg-secondary-50 px-3 py-2 text-sm text-secondary-600">
+          Nincs listázható tétel.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((row) => (
+            <div key={row.id} className="rounded border border-secondary-100 bg-secondary-50 p-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="break-words text-sm font-semibold text-secondary-900">{row.primary}</div>
+                  <div className="text-xs text-secondary-500">{row.secondary}</div>
+                </div>
+                <span className="shrink-0 rounded bg-white px-2 py-1 text-[11px] font-semibold text-secondary-700">
+                  {row.status}
+                </span>
               </div>
             </div>
           ))}

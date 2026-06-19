@@ -22,6 +22,12 @@ const mocks = vi.hoisted(() => ({
   getCollections: vi.fn(),
   getDistributions: vi.fn(),
   getBankTransactions: vi.fn(),
+  getTransfers: vi.fn(),
+  getPendingTransfers: vi.fn(),
+  getReceipts: vi.fn(),
+  getReceiptsByType: vi.fn(),
+  getCorrections: vi.fn(),
+  getPendingCorrections: vi.fn(),
   updateCollectionStatus: vi.fn(),
   updateDistributionStatus: vi.fn(),
   updateBankTransactionStatus: vi.fn(),
@@ -61,6 +67,12 @@ vi.mock('../../services/api/index', () => ({
     getCollections: mocks.getCollections,
     getDistributions: mocks.getDistributions,
     getBankTransactions: mocks.getBankTransactions,
+    getTransfers: mocks.getTransfers,
+    getPendingTransfers: mocks.getPendingTransfers,
+    getReceipts: mocks.getReceipts,
+    getReceiptsByType: mocks.getReceiptsByType,
+    getCorrections: mocks.getCorrections,
+    getPendingCorrections: mocks.getPendingCorrections,
     updateCollectionStatus: mocks.updateCollectionStatus,
     updateDistributionStatus: mocks.updateDistributionStatus,
     updateBankTransactionStatus: mocks.updateBankTransactionStatus,
@@ -266,6 +278,78 @@ describe('TreasuryDashboard', () => {
         createdAt: '2026-06-18T08:00:00',
       },
     ])
+    mocks.getTransfers.mockResolvedValue([
+      {
+        id: 21,
+        transferNumber: 'ATT-2026-0001',
+        currencyCode: 'EUR',
+        amount: 1000,
+        status: 'REQUESTED',
+        requiresSupervisor: true,
+        createdAt: '2026-06-18T08:00:00',
+      },
+    ])
+    mocks.getPendingTransfers.mockResolvedValue([
+      {
+        id: 21,
+        transferNumber: 'ATT-2026-0001',
+        currencyCode: 'EUR',
+        amount: 1000,
+        status: 'REQUESTED',
+        requiresSupervisor: true,
+        createdAt: '2026-06-18T08:00:00',
+      },
+    ])
+    mocks.getReceipts.mockResolvedValue([
+      {
+        id: 31,
+        receiptNumber: 'BIZ-2026-0001',
+        receiptType: 'B',
+        status: 'DRAFT',
+        createdAt: '2026-06-18T08:00:00',
+        lines: [{ currencyCode: 'EUR', amount: 100 }],
+      },
+    ])
+    mocks.getReceiptsByType.mockImplementation((type: string) => Promise.resolve(type === 'B'
+      ? [
+          {
+            id: 31,
+            receiptNumber: 'BIZ-2026-0001',
+            receiptType: 'B',
+            status: 'DRAFT',
+            createdAt: '2026-06-18T08:00:00',
+            lines: [{ currencyCode: 'EUR', amount: 100 }],
+          },
+        ]
+      : []))
+    mocks.getCorrections.mockResolvedValue([
+      {
+        id: 41,
+        entityType: 'VAULT',
+        entityId: 'SZEGED',
+        currencyCode: 'CHF',
+        oldQuantity: 10,
+        newQuantity: 12,
+        difference: 2,
+        reason: 'Leltár eltérés',
+        status: 'PENDING',
+        createdAt: '2026-06-18T08:00:00',
+      },
+    ])
+    mocks.getPendingCorrections.mockResolvedValue([
+      {
+        id: 41,
+        entityType: 'VAULT',
+        entityId: 'SZEGED',
+        currencyCode: 'CHF',
+        oldQuantity: 10,
+        newQuantity: 12,
+        difference: 2,
+        reason: 'Leltár eltérés',
+        status: 'PENDING',
+        createdAt: '2026-06-18T08:00:00',
+      },
+    ])
     mocks.updateCollectionStatus.mockResolvedValue({ id: 11, status: 'COMPLETED' })
     mocks.updateDistributionStatus.mockResolvedValue({ id: 12, status: 'REJECTED' })
     mocks.updateBankTransactionStatus.mockResolvedValue({ id: 13, status: 'IN_PROGRESS' })
@@ -297,6 +381,13 @@ describe('TreasuryDashboard', () => {
       expect(mocks.getCompanyTotals).toHaveBeenCalled()
       expect(mocks.getLowAlerts).toHaveBeenCalled()
       expect(mocks.getHighAlerts).toHaveBeenCalled()
+      expect(mocks.getTransfers).toHaveBeenCalled()
+      expect(mocks.getPendingTransfers).toHaveBeenCalled()
+      expect(mocks.getReceipts).toHaveBeenCalled()
+      expect(mocks.getReceiptsByType).toHaveBeenCalledWith('B')
+      expect(mocks.getReceiptsByType).toHaveBeenCalledWith('K')
+      expect(mocks.getCorrections).toHaveBeenCalled()
+      expect(mocks.getPendingCorrections).toHaveBeenCalled()
     })
 
     expect(screen.getByText('Backend treasury összesítő')).toBeInTheDocument()
@@ -312,7 +403,7 @@ describe('TreasuryDashboard', () => {
     expect(screen.getByText('1 alacsony, 1 magas')).toBeInTheDocument()
     expect(screen.getByText('Valutánkénti készlet')).toBeInTheDocument()
     expect(screen.getByText('2 valuta')).toBeInTheDocument()
-    expect(screen.getByText(/EUR\s+1\s*000/)).toBeInTheDocument()
+    expect(screen.getAllByText(/EUR\s+1\s*000/).length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('17 db').length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText('1/2 online')).toBeInTheDocument()
     expect(screen.getByText('1 offline, 1 riasztás')).toBeInTheDocument()
@@ -322,6 +413,12 @@ describe('TreasuryDashboard', () => {
     expect(screen.getByText('Dél')).toBeInTheDocument()
     expect(screen.getByText('50k Ft profit')).toBeInTheDocument()
     expect(screen.getByTestId('ertektar-status-control')).toHaveTextContent('Értéktári státusz kontroll')
+    expect(screen.getByTestId('ertektar-readonly-ledger')).toHaveTextContent('Értéktári bizonylat és korrekció áttekintés')
+    expect(screen.getByTestId('ertektar-readonly-ledger')).toHaveTextContent('ATT-2026-0001')
+    expect(screen.getByTestId('ertektar-readonly-ledger')).toHaveTextContent('BIZ-2026-0001')
+    expect(screen.getByTestId('ertektar-readonly-ledger')).toHaveTextContent('VAULT SZEGED')
+    expect(screen.getByTestId('ertektar-readonly-ledger')).toHaveTextContent('1 függő / 1 összes')
+    expect(screen.getByTestId('ertektar-readonly-ledger')).toHaveTextContent('1 bevét / 0 kiadás')
     expect(screen.getAllByText('Szeged').length).toBeGreaterThan(0)
     expect(screen.getByText('Pécs')).toBeInTheDocument()
     expect(screen.getByText('BUY CHF')).toBeInTheDocument()
