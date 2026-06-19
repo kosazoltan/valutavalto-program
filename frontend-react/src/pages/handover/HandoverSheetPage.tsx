@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { FileText, Plus, Printer, CheckCircle, Search } from 'lucide-react'
+import { FileText, Plus, Printer, CheckCircle, Search, Eye } from 'lucide-react'
 import { handoverSheetApi, HandoverSheet, cashDeskApi, CashDesk } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import {
@@ -25,6 +25,8 @@ export default function HandoverSheetPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [selectedSheet, setSelectedSheet] = useState<HandoverSheet | null>(null)
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     fromCashDeskId: '',
     toCashDeskId: '',
@@ -154,6 +156,19 @@ export default function HandoverSheetPage() {
     }
   }
 
+  const handleViewDetails = async (id: string) => {
+    try {
+      setError(null)
+      setDetailLoadingId(id)
+      setSelectedSheet(await handoverSheetApi.getById(id))
+    } catch (err) {
+      logger.error('HandoverSheetPage', 'Átadó lap részletek betöltési hiba:', err)
+      setError('Hiba az átadó lap részleteinek betöltésekor')
+    } finally {
+      setDetailLoadingId(null)
+    }
+  }
+
   const handleComplete = async (id: string) => {
     try {
       setError(null)
@@ -261,6 +276,24 @@ export default function HandoverSheetPage() {
             {localPendingOperations.length} {t('handover.helyiHandoverMuveletVar')}
           </div>
         )}
+        {selectedSheet && (
+          <div className="mb-4 rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="font-semibold">{selectedSheet.sheetNumber}</div>
+                <div className="text-xs text-blue-700">
+                  {selectedSheet.fromCashDeskName ?? selectedSheet.fromCashDeskId} → {selectedSheet.toCashDeskName ?? selectedSheet.toCashDeskId}
+                </div>
+              </div>
+              <span className="badge badge-yellow">{selectedSheet.status}</span>
+            </div>
+            <div className="mt-2 grid gap-2 text-xs md:grid-cols-3">
+              <div><span className="font-semibold">{t('common.date')}:</span> {new Date(selectedSheet.transferDate).toLocaleDateString('hu-HU')}</div>
+              <div><span className="font-semibold">{t('handover.kuldo')}:</span> {selectedSheet.fromCashDeskName ?? selectedSheet.fromCashDeskId}</div>
+              <div><span className="font-semibold">{t('handover.fogado')}:</span> {selectedSheet.toCashDeskName ?? selectedSheet.toCashDeskId}</div>
+            </div>
+          </div>
+        )}
         <table className="data-grid w-full">
           <thead>
             <tr><th>{t('handover.lapszam')}</th><th>{t('handover.kuldo')}</th><th>{t('handover.fogado')}</th><th>{t('common.date')}</th><th>{t('common.status')}</th><th>{t('common.actions')}</th></tr>
@@ -278,6 +311,14 @@ export default function HandoverSheetPage() {
                   <td><span className={`badge ${s.status === 'COMPLETED' ? 'badge-green' : s.status === 'PENDING_SYNC' ? 'badge-yellow' : 'badge-yellow'}`}>{s.status === 'PENDING_SYNC' ? 'HELYBEN MENTVE' : s.status}</span></td>
                   <td>
                     <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void handleViewDetails(s.id)}
+                        disabled={s.status === 'PENDING_SYNC' || detailLoadingId === s.id}
+                        className="form-button text-xs disabled:opacity-50"
+                      >
+                        <Eye size={12} className={detailLoadingId === s.id ? 'animate-pulse' : ''} />{t('common.details')}
+                      </button>
                       <button type="button" onClick={() => handlePrint(s.id)} disabled={s.status === 'PENDING_SYNC'} className="form-button text-xs disabled:opacity-50"><Printer size={12} />{t('common.print')}</button>
                       {s.status !== 'COMPLETED' && <button type="button" onClick={() => handleComplete(s.id)} disabled={s.status === 'PENDING_SYNC'} className="form-button text-xs disabled:opacity-50"><CheckCircle size={12} />{t('archiving.befejezes')}</button>}
                     </div>
