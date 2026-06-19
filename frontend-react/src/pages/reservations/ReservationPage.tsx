@@ -62,6 +62,8 @@ export default function ReservationPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [reservedStock, setReservedStock] = useState<ReservedStock[]>([]);
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
+  const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null);
   const workerBranchId = useAuthStore((state) => state.worker?.branchId ?? '');
 
   const loadReservations = useCallback(async () => {
@@ -153,6 +155,17 @@ export default function ReservationPage() {
     const ok = await handleDownloadReceipt(failedReceiptId, false);
     if (ok) setFailedReceiptId(null);
   }, [failedReceiptId, handleDownloadReceipt]);
+
+  const handleShowDetails = useCallback(async (id: number) => {
+    try {
+      setDetailLoadingId(id);
+      setSelectedReservation(await reservationsApi.getById(String(id)) as unknown as Reservation);
+    } catch {
+      setSelectedReservation(null);
+    } finally {
+      setDetailLoadingId(null);
+    }
+  }, []);
 
   const handleCancelByCustomer = useCallback(async (id: number) => {
     const reason = prompt('Lemondás oka (ügyfél miatt — a letét nem jár vissza):');
@@ -271,85 +284,145 @@ export default function ReservationPage() {
             {t('reservations.nincsenekFoglalokEbbenAKategoriaban')}
           </div>
         ) : (
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="p-3 text-left">{t('reservations.foglaloSzam')}</th>
-                <th className="p-3 text-left">{t('common.customer')}</th>
-                <th className="p-3 text-left">{t('common.amount')}</th>
-                <th className="p-3 text-left">{t('cashier.exchangeRate')}</th>
-                <th className="p-3 text-left">{t('reservations.letet')}</th>
-                <th className="p-3 text-left">{t('components.lejarat')}</th>
-                <th className="p-3 text-left">{t('common.status')}</th>
-                <th className="p-3 text-left">{t('common.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredReservations.map((reservation) => (
-                <tr key={reservation.id} className="border-t hover:bg-gray-50">
-                  <td className="p-3 font-mono">{reservation.receiptNumber || `#${reservation.id}`}</td>
-                  <td className="p-3">{reservation.customerName || '-'}</td>
-                  <td className="p-3">
-                    {reservation.reservedAmount?.toLocaleString('hu-HU')} {reservation.currencyCode}
-                  </td>
-                  <td className="p-3">{reservation.exchangeRate?.toFixed(4)}</td>
-                  <td className="p-3">{reservation.depositAmount?.toLocaleString('hu-HU')} {t('components.ft')}</td>
-                  <td className="p-3">
-                    {reservation.expiresAt ? new Date(reservation.expiresAt).toLocaleString('hu-HU') : '-'}
-                  </td>
-                  <td className="p-3">
-                    <span className={`px-2 py-1 text-xs text-white rounded ${statusColors[reservation.status] || 'bg-gray-400'}`}>
-                      {statusLabels[reservation.status] || reservation.status}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    <div className="flex gap-2 flex-wrap">
-                      {reservation.status === 'ACTIVE' && (
-                        <>
+          <div className="overflow-x-auto">
+            <table className="min-w-[980px] w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="p-3 text-left">{t('reservations.foglaloSzam')}</th>
+                  <th className="p-3 text-left">{t('common.customer')}</th>
+                  <th className="p-3 text-left">{t('common.amount')}</th>
+                  <th className="p-3 text-left">{t('cashier.exchangeRate')}</th>
+                  <th className="p-3 text-left">{t('reservations.letet')}</th>
+                  <th className="p-3 text-left">{t('components.lejarat')}</th>
+                  <th className="p-3 text-left">{t('common.status')}</th>
+                  <th className="p-3 text-left">{t('common.actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredReservations.map((reservation) => (
+                  <tr key={reservation.id} className="border-t hover:bg-gray-50">
+                    <td className="p-3 font-mono">{reservation.receiptNumber || `#${reservation.id}`}</td>
+                    <td className="p-3">{reservation.customerName || '-'}</td>
+                    <td className="p-3">
+                      {reservation.reservedAmount?.toLocaleString('hu-HU')} {reservation.currencyCode}
+                    </td>
+                    <td className="p-3">{reservation.exchangeRate?.toFixed(4)}</td>
+                    <td className="p-3">{reservation.depositAmount?.toLocaleString('hu-HU')} {t('components.ft')}</td>
+                    <td className="p-3">
+                      {reservation.expiresAt ? new Date(reservation.expiresAt).toLocaleString('hu-HU') : '-'}
+                    </td>
+                    <td className="p-3">
+                      <span className={`px-2 py-1 text-xs text-white rounded ${statusColors[reservation.status] || 'bg-gray-400'}`}>
+                        {statusLabels[reservation.status] || reservation.status}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex gap-2 flex-wrap">
+                        <button
+                          onClick={() => void handleShowDetails(reservation.id)}
+                          disabled={detailLoadingId === reservation.id}
+                          className="px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-gray-800 disabled:opacity-60"
+                        >
+                          {detailLoadingId === reservation.id ? 'Betöltés...' : 'Részletek'}
+                        </button>
+                        {reservation.status === 'ACTIVE' && (
+                          <>
+                            <button
+                              onClick={() => handleFulfill(reservation.id)}
+                              className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                            >
+                              {t('reservations.teljesit')}
+                            </button>
+                            <button
+                              onClick={() => handleCancelByCustomer(reservation.id)}
+                              className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                            >
+                              {t('reservations.ugyfelLemondas')}
+                            </button>
+                            <button
+                              onClick={() => handleCancelByCompany(reservation.id)}
+                              className="px-2 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700"
+                            >
+                              {t('reservations.ebcLemondas')}
+                            </button>
+                            <button
+                              onClick={() => handleDownloadReceipt(reservation.id, false)}
+                              className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                            >
+                              {t('reservations.bizonylat')}
+                            </button>
+                          </>
+                        )}
+                        {(reservation.status === 'CANCELLED_BY_CUSTOMER'
+                          || reservation.status === 'CANCELLED_BY_COMPANY'
+                          || reservation.status === 'EXPIRED') && (
                           <button
-                            onClick={() => handleFulfill(reservation.id)}
-                            className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
-                          >
-                            {t('reservations.teljesit')}
-                          </button>
-                          <button
-                            onClick={() => handleCancelByCustomer(reservation.id)}
-                            className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                          >
-                            {t('reservations.ugyfelLemondas')}
-                          </button>
-                          <button
-                            onClick={() => handleCancelByCompany(reservation.id)}
-                            className="px-2 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700"
-                          >
-                            {t('reservations.ebcLemondas')}
-                          </button>
-                          <button
-                            onClick={() => handleDownloadReceipt(reservation.id, false)}
+                            onClick={() => handleDownloadReceipt(reservation.id, true)}
                             className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
                           >
-                            {t('reservations.bizonylat')}
+                            {t('reservations.visszafizetesBizonylat')}
                           </button>
-                        </>
-                      )}
-                      {(reservation.status === 'CANCELLED_BY_CUSTOMER'
-                        || reservation.status === 'CANCELLED_BY_COMPANY'
-                        || reservation.status === 'EXPIRED') && (
-                        <button
-                          onClick={() => handleDownloadReceipt(reservation.id, true)}
-                          className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                        >
-                          {t('reservations.visszafizetesBizonylat')}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
+
+      {selectedReservation && (
+        <section className="mt-4 rounded border bg-white p-4" data-testid="reservation-detail-panel">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="text-base font-semibold text-gray-800">Foglaló részletei</h2>
+            <button
+              onClick={() => setSelectedReservation(null)}
+              className="rounded bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200"
+            >
+              Bezárás
+            </button>
+          </div>
+          <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+            <div>
+              <dt className="text-gray-500">Ügyfél</dt>
+              <dd className="font-medium text-gray-900">{selectedReservation.customerName || '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Foglaló szám</dt>
+              <dd className="font-mono text-gray-900">{selectedReservation.receiptNumber || `#${selectedReservation.id}`}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Státusz</dt>
+              <dd className="font-medium text-gray-900">{statusLabels[selectedReservation.status] || selectedReservation.status}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Valutaösszeg</dt>
+              <dd className="font-mono text-gray-900">
+                {selectedReservation.reservedAmount?.toLocaleString('hu-HU')} {selectedReservation.currencyCode}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Letét</dt>
+              <dd className="font-mono text-gray-900">
+                {selectedReservation.depositAmount?.toLocaleString('hu-HU')} {t('components.ft')}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Lejárat</dt>
+              <dd className="font-medium text-gray-900">
+                {selectedReservation.expiresAt ? new Date(selectedReservation.expiresAt).toLocaleString('hu-HU') : '-'}
+              </dd>
+            </div>
+          </dl>
+          {selectedReservation.notes && (
+            <div className="mt-3 rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+              {selectedReservation.notes}
+            </div>
+          )}
+        </section>
+      )}
 
       {showCreateDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

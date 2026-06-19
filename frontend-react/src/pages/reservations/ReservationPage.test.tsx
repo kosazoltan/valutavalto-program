@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { vi, describe, beforeEach, it, expect } from 'vitest'
 import ReservationPage from './ReservationPage'
@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
   reservationList: vi.fn(),
+  reservationGetById: vi.fn(),
   reservationCreate: vi.fn(),
   reservationCancel: vi.fn(),
   reservationCancelByCompany: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock('@/services/api/index', () => ({
   api: { get: mocks.get, post: mocks.post },
   reservationsApi: {
     list: mocks.reservationList,
+    getById: mocks.reservationGetById,
     create: mocks.reservationCreate,
     cancel: mocks.reservationCancel,
     cancelByCompany: mocks.reservationCancelByCompany,
@@ -70,6 +72,10 @@ describe('ReservationPage — backend kontraktus', () => {
     mocks.get.mockResolvedValue({ data: [activeReservation] })
     mocks.post.mockResolvedValue({ data: activeReservation })
     mocks.reservationList.mockResolvedValue([activeReservation])
+    mocks.reservationGetById.mockResolvedValue({
+      ...activeReservation,
+      notes: 'Backend részlet megjegyzés',
+    })
     mocks.reservationCreate.mockResolvedValue(activeReservation)
     mocks.reservationCancel.mockResolvedValue(activeReservation)
     mocks.reservationCancelByCompany.mockResolvedValue(activeReservation)
@@ -108,5 +114,19 @@ describe('ReservationPage — backend kontraktus', () => {
     // a megszűnt /confirm végpontot sem GET, sem POST úton nem hívjuk
     const postUrls = mocks.post.mock.calls.map((c) => String(c[0]))
     expect([...getUrls, ...postUrls].some((u) => u.includes('/confirm'))).toBe(false)
+  })
+
+  it('a részletek gomb a reservationsApi.getById backend wrapperből tölti a kiválasztott foglalót', async () => {
+    render(
+      <MemoryRouter>
+        <ReservationPage />
+      </MemoryRouter>
+    )
+
+    expect(await screen.findByText('B000042')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Részletek' }))
+
+    await waitFor(() => expect(mocks.reservationGetById).toHaveBeenCalledWith('42'))
+    expect(screen.getByTestId('reservation-detail-panel')).toHaveTextContent('Backend részlet megjegyzés')
   })
 })
