@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getPending: vi.fn(),
   countPending: vi.fn(),
   getById: vi.fn(),
+  getByTransferNumber: vi.fn(),
   getActive: vi.fn(),
   listActive: vi.fn(),
   toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() },
@@ -21,6 +22,7 @@ vi.mock('../../services/api/index', () => ({
     getPending: mocks.getPending,
     countPending: mocks.countPending,
     getById: mocks.getById,
+    getByTransferNumber: mocks.getByTransferNumber,
     create: vi.fn(),
     receive: vi.fn(),
     reject: vi.fn(),
@@ -121,6 +123,14 @@ describe('TransferPage — átadás részlet betöltése átvételhez', () => {
       amount: 125.5,
       hufValue: 48945,
     })
+    mocks.getByTransferNumber.mockResolvedValue({
+      ...pendingTransfer,
+      id: 8,
+      transferNumber: 'AT-NUMBER-008',
+      fromWorkerName: 'Keresett Anna',
+      amount: 75,
+      hufValue: 29250,
+    })
   })
 
   it('az Átvétel gomb a backend transfer detail endpointból frissíti a modalt', async () => {
@@ -138,5 +148,21 @@ describe('TransferPage — átadás részlet betöltése átvételhez', () => {
 
     expect(screen.getByText('Backend Anna')).toBeInTheDocument()
     expect(screen.getByDisplayValue('125,5')).toBeInTheDocument()
+  })
+
+  it('átadólap szám alapján backend detailből nyitja meg a bizonylat-előnézetet', async () => {
+    render(
+      <MemoryRouter>
+        <TransferPage />
+      </MemoryRouter>,
+    )
+
+    await screen.findByText('AT-LIST-007')
+    fireEvent.change(screen.getByLabelText('Átadólap keresése'), { target: { value: 'AT-SEARCH-008' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Keresés' }))
+
+    await waitFor(() => expect(mocks.getByTransferNumber).toHaveBeenCalledWith('AT-SEARCH-008'))
+    await screen.findByText('AT-NUMBER-008')
+    expect(screen.getByText('Átvételi bizonylat')).toBeInTheDocument()
   })
 })

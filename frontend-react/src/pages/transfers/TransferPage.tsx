@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRightLeft,
@@ -9,6 +9,7 @@ import {
   XCircle,
   AlertCircle,
   Eye,
+  Search,
   Clock,
   Building2,
   Printer,
@@ -156,6 +157,8 @@ export default function TransferPage() {
   const [receivedAmount, setReceivedAmount] = useState('')
   const [receiveNotes, setReceiveNotes] = useState('')
   const [receiveDetailLoading, setReceiveDetailLoading] = useState(false)
+  const [transferLookupNumber, setTransferLookupNumber] = useState('')
+  const [transferLookupLoading, setTransferLookupLoading] = useState(false)
 
   // Supervisor PIN for TH transfers
   const [showSupervisorPin, setShowSupervisorPin] = useState(false)
@@ -837,6 +840,25 @@ export default function TransferPage() {
     setShowReceiptModal(true)
   }
 
+  const handleTransferNumberLookup = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault()
+    const transferNumber = transferLookupNumber.trim()
+    if (!transferNumber) {
+      setError('Adja meg az átadólap számát!')
+      return
+    }
+    try {
+      setTransferLookupLoading(true)
+      setError(null)
+      const transfer = await transferApi.getByTransferNumber(transferNumber)
+      await openDocumentPreview(transfer)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setTransferLookupLoading(false)
+    }
+  }
+
   // FR-12/FR-15: sztornó modal megnyitása + szerveroldali preview betöltése.
   const openStornoModal = async (transfer: Transfer) => {
     const requestId = stornoPreviewRequestRef.current + 1
@@ -1175,6 +1197,31 @@ export default function TransferPage() {
           {t('transfers.ujAtadas')}
         </button>
       </div>
+
+      <form
+        onSubmit={(event) => { void handleTransferNumberLookup(event) }}
+        className="form-panel p-3 flex flex-col gap-2 sm:flex-row sm:items-end"
+      >
+        <div className="min-w-0 flex-1">
+          <label htmlFor="transfer-number-lookup" className="form-label">Átadólap keresése</label>
+          <input
+            id="transfer-number-lookup"
+            value={transferLookupNumber}
+            onChange={(event) => setTransferLookupNumber(event.target.value)}
+            className="form-input w-full"
+            placeholder="AT105000042"
+            autoComplete="off"
+          />
+        </div>
+        <button
+          type="submit"
+          className="form-button flex items-center justify-center gap-1"
+          disabled={transferLookupLoading || transferLookupNumber.trim() === ''}
+        >
+          {transferLookupLoading ? <RefreshCw size={16} className="animate-spin" /> : <Search size={16} />}
+          Keresés
+        </button>
+      </form>
 
       {/* Error/Success messages */}
       {error && (

@@ -51,6 +51,15 @@ const detailedTransfer = {
   hufValue: 48945,
 }
 
+const numberLookupTransfer = {
+  ...pendingTransfer,
+  id: 8,
+  transferNumber: 'AT-NUMBER-008',
+  fromWorkerName: 'Keresett Anna',
+  amount: 75,
+  hufValue: 29250,
+}
+
 async function mockApis(page: Page) {
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
@@ -109,6 +118,10 @@ async function mockApis(page: Page) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(detailedTransfer) })
     }
 
+    if (path.endsWith('/transfers/number/AT-SEARCH-007') && method === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(numberLookupTransfer) })
+    }
+
     if (path.endsWith('/currencies') && method === 'GET') {
       return route.fulfill({
         status: 200,
@@ -159,6 +172,30 @@ test('átadás átvétel mobil nézetben backend detail endpointból frissíti a
   await expect(page.getByText('AT-BACKEND-007')).toBeVisible()
   await expect(page.getByText('Backend Anna')).toBeVisible()
   await expect(page.getByLabel('Átvett összeg')).toHaveValue('125,5')
+
+  const horizontalOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  )
+  expect(horizontalOverflow).toBe(false)
+})
+
+test('átadólap szám keresés mobil nézetben backend number endpointból nyit bizonylatot', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mockApis(page)
+  await login(page)
+
+  await page.goto('/transfers', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByText('AT-LIST-007')).toBeVisible()
+
+  await page.getByLabel('Átadólap keresése').fill('AT-SEARCH-007')
+  const numberRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/transfers/number/AT-SEARCH-007'
+  )
+  await page.getByRole('button', { name: 'Keresés' }).click()
+  await numberRequest
+
+  await expect(page.getByText('AT-NUMBER-008')).toBeVisible()
+  await expect(page.getByText('Átvételi bizonylat')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
