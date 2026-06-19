@@ -62,11 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1028
-frontend production UI/app referenced REST calls: 902
+frontend production UI/app referenced REST calls: 903
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
-backend endpoints not referenced by production UI/app calls: 123
+backend endpoints not referenced by production UI/app calls: 122
 ```
 
 Route/page audit result:
@@ -200,11 +200,15 @@ proven used by UI/app" follow-up work.
   `GET /closing/monthly/{branchId}/{yearMonth}` so the monthly closing list
   opens the backend report representation without invoking the state-changing
   monthly close action, with mobile render coverage.
+- Wired routed DariusReportPage daily lookup to `GET /darius/by-date` so the
+  DARIUS admin view can open the backend daily report representation for a
+  chosen date without generating or submitting a report, with mobile render
+  coverage.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 123 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 123 confirmed UX
+The stricter audit currently reports 122 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 122 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens.
@@ -212,7 +216,7 @@ valid library surface rather than visible screens.
 Current summary:
 
 ```text
-ui-candidate/list-or-view        35
+ui-candidate/list-or-view        34
 ui-candidate/detail              17
 ui-candidate/mutation            25
 integration-or-device            15
@@ -350,6 +354,9 @@ npx.cmd eslint src/pages/central/ClosingControlPage.tsx src/pages/central/Closin
 npx.cmd vitest run src/pages/closing/MonthlyClosingPage.test.tsx
 npx.cmd playwright test e2e/monthly-closing-detail.spec.ts --config=playwright.config.ts
 npx.cmd eslint src/pages/closing/MonthlyClosingPage.tsx src/pages/closing/MonthlyClosingPage.test.tsx e2e/monthly-closing-detail.spec.ts
+npx.cmd vitest run src/pages/darius/DariusReportPage.test.tsx
+npx.cmd playwright test e2e/darius-by-date-detail.spec.ts --config=playwright.config.ts
+npx.cmd eslint src/pages/darius/DariusReportPage.tsx src/pages/darius/DariusReportPage.test.tsx e2e/darius-by-date-detail.spec.ts
 ```
 
 Previous UI verification in the same audit work:

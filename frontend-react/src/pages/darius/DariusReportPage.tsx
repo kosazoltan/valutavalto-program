@@ -78,6 +78,16 @@ export default function DariusReportPage() {
     finally { setLoading(false) }
   }
 
+  const handleLoadByDate = async () => {
+    setLoading(true); setError('')
+    try {
+      const res = await dariusApi.getByDate(generateDate)
+      setSelected(res.data)
+      setTab('daily')
+    } catch (err) { setError(getErrorMessage(err)) }
+    finally { setLoading(false) }
+  }
+
   const handleApprove = async (id: string) => {
     try {
       const res = await dariusApi.approve(id)
@@ -145,6 +155,9 @@ export default function DariusReportPage() {
             <label className="text-xs text-gray-500">{t('darius.generalasDatuma')}</label>
             <input type="date" value={generateDate} onChange={e => setGenerateDate(e.target.value)} className="input-field text-sm" />
           </div>
+          <button type="button" onClick={handleLoadByDate} disabled={loading} className="btn-secondary text-sm flex items-center gap-1">
+            <Calendar size={14} />Napi lekérdezés
+          </button>
           <button onClick={handleGenerate} disabled={loading} className="btn-primary text-sm flex items-center gap-1">
             <FileSpreadsheet size={14} />{t('darius.generalas')}
           </button>
