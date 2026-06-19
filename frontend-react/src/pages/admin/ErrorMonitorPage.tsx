@@ -22,6 +22,8 @@ export default function ErrorMonitorPage() {
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [selectedError, setSelectedError] = useState<ClientErrorLog | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detailError, setDetailError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -54,6 +56,20 @@ export default function ErrorMonitorPage() {
       cancelled = true
     }
   }, [page])
+
+  const openErrorDetails = async (entry: ClientErrorLog) => {
+    setSelectedError(entry)
+    setDetailLoading(true)
+    setDetailError(null)
+    try {
+      setSelectedError(await diagnosticsApi.getError(entry.id))
+    } catch (err) {
+      logger.error('ErrorMonitorPage', 'Hibarészlet betöltése sikertelen:', err)
+      setDetailError(err instanceof Error ? err.message : 'Ismeretlen hiba a részletlekérésnél')
+    } finally {
+      setDetailLoading(false)
+    }
+  }
 
   if (loading && !summary) {
     return <div className="p-6">Betöltés…</div>
@@ -146,7 +162,7 @@ export default function ErrorMonitorPage() {
                   </td>
                   <td className="p-2">
                     <button
-                      onClick={() => setSelectedError(e)}
+                      onClick={() => void openErrorDetails(e)}
                       className="text-blue-600 hover:underline"
                     >
                       Részletek
@@ -184,6 +200,8 @@ export default function ErrorMonitorPage() {
       {selectedError && (
         <ErrorDetailModal
           error={selectedError}
+          loading={detailLoading}
+          detailError={detailError}
           onClose={() => setSelectedError(null)}
         />
       )}
@@ -223,7 +241,17 @@ function BreakdownTable({ title, rows }: { title: string; rows: { key: string; c
   )
 }
 
-function ErrorDetailModal({ error, onClose }: { error: ClientErrorLog; onClose: () => void }) {
+function ErrorDetailModal({
+  error,
+  loading,
+  detailError,
+  onClose,
+}: {
+  error: ClientErrorLog
+  loading: boolean
+  detailError: string | null
+  onClose: () => void
+}) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded bg-white p-6 shadow-lg">
@@ -231,6 +259,16 @@ function ErrorDetailModal({ error, onClose }: { error: ClientErrorLog; onClose: 
           <h2 className="text-lg font-bold">Hiba #{error.id}</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
         </div>
+        {loading && (
+          <div className="mb-3 rounded border border-blue-200 bg-blue-50 p-2 text-sm text-blue-800">
+            Részletek betöltése…
+          </div>
+        )}
+        {detailError && (
+          <div className="mb-3 rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
+            A teljes hibarészlet nem tölthető be: {detailError}
+          </div>
+        )}
         <dl className="space-y-2 text-sm">
           <Row label="Idő">{new Date(error.createdAt).toLocaleString('hu-HU')}</Row>
           <Row label="Komponens">{error.component}</Row>
