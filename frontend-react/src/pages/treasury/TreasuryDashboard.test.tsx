@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({
   getDailyTurnover: vi.fn(),
   getCompanyBalances: vi.fn(),
   getCompanyPosition: vi.fn(),
+  getCompanyTotals: vi.fn(),
+  getLowAlerts: vi.fn(),
+  getHighAlerts: vi.fn(),
   getHistory: vi.fn(),
   treasuryDashboard: vi.fn(),
   branchComparison: vi.fn(),
@@ -37,6 +40,9 @@ vi.mock('../../services/api/index', () => ({
   cashBalanceApi: {
     getCompanyBalances: mocks.getCompanyBalances,
     getCompanyPosition: mocks.getCompanyPosition,
+    getCompanyTotals: mocks.getCompanyTotals,
+    getLowAlerts: mocks.getLowAlerts,
+    getHighAlerts: mocks.getHighAlerts,
   },
   dailySessionApi: {
     getHistory: mocks.getHistory,
@@ -103,6 +109,34 @@ describe('TreasuryDashboard', () => {
       ],
       grandTotalHuf: 1235000,
     })
+    mocks.getCompanyTotals.mockResolvedValue([
+      { currencyId: 1, currencyCode: 'EUR', currencyName: 'Euró', totalBalance: 1000, branchCount: 2 },
+      { currencyId: 2, currencyCode: 'USD', currencyName: 'Dollár', totalBalance: 500, branchCount: 1 },
+    ])
+    mocks.getLowAlerts.mockResolvedValue([
+      {
+        id: 3,
+        branchId: 'branch-2',
+        branchName: 'Pécs',
+        currencyId: 1,
+        currencyCode: 'EUR',
+        currentBalance: 2,
+        openingBalance: 0,
+        createdAt: '2026-06-18T08:00:00',
+      },
+    ])
+    mocks.getHighAlerts.mockResolvedValue([
+      {
+        id: 4,
+        branchId: 'branch-1',
+        branchName: 'Szeged',
+        currencyId: 2,
+        currencyCode: 'USD',
+        currentBalance: 9999,
+        openingBalance: 0,
+        createdAt: '2026-06-18T08:00:00',
+      },
+    ])
     mocks.getHistory.mockResolvedValue([])
     mocks.treasuryDashboard.mockResolvedValue({
       totalBuyHuf: 100000,
@@ -260,6 +294,9 @@ describe('TreasuryDashboard', () => {
       expect(mocks.companySummary).toHaveBeenCalled()
       expect(mocks.ertektarBranches).toHaveBeenCalled()
       expect(mocks.ertektarConsolidatedReport).toHaveBeenCalled()
+      expect(mocks.getCompanyTotals).toHaveBeenCalled()
+      expect(mocks.getLowAlerts).toHaveBeenCalled()
+      expect(mocks.getHighAlerts).toHaveBeenCalled()
     })
 
     expect(screen.getByText('Backend treasury összesítő')).toBeInTheDocument()
@@ -270,6 +307,12 @@ describe('TreasuryDashboard', () => {
     expect(screen.getByText('Cégösszesítő')).toBeInTheDocument()
     expect(screen.getByText('Értéktári pénztár monitoring')).toBeInTheDocument()
     expect(screen.getByText('Értéktári konszolidált riport')).toBeInTheDocument()
+    expect(screen.getByText('Készlet riasztások')).toBeInTheDocument()
+    expect(screen.getByText('2 jelzés')).toBeInTheDocument()
+    expect(screen.getByText('1 alacsony, 1 magas')).toBeInTheDocument()
+    expect(screen.getByText('Valutánkénti készlet')).toBeInTheDocument()
+    expect(screen.getByText('2 valuta')).toBeInTheDocument()
+    expect(screen.getByText(/EUR\s+1\s*000/)).toBeInTheDocument()
     expect(screen.getAllByText('17 db').length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText('1/2 online')).toBeInTheDocument()
     expect(screen.getByText('1 offline, 1 riasztás')).toBeInTheDocument()

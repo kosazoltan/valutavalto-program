@@ -96,6 +96,16 @@ async function mockTreasuryApis(page: Page) {
         currencyPositions: [{ currencyCode: 'EUR', totalBalance: 100, branchCount: 1, hufValue: 40000 }],
         grandTotalHuf: 1235000,
       },
+      '/api/v1/cash-balances/company-totals': [
+        { currencyId: 1, currencyCode: 'EUR', currencyName: 'Euró', totalBalance: 1000, branchCount: 2 },
+        { currencyId: 2, currencyCode: 'USD', currencyName: 'Dollár', totalBalance: 500, branchCount: 1 },
+      ],
+      '/api/v1/cash-balances/alerts/low': [
+        { id: 3, branchId: 'branch-2', branchName: 'Pécs', currencyId: 1, currencyCode: 'EUR', currentBalance: 2, openingBalance: 0 },
+      ],
+      '/api/v1/cash-balances/alerts/high': [
+        { id: 4, branchId: 'branch-1', branchName: 'Szeged', currencyId: 2, currencyCode: 'USD', currentBalance: 9999, openingBalance: 0 },
+      ],
       '/api/v1/treasury/dashboard': {
         totalProfit: 25000,
         totalTransactionCount: 17,
@@ -199,15 +209,32 @@ test('értéktári dashboard mobil viewporton használja az ErtektarController r
   const consolidatedRequest = page.waitForRequest(request =>
     request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/ertektar/reports/consolidated'
   )
+  const companyTotalsRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/cash-balances/company-totals'
+  )
+  const lowAlertsRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/cash-balances/alerts/low'
+  )
+  const highAlertsRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/cash-balances/alerts/high'
+  )
   await page.goto('/treasury', { waitUntil: 'domcontentloaded' })
   await branchesRequest
   await consolidatedRequest
+  await companyTotalsRequest
+  await lowAlertsRequest
+  await highAlertsRequest
 
   await expect(page.getByText('Értéktári pénztár monitoring')).toBeVisible()
   await expect(page.getByText('1/2 online')).toBeVisible()
   await expect(page.getByText('1 offline, 1 riasztás')).toBeVisible()
   await expect(page.getByText('Értéktári konszolidált riport')).toBeVisible()
   await expect(page.getByText('1.7M Ft / 1 iroda')).toBeVisible()
+  await expect(page.getByText('Készlet riasztások')).toBeVisible()
+  await expect(page.getByText('2 jelzés')).toBeVisible()
+  await expect(page.getByText('1 alacsony, 1 magas')).toBeVisible()
+  await expect(page.getByText('Valutánkénti készlet')).toBeVisible()
+  await expect(page.getByText(/EUR\s+1\s*000/)).toBeVisible()
   await expect(page.getByTestId('ertektar-status-control')).toBeVisible()
   await expect(page.getByText('Értéktári státusz kontroll')).toBeVisible()
   page.on('dialog', dialog => dialog.accept())

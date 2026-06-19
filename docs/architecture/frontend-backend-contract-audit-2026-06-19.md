@@ -62,11 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1028
-frontend production UI/app referenced REST calls: 882
+frontend production UI/app referenced REST calls: 885
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
-backend endpoints not referenced by production UI/app calls: 143
+backend endpoints not referenced by production UI/app calls: 140
 ```
 
 Route/page audit result:
@@ -157,11 +157,14 @@ proven used by UI/app" follow-up work.
 - Classified `GET /branch-groups/active` as an alternate read helper after
   verifying that the routed BranchGroupPage uses `/branch-groups` and
   `/branch-groups/roots` for the management view.
+- Wired the TreasuryDashboard stock summary cards to
+  `GET /cash-balances/company-totals`, `GET /cash-balances/alerts/low`, and
+  `GET /cash-balances/alerts/high`, with mobile render coverage.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 143 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 143 confirmed UX
+The stricter audit currently reports 140 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 140 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens.
@@ -169,7 +172,7 @@ valid library surface rather than visible screens.
 Current summary:
 
 ```text
-ui-candidate/list-or-view        44
+ui-candidate/list-or-view        41
 ui-candidate/detail              28
 ui-candidate/mutation            25
 integration-or-device            15

@@ -13,6 +13,7 @@ import { transactionApi, cashBalanceApi, dailySessionApi, treasuryApi, ertektarA
 import type {
   DailyTurnoverSummary,
   CashBalance,
+  CurrencyTotalBalance,
   CompanyCashPosition,
   DailySession,
   TreasuryDashboardSummary,
@@ -55,6 +56,9 @@ export default function TreasuryDashboard() {
   const [loading, setLoading] = useState(true)
   const [turnover, setTurnover] = useState<DailyTurnoverSummary | null>(null)
   const [companyPosition, setCompanyPosition] = useState<CompanyCashPosition | null>(null)
+  const [companyTotals, setCompanyTotals] = useState<CurrencyTotalBalance[]>([])
+  const [lowBalanceAlerts, setLowBalanceAlerts] = useState<CashBalance[]>([])
+  const [highBalanceAlerts, setHighBalanceAlerts] = useState<CashBalance[]>([])
   const [topBranches, setTopBranches] = useState<BranchRanking[]>([])
   const [closingStatuses, setClosingStatuses] = useState<BranchClosing[]>([])
   const [treasurySummary, setTreasurySummary] = useState<TreasuryDashboardSummary | null>(null)
@@ -87,6 +91,9 @@ export default function TreasuryDashboard() {
         turnoverData,
         balanceDataRaw,
         companyPositionData,
+        companyTotalsData,
+        lowBalanceAlertsData,
+        highBalanceAlertsData,
         treasuryDashboardData,
         branchComparisonData,
         submissionStatusData,
@@ -112,6 +119,14 @@ export default function TreasuryDashboard() {
           }
           return null
         }),
+        cashBalanceApi.getCompanyTotals().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setCompanyBalanceRestricted(true)
+          }
+          return []
+        }),
+        cashBalanceApi.getLowAlerts().catch(() => []),
+        cashBalanceApi.getHighAlerts().catch(() => []),
         treasuryApi.dashboard().catch((err: unknown) => {
           if (err instanceof AxiosError && err.response?.status === 403) {
             setTreasuryApiRestricted(true)
@@ -182,6 +197,9 @@ export default function TreasuryDashboard() {
 
       if (turnoverData) setTurnover(turnoverData)
       setCompanyPosition(companyPositionData)
+      setCompanyTotals(safeArray<CurrencyTotalBalance>(companyTotalsData))
+      setLowBalanceAlerts(safeArray<CashBalance>(lowBalanceAlertsData))
+      setHighBalanceAlerts(safeArray<CashBalance>(highBalanceAlertsData))
       setTreasurySummary(treasuryDashboardData)
       setBranchComparison(safeArray<TreasuryBranchComparison>(branchComparisonData))
       setSubmissionStatus(safeArray<TreasurySubmissionStatus>(submissionStatusData))
@@ -308,6 +326,9 @@ export default function TreasuryDashboard() {
   const topBankFlow = bankFlow[0]
   const topBranchGroup = branchGroupSummary[0]
   const topCompanySummary = companySummary[0]
+  const topCompanyTotal = [...companyTotals]
+    .sort((a, b) => Number(b.totalBalance ?? 0) - Number(a.totalBalance ?? 0))[0]
+  const stockAlertCount = lowBalanceAlerts.length + highBalanceAlerts.length
   const ertektarOnlineCount = ertektarBranches.filter((b) => b.isOnline ?? b.online).length
   const ertektarOfflineCount = ertektarBranches.filter((b) => !(b.isOnline ?? b.online)).length
   const ertektarOpenAlerts = ertektarBranches.reduce((sum, b) => sum + (b.openAlerts ?? 0), 0)
@@ -366,7 +387,7 @@ export default function TreasuryDashboard() {
       )}
 
       <div className="form-panel">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
           <SummaryCard
             label="Backend treasury összesítő"
             value={`${formatInteger(treasurySummary?.totalTransactionCount ?? 0)} db`}
@@ -392,11 +413,16 @@ export default function TreasuryDashboard() {
             value={`${formatInteger(consolidatedTotals?.totalTransactions ?? 0)} db`}
             detail={`${formatMillions(Number(consolidatedTotals?.totalHufTurnover ?? 0))} / ${consolidatedBranchCount} iroda`}
           />
+          <SummaryCard
+            label="Készlet riasztások"
+            value={`${formatInteger(stockAlertCount)} jelzés`}
+            detail={`${formatInteger(lowBalanceAlerts.length)} alacsony, ${formatInteger(highBalanceAlerts.length)} magas`}
+          />
         </div>
       </div>
 
       <div className="form-panel">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <SummaryCard
             label="Bankflow összesítő"
             value={topBankFlow?.currencyCode ?? 'Nincs adat'}
@@ -411,6 +437,11 @@ export default function TreasuryDashboard() {
             label="Cégösszesítő"
             value={`${formatInteger(companySummary.length)} egység`}
             detail={topCompanySummary ? `${formatMillions(Number(topCompanySummary.totalProfit ?? 0))} profit` : 'Nincs adat'}
+          />
+          <SummaryCard
+            label="Valutánkénti készlet"
+            value={`${formatInteger(companyTotals.length)} valuta`}
+            detail={topCompanyTotal ? `${topCompanyTotal.currencyCode} ${formatInteger(Number(topCompanyTotal.totalBalance ?? 0))}` : 'Nincs adat'}
           />
         </div>
       </div>
