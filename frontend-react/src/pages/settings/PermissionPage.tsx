@@ -15,6 +15,7 @@ export default function PermissionPage() {
   const [selectedModule, setSelectedModule] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
   const [editingPermission, setEditingPermission] = useState<Permission | null>(null)
+  const [editingPermissionLoadingId, setEditingPermissionLoadingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<PermissionCreateRequest>({
     code: '',
     name: '',
@@ -110,17 +111,27 @@ export default function PermissionPage() {
     setShowForm(true)
   }
 
-  const handleEdit = (permission: Permission) => {
-    setEditingPermission(permission)
-    setFormData({
-      code: permission.code,
-      name: permission.name,
-      description: permission.description || '',
-      module: permission.module,
-      isSystemPermission: permission.isSystemPermission,
-      isActive: permission.isActive
-    })
-    setShowForm(true)
+  const handleEdit = async (permission: Permission) => {
+    try {
+      setEditingPermissionLoadingId(permission.id)
+      const detail = await permissionApi.getById(permission.id)
+      setEditingPermission(detail)
+      setFormData({
+        code: detail.code,
+        name: detail.name,
+        description: detail.description || '',
+        module: detail.module,
+        isSystemPermission: detail.isSystemPermission,
+        isActive: detail.isActive
+      })
+      setShowForm(true)
+    } catch (err) {
+      const errorMessage = getErrorMessage(err)
+      logger.error('PermissionPage', 'Failed to load permission detail:', err)
+      toast.error('Hiba történt a jogosultság részleteinek betöltése során', errorMessage)
+    } finally {
+      setEditingPermissionLoadingId(null)
+    }
   }
 
   const handleSave = async () => {
@@ -382,8 +393,9 @@ export default function PermissionPage() {
                   <td>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleEdit(permission)}
-                        className="form-button text-sm flex items-center gap-1"
+                        onClick={() => void handleEdit(permission)}
+                        disabled={editingPermissionLoadingId === permission.id}
+                        className="form-button text-sm flex items-center gap-1 disabled:opacity-50"
                       >
                         <Edit size={14} />
                         {t('common.edit')}

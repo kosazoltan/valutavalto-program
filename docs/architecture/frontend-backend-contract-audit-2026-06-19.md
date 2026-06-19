@@ -62,11 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1030
-frontend production UI/app referenced REST calls: 936
+frontend production UI/app referenced REST calls: 937
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 46
-backend endpoints not referenced by production UI/app calls: 118
+backend endpoints not referenced by production UI/app calls: 117
 ```
 
 Route/page audit result:
@@ -273,11 +273,14 @@ proven used by UI/app" follow-up work.
 - Wired routed UserPage editing to `GET /users/{id}` so the user administration
   edit form opens from the backend detail representation instead of only the
   list row snapshot, with mobile render coverage.
+- Wired routed PermissionPage editing to `GET /permissions/{id}` so permission
+  administration edit opens from the backend detail representation instead of
+  only the list row snapshot, with mobile render coverage.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 118 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 118 confirmed UX
+The stricter audit currently reports 117 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 117 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens. This number increased when
@@ -290,7 +293,7 @@ Current summary:
 ```text
 ui-candidate/list-or-view        27
 ui-candidate/mutation            25
-ui-candidate/detail              18
+ui-candidate/detail              17
 integration-or-device            15
 backend-only/legacy-compat       8
 workflow-action                  7
@@ -518,6 +521,12 @@ python scripts/dev-tools/frontend-audit-self-test.py
 npx.cmd vitest run src/pages/settings/UserPage.test.tsx
 npx.cmd eslint src/pages/settings/UserPage.tsx src/pages/settings/UserPage.test.tsx e2e/user-detail-edit.spec.ts
 npx.cmd playwright test e2e/user-detail-edit.spec.ts --config=playwright.config.ts
+npm.cmd run type-check
+npm.cmd run build
+python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 140
+npx.cmd vitest run src/pages/settings/PermissionPage.test.tsx
+npx.cmd eslint src/pages/settings/PermissionPage.tsx src/pages/settings/PermissionPage.test.tsx e2e/permission-module.spec.ts
+npx.cmd playwright test e2e/permission-module.spec.ts --config=playwright.config.ts
 npm.cmd run type-check
 npm.cmd run build
 python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 140
