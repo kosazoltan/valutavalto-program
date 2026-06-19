@@ -60,6 +60,23 @@ export default function ContributionPage() {
     }
   }
 
+  const handleCalculatePeriod = async () => {
+    if (!branchId) {
+      toast.warning('Hiányzó fiók', 'A járulékszámításhoz fiók azonosító szükséges')
+      return
+    }
+    if (!startDate || !endDate) {
+      toast.warning('Hiányzó adatok', 'Kérjük, adja meg az időszakot')
+      return
+    }
+    try {
+      const data = await contributionApi.calculate(branchId, startDate, endDate)
+      setContributions(data)
+    } catch (error) {
+      logger.error('ContributionPage', 'Hiba a járulékszámításkor:', error)
+    }
+  }
+
   const handleShowDetails = async (id: string) => {
     try {
       setDetailLoadingId(id)
@@ -86,7 +103,7 @@ export default function ContributionPage() {
       </div>
 
       <div className="form-panel space-y-4">
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <div>
             <label className="form-label">{t('common.startDate')}</label>
             <input type="date" className="form-input" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
@@ -95,10 +112,14 @@ export default function ContributionPage() {
             <label className="form-label">{t('common.endDate')}</label>
             <input type="date" className="form-input" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
           </div>
-          <div className="flex items-end">
-            <button onClick={handleFilterByPeriod} className="form-button-primary flex items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row md:items-end">
+            <button onClick={handleFilterByPeriod} className="form-button-primary flex min-h-10 items-center justify-center gap-2">
               <Calendar size={16} />
               {t('common.filter')}
+            </button>
+            <button onClick={handleCalculatePeriod} className="form-button flex min-h-10 items-center justify-center gap-2">
+              <Calculator size={16} />
+              Időszaki számítás
             </button>
           </div>
           <div>

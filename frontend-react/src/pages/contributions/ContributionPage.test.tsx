@@ -5,12 +5,14 @@ import ContributionPage from './ContributionPage'
 const mockList = vi.fn()
 const mockGetById = vi.fn()
 const mockGetByPeriod = vi.fn()
+const mockCalculate = vi.fn()
 
 vi.mock('../../services/api/index', () => ({
   contributionApi: {
     list: (...args: unknown[]) => mockList(...args),
     getById: (...args: unknown[]) => mockGetById(...args),
     getByPeriod: (...args: unknown[]) => mockGetByPeriod(...args),
+    calculate: (...args: unknown[]) => mockCalculate(...args),
   },
 }))
 
@@ -48,6 +50,7 @@ describe('ContributionPage backend contract', () => {
     mockList.mockReset()
     mockGetById.mockReset()
     mockGetByPeriod.mockReset()
+    mockCalculate.mockReset()
     mockList.mockResolvedValue([])
     mockGetById.mockResolvedValue({
       id: 'contribution-1',
@@ -66,6 +69,21 @@ describe('ContributionPage backend contract', () => {
       calculationDetails: 'Backend részletszámítás',
     })
     mockGetByPeriod.mockResolvedValue([])
+    mockCalculate.mockResolvedValue([
+      {
+        id: 'contribution-2',
+        workerFullName: 'Számolt Sára',
+        branchName: 'Szeged Értéktár',
+        periodStart: '2026-06-01',
+        periodEnd: '2026-06-30',
+        contributionTypeName: 'Járulék',
+        baseAmount: 200000,
+        calculatedAmount: 24000,
+        currencyCode: 'HUF',
+        statusName: 'Számított',
+        calculationDate: '2026-06-19',
+      },
+    ])
   })
 
   it('időszakos szűrésnél elküldi a backend által kötelező branchId paramétert', async () => {
@@ -81,6 +99,22 @@ describe('ContributionPage backend contract', () => {
     await waitFor(() =>
       expect(mockGetByPeriod).toHaveBeenCalledWith('branch-123', '2026-06-01', '2026-06-30'),
     )
+  })
+
+  it('időszaki számításnál meghívja a /contributions/calculate backend szerződést', async () => {
+    const { container } = render(<ContributionPage />)
+
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(1))
+
+    const [startInput, endInput] = getDateInputs(container)
+    fireEvent.change(startInput, { target: { value: '2026-06-01' } })
+    fireEvent.change(endInput, { target: { value: '2026-06-30' } })
+    fireEvent.click(screen.getByRole('button', { name: /Időszaki számítás/i }))
+
+    await waitFor(() => {
+      expect(mockCalculate).toHaveBeenCalledWith('branch-123', '2026-06-01', '2026-06-30')
+      expect(screen.getByText('Számolt Sára')).toBeInTheDocument()
+    })
   })
 
   it('részletek gombra a backend getById végpontról tölti a kiválasztott járulékot', async () => {

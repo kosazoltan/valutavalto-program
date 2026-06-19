@@ -104,6 +104,28 @@ async function mockContributionApis(page: Page) {
       })
     }
 
+    if (path.endsWith('/contributions/calculate') && method === 'POST') {
+      return route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 'contribution-2',
+            workerFullName: 'Számolt Sára',
+            branchName: 'Budapest 01',
+            periodStart: url.searchParams.get('periodStart'),
+            periodEnd: url.searchParams.get('periodEnd'),
+            contributionTypeName: 'Járulék',
+            baseAmount: 200000,
+            calculatedAmount: 24000,
+            currencyCode: 'HUF',
+            statusName: 'Számított',
+            calculationDate: '2026-06-19',
+          },
+        ]),
+      })
+    }
+
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
   })
 }
@@ -133,6 +155,21 @@ test('járulék részlet mobil viewporton backend getById hívásból jelenik me
   await detailRequest
 
   await expect(page.getByTestId('contribution-detail-panel')).toContainText('Backend részletszámítás')
+
+  const calculateRequest = page.waitForRequest(request => {
+    const url = new URL(request.url())
+    return request.method() === 'POST'
+      && url.pathname === '/api/v1/contributions/calculate'
+      && url.searchParams.get('branchId') === 'branch-1'
+      && url.searchParams.get('periodStart') === '2026-06-01'
+      && url.searchParams.get('periodEnd') === '2026-06-30'
+  })
+  const dates = page.locator('input[type="date"]')
+  await dates.nth(0).fill('2026-06-01')
+  await dates.nth(1).fill('2026-06-30')
+  await page.getByRole('button', { name: /Időszaki számítás/i }).click()
+  await calculateRequest
+  await expect(page.getByText('Számolt Sára')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
