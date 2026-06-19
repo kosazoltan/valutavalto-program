@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowDownToLine, ArrowUpFromLine, Calendar, Search, RefreshCw, AlertTriangle, Printer, Download, CheckCircle, Trash2 } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpFromLine, Calendar, Search, RefreshCw, AlertTriangle, Printer, Download, CheckCircle, Eye, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { api, hrkDailyApi, hrkMonthlyApi, monthlyClosingApi, type HrkMonthlySummary, type HrkTransaction } from '../../services/api/index'
+import { api, hrkDailyApi, hrkMonthlyApi, monthlyClosingApi, type HrkMonthlySummary, type HrkTransaction, type MonthlyClosingSummary } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
@@ -42,6 +42,8 @@ export default function MonthlyClosingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedMonthlyReport, setSelectedMonthlyReport] = useState<MonthlyClosingSummary | null>(null)
+  const [monthlyReportLoadingKey, setMonthlyReportLoadingKey] = useState<string | null>(null)
   const [hrkYearMonth, setHrkYearMonth] = useState(currentYearMonth)
   const [hrkSummary, setHrkSummary] = useState<HrkMonthlySummary | null>(null)
   const [hrkLoading, setHrkLoading] = useState(false)
@@ -152,6 +154,21 @@ export default function MonthlyClosingPage() {
       const msg = getErrorMessage(err)
       logger.error('MonthlyClosingPage', 'PDF letöltési hiba:', err)
       setError(msg)
+    }
+  }
+
+  const loadMonthlyReport = async (item: MonthlyClosingSummaryItem) => {
+    if (!branchId || !item.yearMonth) return
+    try {
+      setMonthlyReportLoadingKey(String(item.id))
+      setError(null)
+      setSelectedMonthlyReport(await monthlyClosingApi.getReport(branchId, item.yearMonth))
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('MonthlyClosingPage', 'Havi zárás részletek betöltési hiba:', err)
+      setError(msg)
+    } finally {
+      setMonthlyReportLoadingKey(null)
     }
   }
 
@@ -591,6 +608,52 @@ export default function MonthlyClosingPage() {
         </div>
       )}
 
+      {selectedMonthlyReport && (
+        <section className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950" data-testid="monthly-closing-report-panel">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h2 className="text-base font-bold">{selectedMonthlyReport.yearMonth}</h2>
+              <div className="text-xs text-blue-700">{t('monthlyClose.branch')}: {selectedMonthlyReport.branchName ?? branchId}</div>
+            </div>
+            <div className="rounded bg-white px-2 py-1 text-xs font-semibold text-blue-800">
+              {selectedMonthlyReport.closedAt ? 'LEZÁRVA' : 'NYITOTT'}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            <div className="rounded bg-white p-2">
+              <div className="text-xs text-blue-700">{t('monthlyClose.closedAt')}</div>
+              <div className="font-semibold">{formatDateTime(selectedMonthlyReport.closedAt)}</div>
+            </div>
+            <div className="rounded bg-white p-2">
+              <div className="text-xs text-blue-700">{t('monthlyClose.closedBy')}</div>
+              <div className="font-semibold">{selectedMonthlyReport.closedByWorkerName ?? selectedMonthlyReport.closedByWorkerId ?? '-'}</div>
+            </div>
+            <div className="rounded bg-white p-2">
+              <div className="text-xs text-blue-700">Tranzakció</div>
+              <div className="font-semibold">{selectedMonthlyReport.transactionCount ?? 0}</div>
+            </div>
+            <div className="rounded bg-white p-2">
+              <div className="text-xs text-blue-700">Kezelési díj</div>
+              <div className="font-semibold">{formatHuf(selectedMonthlyReport.totalHandlingFee)}</div>
+            </div>
+            <div className="rounded bg-white p-2">
+              <div className="text-xs text-blue-700">Vétel HUF</div>
+              <div className="font-semibold">{formatHuf(selectedMonthlyReport.totalBuyHuf)}</div>
+            </div>
+            <div className="rounded bg-white p-2">
+              <div className="text-xs text-blue-700">Eladás HUF</div>
+              <div className="font-semibold">{formatHuf(selectedMonthlyReport.totalSellHuf)}</div>
+            </div>
+            <div className="rounded bg-white p-2 md:col-span-2">
+              <div className="text-xs text-blue-700">Valuta bontás</div>
+              <div className="truncate font-mono text-xs" title={selectedMonthlyReport.currencyBreakdown ?? ''}>
+                {selectedMonthlyReport.currencyBreakdown ?? '-'}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       <div className="data-grid overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -616,6 +679,15 @@ export default function MonthlyClosingPage() {
                 <td className="px-4 py-3 text-sm">{item.closedAt ? new Date(item.closedAt).toLocaleString('hu-HU') : '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.closedByName ?? '-'}</td>
                 <td className="px-4 py-3 text-right">
+                  <button
+                    type="button"
+                    onClick={() => void loadMonthlyReport(item)}
+                    disabled={!item.yearMonth || monthlyReportLoadingKey === String(item.id)}
+                    className="form-button mr-2 inline-flex items-center gap-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Eye className={`h-4 w-4 ${monthlyReportLoadingKey === String(item.id) ? 'animate-pulse' : ''}`} />
+                    Részletek
+                  </button>
                   <button
                     type="button"
                     onClick={() => void downloadMonthlyPdf(item.yearMonth)}

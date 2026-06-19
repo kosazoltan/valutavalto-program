@@ -6,6 +6,7 @@ import MonthlyClosingPage from './MonthlyClosingPage'
 const mocks = vi.hoisted(() => ({
   apiGet: vi.fn(),
   monthlyGetAllClosedMonths: vi.fn(),
+  monthlyGetReport: vi.fn(),
   hrkGetSummary: vi.fn(),
   hrkClose: vi.fn(),
   hrkHandover: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock('../../services/api/index', () => ({
   },
   monthlyClosingApi: {
     getAllClosedMonths: mocks.monthlyGetAllClosedMonths,
+    getReport: mocks.monthlyGetReport,
   },
   hrkMonthlyApi: {
     getSummary: mocks.hrkGetSummary,
@@ -120,6 +122,21 @@ describe('MonthlyClosingPage HRK backend contract', () => {
         status: 'OPEN',
       },
     ])
+    mocks.monthlyGetReport.mockResolvedValue({
+      id: 1,
+      branchId: 'branch-1',
+      branchName: 'Backend Budapest 01',
+      yearMonth: '2026-06',
+      closedAt: '2026-06-30T18:00:00',
+      closedByWorkerId: 77,
+      closedByWorkerName: 'Backend Záró',
+      totalBuyHuf: 1000000,
+      totalSellHuf: 750000,
+      totalHandlingFee: 12000,
+      transactionCount: 42,
+      currencyBreakdown: '{"EUR":{"buy":1000}}',
+      createdAt: '2026-06-30T18:01:00',
+    })
     mocks.hrkGetSummary.mockResolvedValue(hrkSummary)
     mocks.hrkClose.mockResolvedValue({ ...hrkSummary, totalTransactions: 3 })
     mocks.hrkHandover.mockResolvedValue({ ...hrkJournal[0], id: 'hrk-tx-new', type: 'HANDOVER' })
@@ -145,6 +162,23 @@ describe('MonthlyClosingPage HRK backend contract', () => {
     expect(screen.getByText('HRK-2026-001')).toBeInTheDocument()
     expect(screen.getByText('HRK-2026-002')).toBeInTheDocument()
     expect(screen.getAllByText('150 000 Ft').length).toBeGreaterThan(0)
+  })
+
+  it('havi zárás részletezéskor a backend havi report reprezentációját jeleníti meg', async () => {
+    const user = userEvent.setup()
+    render(<MonthlyClosingPage />)
+
+    await screen.findByText('Budapest 01')
+    await user.click(screen.getByRole('button', { name: /Részletek/i }))
+
+    await waitFor(() => {
+      expect(mocks.monthlyGetReport).toHaveBeenCalledWith('branch-1', '2026-06')
+      expect(screen.getByTestId('monthly-closing-report-panel')).toBeInTheDocument()
+      expect(screen.getByText(/Backend Budapest 01/)).toBeInTheDocument()
+      expect(screen.getByText('Backend Záró')).toBeInTheDocument()
+      expect(screen.getByText('42')).toBeInTheDocument()
+      expect(screen.getByText('12 000 Ft')).toBeInTheDocument()
+    })
   })
 
   it('HRK pénztár-bank átadást a handover backend wrapperre köt', async () => {
