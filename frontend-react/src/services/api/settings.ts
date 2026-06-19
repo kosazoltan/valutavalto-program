@@ -298,12 +298,6 @@ export interface Denomination {
   active: boolean
 }
 
-export interface UpdateDenominationRequest {
-  currencyId: number
-  faceValue: number
-  quantity: number
-}
-
 export interface DenominationValidationResult {
   currencyId: number
   currencyCode: string
@@ -338,14 +332,6 @@ export const denominationApi = {
   },
   getLowStockAlerts: async (): Promise<Denomination[]> => {
     const response = await api.get<Denomination[]>('/denominations/alerts/low-stock')
-    return response.data
-  },
-  update: async (data: UpdateDenominationRequest): Promise<Denomination> => {
-    const response = await api.put<Denomination>('/denominations', data)
-    return response.data
-  },
-  bulkUpdate: async (data: UpdateDenominationRequest[]): Promise<Denomination[]> => {
-    const response = await api.put<Denomination[]>('/denominations/bulk', data)
     return response.data
   },
   validate: async (currencyId: number, expectedBalance: number): Promise<DenominationValidationResult> => {
@@ -420,14 +406,6 @@ export const denominationBalanceApi = {
   },
   getCashDeskDenominationsByCurrency: async (cashDeskId: string, currencyId: string): Promise<DenominationBalanceDTO[]> => {
     const response = await api.get<DenominationBalanceDTO[]>(`/cash-desks/${cashDeskId}/denominations/currency/${currencyId}`)
-    return response.data
-  },
-  updateDenominationQuantity: async (cashDeskId: string, denominationId: string, quantity: number): Promise<DenominationBalanceDTO> => {
-    const response = await api.put<DenominationBalanceDTO>(
-      `/cash-desks/${cashDeskId}/denominations/${denominationId}`,
-      null,
-      { params: { quantity } }
-    )
     return response.data
   },
   setDenominationQuantities: async (cashDeskId: string, updates: DenominationQuantityUpdateRequest[]): Promise<DenominationBalanceDTO[]> => {
