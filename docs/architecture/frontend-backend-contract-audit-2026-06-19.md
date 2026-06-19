@@ -62,11 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1028
-frontend production UI/app referenced REST calls: 885
+frontend production UI/app referenced REST calls: 888
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
-backend endpoints not referenced by production UI/app calls: 140
+backend endpoints not referenced by production UI/app calls: 137
 ```
 
 Route/page audit result:
@@ -160,11 +160,16 @@ proven used by UI/app" follow-up work.
 - Wired the TreasuryDashboard stock summary cards to
   `GET /cash-balances/company-totals`, `GET /cash-balances/alerts/low`, and
   `GET /cash-balances/alerts/high`, with mobile render coverage.
+- Corrected the frontend `BranchBalanceSummary` contract to the backend
+  `CashBalanceService.BranchBalanceSummary` shape and wired CashDesk read-only
+  stock summary/detail UI to `GET /cash-balances/summary`,
+  `GET /cash-balances/currency/{currencyId}`, and
+  `GET /cash-balances/code/{currencyCode}`, with mobile render coverage.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 140 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 140 confirmed UX
+The stricter audit currently reports 137 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 137 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens.
@@ -172,8 +177,8 @@ valid library surface rather than visible screens.
 Current summary:
 
 ```text
-ui-candidate/list-or-view        41
-ui-candidate/detail              28
+ui-candidate/list-or-view        40
+ui-candidate/detail              26
 ui-candidate/mutation            25
 integration-or-device            15
 backend-only/legacy-compat       8
@@ -280,6 +285,11 @@ python scripts/dev-tools/frontend-route-api-audit.py
 python scripts/dev-tools/frontend-api-wrapper-usage-audit.py
 python scripts/dev-tools/frontend-api-method-usage-audit.py
 npx.cmd eslint src/App.tsx --max-warnings 9999
+npx.cmd vitest run src/pages/cashdesk/CashDeskPage.test.tsx
+npx.cmd playwright test e2e/cashdesk-summary.spec.ts --config=playwright.config.ts
+npm.cmd run type-check
+npx.cmd eslint src/pages/cashdesk/CashDeskPage.tsx src/pages/cashdesk/CashDeskPage.test.tsx
+npm.cmd run build
 ```
 
 Previous UI verification in the same audit work:

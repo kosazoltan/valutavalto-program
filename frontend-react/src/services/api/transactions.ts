@@ -587,12 +587,16 @@ export interface CashBalance {
   currencyId: number
   currencyCode: string
   currencyName?: string
+  currencySymbol?: string
   currentBalance: number
   openingBalance: number
+  dailyChange?: number
   minBalance?: number
   maxBalance?: number
+  lowBalanceAlert?: boolean
+  highBalanceAlert?: boolean
   lastTransactionAt?: string
-  createdAt: string
+  createdAt?: string
   updatedAt?: string
 }
 
@@ -604,12 +608,11 @@ export interface AdjustBalanceRequest {
 }
 
 export interface BranchBalanceSummary {
-  branchId: string
-  branchName: string
-  totalHufEquivalent: number
-  currencyCount: number
+  totalCurrencies: number
+  hufBalance: number
   lowBalanceAlerts: number
   highBalanceAlerts: number
+  balances?: CashBalance[]
 }
 
 export interface CurrencyTotalBalance {

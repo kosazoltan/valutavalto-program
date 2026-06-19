@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Vault, Lock, Unlock, Plus, Minus, AlertTriangle, CheckCircle, Clock, FileCheck } from 'lucide-react'
+import { Vault, Lock, Unlock, Plus, Minus, AlertTriangle, CheckCircle, Clock, FileCheck, Info, X } from 'lucide-react'
 import { NumberInput } from '../../components/NumberInput'
 import { cashBalanceApi, dailySessionApi } from '../../services/api/index'
-import type { CashBalance, DailySession } from '../../services/api/index'
+import type { BranchBalanceSummary, CashBalance, DailySession } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
@@ -24,6 +24,21 @@ interface CashDeskStatus {
   openedBy: string
   balances: CashDeskBalanceItem[]
   todayStats: { transactions: number; buyTotal: number; sellTotal: number; profit: number }
+}
+
+const cashDeskLabels = {
+  currencies: 'Valuták',
+  hufStock: 'HUF készlet',
+  lowAlert: 'Alacsony jelzés',
+  highAlert: 'Magas jelzés',
+  detailSuffix: 'pénzkészlet részletek',
+  current: 'Aktuális',
+  opening: 'Nyitó',
+  dailyChange: 'Napi változás',
+  limit: 'Limit',
+  codeCheck: 'Kód ellenőrzés',
+  codeCheckOk: 'ID és kód egyezik',
+  codeCheckMismatch: 'Eltérés vagy hiány',
 }
 
 /**
@@ -61,6 +76,11 @@ export default function CashDeskPage() {
   const [movementType, setMovementType] = useState<'in' | 'out'>('in')
   const [movementCurrency, setMovementCurrency] = useState('HUF')
   const [movementAmount, setMovementAmount] = useState('')
+  const [summary, setSummary] = useState<BranchBalanceSummary | null>(null)
+  const [selectedBalance, setSelectedBalance] = useState<CashBalance | null>(null)
+  const [codeCheckBalance, setCodeCheckBalance] = useState<CashBalance | null>(null)
+  const [detailLoadingCurrency, setDetailLoadingCurrency] = useState<string | null>(null)
+  const [detailError, setDetailError] = useState<string | null>(null)
   const loadingRef = useRef(false)
 
   const loadData = useCallback(async () => {
@@ -68,10 +88,12 @@ export default function CashDeskPage() {
     loadingRef.current = true
     setLoading(true)
     try {
-      const [balances, session]: [CashBalance[], DailySession | null] = await Promise.all([
+      const [balances, session, branchSummary]: [CashBalance[], DailySession | null, BranchBalanceSummary | null] = await Promise.all([
         cashBalanceApi.list().catch(() => [] as CashBalance[]),
         dailySessionApi.getCurrent().catch(() => null),
+        cashBalanceApi.getSummary().catch(() => null),
       ])
+      setSummary(branchSummary)
 
       setStatus({
         isOpen: !!session && session.status === 'OPEN',
@@ -167,6 +189,35 @@ export default function CashDeskPage() {
     }
   }
 
+  const handleBalanceDetails = async (item: CashDeskBalanceItem) => {
+    setDetailLoadingCurrency(item.currency)
+    setDetailError(null)
+    try {
+      const [byId, byCode] = await Promise.all([
+        cashBalanceApi.getByCurrencyId(item.currencyId),
+        cashBalanceApi.getByCurrencyCode(item.currency),
+      ])
+      setSelectedBalance(byId)
+      setCodeCheckBalance(byCode)
+    } catch (error) {
+      logger.error('CashDeskPage', 'Pénzkészlet részlet betöltése sikertelen:', error)
+      setDetailError(`${item.currency} részletek betöltése sikertelen`)
+      toast.error('Hiba', 'Pénzkészlet részletek betöltése sikertelen')
+    } finally {
+      setDetailLoadingCurrency(null)
+    }
+  }
+
+  const fallbackHufBalance = status.balances.find((item) => item.currency === 'HUF')?.balance ?? 0
+  const codeCheckMatches =
+    !!selectedBalance
+    && !!codeCheckBalance
+    && selectedBalance.currencyId === codeCheckBalance.currencyId
+    && selectedBalance.currencyCode === codeCheckBalance.currencyCode
+  const selectedBalanceTitle = selectedBalance
+    ? `${selectedBalance.currencyCode} ${cashDeskLabels.detailSuffix}`
+    : ''
+
   return (
     <div className="space-y-2">
       {/* Compact header — title + actions in one row */}
@@ -226,9 +277,30 @@ export default function CashDeskPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <div className="form-panel p-2">
+          <div className="text-[10px] text-gray-500 uppercase">{cashDeskLabels.currencies}</div>
+          <div className="text-base font-bold text-gray-900">{summary?.totalCurrencies ?? status.balances.length}</div>
+        </div>
+        <div className="form-panel p-2">
+          <div className="text-[10px] text-gray-500 uppercase">{cashDeskLabels.hufStock}</div>
+          <div className="text-base font-bold text-gray-900">
+            {(summary?.hufBalance ?? fallbackHufBalance).toLocaleString('hu-HU')} {t('common.ft')}
+          </div>
+        </div>
+        <div className="form-panel p-2">
+          <div className="text-[10px] text-gray-500 uppercase">{cashDeskLabels.lowAlert}</div>
+          <div className="text-base font-bold text-orange-700">{summary?.lowBalanceAlerts ?? 0}</div>
+        </div>
+        <div className="form-panel p-2">
+          <div className="text-[10px] text-gray-500 uppercase">{cashDeskLabels.highAlert}</div>
+          <div className="text-base font-bold text-yellow-700">{summary?.highBalanceAlerts ?? 0}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
         {/* Cash Balances — compact table layout */}
-        <div className="col-span-2 form-panel p-0">
+        <div className="lg:col-span-2 form-panel p-0">
           <div className="flex justify-between items-center px-3 py-1.5 border-b border-gray-200">
             <h2 className="text-sm font-semibold text-gray-700">{t('cashdesk.penzkeszlet')}</h2>
             <div className="flex gap-1.5">
@@ -249,51 +321,68 @@ export default function CashDeskPage() {
             </div>
           </div>
 
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr className="text-[10px] uppercase text-gray-500">
-                <th className="px-3 py-1 text-left w-16">{t('common.currency')}</th>
-                <th className="px-2 py-1 text-right">{t('cashdesk.keszlet')}</th>
-                <th className="px-2 py-1 text-right text-gray-400 w-24">{t('cashdesk.minMax')}</th>
-                <th className="px-2 py-1 text-center w-10"><span className="sr-only">{t('common.status')}</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {status.balances.map((item, idx) => {
-                const balanceStatus = getBalanceStatus(item.balance, item.minBalance, item.maxBalance)
-                return (
-                  <tr
-                    key={item.currency}
-                    className={`border-b border-gray-100 last:border-0 ${
-                      balanceStatus === 'low' ? 'bg-orange-50' :
-                      balanceStatus === 'high' ? 'bg-yellow-50' :
-                      idx % 2 === 1 ? 'bg-gray-50/50' : ''
-                    }`}
-                  >
-                    <td className="px-3 py-1">
-                      <span className="font-mono font-bold text-sm">{item.currency}</span>
-                    </td>
-                    <td className="px-2 py-1 text-right">
-                      <span className="font-mono font-bold text-sm">
-                        {item.balance.toLocaleString('hu-HU')}
-                      </span>
-                    </td>
-                    <td className="px-2 py-1 text-right text-[10px] text-gray-400 font-mono">
-                      {item.minBalance.toLocaleString('hu-HU')} – {item.maxBalance.toLocaleString('hu-HU')}
-                    </td>
-                    <td className="px-2 py-1 text-center">
-                      {balanceStatus === 'low' && (
-                        <span title={t('cashdesk.alacsonyKeszlet')}><AlertTriangle size={12} className="text-orange-500 inline" /></span>
-                      )}
-                      {balanceStatus === 'high' && (
-                        <span title={t('cashdesk.magasKeszlet')}><AlertTriangle size={12} className="text-yellow-500 inline" /></span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr className="text-[10px] uppercase text-gray-500">
+                  <th className="px-3 py-1 text-left w-16">{t('common.currency')}</th>
+                  <th className="px-2 py-1 text-right">{t('cashdesk.keszlet')}</th>
+                  <th className="px-2 py-1 text-right text-gray-400 w-24">{t('cashdesk.minMax')}</th>
+                  <th className="px-2 py-1 text-center w-16"><span className="sr-only">{t('common.status')}</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {status.balances.map((item, idx) => {
+                  const balanceStatus = getBalanceStatus(item.balance, item.minBalance, item.maxBalance)
+                  return (
+                    <tr
+                      key={item.currency}
+                      className={`border-b border-gray-100 last:border-0 ${
+                        balanceStatus === 'low' ? 'bg-orange-50' :
+                        balanceStatus === 'high' ? 'bg-yellow-50' :
+                        idx % 2 === 1 ? 'bg-gray-50/50' : ''
+                      }`}
+                    >
+                      <td className="px-3 py-1">
+                        <span className="font-mono font-bold text-sm">{item.currency}</span>
+                      </td>
+                      <td className="px-2 py-1 text-right">
+                        <span className="font-mono font-bold text-sm">
+                          {item.balance.toLocaleString('hu-HU')}
+                        </span>
+                      </td>
+                      <td className="px-2 py-1 text-right text-[10px] text-gray-400 font-mono">
+                        {item.minBalance.toLocaleString('hu-HU')} - {item.maxBalance.toLocaleString('hu-HU')}
+                      </td>
+                      <td className="px-2 py-1 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {balanceStatus === 'low' && (
+                            <span title={t('cashdesk.alacsonyKeszlet')}><AlertTriangle size={12} className="text-orange-500 inline" /></span>
+                          )}
+                          {balanceStatus === 'high' && (
+                            <span title={t('cashdesk.magasKeszlet')}><AlertTriangle size={12} className="text-yellow-500 inline" /></span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => void handleBalanceDetails(item)}
+                            className="inline-flex h-5 w-5 items-center justify-center rounded border border-gray-200 text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                            title={`${item.currency} részletek`}
+                            aria-label={`${item.currency} részletek`}
+                            disabled={detailLoadingCurrency === item.currency}
+                          >
+                            <Info size={12} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          {detailError && (
+            <div className="px-3 py-2 text-xs text-red-700 bg-red-50 border-t border-red-100">{detailError}</div>
+          )}
         </div>
 
         {/* Today's Stats — compact */}
@@ -325,6 +414,59 @@ export default function CashDeskPage() {
           </div>
         </div>
       </div>
+
+      {selectedBalance && (
+        <div className="form-panel p-2">
+          <div className="flex items-start justify-between gap-2 border-b border-gray-200 pb-1.5">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-700">
+                {selectedBalanceTitle}
+              </h2>
+              <div className="text-[11px] text-gray-500">
+                {selectedBalance.currencyName ?? 'Valuta'} - {selectedBalance.branchName ?? 'Aktuális pénztár'}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedBalance(null)
+                setCodeCheckBalance(null)
+              }}
+              className="inline-flex h-7 w-7 items-center justify-center rounded border border-gray-200 text-gray-600 hover:bg-gray-50"
+              title="Részletek bezárása"
+              aria-label="Részletek bezárása"
+            >
+              <X size={14} />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 pt-2 text-xs">
+            <div>
+              <div className="text-gray-500">{cashDeskLabels.current}</div>
+              <div className="font-mono font-bold text-gray-900">{selectedBalance.currentBalance.toLocaleString('hu-HU')}</div>
+            </div>
+            <div>
+              <div className="text-gray-500">{cashDeskLabels.opening}</div>
+              <div className="font-mono font-bold text-gray-900">{selectedBalance.openingBalance.toLocaleString('hu-HU')}</div>
+            </div>
+            <div>
+              <div className="text-gray-500">{cashDeskLabels.dailyChange}</div>
+              <div className="font-mono font-bold text-gray-900">{(selectedBalance.dailyChange ?? 0).toLocaleString('hu-HU')}</div>
+            </div>
+            <div>
+              <div className="text-gray-500">{cashDeskLabels.limit}</div>
+              <div className="font-mono font-bold text-gray-900">
+                {(selectedBalance.minBalance ?? 0).toLocaleString('hu-HU')} - {(selectedBalance.maxBalance ?? 0).toLocaleString('hu-HU')}
+              </div>
+            </div>
+            <div>
+              <div className="text-gray-500">{cashDeskLabels.codeCheck}</div>
+              <div className={`font-semibold ${codeCheckMatches ? 'text-green-700' : 'text-orange-700'}`}>
+                {codeCheckMatches ? cashDeskLabels.codeCheckOk : cashDeskLabels.codeCheckMismatch}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Denomination Panel — compact */}
       <div className="form-panel p-2">
