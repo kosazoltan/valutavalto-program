@@ -1181,12 +1181,6 @@ export const supervisorPinApi = {
   ).data,
 }
 
-export const workerPasswordApi = {
-  changeOwn: async (workerId: number, oldPassword: string, newPassword: string): Promise<void> => {
-    await api.post(`/workers/${workerId}/change-password`, { oldPassword, newPassword })
-  },
-}
-
 export interface MfaAdminDisableResponse {
   workerId: number
   message: string

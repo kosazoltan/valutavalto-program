@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { adminCompanyApi, branchApi, cameraExportApi, commissionCalculationApi, documentScannerApi, handlingFeeConfigApi, handlingFeeTransactionApi, mfaAdminApi, navIntegrationApi, notificationApi, ownCompanyApi, posTerminalApi, supervisorPinApi, systemParameterApi, turnoverApi, workerCommissionApi, workerPasswordApi } from './settings'
+import { adminCompanyApi, branchApi, cameraExportApi, commissionCalculationApi, documentScannerApi, handlingFeeConfigApi, handlingFeeTransactionApi, mfaAdminApi, navIntegrationApi, notificationApi, ownCompanyApi, posTerminalApi, supervisorPinApi, systemParameterApi, turnoverApi, workerCommissionApi } from './settings'
 import { api } from './client'
 
 vi.mock('./client', () => {
@@ -407,23 +407,6 @@ describe('supervisorPinApi backend contract', () => {
       currentPassword: 'current-password',
     })
     expect(result.ok).toBe(true)
-  })
-})
-
-describe('workerPasswordApi backend contract', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('changeOwn calls POST /workers/{id}/change-password with old and new password', async () => {
-    mockApi.post.mockResolvedValue({ data: undefined })
-
-    await workerPasswordApi.changeOwn(77, 'old-password', 'NewPass123')
-
-    expect(mockApi.post).toHaveBeenCalledWith('/workers/77/change-password', {
-      oldPassword: 'old-password',
-      newPassword: 'NewPass123',
-    })
   })
 })
 
