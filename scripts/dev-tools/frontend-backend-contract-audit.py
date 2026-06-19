@@ -1066,6 +1066,11 @@ def classify_backend_reference(ep: Endpoint) -> BackendReferenceClass:
             "workflow-action/financial-admin",
             "State-changing NAV fiscal workflow action; do not expose without explicit role/approval flow and contract evidence.",
         )
+    if ep.method == "POST" and path == "/closing/monthly/{branchId}/{yearMonth}":
+        return BackendReferenceClass(
+            "workflow-action/financial-admin",
+            "State-changing monthly close/archive workflow; the routed MonthlyClosingPage currently reads reports and HRK flows, while exposing canonical monthly close requires explicit role/approval flow and financial contract evidence.",
+        )
     if path.endswith("/callback"):
         return BackendReferenceClass("integration-or-callback", "External OAuth/webhook callback endpoint; normally reached by third-party redirect, not by frontend REST.")
     if path.startswith("/auth/"):
