@@ -97,10 +97,12 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
      * Értéktár→pénztár átvett (RECEIVED) lehívások az adott pénztárakra, időszakra.
      * Az átértékelés-allokáció „lehívott forgalom" hajtóereje (legacy puffer→pénztár átadás).
      */
-    @Query("SELECT t FROM Transfer t WHERE t.toBranch.id IN :toBranchIds " +
+    @Query("SELECT t FROM Transfer t WHERE (t.fromBranch.company.id = :companyId OR t.toBranch.company.id = :companyId) " +
+           "AND t.toBranch.id IN :toBranchIds " +
            "AND t.fromBranch.isVault = true AND t.status = hu.puzzleir.valuta.entity.Transfer$TransferStatus.RECEIVED " +
            "AND t.transferDate BETWEEN :from AND :to")
-    List<Transfer> findVaultDrawsToCashiers(@Param("toBranchIds") List<UUID> toBranchIds,
+    List<Transfer> findVaultDrawsToCashiers(@Param("companyId") UUID companyId,
+                                            @Param("toBranchIds") List<UUID> toBranchIds,
                                             @Param("from") LocalDate from, @Param("to") LocalDate to);
 
     /**

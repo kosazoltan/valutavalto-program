@@ -26,13 +26,4 @@ public interface DailyReportRepository extends JpaRepository<DailyReport, Long> 
            "ORDER BY r.branch.name")
     List<DailyReport> findByCompanyIdAndReportDate(@Param("companyId") UUID companyId, @Param("date") LocalDate date);
 
-    @Query("SELECT r FROM DailyReport r " +
-           "WHERE r.reportDate = :date AND r.submitted = true " +
-           "ORDER BY r.branch.name")
-    List<DailyReport> findSubmittedByDate(@Param("date") LocalDate date);
-
-    @Query("SELECT r FROM DailyReport r " +
-           "WHERE r.reportDate = :date AND r.submitted = false " +
-           "ORDER BY r.branch.name")
-    List<DailyReport> findUnsubmittedByDate(@Param("date") LocalDate date);
 }

@@ -310,7 +310,10 @@ public class WorkerService {
             return List.of();
         }
         List<Long> workerIds = workers.stream().map(Worker::getId).collect(Collectors.toList());
-        Map<Long, List<String>> roleCodesByWorker = roleAssignmentRepository.findByWorkerIdIn(workerIds).stream()
+        UUID companyId = workers.get(0).getCompany().getId();
+        Map<Long, List<String>> roleCodesByWorker = roleAssignmentRepository
+                .findByCompanyIdAndWorkerIdIn(companyId, workerIds)
+                .stream()
                 .collect(Collectors.groupingBy(
                         wra -> wra.getWorker().getId(),
                         Collectors.mapping(wra -> wra.getRoleDef().getCode(), Collectors.toList())));

@@ -35,8 +35,9 @@ public interface HandlingFeeTransactionRepository extends JpaRepository<Handling
         @Param("to") LocalDateTime to);
 
     @Query("SELECT t.id AS transactionId, t.paymentMethod AS paymentMethod " +
-           "FROM Transaction t WHERE t.id IN :transactionIds")
-    List<TransactionPaymentMethodProjection> findPaymentMethodsByTransactionIds(
+           "FROM Transaction t WHERE t.branch.company.id = :companyId AND t.id IN :transactionIds")
+    List<TransactionPaymentMethodProjection> findPaymentMethodsByCompanyIdAndTransactionIds(
+        @Param("companyId") UUID companyId,
         @Param("transactionIds") List<Long> transactionIds);
 
     interface TransactionPaymentMethodProjection {

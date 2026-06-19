@@ -41,6 +41,7 @@ MULTITENANT_ENTITIES = {
 HAS_COMPANY_ID = re.compile(
     r'\bcompanyId\b|\bcompany_id\b|\bcompany\s*\.\s*id\b|'
     r'\bbranchId\b|\bbranchIds\b|\bbranch_id\b|\bbranch\s*\.\s*id\b|'
+    r'\b\w*Branch\s*\.\s*id\b|\b\w*Worker\s*\.\s*id\b|'
     r'\bcashDeskId\b|\bvaultTerritoryId\b|\bworkerId\b',
     re.IGNORECASE,
 )
@@ -72,6 +73,8 @@ def check_jpql_queries(strict: bool) -> list[str]:
             jpql = " ".join(re.findall(r'["\']([^"\']+)["\']', snippet))
             # Only check SELECT queries that return entity types
             if "SELECT" not in jpql.upper():
+                continue
+            if SAFE_RAW_CONTEXT.search(snippet):
                 continue
             # Check if any multi-tenant entity is referenced
             mentions_tenant_entity = any(

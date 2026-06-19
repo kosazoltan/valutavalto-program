@@ -30,6 +30,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -38,7 +39,7 @@ import static org.mockito.Mockito.when;
 /**
  * FK-026 — a Dolgozói Törzs Adatbázis lista backend-bővítésének tesztjei.
  * Lefedi: region + roleCodes feltöltése (FR-1, FR-2), több hozzárendelés,
- * üres roleCodes, és az N+1 elkerülése (FR-3: findByWorkerIdIn pontosan egyszer).
+ * üres roleCodes, és az N+1 elkerülése (FR-3: findByCompanyIdAndWorkerIdIn pontosan egyszer).
  */
 @ExtendWith(MockitoExtension.class)
 class WorkerServiceDolgozoiTorzsTest {
@@ -92,7 +93,7 @@ class WorkerServiceDolgozoiTorzsTest {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             when(workerRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of(w1));
-            when(roleAssignmentRepository.findByWorkerIdIn(any()))
+            when(roleAssignmentRepository.findByCompanyIdAndWorkerIdIn(any(), any()))
                     .thenReturn(List.of(assignment(w1, "teruleti_vezeto"), assignment(w1, "ertektar")));
 
             List<WorkerDto> result = workerService.findAllByCompany();
@@ -111,7 +112,7 @@ class WorkerServiceDolgozoiTorzsTest {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             when(workerRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of(w1));
-            when(roleAssignmentRepository.findByWorkerIdIn(any()))
+            when(roleAssignmentRepository.findByCompanyIdAndWorkerIdIn(any(), any()))
                     .thenReturn(List.of(assignment(w1, "penztar"), assignment(w1, "ertektar")));
 
             List<WorkerDto> result = workerService.findAllByCompany();
@@ -127,7 +128,7 @@ class WorkerServiceDolgozoiTorzsTest {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             when(workerRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of(w1));
-            when(roleAssignmentRepository.findByWorkerIdIn(any())).thenReturn(List.of());
+            when(roleAssignmentRepository.findByCompanyIdAndWorkerIdIn(any(), any())).thenReturn(List.of());
 
             List<WorkerDto> result = workerService.findAllByCompany();
 
@@ -136,7 +137,7 @@ class WorkerServiceDolgozoiTorzsTest {
     }
 
     @Test
-    @DisplayName("FR-3: a roleCodes feltöltés EGY batch-lekérdezéssel történik (findByWorkerIdIn 1x)")
+    @DisplayName("FR-3: a roleCodes feltöltés EGY batch-lekérdezéssel történik (findByCompanyIdAndWorkerIdIn 1x)")
     void findAllByCompany_noNPlusOne() {
         List<Worker> workers = List.of(
                 worker(1L, "W1", "Egy", "SZEGED"),
@@ -145,12 +146,12 @@ class WorkerServiceDolgozoiTorzsTest {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             when(workerRepository.findByCompanyId(COMPANY_ID)).thenReturn(workers);
-            when(roleAssignmentRepository.findByWorkerIdIn(any())).thenReturn(List.of());
+            when(roleAssignmentRepository.findByCompanyIdAndWorkerIdIn(any(), any())).thenReturn(List.of());
 
             workerService.findAllByCompany();
 
             // FR-3: függetlenül a worker-ek számától, pontosan EGY batch-hívás.
-            verify(roleAssignmentRepository, times(1)).findByWorkerIdIn(any());
+            verify(roleAssignmentRepository, times(1)).findByCompanyIdAndWorkerIdIn(eq(COMPANY_ID), any());
         }
     }
 
@@ -164,7 +165,7 @@ class WorkerServiceDolgozoiTorzsTest {
             List<WorkerDto> result = workerService.findAllByCompany();
 
             assertThat(result).isEmpty();
-            verify(roleAssignmentRepository, times(0)).findByWorkerIdIn(any());
+            verify(roleAssignmentRepository, times(0)).findByCompanyIdAndWorkerIdIn(any(), any());
         }
     }
 }

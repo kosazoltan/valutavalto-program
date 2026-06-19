@@ -232,7 +232,7 @@ class HandlingFeeTransactionServiceTest {
 
         when(repository.findByBranchAndPeriod(eq(branchId), any(), any()))
                 .thenReturn(List.of(cashFee, cardFee));
-        when(repository.findPaymentMethodsByTransactionIds(any()))
+        when(repository.findPaymentMethodsByCompanyIdAndTransactionIds(any(), any()))
                 .thenReturn(List.of(
                         paymentMethodProjection(10L, PaymentMethod.CASH),
                         paymentMethodProjection(11L, PaymentMethod.CARD)));

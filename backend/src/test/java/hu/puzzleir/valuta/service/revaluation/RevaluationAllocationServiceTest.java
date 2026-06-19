@@ -87,7 +87,7 @@ class RevaluationAllocationServiceTest {
             when(profitLogRepository.findByBranchIdAndCreatedAtBetween(eq(B), any(), any()))
                     .thenReturn(List.of(pl(B, "EUR", "120000", "40000")));  // árrés 3
 
-            when(transferRepository.findVaultDrawsToCashiers(anyList(), any(), any()))
+            when(transferRepository.findVaultDrawsToCashiers(eq(COMPANY), anyList(), any(), any()))
                     .thenReturn(List.of(draw(A, "60000"), draw(B, "40000")));
 
             TerritoryReconciliationDto dto = service.reconcileTerritory(

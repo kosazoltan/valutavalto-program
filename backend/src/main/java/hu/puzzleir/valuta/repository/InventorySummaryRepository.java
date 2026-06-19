@@ -24,8 +24,4 @@ public interface InventorySummaryRepository extends JpaRepository<InventorySumma
     Optional<InventorySummary> findByBranchIdAndCurrencyIdAndSummaryDate(
             UUID branchId, Long currencyId, LocalDate summaryDate);
 
-    @Query("SELECT s FROM InventorySummary s " +
-           "WHERE s.summaryDate = :date " +
-           "ORDER BY s.branch.name, s.currency.displayOrder")
-    List<InventorySummary> findAllBySummaryDate(@Param("date") LocalDate date);
 }

@@ -162,7 +162,8 @@ public class HandlingFeeTransactionService {
         if (transactionId == null) {
             return null;
         }
-        return repository.findPaymentMethodsByTransactionIds(List.of(transactionId)).stream()
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return repository.findPaymentMethodsByCompanyIdAndTransactionIds(companyId, List.of(transactionId)).stream()
             .findFirst()
             .map(HandlingFeeTransactionRepository.TransactionPaymentMethodProjection::getPaymentMethod)
             .map(Enum::name)
@@ -178,7 +179,8 @@ public class HandlingFeeTransactionService {
         if (transactionIds.isEmpty()) {
             return Map.of();
         }
-        return repository.findPaymentMethodsByTransactionIds(transactionIds).stream()
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return repository.findPaymentMethodsByCompanyIdAndTransactionIds(companyId, transactionIds).stream()
             .filter(projection -> projection.getPaymentMethod() != null)
             .collect(Collectors.toMap(
                 HandlingFeeTransactionRepository.TransactionPaymentMethodProjection::getTransactionId,

@@ -99,7 +99,7 @@ public class RevaluationAllocationService {
         // drawn[branch][currency]
         Map<UUID, Map<String, BigDecimal>> drawn = new HashMap<>();
         if (!cashierIds.isEmpty()) {
-            for (Transfer t : transferRepository.findVaultDrawsToCashiers(cashierIds, from, to)) {
+            for (Transfer t : transferRepository.findVaultDrawsToCashiers(companyId, cashierIds, from, to)) {
                 String c = t.getCurrency() != null ? t.getCurrency().getCode() : null;
                 if (c == null) {
                     continue;

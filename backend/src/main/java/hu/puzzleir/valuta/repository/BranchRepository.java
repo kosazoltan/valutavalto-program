@@ -95,8 +95,7 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     /**
      * Szülő alatti fiókok (közvetlen gyermekek)
      */
-    @Query("SELECT b FROM Branch b WHERE b.parentBranch.id = :parentId")
-    List<Branch> findByParentBranchId(@Param("parentId") UUID parentId);
+    List<Branch> findByParentBranchId(UUID parentId);
 
     /**
      * Gyökér fiókok (nincs szülő) — GLOBALIS.

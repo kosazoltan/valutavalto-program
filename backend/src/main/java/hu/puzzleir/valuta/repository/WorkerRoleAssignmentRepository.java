@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface WorkerRoleAssignmentRepository extends JpaRepository<WorkerRoleAssignment, Long> {
@@ -22,8 +23,10 @@ public interface WorkerRoleAssignmentRepository extends JpaRepository<WorkerRole
      * asszociáció sem okoz N+1-et (FR-3).
      */
     @Query("SELECT wra FROM WorkerRoleAssignment wra JOIN FETCH wra.roleDef "
-            + "WHERE wra.worker.id IN :workerIds")
-    List<WorkerRoleAssignment> findByWorkerIdIn(@Param("workerIds") Collection<Long> workerIds);
+            + "WHERE wra.worker.company.id = :companyId AND wra.worker.id IN :workerIds")
+    List<WorkerRoleAssignment> findByCompanyIdAndWorkerIdIn(
+            @Param("companyId") UUID companyId,
+            @Param("workerIds") Collection<Long> workerIds);
 
     Optional<WorkerRoleAssignment> findByWorkerIdAndRoleDefCode(Long workerId, String roleCode);
 
