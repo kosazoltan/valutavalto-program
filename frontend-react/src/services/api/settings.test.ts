@@ -129,6 +129,20 @@ describe('branchApi backend contract', () => {
     expect(mockApi.get).toHaveBeenCalledWith('/branches/code/BR027')
   })
 
+  it('listRoots calls BranchController root branches endpoint', async () => {
+    await branchApi.listRoots()
+
+    expect(mockApi.get).toHaveBeenCalledWith('/branches/roots')
+  })
+
+  it('listVaultOnly calls BranchController vault-only endpoint with activeOnly', async () => {
+    await branchApi.listVaultOnly(false)
+
+    expect(mockApi.get).toHaveBeenCalledWith('/branches/vault-only', {
+      params: { activeOnly: false },
+    })
+  })
+
   it('create calls full BranchController create endpoint', async () => {
     const payload = {
       code: 'BR099',

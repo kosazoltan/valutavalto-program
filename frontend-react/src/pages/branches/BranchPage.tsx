@@ -56,6 +56,22 @@ interface AdminBranchStats {
   syncStatus?: string
 }
 
+interface BranchBackendSummary {
+  roots: Branch[]
+  vaults: Branch[]
+  territorialCashiers: Branch[]
+  peerVaults: Branch[]
+  fixedCounterparties: Branch[]
+}
+
+const EMPTY_BRANCH_BACKEND_SUMMARY: BranchBackendSummary = {
+  roots: [],
+  vaults: [],
+  territorialCashiers: [],
+  peerVaults: [],
+  fixedCounterparties: [],
+}
+
 /** FK-020: szolgáltatás-jelölő badge a lista soraiban. Aktív = színes, inaktív = szürke. */
 function ServiceBadge({ label, active }: { label: string; active: boolean }) {
   return (
@@ -83,6 +99,7 @@ export default function BranchPage() {
   const [exactCode, setExactCode] = useState('')
   const [exactCodeResult, setExactCodeResult] = useState<Branch | null>(null)
   const [exactCodeLoading, setExactCodeLoading] = useState(false)
+  const [backendSummary, setBackendSummary] = useState<BranchBackendSummary>(EMPTY_BRANCH_BACKEND_SUMMARY)
   // FK-020: területi szűrő (region) + inaktívak megjelenítése (alapból csak aktív).
   const [territoryFilter, setTerritoryFilter] = useState('')
   const [showInactive, setShowInactive] = useState(false)
@@ -121,9 +138,12 @@ export default function BranchPage() {
       setError(null)
       // FK-020 / FK-016: a Központi Munkaállomás (clientType=CENTRAL) kizárja a virtuális
       // partnereket -> a 65 pénztár + 8 értéktár (73 valós iroda) jelenik meg.
-      const [branchesResult, adminStatsResult] = await Promise.allSettled([
+      const [branchesResult, adminStatsResult, rootsResult, vaultsResult, vaultCounterpartiesResult] = await Promise.allSettled([
         api.get('/branches', { params: { clientType: 'CENTRAL' } }),
         api.get<AdminBranchStats[]>('/admin/branches'),
+        branchApi.listRoots(),
+        branchApi.listVaultOnly(),
+        branchApi.listVaultCounterparties(),
       ])
 
       if (branchesResult.status === 'rejected') {
@@ -138,6 +158,26 @@ export default function BranchPage() {
       if (adminStatsResult.status === 'rejected') {
         logger.error('BranchPage', 'admin branch stats load error', adminStatsResult.reason)
       }
+      if (rootsResult.status === 'rejected') {
+        logger.error('BranchPage', 'root branch list load error', rootsResult.reason)
+      }
+      if (vaultsResult.status === 'rejected') {
+        logger.error('BranchPage', 'vault branch list load error', vaultsResult.reason)
+      }
+      if (vaultCounterpartiesResult.status === 'rejected') {
+        logger.error('BranchPage', 'vault counterparties load error', vaultCounterpartiesResult.reason)
+      }
+
+      const vaultCounterparties = vaultCounterpartiesResult.status === 'fulfilled'
+        ? vaultCounterpartiesResult.value
+        : EMPTY_BRANCH_BACKEND_SUMMARY
+      setBackendSummary({
+        roots: rootsResult.status === 'fulfilled' ? safeArray<Branch>(rootsResult.value) : [],
+        vaults: vaultsResult.status === 'fulfilled' ? safeArray<Branch>(vaultsResult.value) : [],
+        territorialCashiers: safeArray<Branch>(vaultCounterparties.territorialCashiers),
+        peerVaults: safeArray<Branch>(vaultCounterparties.peerVaults),
+        fixedCounterparties: safeArray<Branch>(vaultCounterparties.fixedCounterparties),
+      })
 
       setBranches(safeArray<Branch>(branchesResult.value.data).map((branch) => ({
         ...branch,
@@ -146,6 +186,7 @@ export default function BranchPage() {
     } catch (err) {
       logger.error('BranchPage', 'load error', err)
       setError(getErrorMessage(err))
+      setBackendSummary(EMPTY_BRANCH_BACKEND_SUMMARY)
     } finally {
       setLoading(false)
     }
@@ -218,6 +259,11 @@ export default function BranchPage() {
       </div>
     </div>
   )
+
+  const counterpartiesCount =
+    backendSummary.territorialCashiers.length
+    + backendSummary.peerVaults.length
+    + backendSummary.fixedCounterparties.length
 
   if (loading) {
     return (
@@ -316,6 +362,29 @@ export default function BranchPage() {
             </div>
           </div>
         )}
+        <div
+          className="mt-3 grid gap-2 text-sm sm:grid-cols-3"
+          data-testid="branch-backend-summary"
+        >
+          <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2">
+            <div className="text-xs font-semibold uppercase text-gray-500">{t('branches.gyokerIrodak')}</div>
+            <div className="text-lg font-bold text-gray-900" data-testid="branch-roots-count">
+              {backendSummary.roots.length}
+            </div>
+          </div>
+          <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2">
+            <div className="text-xs font-semibold uppercase text-gray-500">{t('branches.ertektarak')}</div>
+            <div className="text-lg font-bold text-gray-900" data-testid="branch-vaults-count">
+              {backendSummary.vaults.length}
+            </div>
+          </div>
+          <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2">
+            <div className="text-xs font-semibold uppercase text-gray-500">{t('branches.ertektariCelpartnerek')}</div>
+            <div className="text-lg font-bold text-gray-900" data-testid="branch-counterparties-count">
+              {counterpartiesCount}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="form-panel hidden md:block">

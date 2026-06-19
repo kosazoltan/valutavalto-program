@@ -134,9 +134,12 @@
   },
   "branches": {
     "NincsGyoker": "— Nincs (gyökér) —",
+    "ertektarak": "Értéktárak",
     "ertektar": "Értéktár",
+    "ertektariCelpartnerek": "Értéktári célpartnerek",
     "fiokcsoportok": "Fiókcsoportok",
     "fiokok": "Fiókok",
+    "gyokerIrodak": "Gyökér irodák",
     "nincsFiokcsoport": "Nincs fiókcsoport",
     "pontosKodTalalat": "Pontos kód találat",
     "szuloCsoport": "Szülő csoport",

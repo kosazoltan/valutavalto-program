@@ -85,6 +85,34 @@ async function mockApis(page: Page) {
       })
     }
 
+    if (path === '/api/v1/branches/roots' && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ ...branch, id: 'root-1', code: 'ROOT', name: 'Gyökér iroda' }]),
+      })
+    }
+
+    if (path === '/api/v1/branches/vault-only' && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ ...branch, id: 'vault-1', code: 'VAULT1', name: 'Szeged Értéktár', isVault: true }]),
+      })
+    }
+
+    if (path === '/api/v1/branches/vault-counterparties' && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          territorialCashiers: [{ ...branch, id: 'cashier-1' }],
+          peerVaults: [{ ...branch, id: 'vault-2', code: 'VAULT2', name: 'Másik értéktár', isVault: true }],
+          fixedCounterparties: [{ ...branch, id: 'mnb-1', code: 'MNB', name: 'MNB' }],
+        }),
+      })
+    }
+
     if (path.endsWith('/branches') && method === 'GET') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([branch]) })
     }
@@ -119,6 +147,10 @@ test('pénztár törzs mobil nézetben backend kód szerinti keresést használ'
   await page.goto('/admin/branches', { waitUntil: 'domcontentloaded' })
   await expect(page).toHaveURL(/\/admin\/branches$/, { timeout: 15000 })
   await expect(page.getByTestId('branch-mobile-card').getByText('Szeged Tesco')).toBeVisible()
+  await expect(page.getByTestId('branch-backend-summary')).toContainText('Gyökér irodák')
+  await expect(page.getByTestId('branch-roots-count')).toContainText('1')
+  await expect(page.getByTestId('branch-vaults-count')).toContainText('1')
+  await expect(page.getByTestId('branch-counterparties-count')).toContainText('3')
 
   const codeRequest = page.waitForRequest(request =>
     request.method() === 'GET'

@@ -87,6 +87,12 @@ export interface BranchCreateRequest {
   closedSunday?: boolean
 }
 
+export interface VaultCounterpartiesResponse {
+  territorialCashiers: BranchInfo[]
+  peerVaults: BranchInfo[]
+  fixedCounterparties: BranchInfo[]
+}
+
 export const branchApi = {
   list: async (): Promise<BranchInfo[]> => {
     const response = await api.get<BranchInfo[]>('/branches')
@@ -94,6 +100,14 @@ export const branchApi = {
   },
   listActive: async (): Promise<BranchInfo[]> => {
     const response = await api.get<BranchInfo[]>('/branches?activeOnly=true')
+    return response.data
+  },
+  listRoots: async (): Promise<BranchInfo[]> => {
+    const response = await api.get<BranchInfo[]>('/branches/roots')
+    return response.data
+  },
+  listVaultOnly: async (activeOnly = true): Promise<BranchInfo[]> => {
+    const response = await api.get<BranchInfo[]>('/branches/vault-only', { params: { activeOnly } })
     return response.data
   },
   // FK-005/B4: az aktuális felhasználó TERÜLETILEG illetékes aktív pénztárai.
@@ -122,16 +136,8 @@ export const branchApi = {
     const response = await api.get<BranchInfo[]>('/branches/cashier-shipment-targets')
     return response.data
   },
-  listVaultCounterparties: async (): Promise<{
-    territorialCashiers: BranchInfo[]
-    peerVaults: BranchInfo[]
-    fixedCounterparties: BranchInfo[]
-  }> => {
-    const response = await api.get<{
-      territorialCashiers: BranchInfo[]
-      peerVaults: BranchInfo[]
-      fixedCounterparties: BranchInfo[]
-    }>('/branches/vault-counterparties')
+  listVaultCounterparties: async (): Promise<VaultCounterpartiesResponse> => {
+    const response = await api.get<VaultCounterpartiesResponse>('/branches/vault-counterparties')
     return response.data
   },
   getById: async (id: string): Promise<BranchInfo> => {

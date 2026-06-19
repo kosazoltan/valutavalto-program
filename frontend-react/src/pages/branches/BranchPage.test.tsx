@@ -10,6 +10,9 @@ import BranchPage from './BranchPage'
 
 const mockGet = vi.fn()
 const mockBranchGetByCode = vi.fn()
+const mockBranchListRoots = vi.fn()
+const mockBranchListVaultOnly = vi.fn()
+const mockBranchListVaultCounterparties = vi.fn()
 
 vi.mock('../../services/api/index', () => ({
   api: {
@@ -21,6 +24,9 @@ vi.mock('../../services/api/index', () => ({
   },
   branchApi: {
     getByCode: (...args: unknown[]) => mockBranchGetByCode(...args),
+    listRoots: (...args: unknown[]) => mockBranchListRoots(...args),
+    listVaultOnly: (...args: unknown[]) => mockBranchListVaultOnly(...args),
+    listVaultCounterparties: (...args: unknown[]) => mockBranchListVaultCounterparties(...args),
   },
 }))
 
@@ -59,12 +65,22 @@ describe('BranchPage — FK-020 Pénztár Törzs Adatbázis lista', () => {
   beforeEach(() => {
     mockGet.mockReset()
     mockBranchGetByCode.mockReset()
+    mockBranchListRoots.mockReset()
+    mockBranchListVaultOnly.mockReset()
+    mockBranchListVaultCounterparties.mockReset()
     mockBranchGetByCode.mockResolvedValue({
       id: '1',
       code: 'BR027',
       name: 'Backend kód találat',
       region: 'SZEGED',
       isActive: true,
+    })
+    mockBranchListRoots.mockResolvedValue([{ id: 'root-1', code: 'ROOT', name: 'Gyökér iroda', isActive: true }])
+    mockBranchListVaultOnly.mockResolvedValue([{ id: 'vault-1', code: 'VAULT', name: 'Értéktár', isActive: true, isVault: true }])
+    mockBranchListVaultCounterparties.mockResolvedValue({
+      territorialCashiers: [{ id: 'cashier-1', code: 'BR027', name: 'Szeged Tesco', isActive: true }],
+      peerVaults: [{ id: 'vault-2', code: 'VAULT2', name: 'Másik értéktár', isActive: true, isVault: true }],
+      fixedCounterparties: [{ id: 'mnb-1', code: 'MNB', name: 'MNB', isActive: true }],
     })
     mockApi()
   })
@@ -93,6 +109,21 @@ describe('BranchPage — FK-020 Pénztár Törzs Adatbázis lista', () => {
     expect(mockGet).toHaveBeenCalledWith('/admin/branches')
     expect(screen.getAllByText('5 fő').length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Sync:/).length).toBeGreaterThan(0)
+  })
+
+  it('a backend branch összefoglaló listákat lekéri és számlálóként megjeleníti', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getAllByText('Szeged Tesco').length).toBeGreaterThan(0))
+
+    expect(mockBranchListRoots).toHaveBeenCalledWith()
+    expect(mockBranchListVaultOnly).toHaveBeenCalledWith()
+    expect(mockBranchListVaultCounterparties).toHaveBeenCalledWith()
+    expect(screen.getByTestId('branch-backend-summary')).toHaveTextContent('Gyökér irodák')
+    expect(screen.getByTestId('branch-backend-summary')).toHaveTextContent('Értéktárak')
+    expect(screen.getByTestId('branch-backend-summary')).toHaveTextContent('Értéktári célpartnerek')
+    expect(screen.getByTestId('branch-roots-count')).toHaveTextContent('1')
+    expect(screen.getByTestId('branch-vaults-count')).toHaveTextContent('1')
+    expect(screen.getByTestId('branch-counterparties-count')).toHaveTextContent('3')
   })
 
   it('FR-3: szabad szöveges keresés névre/címre szűr', async () => {
