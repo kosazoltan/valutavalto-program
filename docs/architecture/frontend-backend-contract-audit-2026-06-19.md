@@ -62,11 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1028
-frontend production UI/app referenced REST calls: 880
+frontend production UI/app referenced REST calls: 882
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
-backend endpoints not referenced by production UI/app calls: 145
+backend endpoints not referenced by production UI/app calls: 143
 ```
 
 Route/page audit result:
@@ -151,11 +151,17 @@ proven used by UI/app" follow-up work.
 - Wired the bank order list details action to `GET /bank-orders/{id}` so the
   routed bank order page loads the backend detail representation before showing
   the details panel.
+- Wired the BankTransactions bank master panel to `POST /banks` and
+  `DELETE /banks/{id}` so the existing bank selection master data can be managed
+  from the routed treasury bank workflow.
+- Classified `GET /branch-groups/active` as an alternate read helper after
+  verifying that the routed BranchGroupPage uses `/branch-groups` and
+  `/branch-groups/roots` for the management view.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 145 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 145 confirmed UX
+The stricter audit currently reports 143 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 143 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens.
@@ -163,9 +169,9 @@ valid library surface rather than visible screens.
 Current summary:
 
 ```text
-ui-candidate/list-or-view        45
+ui-candidate/list-or-view        44
 ui-candidate/detail              28
-ui-candidate/mutation            27
+ui-candidate/mutation            25
 integration-or-device            15
 backend-only/legacy-compat       8
 workflow-action                  7
@@ -176,6 +182,7 @@ integration-or-callback          2
 ui-candidate/financial-contract-required 2
 workflow-action/financial-admin  2
 backend-only/alternate-admin-api 1
+backend-only/alternate-read-api  1
 backend-only/legacy-alias        1
 ```
 

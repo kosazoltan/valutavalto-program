@@ -923,6 +923,11 @@ def classify_backend_reference(ep: Endpoint) -> BackendReferenceClass:
             "backend-only/legacy-compat",
             "AuditLogController marks this as backward-compatible; the routed AuditLogPage uses /audit/search, /audit/branch, /audit/trail and /audit/export.",
         )
+    if ep.method == "GET" and path == "/branch-groups/active":
+        return BackendReferenceClass(
+            "backend-only/alternate-read-api",
+            "Branch group active-list helper; the routed BranchGroupPage uses /branch-groups and /branch-groups/roots for the management view.",
+        )
     if ep.method == "POST" and path == "/authorized-representatives":
         return BackendReferenceClass(
             "backend-only/legacy-compat",

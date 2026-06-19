@@ -106,6 +106,18 @@ def test_contract_audit_classifies_alternate_admin_branch_update(contract_module
     assert classification.category == "backend-only/alternate-admin-api"
 
 
+def test_contract_audit_classifies_alternate_branch_group_active_list(contract_module) -> None:
+    endpoint = contract_module.Endpoint(
+        "GET",
+        "/branch-groups/active",
+        "backend/src/main/java/hu/puzzleir/valuta/controller/BranchGroupController.java",
+        28,
+        "BranchGroupController",
+    )
+    classification = contract_module.classify_backend_reference(endpoint)
+    assert classification.category == "backend-only/alternate-read-api"
+
+
 def test_contract_audit_distinguishes_wrapper_only_from_ui_used(contract_module) -> None:
     with tempfile.TemporaryDirectory() as tmp:
         tmp_root = Path(tmp)
@@ -294,6 +306,7 @@ def main() -> int:
         ("contract classifies legacy audit paths", lambda: test_contract_audit_classifies_legacy_audit_paths(contract_module)),
         ("contract classifies legacy representative paths", lambda: test_contract_audit_classifies_legacy_representative_paths(contract_module)),
         ("contract classifies alternate admin branch update", lambda: test_contract_audit_classifies_alternate_admin_branch_update(contract_module)),
+        ("contract classifies alternate branch-group active list", lambda: test_contract_audit_classifies_alternate_branch_group_active_list(contract_module)),
         ("contract distinguishes wrapper-only from UI-used calls", lambda: test_contract_audit_distinguishes_wrapper_only_from_ui_used(contract_module)),
         ("route audit follows child page imports", lambda: test_route_audit_follows_child_page_import(route_module)),
         ("wrapper audit ignores test-only references", lambda: test_wrapper_audit_finds_unused_production_api_wrapper(wrapper_module)),

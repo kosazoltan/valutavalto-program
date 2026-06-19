@@ -9,6 +9,7 @@ import {
   Eye,
   Package,
   Banknote,
+  Trash2,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { ertektarApi, currencyApi, bankApi } from '../../services/api/index'
@@ -33,6 +34,10 @@ export default function BankTransactions() {
   const [currencies, setCurrencies] = useState<Currency[]>([])
   // FK-005/C1: a banki tranzakció bank-választója a területileg szűrt Bank-törzsből.
   const [banks, setBanks] = useState<BankInfo[]>([])
+  const [bankMasterName, setBankMasterName] = useState('')
+  const [bankMasterRegionCode, setBankMasterRegionCode] = useState('')
+  const [bankMasterSaving, setBankMasterSaving] = useState(false)
+  const [bankMasterError, setBankMasterError] = useState<string | null>(null)
   const [showNewModal, setShowNewModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState<BankTransaction | null>(null)
   const [typeFilter, setTypeFilter] = useState('all')
@@ -70,11 +75,62 @@ export default function BankTransactions() {
     void fetchData()
   }, [fetchData])
 
-  // FK-005/C1: a Bank-törzs betöltése (területileg szűrt — a backend AccessScopeService dönt).
-  // Hiba esetén csendben üres lista marad → a bank-mező szabad-szövegként továbbra is használható.
-  useEffect(() => {
-    bankApi.list().then(setBanks).catch(() => setBanks([]))
+  const loadBanks = useCallback(async () => {
+    try {
+      setBankMasterError(null)
+      setBanks(await bankApi.list())
+    } catch (err) {
+      logger.error('BankTransactions', 'Bank master load error:', err)
+      setBanks([])
+      setBankMasterError('A bank-törzs nem tölthető be.')
+    }
   }, [])
+
+  // FK-005/C1: a Bank-törzs betöltése (területileg szűrt — a backend AccessScopeService dönt).
+  // Hiba esetén üres lista marad → a bank-mező szabad-szövegként továbbra is használható.
+  useEffect(() => {
+    void loadBanks()
+  }, [loadBanks])
+
+  const handleCreateBank = useCallback(async (event: React.FormEvent) => {
+    event.preventDefault()
+    const name = bankMasterName.trim()
+    if (!name) {
+      setBankMasterError('Banknév megadása kötelező.')
+      return
+    }
+    setBankMasterSaving(true)
+    setBankMasterError(null)
+    try {
+      await bankApi.create({
+        name,
+        regionCode: bankMasterRegionCode.trim() || undefined,
+      })
+      setBankMasterName('')
+      setBankMasterRegionCode('')
+      await loadBanks()
+    } catch (err) {
+      logger.error('BankTransactions', 'Bank master create error:', err)
+      setBankMasterError('A bank felvétele sikertelen.')
+    } finally {
+      setBankMasterSaving(false)
+    }
+  }, [bankMasterName, bankMasterRegionCode, loadBanks])
+
+  const handleDeactivateBank = useCallback(async (bank: BankInfo) => {
+    if (!confirm(`Biztosan deaktiválja ezt a bankot: ${bank.name}?`)) return
+    setBankMasterSaving(true)
+    setBankMasterError(null)
+    try {
+      await bankApi.deactivate(bank.id)
+      await loadBanks()
+    } catch (err) {
+      logger.error('BankTransactions', 'Bank master deactivate error:', err)
+      setBankMasterError('A bank deaktiválása sikertelen.')
+    } finally {
+      setBankMasterSaving(false)
+    }
+  }, [loadBanks])
 
   // Üzleti szabály: az értéktárak kizárólag a Raiffeisennel szerződnek → a banki átadás
   // célja minden esetben a Raiffeisen. A kollégának ne kelljen választania: legyen ez az
@@ -286,6 +342,86 @@ export default function BankTransactions() {
           </tbody>
         </table>
       </div>
+
+      <section className="form-panel space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-secondary-900">Bank-törzs</h2>
+            <p className="text-xs text-secondary-500">Banki átadás-átvétel célbankjai, területi szűréssel.</p>
+          </div>
+          <button type="button" onClick={() => void loadBanks()} className="form-button h-8 text-xs">
+            <RefreshCw size={14} />
+            Frissít
+          </button>
+        </div>
+
+        {bankMasterError && (
+          <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {bankMasterError}
+          </div>
+        )}
+
+        <form onSubmit={(event) => void handleCreateBank(event)} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_10rem_auto]">
+          <label className="block text-sm">
+            <span className="mb-1 block text-xs font-semibold text-secondary-600">Bank neve</span>
+            <input
+              value={bankMasterName}
+              onChange={(event) => setBankMasterName(event.target.value)}
+              className="form-input w-full"
+              placeholder="Raiffeisen Bank"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-xs font-semibold text-secondary-600">Területkód</span>
+            <input
+              value={bankMasterRegionCode}
+              onChange={(event) => setBankMasterRegionCode(event.target.value)}
+              className="form-input w-full"
+              placeholder="20"
+            />
+          </label>
+          <button type="submit" disabled={bankMasterSaving} className="form-button-primary self-end">
+            <Plus size={16} />
+            Felvétel
+          </button>
+        </form>
+
+        <div className="overflow-x-auto">
+          <table className="data-grid w-full">
+            <thead>
+              <tr>
+                <th>Bank</th>
+                <th className="w-28">Terület</th>
+                <th className="w-20"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {banks.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="py-4 text-center text-sm text-secondary-400">Nincs bank-törzs adat.</td>
+                </tr>
+              )}
+              {banks.map((bank) => (
+                <tr key={bank.id}>
+                  <td>{bank.name}</td>
+                  <td className="font-mono text-xs">{bank.regionCode || '-'}</td>
+                  <td className="text-right">
+                    <button
+                      type="button"
+                      disabled={bankMasterSaving}
+                      onClick={() => void handleDeactivateBank(bank)}
+                      className="inline-flex items-center justify-center rounded border border-red-200 p-1 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      title="Deaktiválás"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {/* New Transaction Modal */}
       {showNewModal && (
