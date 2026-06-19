@@ -14,10 +14,17 @@ interface EmployeeItem {
   firstName?: string
   organizationUnit?: string
   jobTitle?: string
+  feorCode?: string | null
   employmentStartDate?: string
   active?: boolean
   email?: string | null
   phone?: string | null
+}
+
+interface FeorCodeItem {
+  id: string | number
+  code: string
+  title: string
 }
 
 interface EmployeeFormState {
@@ -26,6 +33,7 @@ interface EmployeeFormState {
   firstName: string
   organizationUnit: string
   jobTitle: string
+  feorCode: string
   employmentStartDate: string
   email: string
   phone: string
@@ -42,6 +50,7 @@ const readFileAsText = (file: File): Promise<string> => new Promise((resolve, re
 export default function EmployeePage() {
   const { t } = useTranslation()
   const [items, setItems] = useState<EmployeeItem[]>([])
+  const [feorCodes, setFeorCodes] = useState<FeorCodeItem[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -69,6 +78,19 @@ export default function EmployeePage() {
   useEffect(() => {
     void loadData()
   }, [loadData])
+
+  useEffect(() => {
+    let active = true
+    api.get<FeorCodeItem[]>('/employees/feor-codes')
+      .then((response) => {
+        if (!active) return
+        setFeorCodes(safeArray<FeorCodeItem>(response.data))
+      })
+      .catch((err) => {
+        logger.error('EmployeePage', 'FEOR referencia lista betöltési hiba:', err)
+      })
+    return () => { active = false }
+  }, [])
 
   const filtered = items.filter(item => {
     if (!searchTerm) return true
@@ -102,6 +124,7 @@ export default function EmployeePage() {
       firstName: '',
       organizationUnit: '',
       jobTitle: '',
+      feorCode: '',
       employmentStartDate: new Date().toISOString().slice(0, 10),
       email: '',
       phone: '',
@@ -122,6 +145,7 @@ export default function EmployeePage() {
         firstName: employee.firstName ?? '',
         organizationUnit: employee.organizationUnit ?? '',
         jobTitle: employee.jobTitle ?? '',
+        feorCode: employee.feorCode ?? '',
         employmentStartDate: employee.employmentStartDate ?? '',
         email: employee.email ?? '',
         phone: employee.phone ?? '',
@@ -143,6 +167,7 @@ export default function EmployeePage() {
       firstName: form.firstName.trim(),
       organizationUnit: form.organizationUnit.trim() || null,
       jobTitle: form.jobTitle.trim() || null,
+      feorCode: form.feorCode.trim() || null,
       employmentStartDate: form.employmentStartDate || null,
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
@@ -248,6 +273,20 @@ export default function EmployeePage() {
               <input id="employee-job-title" value={form.jobTitle} onChange={(e) => setForm((current) => current ? { ...current, jobTitle: e.target.value } : current)} className="form-input w-full" />
             </div>
             <div>
+              <label htmlFor="employee-feor-code" className="form-label">{t('employees.feorKod')}</label>
+              <select
+                id="employee-feor-code"
+                value={form.feorCode}
+                onChange={(e) => setForm((current) => current ? { ...current, feorCode: e.target.value } : current)}
+                className="form-input w-full"
+              >
+                <option value="">{t('employees.nincsMegadva')}</option>
+                {feorCodes.map((item) => (
+                  <option key={item.id} value={item.code}>{item.code} - {item.title}</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label htmlFor="employee-start-date" className="form-label">Beléptetés</label>
               <input id="employee-start-date" type="date" value={form.employmentStartDate} onChange={(e) => setForm((current) => current ? { ...current, employmentStartDate: e.target.value } : current)} className="form-input w-full" />
             </div>
@@ -286,6 +325,13 @@ export default function EmployeePage() {
         </div>
       </div>
 
+      <div
+        className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700"
+        data-testid="employee-feor-summary"
+      >
+        {t('employees.feorReferenciaKodok')}: <span className="font-semibold">{feorCodes.length}</span>
+      </div>
+
       {error && (
         <div className="form-error flex items-center gap-2">
           <AlertTriangle className="h-4 w-4" />
@@ -310,6 +356,7 @@ export default function EmployeePage() {
               <div className="min-w-0">
                 <p className="break-words font-semibold text-gray-900">{fullName(item)}</p>
                 <p className="text-xs text-gray-500">{item.jobTitle ?? '-'}</p>
+                <p className="text-xs text-gray-500">{t('employees.feorPrefix')}: {item.feorCode ?? '-'}</p>
               </div>
               <span className={`badge ${item.active ? 'badge-green' : 'badge-gray'}`}>
                 {item.active ? 'Aktív' : 'Inaktív'}
@@ -346,6 +393,7 @@ export default function EmployeePage() {
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.name')}</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('employees.beosztas')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('employees.feorPrefix')}</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('branch.branch')}</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('employees.beleptetve')}</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.active')}</th>
@@ -354,13 +402,14 @@ export default function EmployeePage() {
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
             ) : filtered.map(item => (
               <tr key={item.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm">{fullName(item)}</td>
                 <td className="px-4 py-3 text-sm">{item.jobTitle ?? '-'}</td>
+                <td className="px-4 py-3 text-sm">{item.feorCode ?? '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.organizationUnit ?? '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.employmentStartDate ? new Date(item.employmentStartDate).toLocaleString('hu-HU') : '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.active ? 'Igen' : 'Nem'}</td>

@@ -38,20 +38,57 @@ describe('EmployeePage backend kapcsolatok', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
-    mockApi.get.mockResolvedValue({
-      data: [
-        {
-          id: 42,
-          lastName: 'Teszt',
-          firstName: 'Elek',
-          organizationUnit: 'Szeged',
-          jobTitle: 'Pénztáros',
-          employmentStartDate: '2026-06-19',
-          active: true,
-        },
-      ],
+    mockApi.get.mockImplementation((url: string) => {
+      if (url === '/employees/feor-codes') {
+        return Promise.resolve({
+          data: [{ id: 1, code: '4211', title: 'Banki pénztáros' }],
+        })
+      }
+      return Promise.resolve({
+        data: [
+          {
+            id: 42,
+            lastName: 'Teszt',
+            firstName: 'Elek',
+            organizationUnit: 'Szeged',
+            jobTitle: 'Pénztáros',
+            feorCode: '4211',
+            employmentStartDate: '2026-06-19',
+            active: true,
+          },
+        ],
+      })
     })
     mockApi.post.mockResolvedValue({ data: { imported: 1, message: '1 dolgozó sikeresen importálva' } })
+  })
+
+  it('betölti és megjeleníti a FEOR referencia endpointot', async () => {
+    render(<EmployeePage />)
+
+    expect((await screen.findAllByText('Teszt Elek')).length).toBeGreaterThan(0)
+    expect(mockApi.get).toHaveBeenCalledWith('/employees/feor-codes')
+    expect(screen.getByTestId('employee-feor-summary')).toHaveTextContent('employees.feorReferenciaKodok: 1')
+    expect(screen.getAllByText('employees.feorPrefix: 4211').length).toBeGreaterThan(0)
+  })
+
+  it('új dolgozó mentésekor elküldi a kiválasztott FEOR kódot', async () => {
+    const user = userEvent.setup()
+    render(<EmployeePage />)
+
+    expect((await screen.findAllByText('Teszt Elek')).length).toBeGreaterThan(0)
+    await user.click(screen.getByRole('button', { name: /common.new/ }))
+    await user.type(screen.getByLabelText('Vezetéknév'), 'Új')
+    await user.type(screen.getByLabelText('Keresztnév'), 'Dolgozó')
+    await user.selectOptions(screen.getByLabelText('employees.feorKod'), '4211')
+    await user.click(screen.getByRole('button', { name: 'Mentés' }))
+
+    await waitFor(() => {
+      expect(mockApi.post).toHaveBeenCalledWith('/employees', expect.objectContaining({
+        lastName: 'Új',
+        firstName: 'Dolgozó',
+        feorCode: '4211',
+      }))
+    })
   })
 
   it('a dolgozói JSON importot a /employees/import backend szerződésre köti', async () => {
@@ -71,7 +108,7 @@ describe('EmployeePage backend kapcsolatok', () => {
         headers: { 'Content-Type': 'application/json' },
       })
     })
-    expect(mockApi.get).toHaveBeenCalledTimes(2)
+    expect(mockApi.get).toHaveBeenCalledTimes(3)
     expect(await screen.findByText('1 dolgozó sikeresen importálva')).toBeInTheDocument()
   })
 })

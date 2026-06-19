@@ -70,10 +70,19 @@ async function mockApis(page: Page) {
             firstName: 'Elek',
             organizationUnit: 'Szeged',
             jobTitle: 'Valutapénztáros',
+            feorCode: '4211',
             employmentStartDate: '2026-01-01',
             active: true,
           },
         ]),
+      })
+    }
+
+    if (path === '/api/v1/employees/feor-codes' && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ id: 1, code: '4211', title: 'Banki pénztáros' }]),
       })
     }
 
@@ -183,9 +192,15 @@ test('dolgozókezelő modal valós Chromium nézetben backend műveleteket indí
   await mockApis(page)
   await login(page)
 
+  const feorRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/employees/feor-codes'
+  )
   await page.goto('/employees', { waitUntil: 'domcontentloaded' })
+  await feorRequest
+  await expect(page.getByTestId('employee-feor-summary')).toContainText('FEOR referencia kódok: 1')
   const mobileCard = page.getByTestId('employee-mobile-card')
   await expect(mobileCard.getByText('Teszt Elek')).toBeVisible()
+  await expect(mobileCard).toContainText('FEOR: 4211')
   await mobileCard.getByTitle('Al-nyilvántartások').click()
   await expect(page.getByText('Vezetői dolgozókezelés')).toBeVisible()
   await expect(page.getByText('2026-06-18 08:00')).toBeVisible()

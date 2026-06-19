@@ -825,7 +825,11 @@
   "employees": {
     "alkalmazottak": "Alkalmazottak",
     "beleptetve": "Beléptetve",
-    "beosztas": "Beosztás"
+    "beosztas": "Beosztás",
+    "feorKod": "FEOR kód",
+    "feorPrefix": "FEOR",
+    "feorReferenciaKodok": "FEOR referencia kódok",
+    "nincsMegadva": "Nincs megadva"
   },
   "export": {
     "beolvashatoAKonyvelesiRendszerbe": "beolvashato a konyvelesi rendszerbe.",
