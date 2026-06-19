@@ -5,6 +5,7 @@ import RateMasterWorkflowPage from './RateMasterWorkflowPage'
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
+  create: vi.fn(),
   approve: vi.fn(),
   publish: vi.fn(),
   revoke: vi.fn(),
@@ -54,6 +55,34 @@ describe('RateMasterWorkflowPage backend contract', () => {
       },
     ])
     mocks.acknowledgeDistribution.mockResolvedValue(undefined)
+    mocks.create.mockResolvedValue({
+      ...publishedRate,
+      id: 'draft-1',
+      status: 'DRAFT',
+    })
+  })
+
+  it('vázlat létrehozáskor meghívja az exchange-rate-master create backend szerződést', async () => {
+    const user = userEvent.setup()
+    render(<RateMasterWorkflowPage />)
+
+    await user.type(screen.getByLabelText('Valuta ID'), '1')
+    await user.type(screen.getByLabelText('Vételi árfolyam'), '390,5')
+    await user.type(screen.getByLabelText('Eladási árfolyam'), '399,5')
+    await user.type(screen.getByLabelText('MNB árfolyam'), '394')
+    await user.type(screen.getByLabelText('Megjegyzés'), 'reggeli központi vázlat')
+    await user.click(screen.getByRole('button', { name: 'Vázlat létrehozása' }))
+
+    await waitFor(() => {
+      expect(mocks.create).toHaveBeenCalledWith({
+        currencyId: 1,
+        baseBuyRate: 390.5,
+        baseSellRate: 399.5,
+        officialRate: 394,
+        notes: 'reggeli központi vázlat',
+      })
+      expect(mocks.list).toHaveBeenCalledWith('DRAFT')
+    })
   })
 
   it('elosztás kártyából meghívja az exchange-rate-master acknowledge backend szerződést', async () => {

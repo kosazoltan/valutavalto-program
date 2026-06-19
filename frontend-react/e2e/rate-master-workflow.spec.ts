@@ -22,6 +22,7 @@ const worker = {
 }
 
 async function mockApis(page: Page) {
+  let draftCreated = false
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
     activeRole: 'ADMIN',
@@ -60,7 +61,40 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/exchange-rate-master/status/DRAFT') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(draftCreated ? [{
+          id: 'draft-1',
+          companyId: 'company-1',
+          currencyId: 1,
+          currencyCode: 'EUR',
+          baseBuyRate: 390.5,
+          baseSellRate: 399.5,
+          officialRate: 394,
+          status: 'DRAFT',
+          createdAt: '2026-06-18T08:00:00',
+        }] : []),
+      })
+    }
+
+    if (path.endsWith('/exchange-rate-master') && method === 'POST') {
+      draftCreated = true
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'draft-1',
+          companyId: 'company-1',
+          currencyId: 1,
+          currencyCode: 'EUR',
+          baseBuyRate: 390.5,
+          baseSellRate: 399.5,
+          officialRate: 394,
+          status: 'DRAFT',
+          createdAt: '2026-06-18T08:00:00',
+        }),
+      })
     }
 
     if (path.endsWith('/exchange-rate-master/status/PUBLISHED') && method === 'GET') {
@@ -113,6 +147,36 @@ async function login(page: Page) {
   await page.getByRole('button', { name: /Bejelentkezés/i }).click()
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
+
+test('rate master workflow vázlat-létrehozás backend szerződésre köt mobil viewporton', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mockApis(page)
+  await login(page)
+
+  await page.goto('/rate-management/workflow', { waitUntil: 'domcontentloaded' })
+  await page.getByLabel('Valuta ID').fill('1')
+  await page.getByLabel('Vételi árfolyam').fill('390,5')
+  await page.getByLabel('Eladási árfolyam').fill('399,5')
+  await page.getByLabel('MNB árfolyam').fill('394')
+
+  const createRequest = page.waitForRequest(request =>
+    request.method() === 'POST' && request.url().endsWith('/api/v1/exchange-rate-master')
+  )
+  await page.getByRole('button', { name: 'Vázlat létrehozása' }).click()
+  const request = await createRequest
+  expect(request.postDataJSON()).toMatchObject({
+    currencyId: 1,
+    baseBuyRate: 390.5,
+    baseSellRate: 399.5,
+    officialRate: 394,
+  })
+  await expect(page.getByText('EUR')).toBeVisible()
+
+  const horizontalOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  )
+  expect(horizontalOverflow).toBe(false)
+})
 
 test('rate master workflow elosztás-visszaigazolás backend szerződésre köt mobil viewporton', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })

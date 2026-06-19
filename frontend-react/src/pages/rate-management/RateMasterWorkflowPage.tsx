@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState, useCallback } from 'react'
-import { CheckCircle2, Send, XCircle, RefreshCw, AlertTriangle, FileText, Users, Clock } from 'lucide-react'
-import { exchangeRateMasterApi, type ExchangeRateMaster, type MasterRateStatus, type ExchangeRateDistribution } from '../../services/api/exchangeRateMaster'
+import { CheckCircle2, Send, XCircle, RefreshCw, AlertTriangle, FileText, Users, Clock, Plus } from 'lucide-react'
+import { exchangeRateMasterApi, type ExchangeRateMaster, type MasterRateStatus, type ExchangeRateDistribution, type CreateMasterRateRequest } from '../../services/api/exchangeRateMaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
@@ -41,6 +41,14 @@ export default function RateMasterWorkflowPage() {
     const [busyDistributionId, setBusyDistributionId] = useState<string | null>(null)
     const [expandedDistId, setExpandedDistId] = useState<string | null>(null)
     const [distData, setDistData] = useState<Record<string, ExchangeRateDistribution[]>>({})
+    const [creating, setCreating] = useState(false)
+    const [createForm, setCreateForm] = useState({
+        currencyId: '',
+        baseBuyRate: '',
+        baseSellRate: '',
+        officialRate: '',
+        notes: '',
+    })
 
     const loadRates = useCallback(async () => {
         setLoading(true)
@@ -59,6 +67,46 @@ export default function RateMasterWorkflowPage() {
     useEffect(() => {
         void loadRates()
     }, [loadRates])
+
+    const parseDecimalField = (value: string): number | null => {
+        const normalized = value.trim().replace(/\s/g, '').replace(',', '.')
+        if (!normalized) return null
+        const parsed = Number(normalized)
+        return Number.isFinite(parsed) ? parsed : null
+    }
+
+    const handleCreateDraft = async () => {
+        const currencyId = Number.parseInt(createForm.currencyId, 10)
+        const baseBuyRate = parseDecimalField(createForm.baseBuyRate)
+        const baseSellRate = parseDecimalField(createForm.baseSellRate)
+        const officialRate = parseDecimalField(createForm.officialRate)
+
+        if (!Number.isFinite(currencyId) || currencyId <= 0 || baseBuyRate === null || baseSellRate === null) {
+            setErr('Valuta ID, vételi és eladási árfolyam kötelező.')
+            return
+        }
+
+        const payload: CreateMasterRateRequest = {
+            currencyId,
+            baseBuyRate,
+            baseSellRate,
+            ...(officialRate !== null ? { officialRate } : {}),
+            ...(createForm.notes.trim() ? { notes: createForm.notes.trim() } : {}),
+        }
+
+        setCreating(true)
+        setErr(null)
+        try {
+            await exchangeRateMasterApi.create(payload)
+            setCreateForm({ currencyId: '', baseBuyRate: '', baseSellRate: '', officialRate: '', notes: '' })
+            setActiveTab('DRAFT')
+            setRates(await exchangeRateMasterApi.list('DRAFT'))
+        } catch (e) {
+            setErr(e instanceof Error ? e.message : String(e))
+        } finally {
+            setCreating(false)
+        }
+    }
 
     const handleApprove = async (id: string) => {
         setBusyId(id)
@@ -156,6 +204,80 @@ export default function RateMasterWorkflowPage() {
                     </div>
                 </div>
             )}
+
+            <section className="rounded border border-slate-200 bg-white p-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                    <div>
+                        <h2 className="text-sm font-semibold text-slate-800">Új törzsárfolyam vázlat</h2>
+                        <p className="text-xs text-slate-500">Központi workflow vázlat létrehozása jóváhagyás előtt.</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => void handleCreateDraft()}
+                        disabled={creating}
+                        className="inline-flex items-center gap-2 rounded bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                    >
+                        <Plus className="h-3.5 w-3.5" />
+                        {creating ? 'Létrehozás...' : 'Vázlat létrehozása'}
+                    </button>
+                </div>
+                <div className="grid gap-2 md:grid-cols-5">
+                    <label className="text-xs text-slate-600">
+                        Valuta ID
+                        <input
+                            type="number"
+                            min="1"
+                            value={createForm.currencyId}
+                            onChange={(event) => setCreateForm(prev => ({ ...prev, currencyId: event.target.value }))}
+                            className="mt-1 h-9 w-full rounded border border-slate-300 px-2 text-sm"
+                            placeholder="1"
+                        />
+                    </label>
+                    <label className="text-xs text-slate-600">
+                        Vételi árfolyam
+                        <input
+                            type="text"
+                            inputMode="decimal"
+                            value={createForm.baseBuyRate}
+                            onChange={(event) => setCreateForm(prev => ({ ...prev, baseBuyRate: event.target.value }))}
+                            className="mt-1 h-9 w-full rounded border border-slate-300 px-2 text-sm"
+                            placeholder="390,50"
+                        />
+                    </label>
+                    <label className="text-xs text-slate-600">
+                        Eladási árfolyam
+                        <input
+                            type="text"
+                            inputMode="decimal"
+                            value={createForm.baseSellRate}
+                            onChange={(event) => setCreateForm(prev => ({ ...prev, baseSellRate: event.target.value }))}
+                            className="mt-1 h-9 w-full rounded border border-slate-300 px-2 text-sm"
+                            placeholder="399,50"
+                        />
+                    </label>
+                    <label className="text-xs text-slate-600">
+                        MNB árfolyam
+                        <input
+                            type="text"
+                            inputMode="decimal"
+                            value={createForm.officialRate}
+                            onChange={(event) => setCreateForm(prev => ({ ...prev, officialRate: event.target.value }))}
+                            className="mt-1 h-9 w-full rounded border border-slate-300 px-2 text-sm"
+                            placeholder="394,00"
+                        />
+                    </label>
+                    <label className="text-xs text-slate-600">
+                        Megjegyzés
+                        <input
+                            type="text"
+                            value={createForm.notes}
+                            onChange={(event) => setCreateForm(prev => ({ ...prev, notes: event.target.value }))}
+                            className="mt-1 h-9 w-full rounded border border-slate-300 px-2 text-sm"
+                            placeholder="Opció"
+                        />
+                    </label>
+                </div>
+            </section>
 
             {/* Tabs */}
             <div className="flex gap-2 border-b border-slate-200">
