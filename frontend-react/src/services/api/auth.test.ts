@@ -97,15 +97,6 @@ describe('authApi', () => {
     })
   })
 
-  describe('refreshToken', () => {
-    it('keeps the legacy helper name as an alias for refresh-cookie', async () => {
-      mockApi.post.mockResolvedValue({ data: { token: 'refreshed' } })
-      const result = await authApi.refreshToken()
-      expect(mockApi.post).toHaveBeenCalledWith('/auth/refresh-cookie')
-      expect(result.token).toBe('refreshed')
-    })
-  })
-
   describe('selectRole', () => {
     it('calls POST /auth/login/select-role', async () => {
       const responseData = { token: 'new-token', tokenType: 'Bearer', expiresAt: '', worker: {} }

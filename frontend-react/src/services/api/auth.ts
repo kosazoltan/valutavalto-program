@@ -99,7 +99,6 @@ export const authApi = {
     await api.post('/auth/logout')
   },
   refreshCookie,
-  refreshToken: refreshCookie,
   selectRole: async (data: { token: string; roleCode: string; appMode?: string }): Promise<LoginResponse> => {
     const response = await api.post<LoginResponse>('/auth/login/select-role', data)
     return response.data
