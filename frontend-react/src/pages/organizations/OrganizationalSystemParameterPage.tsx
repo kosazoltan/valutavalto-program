@@ -26,6 +26,7 @@ export default function OrganizationalSystemParameterPage() {
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [form, setForm] = useState<ParamForm>(emptyForm)
   const [search, setSearch] = useState('')
 
@@ -64,18 +65,28 @@ export default function OrganizationalSystemParameterPage() {
     }
   }
 
-  const handleEdit = (p: OrganizationalSystemParameter) => {
-    setForm({
-      organizationName: p.organizationName || '',
-      parameterKey: p.parameterKey,
-      parameterValue: p.parameterValue,
-      currencyCode: p.currencyCode || '',
-      validFrom: p.validFrom || '',
-      validTo: p.validTo || '',
-      description: p.description || '',
-    })
-    setEditingId(p.id)
-    setShowForm(true)
+  const handleEdit = async (p: OrganizationalSystemParameter) => {
+    try {
+      setDetailLoadingId(p.id)
+      setError(null)
+      const detailed = await organizationalSystemParameterApi.getById(p.id)
+      setForm({
+        organizationName: detailed.organizationName || '',
+        parameterKey: detailed.parameterKey,
+        parameterValue: detailed.parameterValue,
+        currencyCode: detailed.currencyCode || '',
+        validFrom: detailed.validFrom || '',
+        validTo: detailed.validTo || '',
+        description: detailed.description || '',
+      })
+      setEditingId(detailed.id)
+      setShowForm(true)
+    } catch (err) {
+      logger.error('OrganizationalSystemParameterPage', 'Részlet betöltési hiba:', err)
+      setError(getErrorMessage(err))
+    } finally {
+      setDetailLoadingId(null)
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -163,7 +174,7 @@ export default function OrganizationalSystemParameterPage() {
       {loading ? <div>Betöltés...</div> : filtered.length === 0 ? (
         <div className="form-panel text-center text-gray-500 py-4">{t('organizations.nincsParameter')}</div>
       ) : orgs.map(org => (
-        <div key={org} className="form-panel">
+        <div key={org} className="form-panel overflow-x-auto">
           <h2 className="font-semibold mb-2">{org}</h2>
           <table className="data-grid w-full">
             <thead><tr><th>{t('organizations.kulcs2')}</th><th>{t('fees.ertek')}</th><th>{t('common.currency')}</th><th>{t('commissions.ervenyesseg')}</th><th>{t('common.actions')}</th></tr></thead>
@@ -176,8 +187,23 @@ export default function OrganizationalSystemParameterPage() {
                   <td className="text-sm">{p.validFrom} – {p.validTo || 'határozatlan'}</td>
                   <td>
                     <div className="flex gap-1">
-                      <button onClick={() => handleEdit(p)} className="form-button text-xs"><Edit2 size={12} /></button>
-                      <button onClick={() => void handleDelete(p.id)} className="form-button text-xs text-red-600"><Trash2 size={12} /></button>
+                      <button
+                        type="button"
+                        aria-label="Szerkesztés"
+                        onClick={() => void handleEdit(p)}
+                        disabled={detailLoadingId === p.id}
+                        className="form-button text-xs disabled:opacity-50"
+                      >
+                        <Edit2 size={12} className={detailLoadingId === p.id ? 'animate-pulse' : ''} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Törlés"
+                        onClick={() => void handleDelete(p.id)}
+                        className="form-button text-xs text-red-600"
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   </td>
                 </tr>
