@@ -62,11 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1029
-frontend production UI/app referenced REST calls: 927
+frontend production UI/app referenced REST calls: 931
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
-backend endpoints not referenced by production UI/app calls: 97
+backend endpoints not referenced by production UI/app calls: 93
 ```
 
 Route/page audit result:
@@ -246,11 +246,18 @@ proven used by UI/app" follow-up work.
   `GET /reports/currency/{currencyId}` so the existing extended reports view
   can query current cash status, same-day closing summary and currency turnover
   from backend report APIs, with mobile render coverage.
+- Wired additional routed ExtendedReportsPage read-only report types to
+  `GET /reports-extended/monthly-turnover`,
+  `GET /reports-extended/handling-cost`,
+  `GET /reports-extended/daily-cash-desk`, and
+  `GET /reports-extended/current-cash-desk-status` so the extended report view
+  can query monthly turnover, handling-cost, daily cash-desk and current
+  cash-desk status reports, with mobile render coverage.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 97 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 97 confirmed UX
+The stricter audit currently reports 93 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 93 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens.
@@ -259,7 +266,7 @@ Current summary:
 
 ```text
 ui-candidate/mutation            25
-ui-candidate/list-or-view        20
+ui-candidate/list-or-view        16
 integration-or-device            15
 backend-only/legacy-compat       8
 workflow-action                  7
@@ -446,6 +453,12 @@ npm.cmd run type-check
 npx.cmd playwright test e2e/rate-history-exchange-rate-reads.spec.ts --config=playwright.config.ts
 npm.cmd run build
 python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 120
+npx.cmd vitest run src/pages/reports/ExtendedReportsPage.test.tsx
+npx.cmd eslint src/pages/reports/ExtendedReportsPage.tsx src/pages/reports/ExtendedReportsPage.test.tsx e2e/extended-reports-export.spec.ts
+npx.cmd playwright test e2e/extended-reports-export.spec.ts --config=playwright.config.ts
+npm.cmd run type-check
+npm.cmd run build
+python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 140
 npx.cmd vitest run src/pages/reports/ExtendedReportsPage.test.tsx
 npx.cmd eslint src/pages/reports/ExtendedReportsPage.tsx src/pages/reports/ExtendedReportsPage.test.tsx e2e/extended-reports-export.spec.ts
 npx.cmd playwright test e2e/extended-reports-export.spec.ts --config=playwright.config.ts

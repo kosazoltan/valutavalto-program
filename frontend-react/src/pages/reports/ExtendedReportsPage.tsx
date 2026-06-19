@@ -25,6 +25,7 @@ export default function ExtendedReportsPage() {
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [branchId, setBranchId] = useState('')
   const [currencyId, setCurrencyId] = useState('1')
+  const [cashDeskId, setCashDeskId] = useState('cashdesk-1')
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [reportData, setReportData] = useState<Record<string, unknown> | null>(null)
@@ -69,6 +70,30 @@ export default function ExtendedReportsPage() {
         case 'handling-cost':
           data = await reportApi.getHandlingFeeReport(startDate, endDate)
           break
+        case 'extended-monthly-turnover':
+          data = await reportExtendedApi.getMonthlyTurnover(selectedBranchId, year, month)
+          break
+        case 'extended-handling-cost':
+          data = await reportExtendedApi.getHandlingCost(selectedBranchId, startDate, endDate)
+          break
+        case 'daily-cash-desk': {
+          const selectedCashDeskId = cashDeskId.trim()
+          if (!selectedCashDeskId || !startDate) {
+            toast.warning('Pénztár azonosító és dátum szükséges')
+            return
+          }
+          data = await reportExtendedApi.getDailyCashDesk(selectedCashDeskId, startDate)
+          break
+        }
+        case 'current-cash-desk-status': {
+          const selectedCashDeskId = cashDeskId.trim()
+          if (!selectedCashDeskId) {
+            toast.warning('Pénztár azonosító szükséges')
+            return
+          }
+          data = await reportExtendedApi.getCurrentCashDeskStatus(selectedCashDeskId)
+          break
+        }
         case 'cash-status':
           data = await reportApi.getCashStatus()
           break
@@ -160,6 +185,10 @@ export default function ExtendedReportsPage() {
     { value: 'transfer-summary', label: 'Átadás-átvétel összesítő' },
     { value: 'monthly-transfers', label: 'Havi átutalások' },
     { value: 'handling-cost', label: 'Kezelési díj összesítő' },
+    { value: 'extended-monthly-turnover', label: 'Bővített havi forgalom' },
+    { value: 'extended-handling-cost', label: 'Bővített kezelési költség' },
+    { value: 'daily-cash-desk', label: 'Napi pénztár riport' },
+    { value: 'current-cash-desk-status', label: 'Aktuális pénztár riport' },
     { value: 'cash-status', label: 'Aktuális pénztár státusz' },
     { value: 'today-summary', label: 'Mai zárási összesítő' },
     { value: 'currency-report', label: 'Valuta forgalmi riport' },
@@ -168,9 +197,11 @@ export default function ExtendedReportsPage() {
   ]
   const csvExportAvailable = reportType === 'monthly-turnover' || reportType === 'period-turnover'
   const dailyPdfExportAvailable = reportType === 'daily-full'
-  const isMonthlyReport = reportType === 'monthly-inventory' || reportType === 'monthly-turnover' || reportType === 'monthly-transfers'
+  const isMonthlyReport = reportType === 'monthly-inventory' || reportType === 'monthly-turnover' || reportType === 'monthly-transfers' || reportType === 'extended-monthly-turnover'
   const currencyReportSelected = reportType === 'currency-report'
   const noParameterReport = reportType === 'cash-status' || reportType === 'today-summary'
+  const cashDeskReportSelected = reportType === 'daily-cash-desk' || reportType === 'current-cash-desk-status'
+  const cashDeskDateRequired = reportType === 'daily-cash-desk'
 
   return (
     <div className="space-y-4">
@@ -217,6 +248,20 @@ export default function ExtendedReportsPage() {
           </div>
         )}
 
+        {cashDeskReportSelected && (
+          <div>
+            <label className="form-label">{t('reports.penztarAzonosito')}</label>
+            <input
+              type="text"
+              data-testid="cash-desk-report-id"
+              className="form-input"
+              value={cashDeskId}
+              onChange={(e) => setCashDeskId(e.target.value)}
+              placeholder="cashdesk-1"
+            />
+          </div>
+        )}
+
         {isMonthlyReport ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -228,14 +273,14 @@ export default function ExtendedReportsPage() {
               <input type="number" className="form-input" min="1" max="12" value={month} onChange={(e) => setMonth(parseInt(e.target.value))} />
             </div>
           </div>
-        ) : noParameterReport ? (
+        ) : noParameterReport || reportType === 'current-cash-desk-status' ? (
           <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-900">
             {t('reports.riportNemKerSzurot')}
           </div>
         ) : (
-          <div className={dailyPdfExportAvailable ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 gap-4 sm:grid-cols-2'}>
+          <div className={dailyPdfExportAvailable || cashDeskDateRequired ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 gap-4 sm:grid-cols-2'}>
             <div>
-              <label className="form-label">{dailyPdfExportAvailable ? 'Zárás dátuma' : t('common.startDate')}</label>
+              <label className="form-label">{dailyPdfExportAvailable ? 'Zárás dátuma' : cashDeskDateRequired ? t('common.date') : t('common.startDate')}</label>
               <input
                 type="date"
                 data-testid={dailyPdfExportAvailable ? 'daily-report-date' : undefined}
@@ -244,7 +289,7 @@ export default function ExtendedReportsPage() {
                 onChange={(e) => setStartDate(e.target.value)}
               />
             </div>
-            {!dailyPdfExportAvailable && (
+            {!dailyPdfExportAvailable && !cashDeskDateRequired && (
               <div>
                 <label className="form-label">{t('common.endDate')}</label>
                 <input type="date" className="form-input" value={endDate} onChange={(e) => setEndDate(e.target.value)} />

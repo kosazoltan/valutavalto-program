@@ -156,6 +156,54 @@ async function mockApis(page: Page) {
       })
     }
 
+    if (path.endsWith('/reports-extended/monthly-turnover') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          year: Number(url.searchParams.get('year')),
+          month: Number(url.searchParams.get('month')),
+          totalTurnoverHuf: 1750000,
+        }),
+      })
+    }
+
+    if (path.endsWith('/reports-extended/handling-cost') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          startDate: url.searchParams.get('startDate'),
+          endDate: url.searchParams.get('endDate'),
+          totalHandlingCostHuf: 4500,
+        }),
+      })
+    }
+
+    if (path.endsWith('/reports-extended/daily-cash-desk') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          cashDeskId: url.searchParams.get('cashDeskId'),
+          date: url.searchParams.get('date'),
+          transactionCount: 5,
+        }),
+      })
+    }
+
+    if (path.endsWith('/reports-extended/current-cash-desk-status') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          cashDeskId: url.searchParams.get('cashDeskId'),
+          status: 'OPEN',
+          totalHufEquivalent: 350000,
+        }),
+      })
+    }
+
     if (/\/reports\/daily\/[^/]+\/\d{4}-\d{2}-\d{2}\/full$/.test(path) && method === 'GET') {
       return route.fulfill({
         status: 200,
@@ -289,6 +337,45 @@ test('kibővített riportok mobil nézetben cash, today és currency read endpoi
   await page.getByRole('button', { name: /Riport generálása/i }).click()
   await currencyReportRequest
   await expect(page.getByText('EUR')).toBeVisible()
+
+  await page.getByRole('combobox').selectOption('extended-monthly-turnover')
+  await page.locator('input[type="number"]').nth(0).fill('2026')
+  await page.locator('input[type="number"]').nth(1).fill('6')
+  const extendedMonthlyRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && request.url().includes('/reports-extended/monthly-turnover')
+  )
+  await page.getByRole('button', { name: /Riport generálása/i }).click()
+  await extendedMonthlyRequest
+  await expect(page.getByText('totalTurnoverHuf')).toBeVisible()
+
+  await page.getByRole('combobox').selectOption('extended-handling-cost')
+  await page.locator('input[type="date"]').nth(0).fill('2026-06-01')
+  await page.locator('input[type="date"]').nth(1).fill('2026-06-18')
+  const extendedHandlingRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && request.url().includes('/reports-extended/handling-cost')
+  )
+  await page.getByRole('button', { name: /Riport generálása/i }).click()
+  await extendedHandlingRequest
+  await expect(page.getByText('totalHandlingCostHuf')).toBeVisible()
+
+  await page.getByRole('combobox').selectOption('daily-cash-desk')
+  await page.getByTestId('cash-desk-report-id').fill('cashdesk-1')
+  await page.locator('input[type="date"]').fill('2026-06-18')
+  const dailyCashDeskRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && request.url().includes('/reports-extended/daily-cash-desk')
+  )
+  await page.getByRole('button', { name: /Riport generálása/i }).click()
+  await dailyCashDeskRequest
+  await expect(page.getByText('transactionCount')).toBeVisible()
+
+  await page.getByRole('combobox').selectOption('current-cash-desk-status')
+  await page.getByTestId('cash-desk-report-id').fill('cashdesk-1')
+  const currentCashDeskRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && request.url().includes('/reports-extended/current-cash-desk-status')
+  )
+  await page.getByRole('button', { name: /Riport generálása/i }).click()
+  await currentCashDeskRequest
+  await expect(page.getByText('OPEN')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

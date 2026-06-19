@@ -22,6 +22,8 @@ const mocks = vi.hoisted(() => ({
   getMonthlyTurnover: vi.fn(),
   getMonthlyTransfers: vi.fn(),
   getHandlingCost: vi.fn(),
+  getDailyCashDesk: vi.fn(),
+  getCurrentCashDeskStatus: vi.fn(),
   getSuspiciousTransactions: vi.fn(),
   getCardTransactionFees: vi.fn(),
   toast: {
@@ -57,6 +59,8 @@ vi.mock('../../services/api/index', () => ({
     getMonthlyTurnover: mocks.getMonthlyTurnover,
     getMonthlyTransfers: mocks.getMonthlyTransfers,
     getHandlingCost: mocks.getHandlingCost,
+    getDailyCashDesk: mocks.getDailyCashDesk,
+    getCurrentCashDeskStatus: mocks.getCurrentCashDeskStatus,
     getSuspiciousTransactions: mocks.getSuspiciousTransactions,
     getCardTransactionFees: mocks.getCardTransactionFees,
   },
@@ -91,6 +95,8 @@ describe('ExtendedReportsPage CSV backend contract', () => {
     mocks.getMonthlyTurnover.mockResolvedValue({})
     mocks.getMonthlyTransfers.mockResolvedValue({})
     mocks.getHandlingCost.mockResolvedValue({})
+    mocks.getDailyCashDesk.mockResolvedValue({ cashDeskId: 'cashdesk-1', transactionCount: 5 })
+    mocks.getCurrentCashDeskStatus.mockResolvedValue({ cashDeskId: 'cashdesk-1', status: 'OPEN' })
     mocks.getSuspiciousTransactions.mockResolvedValue({})
     mocks.getCardTransactionFees.mockResolvedValue({})
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:csv')
@@ -187,6 +193,70 @@ describe('ExtendedReportsPage CSV backend contract', () => {
     await waitFor(() => {
       expect(mocks.getHandlingFeeReport).toHaveBeenCalledWith('2026-06-01', '2026-06-18')
     })
+  })
+
+  it('bővített havi forgalom generálásakor a reports-extended monthly-turnover endpoint wrapperét hívja', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<ExtendedReportsPage />)
+
+    await user.selectOptions(screen.getByRole('combobox'), 'extended-monthly-turnover')
+    const numberInputs = container.querySelectorAll('input[type="number"]')
+    await user.clear(numberInputs[0]!)
+    await user.type(numberInputs[0]!, '2026')
+    await user.clear(numberInputs[1]!)
+    await user.type(numberInputs[1]!, '6')
+    await user.click(screen.getByRole('button', { name: /Riport generálása/i }))
+
+    await waitFor(() => {
+      expect(mocks.getMonthlyTurnover).toHaveBeenCalledWith(undefined, 2026, 6)
+    })
+  })
+
+  it('bővített kezelési költség generálásakor a reports-extended handling-cost endpoint wrapperét hívja', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<ExtendedReportsPage />)
+
+    await user.selectOptions(screen.getByRole('combobox'), 'extended-handling-cost')
+    const dateInputs = container.querySelectorAll('input[type="date"]')
+    await user.type(dateInputs[0]!, '2026-06-01')
+    await user.type(dateInputs[1]!, '2026-06-18')
+    await user.click(screen.getByRole('button', { name: /Riport generálása/i }))
+
+    await waitFor(() => {
+      expect(mocks.getHandlingCost).toHaveBeenCalledWith(undefined, '2026-06-01', '2026-06-18')
+    })
+  })
+
+  it('napi pénztár riport generálásakor a reports-extended daily-cash-desk endpoint wrapperét hívja', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<ExtendedReportsPage />)
+
+    await user.selectOptions(screen.getByRole('combobox'), 'daily-cash-desk')
+    await user.clear(screen.getByTestId('cash-desk-report-id'))
+    await user.type(screen.getByTestId('cash-desk-report-id'), 'cashdesk-1')
+    const dateInputs = container.querySelectorAll('input[type="date"]')
+    await user.type(dateInputs[0]!, '2026-06-18')
+    await user.click(screen.getByRole('button', { name: /Riport generálása/i }))
+
+    await waitFor(() => {
+      expect(mocks.getDailyCashDesk).toHaveBeenCalledWith('cashdesk-1', '2026-06-18')
+    })
+    expect(screen.getByText(/transactionCount/)).toBeInTheDocument()
+  })
+
+  it('aktuális pénztár riport generálásakor a reports-extended current-cash-desk-status endpoint wrapperét hívja', async () => {
+    const user = userEvent.setup()
+    render(<ExtendedReportsPage />)
+
+    await user.selectOptions(screen.getByRole('combobox'), 'current-cash-desk-status')
+    await user.clear(screen.getByTestId('cash-desk-report-id'))
+    await user.type(screen.getByTestId('cash-desk-report-id'), 'cashdesk-1')
+    await user.click(screen.getByRole('button', { name: /Riport generálása/i }))
+
+    await waitFor(() => {
+      expect(mocks.getCurrentCashDeskStatus).toHaveBeenCalledWith('cashdesk-1')
+    })
+    expect(screen.getByText(/OPEN/)).toBeInTheDocument()
   })
 
   it('aktuális pénztár státusz generálásakor a cash-status backend endpoint wrapperét hívja', async () => {
