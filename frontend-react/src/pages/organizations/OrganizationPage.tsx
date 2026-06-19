@@ -7,7 +7,10 @@ import { useTranslation } from 'react-i18next'
 export default function OrganizationPage() {
   const { t } = useTranslation()
   const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [activeOrganizations, setActiveOrganizations] = useState<Organization[]>([])
+  const [rootOrganizations, setRootOrganizations] = useState<Organization[]>([])
   const [loading, setLoading] = useState(true)
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -36,8 +39,14 @@ export default function OrganizationPage() {
     try {
       setLoading(true)
       setError(null)
-      const data = await organizationApi.list()
+      const [data, active, roots] = await Promise.all([
+        organizationApi.list(),
+        organizationApi.getActive(),
+        organizationApi.getRoots(),
+      ])
       setOrganizations(data)
+      setActiveOrganizations(active)
+      setRootOrganizations(roots)
     } catch (err) {
       logger.error('OrganizationPage', 'Szervezetek betöltési hiba:', err)
       setError('Hiba a szervezetek betöltésekor')
@@ -52,10 +61,20 @@ export default function OrganizationPage() {
     setShowForm(true)
   }
 
-  const handleEdit = (org: Organization) => {
-    setEditingOrg(org)
-    setFormData(org)
-    setShowForm(true)
+  const handleEdit = async (org: Organization) => {
+    try {
+      setError(null)
+      setDetailLoadingId(org.id)
+      const detailed = await organizationApi.getById(org.id)
+      setEditingOrg(detailed)
+      setFormData(detailed)
+      setShowForm(true)
+    } catch (err) {
+      logger.error('OrganizationPage', 'Szervezet részletek betöltési hiba:', err)
+      setError('Hiba a szervezet részleteinek betöltésekor')
+    } finally {
+      setDetailLoadingId(null)
+    }
   }
 
   const handleSave = async () => {
@@ -111,6 +130,23 @@ export default function OrganizationPage() {
       )}
 
       <div className="form-panel">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="rounded border border-gray-200 bg-white p-3">
+            <div className="text-xs text-gray-500">Összes szervezet</div>
+            <div className="text-2xl font-semibold text-gray-900">{organizations.length}</div>
+          </div>
+          <div className="rounded border border-emerald-200 bg-emerald-50 p-3">
+            <div className="text-xs text-emerald-700">Aktív szervezet</div>
+            <div className="text-2xl font-semibold text-emerald-800">{activeOrganizations.length}</div>
+          </div>
+          <div className="rounded border border-blue-200 bg-blue-50 p-3">
+            <div className="text-xs text-blue-700">Gyökér szervezet</div>
+            <div className="text-2xl font-semibold text-blue-800">{rootOrganizations.length}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="form-panel">
         <div>
           <label className="form-label">{t('common.search')}</label>
           <div className="relative">
@@ -141,7 +177,7 @@ export default function OrganizationPage() {
         </div>
       )}
 
-      <div className="form-panel">
+      <div className="form-panel overflow-x-auto">
         <table className="data-grid w-full">
           <thead>
             <tr><th>{t('common.code')}</th><th>{t('common.name')}</th><th>{t('organizations.szulo')}</th><th>{t('common.status')}</th><th>{t('common.actions')}</th></tr>
@@ -158,7 +194,14 @@ export default function OrganizationPage() {
                   <td><span className={`badge ${o.isActive ? 'badge-green' : 'badge-red'}`}>{o.isActive ? 'Aktív' : 'Inaktív'}</span></td>
                   <td>
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => handleEdit(o)} className="form-button text-xs"><Edit size={12} />{t('common.edit')}</button>
+                      <button
+                        type="button"
+                        onClick={() => void handleEdit(o)}
+                        disabled={detailLoadingId === o.id}
+                        className="form-button text-xs disabled:opacity-50"
+                      >
+                        <Edit size={12} className={detailLoadingId === o.id ? 'animate-pulse' : ''} />{t('common.edit')}
+                      </button>
                       <button type="button" onClick={() => handleDelete(o.id)} className="form-button text-xs text-red-600"><Trash2 size={12} />{t('common.delete')}</button>
                     </div>
                   </td>
