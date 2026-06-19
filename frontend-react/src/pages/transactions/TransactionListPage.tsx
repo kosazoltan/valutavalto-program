@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, Plus, FileText, Printer, Eye, XCircle, ChevronLeft, ChevronRight, Loader2, RefreshCw, FileDown } from 'lucide-react'
+import { Search, Plus, FileText, Printer, Eye, XCircle, ChevronLeft, ChevronRight, Loader2, RefreshCw, FileDown, CalendarDays } from 'lucide-react'
 import { receiptApi, transactionApi, type Transaction, type TransactionTypeName } from '../../services/api/transactions'
 import type { PagedResponse } from '../../services/api/client'
 import { toast } from '../../components/ui/toaster'
@@ -185,6 +185,28 @@ export default function TransactionListPage() {
     fetchTransactions()
   }
 
+  const loadDailyTransactions = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const daily = await transactionApi.getDaily()
+      setPage(0)
+      setData({
+        content: daily,
+        totalElements: daily.length,
+        totalPages: daily.length > 0 ? 1 : 0,
+        size: Math.max(daily.length, PAGE_SIZE),
+        number: 0,
+      })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Hiba a mai tranzakciók betöltésekor'
+      setError(msg)
+      toast.error(msg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const downloadReceiptPdf = async (tx: Transaction) => {
     if (tx.id <= 0) return
     try {
@@ -212,12 +234,12 @@ export default function TransactionListPage() {
   return (
     <div className="space-y-3">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <FileText />
           {t('archiving.tranzakciok')}
         </h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={fetchTransactions}
             className="form-button flex items-center gap-1"
@@ -225,6 +247,14 @@ export default function TransactionListPage() {
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             {t('common.refresh')}
+          </button>
+          <button
+            onClick={() => void loadDailyTransactions()}
+            className="form-button flex items-center gap-1"
+            disabled={loading}
+          >
+            <CalendarDays size={16} />
+            Mai tranzakciók
           </button>
           <Link to="/transactions/new" className="form-button-primary flex items-center gap-1">
             <Plus size={16} />
@@ -235,8 +265,8 @@ export default function TransactionListPage() {
 
       {/* Filters */}
       <div className="form-panel">
-        <div className="flex gap-3 items-end">
-          <div className="flex-1">
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="min-w-[220px] flex-1">
             <label className="form-label">{t('transactions.keresesUgyfelnev')}</label>
             <div className="flex gap-1">
               <input
@@ -252,7 +282,7 @@ export default function TransactionListPage() {
               </button>
             </div>
           </div>
-          <div>
+          <div className="min-w-[140px]">
             <label className="form-label">{t('transactions.datumTol')}</label>
             <input
               type="date"
@@ -261,7 +291,7 @@ export default function TransactionListPage() {
               className="form-input"
             />
           </div>
-          <div>
+          <div className="min-w-[140px]">
             <label className="form-label">{t('transactions.datumIg')}</label>
             <input
               type="date"
@@ -270,7 +300,7 @@ export default function TransactionListPage() {
               className="form-input"
             />
           </div>
-          <div>
+          <div className="min-w-[140px]">
             <label className="form-label">{t('common.type')}</label>
             <select
               value={typeFilter}
@@ -287,7 +317,7 @@ export default function TransactionListPage() {
             </select>
           </div>
           {/* FR-PA-05: csak ügyfeles bizonylatok szűrő */}
-          <div>
+          <div className="min-w-[160px]">
             <label className="form-label">&nbsp;</label>
             <label className="form-input flex h-[38px] items-center gap-2 cursor-pointer">
               <input
@@ -319,164 +349,166 @@ export default function TransactionListPage() {
       {/* Table */}
       {data && (
         <div className="form-panel p-0">
-          <table className="data-grid w-full">
-            <thead>
-              <tr>
-                <th>{t('reports.bizonylat')}</th>
-                <th>{t('transactions.datumIdo')}</th>
-                <th>{t('common.type')}</th>
-                <th>{t('common.deviza')}</th>
-                <th className="text-right">{t('stornos.devizaOsszeg')}</th>
-                <th className="text-right">{t('cashier.exchangeRate')}</th>
-                <th className="text-right">{t('stornos.hufOsszeg')}</th>
-                <th>{t('common.customer')}</th>
-                <th>{t('common.status')}</th>
-                <th className="w-24">{t('common.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTransactions.length === 0 ? (
+          <div className="overflow-x-auto">
+            <table className="data-grid min-w-full">
+              <thead>
                 <tr>
-                  <td colSpan={10} className="text-center text-gray-400 py-8">
-                    {t('common.noResult')}
-                  </td>
+                  <th>{t('reports.bizonylat')}</th>
+                  <th>{t('transactions.datumIdo')}</th>
+                  <th>{t('common.type')}</th>
+                  <th>{t('common.deviza')}</th>
+                  <th className="text-right">{t('stornos.devizaOsszeg')}</th>
+                  <th className="text-right">{t('cashier.exchangeRate')}</th>
+                  <th className="text-right">{t('stornos.hufOsszeg')}</th>
+                  <th>{t('common.customer')}</th>
+                  <th>{t('common.status')}</th>
+                  <th className="w-24">{t('common.actions')}</th>
                 </tr>
-              ) : (
-                filteredTransactions.map((tx) => (
-                  <tr key={tx.id} className={tx.status === 'REVERSED' ? 'opacity-50 line-through' : ''}>
-                    <td className="font-mono text-sm text-gray-600">{tx.receiptNumber || '—'}</td>
-                    <td className="font-mono text-sm">{formatDate(tx.transactionDate, tx.transactionTime)}</td>
-                    <td>
-                      <span className={`px-1.5 py-0.5 text-xs rounded ${
-                        tx.transactionType === 'BUY'
-                          ? 'bg-green-100 text-green-700'
-                          : tx.transactionType === 'SELL'
-                            ? 'bg-blue-100 text-blue-700'
-                            : tx.transactionType === 'REVERSAL'
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-purple-100 text-purple-700'
-                      }`}>
-                        {tx.transactionType === 'BUY' ? 'Vétel'
-                          : tx.transactionType === 'SELL' ? 'Eladás'
-                            : tx.transactionType === 'REVERSAL' ? 'Sztornó'
-                              : tx.transactionType === 'TRANSFER_OUT' ? 'Átadás'
-                                : tx.transactionType === 'TRANSFER_IN' ? 'Átvétel'
-                                  : 'Átváltás'}
-                      </span>
-                    </td>
-                    <td className="font-bold">{tx.currencyCode}</td>
-                    <td className="text-right font-mono">{formatNumber(tx.currencyAmount)}</td>
-                    <td className="text-right font-mono text-gray-600">{formatNumber(tx.exchangeRate, 4)}</td>
-                    <td className="text-right font-mono font-semibold">
-                      {formatNumber(tx.roundedHufAmount ?? tx.hufAmount, 0)} {t('common.ft')}
-                    </td>
-                    <td>{tx.customerName || <span className="text-gray-400 italic">—</span>}</td>
-                    <td>
-                      {(() => {
-                        // FK-SYNC (2026-06-02): ha a függő tételnél van tartós sync-hiba, PIROS
-                        // "Feltöltés hibás" badge + tooltip az okkal — így a tétel nem tűnik el
-                        // némán, a felhasználó látja, miért nem ment fel.
-                        const syncErr = (tx as Transaction & { syncError?: string }).syncError
-                        if (tx.status === 'PENDING' && syncErr) {
-                          return (
-                            <span
-                              className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-700 cursor-help"
-                              title={`Feltöltés sikertelen: ${syncErr}`}
-                            >
-                              Feltöltés hibás
-                            </span>
-                          )
-                        }
-                        return (
-                          <span className={`px-1.5 py-0.5 text-xs rounded ${
-                            tx.status === 'COMPLETED'
-                              ? 'bg-green-100 text-green-700'
-                              : tx.status === 'REVERSED'
-                                ? 'bg-red-100 text-red-700'
-                                : 'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {tx.status === 'COMPLETED' ? 'Teljesítve'
-                              : tx.status === 'REVERSED' ? 'Sztornózva'
-                                : 'Függőben'}
-                          </span>
-                        )
-                      })()}
-                    </td>
-                    <td>
-                      <div className="flex gap-1">
-                        <button
-                          className="toolbar-button"
-                          title="Megtekintés"
-                          onClick={() => navigate(`/transactions/${tx.receiptNumber || tx.id}`)}
-                          data-testid={`view-tx-${tx.id}`}
-                        >
-                          <Eye size={14} />
-                        </button>
-                        <button
-                          className="toolbar-button"
-                          title={tx.id > 0 ? 'Bizonylat PDF letöltés' : 'Bizonylat PDF csak szinkronizált tranzakcióhoz érhető el'}
-                          onClick={() => void downloadReceiptPdf(tx)}
-                          disabled={tx.id <= 0}
-                          data-testid={`receipt-pdf-tx-${tx.id}`}
-                        >
-                          <FileDown size={14} />
-                        </button>
-                        <button
-                          className="toolbar-button"
-                          title={tx.id > 0 ? 'ESC/POS bizonylat letöltés' : 'ESC/POS csak szinkronizált tranzakcióhoz érhető el'}
-                          onClick={() => void downloadReceiptEscPos(tx)}
-                          disabled={tx.id <= 0}
-                          data-testid={`receipt-escpos-tx-${tx.id}`}
-                        >
-                          <Printer size={14} />
-                        </button>
-                        {/* v2.3.36 (B25 audit fix): "Függőben" tranzakciókra is mutatjuk a storno
-                         * ikont, DE disabled + magyarázó tooltip-pel. A korábbi UI-ban a button
-                         * egyszerűen NEM jelent meg, ezért a felhasználó nem tudta, miért hiányzik.
-                         * v2.3.37 (Sourcery #301 P3): getStornoUiState helper + extract konstans. */}
-                        {(() => {
-                          const stornoState = getStornoUiState(tx.status)
-                          if (stornoState === 'available') {
-                            return (
-                              <button
-                                className="toolbar-button text-red-600 hover:text-red-700"
-                                title="Sztornó"
-                                onClick={() => navigate(`/transactions/${tx.receiptNumber || tx.id}/storno`)}
-                                data-testid={`storno-tx-${tx.id}`}
-                              >
-                                <XCircle size={14} />
-                              </button>
-                            )
-                          }
-                          if (stornoState === 'pending') {
-                            return (
-                              <button
-                                className="toolbar-button text-gray-400 cursor-not-allowed"
-                                title={STORNO_PENDING_TOOLTIP}
-                                disabled
-                                data-testid={`storno-tx-${tx.id}-disabled`}
-                              >
-                                <XCircle size={14} />
-                              </button>
-                            )
-                          }
-                          // 'reversed' — semmi ne jelenjen meg
-                          return null
-                        })()}
-                      </div>
+              </thead>
+              <tbody>
+                {filteredTransactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="text-center text-gray-400 py-8">
+                      {t('common.noResult')}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredTransactions.map((tx) => (
+                    <tr key={tx.id} className={tx.status === 'REVERSED' ? 'opacity-50 line-through' : ''}>
+                      <td className="font-mono text-sm text-gray-600">{tx.receiptNumber || '—'}</td>
+                      <td className="font-mono text-sm">{formatDate(tx.transactionDate, tx.transactionTime)}</td>
+                      <td>
+                        <span className={`px-1.5 py-0.5 text-xs rounded ${
+                          tx.transactionType === 'BUY'
+                            ? 'bg-green-100 text-green-700'
+                            : tx.transactionType === 'SELL'
+                              ? 'bg-blue-100 text-blue-700'
+                              : tx.transactionType === 'REVERSAL'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-purple-100 text-purple-700'
+                        }`}>
+                          {tx.transactionType === 'BUY' ? 'Vétel'
+                            : tx.transactionType === 'SELL' ? 'Eladás'
+                              : tx.transactionType === 'REVERSAL' ? 'Sztornó'
+                                : tx.transactionType === 'TRANSFER_OUT' ? 'Átadás'
+                                  : tx.transactionType === 'TRANSFER_IN' ? 'Átvétel'
+                                    : 'Átváltás'}
+                        </span>
+                      </td>
+                      <td className="font-bold">{tx.currencyCode}</td>
+                      <td className="text-right font-mono">{formatNumber(tx.currencyAmount)}</td>
+                      <td className="text-right font-mono text-gray-600">{formatNumber(tx.exchangeRate, 4)}</td>
+                      <td className="text-right font-mono font-semibold">
+                        {formatNumber(tx.roundedHufAmount ?? tx.hufAmount, 0)} {t('common.ft')}
+                      </td>
+                      <td>{tx.customerName || <span className="text-gray-400 italic">—</span>}</td>
+                      <td>
+                        {(() => {
+                          // FK-SYNC (2026-06-02): ha a függő tételnél van tartós sync-hiba, PIROS
+                          // "Feltöltés hibás" badge + tooltip az okkal — így a tétel nem tűnik el
+                          // némán, a felhasználó látja, miért nem ment fel.
+                          const syncErr = (tx as Transaction & { syncError?: string }).syncError
+                          if (tx.status === 'PENDING' && syncErr) {
+                            return (
+                              <span
+                                className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-700 cursor-help"
+                                title={`Feltöltés sikertelen: ${syncErr}`}
+                              >
+                                Feltöltés hibás
+                              </span>
+                            )
+                          }
+                          return (
+                            <span className={`px-1.5 py-0.5 text-xs rounded ${
+                              tx.status === 'COMPLETED'
+                                ? 'bg-green-100 text-green-700'
+                                : tx.status === 'REVERSED'
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {tx.status === 'COMPLETED' ? 'Teljesítve'
+                                : tx.status === 'REVERSED' ? 'Sztornózva'
+                                  : 'Függőben'}
+                            </span>
+                          )
+                        })()}
+                      </td>
+                      <td>
+                        <div className="flex gap-1">
+                          <button
+                            className="toolbar-button"
+                            title="Megtekintés"
+                            onClick={() => navigate(`/transactions/${tx.receiptNumber || tx.id}`)}
+                            data-testid={`view-tx-${tx.id}`}
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
+                            className="toolbar-button"
+                            title={tx.id > 0 ? 'Bizonylat PDF letöltés' : 'Bizonylat PDF csak szinkronizált tranzakcióhoz érhető el'}
+                            onClick={() => void downloadReceiptPdf(tx)}
+                            disabled={tx.id <= 0}
+                            data-testid={`receipt-pdf-tx-${tx.id}`}
+                          >
+                            <FileDown size={14} />
+                          </button>
+                          <button
+                            className="toolbar-button"
+                            title={tx.id > 0 ? 'ESC/POS bizonylat letöltés' : 'ESC/POS csak szinkronizált tranzakcióhoz érhető el'}
+                            onClick={() => void downloadReceiptEscPos(tx)}
+                            disabled={tx.id <= 0}
+                            data-testid={`receipt-escpos-tx-${tx.id}`}
+                          >
+                            <Printer size={14} />
+                          </button>
+                          {/* v2.3.36 (B25 audit fix): "Függőben" tranzakciókra is mutatjuk a storno
+                           * ikont, DE disabled + magyarázó tooltip-pel. A korábbi UI-ban a button
+                           * egyszerűen NEM jelent meg, ezért a felhasználó nem tudta, miért hiányzik.
+                           * v2.3.37 (Sourcery #301 P3): getStornoUiState helper + extract konstans. */}
+                          {(() => {
+                            const stornoState = getStornoUiState(tx.status)
+                            if (stornoState === 'available') {
+                              return (
+                                <button
+                                  className="toolbar-button text-red-600 hover:text-red-700"
+                                  title="Sztornó"
+                                  onClick={() => navigate(`/transactions/${tx.receiptNumber || tx.id}/storno`)}
+                                  data-testid={`storno-tx-${tx.id}`}
+                                >
+                                  <XCircle size={14} />
+                                </button>
+                              )
+                            }
+                            if (stornoState === 'pending') {
+                              return (
+                                <button
+                                  className="toolbar-button text-gray-400 cursor-not-allowed"
+                                  title={STORNO_PENDING_TOOLTIP}
+                                  disabled
+                                  data-testid={`storno-tx-${tx.id}-disabled`}
+                                >
+                                  <XCircle size={14} />
+                                </button>
+                              )
+                            }
+                            // 'reversed' — semmi ne jelenjen meg
+                            return null
+                          })()}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {/* Pagination + Summary */}
       {data && (
         <div className="form-panel">
-          <div className="flex justify-between items-center text-sm">
+          <div className="flex flex-wrap justify-between gap-2 text-sm">
             <span>
               {totalElements} {t('transactions.tranzakcio')}{totalPages > 1 && ` (${page + 1}/${totalPages} oldal)`}
             </span>

@@ -9,6 +9,7 @@ import type { Transaction } from '../../services/api/transactions'
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   transactionApiList: vi.fn(),
+  transactionApiGetDaily: vi.fn(),
   receiptDownloadTransactionPdf: vi.fn(),
   receiptDownloadTransactionEscPos: vi.fn(),
 }))
@@ -28,6 +29,7 @@ vi.mock('../../services/api/transactions', async () => {
     transactionApi: {
       ...actual.transactionApi,
       list: mocks.transactionApiList,
+      getDaily: mocks.transactionApiGetDaily,
     },
     receiptApi: {
       ...actual.receiptApi,
@@ -170,6 +172,7 @@ describe('TransactionListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.transactionApiList.mockResolvedValue(mockPagedResponse)
+    mocks.transactionApiGetDaily.mockResolvedValue([mockTransactions[0]])
     mocks.receiptDownloadTransactionPdf.mockResolvedValue(new Blob(['pdf'], { type: 'application/pdf' }))
     mocks.receiptDownloadTransactionEscPos.mockResolvedValue(new Blob(['escpos'], { type: 'application/octet-stream' }))
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:receipt')
@@ -443,5 +446,23 @@ describe('TransactionListPage', () => {
         expect.objectContaining({ customerOnly: true }),
       )
     })
+  })
+
+  it('Mai tranzakciók gomb a GET /transactions/daily wrapperre köt', async () => {
+    const user = userEvent.setup()
+    renderTransactionListPage()
+    await waitFor(() => {
+      expect(screen.getByText('Kiss János')).toBeInTheDocument()
+    })
+    mocks.transactionApiList.mockClear()
+
+    await user.click(screen.getByRole('button', { name: /Mai tranzakciók/i }))
+
+    await waitFor(() => {
+      expect(mocks.transactionApiGetDaily).toHaveBeenCalledTimes(1)
+      expect(screen.queryByText('Nagy Péter')).not.toBeInTheDocument()
+      expect(screen.getByText(/1 tranzakció/)).toBeInTheDocument()
+    })
+    expect(mocks.transactionApiList).not.toHaveBeenCalled()
   })
 })
