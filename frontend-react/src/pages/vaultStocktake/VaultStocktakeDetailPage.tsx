@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, CheckCircle2, XCircle, FileCheck, Ban, AlertTriangle } from 'lucide-react'
-import { vaultStocktakeApi, VaultStocktakeSession, VaultStocktakeItem, StocktakeStatus } from '../../services/api/vaultStocktake'
+import { vaultStocktakeApi, VaultStocktakeSession, VaultStocktakeItem, StocktakeStatus, StocktakeSummary } from '../../services/api/vaultStocktake'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
@@ -20,6 +20,7 @@ export default function VaultStocktakeDetailPage() {
     const [session, setSession] = useState<VaultStocktakeSession | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [summary, setSummary] = useState<StocktakeSummary | null>(null)
     const [saving, setSaving] = useState<string | null>(null)  // itemId lementve
     const [editValues, setEditValues] = useState<Record<string, string>>({})
 
@@ -29,6 +30,11 @@ export default function VaultStocktakeDetailPage() {
         try {
             const data = await vaultStocktakeApi.get(id)
             setSession(data)
+            const backendSummary = await vaultStocktakeApi.summary(id).catch((err: unknown) => {
+                logger.warn('vault-stocktake', 'Leltar summary betoltese sikertelen: ' + (err instanceof Error ? err.message : String(err)))
+                return null
+            })
+            setSummary(backendSummary)
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err)
             setError(msg)
@@ -183,6 +189,30 @@ export default function VaultStocktakeDetailPage() {
                     <div className="mt-3 p-2 bg-gray-50 rounded text-sm whitespace-pre-line">{session.note}</div>
                 )}
             </div>
+
+            {summary && (
+                <section className="bg-white shadow rounded p-3 mb-2" aria-label={t('vaultStocktake.backendOsszesito')}>
+                    <div className="mb-3 text-sm font-semibold text-gray-800">{t('vaultStocktake.backendOsszesito')}</div>
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                        <div className="bg-slate-50 rounded p-3">
+                            <div className="text-xs text-slate-600">{t('vaultStocktake.tetelOsszesen')}</div>
+                            <div className="text-lg font-bold">{summary.totalItems}</div>
+                        </div>
+                        <div className="bg-blue-50 rounded p-3">
+                            <div className="text-xs text-blue-700">{t('vaultStocktake.felveve')}</div>
+                            <div className="text-lg font-bold">{summary.countedItems}</div>
+                        </div>
+                        <div className="bg-amber-50 rounded p-3">
+                            <div className="text-xs text-amber-700">{t('vaultStocktake.elteres')}</div>
+                            <div className="text-lg font-bold">{summary.discrepancyItems}</div>
+                        </div>
+                        <div className="bg-rose-50 rounded p-3">
+                            <div className="text-xs text-rose-700">{t('vaultStocktake.osszesitettElteresHuf')}</div>
+                            <div className="text-lg font-bold">{summary.totalDiscrepancyHuf.toLocaleString('hu-HU')}</div>
+                        </div>
+                    </div>
+                </section>
+            )}
 
             {error && (
                 <div className="bg-red-50 border border-red-200 rounded p-3 mb-4 text-red-700 flex items-center gap-2">

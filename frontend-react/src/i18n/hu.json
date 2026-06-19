@@ -2430,6 +2430,7 @@
   },
   "vaultStocktake": {
     "aktivLeltarak": "Aktív leltárak",
+    "backendOsszesito": "Backend összesítő",
     "cimlet": "Cimlet",
     "cimletenkentiErtektarEllenorzesLegacyLeltarDllParity": "Címletenkénti értéktár ellenőrzés",
     "ellenorzesreVar": "Ellenőrzésre vár",
@@ -2447,6 +2448,7 @@
     "mentes": "Mentes",
     "muvelet": "Muvelet",
     "nincsTetelValoszinulegNincsBanknoteInventoryABranchEn": "Nincs tetel - valoszinuleg nincs banknote_inventory a branch-en.",
+    "osszesitettElteresHuf": "Összesített eltérés (HUF)",
     "reszletek": "Reszletek",
     "reviewBa": "REVIEW-ba",
     "session": "Session",
