@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   dailySessionIsOpen: vi.fn(),
+  dailySessionGetReversalCount: vi.fn(),
   cashBalanceList: vi.fn(),
   sessionValidateOpen: vi.fn(),
   sessionOpen: vi.fn(),
@@ -46,6 +47,7 @@ vi.mock('../../stores/authStore', () => ({
 vi.mock('../../services/api/index', () => ({
   dailySessionApi: {
     isOpen: mocks.dailySessionIsOpen,
+    getReversalCount: mocks.dailySessionGetReversalCount,
   },
   cashBalanceApi: {
     list: mocks.cashBalanceList,
@@ -62,6 +64,7 @@ describe('DayOpenPage session open backend contract', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.dailySessionIsOpen.mockResolvedValue(false)
+    mocks.dailySessionGetReversalCount.mockResolvedValue(3)
     mocks.sessionValidateOpen.mockResolvedValue(['Előző napi zárási eltérés nyitva van.'])
     mocks.cashBalanceList.mockResolvedValue([
       {
@@ -115,8 +118,11 @@ describe('DayOpenPage session open backend contract', () => {
     await screen.findByText(/Előző napi zárási eltérés nyitva van\./)
 
     expect(mocks.dailySessionIsOpen).toHaveBeenCalled()
+    expect(mocks.dailySessionGetReversalCount).toHaveBeenCalled()
     expect(mocks.sessionValidateOpen).toHaveBeenCalledWith('11111111-1111-1111-1111-111111111111')
     expect(mocks.cashBalanceList).toHaveBeenCalled()
+    expect(screen.getByTestId('daily-reversal-count')).toHaveTextContent('Mai sztornók')
+    expect(screen.getByTestId('daily-reversal-count')).toHaveTextContent('3')
   })
 
   it('napnyitáskor a /sessions/open után lekéri a backend nyitó készletet', async () => {

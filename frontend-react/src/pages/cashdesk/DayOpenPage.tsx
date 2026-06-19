@@ -31,6 +31,8 @@ export default function DayOpenPage() {
   const [opening, setOpening] = useState(false)
   const [alreadyOpen, setAlreadyOpen] = useState(false)
   const [openWarnings, setOpenWarnings] = useState<string[]>([])
+  const [reversalCount, setReversalCount] = useState<number | null>(null)
+  const [reversalCountError, setReversalCountError] = useState<string | null>(null)
   const [sessionOpeningBalances, setSessionOpeningBalances] = useState<Record<string, number> | null>(null)
   const [showDenomination, setShowDenomination] = useState(false)
   const [denomQuantities, setDenomQuantities] = useState<Record<number, number>>(
@@ -46,6 +48,7 @@ export default function DayOpenPage() {
   const checkAndLoad = useCallback(async () => {
     setLoading(true)
     setBalanceError(null)
+    setReversalCountError(null)
     try {
       const isOpen = await dailySessionApi.isOpen()
       if (isOpen) {
@@ -61,6 +64,14 @@ export default function DayOpenPage() {
           logger.warn('DayOpenPage', 'Napnyitas validacio sikertelen:', err)
           setOpenWarnings(['A napnyitási validáció nem kérdezhető le.'])
         }
+      }
+
+      try {
+        setReversalCount(await dailySessionApi.getReversalCount())
+      } catch (err) {
+        logger.warn('DayOpenPage', 'Napi sztorno szamlalo lekerdezes sikertelen:', err)
+        setReversalCount(null)
+        setReversalCountError('A napi sztornó számláló nem kérdezhető le.')
       }
 
       // Készlet lekérés
@@ -190,6 +201,18 @@ export default function DayOpenPage() {
               </ul>
             </div>
           )}
+
+          <div className="rounded-lg border border-slate-200 bg-white p-2 text-xs shadow-sm" data-testid="daily-reversal-count">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-semibold text-slate-600">Mai sztornók</span>
+              <span className="font-mono text-sm font-bold text-slate-900">
+                {reversalCount ?? '-'}
+              </span>
+            </div>
+            {reversalCountError && (
+              <div className="mt-1 text-amber-700">{reversalCountError}</div>
+            )}
+          </div>
 
           {sessionOpeningBalanceRows.length > 0 && (
             <div className="rounded-lg border border-green-200 bg-green-50 p-2 shadow-sm" data-testid="session-opening-balances">
