@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Moon, Calendar, Package, Send, Eye, CheckCircle, AlertTriangle, Clock, Printer } from 'lucide-react'
+import { Moon, Calendar, Package, Send, Eye, CheckCircle, AlertTriangle, Clock, Printer, BarChart3 } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -24,13 +24,30 @@ interface EveningClosingPreview {
   packages: Array<{ packageId: string; currency: string; amount: number; sealNumber?: string; destination: string }>
 }
 
+interface EveningClosingReport {
+  branchId: number
+  date: string
+  totalTransactionCount: number
+  buyCount: number
+  sellCount: number
+  reversalCount: number
+  conversionCount: number
+  totalBuyHuf: number
+  totalSellHuf: number
+  totalHandlingFees: number
+  netTurnover: number
+  currencyBreakdown: Record<string, number>
+}
+
 export default function EveningClosingPage() {
   const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
   const branchId = worker?.branchId || ''
   const [date, setDate] = useState(localIsoDate())
   const [preview, setPreview] = useState<EveningClosingPreview | null>(null)
+  const [report, setReport] = useState<EveningClosingReport | null>(null)
   const [loading, setLoading] = useState(false)
+  const [reportLoading, setReportLoading] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -47,6 +64,22 @@ export default function EveningClosingPage() {
       setPreview(null)
     } finally {
       setLoading(false)
+    }
+  }, [branchId, date])
+
+  const loadReport = useCallback(async () => {
+    if (!branchId) { toast.warning('Fiók szükséges'); return }
+    try {
+      setReportLoading(true)
+      setError(null)
+      const data = await eveningClosingApi.report(branchId, date)
+      setReport(data as EveningClosingReport)
+    } catch (err) {
+      logger.error('EveningClosingPage', 'Napi jelentés hiba:', err)
+      setError(getErrorMessage(err))
+      setReport(null)
+    } finally {
+      setReportLoading(false)
     }
   }, [branchId, date])
 
@@ -102,6 +135,9 @@ export default function EveningClosingPage() {
         <button onClick={() => void loadPreview()} disabled={loading} className="form-button-primary">
           <Eye size={16} /> {loading ? 'Betöltés...' : 'Előnézet'}
         </button>
+        <button onClick={() => void loadReport()} disabled={reportLoading} className="form-button">
+          <BarChart3 size={16} /> {reportLoading ? 'Betöltés...' : 'Napi jelentés'}
+        </button>
       </div>
 
       {/* FR-ZARUI-16..26: Értéktári zárás-előtti ellenőrzőlista — kísérő kontroll, nem blokkoló gate */}
@@ -109,6 +145,45 @@ export default function EveningClosingPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>
+      )}
+
+      {report && (
+        <div className="form-panel" data-testid="evening-closing-report-panel">
+          <h2 className="font-semibold mb-3 flex items-center gap-1"><BarChart3 size={16} />Napi jelentés</h2>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="text-center rounded bg-gray-50 p-2">
+              <div className="text-lg font-bold">{report.totalTransactionCount}</div>
+              <div className="text-xs text-gray-500">Tranzakció</div>
+            </div>
+            <div className="text-center rounded bg-green-50 p-2">
+              <div className="text-lg font-bold text-green-700">{fmtHuf(report.totalBuyHuf)}</div>
+              <div className="text-xs text-gray-500">Vétel</div>
+            </div>
+            <div className="text-center rounded bg-blue-50 p-2">
+              <div className="text-lg font-bold text-blue-700">{fmtHuf(report.totalSellHuf)}</div>
+              <div className="text-xs text-gray-500">Eladás</div>
+            </div>
+            <div className="text-center rounded bg-orange-50 p-2">
+              <div className="text-lg font-bold text-orange-700">{fmtHuf(report.totalHandlingFees)}</div>
+              <div className="text-xs text-gray-500">Kezelési díj</div>
+            </div>
+            <div className="text-center rounded bg-purple-50 p-2">
+              <div className="text-lg font-bold text-purple-700">{fmtHuf(report.netTurnover)}</div>
+              <div className="text-xs text-gray-500">Nettó</div>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+            {Object.entries(report.currencyBreakdown || {}).map(([currency, hufAmount]) => (
+              <div key={currency} className="rounded border border-gray-200 p-2 text-sm">
+                <div className="font-mono font-bold">{currency}</div>
+                <div className="font-mono">{fmtHuf(hufAmount)}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 text-xs text-gray-500">
+            Vétel: {report.buyCount} | Eladás: {report.sellCount} | Sztornó: {report.reversalCount} | Konverzió: {report.conversionCount}
+          </div>
+        </div>
       )}
 
       {preview && (
