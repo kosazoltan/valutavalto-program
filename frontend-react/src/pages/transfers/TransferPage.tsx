@@ -155,6 +155,7 @@ export default function TransferPage() {
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null)
   const [receivedAmount, setReceivedAmount] = useState('')
   const [receiveNotes, setReceiveNotes] = useState('')
+  const [receiveDetailLoading, setReceiveDetailLoading] = useState(false)
 
   // Supervisor PIN for TH transfers
   const [showSupervisorPin, setShowSupervisorPin] = useState(false)
@@ -943,10 +944,21 @@ export default function TransferPage() {
   }
 
   // Open receive modal
-  const openReceiveModal = (transfer: Transfer) => {
+  const openReceiveModal = async (transfer: Transfer) => {
     setSelectedTransfer(transfer)
     setReceivedAmount(transfer.amount.toString().replace('.', ','))
+    setReceiveNotes('')
     setShowReceiveModal(true)
+    setReceiveDetailLoading(true)
+    try {
+      const detail = await transferApi.getById(transfer.id)
+      setSelectedTransfer(detail)
+      setReceivedAmount(detail.amount.toString().replace('.', ','))
+    } catch (err) {
+      toast.warning('Átadás részlete nem frissült', getErrorMessage(err))
+    } finally {
+      setReceiveDetailLoading(false)
+    }
   }
 
   // Status badge
@@ -1068,7 +1080,7 @@ export default function TransferPage() {
                         <>
                           <button
                             type="button"
-                            onClick={() => openReceiveModal(transfer)}
+                            onClick={() => { void openReceiveModal(transfer) }}
                             className="toolbar-button text-green-600"
                             title="Átvétel"
                           >
@@ -1577,6 +1589,9 @@ export default function TransferPage() {
               <div className="bg-gray-50 p-3 rounded">
                 <div className="text-sm text-gray-600">{t('transfers.atadolapSzam')}</div>
                 <div className="font-mono font-semibold">{selectedTransfer.transferNumber}</div>
+                {receiveDetailLoading && (
+                  <div className="mt-1 text-xs text-gray-500">Részletadatok frissítése...</div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
