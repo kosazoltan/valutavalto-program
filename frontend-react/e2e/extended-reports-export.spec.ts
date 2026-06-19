@@ -96,6 +96,66 @@ async function mockApis(page: Page) {
       })
     }
 
+    if (path.endsWith('/reports/cash-status') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          branchId: 'branch-1',
+          branchName: 'Budapest 01',
+          reportTime: '2026-06-18T10:00:00',
+          balances: [],
+          totalHufEquivalent: 250000,
+          lowBalanceAlerts: [],
+          highBalanceAlerts: [],
+        }),
+      })
+    }
+
+    if (path.endsWith('/reports/today-summary') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          reportDate: '2026-06-18',
+          branchId: 'branch-1',
+          branchName: 'Budapest 01',
+          sessionStatus: 'OPEN',
+          openingBalanceHuf: 100000,
+          transactionCount: 7,
+          buyCount: 4,
+          sellCount: 3,
+          reversalCount: 1,
+          totalBuyHuf: 120000,
+          totalSellHuf: 80000,
+          totalHandlingFees: 1500,
+          currencyTurnovers: [],
+        }),
+      })
+    }
+
+    if (/\/reports\/currency\/1$/.test(path) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          currencyId: 1,
+          currencyCode: 'EUR',
+          currencyName: 'Euró',
+          startDate: '2026-06-01',
+          endDate: '2026-06-18',
+          totalBuyCount: 2,
+          totalSellCount: 1,
+          totalBuyAmount: 300,
+          totalSellAmount: 120,
+          totalBuyHuf: 120000,
+          totalSellHuf: 48000,
+          averageBuyRate: 400,
+          averageSellRate: 405,
+        }),
+      })
+    }
+
     if (/\/reports\/daily\/[^/]+\/\d{4}-\d{2}-\d{2}\/full$/.test(path) && method === 'GET') {
       return route.fulfill({
         status: 200,
@@ -188,6 +248,47 @@ test('napi zárás teljes riport és PDF export mobil nézetből backend endpoin
   )
   await page.getByRole('button', { name: /PDF export/i }).click()
   await pdfRequest
+
+  const horizontalOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  )
+  expect(horizontalOverflow).toBe(false)
+})
+
+test('kibővített riportok mobil nézetben cash, today és currency read endpointokat hív', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mockApis(page)
+  await login(page)
+
+  await page.goto('/reports/extended', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: /Bővített Riportok/i })).toBeVisible()
+
+  await page.getByRole('combobox').selectOption('cash-status')
+  const cashStatusRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && request.url().includes('/reports/cash-status')
+  )
+  await page.getByRole('button', { name: /Riport generálása/i }).click()
+  await cashStatusRequest
+  await expect(page.getByText('totalHufEquivalent')).toBeVisible()
+
+  await page.getByRole('combobox').selectOption('today-summary')
+  const todaySummaryRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && request.url().includes('/reports/today-summary')
+  )
+  await page.getByRole('button', { name: /Riport generálása/i }).click()
+  await todaySummaryRequest
+  await expect(page.getByText('transactionCount')).toBeVisible()
+
+  await page.getByRole('combobox').selectOption('currency-report')
+  await page.getByTestId('currency-report-id').fill('1')
+  await page.locator('input[type="date"]').nth(0).fill('2026-06-01')
+  await page.locator('input[type="date"]').nth(1).fill('2026-06-18')
+  const currencyReportRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && request.url().includes('/reports/currency/1')
+  )
+  await page.getByRole('button', { name: /Riport generálása/i }).click()
+  await currencyReportRequest
+  await expect(page.getByText('EUR')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

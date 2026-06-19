@@ -8,6 +8,9 @@ const mocks = vi.hoisted(() => ({
   getMonthlyTurnoverReport: vi.fn(),
   getTransferReport: vi.fn(),
   getHandlingFeeReport: vi.fn(),
+  getCashStatus: vi.fn(),
+  getTodaySummary: vi.fn(),
+  getCurrencyReport: vi.fn(),
   getDailyFullReport: vi.fn(),
   exportPeriodCsv: vi.fn(),
   exportMonthlyTurnoverCsv: vi.fn(),
@@ -38,6 +41,9 @@ vi.mock('../../services/api/index', () => ({
     getMonthlyTurnover: mocks.getMonthlyTurnoverReport,
     getTransferReport: mocks.getTransferReport,
     getHandlingFeeReport: mocks.getHandlingFeeReport,
+    getCashStatus: mocks.getCashStatus,
+    getTodaySummary: mocks.getTodaySummary,
+    getCurrencyReport: mocks.getCurrencyReport,
     getDailyFullReport: mocks.getDailyFullReport,
     exportPeriodCsv: mocks.exportPeriodCsv,
     exportMonthlyTurnoverCsv: mocks.exportMonthlyTurnoverCsv,
@@ -71,6 +77,9 @@ describe('ExtendedReportsPage CSV backend contract', () => {
     mocks.getMonthlyTurnoverReport.mockResolvedValue({ totalTurnoverHuf: 100000 })
     mocks.getTransferReport.mockResolvedValue({ totalTransfers: 2 })
     mocks.getHandlingFeeReport.mockResolvedValue({ totalHandlingFees: 1500 })
+    mocks.getCashStatus.mockResolvedValue({ branchName: 'Budapest 01', totalHufEquivalent: 250000 })
+    mocks.getTodaySummary.mockResolvedValue({ reportDate: '2026-06-18', transactionCount: 7 })
+    mocks.getCurrencyReport.mockResolvedValue({ currencyId: 1, currencyCode: 'EUR', totalBuyHuf: 120000 })
     mocks.getDailyFullReport.mockResolvedValue({ branchName: 'Budapest 01', transactionCount: 4 })
     mocks.exportPeriodCsv.mockResolvedValue(new Blob(['period']))
     mocks.exportMonthlyTurnoverCsv.mockResolvedValue(new Blob(['monthly']))
@@ -178,6 +187,50 @@ describe('ExtendedReportsPage CSV backend contract', () => {
     await waitFor(() => {
       expect(mocks.getHandlingFeeReport).toHaveBeenCalledWith('2026-06-01', '2026-06-18')
     })
+  })
+
+  it('aktuális pénztár státusz generálásakor a cash-status backend endpoint wrapperét hívja', async () => {
+    const user = userEvent.setup()
+    render(<ExtendedReportsPage />)
+
+    await user.selectOptions(screen.getByRole('combobox'), 'cash-status')
+    await user.click(screen.getByRole('button', { name: /Riport generálása/i }))
+
+    await waitFor(() => {
+      expect(mocks.getCashStatus).toHaveBeenCalled()
+    })
+    expect(screen.getByText(/Budapest 01/)).toBeInTheDocument()
+  })
+
+  it('mai zárási összesítő generálásakor a today-summary backend endpoint wrapperét hívja', async () => {
+    const user = userEvent.setup()
+    render(<ExtendedReportsPage />)
+
+    await user.selectOptions(screen.getByRole('combobox'), 'today-summary')
+    await user.click(screen.getByRole('button', { name: /Riport generálása/i }))
+
+    await waitFor(() => {
+      expect(mocks.getTodaySummary).toHaveBeenCalled()
+    })
+    expect(screen.getByText(/transactionCount/)).toBeInTheDocument()
+  })
+
+  it('valuta forgalmi riport generálásakor a currency riport backend endpoint wrapperét hívja', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<ExtendedReportsPage />)
+
+    await user.selectOptions(screen.getByRole('combobox'), 'currency-report')
+    await user.clear(screen.getByTestId('currency-report-id'))
+    await user.type(screen.getByTestId('currency-report-id'), '1')
+    const dateInputs = container.querySelectorAll('input[type="date"]')
+    await user.type(dateInputs[0]!, '2026-06-01')
+    await user.type(dateInputs[1]!, '2026-06-18')
+    await user.click(screen.getByRole('button', { name: /Riport generálása/i }))
+
+    await waitFor(() => {
+      expect(mocks.getCurrencyReport).toHaveBeenCalledWith(1, '2026-06-01', '2026-06-18')
+    })
+    expect(screen.getByText(/EUR/)).toBeInTheDocument()
   })
 
   it('napi zárás teljes riportnál a full és PDF backend endpoint wrapperét hívja', async () => {

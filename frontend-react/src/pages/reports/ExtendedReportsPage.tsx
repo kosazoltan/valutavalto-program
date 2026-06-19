@@ -24,6 +24,7 @@ export default function ExtendedReportsPage() {
   const [year, setYear] = useState(new Date().getFullYear())
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [branchId, setBranchId] = useState('')
+  const [currencyId, setCurrencyId] = useState('1')
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [reportData, setReportData] = useState<Record<string, unknown> | null>(null)
@@ -68,6 +69,21 @@ export default function ExtendedReportsPage() {
         case 'handling-cost':
           data = await reportApi.getHandlingFeeReport(startDate, endDate)
           break
+        case 'cash-status':
+          data = await reportApi.getCashStatus()
+          break
+        case 'today-summary':
+          data = await reportApi.getTodaySummary()
+          break
+        case 'currency-report': {
+          const parsedCurrencyId = Number(currencyId)
+          if (!Number.isFinite(parsedCurrencyId) || parsedCurrencyId <= 0 || !startDate || !endDate) {
+            toast.warning('Valuta azonosító és időszak szükséges')
+            return
+          }
+          data = await reportApi.getCurrencyReport(parsedCurrencyId, startDate, endDate)
+          break
+        }
         case 'suspicious-transactions':
           data = await reportExtendedApi.getSuspiciousTransactions(selectedBranchId, startDate, endDate)
           break
@@ -144,12 +160,17 @@ export default function ExtendedReportsPage() {
     { value: 'transfer-summary', label: 'Átadás-átvétel összesítő' },
     { value: 'monthly-transfers', label: 'Havi átutalások' },
     { value: 'handling-cost', label: 'Kezelési díj összesítő' },
+    { value: 'cash-status', label: 'Aktuális pénztár státusz' },
+    { value: 'today-summary', label: 'Mai zárási összesítő' },
+    { value: 'currency-report', label: 'Valuta forgalmi riport' },
     { value: 'suspicious-transactions', label: 'Gyanús tranzakciók' },
     { value: 'card-transaction-fees', label: 'Kártyás tranzakció díjak' }
   ]
   const csvExportAvailable = reportType === 'monthly-turnover' || reportType === 'period-turnover'
   const dailyPdfExportAvailable = reportType === 'daily-full'
   const isMonthlyReport = reportType === 'monthly-inventory' || reportType === 'monthly-turnover' || reportType === 'monthly-transfers'
+  const currencyReportSelected = reportType === 'currency-report'
+  const noParameterReport = reportType === 'cash-status' || reportType === 'today-summary'
 
   return (
     <div className="space-y-4">
@@ -170,7 +191,7 @@ export default function ExtendedReportsPage() {
 
         {dailyPdfExportAvailable && (
           <div>
-            <label className="form-label">Telephely azonosító</label>
+            <label className="form-label">{t('reports.telephelyAzonosito')}</label>
             <input
               type="text"
               data-testid="daily-report-branch-id"
@@ -178,6 +199,20 @@ export default function ExtendedReportsPage() {
               value={branchId}
               onChange={(e) => setBranchId(e.target.value)}
               placeholder="branch-1"
+            />
+          </div>
+        )}
+
+        {currencyReportSelected && (
+          <div>
+            <label className="form-label">{t('reports.valutaAzonosito')}</label>
+            <input
+              type="number"
+              min="1"
+              data-testid="currency-report-id"
+              className="form-input"
+              value={currencyId}
+              onChange={(e) => setCurrencyId(e.target.value)}
             />
           </div>
         )}
@@ -192,6 +227,10 @@ export default function ExtendedReportsPage() {
               <label className="form-label">{t('monthlyClose.month')}</label>
               <input type="number" className="form-input" min="1" max="12" value={month} onChange={(e) => setMonth(parseInt(e.target.value))} />
             </div>
+          </div>
+        ) : noParameterReport ? (
+          <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+            {t('reports.riportNemKerSzurot')}
           </div>
         ) : (
           <div className={dailyPdfExportAvailable ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 gap-4 sm:grid-cols-2'}>
