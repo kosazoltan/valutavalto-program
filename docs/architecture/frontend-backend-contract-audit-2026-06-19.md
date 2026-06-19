@@ -1,6 +1,6 @@
 # Frontend-backend contract audit - 2026-06-19
 
-Status: IN PROGRESS
+Status: IN PROGRESS - NAV discrepancy frontend contract approval required
 
 ## Scope
 
@@ -50,7 +50,7 @@ Latest verified result:
 
 ```text
 backend endpoints: 991
-frontend literal REST calls: 1036
+frontend literal REST calls: 1028
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
@@ -72,6 +72,21 @@ wrappers referenced by production UI/app code: 118
 wrappers without production UI/app reference: 0
 known infrastructure/legacy exceptions: 1
 ```
+
+API-wrapper method-level inventory result:
+
+```text
+exported Api wrapper methods: 668
+methods referenced by production UI/app code: 520
+methods without direct production UI/app reference: 148
+known infrastructure/legacy method exceptions: 0
+```
+
+This method-level inventory is informational only for this audit gate: unused
+exported helper methods do not prove a visible frontend/backend mismatch unless
+there is a routed page, command, or user-visible workflow depending on them.
+The blocking contract evidence remains the endpoint/route/wrapper-level result
+above.
 
 ## Implemented fixes in this audit slice
 
@@ -165,7 +180,10 @@ docs/specs/nav-closing-discrepancy-frontend-contract.yaml
 ```
 
 Implementation should start only after that draft is approved, because the UI
-would expose discrepancy approval and notification side effects.
+would expose discrepancy approval and notification side effects. Current repo
+evidence: the contract is waiting for approval (`status: "JÓVÁHAGYÁSRA VÁR"`),
+so the next safe step is explicit contract approval, then a targeted `NavReportPage`
+implementation with Vitest and Playwright coverage derived from that contract.
 
 The audit also shows two state-changing NAV fiscal actions:
 
@@ -188,6 +206,7 @@ python scripts/dev-tools/frontend-audit-self-test.py
 python scripts/dev-tools/frontend-backend-contract-audit.py --show-unreferenced --show-unreferenced-summary --limit 120
 python scripts/dev-tools/frontend-route-api-audit.py
 python scripts/dev-tools/frontend-api-wrapper-usage-audit.py
+python scripts/dev-tools/frontend-api-method-usage-audit.py
 npx.cmd eslint src/App.tsx --max-warnings 9999
 ```
 
