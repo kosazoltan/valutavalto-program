@@ -238,9 +238,8 @@ export function loadFormulasFromStorage(cachedRows: Array<{ currency: string }>)
 
 export default function MainRateSheetPage() {
   const navigate = useNavigate()
-  const isLocalRateMakerApp = import.meta.env.VITE_APP_FLAVOR === 'rate-maker'
   const canEdit = useAuthStore((state) =>
-    isLocalRateMakerApp && (state.hasRole('ADMIN') || state.hasCanonicalRole(['foertektar', 'ugyvezeto', 'admin'])),
+    state.hasRole('ADMIN') || state.hasCanonicalRole(['foertektar', 'ugyvezeto', 'admin']),
   )
   const [rows, setRows] = useState<MainRateRow[]>(() => loadFromStorage())
   const [dirty, setDirty] = useState(false)
@@ -844,7 +843,6 @@ export default function MainRateSheetPage() {
     // dirty szándékosan NINCS a dep-listában — csak a katalógus betöltésekor ÉS valuta-
     // aktiválás/inaktiválás után (catalog.reload → catalog.all új referencia) syncolunk.
     // A dirty AKTUÁLIS (válaszkori) értékét a dirtyRef adja, NEM a closure (verif P1).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog.loading, catalog.error, catalog.all, catalog.currencies])
 
   // Auto-save on dirty + 1 sec debounce

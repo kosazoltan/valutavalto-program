@@ -119,7 +119,8 @@ async function login(page: Page) {
   await textboxes.nth(1).fill('ADMIN')
   await page.locator('input[type="password"]').fill('1234')
   await page.getByRole('button', { name: /Bejelentkezés/i }).click()
-  await expect(page).toHaveURL(/\/rates\/main$/)
+  await expect(page).toHaveURL(/\/central-workstation$/)
+  await page.goto('/rates/main', { waitUntil: 'domcontentloaded' })
 }
 
 test('Valutakezelő mobil nézetben backend keresést és kód szerinti detailt használ', async ({ page }) => {
