@@ -313,6 +313,14 @@ async function loginForRates(page: Page): Promise<boolean> {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(preparedRateCreation) })
     }
 
+    if (path.endsWith('/rate-creation/prepare/all') && method === 'POST') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ generatedCount: 12, skippedCount: 0, status: 'OK' }),
+      })
+    }
+
     if (path.endsWith('/rounding-rules') && method === 'GET') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     }
@@ -515,6 +523,15 @@ test('árfolyamkészítés mobil nézetben a backend egyedi prepare endpointot h
   await expect(panel.getByText('EUR - Euró')).toBeVisible()
   await expect(panel.getByText('391.5')).toBeVisible()
   await expect(panel.getByText('398.5')).toBeVisible()
+
+  const prepareAllRequest = page.waitForRequest(request => {
+    const url = new URL(request.url())
+    return request.method() === 'POST'
+      && url.pathname === '/api/v1/rate-creation/prepare/all'
+  })
+  await page.getByTestId('rate-prepare-all').click()
+  await prepareAllRequest
+  await expect(page.getByText('Tömeges árfolyamtervezet elkészült: 12 valuta.')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

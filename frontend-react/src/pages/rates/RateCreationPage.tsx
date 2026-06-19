@@ -153,6 +153,8 @@ export default function RateCreationPage() {
   const [rateAdvice, setRateAdvice] = useState<RateCreationDTO | null>(null)
   const [rateAdviceError, setRateAdviceError] = useState<string | null>(null)
   const [rateAdviceLoadingId, setRateAdviceLoadingId] = useState<number | null>(null)
+  const [prepareAllLoading, setPrepareAllLoading] = useState(false)
+  const [prepareAllMessage, setPrepareAllMessage] = useState<string | null>(null)
 
   // FK-04/C képletezés: felhasználói képletek (kulcs `${currencyId}.${field}`) csoportonként,
   // a kiszámolt cellánkénti hibák, és a 0-s lap / kereszt-csoport hivatkozás-kontextus.
@@ -519,6 +521,26 @@ export default function RateCreationPage() {
       setRateAdviceLoadingId(null)
     }
   }, [])
+
+  const handlePrepareAllRates = useCallback(async () => {
+    setPrepareAllLoading(true)
+    setPrepareAllMessage(null)
+    try {
+      const result = await rateCreationApi.prepareAllCurrencies()
+      await loadData()
+      const generatedCount = typeof result.generatedCount === 'number' ? result.generatedCount : null
+      setPrepareAllMessage(
+        generatedCount === null
+          ? 'Tömeges árfolyamtervezet elkészült.'
+          : `Tömeges árfolyamtervezet elkészült: ${generatedCount} valuta.`,
+      )
+    } catch (err) {
+      logger.error('RateCreationPage', 'Tömeges árfolyamtervezet generálás hiba:', err)
+      setError('Tömeges árfolyamtervezet generálása sikertelen')
+    } finally {
+      setPrepareAllLoading(false)
+    }
+  }, [loadData])
 
   useEffect(() => { void loadData() }, [loadData])
 
@@ -1224,6 +1246,16 @@ export default function RateCreationPage() {
             className="px-2 py-0.5 border rounded text-xs hover:bg-gray-50 flex items-center gap-1">
             <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
           </button>
+          <button
+            type="button"
+            onClick={() => void handlePrepareAllRates()}
+            disabled={loading || prepareAllLoading}
+            className="px-2 py-0.5 border rounded text-xs hover:bg-gray-50 flex items-center gap-1 disabled:opacity-50"
+            data-testid="rate-prepare-all"
+          >
+            <CheckCircle2 size={11} className={prepareAllLoading ? 'animate-pulse' : ''} />
+            {prepareAllLoading ? 'Tervezet...' : 'Összes tervezet'}
+          </button>
           {/* FK02-E (FR-12): munkacsoport-panel elrejtése/megjelenítése — a táblázat kitölti a helyet. */}
           <button onClick={() => setPanelCollapsed(c => !c)}
             className="px-2 py-0.5 border rounded text-xs hover:bg-gray-50 flex items-center gap-1"
@@ -1232,6 +1264,11 @@ export default function RateCreationPage() {
           </button>
         </div>
       </div>
+      {prepareAllMessage && (
+        <div className="mb-1 rounded border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs text-emerald-800">
+          {prepareAllMessage}
+        </div>
+      )}
 
       {/* === MAIN LAYOUT === */}
       <div className="flex gap-1.5 flex-1 min-h-0">
