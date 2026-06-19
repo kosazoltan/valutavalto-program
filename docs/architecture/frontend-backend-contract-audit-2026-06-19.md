@@ -13,6 +13,17 @@ The frontend side is production-only: unit tests, Playwright specs, Storybook
 stories and test setup files are excluded so mocked REST calls cannot prove a
 real UI/backend binding.
 
+The contract audit now has two backend-reference levels:
+
+- literal frontend REST calls: direct `api.get/post/...`, `fetch`, Electron and
+  resolved template calls in production frontend/client source;
+- production UI/app referenced REST calls: direct production calls plus API
+  wrapper method calls only when the specific `wrapper.method` is referenced by
+  production UI/app code outside `frontend-react/src/services/api`.
+
+This distinction prevents an unused API wrapper method from proving that a
+backend function is actually surfaced in the application.
+
 Route/page coverage is checked separately with:
 
 ```powershell
@@ -43,7 +54,7 @@ python scripts/dev-tools/frontend-audit-self-test.py
 Authoritative command:
 
 ```powershell
-python scripts/dev-tools/frontend-backend-contract-audit.py --show-unreferenced --show-unreferenced-summary --limit 120
+python scripts/dev-tools/frontend-backend-contract-audit.py --show-unreferenced --show-unreferenced-summary --show-ui-unreferenced --show-ui-unreferenced-summary --limit 120
 ```
 
 Latest verified result:
@@ -51,9 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1028
+frontend production UI/app referenced REST calls: 878
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
+backend endpoints not referenced by production UI/app calls: 147
 ```
 
 Route/page audit result:
@@ -82,11 +95,10 @@ methods without direct production UI/app reference: 148
 known infrastructure/legacy method exceptions: 0
 ```
 
-This method-level inventory is informational only for this audit gate: unused
-exported helper methods do not prove a visible frontend/backend mismatch unless
-there is a routed page, command, or user-visible workflow depending on them.
-The blocking contract evidence remains the endpoint/route/wrapper-level result
-above.
+This method-level inventory remains informational by itself, but it is now also
+fed into the contract audit's production UI/app reference level. That stricter
+view is the current evidence source for "backend endpoint is wrapped but not
+proven used by UI/app" follow-up work.
 
 ## Implemented fixes in this audit slice
 
@@ -120,6 +132,42 @@ above.
   `reservationsApi` by the reservation list/create/cancel/fulfill/receipt flow.
 - Extended the audit helper self-test so API-wrapper references from test-only
   files do not count as production UI usage.
+- Extended `frontend-backend-contract-audit.py` so it separates wrapper-only
+  literal calls from REST calls reachable through a production UI/app referenced
+  API wrapper method. The self-test now proves that wrapper-only calls do not
+  count as production UI/app backend coverage.
+- Optimized the new production UI/app reference scan by caching frontend source
+  text once per audit run instead of re-reading files per API method.
+
+## Stricter production UI/app reference follow-up
+
+The stricter audit currently reports 147 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 147 confirmed UX
+bugs: the list includes backend-only auth/session endpoints, device/integration
+commands, legacy compatibility flows and exported helper methods that may be
+valid library surface rather than visible screens.
+
+Current summary:
+
+```text
+ui-candidate/list-or-view        46
+ui-candidate/detail              32
+ui-candidate/mutation            30
+integration-or-device            15
+workflow-action                  7
+backend-only/auth-session        3
+backend-only/legacy-compat       3
+backend-only/admin-maintenance   2
+backend-only/diagnostics         2
+integration-or-callback          2
+ui-candidate/financial-contract-required 2
+workflow-action/financial-admin  2
+backend-only/legacy-alias        1
+```
+
+The next audit slice should triage the `ui-candidate/*` groups by actual routed
+workflow ownership before adding UI. Financial/state-changing endpoints still
+need contract-first approval before implementation.
 
 ## Remaining backend endpoints without literal frontend caller
 
@@ -203,7 +251,7 @@ python -m py_compile scripts/dev-tools/frontend-route-api-audit.py
 python -m py_compile scripts/dev-tools/frontend-api-wrapper-usage-audit.py
 python -m py_compile scripts/dev-tools/frontend-audit-self-test.py
 python scripts/dev-tools/frontend-audit-self-test.py
-python scripts/dev-tools/frontend-backend-contract-audit.py --show-unreferenced --show-unreferenced-summary --limit 120
+python scripts/dev-tools/frontend-backend-contract-audit.py --show-unreferenced --show-unreferenced-summary --show-ui-unreferenced --show-ui-unreferenced-summary --limit 120
 python scripts/dev-tools/frontend-route-api-audit.py
 python scripts/dev-tools/frontend-api-wrapper-usage-audit.py
 python scripts/dev-tools/frontend-api-method-usage-audit.py

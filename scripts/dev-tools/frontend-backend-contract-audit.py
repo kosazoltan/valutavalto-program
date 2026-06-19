@@ -43,6 +43,7 @@ FRONTEND_ROOTS = [
     ROOT / "kozponti-client" / "src",
     ROOT / "kozponti-client" / "electron",
 ]
+FRONTEND_API_DIR = ROOT / "frontend-react" / "src" / "services" / "api"
 
 SOURCE_SUFFIXES = {".ts", ".tsx", ".js", ".jsx"}
 SKIP_DIR_NAMES = {"node_modules", "dist", "dist-electron", "build", "coverage", ".vite"}
@@ -88,6 +89,8 @@ FETCH_START = re.compile(r"\bfetch\s*\(")
 FETCH_METHOD = re.compile(r"\bmethod\s*:\s*['\"`](GET|POST|PUT|DELETE|PATCH)['\"`]", re.IGNORECASE)
 JSX_SRC_API_URL = re.compile(r"\bsrc\s*=\s*\{\s*`(?P<path>/api(?:/v1)?/[^`?]+)(?:\?[^`]*)?`")
 DOM_SRC_API_URL = re.compile(r"\.src\s*=\s*`(?P<path>/api(?:/v1)?/[^`?]+)(?:\?[^`]*)?`")
+API_EXPORT = re.compile(r"\bexport\s+const\s+(?P<name>[A-Za-z_$][\w$]*Api)\s*=\s*\{")
+TOP_LEVEL_KEY = re.compile(r"^\s*(?P<name>[A-Za-z_$][\w$]*)\s*:")
 
 # Framework/proxy endpoints that are configured outside @RestController.
 SYNTHETIC_BACKEND_ENDPOINTS = {
@@ -127,6 +130,16 @@ class UnresolvedCall:
 class BackendReferenceClass:
     category: str
     evidence: str
+
+
+@dataclass(frozen=True)
+class ApiMethodSpan:
+    wrapper: str
+    method: str
+    source: str
+    start_line: int
+    end_line: int
+    ui_references: tuple[str, ...]
 
 
 def rel(path: Path) -> str:
@@ -336,6 +349,82 @@ def parse_backend_endpoints() -> list[Endpoint]:
 
 def line_number(text: str, index: int) -> int:
     return text.count("\n", 0, index) + 1
+
+
+def strip_strings_and_line_comments(line: str) -> str:
+    result: list[str] = []
+    in_string: str | None = None
+    escape = False
+    index = 0
+    while index < len(line):
+        char = line[index]
+        next_char = line[index + 1] if index + 1 < len(line) else ""
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == in_string:
+                in_string = None
+            result.append(" ")
+            index += 1
+            continue
+        if char == "/" and next_char == "/":
+            break
+        if char in {"'", '"', "`"}:
+            in_string = char
+            result.append(" ")
+            index += 1
+            continue
+        result.append(char)
+        index += 1
+    return "".join(result)
+
+
+def find_matching_brace(text: str, open_index: int) -> int | None:
+    depth = 0
+    quote: str | None = None
+    escaped = False
+    in_line_comment = False
+    in_block_comment = False
+    for index in range(open_index, len(text)):
+        char = text[index]
+        next_char = text[index + 1] if index + 1 < len(text) else ""
+        if in_line_comment:
+            if char == "\n":
+                in_line_comment = False
+            continue
+        if in_block_comment:
+            if char == "*" and next_char == "/":
+                in_block_comment = False
+            continue
+        if quote:
+            if escaped:
+                escaped = False
+                continue
+            if char == "\\":
+                escaped = True
+                continue
+            if char == quote:
+                quote = None
+            continue
+        if char == "/" and next_char == "/":
+            in_line_comment = True
+            continue
+        if char == "/" and next_char == "*":
+            in_block_comment = True
+            continue
+        if char in {"'", '"', "`"}:
+            quote = char
+            continue
+        if char == "{":
+            depth += 1
+            continue
+        if char == "}":
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
 
 
 def local_variable_paths(text: str, variable_name: str, position: int) -> list[str]:
@@ -673,6 +762,120 @@ def parse_frontend_calls() -> tuple[list[FrontendCall], list[UnresolvedCall]]:
     return sorted(calls, key=lambda c: (c.source, c.line, c.method, c.path)), unresolved
 
 
+def is_api_service_source(source: str) -> bool:
+    return source.startswith("frontend-react/src/services/api/")
+
+
+def collect_production_ui_source_texts() -> tuple[tuple[str, str], ...]:
+    sources: list[tuple[str, str]] = []
+    for path in iter_source_files():
+        path_rel = rel(path)
+        if is_api_service_source(path_rel):
+            continue
+        sources.append((path_rel, path.read_text(encoding="utf-8", errors="replace")))
+    return tuple(sources)
+
+
+def collect_ui_reference_files(
+    wrapper: str,
+    method: str,
+    production_sources: tuple[tuple[str, str], ...] | None = None,
+) -> tuple[str, ...]:
+    pattern = re.compile(rf"\b{re.escape(wrapper)}\s*\.\s*{re.escape(method)}\b")
+    refs: list[str] = []
+    if production_sources is None:
+        production_sources = collect_production_ui_source_texts()
+    for path_rel, text in production_sources:
+        if pattern.search(text):
+            refs.append(path_rel)
+    return tuple(sorted(set(refs)))
+
+
+def iter_api_method_lines(body: str, base_line: int) -> Iterable[tuple[str, int]]:
+    curly = 0
+    square = 0
+    paren = 0
+    for offset, line in enumerate(body.splitlines()):
+        if curly == 0 and square == 0 and paren == 0:
+            match = TOP_LEVEL_KEY.match(line)
+            if match:
+                name = match.group("name")
+                if name not in {"if", "for", "while", "return"}:
+                    yield name, base_line + offset
+        sanitized = strip_strings_and_line_comments(line)
+        curly += sanitized.count("{") - sanitized.count("}")
+        square += sanitized.count("[") - sanitized.count("]")
+        paren += sanitized.count("(") - sanitized.count(")")
+        curly = max(curly, 0)
+        square = max(square, 0)
+        paren = max(paren, 0)
+
+
+def collect_api_method_spans() -> list[ApiMethodSpan]:
+    spans: list[ApiMethodSpan] = []
+    if not FRONTEND_API_DIR.exists():
+        return spans
+    production_sources = collect_production_ui_source_texts()
+    for path in iter_source_files():
+        try:
+            path.relative_to(FRONTEND_API_DIR)
+        except ValueError:
+            continue
+        if path.name == "index.ts":
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for export in API_EXPORT.finditer(text):
+            wrapper = export.group("name")
+            open_index = text.find("{", export.start())
+            close_index = find_matching_brace(text, open_index)
+            if close_index is None:
+                continue
+            body = text[open_index + 1:close_index]
+            base_line = line_number(text, open_index + 1)
+            method_lines = list(iter_api_method_lines(body, base_line))
+            object_end_line = line_number(text, close_index)
+            for index, (method, start_line) in enumerate(method_lines):
+                next_start = method_lines[index + 1][1] if index + 1 < len(method_lines) else object_end_line + 1
+                spans.append(
+                    ApiMethodSpan(
+                        wrapper=wrapper,
+                        method=method,
+                        source=rel(path),
+                        start_line=start_line,
+                        end_line=next_start - 1,
+                        ui_references=collect_ui_reference_files(wrapper, method, production_sources),
+                    ),
+                )
+    return spans
+
+
+def production_ui_referenced_calls(
+    frontend_calls: list[FrontendCall],
+    api_method_spans: list[ApiMethodSpan],
+) -> list[FrontendCall]:
+    spans_by_source: dict[str, list[ApiMethodSpan]] = {}
+    for span in api_method_spans:
+        if span.ui_references:
+            spans_by_source.setdefault(span.source, []).append(span)
+
+    result: dict[tuple[str, str, str, int, str], FrontendCall] = {}
+    for call in frontend_calls:
+        if not is_api_service_source(call.source):
+            result[(call.method, call.path, call.source, call.line, call.kind)] = call
+            continue
+        for span in spans_by_source.get(call.source, []):
+            if span.start_line <= call.line <= span.end_line:
+                result[(call.method, call.path, call.source, call.line, f"ui-used-wrapper:{span.wrapper}.{span.method}")] = FrontendCall(
+                    call.method,
+                    call.path,
+                    call.source,
+                    call.line,
+                    f"ui-used-wrapper:{span.wrapper}.{span.method}",
+                )
+                break
+    return sorted(result.values(), key=lambda c: (c.source, c.line, c.method, c.path, c.kind))
+
+
 def find_unmatched(
     frontend_calls: list[FrontendCall],
     backend_endpoints: list[Endpoint],
@@ -786,21 +989,28 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--show-unreferenced", action="store_true")
     parser.add_argument("--show-unreferenced-summary", action="store_true")
+    parser.add_argument("--show-ui-unreferenced", action="store_true")
+    parser.add_argument("--show-ui-unreferenced-summary", action="store_true")
     parser.add_argument("--show-unresolved", action="store_true")
     parser.add_argument("--limit", type=int, default=40)
     args = parser.parse_args()
 
     backend_endpoints = parse_backend_endpoints()
     frontend_calls, unresolved = parse_frontend_calls()
+    api_method_spans = collect_api_method_spans()
+    ui_referenced_calls = production_ui_referenced_calls(frontend_calls, api_method_spans)
     unmatched = find_unmatched(frontend_calls, backend_endpoints)
     unreferenced = unreferenced_backend(backend_endpoints, frontend_calls)
+    ui_unreferenced = unreferenced_backend(backend_endpoints, ui_referenced_calls)
 
     print("frontend-backend-contract-audit:")
     print(f"  backend endpoints: {len(backend_endpoints)}")
     print(f"  frontend literal REST calls: {len(frontend_calls)}")
+    print(f"  frontend production UI/app referenced REST calls: {len(ui_referenced_calls)}")
     print(f"  frontend unresolved dynamic calls: {len(unresolved)}")
     print(f"  unmatched frontend REST calls: {len(unmatched)}")
     print(f"  backend endpoints not referenced by literal calls: {len(unreferenced)}")
+    print(f"  backend endpoints not referenced by production UI/app calls: {len(ui_unreferenced)}")
 
     if unmatched:
         print("\nUNMATCHED FRONTEND CALLS")
@@ -832,6 +1042,19 @@ def main() -> int:
             print(f"  {ep.method:6s} {ep.path:55s} {ep.source}:{ep.line} {ep.owner} [{classification.category}]")
         if len(unreferenced) > args.limit:
             print(f"  ... {len(unreferenced) - args.limit} more")
+
+    if args.show_ui_unreferenced and ui_unreferenced:
+        if args.show_ui_unreferenced_summary:
+            print("\nPRODUCTION UI/APP UNREFERENCED BACKEND SUMMARY")
+            for category, count in unreferenced_summary(ui_unreferenced).items():
+                print(f"  {category:32s} {count}")
+
+        print("\nPRODUCTION UI/APP UNREFERENCED BACKEND ENDPOINTS")
+        for ep in ui_unreferenced[: args.limit]:
+            classification = classify_backend_reference(ep)
+            print(f"  {ep.method:6s} {ep.path:55s} {ep.source}:{ep.line} {ep.owner} [{classification.category}]")
+        if len(ui_unreferenced) > args.limit:
+            print(f"  ... {len(ui_unreferenced) - args.limit} more")
 
     if unmatched:
         return 1
