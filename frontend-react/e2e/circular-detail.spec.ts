@@ -40,6 +40,23 @@ const detailCircular = {
   acknowledgmentCount: 2,
 }
 
+const categoryCircular = {
+  ...listCircular,
+  id: 2,
+  title: 'VIP kategóriás mobil körlevél',
+  registrationNumber: 'VIP-2026-010',
+  category: 'VIP',
+}
+
+const archiveYearCircular = {
+  ...listCircular,
+  id: 3,
+  title: '2025 archív mobil körlevél',
+  registrationNumber: 'ARCH-2025-010',
+  archived: true,
+  archiveYear: 2025,
+}
+
 async function mockApis(page: Page) {
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
@@ -96,6 +113,18 @@ async function mockApis(page: Page) {
 
     if (path.endsWith('/circulars/active') && method === 'GET') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([listCircular]) })
+    }
+
+    if (path.endsWith('/circulars/by-category/GENERAL') && method === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+    }
+
+    if (path.endsWith('/circulars/by-category/VIP') && method === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([categoryCircular]) })
+    }
+
+    if (path.endsWith('/circulars/archived/2025') && method === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([archiveYearCircular]) })
     }
 
     if (path.endsWith('/circulars/1/acknowledgment-status') && method === 'GET') {
@@ -160,6 +189,40 @@ test('körlevél részlet mobil nézetben backend detail és nyugtázási endpoi
   await expect(page.getByTestId('circular-acknowledgment-summary')).toContainText('Összes nyugtázás: 2')
   await expect(page.getByTestId('circular-acknowledgment-summary')).toContainText('CASHIER')
   await expect(page.getByTestId('circular-acknowledgment-summary')).toContainText('MANAGER')
+
+  const horizontalOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  )
+  expect(horizontalOverflow).toBe(false)
+})
+
+test('körlevél kategória és éves archívum szűrők mobil nézetben backend endpointokat hívnak', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mockApis(page)
+  await login(page)
+
+  await page.goto('/circulars', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByText('Lista körlevél')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Kategória' }).click()
+  await page.getByLabel('Kategória szűrő').selectOption('VIP')
+
+  const categoryRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/circulars/by-category/VIP'
+  )
+  await page.getByRole('button', { name: 'Kategória betöltése' }).click()
+  await categoryRequest
+  await expect(page.getByText('VIP kategóriás mobil körlevél')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Éves archívum' }).click()
+  await page.getByLabel('Archív év').fill('2025')
+
+  const archiveRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/circulars/archived/2025'
+  )
+  await page.getByRole('button', { name: 'Év betöltése' }).click()
+  await archiveRequest
+  await expect(page.getByText('2025 archív mobil körlevél')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

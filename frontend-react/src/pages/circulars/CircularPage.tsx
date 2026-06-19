@@ -48,11 +48,13 @@ type CircularTab = string
 const fallbackTabs: Array<{ id: CircularTab; label: string }> = [
   { id: 'active', label: 'Aktív' },
   { id: 'relevant', label: 'Irodához releváns' },
+  { id: 'category', label: 'Kategória' },
   { id: 'GENERAL', label: 'Általános' },
   { id: 'REGULATION', label: 'Szabályzat' },
   { id: 'SECURITY_ALERT', label: 'Biztonság' },
   { id: 'INVENTORY', label: 'Készlet' },
   { id: 'archived', label: 'Archivált' },
+  { id: 'archived-year', label: 'Éves archívum' },
 ]
 
 const typeLabels: Record<string, string> = {
@@ -74,6 +76,12 @@ const typeLabels: Record<string, string> = {
   AUDIT_NOTICE: 'Audit',
   TRAINING: 'Oktatás',
 }
+
+const categoryOptions = [
+  { id: 'GENERAL', label: 'Általános' },
+  { id: 'VIP', label: 'VIP' },
+  { id: 'ZALOG', label: 'Zálog' },
+]
 
 const priorityClass: Record<string, string> = {
   LOW: 'border-slate-200 bg-slate-50 text-slate-600',
@@ -100,6 +108,7 @@ function formatDate(value?: string): string {
 }
 
 export default function CircularPage() {
+  const defaultArchiveYear = useMemo(() => String(new Date().getFullYear() - 1), [])
   const [circulars, setCirculars] = useState<Circular[]>([])
   const [unacknowledged, setUnacknowledged] = useState<Circular[]>([])
   const [legacyUnacknowledged, setLegacyUnacknowledged] = useState<Circular[]>([])
@@ -116,29 +125,45 @@ export default function CircularPage() {
   const [typeOptions, setTypeOptions] = useState<CircularTypeOption[]>([])
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
   const [serverSearchActive, setServerSearchActive] = useState(false)
+  const [categoryFilter, setCategoryFilter] = useState('GENERAL')
+  const [archiveYear, setArchiveYear] = useState(defaultArchiveYear)
 
   const tabs = useMemo<Array<{ id: CircularTab; label: string }>>(() => {
     if (typeOptions.length === 0) return fallbackTabs
     return [
       { id: 'active', label: 'Aktív' },
       { id: 'relevant', label: 'Irodához releváns' },
+      { id: 'category', label: 'Kategória' },
       ...typeOptions.map((option) => ({
         id: option.type,
         label: typeLabels[option.type] ?? option.description ?? option.type,
       })),
       { id: 'archived', label: 'Archivált' },
+      { id: 'archived-year', label: 'Éves archívum' },
     ]
   }, [typeOptions])
 
   const loadCirculars = useCallback(async () => {
+    const normalizedArchiveYear = archiveYear.trim()
+    if (activeTab === 'archived-year' && !normalizedArchiveYear) {
+      toast.error('Archív év hiányzik', 'Adjon meg egy évet az éves archívum betöltéséhez.')
+      setCirculars([])
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
       const path = activeTab === 'active'
         ? '/circulars/active'
         : activeTab === 'relevant'
         ? '/circulars/relevant'
+        : activeTab === 'category'
+        ? `/circulars/by-category/${encodeURIComponent(categoryFilter)}`
         : activeTab === 'archived'
         ? '/circulars/archived'
+        : activeTab === 'archived-year'
+        ? `/circulars/archived/${encodeURIComponent(normalizedArchiveYear)}`
         : `/circulars/by-type/${activeTab}`
       const response = await api.get<Circular[]>(path)
       setCirculars(safeArray<Circular>(response.data))
@@ -150,7 +175,7 @@ export default function CircularPage() {
     } finally {
       setLoading(false)
     }
-  }, [activeTab])
+  }, [activeTab, archiveYear, categoryFilter])
 
   const loadUnacknowledged = useCallback(async () => {
     try {
@@ -438,6 +463,55 @@ export default function CircularPage() {
           {serverSearchActive && (
             <div className="mt-2 text-xs text-slate-500">
               Backend iktatószám keresés eredménye: {filteredCirculars.length} dokumentum
+            </div>
+          )}
+          {activeTab === 'category' && (
+            <div className="mt-3 flex flex-wrap items-end gap-2 rounded border border-slate-200 bg-slate-50 p-3">
+              <label htmlFor="circular-category-filter" className="flex min-w-[180px] flex-col gap-1 text-xs font-semibold text-slate-600">
+                Kategória szűrő
+                <select
+                  id="circular-category-filter"
+                  value={categoryFilter}
+                  onChange={(event) => setCategoryFilter(event.target.value)}
+                  className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900"
+                >
+                  {categoryOptions.map((option) => (
+                    <option key={option.id} value={option.id}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={() => void loadCirculars()}
+                className="rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+              >
+                Kategória betöltése
+              </button>
+              <span className="text-xs text-slate-500">Backend kategória nézet: {categoryFilter}</span>
+            </div>
+          )}
+          {activeTab === 'archived-year' && (
+            <div className="mt-3 flex flex-wrap items-end gap-2 rounded border border-slate-200 bg-slate-50 p-3">
+              <label htmlFor="circular-archive-year" className="flex min-w-[160px] flex-col gap-1 text-xs font-semibold text-slate-600">
+                Archív év
+                <input
+                  id="circular-archive-year"
+                  type="number"
+                  min="2000"
+                  max="2100"
+                  value={archiveYear}
+                  onChange={(event) => setArchiveYear(event.target.value)}
+                  className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => void loadCirculars()}
+                className="rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+              >
+                Év betöltése
+              </button>
+              <span className="text-xs text-slate-500">Backend éves archívum: {archiveYear || '-'}</span>
             </div>
           )}
         </section>

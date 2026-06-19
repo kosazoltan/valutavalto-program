@@ -63,6 +63,23 @@ const legacyUnacknowledgedCircular = {
   registrationNumber: 'LEG-2026-001',
 }
 
+const categoryCircular = {
+  ...activeCircular,
+  id: 5,
+  title: 'VIP kategóriás körlevél',
+  registrationNumber: 'VIP-2026-001',
+  category: 'VIP',
+}
+
+const archiveYearCircular = {
+  ...activeCircular,
+  id: 6,
+  title: '2025 archív körlevél',
+  registrationNumber: 'ARCH-2025-001',
+  archived: true,
+  archiveYear: 2025,
+}
+
 describe('CircularPage backend contract', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -83,6 +100,9 @@ describe('CircularPage backend contract', () => {
       if (path === '/circulars/unacknowledged') return Promise.resolve({ data: [legacyUnacknowledgedCircular] })
       if (path === '/circulars/active') return Promise.resolve({ data: [activeCircular] })
       if (path === '/circulars/relevant') return Promise.resolve({ data: [relevantCircular] })
+      if (path === '/circulars/by-category/GENERAL') return Promise.resolve({ data: [] })
+      if (path === '/circulars/by-category/VIP') return Promise.resolve({ data: [categoryCircular] })
+      if (path === '/circulars/archived/2025') return Promise.resolve({ data: [archiveYearCircular] })
       if (path === '/circulars/search') return Promise.resolve({ data: [searchedCircular] })
       if (path === '/circulars/1') return Promise.resolve({ data: detailCircular })
       if (path === '/circulars/1/acknowledgment-status') {
@@ -136,6 +156,32 @@ describe('CircularPage backend contract', () => {
       expect(screen.getByText('Összes nyugtázás: 2')).toBeInTheDocument()
       expect(screen.getByText('CASHIER')).toBeInTheDocument()
       expect(screen.getByText('MANAGER')).toBeInTheDocument()
+    })
+  })
+
+  it('beköti a kategória és éves archívum backend szűrőket', async () => {
+    render(<CircularPage />)
+
+    await screen.findByText('Aktív szabályzat')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Kategória' }))
+    fireEvent.change(screen.getByLabelText('Kategória szűrő'), { target: { value: 'VIP' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Kategória betöltése' }))
+
+    await waitFor(() => {
+      expect(mocks.apiGet).toHaveBeenCalledWith('/circulars/by-category/VIP')
+      expect(screen.getByText('VIP kategóriás körlevél')).toBeInTheDocument()
+      expect(screen.getByText('Backend kategória nézet: VIP')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Éves archívum' }))
+    fireEvent.change(screen.getByLabelText('Archív év'), { target: { value: '2025' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Év betöltése' }))
+
+    await waitFor(() => {
+      expect(mocks.apiGet).toHaveBeenCalledWith('/circulars/archived/2025')
+      expect(screen.getByText('2025 archív körlevél')).toBeInTheDocument()
+      expect(screen.getByText('Backend éves archívum: 2025')).toBeInTheDocument()
     })
   })
 
