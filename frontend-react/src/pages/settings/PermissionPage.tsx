@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 export default function PermissionPage() {
   const { t } = useTranslation()
   const [permissions, setPermissions] = useState<Permission[]>([])
+  const [allPermissions, setAllPermissions] = useState<Permission[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedModule, setSelectedModule] = useState<string>('')
@@ -23,7 +24,7 @@ export default function PermissionPage() {
     isActive: true
   })
 
-  const modules = Array.from(new Set(permissions.map(p => p.module))).sort()
+  const modules = Array.from(new Set(allPermissions.map(p => p.module))).sort()
 
   useEffect(() => {
     let mounted = true
@@ -54,6 +55,7 @@ export default function PermissionPage() {
       setLoading(true)
       const data = await permissionApi.list()
       setPermissions(data)
+      setAllPermissions(data)
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       logger.error('PermissionPage', 'Failed to load permissions:', err)
@@ -74,12 +76,26 @@ export default function PermissionPage() {
       )
     }
 
-    if (selectedModule) {
-      filtered = filtered.filter(p => p.module === selectedModule)
-    }
-
     return filtered
-  }, [permissions, searchTerm, selectedModule])
+  }, [permissions, searchTerm])
+
+  const handleModuleChange = async (module: string): Promise<void> => {
+    setSelectedModule(module)
+    try {
+      setLoading(true)
+      const data = module ? await permissionApi.getByModule(module) : await permissionApi.list()
+      setPermissions(data)
+      if (!module) {
+        setAllPermissions(data)
+      }
+    } catch (err) {
+      const errorMessage = getErrorMessage(err)
+      logger.error('PermissionPage', 'Failed to load permissions by module:', err)
+      toast.error('Hiba történt a modul jogosultságainak betöltése során', errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleCreate = () => {
     setEditingPermission(null)
@@ -176,10 +192,11 @@ export default function PermissionPage() {
       <div className="form-panel">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="form-label">{t('common.search')}</label>
+            <label className="form-label" htmlFor="permission-search">{t('common.search')}</label>
             <div className="relative">
               <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
+                id="permission-search"
                 type="text"
                 className="form-input pl-8"
                 placeholder="Kód, név vagy leírás..."
@@ -189,11 +206,12 @@ export default function PermissionPage() {
             </div>
           </div>
           <div>
-            <label className="form-label">{t('settings.modul')}</label>
+            <label className="form-label" htmlFor="permission-module-filter">{t('settings.modul')}</label>
             <select
+              id="permission-module-filter"
               className="form-input"
               value={selectedModule}
-              onChange={(e) => setSelectedModule(e.target.value)}
+              onChange={(e) => void handleModuleChange(e.target.value)}
             >
               <option value="">{t('settings.osszesModul')}</option>
               {modules.map(module => (
@@ -315,7 +333,7 @@ export default function PermissionPage() {
       )}
 
       {/* Permissions Table */}
-      <div className="form-panel">
+      <div className="form-panel overflow-x-auto">
         <table className="data-grid w-full">
           <thead>
             <tr>
