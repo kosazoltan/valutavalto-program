@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Settings, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
+import { Settings, Plus, Edit, Trash2, Search, X, Save, KeyRound } from 'lucide-react'
 import { systemParameterApi, SystemParameter, SystemParameterCreateRequest } from '../../services/api/index'
 import { logger } from '../../utils/logger';
 import { useTranslation } from 'react-i18next'
@@ -7,10 +7,17 @@ import { useTranslation } from 'react-i18next'
 export default function SystemParameterPage() {
   const { t } = useTranslation()
   const [parameters, setParameters] = useState<SystemParameter[]>([])
+  const [allParameters, setAllParameters] = useState<SystemParameter[]>([])
+  const [activeParameterCount, setActiveParameterCount] = useState(0)
+  const [managedParameterCount, setManagedParameterCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('')
+  const [lookupKey, setLookupKey] = useState('')
+  const [lookupParameter, setLookupParameter] = useState<SystemParameter | null>(null)
+  const [lookupValue, setLookupValue] = useState<string | null>(null)
+  const [lookupLoading, setLookupLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editingParameter, setEditingParameter] = useState<SystemParameter | null>(null)
   const [formData, setFormData] = useState<SystemParameterCreateRequest>({
@@ -22,7 +29,7 @@ export default function SystemParameterPage() {
     isActive: true
   })
 
-  const categories = Array.from(new Set(parameters.map(p => p.category))).sort()
+  const categories = Array.from(new Set(allParameters.map(p => p.category))).sort()
   const parameterTypes = ['STRING', 'NUMBER', 'BOOLEAN', 'DATE', 'JSON']
 
   const filteredParameters = useMemo(() => {
@@ -35,11 +42,8 @@ export default function SystemParameterPage() {
         p.description?.toLowerCase().includes(term)
       )
     }
-    if (selectedCategory) {
-      filtered = filtered.filter(p => p.category === selectedCategory)
-    }
     return filtered
-  }, [parameters, searchTerm, selectedCategory])
+  }, [parameters, searchTerm])
 
   useEffect(() => {
     void loadParameters()
@@ -49,13 +53,65 @@ export default function SystemParameterPage() {
     try {
       setLoading(true)
       setError(null)
-      const data = await systemParameterApi.list()
+      const [data, activeParameters, managedParameters] = await Promise.all([
+        systemParameterApi.list(),
+        systemParameterApi.getActive(),
+        systemParameterApi.listManaged(),
+      ])
       setParameters(data)
+      setAllParameters(data)
+      setActiveParameterCount(activeParameters.length)
+      setManagedParameterCount(managedParameters.length)
     } catch (err) {
       logger.error('SystemParameterPage', 'Paraméterek betöltési hiba:', err)
       setError('Hiba a paraméterek betöltésekor')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCategoryChange = async (category: string) => {
+    try {
+      setSelectedCategory(category)
+      setLoading(true)
+      setError(null)
+      const data = category
+        ? await systemParameterApi.getByCategory(category)
+        : await systemParameterApi.list()
+      setParameters(data)
+      if (!category) {
+        setAllParameters(data)
+      }
+    } catch (err) {
+      logger.error('SystemParameterPage', 'Kategória szűrési hiba:', err)
+      setError('Hiba a kategória szerinti paraméterek betöltésekor')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLookup = async () => {
+    const key = lookupKey.trim()
+    if (!key) {
+      return
+    }
+
+    try {
+      setLookupLoading(true)
+      setError(null)
+      const [parameter, value] = await Promise.all([
+        systemParameterApi.getByKey(key),
+        systemParameterApi.getValue(key),
+      ])
+      setLookupParameter(parameter)
+      setLookupValue(value)
+    } catch (err) {
+      logger.error('SystemParameterPage', 'Kulcs lekérdezési hiba:', err)
+      setLookupParameter(null)
+      setLookupValue(null)
+      setError('Hiba a paraméter kulcs lekérdezésekor')
+    } finally {
+      setLookupLoading(false)
     }
   }
 
@@ -166,12 +222,13 @@ export default function SystemParameterPage() {
 
       {/* Filters */}
       <div className="form-panel">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="form-label">{t('common.search')}</label>
+            <label htmlFor="system-parameter-search" className="form-label">{t('common.search')}</label>
             <div className="relative">
               <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
+                id="system-parameter-search"
                 type="text"
                 className="form-input pl-8"
                 placeholder="Kulcs, érték vagy leírás..."
@@ -181,17 +238,74 @@ export default function SystemParameterPage() {
             </div>
           </div>
           <div>
-            <label className="form-label">{t('common.category')}</label>
+            <label htmlFor="system-parameter-category" className="form-label">{t('common.category')}</label>
             <select
+              id="system-parameter-category"
               className="form-input"
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={(e) => void handleCategoryChange(e.target.value)}
             >
               <option value="">{t('settings.osszesKategoria')}</option>
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="form-panel">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="border border-gray-200 rounded p-3">
+              <div className="text-xs text-gray-500">{t('common.active')}</div>
+              <div className="text-lg font-semibold">{activeParameterCount}</div>
+            </div>
+            <div className="border border-gray-200 rounded p-3">
+              <div className="text-xs text-gray-500">{t('settings.menedzselt')}</div>
+              <div className="text-lg font-semibold">{managedParameterCount}</div>
+            </div>
+          </div>
+          <div>
+            <label htmlFor="system-parameter-key-lookup" className="form-label">{t('settings.kulcsEllenorzes')}</label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <KeyRound className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                <input
+                  id="system-parameter-key-lookup"
+                  type="text"
+                  className="form-input pl-8"
+                  value={lookupKey}
+                  onChange={(e) => setLookupKey(e.target.value)}
+                  placeholder="pl: RATE_SPREAD_EUR"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleLookup()}
+                disabled={lookupLoading || !lookupKey.trim()}
+                className="form-button flex items-center justify-center gap-2"
+              >
+                <Search size={16} />
+                {t('settings.lekerdezes')}
+              </button>
+            </div>
+            {lookupParameter && (
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                <div>
+                  <span className="text-gray-500">{t('organizations.kulcs2')}: </span>
+                  <span className="font-mono">{lookupParameter.parameterKey}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">{t('fees.ertek')}: </span>
+                  <span className="font-mono">{lookupValue ?? lookupParameter.parameterValue}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">{t('common.category')}: </span>
+                  <span>{lookupParameter.category}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -315,7 +429,7 @@ export default function SystemParameterPage() {
       )}
 
       {/* Parameters Table */}
-      <div className="form-panel">
+      <div className="form-panel overflow-x-auto">
         <table className="data-grid w-full">
           <thead>
             <tr>
