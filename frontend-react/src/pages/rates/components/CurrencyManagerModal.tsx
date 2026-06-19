@@ -40,10 +40,19 @@ export function computeNextDisplayOrder(currencies: Array<{ displayOrder?: numbe
   return Math.max(...currencies.map(c => c.displayOrder ?? 0)) + 1
 }
 
+function sortCurrencies(currencies: Currency[]): Currency[] {
+  return [...currencies].sort((a, b) => {
+    if (a.active !== b.active) return a.active ? -1 : 1
+    return (a.displayOrder ?? 0) - (b.displayOrder ?? 0)
+  })
+}
+
 export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChanged }: CurrencyManagerModalProps) {
   const [currencies, setCurrencies] = useState<Currency[]>([])
+  const [allCurrencies, setAllCurrencies] = useState<Currency[]>([])
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCurrencyDetail, setSelectedCurrencyDetail] = useState<Currency | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
 
   // Add-form state
@@ -66,13 +75,44 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
     try {
       const list = await currencyApi.getAll()
       // Stable sort: active first, then by displayOrder
-      const sorted = [...list].sort((a, b) => {
-        if (a.active !== b.active) return a.active ? -1 : 1
-        return (a.displayOrder ?? 0) - (b.displayOrder ?? 0)
-      })
+      const sorted = sortCurrencies(list)
       setCurrencies(sorted)
+      setAllCurrencies(sorted)
+      setSelectedCurrencyDetail(null)
     } catch (err) {
       logger.error('CurrencyManagerModal', 'list failed', err)
+      toast.error('Hiba', getErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const handleBackendSearch = useCallback(async () => {
+    const query = searchTerm.trim()
+    if (!query) {
+      await refresh()
+      return
+    }
+
+    setLoading(true)
+    try {
+      const results = await currencyApi.search(query)
+      setCurrencies(sortCurrencies(results))
+      setSelectedCurrencyDetail(null)
+    } catch (err) {
+      logger.error('CurrencyManagerModal', 'search failed', err)
+      toast.error('Hiba', getErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
+  }, [refresh, searchTerm])
+
+  const handleOpenDetail = useCallback(async (code: string) => {
+    setLoading(true)
+    try {
+      setSelectedCurrencyDetail(await currencyApi.getByCode(code))
+    } catch (err) {
+      logger.error('CurrencyManagerModal', 'getByCode failed', err)
       toast.error('Hiba', getErrorMessage(err))
     } finally {
       setLoading(false)
@@ -88,6 +128,7 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
       setPendingToggle(null)
       setToggleNote('')
       setTogglingActive(false)
+      setSelectedCurrencyDetail(null)
     }
   }, [isOpen, refresh])
 
@@ -175,20 +216,34 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
         <div className="p-4 space-y-3 overflow-y-auto">
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
-              <Search size={16} className="absolute left-2.5 top-2.5 text-gray-400" />
+                <Search size={16} className="absolute left-2.5 top-2.5 text-gray-400" />
               <input
                 type="text"
                 placeholder="Keresés kód vagy név alapján..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleBackendSearch()
+                }}
                 className="form-input w-full pl-8"
+                data-testid="currency-manager-search"
               />
             </div>
             <button
               type="button"
+              onClick={() => void handleBackendSearch()}
+              disabled={loading}
+              className="form-button flex items-center gap-1 disabled:opacity-50"
+              data-testid="currency-manager-search-submit"
+            >
+              <Search size={16} />
+              Keresés
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 // FK04 (FR-8): a form megnyitásakor a default sorrend = max(displayOrder) + 1.
-                if (!showAddForm) setNewDisplayOrder(computeNextDisplayOrder(currencies))
+                if (!showAddForm) setNewDisplayOrder(computeNextDisplayOrder(allCurrencies))
                 setShowAddForm((s) => !s)
               }}
               // Verif P2: a lista betöltéséig tiltva — üres currencies-ből a default 1 lenne,
@@ -210,6 +265,17 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
               Frissítés
             </button>
           </div>
+
+          {selectedCurrencyDetail && (
+            <div className="rounded-md border border-blue-200 bg-blue-50/70 p-3 text-sm" data-testid="currency-manager-detail">
+              <div className="font-semibold">{selectedCurrencyDetail.code} - {selectedCurrencyDetail.name}</div>
+              <div className="mt-1 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <span>Szimbólum: {selectedCurrencyDetail.symbol || '-'}</span>
+                <span>Tizedes: {selectedCurrencyDetail.decimals}</span>
+                <span>Sorrend: {selectedCurrencyDetail.displayOrder ?? '-'}</span>
+              </div>
+            </div>
+          )}
 
           {showAddForm && (
             <div className="rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/20 p-3 space-y-2">
@@ -336,8 +402,8 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
             </div>
           )}
 
-          <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
                   <th className="text-left p-2">Kód</th>
@@ -346,7 +412,7 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
                   <th className="text-center p-2">Tizedes</th>
                   <th className="text-center p-2">Sorrend</th>
                   <th className="text-center p-2">Állapot</th>
-                  <th className="text-right p-2">Művelet</th>
+                  <th className="text-right p-2">Műveletek</th>
                 </tr>
               </thead>
               <tbody>
@@ -379,6 +445,14 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
                       )}
                     </td>
                     <td className="p-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => void handleOpenDetail(c.code)}
+                        className="mr-2 text-xs px-2 py-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-900 dark:bg-blue-900 dark:text-blue-100"
+                        data-testid={`detail-${c.code}`}
+                      >
+                        Részlet
+                      </button>
                       {c.active ? (
                         <button
                           type="button"

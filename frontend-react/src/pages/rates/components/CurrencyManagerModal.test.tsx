@@ -9,6 +9,8 @@ import type { Currency } from '../../../services/api/exchange-rates'
 vi.mock('../../../services/api/exchange-rates', () => ({
   currencyApi: {
     getAll: vi.fn(),
+    getByCode: vi.fn(),
+    search: vi.fn(),
     create: vi.fn(),
     setActive: vi.fn(),
   },
@@ -48,6 +50,8 @@ describe('FK04 (FR-8) — computeNextDisplayOrder', () => {
 describe('FK04 (FR-8) — CurrencyManagerModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(currencyApi.search).mockResolvedValue([cur('EUR', 1)])
+    vi.mocked(currencyApi.getByCode).mockResolvedValue(cur('EUR', 1))
   })
 
   it('az "Új valuta" form a max(displayOrder)+1 defaulttal nyílik (nem 99-cel)', async () => {
@@ -87,5 +91,37 @@ describe('FK04 (FR-8) — CurrencyManagerModal', () => {
     // a sikeres-ág nem futott: nincs success toast, a form input megmaradt
     expect(vi.mocked(toast.success)).not.toHaveBeenCalled()
     expect((screen.getByTestId('new-currency-code') as HTMLInputElement).value).toBe('AED')
+  })
+
+  it('backend keresést használ a valuta kereső gombbal', async () => {
+    vi.mocked(currencyApi.getAll).mockResolvedValue([cur('EUR', 1), cur('USD', 2)])
+    vi.mocked(currencyApi.search).mockResolvedValue([cur('EUR', 1)])
+
+    render(<CurrencyManagerModal isOpen onClose={() => {}} />)
+    await screen.findByText('USD valuta')
+
+    fireEvent.change(screen.getByTestId('currency-manager-search'), { target: { value: 'eur' } })
+    fireEvent.click(screen.getByTestId('currency-manager-search-submit'))
+
+    await waitFor(() => expect(vi.mocked(currencyApi.search)).toHaveBeenCalledWith('eur'))
+    expect(await screen.findByText('EUR valuta')).toBeInTheDocument()
+    expect(screen.queryByText('USD valuta')).not.toBeInTheDocument()
+  })
+
+  it('sor részlet megnyitásakor kód szerinti backend detailt kér', async () => {
+    vi.mocked(currencyApi.getAll).mockResolvedValue([cur('EUR', 1)])
+    vi.mocked(currencyApi.getByCode).mockResolvedValue({
+      ...cur('EUR', 1),
+      name: 'Backend EUR detail',
+      symbol: 'EUR',
+    })
+
+    render(<CurrencyManagerModal isOpen onClose={() => {}} />)
+    await screen.findByText('EUR valuta')
+
+    fireEvent.click(screen.getByTestId('detail-EUR'))
+
+    await waitFor(() => expect(vi.mocked(currencyApi.getByCode)).toHaveBeenCalledWith('EUR'))
+    expect(await screen.findByTestId('currency-manager-detail')).toHaveTextContent('Backend EUR detail')
   })
 })

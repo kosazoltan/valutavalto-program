@@ -62,11 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1028
-frontend production UI/app referenced REST calls: 918
+frontend production UI/app referenced REST calls: 920
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
-backend endpoints not referenced by production UI/app calls: 106
+backend endpoints not referenced by production UI/app calls: 104
 ```
 
 Route/page audit result:
@@ -231,11 +231,16 @@ proven used by UI/app" follow-up work.
   `GET /system-params` so the settings page exposes backend active/managed
   counts, backend category filtering and key/value lookup, with mobile render
   coverage.
+- Wired the routed rate-maker CurrencyManagerModal read controls to
+  `GET /currencies/search` and `GET /currencies/code/{code}` so the existing
+  currency management workflow uses backend search and backend code-detail
+  lookup instead of only the full currency list, with rate-maker mobile render
+  coverage.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 106 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 106 confirmed UX
+The stricter audit currently reports 104 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 104 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens.
@@ -243,8 +248,8 @@ valid library surface rather than visible screens.
 Current summary:
 
 ```text
-ui-candidate/list-or-view        26
-ui-candidate/detail              9
+ui-candidate/list-or-view        25
+ui-candidate/detail              8
 ui-candidate/mutation            25
 integration-or-device            15
 backend-only/legacy-compat       8
@@ -417,6 +422,12 @@ npx.cmd vitest run src/pages/settings/SystemParameterPage.test.tsx
 npx.cmd eslint src/pages/settings/SystemParameterPage.tsx src/pages/settings/SystemParameterPage.test.tsx e2e/system-parameter-backend-reads.spec.ts
 npm.cmd run type-check
 npx.cmd playwright test e2e/system-parameter-backend-reads.spec.ts --config=playwright.config.ts
+npm.cmd run build
+python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 120
+npx.cmd vitest run src/pages/rates/components/CurrencyManagerModal.test.tsx
+npx.cmd eslint src/pages/rates/components/CurrencyManagerModal.tsx src/pages/rates/components/CurrencyManagerModal.test.tsx e2e/currency-manager-backend-reads.spec.ts
+npm.cmd run type-check
+$env:VITE_APP_FLAVOR='rate-maker'; $env:PLAYWRIGHT_E2E_PORT='3131'; npx.cmd playwright test e2e/currency-manager-backend-reads.spec.ts --config=playwright.config.ts
 npm.cmd run build
 python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 120
 ```
