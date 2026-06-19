@@ -733,6 +733,7 @@ export const dariusApi = {
   submit: (id: string) => api.post<DariusDailyReport>(`/darius/${id}/submit`),
   acknowledge: (id: string, ref: string) => api.post<DariusDailyReport>(`/darius/${id}/acknowledge?ackReference=${encodeURIComponent(ref)}`),
   retryFailed: () => api.post<DariusDailyReport[]>('/darius/retry-failed'),
+  getById: (id: string) => api.get<DariusDailyReport>(`/darius/${id}`),
   getByDate: (date: string) => api.get<DariusDailyReport>(`/darius/by-date?date=${date}`),
   getRange: (from: string, to: string) => api.get<DariusDailyReport[]>(`/darius/range?startDate=${from}&endDate=${to}`),
   getMonthly: (year: number, month: number) => api.get<DariusMonthlyDto>(`/darius/monthly?year=${year}&month=${month}`),

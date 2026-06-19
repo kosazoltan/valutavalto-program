@@ -31,6 +31,7 @@ export default function DariusReportPage() {
   const [missingDates, setMissingDates] = useState<string[]>([])
   const [selected, setSelected] = useState<DariusDailyReport | null>(null)
   const [loading, setLoading] = useState(false)
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [generateDate, setGenerateDate] = useState(localIsoDate())
 
@@ -86,6 +87,16 @@ export default function DariusReportPage() {
       setTab('daily')
     } catch (err) { setError(getErrorMessage(err)) }
     finally { setLoading(false) }
+  }
+
+  const handleSelectReport = async (report: DariusDailyReport) => {
+    setDetailLoadingId(report.id)
+    setError('')
+    try {
+      const res = await dariusApi.getById(report.id)
+      setSelected(res.data)
+    } catch (err) { setError(getErrorMessage(err)) }
+    finally { setDetailLoadingId(null) }
   }
 
   const handleApprove = async (id: string) => {
@@ -173,8 +184,8 @@ export default function DariusReportPage() {
           <div className="col-span-2 space-y-1">
             {reports.length === 0 && <div className="text-gray-400 text-sm py-4 text-center">{t('darius.nincsJelentesAzIdoszakban')}</div>}
             {reports.map(r => (
-              <div key={r.id} role="button" tabIndex={0} onClick={() => setSelected(r)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(r) } }}
+              <div key={r.id} data-testid={`darius-report-${r.id}`} role="button" tabIndex={0} onClick={() => handleSelectReport(r)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelectReport(r) } }}
                 className={`p-3 rounded border cursor-pointer hover:bg-gray-50 transition ${selected?.id === r.id ? 'border-blue-400 bg-blue-50' : 'border-gray-200'}`}>
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
@@ -191,6 +202,7 @@ export default function DariusReportPage() {
                   <span>{t('darius.eladas')}{formatNum(r.totalSellHuf)} {t('components.ft')}</span>
                   <span>{t('darius.dij')}{formatNum(r.totalHandlingFeeHuf)} {t('components.ft')}</span>
                 </div>
+                {detailLoadingId === r.id && <div className="mt-1 text-xs text-blue-600">Részletek betöltése...</div>}
               </div>
             ))}
           </div>

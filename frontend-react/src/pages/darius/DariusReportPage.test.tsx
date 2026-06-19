@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   approve: vi.fn(),
   submit: vi.fn(),
   retryFailed: vi.fn(),
+  getById: vi.fn(),
   getByDate: vi.fn(),
 }))
 
@@ -64,6 +65,7 @@ describe('DariusReportPage backend contract', () => {
     mocks.approve.mockResolvedValue({ data: dailyReport })
     mocks.submit.mockResolvedValue({ data: dailyReport })
     mocks.retryFailed.mockResolvedValue({ data: [] })
+    mocks.getById.mockResolvedValue({ data: dailyReport })
     mocks.getByDate.mockResolvedValue({ data: dailyReport })
   })
 
@@ -79,6 +81,27 @@ describe('DariusReportPage backend contract', () => {
     await waitFor(() => {
       expect(mocks.getByDate).toHaveBeenCalledWith('2026-06-19')
       expect(screen.getByText(/darius.reszletek/)).toBeInTheDocument()
+      expect(screen.getByText('EUR')).toBeInTheDocument()
+      expect(screen.getByText('BUD01')).toBeInTheDocument()
+      expect(screen.getByText(/abcdef1234567890/)).toBeInTheDocument()
+    })
+  })
+
+  it('listaelem kiválasztásakor a backend detail endpointból tölti be a sorokat', async () => {
+    const user = userEvent.setup()
+    mocks.getRange.mockResolvedValue({
+      data: [{
+        ...dailyReport,
+        payloadHash: undefined,
+        lines: undefined,
+      }],
+    })
+    render(<DariusReportPage />)
+
+    await user.click(await screen.findByTestId('darius-report-darius-1'))
+
+    await waitFor(() => {
+      expect(mocks.getById).toHaveBeenCalledWith('darius-1')
       expect(screen.getByText('EUR')).toBeInTheDocument()
       expect(screen.getByText('BUD01')).toBeInTheDocument()
       expect(screen.getByText(/abcdef1234567890/)).toBeInTheDocument()

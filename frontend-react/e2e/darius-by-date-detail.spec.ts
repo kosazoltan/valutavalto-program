@@ -53,6 +53,12 @@ const dailyReport = {
   ],
 }
 
+const reportSummary = {
+  ...dailyReport,
+  payloadHash: undefined,
+  lines: undefined,
+}
+
 async function mockApis(page: Page) {
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
@@ -92,7 +98,11 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/darius/range') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([reportSummary]) })
+    }
+
+    if (path.endsWith('/darius/darius-1') && method === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(dailyReport) })
     }
 
     if (path.endsWith('/darius/by-date') && method === 'GET') {
@@ -129,6 +139,32 @@ test('DARIUS napi lekérdezés mobil nézetben a backend by-date endpointot hasz
       && url.searchParams.get('date') === '2026-06-19'
   })
   await page.getByRole('button', { name: /Napi lekérdezés/i }).click()
+  await detailRequest
+
+  await expect(page.getByText('EUR')).toBeVisible()
+  await expect(page.getByText('BUD01')).toBeVisible()
+  await expect(page.getByText(/abcdef1234567890/)).toBeVisible()
+
+  const horizontalOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  )
+  expect(horizontalOverflow).toBe(false)
+})
+
+test('DARIUS listaelem mobil nézetben a backend detail endpointot használja', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mockApis(page)
+  await login(page)
+
+  await page.goto('/darius', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByTestId('darius-report-darius-1')).toBeVisible()
+
+  const detailRequest = page.waitForRequest(request => {
+    const url = new URL(request.url())
+    return request.method() === 'GET'
+      && url.pathname === '/api/v1/darius/darius-1'
+  })
+  await page.getByTestId('darius-report-darius-1').click()
   await detailRequest
 
   await expect(page.getByText('EUR')).toBeVisible()
