@@ -62,11 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1030
-frontend production UI/app referenced REST calls: 937
+frontend production UI/app referenced REST calls: 938
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 46
-backend endpoints not referenced by production UI/app calls: 117
+backend endpoints not referenced by production UI/app calls: 116
 ```
 
 Route/page audit result:
@@ -276,11 +276,14 @@ proven used by UI/app" follow-up work.
 - Wired routed PermissionPage editing to `GET /permissions/{id}` so permission
   administration edit opens from the backend detail representation instead of
   only the list row snapshot, with mobile render coverage.
+- Wired routed BranchGroupPage editing to `GET /branch-groups/{id}` so
+  branch-group administration edit opens from the backend detail representation
+  instead of only the list row snapshot, with mobile render coverage.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 117 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 117 confirmed UX
+The stricter audit currently reports 116 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 116 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens. This number increased when
@@ -293,7 +296,7 @@ Current summary:
 ```text
 ui-candidate/list-or-view        27
 ui-candidate/mutation            25
-ui-candidate/detail              17
+ui-candidate/detail              16
 integration-or-device            15
 backend-only/legacy-compat       8
 workflow-action                  7
@@ -527,6 +530,12 @@ python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenc
 npx.cmd vitest run src/pages/settings/PermissionPage.test.tsx
 npx.cmd eslint src/pages/settings/PermissionPage.tsx src/pages/settings/PermissionPage.test.tsx e2e/permission-module.spec.ts
 npx.cmd playwright test e2e/permission-module.spec.ts --config=playwright.config.ts
+npm.cmd run type-check
+npm.cmd run build
+python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 140
+npx.cmd vitest run src/pages/branches/BranchGroupPage.test.tsx
+npx.cmd eslint src/pages/branches/BranchGroupPage.tsx src/pages/branches/BranchGroupPage.test.tsx e2e/branch-group-detail.spec.ts
+npx.cmd playwright test e2e/branch-group-detail.spec.ts --config=playwright.config.ts
 npm.cmd run type-check
 npm.cmd run build
 python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 140

@@ -28,6 +28,7 @@ export default function BranchGroupPage() {
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingLoadingId, setEditingLoadingId] = useState<string | null>(null)
   const [form, setForm] = useState<GroupForm>(emptyForm)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
@@ -71,10 +72,24 @@ export default function BranchGroupPage() {
     }
   }
 
-  const handleEdit = (g: BranchGroup) => {
-    setForm({ code: g.code, name: g.name, parentGroupId: g.parentGroupId || '', isActive: g.isActive })
-    setEditingId(g.id)
-    setShowForm(true)
+  const handleEdit = async (g: BranchGroup) => {
+    try {
+      setEditingLoadingId(g.id)
+      const detail = await branchGroupApi.getById(g.id)
+      setForm({
+        code: detail.code,
+        name: detail.name,
+        parentGroupId: detail.parentGroupId || '',
+        isActive: detail.isActive,
+      })
+      setEditingId(detail.id)
+      setShowForm(true)
+    } catch (err) {
+      logger.error('BranchGroupPage', 'Fiókcsoport részlet betöltési hiba:', err)
+      toast.error('Hiba', getErrorMessage(err))
+    } finally {
+      setEditingLoadingId(null)
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -115,7 +130,14 @@ export default function BranchGroupPage() {
           <span className="font-medium flex-1">{g.name}</span>
           <span className="text-sm text-gray-500">{g.branchIds?.length || 0} {t('branches.fiok')}</span>
           <span className={`badge ${g.isActive ? 'badge-green' : 'badge-red'}`}>{g.isActive ? 'Aktív' : 'Inaktív'}</span>
-          <button onClick={() => handleEdit(g)} className="form-button text-xs"><Edit2 size={12} /></button>
+          <button
+            onClick={() => void handleEdit(g)}
+            disabled={editingLoadingId === g.id}
+            aria-label={`Szerkesztés: ${g.name}`}
+            className="form-button text-xs disabled:opacity-50"
+          >
+            <Edit2 size={12} />
+          </button>
           <button onClick={() => void handleDelete(g.id)} className="form-button text-xs text-red-600"><Trash2 size={12} /></button>
         </div>
         {isExpanded && children.map(c => renderGroup(c, depth + 1))}
