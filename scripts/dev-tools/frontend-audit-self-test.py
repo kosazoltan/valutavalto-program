@@ -81,6 +81,19 @@ def test_contract_audit_classifies_legacy_audit_paths(contract_module) -> None:
         assert classification.category == "backend-only/legacy-compat"
 
 
+def test_contract_audit_does_not_cross_match_static_and_dynamic_siblings(contract_module) -> None:
+    assert contract_module.paths_match("/users/{param}", "/users/{id}") is True
+    assert contract_module.paths_match("/users/123", "/users/{id}") is True
+    endpoints = [
+        contract_module.Endpoint("GET", "/users/{id}", "UserController.java", 1, "UserController"),
+        contract_module.Endpoint("GET", "/users/me", "UserController.java", 2, "UserController"),
+    ]
+    assert contract_module.backend_reference_paths_match("/users/{param}", "/users/{id}", "GET", endpoints) is True
+    assert contract_module.backend_reference_paths_match("/users/{param}", "/users/me", "GET", endpoints) is False
+    assert contract_module.backend_reference_paths_match("/users/me", "/users/{id}", "GET", endpoints) is False
+    assert contract_module.backend_reference_paths_match("/users/me", "/users/me", "GET", endpoints) is True
+
+
 def test_contract_audit_classifies_legacy_representative_paths(contract_module) -> None:
     for path in ("/authorized-representatives", "/authorized-representatives/record-transaction"):
         endpoint = contract_module.Endpoint(
@@ -304,6 +317,7 @@ def main() -> int:
         ("contract skips frontend test/spec files", lambda: test_contract_audit_skips_frontend_tests(contract_module)),
         ("contract classifies NAV discrepancy", lambda: test_contract_audit_classifies_nav_discrepancy(contract_module)),
         ("contract classifies legacy audit paths", lambda: test_contract_audit_classifies_legacy_audit_paths(contract_module)),
+        ("contract does not cross-match static and dynamic siblings", lambda: test_contract_audit_does_not_cross_match_static_and_dynamic_siblings(contract_module)),
         ("contract classifies legacy representative paths", lambda: test_contract_audit_classifies_legacy_representative_paths(contract_module)),
         ("contract classifies alternate admin branch update", lambda: test_contract_audit_classifies_alternate_admin_branch_update(contract_module)),
         ("contract classifies alternate branch-group active list", lambda: test_contract_audit_classifies_alternate_branch_group_active_list(contract_module)),

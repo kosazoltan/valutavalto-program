@@ -216,33 +216,76 @@ def normalize_url_like_path(raw_path: str) -> str | None:
     return normalize_path(path)
 
 
-def path_to_pattern(path: str) -> tuple[str, ...]:
+def path_segments(path: str) -> tuple[str, ...]:
     normalized = normalize_path(path)
     if normalized is None:
         return tuple()
-    parts: list[str] = []
-    for part in normalized.strip("/").split("/"):
-        if not part:
-            continue
-        if (
-            part.startswith("{")
-            and part.endswith("}")
-            or part.startswith(":")
-            or "{param}" in part
-            or re.fullmatch(r"\d+", part)
-        ):
-            parts.append("*")
-        else:
-            parts.append(part)
-    return tuple(parts)
+    return tuple(part for part in normalized.strip("/").split("/") if part)
+
+
+def is_variable_segment(part: str) -> bool:
+    return (
+        part.startswith("{")
+        and part.endswith("}")
+        or part.startswith(":")
+        or "{param}" in part
+    )
+
+
+def is_probable_identifier_literal(part: str) -> bool:
+    return bool(re.fullmatch(r"\d+|[0-9a-fA-F-]{8,}", part))
 
 
 def paths_match(frontend: str, backend: str) -> bool:
-    fp = path_to_pattern(frontend)
-    bp = path_to_pattern(backend)
+    fp = path_segments(frontend)
+    bp = path_segments(backend)
     if len(fp) != len(bp):
         return False
-    return all(a == b or a == "*" or b == "*" for a, b in zip(fp, bp))
+    return all(
+        frontend_part == backend_part
+        or is_variable_segment(frontend_part)
+        or is_variable_segment(backend_part)
+        or is_probable_identifier_literal(frontend_part)
+        or is_probable_identifier_literal(backend_part)
+        for frontend_part, backend_part in zip(fp, bp)
+    )
+
+
+def backend_reference_paths_match(
+    frontend: str,
+    backend: str,
+    method: str,
+    backend_endpoints: list[Endpoint],
+) -> bool:
+    fp = path_segments(frontend)
+    bp = path_segments(backend)
+    if len(fp) != len(bp) or not paths_match(frontend, backend):
+        return False
+
+    for index, (frontend_part, backend_part) in enumerate(zip(fp, bp)):
+        if frontend_part == backend_part:
+            continue
+        frontend_variable = is_variable_segment(frontend_part)
+        backend_variable = is_variable_segment(backend_part)
+        if backend_variable and not frontend_variable and not is_probable_identifier_literal(frontend_part):
+            if any(
+                other.method == method
+                and other.path != backend
+                and tuple(path_segments(other.path)) == fp
+                for other in backend_endpoints
+            ):
+                return False
+        if frontend_variable and not backend_variable:
+            if any(
+                other.method == method
+                and other.path != backend
+                and paths_match(frontend, other.path)
+                and len(path_segments(other.path)) > index
+                and is_variable_segment(path_segments(other.path)[index])
+                for other in backend_endpoints
+            ):
+                return False
+    return True
 
 
 def collect_annotation(lines: list[str], start: int) -> tuple[str, int]:
@@ -898,7 +941,11 @@ def unreferenced_backend(
     for ep in backend_endpoints:
         if ep.source == "spring-actuator":
             continue
-        if not any(call.method == ep.method and paths_match(call.path, ep.path) for call in frontend_calls):
+        if not any(
+            call.method == ep.method
+            and backend_reference_paths_match(call.path, ep.path, ep.method, backend_endpoints)
+            for call in frontend_calls
+        ):
             result.append(ep)
     return result
 

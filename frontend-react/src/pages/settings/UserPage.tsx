@@ -18,6 +18,7 @@ export default function UserPage() {
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null)
   const [newPassword, setNewPassword] = useState('')
   const [mfaDisablingUserId, setMfaDisablingUserId] = useState<string | null>(null)
+  const [editingUserLoadingId, setEditingUserLoadingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<UserCreateRequest>({
     username: '',
     email: '',
@@ -72,17 +73,27 @@ export default function UserPage() {
     setShowForm(true)
   }
 
-  const handleEdit = (user: UserDetail) => {
-    setEditingUser(user)
-    setFormData({
-      username: user.username,
-      email: user.email || '',
-      password: '',
-      fullName: user.name || '',
-      roleId: roles.find(r => r.name === user.roles?.[0] || r.code === user.roles?.[0])?.id || '',
-      branchId: user.defaultBranchId || ''
-    })
-    setShowForm(true)
+  const handleEdit = async (user: UserDetail) => {
+    try {
+      setError(null)
+      setEditingUserLoadingId(user.id)
+      const detail = await userApi.getById(user.id)
+      setEditingUser(detail)
+      setFormData({
+        username: detail.username,
+        email: detail.email || '',
+        password: '',
+        fullName: detail.name || '',
+        roleId: roles.find(r => r.name === detail.roles?.[0] || r.code === detail.roles?.[0])?.id || '',
+        branchId: detail.defaultBranchId || ''
+      })
+      setShowForm(true)
+    } catch (err) {
+      logger.error('UserPage', 'Felhasználó részletek betöltési hiba:', err)
+      setError('Hiba a felhasználó részleteinek betöltésekor')
+    } finally {
+      setEditingUserLoadingId(null)
+    }
   }
 
   const handleChangePassword = (user: UserDetail) => {
@@ -459,8 +470,8 @@ export default function UserPage() {
       )}
 
       {/* Users Table */}
-      <div className="form-panel">
-        <table className="data-grid w-full">
+      <div className="form-panel overflow-x-auto">
+        <table className="data-grid w-full min-w-[920px]">
           <thead>
             <tr>
               <th>{t('settings.felhasznalonev2')}</th>
@@ -517,8 +528,9 @@ export default function UserPage() {
                   <td>
                     <div className="flex gap-1 flex-wrap">
                       <button
-                        onClick={() => handleEdit(user)}
-                        className="form-button text-xs flex items-center gap-1"
+                        onClick={() => void handleEdit(user)}
+                        disabled={editingUserLoadingId === user.id}
+                        className="form-button text-xs flex items-center gap-1 disabled:opacity-50"
                       >
                         <Edit size={12} />
                         {t('common.edit')}

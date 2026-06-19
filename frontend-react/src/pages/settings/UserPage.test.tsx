@@ -5,6 +5,7 @@ import UserPage from './UserPage'
 
 const mocks = vi.hoisted(() => ({
   userList: vi.fn(),
+  userGetById: vi.fn(),
   roleList: vi.fn(),
   mfaDisable: vi.fn(),
   toastSuccess: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock('react-i18next', () => ({
 vi.mock('../../services/api/index', () => ({
   userApi: {
     list: mocks.userList,
+    getById: mocks.userGetById,
     create: vi.fn(),
     update: vi.fn(),
     changePassword: vi.fn(),
@@ -54,7 +56,7 @@ describe('UserPage', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     mocks.userList.mockResolvedValue([
       {
-        id: 'user-1',
+        id: '1',
         workerId: '42',
         username: 'teszt.worker',
         name: 'Teszt Worker',
@@ -64,8 +66,35 @@ describe('UserPage', () => {
         createdAt: '2026-06-19T00:00:00',
       },
     ])
-    mocks.roleList.mockResolvedValue([])
+    mocks.userGetById.mockResolvedValue({
+      id: '1',
+      workerId: '42',
+      username: 'teszt.worker',
+      name: 'Backend Detail Worker',
+      email: 'detail@example.com',
+      isActive: true,
+      roles: ['ADMIN'],
+      defaultBranchId: 'branch-1',
+      defaultBranchName: 'Szeged',
+      createdAt: '2026-06-19T00:00:00',
+    })
+    mocks.roleList.mockResolvedValue([{ id: 'role-admin', code: 'ADMIN', name: 'ADMIN', isActive: true }])
     mocks.mfaDisable.mockResolvedValue({ workerId: 42, message: 'MFA letiltva' })
+  })
+
+  it('szerkesztéskor a backend felhasználó detail endpointból nyitja meg az űrlapot', async () => {
+    const user = userEvent.setup()
+    render(<UserPage />)
+
+    await screen.findByText('teszt.worker')
+    await user.click(screen.getByRole('button', { name: 'common.edit' }))
+
+    await waitFor(() => {
+      expect(mocks.userGetById).toHaveBeenCalledWith('1')
+    })
+    expect(await screen.findByDisplayValue('Backend Detail Worker')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('detail@example.com')).toBeInTheDocument()
+    expect(screen.getByRole('combobox')).toHaveValue('role-admin')
   })
 
   it('a felhasználó sorából meghívja az admin MFA disable backend szerződést', async () => {

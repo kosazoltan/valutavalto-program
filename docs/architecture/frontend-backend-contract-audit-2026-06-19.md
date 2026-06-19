@@ -62,11 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1030
-frontend production UI/app referenced REST calls: 935
+frontend production UI/app referenced REST calls: 936
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
-backend endpoints not referenced by literal calls: 27
-backend endpoints not referenced by production UI/app calls: 89
+backend endpoints not referenced by literal calls: 46
+backend endpoints not referenced by production UI/app calls: 118
 ```
 
 Route/page audit result:
@@ -136,6 +136,10 @@ proven used by UI/app" follow-up work.
   literal calls from REST calls reachable through a production UI/app referenced
   API wrapper method. The self-test now proves that wrapper-only calls do not
   count as production UI/app backend coverage.
+- Hardened `frontend-backend-contract-audit.py` so static and dynamic sibling
+  routes do not create false backend coverage; for example `GET /users/{id}`
+  no longer proves `GET /users/me`, and `GET /users/me` no longer proves
+  `GET /users/{id}`. The self-test covers this matching rule.
 - Optimized the new production UI/app reference scan by caching frontend source
   text once per audit run instead of re-reading files per API method.
 - Classified the backward-compatible audit endpoints and the alternate admin
@@ -266,33 +270,40 @@ proven used by UI/app" follow-up work.
   `GET /customers/code/{customerCode}` so users can run an exact backend
   customer-code lookup beside the existing name/document search, with mobile
   render coverage.
+- Wired routed UserPage editing to `GET /users/{id}` so the user administration
+  edit form opens from the backend detail representation instead of only the
+  list row snapshot, with mobile render coverage.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 89 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 89 confirmed UX
+The stricter audit currently reports 118 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 118 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
-valid library surface rather than visible screens.
+valid library surface rather than visible screens. This number increased when
+static/dynamic sibling route matching was corrected, because previous runs
+could count routes such as `GET /users/{id}` and `GET /users/me` as mutual
+proof.
 
 Current summary:
 
 ```text
+ui-candidate/list-or-view        27
 ui-candidate/mutation            25
+ui-candidate/detail              18
 integration-or-device            15
-ui-candidate/list-or-view        14
 backend-only/legacy-compat       8
 workflow-action                  7
-ui-candidate/detail              4
 backend-only/auth-session        3
+backend-only/diagnostics         3
 backend-only/admin-maintenance   2
-backend-only/diagnostics         2
 integration-or-callback          2
 ui-candidate/financial-contract-required 2
 workflow-action/financial-admin  2
 backend-only/alternate-admin-api 1
 backend-only/alternate-read-api  1
 backend-only/legacy-alias        1
+ui-candidate/export-download     1
 ```
 
 The next audit slice should triage the `ui-candidate/*` groups by actual routed
@@ -499,6 +510,14 @@ python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenc
 npx.cmd vitest run src/pages/customers/CustomerListPage.test.tsx
 npx.cmd eslint src/pages/customers/CustomerListPage.tsx src/pages/customers/CustomerListPage.test.tsx e2e/customer-code-search.spec.ts
 npx.cmd playwright test e2e/customer-code-search.spec.ts --config=playwright.config.ts
+npm.cmd run type-check
+npm.cmd run build
+python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 140
+python -m py_compile scripts/dev-tools/frontend-backend-contract-audit.py scripts/dev-tools/frontend-audit-self-test.py
+python scripts/dev-tools/frontend-audit-self-test.py
+npx.cmd vitest run src/pages/settings/UserPage.test.tsx
+npx.cmd eslint src/pages/settings/UserPage.tsx src/pages/settings/UserPage.test.tsx e2e/user-detail-edit.spec.ts
+npx.cmd playwright test e2e/user-detail-edit.spec.ts --config=playwright.config.ts
 npm.cmd run type-check
 npm.cmd run build
 python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 140
