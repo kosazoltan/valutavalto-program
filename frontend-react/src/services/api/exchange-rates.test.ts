@@ -5,11 +5,12 @@ vi.mock('./client', () => ({
     get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
+    patch: vi.fn(),
   },
 }))
 
 import { api } from './client'
-import { exchangeRateApi, exchangeRateDisplayApi, exchangeRatePollingApi, rateApprovalApi, rateCreationApi, roundingRuleApi } from './exchange-rates'
+import { currencyApi, exchangeRateApi, exchangeRateDisplayApi, exchangeRatePollingApi, rateApprovalApi, rateCreationApi, roundingRuleApi } from './exchange-rates'
 
 const mockApi = vi.mocked(api)
 
@@ -213,6 +214,26 @@ describe('rateApprovalApi', () => {
 
     await expect(rateApprovalApi.request(request)).resolves.toBe(approval)
     expect(mockApi.post).toHaveBeenCalledWith('/rate-approvals/request', request)
+  })
+})
+
+describe('currencyApi', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('az ID szerinti valuta-részletet a /currencies/{id} backend endpointrol keri', async () => {
+    const currency = {
+      id: 1,
+      code: 'EUR',
+      name: 'Euró',
+      decimals: 2,
+      active: true,
+    }
+    mockApi.get.mockResolvedValueOnce({ data: currency })
+
+    await expect(currencyApi.getById(1)).resolves.toBe(currency)
+    expect(mockApi.get).toHaveBeenCalledWith('/currencies/1')
   })
 })
 

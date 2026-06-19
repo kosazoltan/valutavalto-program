@@ -87,7 +87,15 @@ async function mockApis(page: Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ ...eurCurrency, name: 'Backend EUR detail' }),
+        body: JSON.stringify({ ...eurCurrency, name: 'Backend EUR code check' }),
+      })
+    }
+
+    if (path.endsWith('/currencies/1') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...eurCurrency, name: 'Backend EUR ID detail' }),
       })
     }
 
@@ -123,7 +131,7 @@ async function login(page: Page) {
   await page.goto('/rates/main', { waitUntil: 'domcontentloaded' })
 }
 
-test('Valutakezelő mobil nézetben backend keresést és kód szerinti detailt használ', async ({ page }) => {
+test('Valutakezelő mobil nézetben backend keresést, ID detailt és kód szerinti ellenőrzést használ', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -142,13 +150,18 @@ test('Valutakezelő mobil nézetben backend keresést és kód szerinti detailt 
   await expect(page.getByText('Euró')).toBeVisible()
   await expect(page.getByText('Amerikai dollár')).toHaveCount(0)
 
-  const detailRequest = page.waitForRequest(request =>
+  const idDetailRequest = page.waitForRequest(request =>
+    request.method() === 'GET'
+    && new URL(request.url()).pathname === '/api/v1/currencies/1'
+  )
+  const codeDetailRequest = page.waitForRequest(request =>
     request.method() === 'GET'
     && new URL(request.url()).pathname === '/api/v1/currencies/code/EUR'
   )
   await page.getByTestId('detail-EUR').click()
-  await detailRequest
-  await expect(page.getByTestId('currency-manager-detail')).toContainText('Backend EUR detail')
+  await Promise.all([idDetailRequest, codeDetailRequest])
+  await expect(page.getByTestId('currency-manager-detail')).toContainText('Backend EUR ID detail')
+  await expect(page.getByTestId('currency-manager-code-check')).toContainText('Kód-ellenőrzés: EUR / #1')
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

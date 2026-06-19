@@ -10,6 +10,7 @@ vi.mock('../../../services/api/exchange-rates', () => ({
   currencyApi: {
     getAll: vi.fn(),
     getByCode: vi.fn(),
+    getById: vi.fn(),
     search: vi.fn(),
     create: vi.fn(),
     setActive: vi.fn(),
@@ -52,6 +53,7 @@ describe('FK04 (FR-8) — CurrencyManagerModal', () => {
     vi.clearAllMocks()
     vi.mocked(currencyApi.search).mockResolvedValue([cur('EUR', 1)])
     vi.mocked(currencyApi.getByCode).mockResolvedValue(cur('EUR', 1))
+    vi.mocked(currencyApi.getById).mockResolvedValue(cur('EUR', 1))
   })
 
   it('az "Új valuta" form a max(displayOrder)+1 defaulttal nyílik (nem 99-cel)', async () => {
@@ -108,11 +110,16 @@ describe('FK04 (FR-8) — CurrencyManagerModal', () => {
     expect(screen.queryByText('USD valuta')).not.toBeInTheDocument()
   })
 
-  it('sor részlet megnyitásakor kód szerinti backend detailt kér', async () => {
+  it('sor részlet megnyitásakor ID szerinti detailt kér és megtartja a kód szerinti backend ellenőrzést', async () => {
     vi.mocked(currencyApi.getAll).mockResolvedValue([cur('EUR', 1)])
+    vi.mocked(currencyApi.getById).mockResolvedValue({
+      ...cur('EUR', 1),
+      name: 'Backend EUR ID detail',
+      symbol: 'EUR',
+    })
     vi.mocked(currencyApi.getByCode).mockResolvedValue({
       ...cur('EUR', 1),
-      name: 'Backend EUR detail',
+      name: 'Backend EUR code check',
       symbol: 'EUR',
     })
 
@@ -121,7 +128,9 @@ describe('FK04 (FR-8) — CurrencyManagerModal', () => {
 
     fireEvent.click(screen.getByTestId('detail-EUR'))
 
+    await waitFor(() => expect(vi.mocked(currencyApi.getById)).toHaveBeenCalledWith(2))
     await waitFor(() => expect(vi.mocked(currencyApi.getByCode)).toHaveBeenCalledWith('EUR'))
-    expect(await screen.findByTestId('currency-manager-detail')).toHaveTextContent('Backend EUR detail')
+    expect(await screen.findByTestId('currency-manager-detail')).toHaveTextContent('Backend EUR ID detail')
+    expect(screen.getByTestId('currency-manager-code-check')).toHaveTextContent('Kód-ellenőrzés: EUR / #2')
   })
 })

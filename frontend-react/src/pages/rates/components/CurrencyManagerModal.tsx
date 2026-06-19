@@ -17,6 +17,8 @@ import type { Currency } from '../../../services/api/exchange-rates'
  * <p>Backend endpoint-ok:
  * <ul>
  *   <li>GET /api/v1/currencies/all — osszes (aktiv+inaktiv) valuta</li>
+ *   <li>GET /api/v1/currencies/{id} — kijelolt valuta stabil ID szerinti reszlete</li>
+ *   <li>GET /api/v1/currencies/code/{code} — kód szerinti backend ellenorzes</li>
  *   <li>POST /api/v1/currencies — uj valuta hozzaadasa (admin/manager only)</li>
  *   <li>PATCH /api/v1/currencies/{id}/active — aktivalas/deaktivalas</li>
  * </ul></p>
@@ -53,6 +55,7 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCurrencyDetail, setSelectedCurrencyDetail] = useState<Currency | null>(null)
+  const [selectedCurrencyCodeCheck, setSelectedCurrencyCodeCheck] = useState<Currency | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
 
   // Add-form state
@@ -79,6 +82,7 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
       setCurrencies(sorted)
       setAllCurrencies(sorted)
       setSelectedCurrencyDetail(null)
+      setSelectedCurrencyCodeCheck(null)
     } catch (err) {
       logger.error('CurrencyManagerModal', 'list failed', err)
       toast.error('Hiba', getErrorMessage(err))
@@ -99,6 +103,7 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
       const results = await currencyApi.search(query)
       setCurrencies(sortCurrencies(results))
       setSelectedCurrencyDetail(null)
+      setSelectedCurrencyCodeCheck(null)
     } catch (err) {
       logger.error('CurrencyManagerModal', 'search failed', err)
       toast.error('Hiba', getErrorMessage(err))
@@ -107,12 +112,17 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
     }
   }, [refresh, searchTerm])
 
-  const handleOpenDetail = useCallback(async (code: string) => {
+  const handleOpenDetail = useCallback(async (currency: Currency) => {
     setLoading(true)
     try {
-      setSelectedCurrencyDetail(await currencyApi.getByCode(code))
+      const [detailById, detailByCode] = await Promise.all([
+        currencyApi.getById(currency.id),
+        currencyApi.getByCode(currency.code),
+      ])
+      setSelectedCurrencyDetail(detailById)
+      setSelectedCurrencyCodeCheck(detailByCode)
     } catch (err) {
-      logger.error('CurrencyManagerModal', 'getByCode failed', err)
+      logger.error('CurrencyManagerModal', 'detail lookup failed', err)
       toast.error('Hiba', getErrorMessage(err))
     } finally {
       setLoading(false)
@@ -129,6 +139,7 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
       setToggleNote('')
       setTogglingActive(false)
       setSelectedCurrencyDetail(null)
+      setSelectedCurrencyCodeCheck(null)
     }
   }, [isOpen, refresh])
 
@@ -274,6 +285,11 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
                 <span>Tizedes: {selectedCurrencyDetail.decimals}</span>
                 <span>Sorrend: {selectedCurrencyDetail.displayOrder ?? '-'}</span>
               </div>
+              {selectedCurrencyCodeCheck && (
+                <div className="mt-2 text-xs text-blue-900" data-testid="currency-manager-code-check">
+                  Kód-ellenőrzés: {selectedCurrencyCodeCheck.code} / #{selectedCurrencyCodeCheck.id}
+                </div>
+              )}
             </div>
           )}
 
@@ -447,7 +463,7 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
                     <td className="p-2 text-right">
                       <button
                         type="button"
-                        onClick={() => void handleOpenDetail(c.code)}
+                        onClick={() => void handleOpenDetail(c)}
                         className="mr-2 text-xs px-2 py-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-900 dark:bg-blue-900 dark:text-blue-100"
                         data-testid={`detail-${c.code}`}
                       >
