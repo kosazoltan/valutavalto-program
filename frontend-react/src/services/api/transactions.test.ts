@@ -397,6 +397,17 @@ describe('closingWizardApi report contract', () => {
     expect(mockApi.post).toHaveBeenCalledWith('/closing-wizard/wizard-1/differences', { HUF: 120000 })
     expect(result[0]?.status).toBe('DISCREPANCY')
   })
+
+  it('validateTransactions: calls GET /closing-wizard/validate-transactions', async () => {
+    mockApi.get.mockResolvedValue({
+      data: ['Van folyamatban lévő (PENDING) tranzakció!'],
+    })
+
+    const result = await closingWizardApi.validateTransactions()
+
+    expect(mockApi.get).toHaveBeenCalledWith('/closing-wizard/validate-transactions')
+    expect(result).toEqual(['Van folyamatban lévő (PENDING) tranzakció!'])
+  })
 })
 
 describe('dailySessionApi closing validation contract', () => {

@@ -211,6 +211,20 @@ export default function ClosingWizardPage() {
     toast.info('Napzárás indítása', 'Wizard indítása folyamatban...')
 
     try {
+      const transactionErrors = await closingWizardApi.validateTransactions()
+      if (transactionErrors.length > 0) {
+        const errorMsg = transactionErrors.join('\n')
+        const now = new Date().toLocaleTimeString('hu-HU')
+        setSteps((prev) =>
+          prev.map((s, idx) =>
+            idx === 0 ? { ...s, status: 'failed', message: errorMsg, completedAt: now } : s
+          )
+        )
+        toast.warning('Nyitott tranzakció validáció sikertelen', errorMsg)
+        setIsRunning(false)
+        return
+      }
+
       const wizard = await closingWizardApi.start(
         worker.branchId,
         undefined,

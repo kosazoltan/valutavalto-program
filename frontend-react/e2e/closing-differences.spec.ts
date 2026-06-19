@@ -79,6 +79,14 @@ async function mockClosingApis(page: Page) {
       })
     }
 
+    if (path.endsWith('/closing-wizard/validate-transactions') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
+    }
+
     if (path.endsWith('/closing-wizard/start') && method === 'POST') {
       return route.fulfill({
         status: 200,
@@ -212,7 +220,11 @@ test('zárási eltérés ellenőrzés mobil viewporton backend differences POST 
   await login(page)
 
   await page.goto('/closing/wizard', { waitUntil: 'domcontentloaded' })
+  const validationRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/closing-wizard/validate-transactions'
+  )
   await page.getByRole('button', { name: /ELLENŐRZÉS INDÍTÁSA/i }).click()
+  await validationRequest
 
   const firstDenomination = page.getByRole('spinbutton').first()
   await firstDenomination.fill('5')

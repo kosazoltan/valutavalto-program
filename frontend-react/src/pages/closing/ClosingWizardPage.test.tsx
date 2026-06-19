@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   closingWizardApiStart: vi.fn(),
   closingWizardApiGet: vi.fn(),
   closingWizardApiGetStep: vi.fn(),
+  closingWizardApiValidateTransactions: vi.fn(),
   closingWizardApiNavigate: vi.fn(),
   closingWizardApiFinalize: vi.fn(),
   closingWizardApiCancel: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock('../../services/api/index', () => ({
     start: mocks.closingWizardApiStart,
     get: mocks.closingWizardApiGet,
     getStep: mocks.closingWizardApiGetStep,
+    validateTransactions: mocks.closingWizardApiValidateTransactions,
     navigate: mocks.closingWizardApiNavigate,
     finalize: mocks.closingWizardApiFinalize,
     cancel: mocks.closingWizardApiCancel,
@@ -190,15 +192,16 @@ describe('ClosingWizardPage', () => {
         },
       ],
     })
-    mocks.closingWizardApiGetStep.mockResolvedValue({
-      stepNumber: 2,
-      stepTitle: 'Backend címletezés',
-      stepDescription: 'Backendből betöltött aktuális lépés',
-      completed: false,
-      canProceed: true,
-      stepData: {},
-    })
-    mocks.dailySessionApiValidateClosing.mockResolvedValue({
+  mocks.closingWizardApiGetStep.mockResolvedValue({
+    stepNumber: 2,
+    stepTitle: 'Backend címletezés',
+    stepDescription: 'Backendből betöltött aktuális lépés',
+    completed: false,
+    canProceed: true,
+    stepData: {},
+  })
+  mocks.closingWizardApiValidateTransactions.mockResolvedValue([])
+  mocks.dailySessionApiValidateClosing.mockResolvedValue({
       validationDate: '2026-06-18',
       errorCode: 0,
       errorMessage: 'Minden címletezés rendben',
@@ -262,6 +265,27 @@ describe('ClosingWizardPage', () => {
         String(mockWorker.id),
       )
     })
+  })
+
+  it('nyitott tranzakció validáció hibánál nem indít új zárási wizardot', async () => {
+    mocks.closingWizardApiValidateTransactions.mockResolvedValue([
+      'Van folyamatban lévő (PENDING) tranzakció!',
+    ])
+
+    renderClosingWizardPage()
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /ELLENŐRZÉS INDÍTÁSA/i }))
+
+    await waitFor(() => {
+      expect(mocks.closingWizardApiValidateTransactions).toHaveBeenCalled()
+    })
+    expect(mocks.closingWizardApiStart).not.toHaveBeenCalled()
+    expect(mocks.toast.warning).toHaveBeenCalledWith(
+      'Nyitott tranzakció validáció sikertelen',
+      'Van folyamatban lévő (PENDING) tranzakció!',
+    )
+    expect(screen.getByText(/Van folyamatban lévő/)).toBeInTheDocument()
   })
 
   it('lépések állapot mutatói megjelennek', () => {
