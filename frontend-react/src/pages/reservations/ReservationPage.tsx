@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api, reservationsApi } from '@/services/api/index';
 import { customerApi, type Customer } from '@/services/api/transactions';
+import { useAuthStore } from '@/stores/authStore';
 import { safeArray } from '@/utils/safeArray';
 import { useTranslation } from 'react-i18next'
 
@@ -26,6 +27,12 @@ interface Reservation {
   refundAmount: number | null;
   notes: string | null;
   expired: boolean;
+}
+
+interface ReservedStock {
+  currencyCode: string;
+  reservedAmount: number;
+  activeCount: number;
 }
 
 // Backend ReservationStatus enum értékei.
@@ -54,11 +61,23 @@ export default function ReservationPage() {
   const [activeTab, setActiveTab] = useState<'active' | 'expiring' | 'expired'>('active');
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [reservedStock, setReservedStock] = useState<ReservedStock[]>([]);
+  const workerBranchId = useAuthStore((state) => state.worker?.branchId ?? '');
 
   const loadReservations = useCallback(async () => {
     setLoading(true);
     try {
-      const branchId = localStorage.getItem('branchId') || '';
+      const branchId = workerBranchId || localStorage.getItem('branchId') || '';
+      if (branchId) {
+        try {
+          const stock = await reservationsApi.reservedStock(branchId) as unknown as ReservedStock[];
+          setReservedStock(safeArray<ReservedStock>(stock));
+        } catch {
+          setReservedStock([]);
+        }
+      } else {
+        setReservedStock([]);
+      }
       let data: Reservation[] = [];
       if (activeTab === 'expired') {
         data = await reservationsApi.list({ status: 'EXPIRED' }) as unknown as Reservation[];
@@ -80,10 +99,11 @@ export default function ReservationPage() {
       setReservations(data);
     } catch {
       setReservations([]);
+      setReservedStock([]);
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, workerBranchId]);
 
   useEffect(() => {
     void loadReservations();
@@ -205,6 +225,25 @@ export default function ReservationPage() {
           className="w-full p-2 border rounded"
         />
       </div>
+
+      {reservedStock.length > 0 && (
+        <section className="mb-4 rounded border bg-white p-3" aria-label={t('reservations.foglaltKeszletOsszesito')}>
+          <div className="mb-3 text-sm font-semibold text-gray-800">{t('reservations.foglaltKeszletValutanemenkent')}</div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {reservedStock.map((stock) => (
+              <div key={stock.currencyCode} className="rounded bg-blue-50 p-3">
+                <div className="text-xs font-semibold text-blue-700">{stock.currencyCode}</div>
+                <div className="mt-1 text-lg font-bold text-gray-900">
+                  {stock.reservedAmount.toLocaleString('hu-HU')}
+                </div>
+                <div className="text-xs text-gray-600">
+                  {t('reservations.aktivFoglalo')}: {stock.activeCount.toLocaleString('hu-HU')}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="mb-4 flex gap-2">
         {[

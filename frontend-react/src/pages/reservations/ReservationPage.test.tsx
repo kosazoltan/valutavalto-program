@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   reservationCancelByCompany: vi.fn(),
   reservationFulfill: vi.fn(),
   reservationReceipt: vi.fn(),
+  reservationReservedStock: vi.fn(),
   search: vi.fn(),
 }))
 
@@ -24,6 +25,7 @@ vi.mock('@/services/api/index', () => ({
     cancelByCompany: mocks.reservationCancelByCompany,
     fulfill: mocks.reservationFulfill,
     receipt: mocks.reservationReceipt,
+    reservedStock: mocks.reservationReservedStock,
   },
 }))
 
@@ -53,6 +55,14 @@ const activeReservation = {
   expired: false,
 }
 
+const reservedStock = [
+  {
+    currencyCode: 'EUR',
+    reservedAmount: 1500,
+    activeCount: 2,
+  },
+]
+
 describe('ReservationPage — backend kontraktus', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -65,9 +75,10 @@ describe('ReservationPage — backend kontraktus', () => {
     mocks.reservationCancelByCompany.mockResolvedValue(activeReservation)
     mocks.reservationFulfill.mockResolvedValue(activeReservation)
     mocks.reservationReceipt.mockResolvedValue(new Blob(['pdf'], { type: 'application/pdf' }))
+    mocks.reservationReservedStock.mockResolvedValue(reservedStock)
   })
 
-  it('az aktív fül a reservationsApi.list({ branchId }) backend wrapperre köt', async () => {
+  it('az aktív fül a reservationsApi.list({ branchId }) és reservedStock(branchId) backend wrapperre köt', async () => {
     render(
       <MemoryRouter>
         <ReservationPage />
@@ -75,10 +86,13 @@ describe('ReservationPage — backend kontraktus', () => {
     )
     await waitFor(() => {
       expect(mocks.reservationList).toHaveBeenCalledWith({ branchId: 'b-uuid' })
+      expect(mocks.reservationReservedStock).toHaveBeenCalledWith('b-uuid')
     })
     // A foglaló sora megjelenik (valutakód nem fordított érték)
     expect(await screen.findByText('B000042')).toBeInTheDocument()
-    expect(screen.getByText(/EUR/)).toBeInTheDocument()
+    expect(screen.getAllByText(/EUR/).length).toBeGreaterThan(0)
+    expect(screen.getByLabelText('Foglalt készlet összesítő')).toBeInTheDocument()
+    expect(screen.getByText('1500')).toBeInTheDocument()
   })
 
   it('nem hív nem létező /branch/.../active vagy /confirm végpontot', async () => {

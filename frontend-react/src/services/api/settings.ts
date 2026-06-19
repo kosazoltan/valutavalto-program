@@ -975,6 +975,11 @@ export interface Reservation {
   notes?: string
   createdAt: string
 }
+export interface ReservedStock {
+  currencyCode: string
+  reservedAmount: number
+  activeCount: number
+}
 export interface CreateReservationRequest {
   customerId?: string | number
   customerName?: string
@@ -990,6 +995,9 @@ export interface CreateReservationRequest {
 export const reservationsApi = {
   create: async (data: CreateReservationRequest): Promise<Reservation> => (await api.post<Reservation>('/reservations', data)).data,
   getById: async (id: string): Promise<Reservation> => (await api.get<Reservation>(`/reservations/${id}`)).data,
+  reservedStock: async (branchId: string): Promise<ReservedStock[]> => (
+    await api.get<ReservedStock[]>('/reservations/reserved-stock', { params: { branchId } })
+  ).data,
   list: async (params?: { status?: string; customerId?: string; branchId?: string }): Promise<Reservation[]> => {
     const status = params?.status?.toUpperCase()
     const path = status === 'EXPIRED' ? '/reservations/expired' : '/reservations/active'

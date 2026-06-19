@@ -61,12 +61,12 @@ Latest verified result:
 
 ```text
 backend endpoints: 991
-frontend literal REST calls: 1029
-frontend production UI/app referenced REST calls: 932
+frontend literal REST calls: 1030
+frontend production UI/app referenced REST calls: 933
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
-backend endpoints not referenced by production UI/app calls: 92
+backend endpoints not referenced by production UI/app calls: 91
 ```
 
 Route/page audit result:
@@ -256,11 +256,14 @@ proven used by UI/app" follow-up work.
 - Wired routed VaultStocktakeDetailPage to `GET /vault-stocktake/{id}/summary`
   so the detail view shows the backend stocktake summary beside the item-derived
   local counts, with mobile render coverage.
+- Wired routed ReservationPage to `GET /reservations/reserved-stock` so the
+  foglaló workflow shows the branch-level reserved stock summary calculated by
+  the backend, with mobile render coverage.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 92 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 93 confirmed UX
+The stricter audit currently reports 91 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 91 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens.
@@ -270,7 +273,7 @@ Current summary:
 ```text
 ui-candidate/mutation            25
 integration-or-device            15
-ui-candidate/list-or-view        15
+ui-candidate/list-or-view        14
 backend-only/legacy-compat       8
 workflow-action                  7
 ui-candidate/detail              6
@@ -471,6 +474,12 @@ python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenc
 npx.cmd vitest run src/pages/vaultStocktake/VaultStocktakeDetailPage.test.tsx
 npx.cmd eslint src/pages/vaultStocktake/VaultStocktakeDetailPage.tsx src/pages/vaultStocktake/VaultStocktakeDetailPage.test.tsx e2e/vault-stocktake-summary.spec.ts
 npx.cmd playwright test e2e/vault-stocktake-summary.spec.ts --config=playwright.config.ts
+npm.cmd run type-check
+npm.cmd run build
+python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 140
+npx.cmd vitest run src/pages/reservations/ReservationPage.test.tsx
+npx.cmd eslint src/pages/reservations/ReservationPage.tsx src/pages/reservations/ReservationPage.test.tsx src/services/api/settings.ts e2e/reservation-reserved-stock.spec.ts
+npx.cmd playwright test e2e/reservation-reserved-stock.spec.ts --config=playwright.config.ts
 npm.cmd run type-check
 npm.cmd run build
 python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 140
