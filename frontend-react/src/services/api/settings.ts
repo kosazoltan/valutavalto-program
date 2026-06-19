@@ -512,6 +512,10 @@ export const workerCommissionApi = {
     const response = await api.get<WorkerCommission[]>('/worker-commissions')
     return response.data
   },
+  getById: async (id: string): Promise<WorkerCommission> => {
+    const response = await api.get<WorkerCommission>(`/worker-commissions/${id}`)
+    return response.data
+  },
   getByWorker: async (workerId: string): Promise<WorkerCommission[]> => {
     const response = await api.get<WorkerCommission[]>('/worker-commissions', { params: { workerId } })
     return response.data

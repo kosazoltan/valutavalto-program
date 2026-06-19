@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Users, Search, Calendar, Download, CheckCircle } from 'lucide-react'
+import { Users, Search, Calendar, Download, CheckCircle, Eye, X } from 'lucide-react'
 import { commissionCalculationApi, workerCommissionApi, type CommissionCalculation, type WorkerCommission } from '../../services/api/index'
 import { formatInteger, formatDecimal } from '../../utils/numberFormat'
 import { toast } from '../../components/ui/toaster'
@@ -21,6 +21,8 @@ export default function WorkerCommissionPage() {
   const [monthlyReportLoading, setMonthlyReportLoading] = useState(false)
   const [calculationLoading, setCalculationLoading] = useState<'single' | 'all' | null>(null)
   const [approvingCalculationId, setApprovingCalculationId] = useState<string | null>(null)
+  const [selectedCommission, setSelectedCommission] = useState<WorkerCommission | null>(null)
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
 
   const filteredCommissions = useMemo(() => {
     if (!searchTerm) return commissions
@@ -140,6 +142,19 @@ export default function WorkerCommissionPage() {
     }
   }
 
+  const handleLoadCommissionDetail = async (id: string) => {
+    try {
+      setDetailLoadingId(id)
+      setError(null)
+      setSelectedCommission(await workerCommissionApi.getById(id))
+    } catch (err) {
+      logger.error('WorkerCommissionPage', 'Jutalék részletek betöltési hiba:', err)
+      setError('Hiba történt a jutalék részleteinek betöltése során')
+    } finally {
+      setDetailLoadingId(null)
+    }
+  }
+
   if (loading) {
     return <div className="flex items-center justify-center h-64">Betöltés...</div>
   }
@@ -157,6 +172,41 @@ export default function WorkerCommissionPage() {
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
           {error}
         </div>
+      )}
+
+      {selectedCommission && (
+        <section className="rounded border border-blue-200 bg-blue-50 p-3" data-testid="worker-commission-detail">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-bold text-blue-950">{selectedCommission.workerName}</h2>
+              <p className="text-sm text-blue-900">{selectedCommission.branchName || '-'}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedCommission(null)}
+              className="toolbar-button"
+              aria-label="Jutalék részletek bezárása"
+              title="Bezárás"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <dl className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
+            <DetailItem label={t('common.period')} value={`${selectedCommission.periodStart} - ${selectedCommission.periodEnd}`} />
+            <DetailItem label={t('archiving.tranzakciok')} value={String(selectedCommission.transactionCount || 0)} />
+            <DetailItem label={t('commissions.jutalek')} value={selectedCommission.commissionRate ? `${formatDecimal(selectedCommission.commissionRate * 100, 2, 2)}%` : '-'} />
+            <DetailItem label={t('commissions.jutalekOsszeg')} value={`${selectedCommission.commissionAmount ? formatInteger(selectedCommission.commissionAmount) : '0'} ${selectedCommission.currencyCode || ''}`.trim()} />
+            <DetailItem label={t('common.amount')} value={`${selectedCommission.totalTransactionAmount ? formatInteger(selectedCommission.totalTransactionAmount) : '0'} ${selectedCommission.currencyCode || ''}`.trim()} />
+            <DetailItem label={t('common.status')} value={selectedCommission.statusName || selectedCommission.statusDid || '-'} />
+            <DetailItem label="Számítás dátuma" value={selectedCommission.calculationDate || '-'} />
+            <DetailItem label="Jóváhagyó" value={selectedCommission.approvedByName || '-'} />
+          </dl>
+          {selectedCommission.notes && (
+            <div className="mt-3 rounded border border-blue-100 bg-white px-3 py-2 text-sm text-blue-950">
+              {selectedCommission.notes}
+            </div>
+          )}
+        </section>
       )}
 
       <div className="form-panel space-y-4">
@@ -410,6 +460,15 @@ export default function WorkerCommissionPage() {
                     <dd className="font-mono font-bold text-gray-900">{c.commissionAmount ? formatInteger(c.commissionAmount) : '0'} {c.currencyCode}</dd>
                   </div>
                 </dl>
+                <button
+                  type="button"
+                  onClick={() => void handleLoadCommissionDetail(c.id)}
+                  disabled={detailLoadingId === c.id}
+                  className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-700 disabled:opacity-60"
+                >
+                  <Eye size={16} />
+                  {detailLoadingId === c.id ? 'Betöltés...' : 'Részletek'}
+                </button>
               </article>
             ))
           )}
@@ -427,12 +486,13 @@ export default function WorkerCommissionPage() {
               <th>{t('commissions.jutalek')}</th>
               <th>{t('commissions.jutalekOsszeg')}</th>
               <th>{t('common.status')}</th>
+              <th>{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {filteredCommissions.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center text-gray-500 py-4">{t('common.noResult')}</td>
+                <td colSpan={9} className="text-center text-gray-500 py-4">{t('common.noResult')}</td>
               </tr>
             ) : (
               filteredCommissions.map((c) => (
@@ -449,6 +509,18 @@ export default function WorkerCommissionPage() {
                       {c.statusName}
                     </span>
                   </td>
+                  <td>
+                    <button
+                      type="button"
+                      onClick={() => void handleLoadCommissionDetail(c.id)}
+                      disabled={detailLoadingId === c.id}
+                      className="toolbar-button"
+                      aria-label={`Jutalék részletek: ${c.workerName}`}
+                      title="Részletek"
+                    >
+                      <Eye size={14} className={detailLoadingId === c.id ? 'animate-pulse' : ''} />
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
@@ -456,6 +528,15 @@ export default function WorkerCommissionPage() {
         </table>
         </div>
       </div>
+    </div>
+  )
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded border border-blue-100 bg-white px-3 py-2">
+      <dt className="text-xs text-blue-700">{label}</dt>
+      <dd className="mt-0.5 break-words font-semibold text-blue-950">{value}</dd>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { adminCompanyApi, branchApi, cameraExportApi, commissionCalculationApi, documentScannerApi, handlingFeeConfigApi, handlingFeeTransactionApi, mfaAdminApi, notificationApi, ownCompanyApi, posTerminalApi, supervisorPinApi, systemParameterApi, turnoverApi, workerPasswordApi } from './settings'
+import { adminCompanyApi, branchApi, cameraExportApi, commissionCalculationApi, documentScannerApi, handlingFeeConfigApi, handlingFeeTransactionApi, mfaAdminApi, notificationApi, ownCompanyApi, posTerminalApi, supervisorPinApi, systemParameterApi, turnoverApi, workerCommissionApi, workerPasswordApi } from './settings'
 import { api } from './client'
 
 vi.mock('./client', () => {
@@ -219,6 +219,19 @@ describe('commissionCalculationApi backend contract', () => {
     expect(mockApi.get).toHaveBeenCalledWith('/commissions/report', {
       params: { month: '2026-06' },
     })
+  })
+})
+
+describe('workerCommissionApi backend contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockApi.get.mockResolvedValue({ data: { id: '11111111-1111-1111-1111-111111111111' } })
+  })
+
+  it('getById calls WorkerCommissionController ID detail endpoint', async () => {
+    await workerCommissionApi.getById('11111111-1111-1111-1111-111111111111')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/worker-commissions/11111111-1111-1111-1111-111111111111')
   })
 })
 
