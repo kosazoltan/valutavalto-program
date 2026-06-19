@@ -1238,19 +1238,6 @@ export interface AllowedOperation {
   operationDid?: string
 }
 
-export interface RepresentativeLog {
-  id: string
-  representativeId: string
-  activityTypeDid?: string
-  transactionId?: string
-  workerId: string
-  workerName?: string
-  branchId: string
-  branchName?: string
-  activityDate: string
-  notes?: string
-}
-
 export interface RepresentativeRegistrationRequest {
   name: string
   documentType: string
@@ -1289,12 +1276,6 @@ export const authorizedRepresentativeApi = {
       request,
       { params: { workerId } }
     )
-    return response.data
-  },
-  create: async (customerId: string, request: RepresentativeRegistrationRequest): Promise<AuthorizedRepresentative> => {
-    const response = await api.post<AuthorizedRepresentative>('/authorized-representatives', request, {
-      params: { customerId },
-    })
     return response.data
   },
   findByCustomer: async (customerId: string): Promise<AuthorizedRepresentative[]> => {
@@ -1342,11 +1323,6 @@ export const authorizedRepresentativeApi = {
     )
     return response.data
   },
-  recordTransaction: async (representativeId: string, action: string, transactionId?: string): Promise<void> => {
-    await api.post('/authorized-representatives/record-transaction', null, {
-      params: { representativeId, action, transactionId }
-    })
-  },
   suspendAuthorization: async (authorizationId: string, workerId: number, reason: string): Promise<Authorization> => {
     const response = await api.post<Authorization>(
       `/authorized-representatives/authorizations/${authorizationId}/suspend`,
@@ -1365,10 +1341,6 @@ export const authorizedRepresentativeApi = {
   },
   findAuthorizations: async (representativeId: string): Promise<Authorization[]> => {
     const response = await api.get<Authorization[]>(`/authorized-representatives/${representativeId}/authorizations`)
-    return response.data
-  },
-  findLogs: async (representativeId: string): Promise<RepresentativeLog[]> => {
-    const response = await api.get<RepresentativeLog[]>(`/authorized-representatives/${representativeId}/logs`)
     return response.data
   }
 }

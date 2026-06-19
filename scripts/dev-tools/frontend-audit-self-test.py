@@ -92,6 +92,10 @@ def test_contract_audit_does_not_cross_match_static_and_dynamic_siblings(contrac
     assert contract_module.backend_reference_paths_match("/users/{param}", "/users/me", "GET", endpoints) is False
     assert contract_module.backend_reference_paths_match("/users/me", "/users/{id}", "GET", endpoints) is False
     assert contract_module.backend_reference_paths_match("/users/me", "/users/me", "GET", endpoints) is True
+    assert contract_module.paths_match(
+        "/authorized-representatives/{param}/logs",
+        "/authorized-representatives/customer/{customerId}",
+    ) is False
 
 
 def test_contract_audit_classifies_legacy_representative_paths(contract_module) -> None:

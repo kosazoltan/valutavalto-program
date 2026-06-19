@@ -236,19 +236,26 @@ def is_probable_identifier_literal(part: str) -> bool:
     return bool(re.fullmatch(r"\d+|[0-9a-fA-F-]{8,}", part))
 
 
+def path_segments_match(frontend_part: str, backend_part: str) -> bool:
+    if frontend_part == backend_part:
+        return True
+    frontend_variable = is_variable_segment(frontend_part)
+    backend_variable = is_variable_segment(backend_part)
+    if frontend_variable and backend_variable:
+        return True
+    if backend_variable and is_probable_identifier_literal(frontend_part):
+        return True
+    if frontend_variable and is_probable_identifier_literal(backend_part):
+        return True
+    return False
+
+
 def paths_match(frontend: str, backend: str) -> bool:
     fp = path_segments(frontend)
     bp = path_segments(backend)
     if len(fp) != len(bp):
         return False
-    return all(
-        frontend_part == backend_part
-        or is_variable_segment(frontend_part)
-        or is_variable_segment(backend_part)
-        or is_probable_identifier_literal(frontend_part)
-        or is_probable_identifier_literal(backend_part)
-        for frontend_part, backend_part in zip(fp, bp)
-    )
+    return all(path_segments_match(frontend_part, backend_part) for frontend_part, backend_part in zip(fp, bp))
 
 
 def backend_reference_paths_match(

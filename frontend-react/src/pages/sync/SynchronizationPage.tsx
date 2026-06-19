@@ -279,9 +279,12 @@ export default function SynchronizationPage() {
     try {
       setFtpActionLoading(kind)
       setDataCollectionError(null)
-      const response = await api.post<{ success?: boolean; message?: string; fileName?: string }>(`/ftp-sync/${kind}/${selectedBranchId}`, null, {
-        validateStatus: () => true,
-      })
+      const requestConfig = { validateStatus: () => true }
+      const response = kind === 'rates'
+        ? await api.post<{ success?: boolean; message?: string; fileName?: string }>(`/ftp-sync/rates/${selectedBranchId}`, null, requestConfig)
+        : kind === 'daily-report'
+          ? await api.post<{ success?: boolean; message?: string; fileName?: string }>(`/ftp-sync/daily-report/${selectedBranchId}`, null, requestConfig)
+          : await api.post<{ success?: boolean; message?: string; fileName?: string }>(`/ftp-sync/transactions/${selectedBranchId}`, null, requestConfig)
       if (response.status >= 400 && response.status !== 503) throw new Error(`HTTP ${response.status}`)
       const label = response.data?.fileName || response.data?.message || kind
       toast.success('FTP szinkron elindítva', label)
@@ -304,9 +307,14 @@ export default function SynchronizationPage() {
     try {
       setBranchSyncActionLoading(kind)
       setBranchSyncError(null)
-      const response = await api.post<BranchSyncLog>(`/sync/${kind}/${selectedBranchId}`, null, {
-        validateStatus: () => true,
-      })
+      const requestConfig = { validateStatus: () => true }
+      const response = kind === 'rates'
+        ? await api.post<BranchSyncLog>(`/sync/rates/${selectedBranchId}`, null, requestConfig)
+        : kind === 'transactions'
+          ? await api.post<BranchSyncLog>(`/sync/transactions/${selectedBranchId}`, null, requestConfig)
+          : kind === 'inventory'
+            ? await api.post<BranchSyncLog>(`/sync/inventory/${selectedBranchId}`, null, requestConfig)
+            : await api.post<BranchSyncLog>(`/sync/full/${selectedBranchId}`, null, requestConfig)
       if (response.status >= 400 && response.status !== 503) throw new Error(`HTTP ${response.status}`)
       const label = response.data?.status || kind
       toast.success('Branch szinkron lefutott', label)

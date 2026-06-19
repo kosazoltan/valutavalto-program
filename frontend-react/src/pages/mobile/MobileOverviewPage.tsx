@@ -991,9 +991,14 @@ export default function MobileOverviewPage() {
       setMobileSyncActionLoading(kind)
       setActionError(null)
       setMobileSyncMessage(null)
-      const response = await api.post<{ status?: string; syncType?: string }>(`/sync/${kind}/${selectedBranchId}`, null, {
-        validateStatus: () => true,
-      })
+      const requestConfig = { validateStatus: () => true }
+      const response = kind === 'rates'
+        ? await api.post<{ status?: string; syncType?: string }>(`/sync/rates/${selectedBranchId}`, null, requestConfig)
+        : kind === 'transactions'
+          ? await api.post<{ status?: string; syncType?: string }>(`/sync/transactions/${selectedBranchId}`, null, requestConfig)
+          : kind === 'inventory'
+            ? await api.post<{ status?: string; syncType?: string }>(`/sync/inventory/${selectedBranchId}`, null, requestConfig)
+            : await api.post<{ status?: string; syncType?: string }>(`/sync/full/${selectedBranchId}`, null, requestConfig)
       if (response.status >= 400 && response.status !== 503) throw new Error(`HTTP ${response.status}`)
       setMobileSyncMessage(`${selectedBranchId}: ${response.data?.status ?? kind} sync elindítva.`)
       await load()

@@ -287,34 +287,6 @@ describe('authorizedRepresentativeApi', () => {
     expect(mockApi.get).toHaveBeenCalledWith('/authorized-representatives', { params: { customerId: '123' } })
   })
 
-  it('create: calls legacy POST /authorized-representatives with customerId param', async () => {
-    const created = {
-      id: 'rep-1',
-      customerId: 123,
-      fullName: 'Teszt Meghatalmazott',
-      documentNumber: 'AB123456',
-      isActive: true,
-      registeredAt: '2026-06-18T10:00:00',
-    }
-    mockApi.post.mockResolvedValue({ data: created })
-
-    const result = await authorizedRepresentativeApi.create('123', {
-      name: 'Teszt Meghatalmazott',
-      documentType: 'Személyi igazolvány',
-      documentNumber: 'AB123456',
-      authorizationStart: '2026-06-18',
-    })
-
-    expect(mockApi.post).toHaveBeenCalledWith('/authorized-representatives', {
-      name: 'Teszt Meghatalmazott',
-      documentType: 'Személyi igazolvány',
-      documentNumber: 'AB123456',
-      authorizationStart: '2026-06-18',
-    }, {
-      params: { customerId: '123' },
-    })
-    expect(result).toEqual(created)
-  })
 })
 
 describe('transferApi storno contract', () => {

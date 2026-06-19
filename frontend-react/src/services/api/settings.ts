@@ -1530,7 +1530,7 @@ export const turnoverApi = {
     if (period === 'weekly') return turnoverApi.weekly(branchId, date)
     if (period === 'monthly') return turnoverApi.monthly(branchId, date)
     if (period === 'yearly') return turnoverApi.yearly(branchId, date)
-    return (await api.get(`/turnover/${period}`, { params: { branchId, date } })).data
+    throw new Error(`Unsupported turnover period: ${period}`)
   },
 }
 

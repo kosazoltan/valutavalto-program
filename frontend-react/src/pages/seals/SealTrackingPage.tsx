@@ -191,12 +191,15 @@ export default function SealTrackingPage() {
       setSaving(true)
       setError(null)
       setMessage(null)
-      const response = await api.post<SealTrackingItem>(`/seal-tracking/${endpoint}`, null, {
-        params: {
-          transferType: item.transferType,
-          transferId: item.transferId,
-        },
-      })
+      const params = {
+        transferType: item.transferType,
+        transferId: item.transferId,
+      }
+      const response = endpoint === 'start-transit'
+        ? await api.post<SealTrackingItem>('/seal-tracking/start-transit', null, { params })
+        : endpoint === 'confirm-arrival'
+          ? await api.post<SealTrackingItem>('/seal-tracking/confirm-arrival', null, { params })
+          : await api.post<SealTrackingItem>('/seal-tracking/open', null, { params })
       replaceItem(response.data)
       setMessage(successMessage)
     } catch (err) {

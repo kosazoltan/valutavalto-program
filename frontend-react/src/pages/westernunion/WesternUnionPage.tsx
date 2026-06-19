@@ -198,7 +198,15 @@ export default function WesternUnionPage() {
         sourceOfFundsDocType: form.sourceOfFundsDocType || undefined,
         sourceOfFundsDocDate: form.sourceOfFundsDocDate || undefined,
       }
-      await api.post(`/western-union/${modal}`, body)
+      if (modal === 'send') {
+        await api.post('/western-union/send', body)
+      } else if (modal === 'receive') {
+        await api.post('/western-union/receive', body)
+      } else if (modal === 'ic-in') {
+        await api.post('/western-union/ic-in', body)
+      } else {
+        await api.post('/western-union/ic-out', body)
+      }
       setSuccess(`WU ${modal.toUpperCase()} sikeresen rögzítve!`)
       setModal(null)
       await loadData()

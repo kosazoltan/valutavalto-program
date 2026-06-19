@@ -71,7 +71,9 @@ export default function TrbExportPage() {
 
   const downloadFile = async (format: 'txt' | 'excel') => {
     try {
-      const res = await api.get(`/trb-export/${format}?date=${date}`, { responseType: 'blob' })
+      const res = format === 'txt'
+        ? await api.get(`/trb-export/txt?date=${date}`, { responseType: 'blob' })
+        : await api.get(`/trb-export/excel?date=${date}`, { responseType: 'blob' })
       const ext = format === 'txt' ? 'txt' : 'xlsx'
       const mime = format === 'txt' ? 'text/plain' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       const blob = new Blob([res.data], { type: mime })
