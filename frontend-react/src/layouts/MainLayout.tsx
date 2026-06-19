@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
-import { dailySessionApi } from '../services/api/index'
+import { authApi, dailySessionApi } from '../services/api/index'
 import type { DailySession } from '../services/api/index'
 import {
   LogOut,
@@ -20,6 +20,7 @@ import { useAppMode } from '../hooks/useAppMode'
 import { CASHIER_APP_MODE } from '../types/appMode'
 import type { AppMode } from '../types/appMode'
 import { isElectron as isElectronRuntime } from '../utils/electron'
+import { logger } from '../utils/logger'
 
 import { menuGroups } from "./menuGroups"
 import { isMenuGroupVisible, isMenuItemVisible, type MenuVisibilityContext } from "./menuVisibility"
@@ -28,6 +29,22 @@ import TransitBadge from "../components/TransitBadge"
 
 export function shouldRequireDailySession(appMode: AppMode): boolean {
   return appMode === CASHIER_APP_MODE
+}
+
+export async function performBackendAwareLogout(
+  remoteLogout: () => Promise<void>,
+  localLogout: () => void,
+  navigateToLogin: () => void,
+  warn: (err: unknown) => void = () => undefined,
+): Promise<void> {
+  try {
+    await remoteLogout()
+  } catch (err) {
+    warn(err)
+  } finally {
+    localLogout()
+    navigateToLogin()
+  }
 }
 
 export default function MainLayout() {
@@ -127,8 +144,12 @@ export default function MainLayout() {
   }
 
   const handleLogout = () => {
-    logout()
-    navigate('/login')
+    void performBackendAwareLogout(
+      () => authApi.logout(),
+      logout,
+      () => navigate('/login'),
+      (err) => logger.warn('MainLayout', 'Backend logout sikertelen, lokális kijelentkeztetés folytatódik', err),
+    )
   }
 
   const closeMobileSidebar = () => {
