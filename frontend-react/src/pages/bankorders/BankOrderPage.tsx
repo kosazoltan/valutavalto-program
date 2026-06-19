@@ -9,7 +9,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Building2, Plus, RefreshCw, X } from 'lucide-react'
+import { Building2, Eye, Plus, RefreshCw, X } from 'lucide-react'
 import {
   bankOrdersApi,
   BankOrder,
@@ -81,6 +81,9 @@ export default function BankOrderPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionInProgress, setActionInProgress] = useState<string | null>(null)
+  const [selectedOrder, setSelectedOrder] = useState<BankOrder | null>(null)
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
+  const [detailError, setDetailError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_CREATE_FORM)
   const [branches, setBranches] = useState<BranchOption[]>([])
@@ -209,6 +212,19 @@ export default function BankOrderPage() {
       alert('Hiba a visszavonásnál: ' + (err instanceof Error ? err.message : ''))
     } finally {
       setActionInProgress(null)
+    }
+  }
+
+  const handleOpenDetails = async (id: string) => {
+    setDetailLoadingId(id)
+    setDetailError(null)
+    try {
+      setSelectedOrder(await bankOrdersApi.get(id))
+    } catch (err) {
+      logger.error('BankOrderPage', 'Részletek hiba:', err)
+      setDetailError(getErrorMessage(err))
+    } finally {
+      setDetailLoadingId(null)
     }
   }
 
@@ -412,6 +428,14 @@ export default function BankOrderPage() {
                   <td className="p-2 text-xs">{o.requestedByWorkerName ?? '-'}</td>
                   <td className="p-2 text-xs">{o.approvedByWorkerName ?? '-'}</td>
                   <td className="p-2 space-x-1 whitespace-nowrap">
+                    <button
+                      disabled={detailLoadingId === o.id}
+                      onClick={() => void handleOpenDetails(o.id)}
+                      className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      <Eye className="h-3 w-3" />
+                      Részletek
+                    </button>
                     {o.status === 'PENDING' && (
                       <>
                         <button
@@ -459,6 +483,74 @@ export default function BankOrderPage() {
       <p className="text-xs text-gray-500">
         A banki rendelés workflow és a Western Union napi keret aktív. Az EMERGENCY rendelés automatikus vezetői értesítést küld.
       </p>
+
+      {(selectedOrder || detailError) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-2xl rounded bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b p-4">
+              <h2 className="text-lg font-semibold">Banki rendelés részletei</h2>
+              <button type="button" onClick={() => { setSelectedOrder(null); setDetailError(null) }} className="rounded p-1 hover:bg-gray-100">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-3 p-4 text-sm sm:grid-cols-2">
+              {detailError && (
+                <div className="rounded border border-red-300 bg-red-50 p-3 text-red-800 sm:col-span-2">
+                  {detailError}
+                </div>
+              )}
+              {selectedOrder && (
+                <>
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">Iroda</div>
+                    <div>{selectedOrder.branchCode} - {selectedOrder.branchName}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">Valuta és összeg</div>
+                    <div className="font-mono">{selectedOrder.currencyCode} {Number(selectedOrder.amount).toLocaleString('hu-HU')}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">Státusz</div>
+                    <span className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${STATUS_COLORS[selectedOrder.status]}`}>
+                      {STATUS_LABELS[selectedOrder.status]}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">Sürgősség</div>
+                    <div>{selectedOrder.urgency}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">Kérte</div>
+                    <div>{selectedOrder.requestedByWorkerName ?? '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">Jóváhagyta</div>
+                    <div>{selectedOrder.approvedByWorkerName ?? '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">Teljesítette</div>
+                    <div>{selectedOrder.executedByWorkerName ?? '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">Bank referencia</div>
+                    <div>{selectedOrder.bankReference ?? '-'}</div>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <div className="text-xs font-semibold uppercase text-gray-500">Megjegyzés</div>
+                    <div>{selectedOrder.notes ?? '-'}</div>
+                  </div>
+                  {selectedOrder.cancellationReason && (
+                    <div className="sm:col-span-2">
+                      <div className="text-xs font-semibold uppercase text-gray-500">Visszavonás indoka</div>
+                      <div>{selectedOrder.cancellationReason}</div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

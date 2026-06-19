@@ -10,6 +10,7 @@ import { vi, describe, beforeEach, it, expect } from 'vitest'
 import BankOrderPage from './BankOrderPage'
 
 const mockList = vi.fn()
+const mockBankOrderGet = vi.fn()
 const mockGet = vi.fn()
 const mockPost = vi.fn()
 
@@ -20,6 +21,7 @@ vi.mock('../../services/api/bankOrders', async (importOriginal) => {
     bankOrdersApi: {
       ...original.bankOrdersApi,
       list: (...args: unknown[]) => mockList(...args),
+      get: (...args: unknown[]) => mockBankOrderGet(...args),
     },
   }
 })
@@ -36,6 +38,24 @@ vi.mock('../../services/api', () => ({
 
 function mockApi() {
   mockList.mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 50 })
+  mockBankOrderGet.mockResolvedValue({
+    id: 'order-1',
+    branchId: 'branch-1',
+    branchCode: 'BUD01',
+    branchName: 'Budapest 01',
+    currencyId: 2,
+    currencyCode: 'EUR',
+    amount: '2500',
+    status: 'APPROVED',
+    urgency: 'URGENT',
+    requestedByWorkerId: 77,
+    requestedByWorkerName: 'Kérő dolgozó',
+    requestedAt: '2026-06-19T08:00:00.000Z',
+    approvedByWorkerName: 'Jóváhagyó vezető',
+    executedByWorkerName: 'Értéktár kezelő',
+    bankReference: 'BANK-DETAIL-001',
+    notes: 'Backend részletes banki rendelés megjegyzés',
+  })
   mockGet.mockImplementation((url: string) => {
     if (url === '/western-union/daily-limit') {
       return Promise.resolve({
@@ -63,6 +83,7 @@ function renderPage(initialEntry: string) {
 describe('BankOrderPage — E-B8 sürgősségi deep-link', () => {
   beforeEach(() => {
     mockList.mockReset()
+    mockBankOrderGet.mockReset()
     mockGet.mockReset()
     mockPost.mockReset()
     mockApi()
@@ -107,5 +128,38 @@ describe('BankOrderPage — E-B8 sürgősségi deep-link', () => {
         businessDate: '2026-06-11',
       })
     })
+  })
+
+  it('részletek megnyitásakor a banki rendelés detail endpointot használja', async () => {
+    const user = userEvent.setup()
+    mockList.mockResolvedValue({
+      content: [{
+        id: 'order-1',
+        branchId: 'branch-1',
+        branchCode: 'BUD01',
+        branchName: 'Budapest 01',
+        currencyId: 2,
+        currencyCode: 'EUR',
+        amount: '1000',
+        status: 'APPROVED',
+        urgency: 'NORMAL',
+        requestedByWorkerId: 77,
+        requestedByWorkerName: 'Lista kérő',
+        requestedAt: '2026-06-19T08:00:00.000Z',
+      }],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 50,
+    })
+
+    renderPage('/bank-orders')
+
+    await screen.findByText('BUD01')
+    await user.click(screen.getByRole('button', { name: /Részletek/i }))
+
+    await waitFor(() => expect(mockBankOrderGet).toHaveBeenCalledWith('order-1'))
+    expect(await screen.findByText('Backend részletes banki rendelés megjegyzés')).toBeInTheDocument()
+    expect(screen.getByText('BANK-DETAIL-001')).toBeInTheDocument()
   })
 })

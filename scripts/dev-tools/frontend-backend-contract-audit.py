@@ -923,6 +923,16 @@ def classify_backend_reference(ep: Endpoint) -> BackendReferenceClass:
             "backend-only/legacy-compat",
             "AuditLogController marks this as backward-compatible; the routed AuditLogPage uses /audit/search, /audit/branch, /audit/trail and /audit/export.",
         )
+    if ep.method == "POST" and path == "/authorized-representatives":
+        return BackendReferenceClass(
+            "backend-only/legacy-compat",
+            "AuthorizedRepresentativeController marks this as a legacy route; the routed create page uses /authorized-representatives/customer/{customerId}/register.",
+        )
+    if ep.method == "POST" and path == "/authorized-representatives/record-transaction":
+        return BackendReferenceClass(
+            "backend-only/legacy-compat",
+            "Representative transaction-log helper; no direct routed UI action is required for the current representative management flow.",
+        )
     if ep.method == "POST" and path == "/monitoring/heartbeat":
         return BackendReferenceClass(
             "integration-or-device",

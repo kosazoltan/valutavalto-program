@@ -62,11 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1028
-frontend production UI/app referenced REST calls: 879
+frontend production UI/app referenced REST calls: 880
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
-backend endpoints not referenced by production UI/app calls: 146
+backend endpoints not referenced by production UI/app calls: 145
 ```
 
 Route/page audit result:
@@ -144,11 +144,18 @@ proven used by UI/app" follow-up work.
 - Wired the routed anonymous report details action to
   `GET /anonymous-reports/{id}`. The list row no longer reuses only the summary
   object when opening the details panel.
+- Classified the legacy top-level authorized representative create endpoint and
+  the representative transaction-log helper as backend-only compatibility
+  surface after verifying the routed create page uses the customer-scoped
+  register endpoint.
+- Wired the bank order list details action to `GET /bank-orders/{id}` so the
+  routed bank order page loads the backend detail representation before showing
+  the details panel.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 146 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 146 confirmed UX
+The stricter audit currently reports 145 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 145 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens.
@@ -157,11 +164,11 @@ Current summary:
 
 ```text
 ui-candidate/list-or-view        45
-ui-candidate/detail              29
-ui-candidate/mutation            29
+ui-candidate/detail              28
+ui-candidate/mutation            27
 integration-or-device            15
+backend-only/legacy-compat       8
 workflow-action                  7
-backend-only/legacy-compat       6
 backend-only/auth-session        3
 backend-only/admin-maintenance   2
 backend-only/diagnostics         2

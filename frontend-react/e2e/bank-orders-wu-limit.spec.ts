@@ -63,7 +63,51 @@ async function mockBankOrderApis(page: Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 100 }),
+        body: JSON.stringify({
+          content: [{
+            id: 'order-1',
+            branchId: 'branch-1',
+            branchCode: 'BUD01',
+            branchName: 'Budapest 01',
+            currencyId: 2,
+            currencyCode: 'EUR',
+            amount: '1000',
+            status: 'APPROVED',
+            urgency: 'NORMAL',
+            requestedByWorkerId: 77,
+            requestedByWorkerName: 'Lista kérő',
+            requestedAt: '2026-06-19T08:00:00.000Z',
+          }],
+          totalElements: 1,
+          totalPages: 1,
+          number: 0,
+          size: 100,
+        }),
+      })
+    }
+
+    if (path.endsWith('/bank-orders/order-1') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'order-1',
+          branchId: 'branch-1',
+          branchCode: 'BUD01',
+          branchName: 'Budapest 01',
+          currencyId: 2,
+          currencyCode: 'EUR',
+          amount: '2500',
+          status: 'APPROVED',
+          urgency: 'URGENT',
+          requestedByWorkerId: 77,
+          requestedByWorkerName: 'Kérő dolgozó',
+          requestedAt: '2026-06-19T08:00:00.000Z',
+          approvedByWorkerName: 'Jóváhagyó vezető',
+          executedByWorkerName: 'Értéktár kezelő',
+          bankReference: 'BANK-DETAIL-001',
+          notes: 'Backend részletes banki rendelés megjegyzés',
+        }),
       })
     }
 
@@ -132,6 +176,14 @@ test('banki rendelések WU napi keret fallback mobil viewporton backend POST-ot 
   )
   await page.getByRole('button', { name: /Keret felhasználás/i }).click()
   await limitUseRequest
+
+  const detailRequest = page.waitForRequest(request =>
+    request.method() === 'GET' && request.url().endsWith('/api/v1/bank-orders/order-1')
+  )
+  await page.getByRole('button', { name: /Részletek/i }).click()
+  await detailRequest
+  await expect(page.getByText('Backend részletes banki rendelés megjegyzés')).toBeVisible()
+  await expect(page.getByText('BANK-DETAIL-001')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

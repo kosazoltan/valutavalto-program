@@ -81,6 +81,19 @@ def test_contract_audit_classifies_legacy_audit_paths(contract_module) -> None:
         assert classification.category == "backend-only/legacy-compat"
 
 
+def test_contract_audit_classifies_legacy_representative_paths(contract_module) -> None:
+    for path in ("/authorized-representatives", "/authorized-representatives/record-transaction"):
+        endpoint = contract_module.Endpoint(
+            "POST",
+            path,
+            "backend/src/main/java/hu/puzzleir/valuta/controller/AuthorizedRepresentativeController.java",
+            1,
+            "AuthorizedRepresentativeController",
+        )
+        classification = contract_module.classify_backend_reference(endpoint)
+        assert classification.category == "backend-only/legacy-compat"
+
+
 def test_contract_audit_classifies_alternate_admin_branch_update(contract_module) -> None:
     endpoint = contract_module.Endpoint(
         "PUT",
@@ -279,6 +292,7 @@ def main() -> int:
         ("contract skips frontend test/spec files", lambda: test_contract_audit_skips_frontend_tests(contract_module)),
         ("contract classifies NAV discrepancy", lambda: test_contract_audit_classifies_nav_discrepancy(contract_module)),
         ("contract classifies legacy audit paths", lambda: test_contract_audit_classifies_legacy_audit_paths(contract_module)),
+        ("contract classifies legacy representative paths", lambda: test_contract_audit_classifies_legacy_representative_paths(contract_module)),
         ("contract classifies alternate admin branch update", lambda: test_contract_audit_classifies_alternate_admin_branch_update(contract_module)),
         ("contract distinguishes wrapper-only from UI-used calls", lambda: test_contract_audit_distinguishes_wrapper_only_from_ui_used(contract_module)),
         ("route audit follows child page imports", lambda: test_route_audit_follows_child_page_import(route_module)),
