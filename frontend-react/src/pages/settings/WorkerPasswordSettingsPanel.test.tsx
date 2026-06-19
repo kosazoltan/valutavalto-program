@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import WorkerPasswordSettingsPanel from './WorkerPasswordSettingsPanel'
 
 const mocks = vi.hoisted(() => ({
+  getCurrentUser: vi.fn(),
   changeOwn: vi.fn(),
   loggerError: vi.fn(),
 }))
@@ -11,6 +12,12 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../stores/authStore', () => ({
   useAuthStore: (selector: (state: unknown) => unknown) =>
     selector({ worker: { id: 77, fullName: 'Teszt Dolgozó' } }),
+}))
+
+vi.mock('../../services/api/index', () => ({
+  userApi: {
+    getCurrentUser: mocks.getCurrentUser,
+  },
 }))
 
 vi.mock('../../services/api/settings', () => ({
@@ -28,7 +35,31 @@ vi.mock('../../utils/logger', () => ({
 describe('WorkerPasswordSettingsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.getCurrentUser.mockResolvedValue({
+      id: '77',
+      workerId: '77',
+      username: 'TESZT',
+      name: 'Teszt Dolgozó',
+      email: 'teszt@example.com',
+      role: 'ADMIN',
+      roles: ['ADMIN'],
+      isActive: true,
+      defaultBranchName: 'Szeged',
+      lastLoginAt: '2026-06-19T10:00:00',
+      createdAt: '2026-06-18T10:00:00',
+    })
     mocks.changeOwn.mockResolvedValue(undefined)
+  })
+
+  it('betölti a saját user profilt a GET /users/me wrapperen keresztül', async () => {
+    render(<WorkerPasswordSettingsPanel />)
+
+    await waitFor(() => {
+      expect(mocks.getCurrentUser).toHaveBeenCalledTimes(1)
+    })
+    expect(await screen.findByText('TESZT')).toBeInTheDocument()
+    expect(screen.getByText('teszt@example.com')).toBeInTheDocument()
+    expect(screen.getByText('Szeged')).toBeInTheDocument()
   })
 
   it('a bejelentkezett worker id-val meghívja a WorkerController jelszóváltó szerződést', async () => {

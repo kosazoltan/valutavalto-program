@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { LockKeyhole } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { LockKeyhole, Loader2, UserRound } from 'lucide-react'
+import { userApi, type UserDetail } from '../../services/api/index'
 import { workerPasswordApi } from '../../services/api/settings'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
@@ -12,6 +13,28 @@ export default function WorkerPasswordSettingsPanel() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [profile, setProfile] = useState<UserDetail | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const loadProfile = async () => {
+      setProfileLoading(true)
+      try {
+        const data = await userApi.getCurrentUser()
+        if (!cancelled) setProfile(data)
+      } catch (err) {
+        logger.error('WorkerPasswordSettingsPanel', 'Saját user profil lekérdezése sikertelen', err)
+        if (!cancelled) setProfile(null)
+      } finally {
+        if (!cancelled) setProfileLoading(false)
+      }
+    }
+    void loadProfile()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const changePassword = async () => {
     setMessage(null)
@@ -59,6 +82,50 @@ export default function WorkerPasswordSettingsPanel() {
         <p className="mt-1 text-sm text-gray-600">
           A bejelentkezett dolgozó jelszavának módosítása a WorkerController jelszóváltó szerződésén.
         </p>
+      </div>
+
+      <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3" data-testid="own-user-profile">
+        <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <UserRound size={16} />
+          Saját felhasználói profil
+        </div>
+        {profileLoading && (
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Profil betöltése...
+          </div>
+        )}
+        {!profileLoading && profile && (
+          <dl className="grid gap-2 text-sm md:grid-cols-2">
+            <div>
+              <dt className="text-xs uppercase text-slate-500">Felhasználónév</dt>
+              <dd className="font-mono font-semibold text-slate-900">{profile.username}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-slate-500">Név</dt>
+              <dd className="font-semibold text-slate-900">{profile.name ?? profile.workerName ?? '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-slate-500">E-mail</dt>
+              <dd className="break-words text-slate-900">{profile.email || '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-slate-500">Alapértelmezett fiók</dt>
+              <dd className="text-slate-900">{profile.defaultBranchName || '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-slate-500">Szerepkör</dt>
+              <dd className="text-slate-900">{profile.roles?.join(', ') || profile.role || '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-slate-500">Utolsó belépés</dt>
+              <dd className="text-slate-900">{profile.lastLoginAt || profile.lastLogin || '-'}</dd>
+            </div>
+          </dl>
+        )}
+        {!profileLoading && !profile && (
+          <p className="text-sm text-slate-600">A saját felhasználói profil nem tölthető be.</p>
+        )}
       </div>
 
       {message && (

@@ -55,8 +55,8 @@ export const userApi = {
     const response = await api.get<UserDetail>(`/users/${id}`)
     return response.data
   },
-  getCurrentUser: async (): Promise<User> => {
-    const response = await api.get<User>('/users/me')
+  getCurrentUser: async (): Promise<UserDetail> => {
+    const response = await api.get<UserDetail>('/users/me')
     return response.data
   },
   create: async (data: UserCreateRequest): Promise<UserDetail> => {
