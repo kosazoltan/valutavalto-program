@@ -62,11 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1028
-frontend production UI/app referenced REST calls: 896
+frontend production UI/app referenced REST calls: 897
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
-backend endpoints not referenced by production UI/app calls: 129
+backend endpoints not referenced by production UI/app calls: 128
 ```
 
 Route/page audit result:
@@ -181,11 +181,14 @@ proven used by UI/app" follow-up work.
   `GET /denominations/optimal-change` so the page shows denomination master
   counts, low-stock count, code-check count, backend summary and read-only
   optimal-change calculation, with mobile render coverage.
+- Wired routed CommissionRatePage editing to `GET /commission-rates/{id}` so
+  the edit form opens from the backend detail representation instead of only
+  the list row snapshot, with mobile render coverage.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 129 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 129 confirmed UX
+The stricter audit currently reports 128 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 128 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens.
@@ -194,7 +197,7 @@ Current summary:
 
 ```text
 ui-candidate/list-or-view        35
-ui-candidate/detail              23
+ui-candidate/detail              22
 ui-candidate/mutation            25
 integration-or-device            15
 backend-only/legacy-compat       8
@@ -313,6 +316,9 @@ npx.cmd playwright test e2e/cashdesk-denominations-summary.spec.ts --config=play
 npx.cmd eslint src/pages/cashdesk/DenominationPage.tsx src/pages/cashdesk/DenominationPage.test.tsx
 npm.cmd run build
 python scripts/dev-tools/frontend-backend-contract-audit.py --show-ui-unreferenced --show-ui-unreferenced-summary --limit 60
+npx.cmd vitest run src/pages/commissions/CommissionRatePage.test.tsx
+npx.cmd playwright test e2e/commission-rate-detail.spec.ts --config=playwright.config.ts
+npx.cmd eslint src/pages/commissions/CommissionRatePage.tsx src/pages/commissions/CommissionRatePage.test.tsx e2e/commission-rate-detail.spec.ts
 ```
 
 Previous UI verification in the same audit work:

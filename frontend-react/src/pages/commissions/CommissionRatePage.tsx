@@ -25,6 +25,7 @@ export default function CommissionRatePage() {
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingLoadingId, setEditingLoadingId] = useState<string | null>(null)
   const [form, setForm] = useState<RateForm>(emptyForm)
   const [filter, setFilter] = useState({ entityType: '', currencyCode: '' })
 
@@ -64,7 +65,7 @@ export default function CommissionRatePage() {
     }
   }
 
-  const handleEdit = (r: CommissionRate) => {
+  const openEditForm = (r: CommissionRate) => {
     setForm({
       entityType: r.entityType,
       entityName: r.entityName || '',
@@ -75,6 +76,20 @@ export default function CommissionRatePage() {
     })
     setEditingId(r.id)
     setShowForm(true)
+  }
+
+  const handleEdit = async (r: CommissionRate) => {
+    try {
+      setError(null)
+      setEditingLoadingId(r.id)
+      const detail = await commissionRateApi.getById(r.id)
+      openEditForm(detail)
+    } catch (err) {
+      logger.error('CommissionRatePage', 'Részletek betöltési hiba:', err)
+      toast.error('Hiba', getErrorMessage(err))
+    } finally {
+      setEditingLoadingId(null)
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -182,7 +197,15 @@ export default function CommissionRatePage() {
                   <td className="text-sm">{r.validFrom} – {r.validTo || 'határozatlan'}</td>
                   <td>
                     <div className="flex gap-1">
-                      <button onClick={() => handleEdit(r)} className="form-button text-xs"><Edit2 size={12} /></button>
+                      <button
+                        onClick={() => void handleEdit(r)}
+                        className="form-button text-xs"
+                        disabled={editingLoadingId === r.id}
+                        title={t('common.edit')}
+                        aria-label={t('common.edit')}
+                      >
+                        <Edit2 size={12} className={editingLoadingId === r.id ? 'animate-pulse' : ''} />
+                      </button>
                       <button onClick={() => void handleDelete(r.id)} className="form-button text-xs text-red-600"><Trash2 size={12} /></button>
                     </div>
                   </td>
