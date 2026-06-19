@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { FileText, Search, RefreshCw, AlertTriangle } from 'lucide-react'
-import { api } from '../../services/api/index'
+import { CalendarCheck, FileText, Search, RefreshCw, AlertTriangle, Eye } from 'lucide-react'
+import { mnbReportsApi, type MnbDailyReport, type MnbMonthlyReport, type MnbReport } from '../../services/api/mnbReports'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
@@ -9,26 +9,33 @@ import { useTranslation } from 'react-i18next'
 
 // Fix 2026-04-24 (Codex PR #183 P2): backend MnbReportDto tenyleges mezoi
 // (NEM periodStart/periodEnd, hanem reportDate + egyeb)
-interface MnbReportItem {
-  id: string | number
-  reportType?: string
-  reportDate?: string
-  status?: string
-  submittedAt?: string
-  branchId?: string
-  totalBuyHuf?: number
-  totalSellHuf?: number
-  totalTransactions?: number
+// (Page<> interface-re nincs szukseg: interceptor unwrap-olja array-ra)
+
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10)
 }
 
-// (Page<> interface-re nincs szukseg: interceptor unwrap-olja array-ra)
+function toMonth(date: string) {
+  return date.slice(0, 7)
+}
+
+function formatNumber(value: number | undefined) {
+  return typeof value === 'number' ? value.toLocaleString('hu-HU') : '-'
+}
 
 export default function MnbReportPage() {
   const { t } = useTranslation()
-  const [items, setItems] = useState<MnbReportItem[]>([])
+  const [items, setItems] = useState<MnbReport[]>([])
+  const [selectedReport, setSelectedReport] = useState<MnbReport | null>(null)
+  const [dailyReport, setDailyReport] = useState<MnbDailyReport | null>(null)
+  const [monthlyReport, setMonthlyReport] = useState<MnbMonthlyReport | null>(null)
+  const [validationMessages, setValidationMessages] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const [summaryLoading, setSummaryLoading] = useState(false)
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [reportDate, setReportDate] = useState(todayIsoDate())
 
   const loadData = useCallback(async () => {
     try {
@@ -39,8 +46,8 @@ export default function MnbReportPage() {
       // (Codex PR #180 P1 interceptor figyelmeztetes).
       // AI review (Sourcery PR #186): magic konstans helyett megneves (silent truncation kockazat >100 rekord-nal)
       const MNB_REPORTS_PAGE_SIZE = 500
-      const response = await api.get<MnbReportItem[]>('/mnb/reports', { params: { size: MNB_REPORTS_PAGE_SIZE } })
-      setItems(safeArray<MnbReportItem>(asArray<MnbReportItem>(response.data)))
+      const data = await mnbReportsApi.list({ size: MNB_REPORTS_PAGE_SIZE })
+      setItems(safeArray<MnbReport>(asArray<MnbReport>(data)))
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('MnbReportPage', 'Betöltési hiba:', err)
@@ -53,6 +60,42 @@ export default function MnbReportPage() {
   useEffect(() => {
     void loadData()
   }, [loadData])
+
+  const loadReadOnlySummary = useCallback(async () => {
+    try {
+      setSummaryLoading(true)
+      setError(null)
+      const [daily, monthly, validation] = await Promise.all([
+        mnbReportsApi.getDaily(reportDate),
+        mnbReportsApi.getMonthly(toMonth(reportDate)),
+        mnbReportsApi.validate(reportDate),
+      ])
+      setDailyReport(daily)
+      setMonthlyReport(monthly)
+      setValidationMessages(validation)
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('MnbReportPage', 'MNB ellenőrzési adatok betöltési hiba:', err)
+      setError(msg)
+    } finally {
+      setSummaryLoading(false)
+    }
+  }, [reportDate])
+
+  const handleShowDetails = async (item: MnbReport) => {
+    try {
+      setDetailLoadingId(item.id)
+      setError(null)
+      const detailed = await mnbReportsApi.get(item.id)
+      setSelectedReport(detailed)
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('MnbReportPage', 'MNB riport részlet betöltési hiba:', err)
+      setError(msg)
+    } finally {
+      setDetailLoadingId(null)
+    }
+  }
 
   const filtered = items.filter(item => {
     if (!searchTerm) return true
@@ -89,6 +132,73 @@ export default function MnbReportPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="rounded border border-gray-200 bg-white p-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div className="flex-1">
+              <label className="form-label" htmlFor="mnb-report-date">MNB ellenőrzési nap</label>
+              <input
+                id="mnb-report-date"
+                type="date"
+                value={reportDate}
+                onChange={e => setReportDate(e.target.value)}
+                className="form-input w-full"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadReadOnlySummary()}
+              disabled={summaryLoading}
+              className="form-button justify-center"
+            >
+              <CalendarCheck className={`h-4 w-4 ${summaryLoading ? 'animate-spin' : ''}`} />
+              Read-only ellenőrzés
+            </button>
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="rounded border border-emerald-200 bg-emerald-50 p-3">
+              <div className="text-xs text-emerald-700">Napi tranzakció</div>
+              <div className="text-xl font-semibold text-emerald-900">{formatNumber(dailyReport?.totalTransactions)}</div>
+            </div>
+            <div className="rounded border border-blue-200 bg-blue-50 p-3">
+              <div className="text-xs text-blue-700">Havi tranzakció</div>
+              <div className="text-xl font-semibold text-blue-900">{formatNumber(monthlyReport?.totalTransactions)}</div>
+            </div>
+            <div className="rounded border border-amber-200 bg-amber-50 p-3">
+              <div className="text-xs text-amber-700">Validációs üzenet</div>
+              <div className="text-xl font-semibold text-amber-900">{validationMessages.length}</div>
+            </div>
+          </div>
+          {validationMessages.length > 0 && (
+            <ul className="mt-3 space-y-1 text-sm text-amber-800">
+              {validationMessages.map(message => <li key={message}>{message}</li>)}
+            </ul>
+          )}
+        </div>
+
+        <div className="rounded border border-gray-200 bg-white p-3">
+          <div className="text-sm font-semibold text-gray-900">Riport részlet</div>
+          {selectedReport ? (
+            <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+              <dt className="text-gray-500">Típus</dt>
+              <dd className="font-medium text-gray-900">{selectedReport.reportType ?? '-'}</dd>
+              <dt className="text-gray-500">Dátum</dt>
+              <dd className="font-medium text-gray-900">{selectedReport.reportDate ?? '-'}</dd>
+              <dt className="text-gray-500">Vétel HUF</dt>
+              <dd className="font-medium text-gray-900">{formatNumber(selectedReport.totalBuyHuf)}</dd>
+              <dt className="text-gray-500">Eladás HUF</dt>
+              <dd className="font-medium text-gray-900">{formatNumber(selectedReport.totalSellHuf)}</dd>
+              <dt className="text-gray-500">Sorok</dt>
+              <dd className="font-medium text-gray-900">{selectedReport.lines?.length ?? 0}</dd>
+              <dt className="text-gray-500">Elutasítás oka</dt>
+              <dd className="font-medium text-gray-900">{selectedReport.rejectionReason ?? '-'}</dd>
+            </dl>
+          ) : (
+            <p className="mt-3 text-sm text-gray-500">Válassz riportot a listából.</p>
+          )}
+        </div>
+      </div>
+
       {error && (
         <div className="form-error flex items-center gap-2">
           <AlertTriangle className="h-4 w-4" />
@@ -105,13 +215,14 @@ export default function MnbReportPage() {
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('reports.tranzakcioDb')}</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.status2')}</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('darius.bekuldes')}</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
             ) : filtered.map(item => (
               <tr key={item.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm">{item.reportType ?? '-'}</td>
@@ -119,6 +230,17 @@ export default function MnbReportPage() {
                 <td className="px-4 py-3 text-sm">{item.totalTransactions ?? '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
                 <td className="px-4 py-3 text-sm">{item.submittedAt ? new Date(item.submittedAt).toLocaleString('hu-HU') : '-'}</td>
+                <td className="px-4 py-3 text-right text-sm">
+                  <button
+                    type="button"
+                    onClick={() => void handleShowDetails(item)}
+                    disabled={detailLoadingId === item.id}
+                    className="form-button justify-center text-xs"
+                  >
+                    <Eye className={`h-3.5 w-3.5 ${detailLoadingId === item.id ? 'animate-pulse' : ''}`} />
+                    Részletek
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

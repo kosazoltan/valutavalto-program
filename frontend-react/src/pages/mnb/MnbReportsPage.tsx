@@ -18,6 +18,21 @@ const STATUS_COLORS: Record<MnbReportStatus, string> = {
     REJECTED: 'bg-red-100 text-red-800 border-red-300',
 }
 
+function getReportSortDate(report: MnbReport) {
+    return report.periodStart ?? report.reportDate ?? report.createdAt ?? ''
+}
+
+function getReportPeriodLabel(report: MnbReport) {
+    if (report.periodStart || report.periodEnd) {
+        return `${report.periodStart ?? '-'} — ${report.periodEnd ?? '-'}`
+    }
+    return report.reportDate ?? '-'
+}
+
+function getReportFileDate(report: MnbReport) {
+    return report.periodStart ?? report.reportDate ?? report.createdAt?.slice(0, 10) ?? 'report'
+}
+
 export default function MnbReportsPage() {
     const { t } = useTranslation()
     const [reports, setReports] = useState<MnbReport[]>([])
@@ -35,8 +50,8 @@ export default function MnbReportsPage() {
         setLoading(true)
         setErr(null)
         try {
-            const data = await mnbReportsApi.list()
-            setReports(data.sort((a, b) => (b.periodStart > a.periodStart ? 1 : -1)))
+            const data = await mnbReportsApi.list({ size: 500 })
+            setReports(data.sort((a, b) => (getReportSortDate(b) > getReportSortDate(a) ? 1 : -1)))
         } catch (e) {
             logger.error('MnbReports', 'list err', e)
             setErr(e instanceof Error ? e.message : String(e))
@@ -86,7 +101,7 @@ export default function MnbReportsPage() {
             const url = URL.createObjectURL(blob)
             const a = document.createElement('a')
             a.href = url
-            a.download = `mnb-report-${r.periodStart}_${r.periodEnd}.xml`
+            a.download = `mnb-report-${getReportFileDate(r)}.xml`
             a.click()
             URL.revokeObjectURL(url)
         } catch (e) {
@@ -181,7 +196,7 @@ export default function MnbReportsPage() {
                         <tbody>
                             {reports.map((r) => (
                                 <tr key={r.id} className={`border-t border-slate-100 hover:bg-slate-50 ${r.status === 'REJECTED' ? 'bg-red-50' : ''}`}>
-                                    <td className="px-4 py-3 font-mono">{r.periodStart} — {r.periodEnd}</td>
+                                    <td className="px-4 py-3 font-mono">{getReportPeriodLabel(r)}</td>
                                     <td className="px-4 py-3">
                                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded border ${STATUS_COLORS[r.status]}`}>
                                             {statusIcon(r.status)} {STATUS_LABELS[r.status]}
@@ -191,7 +206,7 @@ export default function MnbReportsPage() {
                                         )}
                                     </td>
                                     <td className="px-4 py-3 font-mono text-xs text-slate-600">{r.mnbReferenceNumber || '—'}</td>
-                                    <td className="px-4 py-3 text-xs text-slate-500">{new Date(r.createdAt).toLocaleDateString('hu-HU')}</td>
+                                    <td className="px-4 py-3 text-xs text-slate-500">{r.createdAt ? new Date(r.createdAt).toLocaleDateString('hu-HU') : '—'}</td>
                                     <td className="px-4 py-3 text-xs text-slate-500">{r.submittedAt ? new Date(r.submittedAt).toLocaleString('hu-HU') : '—'}</td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex gap-1 justify-end">

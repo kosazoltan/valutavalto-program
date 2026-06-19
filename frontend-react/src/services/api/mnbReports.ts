@@ -7,32 +7,78 @@ export interface MnbReportLine {
     currencyCode: string
     buyAmount: number
     sellAmount: number
-    buyHufTotal: number
-    sellHufTotal: number
+    buyHuf?: number
+    sellHuf?: number
+    buyHufTotal?: number
+    sellHufTotal?: number
+    buyRate?: number
+    sellRate?: number
     avgBuyRate?: number
     avgSellRate?: number
+    transactionCount?: number
 }
 
 export interface MnbReport {
     id: string
-    companyId: string
-    periodStart: string
-    periodEnd: string
+    companyId?: string
+    periodStart?: string
+    periodEnd?: string
+    reportType?: string
+    reportDate?: string
     status: MnbReportStatus
+    branchId?: string
+    totalBuyHuf?: number
+    totalSellHuf?: number
+    totalTransactions?: number
     submittedAt?: string
+    acceptedAt?: string
     acknowledgedAt?: string
     rejectedAt?: string
+    rejectionReason?: string
     mnbReferenceNumber?: string
     submissionError?: string
     retryCount?: number
     lastRetryAt?: string
-    createdAt: string
+    createdAt?: string
     lines?: MnbReportLine[]
 }
 
+export interface MnbCurrencyLine {
+    currencyCode: string
+    buyAmount?: number
+    sellAmount?: number
+    buyHuf?: number
+    sellHuf?: number
+    avgBuyRate?: number
+    avgSellRate?: number
+    transactionCount?: number
+    openingBalance?: number
+    closingBalance?: number
+    calculatedClosing?: number
+    balanceDiff?: number
+    validationStatus?: string
+}
+
+export interface MnbDailyReport {
+    date: string
+    totalBuyHuf: number
+    totalSellHuf: number
+    totalTransactions: number
+    currencyLines?: MnbCurrencyLine[]
+}
+
+export interface MnbMonthlyReport {
+    month: string
+    totalBuyHuf: number
+    totalSellHuf: number
+    totalTransactions: number
+    workingDays: number
+    currencyLines?: MnbCurrencyLine[]
+}
+
 export const mnbReportsApi = {
-    list: async (): Promise<MnbReport[]> => {
-        const r = await api.get<MnbReport[]>('/mnb/reports')
+    list: async (params?: { size?: number }): Promise<MnbReport[]> => {
+        const r = await api.get<MnbReport[]>('/mnb/reports', { params })
         return r.data ?? []
     },
 
@@ -63,13 +109,18 @@ export const mnbReportsApi = {
         return r.data as unknown as Blob
     },
 
-    getDaily: async (date: string): Promise<MnbReport> => {
-        const r = await api.get<MnbReport>(`/mnb/reports/daily?date=${date}`)
+    getDaily: async (date: string): Promise<MnbDailyReport> => {
+        const r = await api.get<MnbDailyReport>(`/mnb/reports/daily?date=${date}`)
         return r.data
     },
 
-    getMonthly: async (year: number, month: number): Promise<MnbReport> => {
-        const r = await api.get<MnbReport>(`/mnb/reports/monthly?year=${year}&month=${month}`)
+    getMonthly: async (month: string): Promise<MnbMonthlyReport> => {
+        const r = await api.get<MnbMonthlyReport>(`/mnb/reports/monthly?month=${month}`)
         return r.data
+    },
+
+    validate: async (date: string): Promise<string[]> => {
+        const r = await api.get<string[]>(`/mnb/reports/validate?date=${date}`)
+        return r.data ?? []
     },
 }
