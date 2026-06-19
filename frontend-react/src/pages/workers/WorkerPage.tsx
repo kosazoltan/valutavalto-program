@@ -8,6 +8,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import type { components } from '@valuta/shared-api'
 import { useTranslation } from 'react-i18next'
+import { useAuthStore } from '../../stores/authStore'
 
 type WorkerDto = components['schemas']['WorkerDto']
 // Runtime-ban mindig megletszo mezok: a backend JPA entitas @NotNull-lal
@@ -37,10 +38,14 @@ const emptyForm: WorkerForm = {
 
 export default function WorkerPage() {
   const { t } = useTranslation()
+  const authWorker = useAuthStore((state) => state.worker)
+  const branchId = authWorker?.branchId ?? ''
+  const branchName = authWorker?.branchName ?? ''
   const [workers, setWorkers] = useState<Worker[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [listScope, setListScope] = useState<'all' | 'branch'>('all')
   const [showForm, setShowForm] = useState(false)
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null)
   const [form, setForm] = useState<WorkerForm>(emptyForm)
@@ -58,11 +63,13 @@ export default function WorkerPage() {
     )
   }, [workers, searchTerm])
 
-  const load = async () => {
+  const load = async (scope: 'all' | 'branch' = listScope) => {
     try {
       setLoading(true)
       setError(null)
-      const res = await api.get('/workers')
+      const res = scope === 'branch' && branchId
+        ? await api.get(`/workers/branch/${branchId}`)
+        : await api.get('/workers')
       setWorkers(safeArray<Worker>(res.data))
     } catch (err) {
       logger.error('WorkerPage', 'load error', err)
@@ -73,8 +80,22 @@ export default function WorkerPage() {
   }
 
   useEffect(() => {
-    void load()
+    void load('all')
   }, [])
+
+  const showAllWorkers = async () => {
+    setListScope('all')
+    await load('all')
+  }
+
+  const showBranchWorkers = async () => {
+    if (!branchId) {
+      toast.warning('Hiányzó fiók', 'A fiók szerinti dolgozólista betöltéséhez hiányzik a bejelentkezett fiók azonosítója.')
+      return
+    }
+    setListScope('branch')
+    await load('branch')
+  }
 
   const openCreate = () => {
     setEditingWorker(null)
@@ -110,7 +131,7 @@ export default function WorkerPage() {
         toast.success('Dolgozó sikeresen létrehozva!')
       }
       setShowForm(false)
-      await load()
+      await load(listScope)
     } catch (err) {
       toast.error('Hiba', getErrorMessage(err))
     } finally {
@@ -125,7 +146,7 @@ export default function WorkerPage() {
       } else {
         await api.post(`/workers/${w.id}/activate`)
       }
-      await load()
+      await load(listScope)
     } catch (err) {
       toast.error('Hiba', getErrorMessage(err))
     }
@@ -159,15 +180,35 @@ export default function WorkerPage() {
       )}
 
       <div className="form-panel">
-        <div className="relative">
-          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-          <input
-            type="text"
-            className="form-input pl-8"
-            placeholder="Keresés névben, kódban, emailben..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              className="form-input pl-8"
+              placeholder="Keresés névben, kódban, emailben..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => void showAllWorkers()}
+              className={`form-button min-h-10 ${listScope === 'all' ? 'border-primary-500 text-primary-700' : ''}`}
+            >
+              Összes dolgozó
+            </button>
+            <button
+              type="button"
+              onClick={() => void showBranchWorkers()}
+              disabled={!branchId}
+              className={`form-button min-h-10 ${listScope === 'branch' ? 'border-primary-500 text-primary-700' : ''} disabled:opacity-60`}
+              title={branchName || 'Saját fiók'}
+            >
+              Saját fiók
+            </button>
+          </div>
         </div>
       </div>
 
@@ -249,7 +290,61 @@ export default function WorkerPage() {
         </div>
       )}
 
-      <div className="form-panel">
+      <div className="space-y-3 md:hidden">
+        {filtered.length === 0 ? (
+          <div className="rounded border border-gray-200 bg-white p-4 text-center text-gray-500">
+            {t('common.noResult')}
+          </div>
+        ) : (
+          filtered.map((w) => (
+            <article key={w.id} className="rounded border border-gray-200 bg-white p-3 shadow-sm">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-lg font-bold text-gray-900">{w.fullName}</p>
+                  <p className="truncate text-sm text-gray-500">{w.workerCode}</p>
+                </div>
+                <span className={`badge ${(w.active ?? w.isActive) ? 'badge-green' : 'badge-red'}`}>
+                  {(w.active ?? w.isActive) ? 'Aktív' : 'Inaktív'}
+                </span>
+              </div>
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                <div className="col-span-2">
+                  <dt className="text-gray-500">{t('commissions.fiok')}</dt>
+                  <dd className="font-medium text-gray-900">{w.branchName ?? '-'}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">{t('common.email')}</dt>
+                  <dd className="break-words text-gray-900">{w.email ?? '-'}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">{t('common.phone')}</dt>
+                  <dd className="break-words text-gray-900">{w.phone ?? '-'}</dd>
+                </div>
+              </dl>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => openEdit(w)}
+                  className="form-button flex min-h-10 items-center justify-center gap-1 text-xs"
+                >
+                  <Edit size={12} />
+                  {t('common.edit')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleToggle(w)}
+                  className="form-button flex min-h-10 items-center justify-center gap-1 text-xs"
+                >
+                  <Power size={12} />
+                  {(w.active ?? w.isActive) ? 'Deaktiválás' : 'Aktiválás'}
+                </button>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+
+      <div className="form-panel hidden md:block">
         <table className="data-grid w-full">
           <thead>
             <tr>
