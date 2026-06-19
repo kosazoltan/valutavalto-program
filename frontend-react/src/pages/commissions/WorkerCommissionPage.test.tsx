@@ -5,6 +5,7 @@ import WorkerCommissionPage from './WorkerCommissionPage'
 const mockList = vi.fn()
 const mockGetById = vi.fn()
 const mockGetByPeriod = vi.fn()
+const mockCalculatePeriod = vi.fn()
 const mockGetAccountingList = vi.fn()
 const mockCommissionReport = vi.fn()
 const mockCommissionCalculate = vi.fn()
@@ -16,6 +17,7 @@ vi.mock('../../services/api/index', () => ({
     list: (...args: unknown[]) => mockList(...args),
     getById: (...args: unknown[]) => mockGetById(...args),
     getByPeriod: (...args: unknown[]) => mockGetByPeriod(...args),
+    calculate: (...args: unknown[]) => mockCalculatePeriod(...args),
     getAccountingList: (...args: unknown[]) => mockGetAccountingList(...args),
   },
   commissionCalculationApi: {
@@ -60,6 +62,7 @@ describe('WorkerCommissionPage backend contract', () => {
     mockList.mockReset()
     mockGetById.mockReset()
     mockGetByPeriod.mockReset()
+    mockCalculatePeriod.mockReset()
     mockGetAccountingList.mockReset()
     mockCommissionReport.mockReset()
     mockCommissionCalculate.mockReset()
@@ -85,6 +88,24 @@ describe('WorkerCommissionPage backend contract', () => {
       approvedByName: 'Vezető Vera',
     })
     mockGetByPeriod.mockResolvedValue([])
+    mockCalculatePeriod.mockResolvedValue([
+      {
+        id: '22222222-2222-2222-2222-222222222222',
+        workerId: '88',
+        workerName: 'Számolt Sára',
+        branchId: 'branch-123',
+        branchName: 'Szeged Értéktár',
+        periodStart: '2026-06-01',
+        periodEnd: '2026-06-30',
+        transactionCount: 9,
+        totalTransactionAmount: 900000,
+        commissionRate: 0.01,
+        commissionAmount: 9000,
+        currencyCode: 'HUF',
+        statusDid: 'CALCULATED',
+        statusName: 'Számított',
+      },
+    ])
     mockGetAccountingList.mockResolvedValue([])
     mockCommissionReport.mockResolvedValue([])
     mockCommissionCalculate.mockResolvedValue({
@@ -154,6 +175,22 @@ describe('WorkerCommissionPage backend contract', () => {
     await waitFor(() =>
       expect(mockGetAccountingList).toHaveBeenCalledWith('branch-123', '2026-06-01', '2026-06-30'),
     )
+  })
+
+  it('időszaki számításnál meghívja a /worker-commissions/calculate backend szerződést', async () => {
+    const { container } = render(<WorkerCommissionPage />)
+
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(1))
+
+    const [startInput, endInput] = getDateInputs(container)
+    fireEvent.change(startInput, { target: { value: '2026-06-01' } })
+    fireEvent.change(endInput, { target: { value: '2026-06-30' } })
+    fireEvent.click(screen.getByRole('button', { name: /Időszaki számítás/i }))
+
+    await waitFor(() => {
+      expect(mockCalculatePeriod).toHaveBeenCalledWith('branch-123', '2026-06-01', '2026-06-30')
+      expect(screen.getAllByText('Számolt Sára').length).toBeGreaterThan(0)
+    })
   })
 
   it('részletek megnyitásakor meghívja a /worker-commissions/{id} backend detail végpontot', async () => {

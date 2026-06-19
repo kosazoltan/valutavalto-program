@@ -110,6 +110,31 @@ async function mockApis(page: Page) {
       })
     }
 
+    if (path.endsWith('/worker-commissions/calculate') && method === 'POST') {
+      return route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: '22222222-2222-2222-2222-222222222222',
+            workerId: '88',
+            workerName: 'Számolt Sára',
+            branchId: 'branch-123',
+            branchName: 'Szeged Értéktár',
+            periodStart: url.searchParams.get('periodStart'),
+            periodEnd: url.searchParams.get('periodEnd'),
+            transactionCount: 9,
+            totalTransactionAmount: 900000,
+            commissionRate: 0.01,
+            commissionAmount: 9000,
+            currencyCode: 'HUF',
+            statusDid: 'CALCULATED',
+            statusName: 'Számított',
+          },
+        ]),
+      })
+    }
+
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
   })
 }
@@ -143,6 +168,21 @@ test('dolgozói jutalék részletek mobil nézetben backend detail endpointból 
   await expect(detail).toContainText('Backend Béla')
   await expect(detail).toContainText('18 750 HUF')
   await expect(detail).toContainText('Vezető Vera')
+
+  const calculateRequest = page.waitForRequest(request => {
+    const url = new URL(request.url())
+    return request.method() === 'POST'
+      && url.pathname === '/api/v1/worker-commissions/calculate'
+      && url.searchParams.get('branchId') === 'branch-123'
+      && url.searchParams.get('periodStart') === '2026-06-01'
+      && url.searchParams.get('periodEnd') === '2026-06-30'
+  })
+  const dates = page.locator('input[type="date"]')
+  await dates.nth(0).fill('2026-06-01')
+  await dates.nth(1).fill('2026-06-30')
+  await page.getByRole('button', { name: /Időszaki számítás/i }).click()
+  await calculateRequest
+  await expect(page.getByRole('article').filter({ hasText: 'Számolt Sára' })).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

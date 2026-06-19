@@ -89,6 +89,25 @@ export default function WorkerCommissionPage() {
     }
   }
 
+  const handleCalculatePeriod = async () => {
+    if (!branchId) {
+      toast.warning('Hiányzó fiók', 'A jutalékszámításhoz fiók azonosító szükséges')
+      return
+    }
+    if (!startDate || !endDate) {
+      toast.warning('Hiányzó adatok', 'Kérjük, adja meg az időszakot')
+      return
+    }
+    try {
+      setError(null)
+      const data = await workerCommissionApi.calculate(branchId, startDate, endDate)
+      setCommissions(data)
+    } catch (err) {
+      logger.error('WorkerCommissionPage', 'Időszaki jutalékszámítás hiba:', err)
+      setError('Hiba történt az időszaki jutalék számítása során')
+    }
+  }
+
   const handleLoadMonthlyReport = async () => {
     if (!reportMonth) {
       toast.warning('Hiányzó hónap', 'Kérjük, adja meg a jutalék riport hónapját')
@@ -243,6 +262,13 @@ export default function WorkerCommissionPage() {
             >
               <Download size={16} />
               {t('commissions.export')}
+            </button>
+            <button
+              onClick={handleCalculatePeriod}
+              className="form-button flex items-center gap-2"
+            >
+              <CheckCircle size={16} />
+              Időszaki számítás
             </button>
           </div>
           <div>
