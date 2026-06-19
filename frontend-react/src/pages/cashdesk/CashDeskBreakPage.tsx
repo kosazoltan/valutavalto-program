@@ -11,14 +11,20 @@ export default function CashDeskBreakPage() {
   const [cashDesks, setCashDesks] = useState<CashDesk[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCashDeskId, setSelectedCashDeskId] = useState<string>('')
+  const [activeBreak, setActiveBreak] = useState<CashDeskBreak | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const loadBreaks = useCallback(async () => {
+    if (!selectedCashDeskId) return
     try {
       setLoading(true)
       setError(null)
-      const data = await cashDeskBreakApi.list(selectedCashDeskId)
+      const [data, active] = await Promise.all([
+        cashDeskBreakApi.list(selectedCashDeskId),
+        cashDeskBreakApi.getActive(selectedCashDeskId).catch(() => null),
+      ])
       setBreaks(data)
+      setActiveBreak(active ?? data.find(b => !b.breakEnd && b.isActive) ?? null)
     } catch (err) {
       logger.error('CashDeskBreakPage', 'Szünetek betöltési hiba:', err)
       setError('Hiba a szünetek betöltésekor')
@@ -78,8 +84,6 @@ export default function CashDeskBreakPage() {
       setError('Hiba történt a szünet befejezése során')
     }
   }
-
-  const activeBreak = breaks.find(b => !b.breakEnd && b.isActive)
 
   if (loading) {
     return <div className="flex items-center justify-center h-64">Betöltés...</div>

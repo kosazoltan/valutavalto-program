@@ -62,11 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1028
-frontend production UI/app referenced REST calls: 888
+frontend production UI/app referenced REST calls: 889
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
-backend endpoints not referenced by production UI/app calls: 137
+backend endpoints not referenced by production UI/app calls: 136
 ```
 
 Route/page audit result:
@@ -165,11 +165,15 @@ proven used by UI/app" follow-up work.
   stock summary/detail UI to `GET /cash-balances/summary`,
   `GET /cash-balances/currency/{currencyId}`, and
   `GET /cash-balances/code/{currencyCode}`, with mobile render coverage.
+- Wired the routed CashDeskBreak page to
+  `GET /cash-desk-breaks/active/{cashDeskId}` so the active break banner uses
+  the backend active-break lookup instead of deriving the state only from the
+  list response, with mobile render coverage.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 137 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 137 confirmed UX
+The stricter audit currently reports 136 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 136 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens.
@@ -178,7 +182,7 @@ Current summary:
 
 ```text
 ui-candidate/list-or-view        40
-ui-candidate/detail              26
+ui-candidate/detail              25
 ui-candidate/mutation            25
 integration-or-device            15
 backend-only/legacy-compat       8
@@ -289,6 +293,9 @@ npx.cmd vitest run src/pages/cashdesk/CashDeskPage.test.tsx
 npx.cmd playwright test e2e/cashdesk-summary.spec.ts --config=playwright.config.ts
 npm.cmd run type-check
 npx.cmd eslint src/pages/cashdesk/CashDeskPage.tsx src/pages/cashdesk/CashDeskPage.test.tsx
+npx.cmd vitest run src/pages/cashdesk/CashDeskBreakPage.test.tsx
+npx.cmd playwright test e2e/cashdesk-break-active.spec.ts --config=playwright.config.ts
+npx.cmd eslint src/pages/cashdesk/CashDeskBreakPage.tsx src/pages/cashdesk/CashDeskBreakPage.test.tsx
 npm.cmd run build
 ```
 
