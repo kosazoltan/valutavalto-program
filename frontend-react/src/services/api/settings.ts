@@ -773,15 +773,6 @@ export interface AdminCompanyUpdateRequest {
   email?: string
 }
 
-export interface AdminBranchUpdateRequest {
-  name?: string
-  address?: string
-  city?: string
-  zipCode?: string
-  phone?: string
-  email?: string
-}
-
 export const ownCompanyApi = {
   list: async (): Promise<OwnCompany[]> => (await api.get<OwnCompany[]>('/own-companies')).data,
   getActive: async (): Promise<OwnCompany[]> => (await api.get<OwnCompany[]>('/own-companies/active')).data,
@@ -797,9 +788,6 @@ export const adminCompanyApi = {
   ).data,
   updateCompany: async (id: string, data: AdminCompanyUpdateRequest): Promise<void> => {
     await api.put(`/admin/companies/${id}`, data)
-  },
-  updateBranch: async (id: string, data: AdminBranchUpdateRequest): Promise<void> => {
-    await api.put(`/admin/branches/${id}`, data)
   },
 }
 

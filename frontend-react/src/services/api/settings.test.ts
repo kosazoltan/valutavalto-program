@@ -95,25 +95,6 @@ describe('adminCompanyApi backend contract', () => {
     })
   })
 
-  it('updateBranch calls CompanyAdminController branch update endpoint', async () => {
-    await adminCompanyApi.updateBranch('branch-1', {
-      name: 'Szeged Értéktár',
-      address: '6720 Szeged, Teszt utca 1.',
-      city: 'Szeged',
-      zipCode: '6720',
-      phone: '+36701234567',
-      email: 'szeged@example.test',
-    })
-
-    expect(mockApi.put).toHaveBeenCalledWith('/admin/branches/branch-1', {
-      name: 'Szeged Értéktár',
-      address: '6720 Szeged, Teszt utca 1.',
-      city: 'Szeged',
-      zipCode: '6720',
-      phone: '+36701234567',
-      email: 'szeged@example.test',
-    })
-  })
 })
 
 describe('ownCompanyApi backend contract', () => {
