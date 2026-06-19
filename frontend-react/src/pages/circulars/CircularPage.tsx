@@ -36,6 +36,13 @@ interface CircularTypeOption {
   defaultPriority?: string
 }
 
+interface AcknowledgmentStatus {
+  circularId?: number
+  title?: string
+  totalAcknowledged?: number
+  acknowledgments?: Array<{ workerId?: number; acknowledgedAt?: string }>
+}
+
 type CircularTab = string
 
 const fallbackTabs: Array<{ id: CircularTab; label: string }> = [
@@ -102,6 +109,9 @@ export default function CircularPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [selectedCircular, setSelectedCircular] = useState<Circular | null>(null)
   const [showViewDialog, setShowViewDialog] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [acknowledgmentStatus, setAcknowledgmentStatus] = useState<AcknowledgmentStatus | null>(null)
+  const [acknowledgmentBreakdown, setAcknowledgmentBreakdown] = useState<Record<string, number>>({})
   const [formData, setFormData] = useState(emptyForm)
   const [typeOptions, setTypeOptions] = useState<CircularTypeOption[]>([])
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
@@ -206,6 +216,35 @@ export default function CircularPage() {
       setLoading(false)
     }
   }, [loadCirculars, searchTerm])
+
+  const openCircularDetails = useCallback(async (circular: Circular) => {
+    setSelectedCircular(circular)
+    setShowViewDialog(true)
+    setDetailLoading(true)
+    setAcknowledgmentStatus(null)
+    setAcknowledgmentBreakdown({})
+
+    try {
+      const detailResponse = await api.get<Circular>(`/circulars/${circular.id}`)
+      setSelectedCircular(detailResponse.data)
+    } catch (err) {
+      toast.error('Körlevél részlet betöltési hiba', getErrorMessage(err))
+    }
+
+    const [statusResult, breakdownResult] = await Promise.allSettled([
+      api.get<AcknowledgmentStatus>(`/circulars/${circular.id}/acknowledgment-status`),
+      api.get<Record<string, number>>(`/circulars/${circular.id}/acknowledgment-breakdown`),
+    ])
+
+    if (statusResult.status === 'fulfilled') {
+      setAcknowledgmentStatus(statusResult.value.data)
+    }
+    if (breakdownResult.status === 'fulfilled') {
+      setAcknowledgmentBreakdown(breakdownResult.value.data ?? {})
+    }
+
+    setDetailLoading(false)
+  }, [])
 
   const handleArchive = useCallback(async (id: number) => {
     if (!window.confirm('Biztosan archiválja a dokumentumot?')) return
@@ -330,7 +369,7 @@ export default function CircularPage() {
                     <span className="ml-2 text-sm font-semibold text-slate-900">{circular.title}</span>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => { setSelectedCircular(circular); setShowViewDialog(true) }} className="rounded border px-2 py-1 text-xs hover:bg-slate-50">Megnyitás</button>
+                    <button onClick={() => void openCircularDetails(circular)} className="rounded border px-2 py-1 text-xs hover:bg-slate-50">Megnyitás</button>
                     <button onClick={() => void handleAcknowledge(circular.id)} className="rounded bg-green-600 px-2 py-1 text-xs font-semibold text-white hover:bg-green-700">Értettem</button>
                   </div>
                 </div>
@@ -449,7 +488,7 @@ export default function CircularPage() {
                   <td className="px-3 py-2 text-right">{circular.acknowledgmentCount ?? 0}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1">
-                      <button onClick={() => { setSelectedCircular(circular); setShowViewDialog(true) }} className="rounded border px-2 py-1 text-xs hover:bg-slate-50">
+                      <button onClick={() => void openCircularDetails(circular)} className="rounded border px-2 py-1 text-xs hover:bg-slate-50">
                         Megtekint
                       </button>
                       {!circular.archived && (
@@ -544,9 +583,34 @@ export default function CircularPage() {
               <InfoBlock label="Készítő" value={selectedCircular.createdByName ?? '-'} />
               <InfoBlock label="Dátum" value={formatDate(selectedCircular.validFrom ?? selectedCircular.createdAt)} />
             </div>
+            {detailLoading && (
+              <div className="mb-3 rounded border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                Backend részletek betöltése...
+              </div>
+            )}
             <div className="max-h-[46vh] overflow-y-auto whitespace-pre-wrap rounded border border-slate-200 bg-slate-50 p-3 text-sm leading-6">
               {selectedCircular.content}
             </div>
+            {(acknowledgmentStatus || Object.keys(acknowledgmentBreakdown).length > 0) && (
+              <section className="mt-3 rounded border border-slate-200 bg-white p-3 text-sm" data-testid="circular-acknowledgment-summary">
+                <div className="mb-2 text-xs font-semibold uppercase text-slate-500">Nyugtázási állapot</div>
+                {acknowledgmentStatus && (
+                  <div className="mb-2 font-medium text-slate-900">
+                    Összes nyugtázás: {acknowledgmentStatus.totalAcknowledged ?? 0}
+                  </div>
+                )}
+                {Object.keys(acknowledgmentBreakdown).length > 0 && (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {Object.entries(acknowledgmentBreakdown).map(([role, count]) => (
+                      <div key={role} className="flex items-center justify-between rounded border border-slate-100 bg-slate-50 px-2 py-1">
+                        <span className="font-mono text-xs text-slate-600">{role}</span>
+                        <span className="font-semibold text-slate-900">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
             {selectedCircular.attachmentFilename && (
               <div className="mt-3 rounded border border-slate-200 bg-white p-3 text-sm">
                 <button

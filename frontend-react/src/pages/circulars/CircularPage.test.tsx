@@ -33,6 +33,13 @@ const activeCircular = {
   acknowledgmentCount: 0,
 }
 
+const detailCircular = {
+  ...activeCircular,
+  title: 'Backend részlet szabályzat',
+  content: 'Backend részletből érkezett teljes tartalom',
+  acknowledgmentCount: 2,
+}
+
 const relevantCircular = {
   ...activeCircular,
   id: 2,
@@ -77,6 +84,13 @@ describe('CircularPage backend contract', () => {
       if (path === '/circulars/active') return Promise.resolve({ data: [activeCircular] })
       if (path === '/circulars/relevant') return Promise.resolve({ data: [relevantCircular] })
       if (path === '/circulars/search') return Promise.resolve({ data: [searchedCircular] })
+      if (path === '/circulars/1') return Promise.resolve({ data: detailCircular })
+      if (path === '/circulars/1/acknowledgment-status') {
+        return Promise.resolve({ data: { circularId: 1, title: detailCircular.title, totalAcknowledged: 2 } })
+      }
+      if (path === '/circulars/1/acknowledgment-breakdown') {
+        return Promise.resolve({ data: { CASHIER: 1, MANAGER: 1 } })
+      }
       return Promise.resolve({ data: [] })
     })
     mocks.apiPost.mockResolvedValue({ data: activeCircular })
@@ -103,6 +117,25 @@ describe('CircularPage backend contract', () => {
       expect(mocks.apiGet).toHaveBeenCalledWith('/circulars/search', { params: { q: 'KOR-2026-001' } })
       expect(screen.getByText('Iktatott biztonsági körlevél')).toBeInTheDocument()
       expect(screen.getByText('Backend iktatószám keresés eredménye: 1 dokumentum')).toBeInTheDocument()
+    })
+  })
+
+  it('backend detailből nyitja meg a körlevelet és betölti a nyugtázási összesítőket', async () => {
+    render(<CircularPage />)
+
+    await screen.findByText('Aktív szabályzat')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Megtekint' }))
+
+    await waitFor(() => {
+      expect(mocks.apiGet).toHaveBeenCalledWith('/circulars/1')
+      expect(mocks.apiGet).toHaveBeenCalledWith('/circulars/1/acknowledgment-status')
+      expect(mocks.apiGet).toHaveBeenCalledWith('/circulars/1/acknowledgment-breakdown')
+      expect(screen.getByText('Backend részlet szabályzat')).toBeInTheDocument()
+      expect(screen.getByText('Backend részletből érkezett teljes tartalom')).toBeInTheDocument()
+      expect(screen.getByText('Összes nyugtázás: 2')).toBeInTheDocument()
+      expect(screen.getByText('CASHIER')).toBeInTheDocument()
+      expect(screen.getByText('MANAGER')).toBeInTheDocument()
     })
   })
 
