@@ -137,32 +137,6 @@ describe('branchApi backend contract', () => {
     })
   })
 
-  it('create calls full BranchController create endpoint', async () => {
-    const payload = {
-      code: 'BR099',
-      companyId: '11111111-1111-1111-1111-111111111111',
-      bankCode: 'BR099',
-      branchTypeId: '22222222-2222-2222-2222-222222222222',
-      name: 'Teszt iroda',
-      address: '6720 Szeged, Teszt utca 1.',
-      city: 'Szeged',
-      zipCode: '6720',
-      countryId: '33333333-3333-3333-3333-333333333333',
-      branchStatusId: '44444444-4444-4444-4444-444444444444',
-      openingDate: '2026-06-18',
-      shortName: 'Teszt',
-      hasAfa: true,
-      hasWu: false,
-      hasMg: false,
-      hasPos: true,
-      closedSaturday: false,
-      closedSunday: true,
-    }
-
-    await branchApi.create(payload)
-
-    expect(mockApi.post).toHaveBeenCalledWith('/branches', payload)
-  })
 })
 
 describe('commissionCalculationApi backend contract', () => {

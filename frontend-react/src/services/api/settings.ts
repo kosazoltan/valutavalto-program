@@ -61,32 +61,6 @@ export interface BranchInfo {
   closedSunday?: boolean
 }
 
-/** POST /branches (CreateBranchDto) teljes admin/főértéktári létrehozási szerződés. */
-export interface BranchCreateRequest {
-  code: string
-  companyId: string
-  bankCode: string
-  branchTypeId: string
-  parentBranchId?: string | null
-  name: string
-  address: string
-  city: string
-  zipCode: string
-  countryId: string
-  phone?: string
-  email?: string
-  branchStatusId: string
-  openingDate: string
-  denominationRuleId?: string | null
-  shortName?: string
-  hasAfa?: boolean
-  hasWu?: boolean
-  hasMg?: boolean
-  hasPos?: boolean
-  closedSaturday?: boolean
-  closedSunday?: boolean
-}
-
 export interface VaultCounterpartiesResponse {
   territorialCashiers: BranchInfo[]
   peerVaults: BranchInfo[]
@@ -94,10 +68,6 @@ export interface VaultCounterpartiesResponse {
 }
 
 export const branchApi = {
-  list: async (): Promise<BranchInfo[]> => {
-    const response = await api.get<BranchInfo[]>('/branches')
-    return response.data
-  },
   listActive: async (): Promise<BranchInfo[]> => {
     const response = await api.get<BranchInfo[]>('/branches?activeOnly=true')
     return response.data
@@ -146,15 +116,6 @@ export const branchApi = {
   },
   getByCode: async (code: string): Promise<BranchInfo> => {
     const response = await api.get<BranchInfo>(`/branches/code/${code}`)
-    return response.data
-  },
-  /**
-   * Teljes fiók/iroda létrehozás (POST /branches).
-   * Nem keverendő a `/branches/simple-cashier` egyszerűsített pénztárfelvétellel:
-   * ez a backend CreateBranchDto minden kötelező törzsazonosítóját elvárja.
-   */
-  create: async (payload: BranchCreateRequest): Promise<BranchInfo> => {
-    const response = await api.post<BranchInfo>('/branches', payload)
     return response.data
   },
   /**
