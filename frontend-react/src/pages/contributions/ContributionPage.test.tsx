@@ -3,11 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ContributionPage from './ContributionPage'
 
 const mockList = vi.fn()
+const mockGetById = vi.fn()
 const mockGetByPeriod = vi.fn()
 
 vi.mock('../../services/api/index', () => ({
   contributionApi: {
     list: (...args: unknown[]) => mockList(...args),
+    getById: (...args: unknown[]) => mockGetById(...args),
     getByPeriod: (...args: unknown[]) => mockGetByPeriod(...args),
   },
 }))
@@ -44,8 +46,25 @@ const getDateInputs = (container: HTMLElement): [HTMLInputElement, HTMLInputElem
 describe('ContributionPage backend contract', () => {
   beforeEach(() => {
     mockList.mockReset()
+    mockGetById.mockReset()
     mockGetByPeriod.mockReset()
     mockList.mockResolvedValue([])
+    mockGetById.mockResolvedValue({
+      id: 'contribution-1',
+      workerFullName: 'Teszt Elek',
+      branchName: 'Szeged Értéktár',
+      periodStart: '2026-06-01',
+      periodEnd: '2026-06-30',
+      contributionTypeName: 'Jutalék',
+      baseAmount: 100000,
+      calculatedAmount: 12000,
+      currencyCode: 'HUF',
+      statusName: 'Jóváhagyva',
+      transactionCount: 7,
+      totalVolume: 100000,
+      calculationDate: '2026-06-19',
+      calculationDetails: 'Backend részletszámítás',
+    })
     mockGetByPeriod.mockResolvedValue([])
   })
 
@@ -62,5 +81,31 @@ describe('ContributionPage backend contract', () => {
     await waitFor(() =>
       expect(mockGetByPeriod).toHaveBeenCalledWith('branch-123', '2026-06-01', '2026-06-30'),
     )
+  })
+
+  it('részletek gombra a backend getById végpontról tölti a kiválasztott járulékot', async () => {
+    mockList.mockResolvedValue([
+      {
+        id: 'contribution-1',
+        workerFullName: 'Teszt Elek',
+        branchName: 'Szeged Értéktár',
+        periodStart: '2026-06-01',
+        periodEnd: '2026-06-30',
+        contributionTypeName: 'Jutalék',
+        baseAmount: 100000,
+        calculatedAmount: 12000,
+        currencyCode: 'HUF',
+        statusName: 'Jóváhagyva',
+        calculationDate: '2026-06-19',
+      },
+    ])
+
+    render(<ContributionPage />)
+
+    await waitFor(() => expect(screen.getByText('Teszt Elek')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'Részletek' }))
+
+    await waitFor(() => expect(mockGetById).toHaveBeenCalledWith('contribution-1'))
+    expect(screen.getByTestId('contribution-detail-panel')).toHaveTextContent('Backend részletszámítás')
   })
 })

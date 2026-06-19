@@ -11,6 +11,8 @@ export default function ContributionPage() {
   const { t } = useTranslation()
   const branchId = useAuthStore((state) => state.worker?.branchId ?? '')
   const [contributions, setContributions] = useState<Contribution[]>([])
+  const [selectedContribution, setSelectedContribution] = useState<Contribution | null>(null)
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -58,6 +60,18 @@ export default function ContributionPage() {
     }
   }
 
+  const handleShowDetails = async (id: string) => {
+    try {
+      setDetailLoadingId(id)
+      setSelectedContribution(await contributionApi.getById(id))
+    } catch (error) {
+      logger.error('ContributionPage', 'Hiba a járulék részletek betöltésekor:', error)
+      toast.warning('Részletek betöltése sikertelen', 'A kiválasztott járulék részletei nem tölthetők be')
+    } finally {
+      setDetailLoadingId(null)
+    }
+  }
+
   if (loading) {
     return <div className="flex items-center justify-center h-64">Betöltés...</div>
   }
@@ -98,41 +112,100 @@ export default function ContributionPage() {
       </div>
 
       <div className="form-panel">
-        <table className="data-grid w-full">
-          <thead>
-            <tr>
-              <th>{t('commissions.dolgozo')}</th>
-              <th>{t('commissions.fok')}</th>
-              <th>{t('common.period')}</th>
-              <th>{t('common.type')}</th>
-              <th>{t('contributions.alapOsszeg')}</th>
-              <th>{t('contributions.szamitottOsszeg')}</th>
-              <th>{t('common.status')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredContributions.length === 0 ? (
-              <tr><td colSpan={7} className="text-center text-gray-500 py-4">{t('common.noResult')}</td></tr>
-            ) : (
-              filteredContributions.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.workerFullName}</td>
-                  <td>{c.branchName || '-'}</td>
-                  <td>{c.periodStart} - {c.periodEnd}</td>
-                  <td>{c.contributionTypeName}</td>
-                  <td className="font-mono">{c.baseAmount ? formatInteger(c.baseAmount) : '0'} {c.currencyCode}</td>
-                  <td className="font-bold font-mono">{c.calculatedAmount ? formatInteger(c.calculatedAmount) : '0'} {c.currencyCode}</td>
-                  <td>
-                    <span className={`badge ${c.statusName === 'Jóváhagyva' ? 'badge-green' : 'badge-yellow'}`}>
-                      {c.statusName}
-                    </span>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="data-grid min-w-[860px] w-full">
+            <thead>
+              <tr>
+                <th>{t('commissions.dolgozo')}</th>
+                <th>{t('commissions.fok')}</th>
+                <th>{t('common.period')}</th>
+                <th>{t('common.type')}</th>
+                <th>{t('contributions.alapOsszeg')}</th>
+                <th>{t('contributions.szamitottOsszeg')}</th>
+                <th>{t('common.status')}</th>
+                <th>{t('common.actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredContributions.length === 0 ? (
+                <tr><td colSpan={8} className="text-center text-gray-500 py-4">{t('common.noResult')}</td></tr>
+              ) : (
+                filteredContributions.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.workerFullName}</td>
+                    <td>{c.branchName || '-'}</td>
+                    <td>{c.periodStart} - {c.periodEnd}</td>
+                    <td>{c.contributionTypeName}</td>
+                    <td className="font-mono">{c.baseAmount ? formatInteger(c.baseAmount) : '0'} {c.currencyCode}</td>
+                    <td className="font-bold font-mono">{c.calculatedAmount ? formatInteger(c.calculatedAmount) : '0'} {c.currencyCode}</td>
+                    <td>
+                      <span className={`badge ${c.statusName === 'Jóváhagyva' ? 'badge-green' : 'badge-yellow'}`}>
+                        {c.statusName}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="form-button h-8 text-xs"
+                        onClick={() => void handleShowDetails(c.id)}
+                        disabled={detailLoadingId === c.id}
+                      >
+                        {detailLoadingId === c.id ? 'Betöltés...' : 'Részletek'}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {selectedContribution && (
+        <div className="form-panel" data-testid="contribution-detail-panel">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="text-base font-semibold text-gray-800">Járulék részletei</h2>
+            <button type="button" className="form-button h-8 text-xs" onClick={() => setSelectedContribution(null)}>
+              Bezárás
+            </button>
+          </div>
+          <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+            <div>
+              <dt className="text-gray-500">Dolgozó</dt>
+              <dd className="font-medium text-gray-900">{selectedContribution.workerFullName}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Időszak</dt>
+              <dd className="font-medium text-gray-900">
+                {selectedContribution.periodStart} - {selectedContribution.periodEnd}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Státusz</dt>
+              <dd className="font-medium text-gray-900">{selectedContribution.statusName}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Tranzakciók</dt>
+              <dd className="font-mono text-gray-900">{formatInteger(selectedContribution.transactionCount ?? 0)}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Teljes volumen</dt>
+              <dd className="font-mono text-gray-900">
+                {formatInteger(selectedContribution.totalVolume ?? 0)} {selectedContribution.currencyCode}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Számítás dátuma</dt>
+              <dd className="font-medium text-gray-900">{selectedContribution.calculationDate}</dd>
+            </div>
+          </dl>
+          {selectedContribution.calculationDetails && (
+            <div className="mt-3 rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+              {selectedContribution.calculationDetails}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
