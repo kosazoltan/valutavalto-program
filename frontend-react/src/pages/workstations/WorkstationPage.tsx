@@ -9,7 +9,9 @@ import { useTranslation } from 'react-i18next'
 export default function WorkstationPage() {
   const { t } = useTranslation()
   const [workstations, setWorkstations] = useState<Workstation[]>([])
+  const [activeWorkstations, setActiveWorkstations] = useState<Workstation[]>([])
   const [loading, setLoading] = useState(true)
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingWorkstation, setEditingWorkstation] = useState<Workstation | null>(null)
@@ -56,8 +58,12 @@ export default function WorkstationPage() {
   const loadData = async (): Promise<void> => {
     try {
       setLoading(true)
-      const data = await workstationApi.list()
+      const [data, active] = await Promise.all([
+        workstationApi.list(),
+        workstationApi.getActive(),
+      ])
       setWorkstations(data)
+      setActiveWorkstations(active)
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       logger.error('WorkstationPage', 'Failed to load workstations:', err)
@@ -78,20 +84,30 @@ export default function WorkstationPage() {
     setShowForm(true)
   }
 
-  const handleEdit = (workstation: Workstation) => {
-    setEditingWorkstation(workstation)
-    setFormData({
-      code: workstation.code,
-      name: workstation.name,
-      branchId: workstation.branchId,
-      machineName: workstation.machineName,
-      ipAddress: workstation.ipAddress,
-      macAddress: workstation.macAddress,
-      workstationType: workstation.workstationType,
-      softwareVersion: workstation.softwareVersion,
-      isActive: workstation.isActive
-    })
-    setShowForm(true)
+  const handleEdit = async (workstation: Workstation) => {
+    try {
+      setDetailLoadingId(workstation.id)
+      const detailed = await workstationApi.getById(workstation.id)
+      setEditingWorkstation(detailed)
+      setFormData({
+        code: detailed.code,
+        name: detailed.name,
+        branchId: detailed.branchId,
+        machineName: detailed.machineName,
+        ipAddress: detailed.ipAddress,
+        macAddress: detailed.macAddress,
+        workstationType: detailed.workstationType,
+        softwareVersion: detailed.softwareVersion,
+        isActive: detailed.isActive
+      })
+      setShowForm(true)
+    } catch (err) {
+      const errorMessage = getErrorMessage(err)
+      toast.error('Részlet betöltési hiba', `Hiba történt a munkaállomás betöltése során: ${errorMessage}`)
+      logger.error('WorkstationPage', 'Failed to load workstation details:', err)
+    } finally {
+      setDetailLoadingId(null)
+    }
   }
 
   const handleSave = async (): Promise<void> => {
@@ -141,6 +157,20 @@ export default function WorkstationPage() {
       </div>
 
       <div className="form-panel">
+        <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="rounded border border-gray-200 bg-white p-3">
+            <div className="text-xs text-gray-500">Összes munkaállomás</div>
+            <div className="text-2xl font-semibold text-gray-900">{workstations.length}</div>
+          </div>
+          <div className="rounded border border-emerald-200 bg-emerald-50 p-3">
+            <div className="text-xs text-emerald-700">Aktív munkaállomás</div>
+            <div className="text-2xl font-semibold text-emerald-800">{activeWorkstations.length}</div>
+          </div>
+          <div className="rounded border border-blue-200 bg-blue-50 p-3">
+            <div className="text-xs text-blue-700">Online jelzés</div>
+            <div className="text-2xl font-semibold text-blue-800">{workstations.filter(w => w.isOnline).length}</div>
+          </div>
+        </div>
         <div>
           <label className="form-label">{t('common.search')}</label>
           <div className="relative">
@@ -213,7 +243,7 @@ export default function WorkstationPage() {
         </div>
       )}
 
-      <div className="form-panel">
+      <div className="form-panel overflow-x-auto">
         <table className="data-grid w-full">
           <thead>
             <tr>
@@ -250,7 +280,14 @@ export default function WorkstationPage() {
                   </td>
                   <td>
                     <div className="flex gap-2">
-                      <button onClick={() => handleEdit(w)} className="form-button text-xs"><Edit size={12} />{t('common.edit')}</button>
+                      <button
+                        type="button"
+                        onClick={() => void handleEdit(w)}
+                        disabled={detailLoadingId === w.id}
+                        className="form-button text-xs disabled:opacity-50"
+                      >
+                        <Edit size={12} className={detailLoadingId === w.id ? 'animate-pulse' : ''} />{t('common.edit')}
+                      </button>
                       <button onClick={() => handleDelete(w.id)} className="form-button text-xs text-red-600"><Trash2 size={12} />{t('common.delete')}</button>
                     </div>
                   </td>
