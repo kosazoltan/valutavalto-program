@@ -62,11 +62,11 @@ Latest verified result:
 ```text
 backend endpoints: 991
 frontend literal REST calls: 1028
-frontend production UI/app referenced REST calls: 878
+frontend production UI/app referenced REST calls: 879
 frontend unresolved dynamic calls: 0
 unmatched frontend REST calls: 0
 backend endpoints not referenced by literal calls: 27
-backend endpoints not referenced by production UI/app calls: 147
+backend endpoints not referenced by production UI/app calls: 146
 ```
 
 Route/page audit result:
@@ -138,11 +138,17 @@ proven used by UI/app" follow-up work.
   count as production UI/app backend coverage.
 - Optimized the new production UI/app reference scan by caching frontend source
   text once per audit run instead of re-reading files per API method.
+- Classified the backward-compatible audit endpoints and the alternate admin
+  branch update path as backend-only/compatibility surface instead of open UI
+  gaps.
+- Wired the routed anonymous report details action to
+  `GET /anonymous-reports/{id}`. The list row no longer reuses only the summary
+  object when opening the details panel.
 
 ## Stricter production UI/app reference follow-up
 
-The stricter audit currently reports 147 backend endpoints without a proven
-production UI/app caller. This is a candidate inventory, not 147 confirmed UX
+The stricter audit currently reports 146 backend endpoints without a proven
+production UI/app caller. This is a candidate inventory, not 146 confirmed UX
 bugs: the list includes backend-only auth/session endpoints, device/integration
 commands, legacy compatibility flows and exported helper methods that may be
 valid library surface rather than visible screens.
@@ -150,18 +156,19 @@ valid library surface rather than visible screens.
 Current summary:
 
 ```text
-ui-candidate/list-or-view        46
-ui-candidate/detail              32
-ui-candidate/mutation            30
+ui-candidate/list-or-view        45
+ui-candidate/detail              29
+ui-candidate/mutation            29
 integration-or-device            15
 workflow-action                  7
+backend-only/legacy-compat       6
 backend-only/auth-session        3
-backend-only/legacy-compat       3
 backend-only/admin-maintenance   2
 backend-only/diagnostics         2
 integration-or-callback          2
 ui-candidate/financial-contract-required 2
 workflow-action/financial-admin  2
+backend-only/alternate-admin-api 1
 backend-only/legacy-alias        1
 ```
 

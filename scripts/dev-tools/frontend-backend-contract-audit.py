@@ -913,6 +913,16 @@ def classify_backend_reference(ep: Endpoint) -> BackendReferenceClass:
             "backend-only/legacy-alias",
             "Legacy alias for the canonical PUT /notifications/{id}/read endpoint, which is used by the frontend.",
         )
+    if ep.method in {"GET", "PUT"} and path == "/admin/branches/{id}":
+        return BackendReferenceClass(
+            "backend-only/alternate-admin-api",
+            "Admin branch detail/update endpoint; the routed branch editor uses GET /admin/branches/{id} for stats and canonical PUT /branches/{id} for edits.",
+        )
+    if ep.method == "GET" and path in {"/audit", "/audit/worker/{id}", "/audit/action/{action}"}:
+        return BackendReferenceClass(
+            "backend-only/legacy-compat",
+            "AuditLogController marks this as backward-compatible; the routed AuditLogPage uses /audit/search, /audit/branch, /audit/trail and /audit/export.",
+        )
     if ep.method == "POST" and path == "/monitoring/heartbeat":
         return BackendReferenceClass(
             "integration-or-device",

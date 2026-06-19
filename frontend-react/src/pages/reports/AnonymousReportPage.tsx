@@ -17,6 +17,7 @@ export default function AnonymousReportPage() {
   const [selectedReport, setSelectedReport] = useState<AnonymousReport | null>(null)
   const [filterStatus, setFilterStatus] = useState<string>('')
   const [assignWorkerId, setAssignWorkerId] = useState('')
+  const [detailsLoadingId, setDetailsLoadingId] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -57,6 +58,20 @@ export default function AnonymousReportPage() {
       await loadData()
     } catch (err) {
       toast.error('Hiba', getErrorMessage(err))
+    }
+  }
+
+  const handleOpenDetails = async (id: string) => {
+    try {
+      setError(null)
+      setDetailsLoadingId(id)
+      setAssignWorkerId('')
+      setSelectedReport(await anonymousReportApi.getById(id))
+    } catch (err) {
+      logger.error('AnonymousReportPage', 'Failed to load report details:', err)
+      toast.error('Hiba', getErrorMessage(err))
+    } finally {
+      setDetailsLoadingId(null)
     }
   }
 
@@ -184,7 +199,13 @@ export default function AnonymousReportPage() {
                   <td>{getStatusBadge(r.status)}</td>
                   <td>{r.assignedToName || '-'}</td>
                   <td>
-                    <button onClick={() => setSelectedReport(r)} className="form-button text-xs"><Eye size={12} />{t('common.details')}</button>
+                    <button
+                      onClick={() => void handleOpenDetails(r.id)}
+                      disabled={detailsLoadingId === r.id}
+                      className="form-button text-xs disabled:opacity-50"
+                    >
+                      <Eye size={12} />{t('common.details')}
+                    </button>
                   </td>
                 </tr>
               ))}

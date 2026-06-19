@@ -64,6 +64,35 @@ def test_contract_audit_classifies_nav_discrepancy(contract_module) -> None:
     assert classification.category == "ui-candidate/financial-contract-required"
 
 
+def test_contract_audit_classifies_legacy_audit_paths(contract_module) -> None:
+    for method, path in (
+        ("GET", "/audit"),
+        ("GET", "/audit/worker/{id}"),
+        ("GET", "/audit/action/{action}"),
+    ):
+        endpoint = contract_module.Endpoint(
+            method,
+            path,
+            "backend/src/main/java/hu/puzzleir/valuta/controller/AuditLogController.java",
+            1,
+            "AuditLogController",
+        )
+        classification = contract_module.classify_backend_reference(endpoint)
+        assert classification.category == "backend-only/legacy-compat"
+
+
+def test_contract_audit_classifies_alternate_admin_branch_update(contract_module) -> None:
+    endpoint = contract_module.Endpoint(
+        "PUT",
+        "/admin/branches/{id}",
+        "backend/src/main/java/hu/puzzleir/valuta/controller/CompanyAdminController.java",
+        61,
+        "CompanyAdminController",
+    )
+    classification = contract_module.classify_backend_reference(endpoint)
+    assert classification.category == "backend-only/alternate-admin-api"
+
+
 def test_contract_audit_distinguishes_wrapper_only_from_ui_used(contract_module) -> None:
     with tempfile.TemporaryDirectory() as tmp:
         tmp_root = Path(tmp)
@@ -249,6 +278,8 @@ def main() -> int:
     tests = [
         ("contract skips frontend test/spec files", lambda: test_contract_audit_skips_frontend_tests(contract_module)),
         ("contract classifies NAV discrepancy", lambda: test_contract_audit_classifies_nav_discrepancy(contract_module)),
+        ("contract classifies legacy audit paths", lambda: test_contract_audit_classifies_legacy_audit_paths(contract_module)),
+        ("contract classifies alternate admin branch update", lambda: test_contract_audit_classifies_alternate_admin_branch_update(contract_module)),
         ("contract distinguishes wrapper-only from UI-used calls", lambda: test_contract_audit_distinguishes_wrapper_only_from_ui_used(contract_module)),
         ("route audit follows child page imports", lambda: test_route_audit_follows_child_page_import(route_module)),
         ("wrapper audit ignores test-only references", lambda: test_wrapper_audit_finds_unused_production_api_wrapper(wrapper_module)),
