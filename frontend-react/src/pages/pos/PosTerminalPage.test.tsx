@@ -4,10 +4,12 @@ import PosTerminalPage from './PosTerminalPage'
 
 const mockList = vi.fn()
 const mockStatus = vi.fn()
+const mockGetById = vi.fn()
 
 vi.mock('../../services/api/index', () => ({
   posTerminalApi: {
     list: (...args: unknown[]) => mockList(...args),
+    getById: (...args: unknown[]) => mockGetById(...args),
     status: (...args: unknown[]) => mockStatus(...args),
   },
 }))
@@ -44,7 +46,14 @@ describe('PosTerminalPage backend contract', () => {
   beforeEach(() => {
     mockList.mockReset()
     mockStatus.mockReset()
+    mockGetById.mockReset()
     mockList.mockResolvedValue([terminal])
+    mockGetById.mockResolvedValue({
+      ...terminal,
+      connectionType: 'TCP',
+      ipAddress: '10.0.0.15',
+      comPort: undefined,
+    })
     mockStatus.mockResolvedValue({
       terminalId: 'TERM-1',
       connected: true,
@@ -66,6 +75,21 @@ describe('PosTerminalPage backend contract', () => {
     await waitFor(() => {
       expect(mockStatus).toHaveBeenCalledWith('TERM-1')
       expect(screen.getAllByText('Elérhető').length).toBeGreaterThan(0)
+    })
+  })
+
+  it('részletek lekérdezésekor meghívja a /pos-terminal/{id} backend szerződést', async () => {
+    render(<PosTerminalPage />)
+
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(1))
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Részletek/i })[0]!)
+
+    await waitFor(() => {
+      expect(mockGetById).toHaveBeenCalledWith('pos-1')
+      expect(screen.getByTestId('pos-terminal-detail-panel')).toBeInTheDocument()
+      expect(screen.getAllByText('Fő kassza POS').length).toBeGreaterThan(0)
+      expect(screen.getByText('10.0.0.15')).toBeInTheDocument()
     })
   })
 })
