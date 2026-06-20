@@ -26,11 +26,13 @@ const mocks = vi.hoisted(() => ({
   getBankTransactions: vi.fn(),
   getTransfers: vi.fn(),
   getPendingTransfers: vi.fn(),
+  createTransfer: vi.fn(),
   supervisorApproveTransfer: vi.fn(),
   completeTransfer: vi.fn(),
   rejectTransfer: vi.fn(),
   getReceipts: vi.fn(),
   getReceiptsByType: vi.fn(),
+  createReceipt: vi.fn(),
   finalizeReceipt: vi.fn(),
   getCorrections: vi.fn(),
   getPendingCorrections: vi.fn(),
@@ -80,11 +82,13 @@ vi.mock('../../services/api/index', () => ({
     getBankTransactions: mocks.getBankTransactions,
     getTransfers: mocks.getTransfers,
     getPendingTransfers: mocks.getPendingTransfers,
+    createTransfer: mocks.createTransfer,
     supervisorApproveTransfer: mocks.supervisorApproveTransfer,
     completeTransfer: mocks.completeTransfer,
     rejectTransfer: mocks.rejectTransfer,
     getReceipts: mocks.getReceipts,
     getReceiptsByType: mocks.getReceiptsByType,
+    createReceipt: mocks.createReceipt,
     finalizeReceipt: mocks.finalizeReceipt,
     getCorrections: mocks.getCorrections,
     getPendingCorrections: mocks.getPendingCorrections,
@@ -380,6 +384,8 @@ describe('TreasuryDashboard', () => {
     mocks.supervisorApproveTransfer.mockResolvedValue({ id: 21, status: 'IN_PROGRESS' })
     mocks.completeTransfer.mockResolvedValue({ id: 22, status: 'COMPLETED' })
     mocks.rejectTransfer.mockResolvedValue({ id: 21, status: 'REJECTED' })
+    mocks.createTransfer.mockResolvedValue({ id: 23, status: 'REQUESTED' })
+    mocks.createReceipt.mockResolvedValue({ id: 32, status: 'DRAFT' })
     mocks.finalizeReceipt.mockResolvedValue({ id: 31, status: 'FINALIZED' })
     mocks.createCorrection.mockResolvedValue({ id: 42, status: 'REQUESTED' })
     mocks.createCollection.mockResolvedValue({ id: 14, status: 'REQUESTED' })
@@ -562,6 +568,74 @@ describe('TreasuryDashboard', () => {
     await waitFor(() => {
       expect(mocks.rejectTransfer).toHaveBeenCalledWith(21)
     })
+  })
+
+  it('az áttételi űrlapból createTransfer backend szerződést hív', async () => {
+    const user = userEvent.setup()
+    render(<TreasuryDashboard />)
+
+    await screen.findByTestId('ertektar-readonly-ledger')
+    await user.type(screen.getByLabelText('Áttétel forrás iroda'), 'bud01')
+    await user.type(screen.getByLabelText('Áttétel cél iroda'), 'pecs')
+    await user.type(screen.getByLabelText('Áttétel valuta'), 'eur')
+    await user.type(screen.getByLabelText('Áttétel összeg'), '1000')
+    await user.type(screen.getByLabelText('Áttétel megjegyzés'), 'Napi áttétel')
+    await user.click(screen.getByRole('button', { name: 'Áttétel kérése' }))
+
+    await waitFor(() => {
+      expect(mocks.createTransfer).toHaveBeenCalledWith({
+        sourceBranchCode: 'bud01',
+        targetBranchCode: 'pecs',
+        currencyCode: 'EUR',
+        amount: 1000,
+        note: 'Napi áttétel',
+      })
+    })
+  })
+
+  it('az anyagbizonylat űrlapból createReceipt backend szerződést hív', async () => {
+    const user = userEvent.setup()
+    render(<TreasuryDashboard />)
+
+    await screen.findByTestId('ertektar-readonly-ledger')
+    await user.selectOptions(screen.getByLabelText('Bizonylat típus'), 'K')
+    await user.type(screen.getByLabelText('Bizonylat iroda'), 'bud01')
+    await user.type(screen.getByLabelText('Bizonylat valuta'), 'eur')
+    await user.type(screen.getByLabelText('Bizonylat összeg'), '250')
+    await user.type(screen.getByLabelText('Partner'), 'Minta Bank')
+    await user.type(screen.getByLabelText('Bizonylat megjegyzés'), 'Banki kiadás')
+    await user.click(screen.getByRole('button', { name: 'Anyagbizonylat kérése' }))
+
+    await waitFor(() => {
+      expect(mocks.createReceipt).toHaveBeenCalledWith({
+        receiptType: 'K',
+        branchCode: 'bud01',
+        counterpartName: 'Minta Bank',
+        note: 'Banki kiadás',
+        lines: [{ currencyCode: 'EUR', amount: 250 }],
+      })
+    })
+  })
+
+  it('áttétel és anyagbizonylat létrehozás elutasított confirm esetén nem küld POST-ot', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const user = userEvent.setup()
+    render(<TreasuryDashboard />)
+
+    await screen.findByTestId('ertektar-readonly-ledger')
+    await user.type(screen.getByLabelText('Áttétel forrás iroda'), 'BUD01')
+    await user.type(screen.getByLabelText('Áttétel cél iroda'), 'PECS')
+    await user.type(screen.getByLabelText('Áttétel valuta'), 'EUR')
+    await user.type(screen.getByLabelText('Áttétel összeg'), '1000')
+    await user.click(screen.getByRole('button', { name: 'Áttétel kérése' }))
+
+    await user.type(screen.getByLabelText('Bizonylat iroda'), 'BUD01')
+    await user.type(screen.getByLabelText('Bizonylat valuta'), 'EUR')
+    await user.type(screen.getByLabelText('Bizonylat összeg'), '250')
+    await user.click(screen.getByRole('button', { name: 'Anyagbizonylat kérése' }))
+
+    expect(mocks.createTransfer).not.toHaveBeenCalled()
+    expect(mocks.createReceipt).not.toHaveBeenCalled()
   })
 
   it('áttétel döntés elutasított confirm esetén nem küld POST-ot', async () => {

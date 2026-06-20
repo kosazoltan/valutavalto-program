@@ -84,6 +84,40 @@ const EMPTY_VAULT_REQUEST_FORM: SingleLineVaultRequestForm = {
   note: '',
 }
 
+interface VaultTransferDraftForm {
+  sourceBranchCode: string
+  targetBranchCode: string
+  currencyCode: string
+  amount: string
+  note: string
+}
+
+const EMPTY_TRANSFER_FORM: VaultTransferDraftForm = {
+  sourceBranchCode: '',
+  targetBranchCode: '',
+  currencyCode: '',
+  amount: '',
+  note: '',
+}
+
+interface MaterialReceiptDraftForm {
+  receiptType: 'B' | 'K'
+  branchCode: string
+  counterpartName: string
+  currencyCode: string
+  amount: string
+  note: string
+}
+
+const EMPTY_RECEIPT_FORM: MaterialReceiptDraftForm = {
+  receiptType: 'B',
+  branchCode: '',
+  counterpartName: '',
+  currencyCode: '',
+  amount: '',
+  note: '',
+}
+
 export default function TreasuryDashboard() {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
@@ -122,6 +156,10 @@ export default function TreasuryDashboard() {
   const [newCollection, setNewCollection] = useState<SingleLineVaultRequestForm>(EMPTY_VAULT_REQUEST_FORM)
   const [createDistributionSubmitting, setCreateDistributionSubmitting] = useState(false)
   const [newDistribution, setNewDistribution] = useState<SingleLineVaultRequestForm>(EMPTY_VAULT_REQUEST_FORM)
+  const [createTransferSubmitting, setCreateTransferSubmitting] = useState(false)
+  const [newTransfer, setNewTransfer] = useState<VaultTransferDraftForm>(EMPTY_TRANSFER_FORM)
+  const [createReceiptSubmitting, setCreateReceiptSubmitting] = useState(false)
+  const [newReceipt, setNewReceipt] = useState<MaterialReceiptDraftForm>(EMPTY_RECEIPT_FORM)
   const [statusActionError, setStatusActionError] = useState<string | null>(null)
   const [treasuryApiRestricted, setTreasuryApiRestricted] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(new Date())
@@ -474,6 +512,77 @@ export default function TreasuryDashboard() {
       logger.error('TreasuryDashboard', 'Vault distribution create error:', err)
     } finally {
       setCreateDistributionSubmitting(false)
+    }
+  }
+
+  const createVaultTransfer = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const sourceBranchCode = newTransfer.sourceBranchCode.trim()
+    const targetBranchCode = newTransfer.targetBranchCode.trim()
+    const currencyCode = newTransfer.currencyCode.trim().toUpperCase()
+    const amount = Number(newTransfer.amount)
+    const note = newTransfer.note.trim()
+
+    if (!sourceBranchCode || !targetBranchCode || !currencyCode || !Number.isFinite(amount) || amount <= 0) {
+      setStatusActionError('Áttételhez forrás iroda, cél iroda, valuta és pozitív összeg szükséges.')
+      return
+    }
+    if (!window.confirm(`Biztosan létrehozza a ${currencyCode} áttételi kérelmet?`)) return
+
+    try {
+      setCreateTransferSubmitting(true)
+      setStatusActionError(null)
+      await ertektarApi.createTransfer({
+        sourceBranchCode,
+        targetBranchCode,
+        currencyCode,
+        amount,
+        ...(note ? { note } : {}),
+      })
+      setNewTransfer(EMPTY_TRANSFER_FORM)
+      await fetchData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Áttételi kérelem létrehozás sikertelen.'
+      setStatusActionError(message)
+      logger.error('TreasuryDashboard', 'Vault transfer create error:', err)
+    } finally {
+      setCreateTransferSubmitting(false)
+    }
+  }
+
+  const createMaterialReceipt = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const receiptType = newReceipt.receiptType
+    const branchCode = newReceipt.branchCode.trim()
+    const counterpartName = newReceipt.counterpartName.trim()
+    const currencyCode = newReceipt.currencyCode.trim().toUpperCase()
+    const amount = Number(newReceipt.amount)
+    const note = newReceipt.note.trim()
+
+    if (!branchCode || !currencyCode || !Number.isFinite(amount) || amount <= 0) {
+      setStatusActionError('Anyagbizonylathoz iroda, valuta és pozitív összeg szükséges.')
+      return
+    }
+    if (!window.confirm(`Biztosan létrehozza a ${receiptType} típusú anyagbizonylatot?`)) return
+
+    try {
+      setCreateReceiptSubmitting(true)
+      setStatusActionError(null)
+      await ertektarApi.createReceipt({
+        receiptType,
+        branchCode,
+        ...(counterpartName ? { counterpartName } : {}),
+        ...(note ? { note } : {}),
+        lines: [{ currencyCode, amount }],
+      })
+      setNewReceipt(EMPTY_RECEIPT_FORM)
+      await fetchData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Anyagbizonylat létrehozás sikertelen.'
+      setStatusActionError(message)
+      logger.error('TreasuryDashboard', 'Material receipt create error:', err)
+    } finally {
+      setCreateReceiptSubmitting(false)
     }
   }
 
@@ -939,7 +1048,71 @@ export default function TreasuryDashboard() {
               }
               return []
             }}
-          />
+          >
+            <form onSubmit={(event) => void createVaultTransfer(event)} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="text-xs font-medium text-secondary-700">
+                Áttétel forrás iroda
+                <input
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                  value={newTransfer.sourceBranchCode}
+                  onChange={(event) => setNewTransfer((value) => ({ ...value, sourceBranchCode: event.target.value }))}
+                  disabled={createTransferSubmitting}
+                  placeholder="BUD01"
+                />
+              </label>
+              <label className="text-xs font-medium text-secondary-700">
+                Áttétel cél iroda
+                <input
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                  value={newTransfer.targetBranchCode}
+                  onChange={(event) => setNewTransfer((value) => ({ ...value, targetBranchCode: event.target.value }))}
+                  disabled={createTransferSubmitting}
+                  placeholder="PECS"
+                />
+              </label>
+              <label className="text-xs font-medium text-secondary-700">
+                Áttétel valuta
+                <input
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
+                  value={newTransfer.currencyCode}
+                  onChange={(event) => setNewTransfer((value) => ({ ...value, currencyCode: event.target.value }))}
+                  disabled={createTransferSubmitting}
+                  placeholder="EUR"
+                />
+              </label>
+              <label className="text-xs font-medium text-secondary-700">
+                Áttétel összeg
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                  value={newTransfer.amount}
+                  onChange={(event) => setNewTransfer((value) => ({ ...value, amount: event.target.value }))}
+                  disabled={createTransferSubmitting}
+                  placeholder="0"
+                />
+              </label>
+              <label className="text-xs font-medium text-secondary-700 sm:col-span-2">
+                Áttétel megjegyzés
+                <input
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                  value={newTransfer.note}
+                  onChange={(event) => setNewTransfer((value) => ({ ...value, note: event.target.value }))}
+                  disabled={createTransferSubmitting}
+                  placeholder="Megjegyzés"
+                />
+              </label>
+              <button
+                type="submit"
+                aria-label="Áttétel kérése"
+                className="rounded bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-60 sm:col-span-2"
+                disabled={createTransferSubmitting}
+              >
+                {createTransferSubmitting ? '...' : 'Áttétel kérése'}
+              </button>
+            </form>
+          </ReadOnlyQueue>
           <ReadOnlyQueue
             title="Anyagbizonylatok"
             summary={`${formatInteger(materialReceiptsIn.length)} bevét / ${formatInteger(materialReceiptsOut.length)} kiadás`}
@@ -958,7 +1131,83 @@ export default function TreasuryDashboard() {
                 onClick: () => void finalizeMaterialReceipt(row.id),
               },
             ] : []}
-          />
+          >
+            <form onSubmit={(event) => void createMaterialReceipt(event)} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="text-xs font-medium text-secondary-700">
+                Bizonylat típus
+                <select
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                  value={newReceipt.receiptType}
+                  onChange={(event) => setNewReceipt((value) => ({ ...value, receiptType: event.target.value as 'B' | 'K' }))}
+                  disabled={createReceiptSubmitting}
+                >
+                  <option value="B">Bevét</option>
+                  <option value="K">Kiadás</option>
+                </select>
+              </label>
+              <label className="text-xs font-medium text-secondary-700">
+                Bizonylat iroda
+                <input
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                  value={newReceipt.branchCode}
+                  onChange={(event) => setNewReceipt((value) => ({ ...value, branchCode: event.target.value }))}
+                  disabled={createReceiptSubmitting}
+                  placeholder="BUD01"
+                />
+              </label>
+              <label className="text-xs font-medium text-secondary-700">
+                Bizonylat valuta
+                <input
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
+                  value={newReceipt.currencyCode}
+                  onChange={(event) => setNewReceipt((value) => ({ ...value, currencyCode: event.target.value }))}
+                  disabled={createReceiptSubmitting}
+                  placeholder="EUR"
+                />
+              </label>
+              <label className="text-xs font-medium text-secondary-700">
+                Bizonylat összeg
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                  value={newReceipt.amount}
+                  onChange={(event) => setNewReceipt((value) => ({ ...value, amount: event.target.value }))}
+                  disabled={createReceiptSubmitting}
+                  placeholder="0"
+                />
+              </label>
+              <label className="text-xs font-medium text-secondary-700">
+                Partner
+                <input
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                  value={newReceipt.counterpartName}
+                  onChange={(event) => setNewReceipt((value) => ({ ...value, counterpartName: event.target.value }))}
+                  disabled={createReceiptSubmitting}
+                  placeholder="Partner"
+                />
+              </label>
+              <label className="text-xs font-medium text-secondary-700">
+                Bizonylat megjegyzés
+                <input
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                  value={newReceipt.note}
+                  onChange={(event) => setNewReceipt((value) => ({ ...value, note: event.target.value }))}
+                  disabled={createReceiptSubmitting}
+                  placeholder="Megjegyzés"
+                />
+              </label>
+              <button
+                type="submit"
+                aria-label="Anyagbizonylat kérése"
+                className="rounded bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-60 sm:col-span-2"
+                disabled={createReceiptSubmitting}
+              >
+                {createReceiptSubmitting ? '...' : 'Anyagbizonylat kérése'}
+              </button>
+            </form>
+          </ReadOnlyQueue>
           <ReadOnlyQueue
             title="Készletkorrekciók"
             summary={`${formatInteger(pendingStockCorrections.length)} függő / ${formatInteger(stockCorrections.length)} összes`}

@@ -1,0 +1,38 @@
+contract: "TreasuryDashboard -> POST /api/v1/ertektar/transfers and /api/v1/ertektar/receipts"
+date: "2026-06-20"
+status: "IMPLEMENTED_FROM_EXISTING_BACKEND_CONTRACT"
+
+preconditions:
+  - "The user provides source branch, target branch, currency code and positive amount for a vault transfer request."
+  - "The user provides receipt type B/K, branch code, currency code and positive amount for a material receipt draft."
+  - "The user confirms the state-changing request before each POST request is sent."
+  - "Backend validation remains authoritative for required fields, valid receipt type and positive line amount."
+
+postconditions:
+  - "On create success, the frontend reloads dashboard data from backend sources."
+  - "On create success, the frontend clears the submitted local form."
+  - "On failure, the existing dashboard error panel shows a factual error message."
+
+invariants:
+  - "The frontend never applies transfer or material receipt stock movement locally."
+  - "A created transfer remains a backend REQUESTED item until the existing supervisor/complete/reject workflow handles it."
+  - "A created material receipt remains a backend DRAFT item until the existing finalize workflow handles it."
+  - "Existing read/list/action behavior for transfers, receipts and stock corrections remains available."
+
+error_contracts:
+  - "User cancels confirmation -> no POST request."
+  - "Invalid local required fields block submission before POST with a local error."
+  - "Backend rejects validation or authorization -> no local success state is fabricated; error state is set."
+
+behavioral:
+  - "Transfer form calls ertektarApi.createTransfer(payload)."
+  - "Receipt form calls ertektarApi.createReceipt(payload)."
+  - "Branch, counterpart and note values are submitted trimmed."
+  - "currencyCode is submitted uppercased and trimmed."
+  - "Buttons are disabled while their own create request is in flight."
+
+derived_tests:
+  - "TreasuryDashboard calls createTransfer with the form payload after confirmation."
+  - "TreasuryDashboard calls createReceipt with the form payload after confirmation."
+  - "TreasuryDashboard does not call createTransfer/createReceipt when confirmation is cancelled."
+  - "Playwright verifies visible mobile render without horizontal overflow and observes both POST requests."
