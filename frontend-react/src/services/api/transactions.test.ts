@@ -145,25 +145,6 @@ describe('transactionApi', () => {
     })
   })
 
-  describe('cancel', () => {
-    it('calls POST /transactions/reversal with originalTransactionId', async () => {
-      mockApi.post.mockResolvedValue({ data: mockTransaction })
-      await transactionApi.cancel(5, 'Rossz tranzakció')
-      expect(mockApi.post).toHaveBeenCalledWith('/transactions/reversal', {
-        originalTransactionId: 5,
-        reason: 'Rossz tranzakció',
-      })
-    })
-
-    it('parses string id to int', async () => {
-      mockApi.post.mockResolvedValue({ data: mockTransaction })
-      await transactionApi.cancel('10', 'ok')
-      expect(mockApi.post).toHaveBeenCalledWith('/transactions/reversal', {
-        originalTransactionId: 10,
-        reason: 'ok',
-      })
-    })
-  })
 })
 
 describe('stornoApi', () => {

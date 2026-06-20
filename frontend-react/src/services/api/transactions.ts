@@ -597,14 +597,6 @@ export const transactionApi = {
   conversion: async (data: ConversionRequest): Promise<Transaction> => {
     const response = await api.post<Transaction>('/transactions/conversion', data)
     return response.data
-  },
-  cancel: async (id: string | number, reason: string): Promise<Transaction> => {
-    // Use reversal endpoint for cancellation
-    const response = await api.post<Transaction>('/transactions/reversal', {
-      originalTransactionId: typeof id === 'string' ? parseInt(id) : id,
-      reason
-    })
-    return response.data
   }
   // Megj.: a korábbi `getReceipt` (GET /transactions/{id}/receipt blob) HOLT KÓD volt és NEM létező
   // végpontra mutatott (404). Eltávolítva (architect-mode audit, 2026-05-27). A valódi bizonylat-PDF
