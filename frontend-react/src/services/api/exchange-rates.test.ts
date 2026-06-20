@@ -64,6 +64,30 @@ describe('exchangeRateApi', () => {
     const formData = mockApi.post.mock.calls[0]?.[1] as FormData
     expect(formData.get('file')).toBe(file)
   })
+
+  it('a canonical history lekérdezést valuta kóddal küldi az exchange-rates history végpontra', async () => {
+    const history = [
+      {
+        id: 1,
+        currencyId: 1,
+        currencyCode: 'EUR',
+        currencyName: 'Euró',
+        validDate: '2026-06-18',
+        validTime: '10:00',
+        baseBuyRate: 390,
+        baseSellRate: 399,
+        active: true,
+        createdAt: '2026-06-18T10:00:00',
+      },
+    ]
+    mockApi.get.mockResolvedValueOnce({ data: history })
+
+    await expect(exchangeRateApi.getHistoryByCode('EUR', '2026-06-01', '2026-06-18')).resolves.toBe(history)
+
+    expect(mockApi.get).toHaveBeenCalledWith('/exchange-rates/history', {
+      params: { currencyCode: 'EUR', startDate: '2026-06-01', endDate: '2026-06-18' },
+    })
+  })
 })
 
 describe('rateCreationApi', () => {

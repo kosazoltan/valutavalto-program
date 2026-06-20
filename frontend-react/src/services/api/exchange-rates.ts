@@ -124,12 +124,6 @@ export const exchangeRateApi = {
     const response = await api.post<ExchangeRate>('/exchange-rates', data)
     return response.data
   },
-  getHistory: async (currencyId: number, startDate: string, endDate: string): Promise<ExchangeRate[]> => {
-    const response = await api.get<ExchangeRate[]>('/exchange-rates/history', {
-      params: { currencyId, startDate, endDate }
-    })
-    return response.data
-  },
   getHistoryByCode: async (currencyCode: string, startDate: string, endDate: string): Promise<ExchangeRate[]> => {
     const response = await api.get<ExchangeRate[]>('/exchange-rates/history', {
       params: { currencyCode, startDate, endDate }
