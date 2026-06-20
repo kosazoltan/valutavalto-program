@@ -22,6 +22,8 @@ const worker = {
 }
 
 async function mockApis(page: Page) {
+  const collectionCreates: unknown[] = []
+  const distributionCreates: unknown[] = []
   const correctionDecisions: string[] = []
   const correctionCreates: unknown[] = []
   const transferDecisions: string[] = []
@@ -86,6 +88,34 @@ async function mockApis(page: Page) {
         body: JSON.stringify([
           { id: 21, transferNumber: 'ATT-2026-0001', currencyCode: 'EUR', amount: 1000, status: 'REQUESTED', requiresSupervisor: true, createdAt: '2026-06-19T08:00:00' },
         ]),
+      })
+    }
+
+    if (path.endsWith('/ertektar/collections') && method === 'POST') {
+      collectionCreates.push(route.request().postDataJSON())
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 51,
+          sourceBranchCode: 'BUD01',
+          currencyCode: 'EUR',
+          amount: 1200,
+          status: 'REQUESTED',
+        }),
+      })
+    }
+
+    if (path.endsWith('/ertektar/distribution') && method === 'POST') {
+      distributionCreates.push(route.request().postDataJSON())
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 52,
+          status: 'REQUESTED',
+          lines: [{ targetBranchCode: 'PECS', currencyCode: 'USD', amount: 500 }],
+        }),
       })
     }
 
@@ -211,7 +241,7 @@ async function mockApis(page: Page) {
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
   })
 
-  return { correctionCreates, correctionDecisions, transferDecisions, receiptDecisions }
+  return { collectionCreates, distributionCreates, correctionCreates, correctionDecisions, transferDecisions, receiptDecisions }
 }
 
 async function login(page: Page) {
@@ -253,6 +283,8 @@ test('értéktári dashboard mobil nézetben lekéri és megjeleníti a read-onl
   await expect(page.getByRole('button', { name: 'Áttétel #21 supervisor jóváhagyás' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Áttétel #22 végrehajtás' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Anyagbizonylat #31 véglegesítés' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Begyűjtés kérése' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Szétosztás kérése' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Korrekció kérése' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Készletkorrekció #41 jóváhagyás' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Készletkorrekció #41 elutasítás' })).toBeVisible()
@@ -304,10 +336,11 @@ test('értéktári készletkorrekció űrlap POST create backend szerződést h�
 
   await page.goto('/treasury', { waitUntil: 'domcontentloaded' })
 
-  await page.getByLabel('Azonosító').fill('BUD01')
-  await page.getByLabel('Valuta').fill('eur')
-  await page.getByLabel('Új mennyiség').fill('125.5')
-  await page.getByLabel('Indok').fill('Leltár eltérés')
+  const ledger = page.getByTestId('ertektar-readonly-ledger')
+  await ledger.getByLabel('Azonosító').fill('BUD01')
+  await ledger.getByLabel('Valuta').fill('eur')
+  await ledger.getByLabel('Új mennyiség').fill('125.5')
+  await ledger.getByLabel('Indok').fill('Leltár eltérés')
 
   const createRequest = page.waitForRequest(request =>
     request.method() === 'POST'
@@ -323,6 +356,58 @@ test('értéktári készletkorrekció űrlap POST create backend szerződést h�
       currencyCode: 'EUR',
       newQuantity: 125.5,
       reason: 'Leltár eltérés',
+    },
+  ])
+
+  const horizontalOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  )
+  expect(horizontalOverflow).toBe(false)
+})
+
+test('értéktári begyűjtés és szétosztás űrlap POST create backend szerződést hív', async ({ page }) => {
+  const apiCalls = await mockApis(page)
+  await login(page)
+  page.on('dialog', dialog => dialog.accept())
+
+  await page.goto('/treasury', { waitUntil: 'domcontentloaded' })
+
+  await page.getByLabel('Forrás iroda').fill('bud01')
+  await page.getByLabel('Begyűjtés valuta').fill('eur')
+  await page.getByLabel('Begyűjtés összeg').fill('1200')
+  await page.getByLabel('Begyűjtés megjegyzés').fill('Napi begyűjtés')
+
+  const collectionRequest = page.waitForRequest(request =>
+    request.method() === 'POST'
+    && new URL(request.url()).pathname === '/api/v1/ertektar/collections'
+  )
+  await page.getByRole('button', { name: 'Begyűjtés kérése' }).click()
+  await collectionRequest
+
+  await page.getByLabel('Cél iroda').fill('pecs')
+  await page.getByLabel('Szétosztás valuta').fill('usd')
+  await page.getByLabel('Szétosztás összeg').fill('500')
+  await page.getByLabel('Szétosztás megjegyzés').fill('Napi szétosztás')
+
+  const distributionRequest = page.waitForRequest(request =>
+    request.method() === 'POST'
+    && new URL(request.url()).pathname === '/api/v1/ertektar/distribution'
+  )
+  await page.getByRole('button', { name: 'Szétosztás kérése' }).click()
+  await distributionRequest
+
+  expect(apiCalls.collectionCreates).toEqual([
+    {
+      sourceBranchCode: 'bud01',
+      currencyCode: 'EUR',
+      amount: 1200,
+      note: 'Napi begyűjtés',
+    },
+  ])
+  expect(apiCalls.distributionCreates).toEqual([
+    {
+      items: [{ targetBranchCode: 'pecs', currencyCode: 'USD', amount: 500 }],
+      note: 'Napi szétosztás',
     },
   ])
 

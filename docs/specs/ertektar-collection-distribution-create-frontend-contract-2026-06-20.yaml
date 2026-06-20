@@ -1,0 +1,37 @@
+contract: "TreasuryDashboard -> POST /api/v1/ertektar/collections and /api/v1/ertektar/distribution"
+date: "2026-06-20"
+status: "IMPLEMENTED_FROM_EXISTING_BACKEND_CONTRACT"
+
+preconditions:
+  - "The user provides branch code, currency code and positive amount for a collection request."
+  - "The user provides target branch code, currency code and positive amount for a distribution request."
+  - "The user confirms the state-changing request before each POST request is sent."
+  - "Backend validation remains authoritative for required fields and positive amount."
+
+postconditions:
+  - "On create success, the frontend reloads dashboard data from backend sources."
+  - "On create success, the frontend clears the submitted local form."
+  - "On failure, the existing dashboard error panel shows a factual error message."
+
+invariants:
+  - "The frontend never applies collection/distribution stock movement locally."
+  - "The created collection/distribution remains a backend REQUESTED item until the existing status workflow handles it."
+  - "Existing read/list/status behavior for collections, distributions and bank transactions remains available."
+
+error_contracts:
+  - "User cancels confirmation -> no POST request."
+  - "Invalid local required fields block submission before POST with a local error."
+  - "Backend rejects validation or authorization -> no local success state is fabricated; error state is set."
+
+behavioral:
+  - "Collection form calls ertektarApi.createCollection(payload)."
+  - "Distribution form calls ertektarApi.createDistribution(payload)."
+  - "Branch and note values are submitted trimmed."
+  - "currencyCode is submitted uppercased and trimmed."
+  - "Buttons are disabled while their own create request is in flight."
+
+derived_tests:
+  - "TreasuryDashboard calls createCollection with the form payload after confirmation."
+  - "TreasuryDashboard calls createDistribution with the form payload after confirmation."
+  - "TreasuryDashboard does not call createCollection/createDistribution when confirmation is cancelled."
+  - "Playwright verifies visible mobile render without horizontal overflow and observes both POST requests."

@@ -70,6 +70,20 @@ const EMPTY_CORRECTION_FORM: StockCorrectionDraftForm = {
   reason: '',
 }
 
+interface SingleLineVaultRequestForm {
+  branchCode: string
+  currencyCode: string
+  amount: string
+  note: string
+}
+
+const EMPTY_VAULT_REQUEST_FORM: SingleLineVaultRequestForm = {
+  branchCode: '',
+  currencyCode: '',
+  amount: '',
+  note: '',
+}
+
 export default function TreasuryDashboard() {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
@@ -104,6 +118,10 @@ export default function TreasuryDashboard() {
   const [correctionAction, setCorrectionAction] = useState<string | null>(null)
   const [createCorrectionSubmitting, setCreateCorrectionSubmitting] = useState(false)
   const [newCorrection, setNewCorrection] = useState<StockCorrectionDraftForm>(EMPTY_CORRECTION_FORM)
+  const [createCollectionSubmitting, setCreateCollectionSubmitting] = useState(false)
+  const [newCollection, setNewCollection] = useState<SingleLineVaultRequestForm>(EMPTY_VAULT_REQUEST_FORM)
+  const [createDistributionSubmitting, setCreateDistributionSubmitting] = useState(false)
+  const [newDistribution, setNewDistribution] = useState<SingleLineVaultRequestForm>(EMPTY_VAULT_REQUEST_FORM)
   const [statusActionError, setStatusActionError] = useState<string | null>(null)
   const [treasuryApiRestricted, setTreasuryApiRestricted] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(new Date())
@@ -395,6 +413,70 @@ export default function TreasuryDashboard() {
     }
   }
 
+  const createVaultCollection = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const sourceBranchCode = newCollection.branchCode.trim()
+    const currencyCode = newCollection.currencyCode.trim().toUpperCase()
+    const amount = Number(newCollection.amount)
+    const note = newCollection.note.trim()
+
+    if (!sourceBranchCode || !currencyCode || !Number.isFinite(amount) || amount <= 0) {
+      setStatusActionError('Begyűjtéshez iroda, valuta és pozitív összeg szükséges.')
+      return
+    }
+    if (!window.confirm(`Biztosan létrehozza a ${currencyCode} begyűjtési kérelmet?`)) return
+
+    try {
+      setCreateCollectionSubmitting(true)
+      setStatusActionError(null)
+      await ertektarApi.createCollection({
+        sourceBranchCode,
+        currencyCode,
+        amount,
+        ...(note ? { note } : {}),
+      })
+      setNewCollection(EMPTY_VAULT_REQUEST_FORM)
+      await fetchData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Begyűjtési kérelem létrehozás sikertelen.'
+      setStatusActionError(message)
+      logger.error('TreasuryDashboard', 'Vault collection create error:', err)
+    } finally {
+      setCreateCollectionSubmitting(false)
+    }
+  }
+
+  const createVaultDistribution = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const targetBranchCode = newDistribution.branchCode.trim()
+    const currencyCode = newDistribution.currencyCode.trim().toUpperCase()
+    const amount = Number(newDistribution.amount)
+    const note = newDistribution.note.trim()
+
+    if (!targetBranchCode || !currencyCode || !Number.isFinite(amount) || amount <= 0) {
+      setStatusActionError('Szétosztáshoz cél iroda, valuta és pozitív összeg szükséges.')
+      return
+    }
+    if (!window.confirm(`Biztosan létrehozza a ${currencyCode} szétosztási kérelmet?`)) return
+
+    try {
+      setCreateDistributionSubmitting(true)
+      setStatusActionError(null)
+      await ertektarApi.createDistribution({
+        items: [{ targetBranchCode, currencyCode, amount }],
+        ...(note ? { note } : {}),
+      })
+      setNewDistribution(EMPTY_VAULT_REQUEST_FORM)
+      await fetchData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Szétosztási kérelem létrehozás sikertelen.'
+      setStatusActionError(message)
+      logger.error('TreasuryDashboard', 'Vault distribution create error:', err)
+    } finally {
+      setCreateDistributionSubmitting(false)
+    }
+  }
+
   const decideStockCorrection = async (id: number, decision: 'approve' | 'reject') => {
     const label = decision === 'approve' ? 'jóváhagyja' : 'elutasítja'
     if (!window.confirm(`Biztosan ${label} a #${id} készletkorrekciót?`)) return
@@ -667,7 +749,61 @@ export default function TreasuryDashboard() {
             kind="collection"
             busyKey={statusAction}
             onUpdate={updateErtektarStatus}
-          />
+          >
+            <form onSubmit={(event) => void createVaultCollection(event)} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="text-xs font-medium text-secondary-700">
+                Forrás iroda
+                <input
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                  value={newCollection.branchCode}
+                  onChange={(event) => setNewCollection((value) => ({ ...value, branchCode: event.target.value }))}
+                  disabled={createCollectionSubmitting}
+                  placeholder="BUD01"
+                />
+              </label>
+              <label className="text-xs font-medium text-secondary-700">
+                Begyűjtés valuta
+                <input
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
+                  value={newCollection.currencyCode}
+                  onChange={(event) => setNewCollection((value) => ({ ...value, currencyCode: event.target.value }))}
+                  disabled={createCollectionSubmitting}
+                  placeholder="EUR"
+                />
+              </label>
+              <label className="text-xs font-medium text-secondary-700">
+                Begyűjtés összeg
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                  value={newCollection.amount}
+                  onChange={(event) => setNewCollection((value) => ({ ...value, amount: event.target.value }))}
+                  disabled={createCollectionSubmitting}
+                  placeholder="0"
+                />
+              </label>
+              <label className="text-xs font-medium text-secondary-700">
+                Begyűjtés megjegyzés
+                <input
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                  value={newCollection.note}
+                  onChange={(event) => setNewCollection((value) => ({ ...value, note: event.target.value }))}
+                  disabled={createCollectionSubmitting}
+                  placeholder="Megjegyzés"
+                />
+              </label>
+              <button
+                type="submit"
+                aria-label="Begyűjtés kérése"
+                className="rounded bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-60 sm:col-span-2"
+                disabled={createCollectionSubmitting}
+              >
+                {createCollectionSubmitting ? '...' : 'Begyűjtés kérése'}
+              </button>
+            </form>
+          </StatusQueue>
           <StatusQueue
             title="Szétosztás"
             rows={openDistributions.map((row) => ({
@@ -679,7 +815,61 @@ export default function TreasuryDashboard() {
             kind="distribution"
             busyKey={statusAction}
             onUpdate={updateErtektarStatus}
-          />
+          >
+            <form onSubmit={(event) => void createVaultDistribution(event)} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="text-xs font-medium text-secondary-700">
+                Cél iroda
+                <input
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                  value={newDistribution.branchCode}
+                  onChange={(event) => setNewDistribution((value) => ({ ...value, branchCode: event.target.value }))}
+                  disabled={createDistributionSubmitting}
+                  placeholder="PECS"
+                />
+              </label>
+              <label className="text-xs font-medium text-secondary-700">
+                Szétosztás valuta
+                <input
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
+                  value={newDistribution.currencyCode}
+                  onChange={(event) => setNewDistribution((value) => ({ ...value, currencyCode: event.target.value }))}
+                  disabled={createDistributionSubmitting}
+                  placeholder="USD"
+                />
+              </label>
+              <label className="text-xs font-medium text-secondary-700">
+                Szétosztás összeg
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                  value={newDistribution.amount}
+                  onChange={(event) => setNewDistribution((value) => ({ ...value, amount: event.target.value }))}
+                  disabled={createDistributionSubmitting}
+                  placeholder="0"
+                />
+              </label>
+              <label className="text-xs font-medium text-secondary-700">
+                Szétosztás megjegyzés
+                <input
+                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                  value={newDistribution.note}
+                  onChange={(event) => setNewDistribution((value) => ({ ...value, note: event.target.value }))}
+                  disabled={createDistributionSubmitting}
+                  placeholder="Megjegyzés"
+                />
+              </label>
+              <button
+                type="submit"
+                aria-label="Szétosztás kérése"
+                className="rounded bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-60 sm:col-span-2"
+                disabled={createDistributionSubmitting}
+              >
+                {createDistributionSubmitting ? '...' : 'Szétosztás kérése'}
+              </button>
+            </form>
+          </StatusQueue>
           <StatusQueue
             title="Banki tranzakció"
             rows={openBankTransactions.map((row) => ({
@@ -967,12 +1157,14 @@ function StatusQueue({
   kind,
   busyKey,
   onUpdate,
+  children,
 }: {
   title: string
   rows: StatusQueueRow[]
   kind: 'collection' | 'distribution' | 'bankTransaction'
   busyKey: string | null
   onUpdate: (kind: 'collection' | 'distribution' | 'bankTransaction', id: number, status: VaultOperationStatus) => void
+  children?: ReactNode
 }) {
   const targetStatuses: VaultOperationStatus[] = ['IN_PROGRESS', 'COMPLETED', 'REJECTED']
 
@@ -982,6 +1174,11 @@ function StatusQueue({
         <h3 className="text-sm font-bold text-secondary-900">{title}</h3>
         <span className="text-xs text-secondary-500">{rows.length} nyitott</span>
       </div>
+      {children && (
+        <div className="mb-3 rounded border border-secondary-100 bg-secondary-50 p-2">
+          {children}
+        </div>
+      )}
       {rows.length === 0 ? (
         <p className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
           Nincs nyitott tétel.

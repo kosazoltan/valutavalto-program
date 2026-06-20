@@ -20,7 +20,9 @@ const mocks = vi.hoisted(() => ({
   ertektarBranches: vi.fn(),
   ertektarConsolidatedReport: vi.fn(),
   getCollections: vi.fn(),
+  createCollection: vi.fn(),
   getDistributions: vi.fn(),
+  createDistribution: vi.fn(),
   getBankTransactions: vi.fn(),
   getTransfers: vi.fn(),
   getPendingTransfers: vi.fn(),
@@ -72,7 +74,9 @@ vi.mock('../../services/api/index', () => ({
   },
   ertektarApi: {
     getCollections: mocks.getCollections,
+    createCollection: mocks.createCollection,
     getDistributions: mocks.getDistributions,
+    createDistribution: mocks.createDistribution,
     getBankTransactions: mocks.getBankTransactions,
     getTransfers: mocks.getTransfers,
     getPendingTransfers: mocks.getPendingTransfers,
@@ -378,6 +382,8 @@ describe('TreasuryDashboard', () => {
     mocks.rejectTransfer.mockResolvedValue({ id: 21, status: 'REJECTED' })
     mocks.finalizeReceipt.mockResolvedValue({ id: 31, status: 'FINALIZED' })
     mocks.createCorrection.mockResolvedValue({ id: 42, status: 'REQUESTED' })
+    mocks.createCollection.mockResolvedValue({ id: 14, status: 'REQUESTED' })
+    mocks.createDistribution.mockResolvedValue({ id: 15, status: 'REQUESTED' })
     mocks.approveCorrection.mockResolvedValue({ id: 41, status: 'APPROVED' })
     mocks.rejectCorrection.mockResolvedValue({ id: 41, status: 'REJECTED' })
     mocks.updateCollectionStatus.mockResolvedValue({ id: 11, status: 'COMPLETED' })
@@ -474,6 +480,66 @@ describe('TreasuryDashboard', () => {
     await waitFor(() => {
       expect(mocks.updateBankTransactionStatus).toHaveBeenCalledWith(13, 'IN_PROGRESS')
     })
+  })
+
+  it('a begyűjtési űrlapból createCollection backend szerződést hív', async () => {
+    const user = userEvent.setup()
+    render(<TreasuryDashboard />)
+
+    await screen.findByTestId('ertektar-status-control')
+    await user.type(screen.getByLabelText('Forrás iroda'), 'bud01')
+    await user.type(screen.getByLabelText('Begyűjtés valuta'), 'eur')
+    await user.type(screen.getByLabelText('Begyűjtés összeg'), '1200')
+    await user.type(screen.getByLabelText('Begyűjtés megjegyzés'), 'Napi begyűjtés')
+    await user.click(screen.getByRole('button', { name: 'Begyűjtés kérése' }))
+
+    await waitFor(() => {
+      expect(mocks.createCollection).toHaveBeenCalledWith({
+        sourceBranchCode: 'bud01',
+        currencyCode: 'EUR',
+        amount: 1200,
+        note: 'Napi begyűjtés',
+      })
+    })
+  })
+
+  it('a szétosztási űrlapból createDistribution backend szerződést hív', async () => {
+    const user = userEvent.setup()
+    render(<TreasuryDashboard />)
+
+    await screen.findByTestId('ertektar-status-control')
+    await user.type(screen.getByLabelText('Cél iroda'), 'pecs')
+    await user.type(screen.getByLabelText('Szétosztás valuta'), 'usd')
+    await user.type(screen.getByLabelText('Szétosztás összeg'), '500')
+    await user.type(screen.getByLabelText('Szétosztás megjegyzés'), 'Napi szétosztás')
+    await user.click(screen.getByRole('button', { name: 'Szétosztás kérése' }))
+
+    await waitFor(() => {
+      expect(mocks.createDistribution).toHaveBeenCalledWith({
+        items: [{ targetBranchCode: 'pecs', currencyCode: 'USD', amount: 500 }],
+        note: 'Napi szétosztás',
+      })
+    })
+  })
+
+  it('begyűjtés és szétosztás elutasított confirm esetén nem küld POST-ot', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const user = userEvent.setup()
+    render(<TreasuryDashboard />)
+
+    await screen.findByTestId('ertektar-status-control')
+    await user.type(screen.getByLabelText('Forrás iroda'), 'BUD01')
+    await user.type(screen.getByLabelText('Begyűjtés valuta'), 'EUR')
+    await user.type(screen.getByLabelText('Begyűjtés összeg'), '1200')
+    await user.click(screen.getByRole('button', { name: 'Begyűjtés kérése' }))
+
+    await user.type(screen.getByLabelText('Cél iroda'), 'PECS')
+    await user.type(screen.getByLabelText('Szétosztás valuta'), 'USD')
+    await user.type(screen.getByLabelText('Szétosztás összeg'), '500')
+    await user.click(screen.getByRole('button', { name: 'Szétosztás kérése' }))
+
+    expect(mocks.createCollection).not.toHaveBeenCalled()
+    expect(mocks.createDistribution).not.toHaveBeenCalled()
   })
 
   it('az áttételek panelből meghívja a supervisor approve/complete/reject backend szerződéseket', async () => {
