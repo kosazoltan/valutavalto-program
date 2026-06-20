@@ -82,14 +82,6 @@ describe('transactionApi', () => {
     })
   })
 
-  describe('getByReceiptNumber', () => {
-    it('calls GET /transactions/receipt/:receiptNumber', async () => {
-      mockApi.get.mockResolvedValue({ data: mockTransaction })
-      await transactionApi.getByReceiptNumber('E001000001')
-      expect(mockApi.get).toHaveBeenCalledWith('/transactions/receipt/E001000001')
-    })
-  })
-
   describe('getDaily', () => {
     it('calls GET /transactions/daily', async () => {
       mockApi.get.mockResolvedValue({ data: [mockTransaction] })

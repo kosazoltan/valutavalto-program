@@ -569,10 +569,6 @@ export const transactionApi = {
     const response = await api.get<Transaction>(`/transactions/receipt/${id}`)
     return response.data
   },
-  getByReceiptNumber: async (receiptNumber: string): Promise<Transaction> => {
-    const response = await api.get<Transaction>(`/transactions/receipt/${receiptNumber}`)
-    return response.data
-  },
   getDaily: async (): Promise<Transaction[]> => {
     const response = await api.get<Transaction[]>('/transactions/daily')
     return response.data
