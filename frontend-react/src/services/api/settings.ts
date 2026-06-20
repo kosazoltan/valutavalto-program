@@ -1,5 +1,4 @@
 import { api } from './client'
-import { safeArray } from '../../utils/safeArray'
 
 // ================== BANK API (FK-005/C1) ==================
 
@@ -455,10 +454,6 @@ export const workerCommissionApi = {
     const response = await api.get<WorkerCommission>(`/worker-commissions/${id}`)
     return response.data
   },
-  getByWorker: async (workerId: string): Promise<WorkerCommission[]> => {
-    const response = await api.get<WorkerCommission[]>('/worker-commissions', { params: { workerId } })
-    return response.data
-  },
   getByPeriod: async (branchId: string, periodStart: string, periodEnd: string): Promise<WorkerCommission[]> => {
     const response = await api.get<WorkerCommission[]>('/worker-commissions/period', {
       params: { branchId, periodStart, periodEnd }
@@ -562,10 +557,6 @@ export const workstationApi = {
   getActive: async (): Promise<Workstation[]> => {
     const response = await api.get<Workstation[]>('/workstations/active')
     return response.data
-  },
-  getByBranch: async (branchId: string): Promise<Workstation[]> => {
-    const response = await api.get<Workstation[]>('/workstations')
-    return safeArray<Workstation>(response.data).filter((workstation) => workstation.branchId === branchId)
   },
   getById: async (id: string): Promise<Workstation> => {
     const response = await api.get<Workstation>(`/workstations/${id}`)
