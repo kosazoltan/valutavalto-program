@@ -534,7 +534,6 @@ Add-PathCheck -Area 'acceptance' -RelativePath 'scripts\installer-smoke-prefligh
 Add-PathCheck -Area 'acceptance' -RelativePath 'scripts\installer-smoke-synthetic-artifacts.ps1' -Expected 'Installer synthetic artifact smoke script exists'
 Add-PathCheck -Area 'acceptance' -RelativePath 'scripts\installer-clean-vm-smoke.ps1' -Expected 'Clean Windows VM installer smoke script exists'
 Add-ContentCheck -Area 'acceptance' -RelativePath 'package.json' -Pattern '"installer:smoke:preflight"' -Expected 'Installer smoke preflight script is wired'
-Add-ContentCheck -Area 'acceptance' -RelativePath 'package.json' -Pattern '"installer:smoke:artifacts"' -Expected 'Installer artifact verification script is wired'
 Add-ContentCheck -Area 'acceptance' -RelativePath 'package.json' -Pattern '"installer:smoke:signed"' -Expected 'Installer signed artifact verification script is wired'
 Add-ContentCheck -Area 'acceptance' -RelativePath 'package.json' -Pattern '"installer:smoke:synthetic"' -Expected 'Installer synthetic artifact smoke script is wired'
 Add-ContentCheck -Area 'acceptance' -RelativePath 'package.json' -Pattern '"installer:smoke:clean-vm"' -Expected 'Clean Windows VM installer smoke script is wired'

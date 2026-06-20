@@ -131,11 +131,10 @@ milestone release-nel kell.
 Telepito/release feladatnal kotelezo, sorrendben:
 
 1. A repo sajat forrasait kell hasznalni, nem feltetelezest: root `package.json`
-   `package:*` scriptek, kliens `package.json` `package:unsigned`/`package`,
+   `package:*` scriptek, kliens `package.json` `package`,
    `scripts/installer-smoke-preflight.ps1`, `installer/build-installer.ps1`,
    `installer/build-cleanup.ps1`,
-   `.github/workflows/windows-signed-release.yml`,
-   `.github/workflows/windows-unsigned-release.yml`, es az erintett
+   `.github/workflows/windows-signed-release.yml`, es az erintett
    `electron-builder.json` fajlok.
 2. Dependency-t nem szabad "hianyzik" alapon atlepni. Ellenorizni vagy telepiteni
    kell lockfile-bol: root, `frontend-react`, `penztar-client`,
@@ -152,9 +151,8 @@ Telepito/release feladatnal kotelezo, sorrendben:
    kezelni, mert a rate-maker mod a kozponti munkaallomasba van integralva.
 4. Tenyleges build: penztar setuphoz `installer/build-installer.ps1`, penztar
    eltavolitohoz `installer/build-cleanup.ps1`, kozponti modulhoz
-   `npm run package:kozponti`, vagy a dokumentalt signed/unsigned GitHub
-   workflow. Build utan kotelezo `npm run installer:smoke:artifacts` vagy
-   signed release eseten `npm run installer:smoke:signed`.
+   `npm run package:kozponti`, vagy a dokumentalt signed GitHub workflow.
+   Build utan kotelezo `npm run installer:smoke:signed`.
 5. A "nem lehet telepitot kesziteni" allitas csak akkor megengedett, ha a fenti
    scriptkeszlet es lockfile-alapu dependency telepites lefutott vagy konkret,
    bizonyitott blocker maradt fenn (pl. secret/alairasi jogosultsag).

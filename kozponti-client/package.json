@@ -1,6 +1,6 @@
 {
   "name": "valuta-kozponti-client",
-  "version": "2.28.11",
+  "version": "2.28.12",
   "private": true,
   "author": "Exclusive Best Change Zrt.",
   "description": "Kozponti munkaallomas - osszevont Electron kliens: Kozponti iranyitokozpont (full) ES Arfolyamkeszito (rate-maker) mod, indulaskori mod-valasztoval",
@@ -16,7 +16,6 @@
     "build:frontend": "shx rm -rf dist && shx mkdir -p dist && npm run build:central && npm run build:ratemaker",
     "build": "npm run build:electron && npm run build:frontend",
     "package": "node ../scripts/check-four-area-alignment.mjs && npm run build && electron-builder --win",
-    "package:unsigned": "node ../scripts/check-four-area-alignment.mjs && npm run build && set ALLOW_UNSIGNED_BUILD=1&& electron-builder --win",
     "typecheck": "node ../frontend-react/node_modules/typescript/bin/tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

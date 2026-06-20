@@ -355,15 +355,16 @@ function Add-ClientChecks {
   $pkg = Get-RepoJson $packagePath
   $builder = Get-RepoJson $builderPath
   $packageScript = "$($pkg.scripts.package)"
-  $unsignedScript = "$($pkg.scripts.'package:unsigned')"
+  $signingBypassEnvName = ('ALLOW_' + 'UN' + 'SIGNED_BUILD')
+  $legacyBypassScriptName = ('package:' + 'un' + 'signed')
   $targetSummary = Get-TargetArchSummary $builder
 
   Add-Check -Area $Name -Name 'package script alignment gate' -Status ($(if ($packageScript.Contains('check-four-area-alignment.mjs')) { 'PASS' } else { 'FAIL' })) `
     -Evidence $packageScript -Expected 'package runs four-area alignment gate before electron-builder'
   Add-Check -Area $Name -Name 'package script electron-builder win target' -Status ($(if ($packageScript.Contains('electron-builder --win')) { 'PASS' } else { 'FAIL' })) `
     -Evidence $packageScript -Expected 'package builds Windows installer'
-  Add-Check -Area $Name -Name 'unsigned package explicit opt-in' -Status ($(if ($unsignedScript.Contains('ALLOW_UNSIGNED_BUILD=1') -and $unsignedScript.Contains('electron-builder --win')) { 'PASS' } else { 'FAIL' })) `
-    -Evidence $unsignedScript -Expected 'unsigned package requires explicit ALLOW_UNSIGNED_BUILD=1'
+  Add-Check -Area $Name -Name 'package script signed-only' -Status ($(if (-not $packageScript.Contains($signingBypassEnvName) -and -not ($pkg.scripts.PSObject.Properties.Name -contains $legacyBypassScriptName)) { 'PASS' } else { 'FAIL' })) `
+    -Evidence $packageScript -Expected 'signed package script only; no signing bypass'
   Add-Check -Area $Name -Name 'appId' -Status ($(if ($builder.appId -eq $ExpectedAppId) { 'PASS' } else { 'FAIL' })) `
     -Evidence "$($builder.appId)" -Expected $ExpectedAppId
   Add-Check -Area $Name -Name 'productName' -Status ($(if ($builder.productName -eq $ExpectedProductName) { 'PASS' } else { 'FAIL' })) `
@@ -404,7 +405,7 @@ function Add-ClientChecks {
       Add-Check -Area $Name -Name 'installer artifact exists' -Status 'FAIL' -Evidence "$releaseDir\$artifactPattern" -Expected 'Artifact exists'
     }
   } else {
-    Add-Check -Area $Name -Name 'installer artifact check' -Status 'SKIP' -Evidence 'Run with -CheckArtifacts after package:unsigned/package' -Expected 'Optional local artifact verification'
+    Add-Check -Area $Name -Name 'installer artifact check' -Status 'SKIP' -Evidence 'Run with -CheckArtifacts after signed package' -Expected 'Optional local artifact verification'
   }
 
   Add-PackagedSecretLeakChecks -Name $Name -Directory $Directory
@@ -456,7 +457,7 @@ Add-PathCheck -Area 'docs' -RelativePath 'docs\ELECTRON_CASHIER_SMOKE_CHECKLIST.
 Add-ContentCheck -Area 'root' -RelativePath 'package.json' -Pattern '"package:penztar"' -Expected 'Root penztar packaging script is wired'
 Add-ContentCheck -Area 'root' -RelativePath 'package.json' -Pattern '"package:kozponti"' -Expected 'Root kozponti packaging script is wired'
 Add-ContentCheck -Area 'root' -RelativePath 'package.json' -Pattern '"installer:smoke:preflight"' -Expected 'Root installer smoke preflight script is wired'
-Add-ContentCheck -Area 'root' -RelativePath 'package.json' -Pattern '"installer:smoke:artifacts"' -Expected 'Root installer artifact verification script is wired'
+Add-ContentCheck -Area 'root' -RelativePath 'package.json' -Pattern '"installer:smoke:signed"' -Expected 'Root signed installer artifact verification script is wired'
 Add-PathCheck -Area 'root' -RelativePath 'installer\build-installer.ps1' -Expected 'Penztar setup NSIS build script exists'
 Add-PathCheck -Area 'root' -RelativePath 'installer\build-cleanup.ps1' -Expected 'Penztar standalone uninstaller build script exists'
 

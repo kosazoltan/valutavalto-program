@@ -216,7 +216,7 @@
   ```
 - [ ] **Csomagolt Electron artifact secret-leak scan lefutott**:
   ```powershell
-  npm run installer:smoke:artifacts
+  npm run installer:smoke:signed
   # Elvárt: resources + app.asar forbidden filename és high-confidence secret pattern scan PASS
   ```
 - [ ] **Minden secret helyben generálódik** telepítéskor:

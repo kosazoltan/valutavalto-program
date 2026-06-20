@@ -62,7 +62,7 @@ $steps.Add((New-GateStep -Name 'audit_hash_chain_preflight' -Command 'npm run au
 $steps.Add((New-GateStep -Name 'security_gate' -Command 'powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1' -Profile 'default'))
 $steps.Add((New-GateStep -Name 'installer_smoke_preflight' -Command 'npm run installer:smoke:preflight' -Profile 'default'))
 if (Test-InstallerArtifactsExist) {
-  $steps.Add((New-GateStep -Name 'installer_smoke_artifacts' -Command 'npm run installer:smoke:artifacts' -Profile 'default'))
+  $steps.Add((New-GateStep -Name 'installer_smoke_signed' -Command 'npm run installer:smoke:signed' -Profile 'default'))
 } else {
   $steps.Add((New-GateStep -Name 'installer_smoke_synthetic' -Command 'npm run installer:smoke:synthetic' -Profile 'default'))
 }

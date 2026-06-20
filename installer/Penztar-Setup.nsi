@@ -404,7 +404,7 @@ Section "Telepites" SecInstall
 
     ; v2.5.62 hot-fix: explicit File direktiva a kritikus Penztar.exe-re
     ; (Kosa Zoltan tesztgepen, 2026-05-19: az ESET ekrn.exe silent-deny-jolta a
-    ; UNSIGNED 212 MB Electron exe-t a wildcard `*.*` rekurziv masolas soran,
+    ; 212 MB Electron exe-t a wildcard `*.*` rekurziv masolas soran,
     ; karantenba SEM tette, csak file-write-blokkolta. Az explicit File direktiva
     ; mas execution path-ot hasznal, talan athaladhat a deny-on.)
     ; SZÁNDÉKOS: a Penztar.exe a fenti `File /r` `/x "Penztar.exe"` exclude

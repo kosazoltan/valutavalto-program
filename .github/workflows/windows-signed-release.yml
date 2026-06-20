@@ -396,7 +396,7 @@ jobs:
       # KRITIKUS (login-blokkolo): a kozponti electron a Google DESKTOP OAuth client ID-t a
       # kozponti-client/vite.config.ts loadEnv(repoRoot)-jabol kapja, a bundle-olt WEB login-gomb
       # pedig a frontend-react/.env.production VITE_GOOGLE_CLIENT_ID-t. E lepes nelkul a kozponti
-      # Google login NEM mukodik. (Azonos az unsigned workflow build-kozponti lepesevel.)
+      # Google login NEM mukodik. (Azonos env-felepites kell a kozponti signed buildben.)
       - name: Construct Google OAuth env (.env + frontend-react/.env.production)
         shell: pwsh
         env:

@@ -17,7 +17,7 @@ try {
     New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
     $artifactPath = Join-Path $releaseDir $client.artifact
     if (Test-Path -LiteralPath $artifactPath) {
-      throw "Refusing to overwrite existing installer artifact: $artifactPath. Run npm run installer:smoke:artifacts for real artifacts."
+      throw "Refusing to overwrite existing installer artifact: $artifactPath. Run npm run installer:smoke:signed for real artifacts."
     }
 
     "synthetic installer artifact for $($client.directory) generated at $((Get-Date).ToString('o'))" |

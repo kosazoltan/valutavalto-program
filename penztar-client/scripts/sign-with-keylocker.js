@@ -13,9 +13,6 @@
  * Ha CODE_SIGN_ENABLED nincs vagy NEM "1", a hook hibával leáll. Ezzel a `npm run package`
  * nem tud véletlenül aláíratlan production telepítőt kiadni.
  *
- * Fejlesztői, lokális unsigned csomagoláshoz explicit:
- *   ALLOW_UNSIGNED_BUILD=1
- *
  * Ha CODE_SIGN_ENABLED=1 de a secrets hiányoznak, a hook EXPLICIT HIBÁVAL kilép —
  * NEM ad ki "néma" non-signed build-et.
  *
@@ -44,16 +41,11 @@ const os = require('node:os');
 exports.default = async function signWithKeyLocker(configuration) {
   const filePath = configuration.path;
 
-  // 1. Fail-closed: aláíratlan installer csak explicit fejlesztői override-dal készülhet.
+  // 1. Fail-closed: production csomagolás csak aktív aláírással készülhet.
   if (process.env.CODE_SIGN_ENABLED !== '1') {
-    if (process.env.ALLOW_UNSIGNED_BUILD === '1') {
-      console.log(`[sign-with-keylocker] ALLOW_UNSIGNED_BUILD=1 → signing SKIPPED for ${filePath}`);
-      return;
-    }
     throw new Error(
       `[sign-with-keylocker] CODE_SIGN_ENABLED=${process.env.CODE_SIGN_ENABLED || '(unset)'}. ` +
-      `Production packaging requires CODE_SIGN_ENABLED=1 and DigiCert KeyLocker SM_* env vars. ` +
-      `Set ALLOW_UNSIGNED_BUILD=1 only for local development builds.`,
+      `Production packaging requires CODE_SIGN_ENABLED=1 and DigiCert KeyLocker SM_* env vars.`,
     );
   }
 
