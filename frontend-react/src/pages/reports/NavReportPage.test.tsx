@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   exportCsv: vi.fn(),
   listClosings: vi.fn(),
   getClosingSummary: vi.fn(),
+  validateNavAmount: vi.fn(),
+  approveDiscrepancy: vi.fn(),
   exportMonthlyPtgszlah: vi.fn(),
   exportCustomPtgszlah: vi.fn(),
 }))
@@ -24,6 +26,8 @@ vi.mock('../../services/api/index', () => ({
     exportCsv: mocks.exportCsv,
     listClosings: mocks.listClosings,
     getClosingSummary: mocks.getClosingSummary,
+    validateNavAmount: mocks.validateNavAmount,
+    approveDiscrepancy: mocks.approveDiscrepancy,
     exportMonthlyPtgszlah: mocks.exportMonthlyPtgszlah,
     exportCustomPtgszlah: mocks.exportCustomPtgszlah,
   },
@@ -68,8 +72,9 @@ describe('NavReportPage', () => {
       {
         id: 'closing-1',
         closingDate: '2026-06-18',
+        branchId: 'branch-1',
         totalRevenue: 1_250_000,
-        status: 'OPEN',
+        status: 'CLOSED',
       },
     ])
     mocks.getClosingSummary.mockResolvedValue({
@@ -78,6 +83,17 @@ describe('NavReportPage', () => {
       vatAmount: 13_500,
       transactionCount: 3,
     })
+    mocks.validateNavAmount.mockResolvedValue({
+      closingId: 'closing-1',
+      branchCode: 'BUD01',
+      branchName: 'Budapest 01',
+      closingDate: '2026-06-18',
+      navAmount: 1_200_000,
+      systemAmount: 1_250_000,
+      discrepancy: -50_000,
+      isMatch: false,
+    })
+    mocks.approveDiscrepancy.mockResolvedValue(undefined)
     mocks.exportMonthlyPtgszlah.mockResolvedValue(new Blob(['<xml/>'], { type: 'application/xml' }))
     mocks.exportCustomPtgszlah.mockResolvedValue(new Blob(['<xml/>'], { type: 'application/xml' }))
     Object.defineProperty(URL, 'createObjectURL', {
@@ -104,7 +120,7 @@ describe('NavReportPage', () => {
     expect(await screen.findByText('NAV-001')).toBeInTheDocument()
     expect(screen.getByText('Teszt Ügyfél')).toBeInTheDocument()
     expect(screen.getByTestId('nav-closing-panel')).toBeInTheDocument()
-    expect(screen.getByText('OPEN')).toBeInTheDocument()
+    expect(screen.getByText('CLOSED')).toBeInTheDocument()
   })
 
   it('lekéri a NAV zárás összesítőt és indítja a PTGSZLAH XML exportokat', async () => {
@@ -135,5 +151,61 @@ describe('NavReportPage', () => {
       expect(mocks.exportCustomPtgszlah).toHaveBeenCalledWith('2026-06-18', '2026-06-18')
     })
     expect(screen.getByText('reports.navReport.closings.summary.totalRevenue')).toBeInTheDocument()
+  })
+
+  it('hibás NAV összegre nem hív validációs backendet', async () => {
+    const user = userEvent.setup()
+    render(<NavReportPage />)
+
+    await user.click(screen.getByRole('button', { name: /reports.navReport.submit/i }))
+    await user.type(await screen.findByLabelText('reports.navReport.discrepancy.navAmount'), '-1')
+    await user.click(screen.getByRole('button', { name: /reports.navReport.discrepancy.validate/i }))
+
+    expect(mocks.validateNavAmount).not.toHaveBeenCalled()
+    expect(await screen.findByText('reports.navReport.discrepancy.errors.invalidAmount')).toBeInTheDocument()
+  })
+
+  it('validálja a NAV összeget pontos branch/date params értékekkel és megjeleníti az eltérést', async () => {
+    const user = userEvent.setup()
+    render(<NavReportPage />)
+
+    await user.click(screen.getByRole('button', { name: /reports.navReport.submit/i }))
+    await user.type(await screen.findByLabelText('reports.navReport.discrepancy.navAmount'), '1200000')
+    await user.click(screen.getByRole('button', { name: /reports.navReport.discrepancy.validate/i }))
+
+    await waitFor(() => {
+      expect(mocks.validateNavAmount).toHaveBeenCalledWith('branch-1', '2026-06-18', 1_200_000)
+    })
+    expect(await screen.findByText('reports.navReport.discrepancy.mismatch')).toBeInTheDocument()
+    expect(screen.getByText(/-50 000 Ft/)).toBeInTheDocument()
+  })
+
+  it('approve-discrepancy csak 20+ karakteres indoklással hívódik', async () => {
+    const user = userEvent.setup()
+    render(<NavReportPage />)
+
+    await user.click(screen.getByRole('button', { name: /reports.navReport.submit/i }))
+    await user.type(await screen.findByLabelText('reports.navReport.discrepancy.navAmount'), '1200000')
+    await user.click(screen.getByRole('button', { name: /reports.navReport.discrepancy.validate/i }))
+    const approveButton = await screen.findByRole('button', { name: /reports.navReport.discrepancy.approve/i })
+    expect(approveButton).toBeDisabled()
+
+    await user.type(screen.getByLabelText('reports.navReport.discrepancy.justification'), 'Rövid')
+    expect(approveButton).toBeDisabled()
+    expect(mocks.approveDiscrepancy).not.toHaveBeenCalled()
+
+    await user.clear(screen.getByLabelText('reports.navReport.discrepancy.justification'))
+    await user.type(screen.getByLabelText('reports.navReport.discrepancy.justification'), 'Pénztárgép kerekítési eltérés igazolva')
+    await user.click(approveButton)
+
+    await waitFor(() => {
+      expect(mocks.approveDiscrepancy).toHaveBeenCalledWith(
+        'closing-1',
+        1_200_000,
+        'Pénztárgép kerekítési eltérés igazolva',
+      )
+    })
+    expect(mocks.getClosingSummary).toHaveBeenCalledWith('closing-1')
+    expect(mocks.listClosings).toHaveBeenCalledTimes(2)
   })
 })

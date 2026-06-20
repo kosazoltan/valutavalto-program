@@ -241,6 +241,17 @@ export interface NavClosingSummary {
   transactionCount?: number | string | null
 }
 
+export interface NavClosingValidationResult {
+  branchCode?: string | null
+  branchName?: string | null
+  closingDate?: string | null
+  navAmount?: number | string | null
+  systemAmount?: number | string | null
+  discrepancy?: number | string | null
+  isMatch: boolean
+  closingId: string
+}
+
 interface PageResponse<T> {
   content?: T[]
 }
@@ -278,6 +289,19 @@ export const navReportApi = {
   getClosingSummary: async (id: string): Promise<NavClosingSummary> => {
     const response = await api.get<NavClosingSummary>(`/nav/closings/${id}/summary`)
     return response.data
+  },
+  /** NAV záró összeg validálása. Backend: POST /api/v1/nav/closings/validate-amount */
+  validateNavAmount: async (branchId: string, date: string, navAmount: number): Promise<NavClosingValidationResult> => {
+    const response = await api.post<NavClosingValidationResult>('/nav/closings/validate-amount', null, {
+      params: { branchId, date, navAmount },
+    })
+    return response.data
+  },
+  /** NAV zárási eltérés jóváhagyása. Backend: POST /api/v1/nav/closings/{id}/approve-discrepancy */
+  approveDiscrepancy: async (closingId: string, navAmount: number, justification: string): Promise<void> => {
+    await api.post<void>(`/nav/closings/${closingId}/approve-discrepancy`, null, {
+      params: { navAmount, justification },
+    })
   },
   /** Havi PTGSZLAH XML export. Backend: GET /api/v1/nav/closings/ptgszlah/monthly */
   exportMonthlyPtgszlah: async (year: number, month: number): Promise<Blob> => {

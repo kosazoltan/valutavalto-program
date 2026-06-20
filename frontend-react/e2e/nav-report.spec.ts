@@ -105,8 +105,9 @@ async function mockApis(page: Page) {
             {
               id: 'closing-1',
               closingDate: '2026-06-18',
+              branchId: 'branch-1',
               totalRevenue: 1_250_000,
-              status: 'OPEN',
+              status: 'CLOSED',
             },
           ],
         }),
@@ -124,6 +125,27 @@ async function mockApis(page: Page) {
           transactionCount: 3,
         }),
       })
+    }
+
+    if (path.endsWith('/nav/closings/validate-amount') && method === 'POST') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          closingId: 'closing-1',
+          branchCode: 'BUD01',
+          branchName: 'Budapest 01',
+          closingDate: '2026-06-18',
+          navAmount: Number(url.searchParams.get('navAmount') ?? '0'),
+          systemAmount: 1_250_000,
+          discrepancy: -50_000,
+          isMatch: false,
+        }),
+      })
+    }
+
+    if (path.endsWith('/nav/closings/closing-1/approve-discrepancy') && method === 'POST') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
     }
 
     if (path.endsWith('/nav/closings/ptgszlah/monthly') && method === 'GET') {
@@ -172,7 +194,7 @@ test('NAV riport oldal a reportable backend listavégpontot is hívja', async ({
   await reportableRequest
   await expect(page.getByText('NAV-001')).toBeVisible()
   await expect(page.getByTestId('nav-closing-panel')).toBeVisible()
-  await expect(page.getByText('OPEN')).toBeVisible()
+  await expect(page.getByText('CLOSED')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
@@ -215,6 +237,50 @@ test('NAV riport mobil nézetben is kezeli a zárás összesítőt és XML expor
   )
   await page.getByRole('button', { name: /PTGSZLAH napi XML/i }).click()
   await customExport
+
+  const horizontalOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  )
+  expect(horizontalOverflow).toBe(false)
+})
+
+test('NAV riport mobil nézetben validálja és jóváhagyja a zárási eltérést', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mockApis(page)
+  await login(page)
+
+  await page.goto('/reports/nav', { waitUntil: 'domcontentloaded' })
+  await page.locator('input[type="date"]').fill('2026-06-18')
+  await page.getByRole('button', { name: /Lekérdezés/i }).click()
+  await expect(page.getByTestId('nav-closing-panel')).toBeVisible()
+
+  await page.getByLabel('NAV záró HUF összeg').fill('1200000')
+  const validateRequest = page.waitForRequest(request => {
+    const url = new URL(request.url())
+    return request.method() === 'POST'
+      && url.pathname.endsWith('/nav/closings/validate-amount')
+      && url.searchParams.get('branchId') === 'branch-1'
+      && url.searchParams.get('date') === '2026-06-18'
+      && url.searchParams.get('navAmount') === '1200000'
+  })
+  await page.getByRole('button', { name: /Összeg ellenőrzése/i }).click()
+  await validateRequest
+  await expect(page.getByText('Eltérés van a NAV és a rendszerösszeg között')).toBeVisible()
+  await expect(page.getByText(/Eltérés:.*50.*Ft/)).toBeVisible()
+
+  const approveButton = page.getByRole('button', { name: /Eltérés jóváhagyása/i })
+  await expect(approveButton).toBeDisabled()
+  await page.getByLabel('Eltérés indoklása').fill('Pénztárgép kerekítési eltérés igazolva')
+  await expect(approveButton).toBeEnabled()
+  const approveRequest = page.waitForRequest(request => {
+    const url = new URL(request.url())
+    return request.method() === 'POST'
+      && url.pathname.endsWith('/nav/closings/closing-1/approve-discrepancy')
+      && url.searchParams.get('navAmount') === '1200000'
+      && url.searchParams.get('justification') === 'Pénztárgép kerekítési eltérés igazolva'
+  })
+  await approveButton.click()
+  await approveRequest
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

@@ -1,8 +1,8 @@
 import { useState, useCallback, useMemo } from 'react'
-import { ShieldAlert, AlertTriangle, Search, Download } from 'lucide-react'
+import { CheckCircle2, ShieldAlert, AlertTriangle, Search, Download } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { navReportApi } from '../../services/api/index'
-import type { NavClosing, NavClosingSummary, NavReport, NavReportableTransaction } from '../../services/api/index'
+import type { NavClosing, NavClosingSummary, NavClosingValidationResult, NavReport, NavReportableTransaction } from '../../services/api/index'
 import { localIsoDate } from '../../utils/dateFormat'
 import { logger } from '../../utils/logger'
 import { getErrorMessage, getBlobErrorMessage } from '../../utils/errorHandling'
@@ -28,6 +28,13 @@ function formatAmount(n: number): string {
   return n.toLocaleString('hu-HU', { maximumFractionDigits: 2 })
 }
 
+function parseNavAmount(value: string): number | null {
+  const trimmed = value.trim().replace(',', '.')
+  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) return null
+  const amount = Number(trimmed)
+  return Number.isFinite(amount) && amount >= 0 ? amount : null
+}
+
 function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -50,7 +57,18 @@ export default function NavReportPage() {
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [ptgszlahExporting, setPtgszlahExporting] = useState<'monthly' | 'custom' | null>(null)
+  const [navAmounts, setNavAmounts] = useState<Record<string, string>>({})
+  const [validationResults, setValidationResults] = useState<Record<string, NavClosingValidationResult>>({})
+  const [justifications, setJustifications] = useState<Record<string, string>>({})
+  const [validatingClosingId, setValidatingClosingId] = useState<string | null>(null)
+  const [approvingClosingId, setApprovingClosingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const reloadClosings = useCallback(async () => {
+    const navClosings = await navReportApi.listClosings({ dateFrom: date, dateTo: date, page: 0, size: 10 })
+    setClosings(navClosings)
+    return navClosings
+  }, [date])
 
   const handleQuery = useCallback(async () => {
     if (!date) {
@@ -73,6 +91,8 @@ export default function NavReportPage() {
       setReportableTransactions(reportable)
       setClosings(navClosings)
       setClosingSummary(null)
+      setValidationResults({})
+      setJustifications({})
     } catch (err) {
       logger.error('NavReportPage', 'Lekérdezés hiba:', err)
       setError(getErrorMessage(err))
@@ -113,6 +133,64 @@ export default function NavReportPage() {
       setClosingSummary(null)
     }
   }, [])
+
+  const handleValidateAmount = useCallback(async (closing: NavClosing) => {
+    if (!closing.branchId || !closing.closingDate) {
+      setError(t('reports.navReport.discrepancy.errors.missingContext'))
+      return
+    }
+    const navAmount = parseNavAmount(navAmounts[closing.id] ?? '')
+    if (navAmount == null) {
+      setError(t('reports.navReport.discrepancy.errors.invalidAmount'))
+      return
+    }
+
+    setValidatingClosingId(closing.id)
+    setError(null)
+    try {
+      const result = await navReportApi.validateNavAmount(closing.branchId, closing.closingDate, navAmount)
+      setValidationResults((previous) => ({ ...previous, [closing.id]: result }))
+      setJustifications((previous) => ({ ...previous, [closing.id]: previous[closing.id] ?? '' }))
+    } catch (err) {
+      logger.error('NavReportPage', 'NAV záró összeg validáció hiba:', err)
+      setError(getErrorMessage(err))
+    } finally {
+      setValidatingClosingId(null)
+    }
+  }, [navAmounts, t])
+
+  const handleApproveDiscrepancy = useCallback(async (closing: NavClosing) => {
+    const result = validationResults[closing.id]
+    const navAmount = parseNavAmount(navAmounts[closing.id] ?? '')
+    const justification = (justifications[closing.id] ?? '').trim()
+    if (!result || result.isMatch || !result.closingId || navAmount == null) {
+      setError(t('reports.navReport.discrepancy.errors.missingValidation'))
+      return
+    }
+    if (justification.length < 20) {
+      setError(t('reports.navReport.discrepancy.errors.shortJustification'))
+      return
+    }
+
+    setApprovingClosingId(closing.id)
+    setError(null)
+    try {
+      await navReportApi.approveDiscrepancy(result.closingId, navAmount, justification)
+      await reloadClosings()
+      setClosingSummary(await navReportApi.getClosingSummary(result.closingId))
+      setValidationResults((previous) => {
+        const next = { ...previous }
+        delete next[closing.id]
+        return next
+      })
+      setJustifications((previous) => ({ ...previous, [closing.id]: '' }))
+    } catch (err) {
+      logger.error('NavReportPage', 'NAV eltérés jóváhagyás hiba:', err)
+      setError(getErrorMessage(err))
+    } finally {
+      setApprovingClosingId(null)
+    }
+  }, [justifications, navAmounts, reloadClosings, t, validationResults])
 
   const handleExportMonthlyPtgszlah = useCallback(async () => {
     if (!date) {
@@ -271,6 +349,87 @@ export default function NavReportPage() {
                     >
                       {t('reports.navReport.closings.summaryButton')}
                     </button>
+                    <div className="mt-3 space-y-2 rounded border border-gray-200 bg-white p-3" data-testid={`nav-discrepancy-${closing.id}`}>
+                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600" htmlFor={`nav-amount-${closing.id}`}>
+                            {t('reports.navReport.discrepancy.navAmount')}
+                          </label>
+                          <input
+                            id={`nav-amount-${closing.id}`}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            inputMode="decimal"
+                            value={navAmounts[closing.id] ?? ''}
+                            onChange={(event) => setNavAmounts((previous) => ({ ...previous, [closing.id]: event.target.value }))}
+                            className="form-input mt-1 w-full text-sm"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void handleValidateAmount(closing)}
+                          disabled={validatingClosingId === closing.id}
+                          className="min-h-9 rounded bg-blue-600 px-3 text-xs font-semibold text-white disabled:opacity-50"
+                        >
+                          {validatingClosingId === closing.id
+                            ? t('reports.navReport.discrepancy.validating')
+                            : t('reports.navReport.discrepancy.validate')}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-1 text-xs text-gray-600 sm:grid-cols-2">
+                        <div>{t('reports.navReport.discrepancy.context.branch')}: {closing.branchId ?? '-'}</div>
+                        <div>{t('reports.navReport.discrepancy.context.date')}: {closing.closingDate}</div>
+                        <div className="sm:col-span-2 break-all">{t('reports.navReport.discrepancy.context.closingId')}: {closing.id}</div>
+                      </div>
+                      {validationResults[closing.id] && (
+                        <div
+                          className={`rounded border p-3 text-sm ${
+                            validationResults[closing.id]!.isMatch
+                              ? 'border-green-200 bg-green-50 text-green-900'
+                              : 'border-red-200 bg-red-50 text-red-900'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 font-semibold">
+                            {validationResults[closing.id]!.isMatch ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                            {validationResults[closing.id]!.isMatch
+                              ? t('reports.navReport.discrepancy.match')
+                              : t('reports.navReport.discrepancy.mismatch')}
+                          </div>
+                          <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                            <div>{t('reports.navReport.discrepancy.context.branch')}: {validationResults[closing.id]!.branchName ?? validationResults[closing.id]!.branchCode ?? '-'}</div>
+                            <div>{t('reports.navReport.discrepancy.context.date')}: {validationResults[closing.id]!.closingDate ?? '-'}</div>
+                            <div>{t('reports.navReport.discrepancy.result.navAmount')}: {formatHuf(toNum(validationResults[closing.id]!.navAmount))}</div>
+                            <div>{t('reports.navReport.discrepancy.result.systemAmount')}: {formatHuf(toNum(validationResults[closing.id]!.systemAmount))}</div>
+                            <div>{t('reports.navReport.discrepancy.result.discrepancy')}: {formatHuf(toNum(validationResults[closing.id]!.discrepancy))}</div>
+                            <div>{t('reports.navReport.discrepancy.context.closingId')}: {validationResults[closing.id]!.closingId}</div>
+                          </div>
+                          {!validationResults[closing.id]!.isMatch && (
+                            <div className="mt-3 space-y-2">
+                              <label className="block text-xs font-medium" htmlFor={`nav-justification-${closing.id}`}>
+                                {t('reports.navReport.discrepancy.justification')}
+                              </label>
+                              <textarea
+                                id={`nav-justification-${closing.id}`}
+                                value={justifications[closing.id] ?? ''}
+                                onChange={(event) => setJustifications((previous) => ({ ...previous, [closing.id]: event.target.value }))}
+                                className="form-input min-h-20 w-full resize-y text-sm"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => void handleApproveDiscrepancy(closing)}
+                                disabled={approvingClosingId === closing.id || (justifications[closing.id] ?? '').trim().length < 20}
+                                className="min-h-9 rounded bg-red-700 px-3 text-xs font-semibold text-white disabled:opacity-50"
+                              >
+                                {approvingClosingId === closing.id
+                                  ? t('reports.navReport.discrepancy.approving')
+                                  : t('reports.navReport.discrepancy.approve')}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

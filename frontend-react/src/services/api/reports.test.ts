@@ -19,6 +19,7 @@ vi.mock('./client', () => {
 
 const mockApi = api as unknown as {
   get: ReturnType<typeof vi.fn>
+  post: ReturnType<typeof vi.fn>
 }
 
 describe('reportApi CSV export backend contract', () => {
@@ -95,6 +96,7 @@ describe('navReportApi backend contract', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockApi.get.mockResolvedValue({ data: [] })
+    mockApi.post.mockResolvedValue({ data: {} })
   })
 
   it('getReportable calls GET /nav-reports/reportable with date', async () => {
@@ -102,6 +104,35 @@ describe('navReportApi backend contract', () => {
 
     expect(mockApi.get).toHaveBeenCalledWith('/nav-reports/reportable', {
       params: { date: '2026-06-18' },
+    })
+  })
+
+  it('validateNavAmount calls POST /nav/closings/validate-amount with branch/date/navAmount params', async () => {
+    mockApi.post.mockResolvedValue({
+      data: {
+        closingId: 'closing-1',
+        navAmount: 1_200_000,
+        systemAmount: 1_250_000,
+        discrepancy: -50_000,
+        isMatch: false,
+      },
+    })
+
+    await navReportApi.validateNavAmount('branch-1', '2026-06-18', 1_200_000)
+
+    expect(mockApi.post).toHaveBeenCalledWith('/nav/closings/validate-amount', null, {
+      params: { branchId: 'branch-1', date: '2026-06-18', navAmount: 1_200_000 },
+    })
+  })
+
+  it('approveDiscrepancy calls POST /nav/closings/{id}/approve-discrepancy with amount and justification params', async () => {
+    await navReportApi.approveDiscrepancy('closing-1', 1_200_000, 'Pénztárgép kerekítési eltérés igazolva')
+
+    expect(mockApi.post).toHaveBeenCalledWith('/nav/closings/closing-1/approve-discrepancy', null, {
+      params: {
+        navAmount: 1_200_000,
+        justification: 'Pénztárgép kerekítési eltérés igazolva',
+      },
     })
   })
 })

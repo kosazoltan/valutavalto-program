@@ -1539,6 +1539,32 @@
           "transactions": "Tranzakció"
         }
       },
+      "discrepancy": {
+        "navAmount": "NAV záró HUF összeg",
+        "validate": "Összeg ellenőrzése",
+        "validating": "Ellenőrzés...",
+        "match": "A NAV összeg egyezik a rendszerösszeggel",
+        "mismatch": "Eltérés van a NAV és a rendszerösszeg között",
+        "justification": "Eltérés indoklása",
+        "approve": "Eltérés jóváhagyása",
+        "approving": "Jóváhagyás...",
+        "context": {
+          "branch": "Iroda",
+          "date": "Zárás dátuma",
+          "closingId": "Zárás azonosító"
+        },
+        "result": {
+          "navAmount": "NAV összeg",
+          "systemAmount": "Rendszerösszeg",
+          "discrepancy": "Eltérés"
+        },
+        "errors": {
+          "missingContext": "A NAV zárásból hiányzik az iroda vagy dátum kontextus.",
+          "invalidAmount": "Adjon meg nem negatív, legfeljebb két tizedesjegyű NAV összeget.",
+          "missingValidation": "Előbb futtassa le a NAV összeg ellenőrzését.",
+          "shortJustification": "Az indoklás legalább 20 karakter legyen."
+        }
+      },
       "table": {
         "receipt": "Bizonylat",
         "time": "Idő",
