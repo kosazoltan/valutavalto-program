@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => ({
   finalizeReceipt: vi.fn(),
   getCorrections: vi.fn(),
   getPendingCorrections: vi.fn(),
+  createCorrection: vi.fn(),
   approveCorrection: vi.fn(),
   rejectCorrection: vi.fn(),
   updateCollectionStatus: vi.fn(),
@@ -83,6 +84,7 @@ vi.mock('../../services/api/index', () => ({
     finalizeReceipt: mocks.finalizeReceipt,
     getCorrections: mocks.getCorrections,
     getPendingCorrections: mocks.getPendingCorrections,
+    createCorrection: mocks.createCorrection,
     approveCorrection: mocks.approveCorrection,
     rejectCorrection: mocks.rejectCorrection,
     updateCollectionStatus: mocks.updateCollectionStatus,
@@ -375,6 +377,7 @@ describe('TreasuryDashboard', () => {
     mocks.completeTransfer.mockResolvedValue({ id: 22, status: 'COMPLETED' })
     mocks.rejectTransfer.mockResolvedValue({ id: 21, status: 'REJECTED' })
     mocks.finalizeReceipt.mockResolvedValue({ id: 31, status: 'FINALIZED' })
+    mocks.createCorrection.mockResolvedValue({ id: 42, status: 'REQUESTED' })
     mocks.approveCorrection.mockResolvedValue({ id: 41, status: 'APPROVED' })
     mocks.rejectCorrection.mockResolvedValue({ id: 41, status: 'REJECTED' })
     mocks.updateCollectionStatus.mockResolvedValue({ id: 11, status: 'COMPLETED' })
@@ -529,6 +532,47 @@ describe('TreasuryDashboard', () => {
     await user.click(screen.getByRole('button', { name: 'Anyagbizonylat #31 véglegesítés' }))
 
     expect(mocks.finalizeReceipt).not.toHaveBeenCalled()
+  })
+
+  it('a készletkorrekció űrlapból createCorrection backend szerződést hív', async () => {
+    const user = userEvent.setup()
+    render(<TreasuryDashboard />)
+
+    await screen.findByTestId('ertektar-readonly-ledger')
+    await user.clear(screen.getByLabelText('Azonosító'))
+    await user.type(screen.getByLabelText('Azonosító'), 'bud01')
+    await user.clear(screen.getByLabelText('Valuta'))
+    await user.type(screen.getByLabelText('Valuta'), 'eur')
+    await user.clear(screen.getByLabelText('Új mennyiség'))
+    await user.type(screen.getByLabelText('Új mennyiség'), '125.5')
+    await user.clear(screen.getByLabelText('Indok'))
+    await user.type(screen.getByLabelText('Indok'), 'Leltár eltérés')
+    await user.click(screen.getByRole('button', { name: 'Korrekció kérése' }))
+
+    await waitFor(() => {
+      expect(mocks.createCorrection).toHaveBeenCalledWith({
+        entityType: 'VAULT',
+        entityId: 'bud01',
+        currencyCode: 'EUR',
+        newQuantity: 125.5,
+        reason: 'Leltár eltérés',
+      })
+    })
+  })
+
+  it('készletkorrekció létrehozás elutasított confirm esetén nem küld POST-ot', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const user = userEvent.setup()
+    render(<TreasuryDashboard />)
+
+    await screen.findByTestId('ertektar-readonly-ledger')
+    await user.type(screen.getByLabelText('Azonosító'), 'BUD01')
+    await user.type(screen.getByLabelText('Valuta'), 'EUR')
+    await user.type(screen.getByLabelText('Új mennyiség'), '125')
+    await user.type(screen.getByLabelText('Indok'), 'Leltár eltérés')
+    await user.click(screen.getByRole('button', { name: 'Korrekció kérése' }))
+
+    expect(mocks.createCorrection).not.toHaveBeenCalled()
   })
 
   it('a készletkorrekciók panelből meghívja az approve/reject backend szerződéseket', async () => {

@@ -1,0 +1,35 @@
+contract: "TreasuryDashboard -> POST /api/v1/ertektar/corrections"
+date: "2026-06-20"
+status: "IMPLEMENTED_FROM_EXISTING_BACKEND_CONTRACT"
+
+preconditions:
+  - "The user provides entityType, entityId, currencyCode, newQuantity and reason."
+  - "The user confirms the state-changing request before the POST request is sent."
+  - "Backend validation remains authoritative for required fields and non-negative quantity."
+  - "Backend reads the current stock and computes oldQuantity/difference."
+
+postconditions:
+  - "On create success, the frontend reloads dashboard data from backend sources."
+  - "On create success, the frontend clears the local correction form."
+  - "On failure, the existing dashboard error panel shows a factual error message."
+
+invariants:
+  - "The frontend never computes oldQuantity or difference."
+  - "The frontend never applies stock balance changes for newly created correction requests."
+  - "The created correction remains a backend REQUESTED item until approve/reject workflow handles it."
+
+error_contracts:
+  - "User cancels confirmation -> no POST request."
+  - "Invalid or rejected backend response -> no local success state is fabricated; error state is set."
+  - "Empty required frontend fields block submission before POST with a local error."
+
+behavioral:
+  - "Create form calls ertektarApi.createCorrection(payload)."
+  - "currencyCode is submitted uppercased and trimmed."
+  - "entityId and reason are submitted trimmed."
+  - "Button is disabled while create is in flight."
+
+derived_tests:
+  - "TreasuryDashboard calls createCorrection with the form payload after confirmation."
+  - "TreasuryDashboard does not call createCorrection when confirmation is cancelled."
+  - "Playwright verifies visible mobile render without horizontal overflow and observes the POST request."

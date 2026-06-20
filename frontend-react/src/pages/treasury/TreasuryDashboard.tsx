@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, type FormEvent, type ReactNode } from 'react'
 import {
   Trophy,
   CheckCircle,
@@ -54,6 +54,22 @@ interface BranchClosing {
   closingStatus: ClosingStatus
 }
 
+interface StockCorrectionDraftForm {
+  entityType: 'VAULT' | 'CASHIER'
+  entityId: string
+  currencyCode: string
+  newQuantity: string
+  reason: string
+}
+
+const EMPTY_CORRECTION_FORM: StockCorrectionDraftForm = {
+  entityType: 'VAULT',
+  entityId: '',
+  currencyCode: '',
+  newQuantity: '',
+  reason: '',
+}
+
 export default function TreasuryDashboard() {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
@@ -86,6 +102,8 @@ export default function TreasuryDashboard() {
   const [transferAction, setTransferAction] = useState<string | null>(null)
   const [receiptAction, setReceiptAction] = useState<string | null>(null)
   const [correctionAction, setCorrectionAction] = useState<string | null>(null)
+  const [createCorrectionSubmitting, setCreateCorrectionSubmitting] = useState(false)
+  const [newCorrection, setNewCorrection] = useState<StockCorrectionDraftForm>(EMPTY_CORRECTION_FORM)
   const [statusActionError, setStatusActionError] = useState<string | null>(null)
   const [treasuryApiRestricted, setTreasuryApiRestricted] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(new Date())
@@ -397,6 +415,40 @@ export default function TreasuryDashboard() {
       logger.error('TreasuryDashboard', 'Stock correction decision error:', err)
     } finally {
       setCorrectionAction(null)
+    }
+  }
+
+  const createStockCorrection = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const entityId = newCorrection.entityId.trim()
+    const currencyCode = newCorrection.currencyCode.trim().toUpperCase()
+    const reason = newCorrection.reason.trim()
+    const newQuantity = Number(newCorrection.newQuantity)
+
+    if (!entityId || !currencyCode || !reason || !Number.isFinite(newQuantity) || newQuantity < 0) {
+      setStatusActionError('Készletkorrekcióhoz típus, azonosító, valuta, nem negatív mennyiség és indok szükséges.')
+      return
+    }
+    if (!window.confirm(`Biztosan létrehozza a ${currencyCode} készletkorrekciós kérelmet?`)) return
+
+    try {
+      setCreateCorrectionSubmitting(true)
+      setStatusActionError(null)
+      await ertektarApi.createCorrection({
+        entityType: newCorrection.entityType,
+        entityId,
+        currencyCode,
+        newQuantity,
+        reason,
+      })
+      setNewCorrection(EMPTY_CORRECTION_FORM)
+      await fetchData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Készletkorrekció létrehozás sikertelen.'
+      setStatusActionError(message)
+      logger.error('TreasuryDashboard', 'Stock correction create error:', err)
+    } finally {
+      setCreateCorrectionSubmitting(false)
     }
   }
 
@@ -741,7 +793,75 @@ export default function TreasuryDashboard() {
                 onClick: () => void decideStockCorrection(row.id, 'reject'),
               },
             ] : []}
-          />
+          >
+            <form onSubmit={(event) => void createStockCorrection(event)} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="text-xs font-semibold text-secondary-600">
+                Típus
+                <select
+                  className="form-input mt-1 h-8 w-full text-xs"
+                  value={newCorrection.entityType}
+                  onChange={(event) => setNewCorrection((value) => ({
+                    ...value,
+                    entityType: event.target.value as StockCorrectionDraftForm['entityType'],
+                  }))}
+                  disabled={createCorrectionSubmitting}
+                >
+                  <option value="VAULT">VAULT</option>
+                  <option value="CASHIER">CASHIER</option>
+                </select>
+              </label>
+              <label className="text-xs font-semibold text-secondary-600">
+                Azonosító
+                <input
+                  className="form-input mt-1 h-8 w-full text-xs"
+                  value={newCorrection.entityId}
+                  onChange={(event) => setNewCorrection((value) => ({ ...value, entityId: event.target.value }))}
+                  disabled={createCorrectionSubmitting}
+                  placeholder="BUD01"
+                />
+              </label>
+              <label className="text-xs font-semibold text-secondary-600">
+                Valuta
+                <input
+                  className="form-input mt-1 h-8 w-full text-xs font-mono uppercase"
+                  value={newCorrection.currencyCode}
+                  onChange={(event) => setNewCorrection((value) => ({ ...value, currencyCode: event.target.value }))}
+                  disabled={createCorrectionSubmitting}
+                  placeholder="EUR"
+                />
+              </label>
+              <label className="text-xs font-semibold text-secondary-600">
+                Új mennyiség
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="form-input mt-1 h-8 w-full text-xs font-mono"
+                  value={newCorrection.newQuantity}
+                  onChange={(event) => setNewCorrection((value) => ({ ...value, newQuantity: event.target.value }))}
+                  disabled={createCorrectionSubmitting}
+                  placeholder="0"
+                />
+              </label>
+              <label className="text-xs font-semibold text-secondary-600 sm:col-span-2">
+                Indok
+                <input
+                  className="form-input mt-1 h-8 w-full text-xs"
+                  value={newCorrection.reason}
+                  onChange={(event) => setNewCorrection((value) => ({ ...value, reason: event.target.value }))}
+                  disabled={createCorrectionSubmitting}
+                  placeholder="Leltár eltérés"
+                />
+              </label>
+              <button
+                type="submit"
+                className="form-button-primary min-h-9 text-xs sm:col-span-2"
+                disabled={createCorrectionSubmitting}
+              >
+                {createCorrectionSubmitting ? '...' : 'Korrekció kérése'}
+              </button>
+            </form>
+          </ReadOnlyQueue>
         </div>
       </div>
 
@@ -925,12 +1045,14 @@ function ReadOnlyQueue({
   rows,
   busyKey,
   actions,
+  children,
 }: {
   title: string
   summary: string
   rows: ReadOnlyQueueRow[]
   busyKey?: string | null
   actions?: (row: ReadOnlyQueueRow) => ReadOnlyQueueAction[]
+  children?: ReactNode
 }) {
   return (
     <section className="rounded-lg border border-secondary-100 bg-white p-3">
@@ -938,6 +1060,11 @@ function ReadOnlyQueue({
         <h3 className="text-sm font-bold text-secondary-900">{title}</h3>
         <span className="text-xs text-secondary-500">{summary}</span>
       </div>
+      {children && (
+        <div className="mb-3 rounded border border-secondary-100 bg-secondary-50 p-2">
+          {children}
+        </div>
+      )}
       {rows.length === 0 ? (
         <p className="rounded border border-secondary-200 bg-secondary-50 px-3 py-2 text-sm text-secondary-600">
           Nincs listázható tétel.
