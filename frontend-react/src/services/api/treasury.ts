@@ -77,17 +77,28 @@ export interface ErtektarConsolidatedReport {
   } | null
 }
 
+// FK-037 (2026-06-20): ezek a vegpontok cegszintu, vezetoi (MANAGER/ADMIN/FOERTEKTAR/UGYVEZETO)
+// treasury-osszesitok. Alacsonyabb szerepkornek (pl. Ertektaros) 403-at adnak, amit a hivo
+// (TreasuryDashboard) gracefully kezel: ures adat + informativ "Korlatozott jogosultsag" banner.
+// A globalis 403-toast ezert ITT zaj — `_skipGlobal403Toast: true`-val elnyomjuk (a getCompanyBalances/
+// getCompanyPosition mar igy mukodik). A banner megmarad, a toast-ozon megszunik.
 export const treasuryApi = {
   dashboard: async (): Promise<TreasuryDashboardSummary> => {
-    const response = await api.get<TreasuryDashboardSummary>('/treasury/dashboard')
+    const response = await api.get<TreasuryDashboardSummary>('/treasury/dashboard', {
+      _skipGlobal403Toast: true,
+    })
     return response.data
   },
   branchComparison: async (): Promise<TreasuryBranchComparison[]> => {
-    const response = await api.get<TreasuryBranchComparison[]>('/treasury/branch-comparison')
+    const response = await api.get<TreasuryBranchComparison[]>('/treasury/branch-comparison', {
+      _skipGlobal403Toast: true,
+    })
     return response.data
   },
   submissionStatus: async (): Promise<TreasurySubmissionStatus[]> => {
-    const response = await api.get<TreasurySubmissionStatus[]>('/treasury/submission-status')
+    const response = await api.get<TreasurySubmissionStatus[]>('/treasury/submission-status', {
+      _skipGlobal403Toast: true,
+    })
     return response.data
   },
   bankFlow: async (startDate?: string, endDate?: string): Promise<TreasuryBankFlow[]> => {
@@ -97,23 +108,28 @@ export const treasuryApi = {
     }
     const response = await api.get<TreasuryBankFlow[]>('/treasury/bank-flow', {
       params,
+      _skipGlobal403Toast: true,
     })
     return response.data
   },
   branchGroupSummary: async (date?: string): Promise<TreasuryAggregate[]> => {
     const response = await api.get<TreasuryAggregate[]>('/treasury/branch-group-summary', {
       params: date ? { date } : {},
+      _skipGlobal403Toast: true,
     })
     return response.data
   },
   companySummary: async (date?: string): Promise<TreasuryAggregate[]> => {
     const response = await api.get<TreasuryAggregate[]>('/treasury/company-summary', {
       params: date ? { date } : {},
+      _skipGlobal403Toast: true,
     })
     return response.data
   },
   ertektarBranches: async (): Promise<BranchMonitoringDashboard> => {
-    const response = await api.get<BranchMonitoringDashboard>('/ertektar/branches')
+    const response = await api.get<BranchMonitoringDashboard>('/ertektar/branches', {
+      _skipGlobal403Toast: true,
+    })
     return response.data
   },
   ertektarConsolidatedReport: async (from?: string, to?: string): Promise<ErtektarConsolidatedReport> => {
@@ -122,6 +138,7 @@ export const treasuryApi = {
         ...(from ? { from } : {}),
         ...(to ? { to } : {}),
       },
+      _skipGlobal403Toast: true,
     })
     return response.data
   },

@@ -730,7 +730,11 @@ export const cashBalanceApi = {
     return response.data
   },
   getCompanyTotals: async (): Promise<CurrencyTotalBalance[]> => {
-    const response = await api.get<CurrencyTotalBalance[]>('/cash-balances/company-totals')
+    // v2.5.3 / FK-037: 403 esetén NEM globális toast — a TreasuryDashboard "Korlátozott
+    // jogosultság" panelt mutat (összhangban getCompanyBalances/getCompanyPosition viselkedésével).
+    const response = await api.get<CurrencyTotalBalance[]>('/cash-balances/company-totals', {
+      _skipGlobal403Toast: true,
+    })
     return response.data
   },
   getCompanyPosition: async (): Promise<CompanyCashPosition> => {

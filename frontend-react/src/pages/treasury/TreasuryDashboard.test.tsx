@@ -101,9 +101,38 @@ vi.mock('../../services/api/index', () => ({
   },
 }))
 
+const ctx = vi.hoisted(() => ({ appMode: 'full' as string }))
+
+// FK-037: a TreasuryDashboard mostantol szerep+appMode-tudatos (canViewCentralTreasury). A kozponti
+// widgetek megjelenitesehez kozponti szerepkor (itt: UGYVEZETO) ES nem-'ertektar' appMode kell.
+// A gating-teszt a `ctx.appMode = 'ertektar'`-ral kapcsol at; egyebkent a default 'full'.
+vi.mock('../../hooks/useAppMode', () => ({
+  useAppMode: () => ({ mode: ctx.appMode, isLoading: false }),
+}))
+
+vi.mock('../../stores/authStore', () => ({
+  useAuthStore: (
+    selector: (s: {
+      roles: string[]
+      activeRole: string | null
+      worker: { role: string } | null
+      isManagerOrAbove: () => boolean
+      hasCanonicalRole: (roles: string | string[]) => boolean
+    }) => unknown,
+  ) =>
+    selector({
+      roles: ['ugyvezeto'],
+      activeRole: 'UGYVEZETO',
+      worker: { role: 'UGYVEZETO' },
+      isManagerOrAbove: () => true,
+      hasCanonicalRole: () => true,
+    }),
+}))
+
 describe('TreasuryDashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    ctx.appMode = 'full'
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     mocks.getDailyTurnover.mockResolvedValue({
       totalBuyCount: 0,
@@ -395,6 +424,34 @@ describe('TreasuryDashboard', () => {
     mocks.updateCollectionStatus.mockResolvedValue({ id: 11, status: 'COMPLETED' })
     mocks.updateDistributionStatus.mockResolvedValue({ id: 12, status: 'REJECTED' })
     mocks.updateBankTransactionStatus.mockResolvedValue({ id: 13, status: 'IN_PROGRESS' })
+  })
+
+  it('FK-037: ertektar appMode-ban a központi treasury-widgetek rejtve, és a központi végpontokat NEM hívja', async () => {
+    ctx.appMode = 'ertektar'
+    render(<TreasuryDashboard />)
+
+    // A nem-központi, mindenki által elérhető szekció (Compact data row) betölt → render kész.
+    await screen.findByText('Mai tranzakciók')
+
+    // A központi/vezetői végpontokat ertektar módban NEM hívja → nincs 403, nincs toast-özön.
+    expect(mocks.treasuryDashboard).not.toHaveBeenCalled()
+    expect(mocks.branchComparison).not.toHaveBeenCalled()
+    expect(mocks.submissionStatus).not.toHaveBeenCalled()
+    expect(mocks.bankFlow).not.toHaveBeenCalled()
+    expect(mocks.companySummary).not.toHaveBeenCalled()
+    expect(mocks.ertektarBranches).not.toHaveBeenCalled()
+    expect(mocks.getCompanyTotals).not.toHaveBeenCalled()
+    expect(mocks.getCompanyPosition).not.toHaveBeenCalled()
+    expect(mocks.getCollections).not.toHaveBeenCalled()
+    expect(mocks.getTransfers).not.toHaveBeenCalled()
+    expect(mocks.getCorrections).not.toHaveBeenCalled()
+
+    // A központi szekciók nincsenek a DOM-ban (rejtve).
+    expect(screen.queryByTestId('ertektar-status-control')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('ertektar-readonly-ledger')).not.toBeInTheDocument()
+
+    // A nem-központi adat (napi forgalom) ettől még betölt.
+    expect(mocks.getDailyTurnover).toHaveBeenCalled()
   })
 
   it('a teljes készletértéket a backend HUF-egyenértékes company-position válaszából mutatja', async () => {

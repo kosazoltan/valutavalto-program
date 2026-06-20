@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type FormEvent, type ReactNode } from 'react'
+import { useState, useEffect, useCallback, useMemo, type FormEvent, type ReactNode } from 'react'
 import {
   Trophy,
   CheckCircle,
@@ -37,6 +37,9 @@ import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
 import { localIsoDate } from '../../utils/dateFormat'
 import { useTranslation } from 'react-i18next'
+import { useAppMode } from '../../hooks/useAppMode'
+import { useAuthStore } from '../../stores/authStore'
+import { CENTRAL_VAULT_ROLES } from './TreasuryLayout'
 
 interface BranchRanking {
   id: string
@@ -120,6 +123,23 @@ const EMPTY_RECEIPT_FORM: MaterialReceiptDraftForm = {
 
 export default function TreasuryDashboard() {
   const { t } = useTranslation()
+  // FK-037 (2026-06-20): a cegszintu/vezetoi treasury-widgetek (treasury/** osszesitok,
+  // ertektar/** operativ sorok, cash-balances company-totals/position) csak a backend-jogosult
+  // szerepkoroknek (MANAGER/ADMIN/FOERTEKTAR/UGYVEZETO) jelennek meg, ES SOHA a lokalis 'ertektar'
+  // Electron modban — ott a helyi ertektaros csak a sajat operativ feluleteit hasznalja
+  // (TreasuryLayout konvencio, appMode==='ertektar' -> CENTRAL_VAULT_ROLES rejtve). Ezeket a
+  // vegpontokat ilyenkor NEM is kerjuk le -> nincs 403, nincs toast-ozon, nincs ures widget.
+  const { mode: appMode } = useAppMode()
+  const roles = useAuthStore((state) => state.roles)
+  const activeRole = useAuthStore((state) => state.activeRole)
+  const workerRole = useAuthStore((state) => state.worker?.role)
+  const isManagerOrAbove = useAuthStore((state) => state.isManagerOrAbove)
+  const hasCanonicalRole = useAuthStore((state) => state.hasCanonicalRole)
+  const canViewCentralTreasury = useMemo(
+    () => appMode !== 'ertektar' && (isManagerOrAbove() || hasCanonicalRole([...CENTRAL_VAULT_ROLES])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- roles/activeRole/workerRole szandekos extra trigger (login/role-change)
+    [appMode, isManagerOrAbove, hasCanonicalRole, roles, activeRole, workerRole],
+  )
   const [loading, setLoading] = useState(true)
   const [turnover, setTurnover] = useState<DailyTurnoverSummary | null>(null)
   const [companyPosition, setCompanyPosition] = useState<CompanyCashPosition | null>(null)
@@ -174,6 +194,28 @@ export default function TreasuryDashboard() {
       setCompanyBalanceRestricted(false)
       setTreasuryApiRestricted(false)
 
+      // FK-037: vezetoi treasury-vegpont — csak jogosult szerepkorrel hivjuk; egyebkent a default
+      // ertekkel terunk vissza (a lokalis ertektaros nezetben nincs lekeres, igy nincs 403/toast/banner).
+      const treasuryGet = <T,>(run: () => Promise<T>, fallback: T): Promise<T> => {
+        if (!canViewCentralTreasury) return Promise.resolve(fallback)
+        return run().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setTreasuryApiRestricted(true)
+          }
+          return fallback
+        })
+      }
+      // Ugyanaz, de a cegszintu cash-balance 403-at a "Korlatozott jogosultsag" panelhez koti.
+      const companyGet = <T,>(run: () => Promise<T>, fallback: T): Promise<T> => {
+        if (!canViewCentralTreasury) return Promise.resolve(fallback)
+        return run().catch((err: unknown) => {
+          if (err instanceof AxiosError && err.response?.status === 403) {
+            setCompanyBalanceRestricted(true)
+          }
+          return fallback
+        })
+      }
+
       const [
         turnoverData,
         balanceDataRaw,
@@ -207,128 +249,35 @@ export default function TreasuryDashboard() {
           }
           return []
         }),
-        cashBalanceApi.getCompanyPosition().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setCompanyBalanceRestricted(true)
-          }
-          return null
-        }),
-        cashBalanceApi.getCompanyTotals().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setCompanyBalanceRestricted(true)
-          }
-          return []
-        }),
+        companyGet<CompanyCashPosition | null>(() => cashBalanceApi.getCompanyPosition(), null),
+        companyGet<CurrencyTotalBalance[]>(() => cashBalanceApi.getCompanyTotals(), []),
         cashBalanceApi.getLowAlerts().catch(() => []),
         cashBalanceApi.getHighAlerts().catch(() => []),
-        treasuryApi.dashboard().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return null
-        }),
-        treasuryApi.branchComparison().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return []
-        }),
-        treasuryApi.submissionStatus().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return []
-        }),
-        treasuryApi.bankFlow().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return []
-        }),
-        treasuryApi.branchGroupSummary().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return []
-        }),
-        treasuryApi.companySummary().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return []
-        }),
-        treasuryApi.ertektarBranches().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return {}
-        }),
-        treasuryApi.ertektarConsolidatedReport().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return null
-        }),
-        ertektarApi.getCollections().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return []
-        }),
-        ertektarApi.getDistributions().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return []
-        }),
-        ertektarApi.getBankTransactions().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return []
-        }),
-        ertektarApi.getTransfers().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return []
-        }),
-        ertektarApi.getPendingTransfers().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return []
-        }),
-        ertektarApi.getReceipts().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return []
-        }),
-        ertektarApi.getReceiptsByType('B').catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return []
-        }),
-        ertektarApi.getReceiptsByType('K').catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return []
-        }),
-        ertektarApi.getCorrections().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return []
-        }),
-        ertektarApi.getPendingCorrections().catch((err: unknown) => {
-          if (err instanceof AxiosError && err.response?.status === 403) {
-            setTreasuryApiRestricted(true)
-          }
-          return []
-        }),
+        treasuryGet<TreasuryDashboardSummary | null>(() => treasuryApi.dashboard(), null),
+        treasuryGet<TreasuryBranchComparison[]>(() => treasuryApi.branchComparison(), []),
+        treasuryGet<TreasurySubmissionStatus[]>(() => treasuryApi.submissionStatus(), []),
+        treasuryGet<TreasuryBankFlow[]>(() => treasuryApi.bankFlow(), []),
+        treasuryGet<TreasuryAggregate[]>(() => treasuryApi.branchGroupSummary(), []),
+        treasuryGet<TreasuryAggregate[]>(() => treasuryApi.companySummary(), []),
+        canViewCentralTreasury
+          ? treasuryApi.ertektarBranches().catch((err: unknown) => {
+              if (err instanceof AxiosError && err.response?.status === 403) {
+                setTreasuryApiRestricted(true)
+              }
+              return {}
+            })
+          : Promise.resolve({}),
+        treasuryGet<ErtektarConsolidatedReport | null>(() => treasuryApi.ertektarConsolidatedReport(), null),
+        treasuryGet<ErtektarCollection[]>(() => ertektarApi.getCollections(), []),
+        treasuryGet<ErtektarDistribution[]>(() => ertektarApi.getDistributions(), []),
+        treasuryGet<BankTransaction[]>(() => ertektarApi.getBankTransactions(), []),
+        treasuryGet<VaultTransferItem[]>(() => ertektarApi.getTransfers(), []),
+        treasuryGet<VaultTransferItem[]>(() => ertektarApi.getPendingTransfers(), []),
+        treasuryGet<MaterialReceiptItem[]>(() => ertektarApi.getReceipts(), []),
+        treasuryGet<MaterialReceiptItem[]>(() => ertektarApi.getReceiptsByType('B'), []),
+        treasuryGet<MaterialReceiptItem[]>(() => ertektarApi.getReceiptsByType('K'), []),
+        treasuryGet<StockCorrectionItem[]>(() => ertektarApi.getCorrections(), []),
+        treasuryGet<StockCorrectionItem[]>(() => ertektarApi.getPendingCorrections(), []),
       ])
 
       if (turnoverData) setTurnover(turnoverData)
@@ -413,7 +362,7 @@ export default function TreasuryDashboard() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [canViewCentralTreasury])
 
   useEffect(() => {
     void fetchData()
@@ -699,6 +648,16 @@ export default function TreasuryDashboard() {
   const totalVolume = (turnover?.totalBuyHuf ?? 0) + (turnover?.totalSellHuf ?? 0)
   const totalCustomers = turnover?.totalBuyCount ?? 0
   const totalStockValue = companyPosition?.grandTotalHuf ?? 0
+  // FK-037: a cegszintu keszlet-ertek a getCompanyPosition-bol jon (vezetoi vegpont). A lokalis
+  // ertektar nezetben NEM kerjuk le, ezert semleges "—"-t mutatunk (nem 0-t, ami felrevezeto lenne);
+  // jogosult, de 403-as esetben a meglevo "— (jogosultsag)" jelzes marad.
+  let stockValueDisplay = formatMillions(totalStockValue)
+  if (!canViewCentralTreasury) {
+    stockValueDisplay = '—'
+  } else if (companyBalanceRestricted) {
+    stockValueDisplay = '— (jogosultság)'
+  }
+  const stockValueAccent = canViewCentralTreasury && !companyBalanceRestricted
 
   const closedCount = closingStatuses.filter((s) => s.closingStatus === 'CLOSED').length
   const inProgressCount = closingStatuses.filter((s) => s.closingStatus === 'IN_PROGRESS').length
@@ -774,6 +733,11 @@ export default function TreasuryDashboard() {
         </div>
       )}
 
+      {/* FK-037: cegszintu/vezetoi treasury-szekciok — csak a backend-jogosult szerepkoroknek
+          (MANAGER/ADMIN/FOERTEKTAR/UGYVEZETO); a lokalis 'ertektar' modban teljesen rejtve, es a
+          mogottes vegpontokat sem hivjuk (lasd canViewCentralTreasury + treasuryGet/companyGet). */}
+      {canViewCentralTreasury && (
+        <>
       <div className="form-panel">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
           <SummaryCard
@@ -1303,6 +1267,8 @@ export default function TreasuryDashboard() {
           </ReadOnlyQueue>
         </div>
       </div>
+        </>
+      )}
 
       {/* Compact data row — egyszerű számok, nincs grafikon */}
       <div className="form-panel">
@@ -1312,8 +1278,8 @@ export default function TreasuryDashboard() {
           <DataRow label="Kiszolgált ügyfelek" value={`${formatInteger(totalCustomers)} fő`} />
           <DataRow
             label="Készlet érték (összes)"
-            value={companyBalanceRestricted ? '— (jogosultság)' : formatMillions(totalStockValue)}
-            accent={!companyBalanceRestricted}
+            value={stockValueDisplay}
+            accent={stockValueAccent}
           />
           <DataRow label="Vétel (db)" value={formatInteger(turnover?.totalBuyCount ?? 0)} />
           <DataRow label="Eladás (db)" value={formatInteger(turnover?.totalSellCount ?? 0)} />
