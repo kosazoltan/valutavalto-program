@@ -84,6 +84,7 @@ export default function TreasuryDashboard() {
   const [pendingStockCorrections, setPendingStockCorrections] = useState<StockCorrectionItem[]>([])
   const [statusAction, setStatusAction] = useState<string | null>(null)
   const [transferAction, setTransferAction] = useState<string | null>(null)
+  const [receiptAction, setReceiptAction] = useState<string | null>(null)
   const [correctionAction, setCorrectionAction] = useState<string | null>(null)
   const [statusActionError, setStatusActionError] = useState<string | null>(null)
   const [treasuryApiRestricted, setTreasuryApiRestricted] = useState(false)
@@ -431,6 +432,24 @@ export default function TreasuryDashboard() {
     }
   }
 
+  const finalizeMaterialReceipt = async (id: number) => {
+    if (!window.confirm(`Biztosan véglegesíti a #${id} anyagbizonylatot?`)) return
+
+    const actionKey = `receipt:${id}:finalize`
+    try {
+      setReceiptAction(actionKey)
+      setStatusActionError(null)
+      await ertektarApi.finalizeReceipt(id)
+      await fetchData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Anyagbizonylat véglegesítés sikertelen.'
+      setStatusActionError(message)
+      logger.error('TreasuryDashboard', 'Material receipt finalize error:', err)
+    } finally {
+      setReceiptAction(null)
+    }
+  }
+
   if (loading) return <DashboardSkeleton />
 
   const totalTx = (turnover?.totalBuyCount ?? 0) + (turnover?.totalSellCount ?? 0)
@@ -688,6 +707,15 @@ export default function TreasuryDashboard() {
               secondary: `${row.receiptType} ${formatInteger(row.lines?.length ?? 0)} sor`,
               status: row.status,
             }))}
+            busyKey={receiptAction}
+            actions={(row) => row.status === 'DRAFT' ? [
+              {
+                key: `receipt:${row.id}:finalize`,
+                label: 'Véglegesítés',
+                ariaLabel: `Anyagbizonylat #${row.id} véglegesítés`,
+                onClick: () => void finalizeMaterialReceipt(row.id),
+              },
+            ] : []}
           />
           <ReadOnlyQueue
             title="Készletkorrekciók"

@@ -24,6 +24,7 @@ const worker = {
 async function mockApis(page: Page) {
   const correctionDecisions: string[] = []
   const transferDecisions: string[] = []
+  const receiptDecisions: string[] = []
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
     activeRole: 'foertektar',
@@ -136,6 +137,19 @@ async function mockApis(page: Page) {
       })
     }
 
+    const receiptDecision = path.match(/\/ertektar\/receipts\/(\d+)\/finalize$/)
+    if (receiptDecision && method === 'POST') {
+      receiptDecisions.push(`${receiptDecision[1]}:finalize`)
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: Number(receiptDecision[1]),
+          status: 'FINALIZED',
+        }),
+      })
+    }
+
     if (path.endsWith('/ertektar/corrections/pending') && method === 'GET') {
       return route.fulfill({
         status: 200,
@@ -176,7 +190,7 @@ async function mockApis(page: Page) {
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
   })
 
-  return { correctionDecisions, transferDecisions }
+  return { correctionDecisions, transferDecisions, receiptDecisions }
 }
 
 async function login(page: Page) {
@@ -217,6 +231,7 @@ test('értéktári dashboard mobil nézetben lekéri és megjeleníti a read-onl
   await expect(ledger.getByText('VAULT BUD01')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Áttétel #21 supervisor jóváhagyás' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Áttétel #22 végrehajtás' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Anyagbizonylat #31 véglegesítés' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Készletkorrekció #41 jóváhagyás' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Készletkorrekció #41 elutasítás' })).toBeVisible()
 
@@ -293,6 +308,30 @@ test('értéktári áttétel gombok POST supervisor/complete/reject backend szer
   await rejectRequest
 
   expect(apiCalls.transferDecisions).toEqual(['21:supervisor-approve', '22:complete', '21:reject'])
+
+  const horizontalOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  )
+  expect(horizontalOverflow).toBe(false)
+})
+
+test('értéktári anyagbizonylat gomb POST finalize backend szerződést hív', async ({ page }) => {
+  const apiCalls = await mockApis(page)
+  await login(page)
+  page.on('dialog', dialog => dialog.accept())
+
+  await page.goto('/treasury', { waitUntil: 'domcontentloaded' })
+
+  await expect(page.getByRole('button', { name: 'Anyagbizonylat #31 véglegesítés' })).toBeVisible()
+
+  const finalizeRequest = page.waitForRequest(request =>
+    request.method() === 'POST'
+    && new URL(request.url()).pathname === '/api/v1/ertektar/receipts/31/finalize'
+  )
+  await page.getByRole('button', { name: 'Anyagbizonylat #31 véglegesítés' }).click()
+  await finalizeRequest
+
+  expect(apiCalls.receiptDecisions).toEqual(['31:finalize'])
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

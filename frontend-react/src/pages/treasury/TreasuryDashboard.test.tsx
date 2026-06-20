@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => ({
   rejectTransfer: vi.fn(),
   getReceipts: vi.fn(),
   getReceiptsByType: vi.fn(),
+  finalizeReceipt: vi.fn(),
   getCorrections: vi.fn(),
   getPendingCorrections: vi.fn(),
   approveCorrection: vi.fn(),
@@ -79,6 +80,7 @@ vi.mock('../../services/api/index', () => ({
     rejectTransfer: mocks.rejectTransfer,
     getReceipts: mocks.getReceipts,
     getReceiptsByType: mocks.getReceiptsByType,
+    finalizeReceipt: mocks.finalizeReceipt,
     getCorrections: mocks.getCorrections,
     getPendingCorrections: mocks.getPendingCorrections,
     approveCorrection: mocks.approveCorrection,
@@ -372,6 +374,7 @@ describe('TreasuryDashboard', () => {
     mocks.supervisorApproveTransfer.mockResolvedValue({ id: 21, status: 'IN_PROGRESS' })
     mocks.completeTransfer.mockResolvedValue({ id: 22, status: 'COMPLETED' })
     mocks.rejectTransfer.mockResolvedValue({ id: 21, status: 'REJECTED' })
+    mocks.finalizeReceipt.mockResolvedValue({ id: 31, status: 'FINALIZED' })
     mocks.approveCorrection.mockResolvedValue({ id: 41, status: 'APPROVED' })
     mocks.rejectCorrection.mockResolvedValue({ id: 41, status: 'REJECTED' })
     mocks.updateCollectionStatus.mockResolvedValue({ id: 11, status: 'COMPLETED' })
@@ -503,6 +506,29 @@ describe('TreasuryDashboard', () => {
     expect(mocks.supervisorApproveTransfer).not.toHaveBeenCalled()
     expect(mocks.completeTransfer).not.toHaveBeenCalled()
     expect(mocks.rejectTransfer).not.toHaveBeenCalled()
+  })
+
+  it('az anyagbizonylatok panelből meghívja a finalize backend szerződést', async () => {
+    const user = userEvent.setup()
+    render(<TreasuryDashboard />)
+
+    await screen.findByTestId('ertektar-readonly-ledger')
+    await user.click(screen.getByRole('button', { name: 'Anyagbizonylat #31 véglegesítés' }))
+
+    await waitFor(() => {
+      expect(mocks.finalizeReceipt).toHaveBeenCalledWith(31)
+    })
+  })
+
+  it('anyagbizonylat véglegesítés elutasított confirm esetén nem küld POST-ot', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const user = userEvent.setup()
+    render(<TreasuryDashboard />)
+
+    await screen.findByTestId('ertektar-readonly-ledger')
+    await user.click(screen.getByRole('button', { name: 'Anyagbizonylat #31 véglegesítés' }))
+
+    expect(mocks.finalizeReceipt).not.toHaveBeenCalled()
   })
 
   it('a készletkorrekciók panelből meghívja az approve/reject backend szerződéseket', async () => {
