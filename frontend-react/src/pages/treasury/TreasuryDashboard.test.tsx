@@ -24,6 +24,9 @@ const mocks = vi.hoisted(() => ({
   getBankTransactions: vi.fn(),
   getTransfers: vi.fn(),
   getPendingTransfers: vi.fn(),
+  supervisorApproveTransfer: vi.fn(),
+  completeTransfer: vi.fn(),
+  rejectTransfer: vi.fn(),
   getReceipts: vi.fn(),
   getReceiptsByType: vi.fn(),
   getCorrections: vi.fn(),
@@ -71,6 +74,9 @@ vi.mock('../../services/api/index', () => ({
     getBankTransactions: mocks.getBankTransactions,
     getTransfers: mocks.getTransfers,
     getPendingTransfers: mocks.getPendingTransfers,
+    supervisorApproveTransfer: mocks.supervisorApproveTransfer,
+    completeTransfer: mocks.completeTransfer,
+    rejectTransfer: mocks.rejectTransfer,
     getReceipts: mocks.getReceipts,
     getReceiptsByType: mocks.getReceiptsByType,
     getCorrections: mocks.getCorrections,
@@ -292,6 +298,15 @@ describe('TreasuryDashboard', () => {
         requiresSupervisor: true,
         createdAt: '2026-06-18T08:00:00',
       },
+      {
+        id: 22,
+        transferNumber: 'ATT-2026-0002',
+        currencyCode: 'USD',
+        amount: 500,
+        status: 'IN_PROGRESS',
+        requiresSupervisor: true,
+        createdAt: '2026-06-18T09:00:00',
+      },
     ])
     mocks.getPendingTransfers.mockResolvedValue([
       {
@@ -354,6 +369,9 @@ describe('TreasuryDashboard', () => {
         createdAt: '2026-06-18T08:00:00',
       },
     ])
+    mocks.supervisorApproveTransfer.mockResolvedValue({ id: 21, status: 'IN_PROGRESS' })
+    mocks.completeTransfer.mockResolvedValue({ id: 22, status: 'COMPLETED' })
+    mocks.rejectTransfer.mockResolvedValue({ id: 21, status: 'REJECTED' })
     mocks.approveCorrection.mockResolvedValue({ id: 41, status: 'APPROVED' })
     mocks.rejectCorrection.mockResolvedValue({ id: 41, status: 'REJECTED' })
     mocks.updateCollectionStatus.mockResolvedValue({ id: 11, status: 'COMPLETED' })
@@ -450,6 +468,41 @@ describe('TreasuryDashboard', () => {
     await waitFor(() => {
       expect(mocks.updateBankTransactionStatus).toHaveBeenCalledWith(13, 'IN_PROGRESS')
     })
+  })
+
+  it('az áttételek panelből meghívja a supervisor approve/complete/reject backend szerződéseket', async () => {
+    const user = userEvent.setup()
+    render(<TreasuryDashboard />)
+
+    await screen.findByTestId('ertektar-readonly-ledger')
+
+    await user.click(screen.getByRole('button', { name: 'Áttétel #21 supervisor jóváhagyás' }))
+    await waitFor(() => {
+      expect(mocks.supervisorApproveTransfer).toHaveBeenCalledWith(21)
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Áttétel #22 végrehajtás' }))
+    await waitFor(() => {
+      expect(mocks.completeTransfer).toHaveBeenCalledWith(22)
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Áttétel #21 elutasítás' }))
+    await waitFor(() => {
+      expect(mocks.rejectTransfer).toHaveBeenCalledWith(21)
+    })
+  })
+
+  it('áttétel döntés elutasított confirm esetén nem küld POST-ot', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const user = userEvent.setup()
+    render(<TreasuryDashboard />)
+
+    await screen.findByTestId('ertektar-readonly-ledger')
+    await user.click(screen.getByRole('button', { name: 'Áttétel #21 supervisor jóváhagyás' }))
+
+    expect(mocks.supervisorApproveTransfer).not.toHaveBeenCalled()
+    expect(mocks.completeTransfer).not.toHaveBeenCalled()
+    expect(mocks.rejectTransfer).not.toHaveBeenCalled()
   })
 
   it('a készletkorrekciók panelből meghívja az approve/reject backend szerződéseket', async () => {

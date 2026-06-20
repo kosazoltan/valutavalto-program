@@ -83,6 +83,7 @@ export default function TreasuryDashboard() {
   const [stockCorrections, setStockCorrections] = useState<StockCorrectionItem[]>([])
   const [pendingStockCorrections, setPendingStockCorrections] = useState<StockCorrectionItem[]>([])
   const [statusAction, setStatusAction] = useState<string | null>(null)
+  const [transferAction, setTransferAction] = useState<string | null>(null)
   const [correctionAction, setCorrectionAction] = useState<string | null>(null)
   const [statusActionError, setStatusActionError] = useState<string | null>(null)
   const [treasuryApiRestricted, setTreasuryApiRestricted] = useState(false)
@@ -398,6 +399,38 @@ export default function TreasuryDashboard() {
     }
   }
 
+  const decideVaultTransfer = async (
+    id: number,
+    decision: 'supervisorApprove' | 'complete' | 'reject',
+  ) => {
+    const label = decision === 'supervisorApprove'
+      ? 'supervisori jóváhagyja'
+      : decision === 'complete'
+        ? 'végrehajtja'
+        : 'elutasítja'
+    if (!window.confirm(`Biztosan ${label} a #${id} áttételt?`)) return
+
+    const actionKey = `transfer:${id}:${decision}`
+    try {
+      setTransferAction(actionKey)
+      setStatusActionError(null)
+      if (decision === 'supervisorApprove') {
+        await ertektarApi.supervisorApproveTransfer(id)
+      } else if (decision === 'complete') {
+        await ertektarApi.completeTransfer(id)
+      } else {
+        await ertektarApi.rejectTransfer(id)
+      }
+      await fetchData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Áttétel művelet sikertelen.'
+      setStatusActionError(message)
+      logger.error('TreasuryDashboard', 'Vault transfer decision error:', err)
+    } finally {
+      setTransferAction(null)
+    }
+  }
+
   if (loading) return <DashboardSkeleton />
 
   const totalTx = (turnover?.totalBuyCount ?? 0) + (turnover?.totalSellCount ?? 0)
@@ -607,7 +640,44 @@ export default function TreasuryDashboard() {
               primary: row.transferNumber,
               secondary: `${row.currencyCode} ${formatInteger(Number(row.amount ?? 0))}`,
               status: row.status,
+              requiresSupervisor: row.requiresSupervisor,
             }))}
+            busyKey={transferAction}
+            actions={(row) => {
+              if (row.status === 'REQUESTED' && row.requiresSupervisor) {
+                return [
+                  {
+                    key: `transfer:${row.id}:supervisorApprove`,
+                    label: 'Supervisor',
+                    ariaLabel: `Áttétel #${row.id} supervisor jóváhagyás`,
+                    onClick: () => void decideVaultTransfer(row.id, 'supervisorApprove'),
+                  },
+                  {
+                    key: `transfer:${row.id}:reject`,
+                    label: 'Elutasítás',
+                    ariaLabel: `Áttétel #${row.id} elutasítás`,
+                    onClick: () => void decideVaultTransfer(row.id, 'reject'),
+                  },
+                ]
+              }
+              if (row.status === 'REQUESTED' || row.status === 'IN_PROGRESS') {
+                return [
+                  {
+                    key: `transfer:${row.id}:complete`,
+                    label: 'Átvétel',
+                    ariaLabel: `Áttétel #${row.id} végrehajtás`,
+                    onClick: () => void decideVaultTransfer(row.id, 'complete'),
+                  },
+                  {
+                    key: `transfer:${row.id}:reject`,
+                    label: 'Elutasítás',
+                    ariaLabel: `Áttétel #${row.id} elutasítás`,
+                    onClick: () => void decideVaultTransfer(row.id, 'reject'),
+                  },
+                ]
+              }
+              return []
+            }}
           />
           <ReadOnlyQueue
             title="Anyagbizonylatok"
@@ -811,6 +881,7 @@ interface ReadOnlyQueueRow {
   primary: string
   secondary: string
   status: string
+  requiresSupervisor?: boolean
 }
 
 interface ReadOnlyQueueAction {

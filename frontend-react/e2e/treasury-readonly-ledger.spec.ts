@@ -23,6 +23,7 @@ const worker = {
 
 async function mockApis(page: Page) {
   const correctionDecisions: string[] = []
+  const transferDecisions: string[] = []
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
     activeRole: 'foertektar',
@@ -92,7 +93,25 @@ async function mockApis(page: Page) {
         contentType: 'application/json',
         body: JSON.stringify([
           { id: 21, transferNumber: 'ATT-2026-0001', currencyCode: 'EUR', amount: 1000, status: 'REQUESTED', requiresSupervisor: true, createdAt: '2026-06-19T08:00:00' },
+          { id: 22, transferNumber: 'ATT-2026-0002', currencyCode: 'USD', amount: 500, status: 'IN_PROGRESS', requiresSupervisor: true, createdAt: '2026-06-19T09:00:00' },
         ]),
+      })
+    }
+
+    const transferDecision = path.match(/\/ertektar\/transfers\/(\d+)\/(supervisor-approve|complete|reject)$/)
+    if (transferDecision && method === 'POST') {
+      transferDecisions.push(`${transferDecision[1]}:${transferDecision[2]}`)
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: Number(transferDecision[1]),
+          status: transferDecision[2] === 'reject'
+            ? 'REJECTED'
+            : transferDecision[2] === 'complete'
+              ? 'COMPLETED'
+              : 'IN_PROGRESS',
+        }),
       })
     }
 
@@ -157,7 +176,7 @@ async function mockApis(page: Page) {
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
   })
 
-  return { correctionDecisions }
+  return { correctionDecisions, transferDecisions }
 }
 
 async function login(page: Page) {
@@ -193,8 +212,11 @@ test('értéktári dashboard mobil nézetben lekéri és megjeleníti a read-onl
   const ledger = page.getByTestId('ertektar-readonly-ledger')
   await expect(ledger).toBeVisible()
   await expect(ledger.getByText('ATT-2026-0001')).toBeVisible()
+  await expect(ledger.getByText('ATT-2026-0002')).toBeVisible()
   await expect(ledger.getByText('BIZ-2026-0001')).toBeVisible()
   await expect(ledger.getByText('VAULT BUD01')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Áttétel #21 supervisor jóváhagyás' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Áttétel #22 végrehajtás' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Készletkorrekció #41 jóváhagyás' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Készletkorrekció #41 elutasítás' })).toBeVisible()
 
@@ -231,6 +253,46 @@ test('értéktári készletkorrekció gombok POST approve/reject backend szerző
   await rejectRequest
 
   expect(apiCalls.correctionDecisions).toEqual(['41:approve', '41:reject'])
+
+  const horizontalOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  )
+  expect(horizontalOverflow).toBe(false)
+})
+
+test('értéktári áttétel gombok POST supervisor/complete/reject backend szerződést hívnak', async ({ page }) => {
+  const apiCalls = await mockApis(page)
+  await login(page)
+  page.on('dialog', dialog => dialog.accept())
+
+  await page.goto('/treasury', { waitUntil: 'domcontentloaded' })
+
+  await expect(page.getByRole('button', { name: 'Áttétel #21 supervisor jóváhagyás' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Áttétel #22 végrehajtás' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Áttétel #21 elutasítás' })).toBeVisible()
+
+  const approveRequest = page.waitForRequest(request =>
+    request.method() === 'POST'
+    && new URL(request.url()).pathname === '/api/v1/ertektar/transfers/21/supervisor-approve'
+  )
+  await page.getByRole('button', { name: 'Áttétel #21 supervisor jóváhagyás' }).click()
+  await approveRequest
+
+  const completeRequest = page.waitForRequest(request =>
+    request.method() === 'POST'
+    && new URL(request.url()).pathname === '/api/v1/ertektar/transfers/22/complete'
+  )
+  await page.getByRole('button', { name: 'Áttétel #22 végrehajtás' }).click()
+  await completeRequest
+
+  const rejectRequest = page.waitForRequest(request =>
+    request.method() === 'POST'
+    && new URL(request.url()).pathname === '/api/v1/ertektar/transfers/21/reject'
+  )
+  await page.getByRole('button', { name: 'Áttétel #21 elutasítás' }).click()
+  await rejectRequest
+
+  expect(apiCalls.transferDecisions).toEqual(['21:supervisor-approve', '22:complete', '21:reject'])
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
