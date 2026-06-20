@@ -1458,24 +1458,22 @@ export const dailyReportApi = {
 
 // ================== TURNOVER API ==================
 export const turnoverApi = {
-  daily: async (branchId: string, date: string) => (await api.get('/turnover/daily', { params: { branchId, date } })).data,
-  weekly: async (branchId: string, date: string) => {
-    const weekStart = startOfIsoWeek(date)
-    return (await api.get('/turnover/weekly', { params: { branchId, weekStart } })).data
-  },
-  monthly: async (branchId: string, date: string) => {
-    const { year, month } = parseYearMonthParams(date)
-    return (await api.get('/turnover/monthly', { params: { branchId, year, month } })).data
-  },
-  yearly: async (branchId: string, date: string) => {
-    const year = parseYearParam(date)
-    return (await api.get('/turnover/yearly', { params: { branchId, year } })).data
-  },
   byPeriod: async (period: string, branchId: string, date: string) => {
-    if (period === 'daily') return turnoverApi.daily(branchId, date)
-    if (period === 'weekly') return turnoverApi.weekly(branchId, date)
-    if (period === 'monthly') return turnoverApi.monthly(branchId, date)
-    if (period === 'yearly') return turnoverApi.yearly(branchId, date)
+    if (period === 'daily') {
+      return (await api.get('/turnover/daily', { params: { branchId, date } })).data
+    }
+    if (period === 'weekly') {
+      const weekStart = startOfIsoWeek(date)
+      return (await api.get('/turnover/weekly', { params: { branchId, weekStart } })).data
+    }
+    if (period === 'monthly') {
+      const { year, month } = parseYearMonthParams(date)
+      return (await api.get('/turnover/monthly', { params: { branchId, year, month } })).data
+    }
+    if (period === 'yearly') {
+      const year = parseYearParam(date)
+      return (await api.get('/turnover/yearly', { params: { branchId, year } })).data
+    }
     throw new Error(`Unsupported turnover period: ${period}`)
   },
 }
