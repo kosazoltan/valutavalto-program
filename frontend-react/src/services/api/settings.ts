@@ -1466,6 +1466,9 @@ export const turnoverApi = {
     }
     throw new Error(`Unsupported turnover period: ${period}`)
   },
+  company: async (from: string, to: string) => (
+    await api.get('/turnover/company', { params: { from, to } })
+  ).data,
 }
 
 function parseYearParam(date: string): number {

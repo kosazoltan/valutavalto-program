@@ -61,6 +61,14 @@ describe('turnoverApi backend query contract', () => {
       params: { branchId: 'branch-123', year: 2026 },
     })
   })
+
+  it('company sends only from/to because backend resolves companyId from security context', async () => {
+    await turnoverApi.company('2026-06-01', '2026-06-18')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/turnover/company', {
+      params: { from: '2026-06-01', to: '2026-06-18' },
+    })
+  })
 })
 
 describe('synchronizationApi backend contract', () => {

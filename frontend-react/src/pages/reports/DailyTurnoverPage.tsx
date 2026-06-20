@@ -33,25 +33,29 @@ interface TurnoverData {
   }
 }
 
-type Period = 'daily' | 'weekly' | 'monthly' | 'yearly'
+type Period = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'company'
 
 export default function DailyTurnoverPage() {
   const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
   const branchId = worker?.branchId || ''
+  const today = localIsoDate()
 
-  const [date, setDate] = useState(localIsoDate())
+  const [date, setDate] = useState(today)
+  const [companyFromDate, setCompanyFromDate] = useState(`${today.slice(0, 8)}01`)
   const [period, setPeriod] = useState<Period>('daily')
   const [data, setData] = useState<TurnoverData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const loadTurnover = useCallback(async () => {
-    if (!branchId) { toast.warning('Fiók szükséges'); return }
+    if (period !== 'company' && !branchId) { toast.warning('Fiók szükséges'); return }
     try {
       setLoading(true)
       setError(null)
-      const res = await turnoverApi.byPeriod(period, branchId, date)
+      const res = period === 'company'
+        ? await turnoverApi.company(companyFromDate, date)
+        : await turnoverApi.byPeriod(period, branchId, date)
       setData(res as TurnoverData)
     } catch (err) {
       logger.error('DailyTurnoverPage', 'Forgalom betöltési hiba:', err)
@@ -60,7 +64,7 @@ export default function DailyTurnoverPage() {
     } finally {
       setLoading(false)
     }
-  }, [branchId, date, period])
+  }, [branchId, companyFromDate, date, period])
 
   const fmtNum = (n: number) => n.toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const fmtHuf = (n: number) => n.toLocaleString('hu-HU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Ft'
@@ -78,13 +82,35 @@ export default function DailyTurnoverPage() {
             <option value="weekly">{t('reports.heti')}</option>
             <option value="monthly">{t('reports.havi')}</option>
             <option value="yearly">{t('reports.eves')}</option>
+            <option value="company">Cég időszak</option>
           </select>
         </div>
+        {period === 'company' && (
+          <div>
+            <label className="form-label" htmlFor="turnover-company-from-date">Kezdő dátum</label>
+            <div className="flex items-center gap-1">
+              <Calendar size={16} className="text-gray-400" />
+              <input
+                id="turnover-company-from-date"
+                className="form-input"
+                type="date"
+                value={companyFromDate}
+                onChange={e => setCompanyFromDate(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
         <div>
-          <label className="form-label">{t('common.date')}</label>
+          <label className="form-label" htmlFor="turnover-report-date">{period === 'company' ? 'Záró dátum' : t('common.date')}</label>
           <div className="flex items-center gap-1">
             <Calendar size={16} className="text-gray-400" />
-            <input className="form-input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+            <input
+              id="turnover-report-date"
+              className="form-input"
+              type="date"
+              value={date}
+              onChange={e => setDate(e.target.value)}
+            />
           </div>
         </div>
         <button onClick={() => void loadTurnover()} disabled={loading} className="form-button-primary">
