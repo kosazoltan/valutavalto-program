@@ -30,8 +30,11 @@ Minden `messages.create` hívásnál, ahol a prompt ismétlődő részt tartalma
   `messages` — a system-végi breakpoint a tools+system párost együtt cache-eli.
 - **Max 4 breakpoint** kérésenként; többfordulós beszélgetésben az utolsó user-turn
   utolsó blokkjára is kerül breakpoint (inkrementális cache-bővülés).
-- **Minimum cache-elhető prefix** modellfüggő (alatta némán nem cache-el):
-  4096 token (Opus 4.5–4.8, Haiku 4.5) / 2048 (Fable 5, Sonnet 4.6) / 1024 (Sonnet 4.5).
+- **Minimum cache-elhető prefix** modellfüggő (alatta némán nem cache-el). Anthropic
+  prompt-caching docs (2026-06-20) szerint: **Fable 5 = 512** (Bedrockon 1024);
+  **Opus 4.8 = 1024**, **Opus 4.7 = 2048**, **Opus 4.6 / 4.5 = 4096**;
+  **Sonnet 4.6 / Sonnet 4.5 = 1024**; **Haiku 4.5 = 4096**. ⚠️ Az org tényleges modellje
+  Sonnet 4.6 → a küszöb **1024 token** (NEM 2048). (Korábbi 4096/2048/1024-es érték elavult volt.)
 - **TTL:** alap 5 perc (write-költség 1,25×); `{"ttl": "1h"}` 1 óra (write 2×).
   Cache-olvasás ~0,1× input-ár. 5 perces TTL-nél már 2 kérésnél megtérül.
 - **Néma cache-rontók TILOSAK a prefixben:** `datetime.now()`/`Date.now()` a system

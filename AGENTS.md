@@ -90,6 +90,12 @@ Alap mukodes:
   kodja, migracioja, tesztje es git allapota az erosebb.
 - Lost-in-the-middle vedelem: a feladat celjat, dontest es nyitott kockazatot
   tartsd rovid munkamemoriaban; ne temesd el hosszu idezetek koze.
+- **Prompt caching (cache-barat viselkedes):** a Claude Code harness a cache-t
+  automatikusan kezeli (prefix-egyezes alapu) — stabil kontextus elol, volatilis
+  (idobelyeg/azonosito) hatul; CLAUDE.md/AGENTS.md/mandate szerkesztest kotegelve, hogy
+  ne uss ki cache-prefixet. Reszletek + Console-diagnosztika:
+  `vault/feedback/prompt-caching-mandate-2026-06-10.md`. (Termek-kodban jelenleg nincs
+  Claude API-integracio; a voice-assistant OpenAI Realtime, arra ez nem vonatkozik.)
 
 ## 3. Builder-first munkamod
 
