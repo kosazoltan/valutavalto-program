@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { authorizedRepresentativeApi, closingWizardApi, customerApi, dailySessionApi, sessionOpenApi, transactionApi, transferApi } from './transactions'
+import { authorizedRepresentativeApi, closingWizardApi, customerApi, dailySessionApi, sessionOpenApi, stornoApi, transactionApi, transferApi } from './transactions'
 import { api } from './client'
 
 vi.mock('./client', () => {
@@ -162,6 +162,59 @@ describe('transactionApi', () => {
         originalTransactionId: 10,
         reason: 'ok',
       })
+    })
+  })
+})
+
+describe('stornoApi', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('check: calls GET /stornos/check/:transactionId without workerId query param', async () => {
+    mockApi.get.mockResolvedValue({ data: { requiresApproval: false } })
+
+    await stornoApi.check('V076100003')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/stornos/check/V076100003')
+  })
+
+  it('requestApproval: delegates worker identity to backend security context', async () => {
+    mockApi.post.mockResolvedValue({ data: { id: 'approval-1' } })
+
+    await stornoApi.requestApproval('123', 'Napi limit felett')
+
+    expect(mockApi.post).toHaveBeenCalledWith('/stornos/request-approval', null, {
+      params: { transactionId: '123', reason: 'Napi limit felett' },
+    })
+  })
+
+  it('approve: sends approval decision without approvedByWorkerId query param', async () => {
+    mockApi.post.mockResolvedValue({ data: { id: 'approval-1' } })
+
+    await stornoApi.approve('approval-1', false, 'Nem elfogadható indok')
+
+    expect(mockApi.post).toHaveBeenCalledWith('/stornos/approve/approval-1', null, {
+      params: { approved: false, reason: 'Nem elfogadható indok' },
+    })
+  })
+
+  it('execute: calls POST /stornos/execute with request body only', async () => {
+    mockApi.post.mockResolvedValue({ data: mockTransaction })
+    const request = { transactionId: 'V076100003', reason: 'Hibás rögzítés' }
+
+    await stornoApi.execute(request)
+
+    expect(mockApi.post).toHaveBeenCalledWith('/stornos/execute', request)
+  })
+
+  it('executePos: sends only backend-supported POS storno query params', async () => {
+    mockApi.post.mockResolvedValue({ data: mockTransaction })
+
+    await stornoApi.executePos('pos-tx-1', 'POS terminál sztornó')
+
+    expect(mockApi.post).toHaveBeenCalledWith('/stornos/pos', null, {
+      params: { posTransactionId: 'pos-tx-1', reason: 'POS terminál sztornó' },
     })
   })
 })

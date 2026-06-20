@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { AlertCircle, CheckCircle, XCircle, RefreshCw, ClipboardCheck } from 'lucide-react'
 import { stornoApi, StornoApproval } from '../../services/api/index'
-import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 
@@ -16,9 +15,6 @@ import { logger } from '../../utils/logger'
  * változtatás nélkül megjeleníti.
  */
 export default function StornoApprovalListPage() {
-  const worker = useAuthStore((state) => state.worker)
-  const workerId = worker?.id ? String(worker.id) : ''
-
   const [approvals, setApprovals] = useState<StornoApproval[]>([])
   const [loading, setLoading] = useState(false)
   const [actingId, setActingId] = useState<string | null>(null)
@@ -54,7 +50,7 @@ export default function StornoApprovalListPage() {
     try {
       setActingId(approval.id)
       setError(null)
-      await stornoApi.approve(approval.id, workerId, approved, approved ? undefined : reason)
+      await stornoApi.approve(approval.id, approved, approved ? undefined : reason)
       setMessage(
         approved
           ? `Sztornó-kérés engedélyezve (${approval.receiptNumber || approval.transactionId}).`

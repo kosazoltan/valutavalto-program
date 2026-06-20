@@ -253,7 +253,6 @@ const RATE_REJECTION_REASON = 'Mobil elutasítás'
 
 export default function MobileOverviewPage() {
   const worker = useAuthStore((state) => state.worker)
-  const workerId = worker?.id ? String(worker.id) : ''
 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -702,7 +701,7 @@ export default function MobileOverviewPage() {
     try {
       setActingApprovalId(approval.id)
       setActionError(null)
-      await stornoApi.approve(approval.id, workerId, true)
+      await stornoApi.approve(approval.id, true)
       await load()
     } catch (err) {
       setActionError(getErrorMessage(err))

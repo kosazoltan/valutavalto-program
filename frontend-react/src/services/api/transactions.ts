@@ -980,21 +980,19 @@ export interface StornoApproval {
 }
 
 export const stornoApi = {
-  check: async (transactionId: string, workerId: string): Promise<StornoCheckResult> => {
-    const response = await api.get<StornoCheckResult>(`/stornos/check/${transactionId}`, {
-      params: { workerId }
-    })
+  check: async (transactionId: string): Promise<StornoCheckResult> => {
+    const response = await api.get<StornoCheckResult>(`/stornos/check/${transactionId}`)
     return response.data
   },
-  requestApproval: async (transactionId: string, workerId: string, reason: string): Promise<StornoApproval> => {
+  requestApproval: async (transactionId: string, reason: string): Promise<StornoApproval> => {
     const response = await api.post<StornoApproval>('/stornos/request-approval', null, {
-      params: { transactionId, workerId, reason }
+      params: { transactionId, reason }
     })
     return response.data
   },
-  approve: async (approvalId: string, approvedByWorkerId: string, approved: boolean, reason?: string): Promise<StornoApproval> => {
+  approve: async (approvalId: string, approved: boolean, reason?: string): Promise<StornoApproval> => {
     const response = await api.post<StornoApproval>(`/stornos/approve/${approvalId}`, null, {
-      params: { approvedByWorkerId, approved, reason }
+      params: { approved, reason }
     })
     return response.data
   },
@@ -1022,15 +1020,13 @@ export const stornoApi = {
     })
     return response.data
   },
-  execute: async (request: StornoRequest, workerId: string): Promise<Transaction> => {
-    const response = await api.post<Transaction>('/stornos/execute', request, {
-      params: { workerId }
-    })
+  execute: async (request: StornoRequest): Promise<Transaction> => {
+    const response = await api.post<Transaction>('/stornos/execute', request)
     return response.data
   },
-  executePos: async (posTransactionId: string, workerId: string, reason: string): Promise<Transaction> => {
+  executePos: async (posTransactionId: string, reason: string): Promise<Transaction> => {
     const response = await api.post<Transaction>('/stornos/pos', null, {
-      params: { posTransactionId, workerId, reason }
+      params: { posTransactionId, reason }
     })
     return response.data
   }

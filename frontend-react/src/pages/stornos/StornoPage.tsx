@@ -63,7 +63,7 @@ export default function StornoPage() {
     
     try {
       setLoading(true)
-      const result = await stornoApi.check(id, workerId)
+      const result = await stornoApi.check(id)
       setCheckResult(result)
       
       // Ha engedély szükséges, betöltjük az engedélykérést
@@ -94,7 +94,7 @@ export default function StornoPage() {
 
     try {
       setLoading(true)
-      const result = await stornoApi.requestApproval(id, workerId, reason)
+      const result = await stornoApi.requestApproval(id, reason)
       setApproval(result)
       await recordLocalAuditEvent({
         entityType: 'STORNO',
@@ -189,7 +189,7 @@ export default function StornoPage() {
       } else {
         // Online: a backend a teljes REVERSAL tranzakciót adja vissza — saját
         // bizonylatszámmal (az eredeti típus számlálójából, B.6 4. szabály).
-        const reversal = await stornoApi.execute(request, workerId)
+        const reversal = await stornoApi.execute(request)
         setSuccessMessage('Sztornó sikeresen végrehajtva')
         setReceiptData({
           ...receiptBase,

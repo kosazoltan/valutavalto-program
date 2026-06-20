@@ -34,7 +34,7 @@ public class StornoController {
     /**
      * Sztornó ellenőrzés - szükséges-e jóváhagyás?
      *
-     * GET /api/v1/stornos/check/{transactionIdOrReceipt}?workerId=
+     * GET /api/v1/stornos/check/{transactionIdOrReceipt}
      *
      * PR #115 fix: elfogad Long id-t VAGY receipt_number string-et (pl. "V017100005").
      * A frontend és Penztar-client a tx.receiptNumber || tx.id fallback-et használja.
@@ -51,7 +51,7 @@ public class StornoController {
     /**
      * Sztornó jóváhagyás kérése
      *
-     * POST /api/v1/stornos/request-approval?transactionId=&workerId=&reason=
+     * POST /api/v1/stornos/request-approval?transactionId=&reason=
      */
     @PostMapping("/request-approval")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
@@ -78,7 +78,7 @@ public class StornoController {
     /**
      * Sztornó jóváhagyása/elutasítása
      *
-     * POST /api/v1/stornos/approve/{approvalId}?approvedByWorkerId=&approved=&reason=
+     * POST /api/v1/stornos/approve/{approvalId}?approved=&reason=
      */
     @PostMapping("/approve/{approvalId}")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
@@ -126,7 +126,7 @@ public class StornoController {
     /**
      * Sztornó végrehajtása
      *
-     * POST /api/v1/stornos/execute?workerId=
+     * POST /api/v1/stornos/execute
      */
     @PostMapping("/execute")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
@@ -140,7 +140,7 @@ public class StornoController {
     /**
      * POS sztornó végrehajtása
      *
-     * POST /api/v1/stornos/pos?posTransactionId=&workerId=&reason=
+     * POST /api/v1/stornos/pos?posTransactionId=&reason=
      */
     @PostMapping("/pos")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")

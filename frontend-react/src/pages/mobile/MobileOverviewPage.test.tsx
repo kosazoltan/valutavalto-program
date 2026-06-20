@@ -913,7 +913,7 @@ describe('MobileOverviewPage', () => {
     await user.click(await screen.findByRole('button', { name: /Mobil engedélyezés/i }))
 
     await waitFor(() => {
-      expect(mocks.approve).toHaveBeenCalledWith('approval-1', '77', true)
+      expect(mocks.approve).toHaveBeenCalledWith('approval-1', true)
     })
   })
 
