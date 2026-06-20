@@ -44,6 +44,8 @@ export default function MonthlyClosingPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedMonthlyReport, setSelectedMonthlyReport] = useState<MonthlyClosingSummary | null>(null)
   const [monthlyReportLoadingKey, setMonthlyReportLoadingKey] = useState<string | null>(null)
+  const [closingYearMonth, setClosingYearMonth] = useState(currentYearMonth)
+  const [monthlyClosing, setMonthlyClosing] = useState(false)
   const [hrkYearMonth, setHrkYearMonth] = useState(currentYearMonth)
   const [hrkSummary, setHrkSummary] = useState<HrkMonthlySummary | null>(null)
   const [hrkLoading, setHrkLoading] = useState(false)
@@ -169,6 +171,34 @@ export default function MonthlyClosingPage() {
       setError(msg)
     } finally {
       setMonthlyReportLoadingKey(null)
+    }
+  }
+
+  const performMonthlyClosing = async () => {
+    if (!branchId) {
+      setError(t('monthlyClose.branchRequired'))
+      return
+    }
+    if (!closingYearMonth) {
+      setError('Havi záráshoz hónapot kell választani.')
+      return
+    }
+    if (!window.confirm(`Biztosan végrehajtja a havi zárást erre a hónapra: ${closingYearMonth}?`)) {
+      return
+    }
+
+    try {
+      setMonthlyClosing(true)
+      setError(null)
+      const summary = await monthlyClosingApi.performClosing(branchId, closingYearMonth)
+      setSelectedMonthlyReport(summary)
+      await loadData()
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('MonthlyClosingPage', 'Havi zárás végrehajtási hiba:', err)
+      setError(msg)
+    } finally {
+      setMonthlyClosing(false)
     }
   }
 
@@ -309,6 +339,36 @@ export default function MonthlyClosingPage() {
           />
         </div>
       </div>
+
+      <section className="rounded-lg border border-amber-200 bg-amber-50 p-4" data-testid="monthly-closing-action-panel">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-base font-bold text-amber-950">Havi zárás végrehajtása</h2>
+            <p className="mt-1 text-sm text-amber-900">A kiválasztott hónapot a bejelentkezett dolgozó irodájára zárja.</p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div>
+              <label htmlFor="monthly-closing-year-month" className="form-label">Zárandó hónap</label>
+              <input
+                id="monthly-closing-year-month"
+                type="month"
+                value={closingYearMonth}
+                onChange={(event) => setClosingYearMonth(event.target.value)}
+                className="form-input bg-white"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => void performMonthlyClosing()}
+              disabled={monthlyClosing || !branchId}
+              className="form-button-primary inline-flex min-h-10 items-center gap-2"
+            >
+              <CheckCircle className="h-4 w-4" />
+              {monthlyClosing ? 'Havi zárás...' : 'Havi zárás végrehajtása'}
+            </button>
+          </div>
+        </div>
+      </section>
 
       <section className="rounded-lg border border-gray-200 bg-white p-4" data-testid="hrk-monthly-panel">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   apiGet: vi.fn(),
   monthlyGetAllClosedMonths: vi.fn(),
   monthlyGetReport: vi.fn(),
+  monthlyPerformClosing: vi.fn(),
   hrkGetSummary: vi.fn(),
   hrkClose: vi.fn(),
   hrkHandover: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock('../../services/api/index', () => ({
   monthlyClosingApi: {
     getAllClosedMonths: mocks.monthlyGetAllClosedMonths,
     getReport: mocks.monthlyGetReport,
+    performClosing: mocks.monthlyPerformClosing,
   },
   hrkMonthlyApi: {
     getSummary: mocks.hrkGetSummary,
@@ -137,6 +139,21 @@ describe('MonthlyClosingPage HRK backend contract', () => {
       currencyBreakdown: '{"EUR":{"buy":1000}}',
       createdAt: '2026-06-30T18:01:00',
     })
+    mocks.monthlyPerformClosing.mockResolvedValue({
+      id: 2,
+      branchId: 'branch-1',
+      branchName: 'Backend Budapest 01',
+      yearMonth: '2026-07',
+      closedAt: '2026-07-31T18:00:00',
+      closedByWorkerId: 77,
+      closedByWorkerName: 'Backend Záró',
+      totalBuyHuf: 1200000,
+      totalSellHuf: 800000,
+      totalHandlingFee: 15000,
+      transactionCount: 44,
+      currencyBreakdown: '{"EUR":{"buy":1200}}',
+      createdAt: '2026-07-31T18:01:00',
+    })
     mocks.hrkGetSummary.mockResolvedValue(hrkSummary)
     mocks.hrkClose.mockResolvedValue({ ...hrkSummary, totalTransactions: 3 })
     mocks.hrkHandover.mockResolvedValue({ ...hrkJournal[0], id: 'hrk-tx-new', type: 'HANDOVER' })
@@ -179,6 +196,40 @@ describe('MonthlyClosingPage HRK backend contract', () => {
       expect(screen.getByText('42')).toBeInTheDocument()
       expect(screen.getByText('12 000 Ft')).toBeInTheDocument()
     })
+  })
+
+  it('havi zárás gomb megerősítés után a performClosing backend wrapperét hívja', async () => {
+    const user = userEvent.setup()
+    render(<MonthlyClosingPage />)
+
+    await screen.findByTestId('monthly-closing-action-panel')
+    const monthInput = screen.getByLabelText('Zárandó hónap')
+    await user.clear(monthInput)
+    await user.type(monthInput, '2026-07')
+    await user.click(screen.getByRole('button', { name: /Havi zárás végrehajtása/i }))
+
+    await waitFor(() => {
+      expect(window.confirm).toHaveBeenCalledWith('Biztosan végrehajtja a havi zárást erre a hónapra: 2026-07?')
+      expect(mocks.monthlyPerformClosing).toHaveBeenCalledWith('branch-1', '2026-07')
+      expect(mocks.monthlyGetAllClosedMonths.mock.calls.length).toBeGreaterThanOrEqual(2)
+      expect(screen.getByTestId('monthly-closing-report-panel')).toBeInTheDocument()
+      expect(screen.getByText('44')).toBeInTheDocument()
+      expect(screen.getByText('15 000 Ft')).toBeInTheDocument()
+    })
+  })
+
+  it('havi zárás megerősítés elutasításakor nem hív backend POST-ot', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const user = userEvent.setup()
+    render(<MonthlyClosingPage />)
+
+    await screen.findByTestId('monthly-closing-action-panel')
+    await user.click(screen.getByRole('button', { name: /Havi zárás végrehajtása/i }))
+
+    await waitFor(() => {
+      expect(window.confirm).toHaveBeenCalled()
+    })
+    expect(mocks.monthlyPerformClosing).not.toHaveBeenCalled()
   })
 
   it('HRK pénztár-bank átadást a handover backend wrapperre köt', async () => {

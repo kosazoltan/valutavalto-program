@@ -1,0 +1,34 @@
+contract: "MonthlyClosingPage -> POST /api/v1/closing/monthly/{branchId}/{yearMonth}"
+date: "2026-06-20"
+status: "IMPLEMENTED_FROM_EXISTING_BACKEND_CONTRACT"
+
+preconditions:
+  - "branchId is present from the authenticated worker context before the action is enabled."
+  - "yearMonth is a non-empty YYYY-MM value selected with a month input."
+  - "The user confirms the state-changing monthly closing action before the POST request is sent."
+  - "Backend authorization remains authoritative: SUPERVISOR, MANAGER, or ADMIN role is required by MonthlyClosingController."
+
+postconditions:
+  - "On success, the returned MonthlyClosingSummary is shown in the monthly report panel."
+  - "On success, the closed-month list is reloaded from monthlyClosingApi.getAllClosedMonths(branchId)."
+  - "On failure, the backend error message is surfaced through the existing page error state."
+
+invariants:
+  - "The frontend does not synthesize monthly closing data; it only displays the backend response."
+  - "The selected branch is not user-editable in this UI slice; it stays the authenticated worker branch."
+  - "Existing read-only monthly report, PDF download, and HRK workflows remain unchanged."
+
+error_contracts:
+  - "Missing branchId -> no POST request; existing branchRequired message is used."
+  - "User cancels confirmation -> no POST request."
+  - "Backend rejects or fails -> no local success state is fabricated; error state is set from getErrorMessage(err)."
+
+behavioral:
+  - "The action button is disabled while a monthly closing request is in flight."
+  - "The action uses monthlyClosingApi.performClosing rather than a raw API call."
+  - "No new local-first/offline monthly closing behavior is introduced in this slice."
+
+derived_tests:
+  - "MonthlyClosingPage calls monthlyClosingApi.performClosing(branchId, yearMonth) after confirmation."
+  - "MonthlyClosingPage does not call performClosing when the confirmation is cancelled."
+  - "MonthlyClosingPage reloads the closed-month list and displays the returned summary after success."

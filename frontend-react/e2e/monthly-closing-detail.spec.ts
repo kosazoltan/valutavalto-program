@@ -101,6 +101,28 @@ async function mockApis(page: Page) {
       })
     }
 
+    if (path.endsWith('/closing/monthly/branch-1/2026-07') && method === 'POST') {
+      return route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 2,
+          branchId: 'branch-1',
+          branchName: 'Backend Budapest 01',
+          yearMonth: '2026-07',
+          closedAt: '2026-07-31T18:00:00',
+          closedByWorkerId: 77,
+          closedByWorkerName: 'Backend Záró',
+          totalBuyHuf: 1200000,
+          totalSellHuf: 800000,
+          totalHandlingFee: 15000,
+          transactionCount: 44,
+          currencyBreakdown: '{"EUR":{"buy":1200}}',
+          createdAt: '2026-07-31T18:01:00',
+        }),
+      })
+    }
+
     if (path.endsWith('/closing/monthly/branch-1') && method === 'GET') {
       return route.fulfill({
         status: 200,
@@ -151,6 +173,35 @@ test('havi zárás részletei mobil nézetben lekérik a backend report endpoint
   await expect(page.getByText('Backend Budapest 01')).toBeVisible()
   await expect(page.getByText('Backend Záró')).toBeVisible()
   await expect(page.getByText('12 000 Ft')).toBeVisible()
+
+  const horizontalOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  )
+  expect(horizontalOverflow).toBe(false)
+})
+
+test('havi zárás végrehajtás mobil nézetben a backend POST wrapper útvonalat használja', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mockApis(page)
+  await login(page)
+
+  await page.goto('/closing/monthly', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByTestId('monthly-closing-action-panel')).toBeVisible()
+  await expect(page.getByLabel('Zárandó hónap')).toBeVisible()
+
+  await page.getByLabel('Zárandó hónap').fill('2026-07')
+  page.once('dialog', dialog => dialog.accept())
+  const closingRequest = page.waitForRequest(request =>
+    request.method() === 'POST'
+    && new URL(request.url()).pathname === '/api/v1/closing/monthly/branch-1/2026-07'
+  )
+  await page.getByRole('button', { name: /Havi zárás végrehajtása/i }).click()
+  await closingRequest
+
+  await expect(page.getByTestId('monthly-closing-report-panel')).toBeVisible()
+  await expect(page.getByText('Backend Budapest 01')).toBeVisible()
+  await expect(page.getByText('Backend Záró')).toBeVisible()
+  await expect(page.getByText('15 000 Ft')).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
