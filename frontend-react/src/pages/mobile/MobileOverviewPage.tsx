@@ -34,6 +34,7 @@ import {
   ertektarApi,
   notificationApi,
   posTerminalApi,
+  rateApprovalApi,
   stornoApi,
   synchronizationApi,
   transferDocumentApi,
@@ -396,8 +397,8 @@ export default function MobileOverviewPage() {
         ? api.get<WuDailyReport>('/western-union/daily-report', { params: { branchId, date: reportDate } })
         : Promise.reject(new Error('Nincs branchId a WU napi riport lekéréshez.')),
       api.get<DailyReportSubmissionStatus[]>('/reports/daily/submission-status', { params: { date: reportDate } }),
-      api.get<RateApproval[]>('/rate-approvals/pending'),
-      api.get<RateApproval[]>('/rate-approvals/history'),
+      rateApprovalApi.pending(),
+      rateApprovalApi.history(),
       api.get<CameraStatus[]>('/camera/status'),
       api.get<CameraStorageStats>('/camera/admin/storage-stats'),
       api.get<CameraUploadStatus>('/camera/admin/upload-status'),
@@ -522,8 +523,8 @@ export default function MobileOverviewPage() {
       pendingRateApprovalsResult.status === 'fulfilled'
       && rateApprovalHistoryResult.status === 'fulfilled'
     ) {
-      setPendingRateApprovals(pendingRateApprovalsResult.value.data ?? [])
-      setRateApprovalHistory(rateApprovalHistoryResult.value.data ?? [])
+      setPendingRateApprovals(pendingRateApprovalsResult.value ?? [])
+      setRateApprovalHistory(rateApprovalHistoryResult.value ?? [])
       setPanel('rateApprovals', 'ok')
     } else {
       setPendingRateApprovals([])
@@ -716,7 +717,7 @@ export default function MobileOverviewPage() {
     try {
       setActingRateApprovalId(`${approval.id}:approve`)
       setActionError(null)
-      await api.post<RateApproval>(`/rate-approvals/${approval.id}/approve`)
+      await rateApprovalApi.approve(approval.id)
       await load()
     } catch (err) {
       setActionError(getErrorMessage(err))
@@ -731,7 +732,7 @@ export default function MobileOverviewPage() {
     try {
       setActingRateApprovalId(`${approval.id}:reject`)
       setActionError(null)
-      await api.post<RateApproval>(`/rate-approvals/${approval.id}/reject`, { reason: RATE_REJECTION_REASON })
+      await rateApprovalApi.reject(approval.id, RATE_REJECTION_REASON)
       await load()
     } catch (err) {
       setActionError(getErrorMessage(err))

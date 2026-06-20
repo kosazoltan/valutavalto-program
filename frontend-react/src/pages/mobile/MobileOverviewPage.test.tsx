@@ -23,6 +23,10 @@ const mocks = vi.hoisted(() => ({
   notificationMarkAllAsRead: vi.fn(),
   posTerminalList: vi.fn(),
   posTerminalStatus: vi.fn(),
+  rateApprovalPending: vi.fn(),
+  rateApprovalHistory: vi.fn(),
+  rateApprovalApprove: vi.fn(),
+  rateApprovalReject: vi.fn(),
   documentScannerUploadScannedDocument: vi.fn(),
   documentScannerGetCustomerDocuments: vi.fn(),
   transferDocumentList: vi.fn(),
@@ -84,6 +88,12 @@ vi.mock('../../services/api/index', () => ({
     list: mocks.posTerminalList,
     status: mocks.posTerminalStatus,
   },
+  rateApprovalApi: {
+    pending: mocks.rateApprovalPending,
+    history: mocks.rateApprovalHistory,
+    approve: mocks.rateApprovalApprove,
+    reject: mocks.rateApprovalReject,
+  },
   documentScannerApi: {
     uploadScannedDocument: mocks.documentScannerUploadScannedDocument,
     getCustomerDocuments: mocks.documentScannerGetCustomerDocuments,
@@ -117,6 +127,39 @@ describe('MobileOverviewPage', () => {
     vi.restoreAllMocks()
     vi.clearAllMocks()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
+    mocks.rateApprovalPending.mockResolvedValue([
+      {
+        id: 'rate-approval-1',
+        branchId: 'branch-1',
+        branchName: 'Szeged Értéktár',
+        currencyCode: 'EUR',
+        oldBuyRate: 390,
+        oldSellRate: 399,
+        newBuyRate: 392,
+        newSellRate: 401,
+        status: 'PENDING',
+        requestedByName: 'Árfolyam Teszt',
+        requestedAt: '2026-06-18T09:30:00',
+        reason: 'Piaci korrekció',
+      },
+    ])
+    mocks.rateApprovalHistory.mockResolvedValue([
+      {
+        id: 'rate-approval-history-1',
+        branchId: 'branch-1',
+        branchName: 'Szeged Értéktár',
+        currencyCode: 'USD',
+        oldBuyRate: 360,
+        oldSellRate: 369,
+        newBuyRate: 361,
+        newSellRate: 370,
+        status: 'APPROVED',
+        requestedByName: 'Árfolyam Teszt',
+        requestedAt: '2026-06-18T08:30:00',
+      },
+    ])
+    mocks.rateApprovalApprove.mockResolvedValue({ id: 'rate-approval-1', status: 'APPROVED' })
+    mocks.rateApprovalReject.mockResolvedValue({ id: 'rate-approval-1', status: 'REJECTED' })
     mocks.apiGet.mockImplementation((path: string) => {
       if (path === '/dashboard/summary') {
         return Promise.resolve({
@@ -220,45 +263,6 @@ describe('MobileOverviewPage', () => {
               branchName: 'Szeged Értéktár',
               submitted: false,
               submittedAt: null,
-            },
-          ],
-        })
-      }
-      if (path === '/rate-approvals/pending') {
-        return Promise.resolve({
-          data: [
-            {
-              id: 'rate-approval-1',
-              branchId: 'branch-1',
-              branchName: 'Szeged Értéktár',
-              currencyCode: 'EUR',
-              oldBuyRate: 390,
-              oldSellRate: 399,
-              newBuyRate: 392,
-              newSellRate: 401,
-              status: 'PENDING',
-              requestedByName: 'Árfolyam Teszt',
-              requestedAt: '2026-06-18T09:30:00',
-              reason: 'Piaci korrekció',
-            },
-          ],
-        })
-      }
-      if (path === '/rate-approvals/history') {
-        return Promise.resolve({
-          data: [
-            {
-              id: 'rate-approval-history-1',
-              branchId: 'branch-1',
-              branchName: 'Szeged Értéktár',
-              currencyCode: 'USD',
-              oldBuyRate: 360,
-              oldSellRate: 369,
-              newBuyRate: 361,
-              newSellRate: 370,
-              status: 'APPROVED',
-              requestedByName: 'Árfolyam Teszt',
-              requestedAt: '2026-06-18T08:30:00',
             },
           ],
         })
@@ -654,8 +658,8 @@ describe('MobileOverviewPage', () => {
     expect(mocks.apiGet).toHaveBeenCalledWith('/reports/daily/submission-status', {
       params: { date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) },
     })
-    expect(mocks.apiGet).toHaveBeenCalledWith('/rate-approvals/pending')
-    expect(mocks.apiGet).toHaveBeenCalledWith('/rate-approvals/history')
+    expect(mocks.rateApprovalPending).toHaveBeenCalled()
+    expect(mocks.rateApprovalHistory).toHaveBeenCalled()
     expect(mocks.apiGet).toHaveBeenCalledWith('/camera/status')
     expect(mocks.apiGet).toHaveBeenCalledWith('/camera/admin/storage-stats')
     expect(mocks.apiGet).toHaveBeenCalledWith('/camera/admin/upload-status')
@@ -920,7 +924,7 @@ describe('MobileOverviewPage', () => {
     await user.click((await screen.findAllByRole('button', { name: /Árfolyam engedélyezés/i }))[0]!)
 
     await waitFor(() => {
-      expect(mocks.apiPost).toHaveBeenCalledWith('/rate-approvals/rate-approval-1/approve')
+      expect(mocks.rateApprovalApprove).toHaveBeenCalledWith('rate-approval-1')
     })
   })
 
@@ -931,7 +935,7 @@ describe('MobileOverviewPage', () => {
     await user.click((await screen.findAllByRole('button', { name: /Árfolyam elutasítás/i }))[0]!)
 
     await waitFor(() => {
-      expect(mocks.apiPost).toHaveBeenCalledWith('/rate-approvals/rate-approval-1/reject', { reason: 'Mobil elutasítás' })
+      expect(mocks.rateApprovalReject).toHaveBeenCalledWith('rate-approval-1', 'Mobil elutasítás')
     })
   })
 
