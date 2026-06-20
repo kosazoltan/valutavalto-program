@@ -238,35 +238,89 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
 
     await waitFor(() => expect(screen.getByText('Mobil készlet-riportok')).toBeInTheDocument())
 
-    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/stock/11111111-1111-1111-1111-111111111111')
-    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/matrix')
+    // FK-037: az operatív read-hívások `_skipGlobal403Toast: true` configgal mennek (a 403-at
+    // hívásonként kezeljük, Promise.allSettled-del, nem globális toasttal).
+    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/stock/11111111-1111-1111-1111-111111111111', {
+      _skipGlobal403Toast: true,
+    })
+    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/matrix', { _skipGlobal403Toast: true })
     expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/movements', {
       params: {
         branchId: '11111111-1111-1111-1111-111111111111',
         size: 5,
         sort: 'createdAt,desc',
       },
+      _skipGlobal403Toast: true,
     })
     expect(mocks.apiGet).toHaveBeenCalledWith('/inventory-movements/movement-log', {
       params: {
         branchId: '11111111-1111-1111-1111-111111111111',
         date: expect.any(String),
       },
+      _skipGlobal403Toast: true,
     })
     expect(mocks.apiGet).toHaveBeenCalledWith('/inventory-movements/daily-balance', {
       params: {
         branchId: '11111111-1111-1111-1111-111111111111',
         date: expect.any(String),
       },
+      _skipGlobal403Toast: true,
     })
     expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/regeneration/last', {
       params: { branchId: '11111111-1111-1111-1111-111111111111' },
+      _skipGlobal403Toast: true,
     })
     expect(screen.getByText('Készletmátrix')).toBeInTheDocument()
     expect(screen.getByTestId('inventory-operation-panel')).toBeInTheDocument()
     expect(screen.getByText('telephely / valuta')).toBeInTheDocument()
     expect(screen.getByText('Utolsó regenerálás')).toBeInTheDocument()
     expect(screen.getByText('Napi mozgásnapló')).toBeInTheDocument()
+  })
+
+  it('FK-037: részleges 403 NEM nullázza az értéktári záró készletet, és nincs hibabanner (allSettled)', async () => {
+    // A fő értéktári készlet (/inventory/vault-stock) elérhető, de az operatív vezetői végpontok
+    // 403-at adnak (a szűkebb szerepkör várt esete). A korábbi Promise.all itt MINDENT elbuktatott
+    // (220M Ft + minden 0 ellentmondás); az allSettled-del a vault-stock adat megmarad, és a 403-ra
+    // — mert várt jogosultság-hiány — NINCS riasztó banner.
+    const forbidden = { response: { status: 403 } }
+    mocks.apiGet.mockImplementation((path: string) => {
+      if (path === '/inventory/vault-stock') return Promise.resolve({ data: ROWS })
+      if (path.includes('/banknote-inventory/branch/')) return Promise.resolve({ data: [] })
+      if (
+        path.startsWith('/inventory/stock/')
+        || path === '/inventory/matrix'
+        || path === '/inventory/movements'
+        || path.startsWith('/inventory-movements/')
+        || path === '/inventory/regeneration/last'
+      ) {
+        return Promise.reject(forbidden)
+      }
+      return Promise.resolve({ data: [] })
+    })
+
+    render(<InventoryPage />)
+
+    // A fő értéktári záró készlet (EUR 500) a 403-ak ELLENÉRE megjelenik.
+    await waitFor(() => expect(screen.getByText('500')).toBeInTheDocument())
+    // 403 = várt jogosultság-hiány → NINCS "Készlet riportok betöltési hiba" banner.
+    expect(screen.queryByText(/Készlet riportok betöltési hiba/)).not.toBeInTheDocument()
+  })
+
+  it('FK-037: valódi (nem-403) hiba az operatív riportokon hibabannert mutat', async () => {
+    const serverError = { response: { status: 500 }, message: 'szerverhiba' }
+    mocks.apiGet.mockImplementation((path: string) => {
+      if (path === '/inventory/vault-stock') return Promise.resolve({ data: ROWS })
+      if (path.includes('/banknote-inventory/branch/')) return Promise.resolve({ data: [] })
+      if (path === '/inventory/matrix') return Promise.reject(serverError)
+      return Promise.resolve({ data: [] })
+    })
+
+    render(<InventoryPage />)
+
+    // A nem-403 (500) hiba VALÓDI hiba → megjelenik a "Készlet riportok betöltési hiba" banner.
+    await waitFor(() =>
+      expect(screen.getByText(/Készlet riportok betöltési hiba/)).toBeInTheDocument(),
+    )
   })
 
   it('inventory mozgás részlet: a listából lekéri a /inventory/movements/{id} detail endpointot', async () => {

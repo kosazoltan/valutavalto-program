@@ -44,6 +44,16 @@ public class ErtektarController {
 
     private static final String ENDPOINT_BANK_TX = "POST /api/v1/ertektar/bank-transactions";
 
+    /**
+     * FK-037 (2026-06-20): a kozponti ertektari szerepkorok (FOERTEKTAR/UGYVEZETO) read-only
+     * (listazo GET) hozzaferese. Az iras/letrehozas/jovahagyas tovabbra is az osztaly-szintu
+     * SUPERVISOR/MANAGER/ADMIN (illetve a szukebb supervisor-approve/approve) szabaly szerint
+     * megy — ez a konstans CSAK a lekerdezo vegpontokon engedi a kozponti vezetoi ralatast.
+     * (annotacio-erteknek static final String compile-time konstans kell.)
+     */
+    static final String READ_ROLES =
+            "hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')";
+
     // === BEGYUJTES (Collections) ===
 
     /**
@@ -51,6 +61,7 @@ public class ErtektarController {
      * GET /api/v1/ertektar/collections
      */
     @GetMapping("/collections")
+    @PreAuthorize(READ_ROLES)
     public ResponseEntity<List<CollectionResponseDto>> getCollections() {
         return ResponseEntity.ok(vaultCollectionService.getCollections());
     }
@@ -83,6 +94,7 @@ public class ErtektarController {
      * GET /api/v1/ertektar/distribution
      */
     @GetMapping("/distribution")
+    @PreAuthorize(READ_ROLES)
     public ResponseEntity<List<DistributionResponseDto>> getDistributions() {
         return ResponseEntity.ok(vaultDistributionService.getDistributions());
     }
@@ -115,6 +127,7 @@ public class ErtektarController {
      * GET /api/v1/ertektar/bank-transactions
      */
     @GetMapping("/bank-transactions")
+    @PreAuthorize(READ_ROLES)
     public ResponseEntity<List<BankTransactionResponseDto>> getBankTransactions() {
         return ResponseEntity.ok(vaultBankTransactionService.getBankTransactions());
     }
@@ -124,6 +137,7 @@ public class ErtektarController {
      * GET /api/v1/ertektar/bank-transactions?type=BUY
      */
     @GetMapping("/bank-transactions/by-type")
+    @PreAuthorize(READ_ROLES)
     public ResponseEntity<List<BankTransactionResponseDto>> getBankTransactionsByType(
             @RequestParam String type) {
         return ResponseEntity.ok(vaultBankTransactionService.getBankTransactionsByType(type));
@@ -200,6 +214,7 @@ public class ErtektarController {
      * GET /api/v1/ertektar/transfers
      */
     @GetMapping("/transfers")
+    @PreAuthorize(READ_ROLES)
     public ResponseEntity<List<VaultTransferResponseDto>> getTransfers() {
         return ResponseEntity.ok(vaultTransferService.getTransfers());
     }
@@ -209,6 +224,7 @@ public class ErtektarController {
      * GET /api/v1/ertektar/transfers/pending
      */
     @GetMapping("/transfers/pending")
+    @PreAuthorize(READ_ROLES)
     public ResponseEntity<List<VaultTransferResponseDto>> getPendingTransfers() {
         return ResponseEntity.ok(vaultTransferService.getPendingTransfers());
     }
@@ -261,6 +277,7 @@ public class ErtektarController {
      * GET /api/v1/ertektar/receipts
      */
     @GetMapping("/receipts")
+    @PreAuthorize(READ_ROLES)
     public ResponseEntity<List<MaterialReceiptResponseDto>> getReceipts() {
         return ResponseEntity.ok(materialReceiptService.getReceipts());
     }
@@ -270,6 +287,7 @@ public class ErtektarController {
      * GET /api/v1/ertektar/receipts/by-type?type=B
      */
     @GetMapping("/receipts/by-type")
+    @PreAuthorize(READ_ROLES)
     public ResponseEntity<List<MaterialReceiptResponseDto>> getReceiptsByType(
             @RequestParam String type) {
         return ResponseEntity.ok(materialReceiptService.getReceiptsByType(type));
@@ -302,6 +320,7 @@ public class ErtektarController {
      * GET /api/v1/ertektar/corrections
      */
     @GetMapping("/corrections")
+    @PreAuthorize(READ_ROLES)
     public ResponseEntity<List<StockCorrectionResponseDto>> getCorrections() {
         return ResponseEntity.ok(stockCorrectionService.getCorrections());
     }
@@ -311,6 +330,7 @@ public class ErtektarController {
      * GET /api/v1/ertektar/corrections/pending
      */
     @GetMapping("/corrections/pending")
+    @PreAuthorize(READ_ROLES)
     public ResponseEntity<List<StockCorrectionResponseDto>> getPendingCorrections() {
         return ResponseEntity.ok(stockCorrectionService.getPendingCorrections());
     }
@@ -354,6 +374,7 @@ public class ErtektarController {
      * Ha a parameterek hianyoznak, az aktualis honap elso napjatol a mai napig ad vissza adatot.
      */
     @GetMapping("/reports/consolidated")
+    @PreAuthorize(READ_ROLES)
     public ResponseEntity<ConsolidatedReportResponseDto> getConsolidatedReport(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
@@ -369,6 +390,7 @@ public class ErtektarController {
      * GET /api/v1/ertektar/branches
      */
     @GetMapping("/branches")
+    @PreAuthorize(READ_ROLES)
     public ResponseEntity<Map<UUID, BranchStatusResponse>> getBranches() {
         return ResponseEntity.ok(branchMonitoringService.getBranchDashboard());
     }
@@ -378,6 +400,7 @@ public class ErtektarController {
      * GET /api/v1/ertektar/branches/status
      */
     @GetMapping("/branches/status")
+    @PreAuthorize(READ_ROLES)
     public ResponseEntity<Map<UUID, BranchStatusResponse>> getBranchesStatus() {
         return ResponseEntity.ok(branchMonitoringService.getBranchDashboard());
     }

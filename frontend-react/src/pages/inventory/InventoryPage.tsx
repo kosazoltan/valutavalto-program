@@ -117,6 +117,16 @@ function serializeRows(rows: VaultStockRow[]): string {
   )
 }
 
+/**
+ * FK-037 (2026-06-20): 403 (jogosultság-hiány) felismerése AxiosError-import nélkül.
+ * Az operatív készlet-riportok egy része vezetői végpont; a szűkebb szerepkörök (pl. Értéktáros)
+ * ezeken 403-at kapnak — ez várt állapot, NEM valódi hiba, ezért nem dobunk rá hibabannert.
+ */
+const isForbiddenError = (reason: unknown): boolean =>
+  typeof reason === 'object'
+  && reason !== null
+  && (reason as { response?: { status?: number } }).response?.status === 403
+
 export default function InventoryPage() {
   const { t } = useTranslation()
   const worker = useAuthStore(s => s.worker)
@@ -219,59 +229,94 @@ export default function InventoryPage() {
 
     const date = new Date().toISOString().slice(0, 10)
 
-    try {
-      setOperationalInventoryError(null)
-      const [
-        branchStockResponse,
-        matrixResponse,
-        movementsResponse,
-        movementLogResponse,
-        dailyBalanceResponse,
-        regenerationResponse,
-      ] = await Promise.all([
-        api.get<CashBalanceRow[]>(`/inventory/stock/${worker.branchId}`),
-        api.get<StockMatrixDto>('/inventory/matrix'),
-        api.get<{ content?: InventoryMovementRow[] } | InventoryMovementRow[]>('/inventory/movements', {
-          params: { branchId: worker.branchId, size: 5, sort: 'createdAt,desc' },
-        }),
-        api.get<InventoryMovementRow[]>('/inventory-movements/movement-log', {
-          params: { branchId: worker.branchId, date },
-        }),
-        api.get<InventoryBalanceDto>('/inventory-movements/daily-balance', {
-          params: { branchId: worker.branchId, date },
-        }),
-        api.get<RegenerationResultDto>('/inventory/regeneration/last', {
-          params: { branchId: worker.branchId },
-        }),
-      ])
+    setOperationalInventoryError(null)
+    // FK-037: Promise.allSettled — egyetlen részleges 403 NEM buktathatja el a többi, jogosult
+    // adatot. Korábban (Promise.all) a /inventory/stock vagy /matrix 403-ja az egész blokkot
+    // elbuktatta, így minden state 0-ra nullázódott, miközben az értéktári záró készlet a külön
+    // /inventory/vault-stock hívásból (loadData) helyesen látszott — ez okozta a "220M Ft + minden 0"
+    // ellentmondást. A `_skipGlobal403Toast` elnyomja a globális toast-ot (a 403-at itt kezeljük).
+    const [
+      branchStockResult,
+      matrixResult,
+      movementsResult,
+      movementLogResult,
+      dailyBalanceResult,
+      regenerationResult,
+    ] = await Promise.allSettled([
+      api.get<CashBalanceRow[]>(`/inventory/stock/${worker.branchId}`, { _skipGlobal403Toast: true }),
+      api.get<StockMatrixDto>('/inventory/matrix', { _skipGlobal403Toast: true }),
+      api.get<{ content?: InventoryMovementRow[] } | InventoryMovementRow[]>('/inventory/movements', {
+        params: { branchId: worker.branchId, size: 5, sort: 'createdAt,desc' },
+        _skipGlobal403Toast: true,
+      }),
+      api.get<InventoryMovementRow[]>('/inventory-movements/movement-log', {
+        params: { branchId: worker.branchId, date },
+        _skipGlobal403Toast: true,
+      }),
+      api.get<InventoryBalanceDto>('/inventory-movements/daily-balance', {
+        params: { branchId: worker.branchId, date },
+        _skipGlobal403Toast: true,
+      }),
+      api.get<RegenerationResultDto>('/inventory/regeneration/last', {
+        params: { branchId: worker.branchId },
+        _skipGlobal403Toast: true,
+      }),
+    ])
 
-      const matrix = matrixResponse.data?.matrix ?? {}
+    if (branchStockResult.status === 'fulfilled') {
+      const branchStockRows = safeArray<CashBalanceRow>(branchStockResult.value.data)
+      setBranchStockRows(branchStockRows)
+      const firstCurrencyId = branchStockRows.find((row) => row.currencyId != null)?.currencyId
+      setInventoryCurrencyId((current) => current || (firstCurrencyId == null ? '' : String(firstCurrencyId)))
+    } else {
+      setBranchStockRows([])
+    }
+
+    if (matrixResult.status === 'fulfilled') {
+      const matrix = matrixResult.value.data?.matrix ?? {}
       const currencyCodes = new Set<string>()
       Object.values(matrix).forEach((branchCurrencies) => {
         Object.keys(branchCurrencies ?? {}).forEach((code) => currencyCodes.add(code))
       })
-
-      const movementData = movementsResponse.data
-      const movementContent = Array.isArray(movementData) ? movementData : movementData?.content
-
-      setBranchStockRows(safeArray<CashBalanceRow>(branchStockResponse.data))
-      const firstCurrencyId = safeArray<CashBalanceRow>(branchStockResponse.data).find((row) => row.currencyId != null)?.currencyId
-      setInventoryCurrencyId((current) => current || (firstCurrencyId == null ? '' : String(firstCurrencyId)))
       setStockMatrixInfo({ branches: Object.keys(matrix).length, currencies: currencyCodes.size })
-      setMovementRows(safeArray<InventoryMovementRow>(movementContent))
-      setMovementLogRows(safeArray<InventoryMovementRow>(movementLogResponse.data))
-      setDailyBalance(dailyBalanceResponse.data ?? null)
-      setLastRegeneration(regenerationResponse.data ?? null)
-    } catch (err) {
-      const msg = getErrorMessage(err)
-      logger.error('InventoryPage', 'Készlet riportok betöltési hiba:', err)
-      setOperationalInventoryError(msg)
-      setBranchStockRows([])
+    } else {
       setStockMatrixInfo({ branches: 0, currencies: 0 })
+    }
+
+    if (movementsResult.status === 'fulfilled') {
+      const movementData = movementsResult.value.data
+      const movementContent = Array.isArray(movementData) ? movementData : movementData?.content
+      setMovementRows(safeArray<InventoryMovementRow>(movementContent))
+    } else {
       setMovementRows([])
-      setMovementLogRows([])
-      setDailyBalance(null)
-      setLastRegeneration(null)
+    }
+
+    setMovementLogRows(
+      movementLogResult.status === 'fulfilled'
+        ? safeArray<InventoryMovementRow>(movementLogResult.value.data)
+        : [],
+    )
+    setDailyBalance(dailyBalanceResult.status === 'fulfilled' ? (dailyBalanceResult.value.data ?? null) : null)
+    setLastRegeneration(regenerationResult.status === 'fulfilled' ? (regenerationResult.value.data ?? null) : null)
+
+    // Hibabanner CSAK valódi (nem-403) hibánál. A 403 (jogosultság-hiány) a szűkebb szerepköröknél
+    // várt — ilyenkor a fenti widgetek üres/scope-szűkített állapotban maradnak, de a fő értéktári
+    // záró készlet (külön /inventory/vault-stock, loadData) változatlanul helyes → nincs riasztó banner.
+    const results = [
+      branchStockResult,
+      matrixResult,
+      movementsResult,
+      movementLogResult,
+      dailyBalanceResult,
+      regenerationResult,
+    ]
+    const realFailure = results.find(
+      (r): r is PromiseRejectedResult => r.status === 'rejected' && !isForbiddenError(r.reason),
+    )
+    if (realFailure) {
+      const msg = getErrorMessage(realFailure.reason)
+      logger.error('InventoryPage', 'Készlet riportok betöltési hiba:', realFailure.reason)
+      setOperationalInventoryError(msg)
     }
   }, [worker?.branchId])
 

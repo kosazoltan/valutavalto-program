@@ -152,7 +152,9 @@ public class CashBalanceController {
      * GET /api/v1/cash-balances/company-totals
      */
     @GetMapping("/company-totals")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    // FK-037 (2026-06-20): a kozponti ertektari vezetoi szerepkorok (FOERTEKTAR/UGYVEZETO) is
+    // olvashatjak a cegszintu osszesitot — osszhangban a getCompanyBalances (83. sor) listaval.
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<List<CashBalanceService.CurrencyTotalBalance>> getCompanyTotals() {
         List<CashBalanceService.CurrencyTotalBalance> totals = cashBalanceService.getCompanyTotals();
         return ResponseEntity.ok(totals);
@@ -177,7 +179,9 @@ public class CashBalanceController {
      * GET /api/v1/cash-balances/company-position
      */
     @GetMapping("/company-position")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    // FK-037 (2026-06-20): a kozponti ertektari vezetoi szerepkorok (FOERTEKTAR/UGYVEZETO) is
+    // olvashatjak a cegszintu pillanatallast — osszhangban a getCompanyBalances (83. sor) listaval.
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<CashBalanceService.CompanyCashPosition> getCompanyCashPosition() {
         CashBalanceService.CompanyCashPosition position = cashBalanceService.getCompanyCashPosition();
         return ResponseEntity.ok(position);

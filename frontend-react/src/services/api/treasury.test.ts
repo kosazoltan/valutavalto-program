@@ -22,7 +22,9 @@ describe('treasuryApi', () => {
     mockApi.get.mockResolvedValueOnce({ data: dashboard })
 
     await expect(treasuryApi.dashboard()).resolves.toBe(dashboard)
-    expect(mockApi.get).toHaveBeenCalledWith('/treasury/dashboard')
+    // FK-037: a vezetoi treasury-olvasasok `_skipGlobal403Toast: true`-val mennek (a 403-at a
+    // TreasuryDashboard banner/ures-adat kezeli, nincs globalis toast-ozon).
+    expect(mockApi.get).toHaveBeenCalledWith('/treasury/dashboard', { _skipGlobal403Toast: true })
   })
 
   it('a fiók-összehasonlítást a dedikált backend végpontról kéri', async () => {
@@ -30,7 +32,7 @@ describe('treasuryApi', () => {
     mockApi.get.mockResolvedValueOnce({ data: rows })
 
     await expect(treasuryApi.branchComparison()).resolves.toBe(rows)
-    expect(mockApi.get).toHaveBeenCalledWith('/treasury/branch-comparison')
+    expect(mockApi.get).toHaveBeenCalledWith('/treasury/branch-comparison', { _skipGlobal403Toast: true })
   })
 
   it('a beküldési státuszt a dedikált backend végpontról kéri', async () => {
@@ -38,7 +40,7 @@ describe('treasuryApi', () => {
     mockApi.get.mockResolvedValueOnce({ data: rows })
 
     await expect(treasuryApi.submissionStatus()).resolves.toBe(rows)
-    expect(mockApi.get).toHaveBeenCalledWith('/treasury/submission-status')
+    expect(mockApi.get).toHaveBeenCalledWith('/treasury/submission-status', { _skipGlobal403Toast: true })
   })
 
   it('a bankflow összesítőt a dedikált backend végpontról kéri', async () => {
@@ -46,7 +48,7 @@ describe('treasuryApi', () => {
     mockApi.get.mockResolvedValueOnce({ data: rows })
 
     await expect(treasuryApi.bankFlow()).resolves.toBe(rows)
-    expect(mockApi.get).toHaveBeenCalledWith('/treasury/bank-flow', { params: {} })
+    expect(mockApi.get).toHaveBeenCalledWith('/treasury/bank-flow', { params: {}, _skipGlobal403Toast: true })
   })
 
   it('a fiókcsoport összesítőt a dedikált backend végpontról kéri', async () => {
@@ -54,7 +56,7 @@ describe('treasuryApi', () => {
     mockApi.get.mockResolvedValueOnce({ data: rows })
 
     await expect(treasuryApi.branchGroupSummary()).resolves.toBe(rows)
-    expect(mockApi.get).toHaveBeenCalledWith('/treasury/branch-group-summary', { params: {} })
+    expect(mockApi.get).toHaveBeenCalledWith('/treasury/branch-group-summary', { params: {}, _skipGlobal403Toast: true })
   })
 
   it('a cégösszesítőt a dedikált backend végpontról kéri', async () => {
@@ -62,7 +64,7 @@ describe('treasuryApi', () => {
     mockApi.get.mockResolvedValueOnce({ data: rows })
 
     await expect(treasuryApi.companySummary()).resolves.toBe(rows)
-    expect(mockApi.get).toHaveBeenCalledWith('/treasury/company-summary', { params: {} })
+    expect(mockApi.get).toHaveBeenCalledWith('/treasury/company-summary', { params: {}, _skipGlobal403Toast: true })
   })
 
   it('az értéktári alárendelt pénztár monitoringot az ErtektarController végpontról kéri', async () => {
@@ -70,7 +72,7 @@ describe('treasuryApi', () => {
     mockApi.get.mockResolvedValueOnce({ data: rows })
 
     await expect(treasuryApi.ertektarBranches()).resolves.toBe(rows)
-    expect(mockApi.get).toHaveBeenCalledWith('/ertektar/branches')
+    expect(mockApi.get).toHaveBeenCalledWith('/ertektar/branches', { _skipGlobal403Toast: true })
   })
 
   it('az értéktári konszolidált riportot az ErtektarController végpontról kéri', async () => {
@@ -80,6 +82,7 @@ describe('treasuryApi', () => {
     await expect(treasuryApi.ertektarConsolidatedReport('2026-06-01', '2026-06-18')).resolves.toBe(report)
     expect(mockApi.get).toHaveBeenCalledWith('/ertektar/reports/consolidated', {
       params: { from: '2026-06-01', to: '2026-06-18' },
+      _skipGlobal403Toast: true,
     })
   })
 

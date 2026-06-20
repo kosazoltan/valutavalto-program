@@ -19,7 +19,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/treasury")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+// FK-037 (2026-06-20): a kozponti ertektari szerepkorok (FOERTEKTAR/UGYVEZETO) is
+// jogosultak a cegszintu treasury-osszesitok OLVASASARA. Korabban csak MANAGER/ADMIN,
+// igy a Foertektaros/Ugyvezeto 403-at kapott a sajat dashboardjan (regresszio: a
+// frontend rakototte a dashboardot ezekre, de a backend role-lista nem kovette).
+// A controller MINDEN vegpontja read-only GET, ezert osztaly-szinten bovitheto.
+@PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
 public class TreasuryController {
 
     private final TreasuryDashboardService treasuryDashboardService;
