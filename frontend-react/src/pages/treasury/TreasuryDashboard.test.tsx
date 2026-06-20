@@ -28,6 +28,8 @@ const mocks = vi.hoisted(() => ({
   getReceiptsByType: vi.fn(),
   getCorrections: vi.fn(),
   getPendingCorrections: vi.fn(),
+  approveCorrection: vi.fn(),
+  rejectCorrection: vi.fn(),
   updateCollectionStatus: vi.fn(),
   updateDistributionStatus: vi.fn(),
   updateBankTransactionStatus: vi.fn(),
@@ -73,6 +75,8 @@ vi.mock('../../services/api/index', () => ({
     getReceiptsByType: mocks.getReceiptsByType,
     getCorrections: mocks.getCorrections,
     getPendingCorrections: mocks.getPendingCorrections,
+    approveCorrection: mocks.approveCorrection,
+    rejectCorrection: mocks.rejectCorrection,
     updateCollectionStatus: mocks.updateCollectionStatus,
     updateDistributionStatus: mocks.updateDistributionStatus,
     updateBankTransactionStatus: mocks.updateBankTransactionStatus,
@@ -350,6 +354,8 @@ describe('TreasuryDashboard', () => {
         createdAt: '2026-06-18T08:00:00',
       },
     ])
+    mocks.approveCorrection.mockResolvedValue({ id: 41, status: 'APPROVED' })
+    mocks.rejectCorrection.mockResolvedValue({ id: 41, status: 'REJECTED' })
     mocks.updateCollectionStatus.mockResolvedValue({ id: 11, status: 'COMPLETED' })
     mocks.updateDistributionStatus.mockResolvedValue({ id: 12, status: 'REJECTED' })
     mocks.updateBankTransactionStatus.mockResolvedValue({ id: 13, status: 'IN_PROGRESS' })
@@ -444,5 +450,34 @@ describe('TreasuryDashboard', () => {
     await waitFor(() => {
       expect(mocks.updateBankTransactionStatus).toHaveBeenCalledWith(13, 'IN_PROGRESS')
     })
+  })
+
+  it('a készletkorrekciók panelből meghívja az approve/reject backend szerződéseket', async () => {
+    const user = userEvent.setup()
+    render(<TreasuryDashboard />)
+
+    await screen.findByTestId('ertektar-readonly-ledger')
+
+    await user.click(screen.getByRole('button', { name: 'Készletkorrekció #41 jóváhagyás' }))
+    await waitFor(() => {
+      expect(mocks.approveCorrection).toHaveBeenCalledWith(41)
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Készletkorrekció #41 elutasítás' }))
+    await waitFor(() => {
+      expect(mocks.rejectCorrection).toHaveBeenCalledWith(41)
+    })
+  })
+
+  it('készletkorrekció döntés elutasított confirm esetén nem küld POST-ot', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const user = userEvent.setup()
+    render(<TreasuryDashboard />)
+
+    await screen.findByTestId('ertektar-readonly-ledger')
+    await user.click(screen.getByRole('button', { name: 'Készletkorrekció #41 jóváhagyás' }))
+
+    expect(mocks.approveCorrection).not.toHaveBeenCalled()
+    expect(mocks.rejectCorrection).not.toHaveBeenCalled()
   })
 })

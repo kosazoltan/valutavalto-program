@@ -22,6 +22,7 @@ const worker = {
 }
 
 async function mockApis(page: Page) {
+  const correctionDecisions: string[] = []
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
     activeRole: 'foertektar',
@@ -136,12 +137,27 @@ async function mockApis(page: Page) {
       })
     }
 
+    const correctionDecision = path.match(/\/ertektar\/corrections\/(\d+)\/(approve|reject)$/)
+    if (correctionDecision && method === 'POST') {
+      correctionDecisions.push(`${correctionDecision[1]}:${correctionDecision[2]}`)
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: Number(correctionDecision[1]),
+          status: correctionDecision[2] === 'approve' ? 'APPROVED' : 'REJECTED',
+        }),
+      })
+    }
+
     if (method === 'GET') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     }
 
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
   })
+
+  return { correctionDecisions }
 }
 
 async function login(page: Page) {
@@ -179,6 +195,42 @@ test('értéktári dashboard mobil nézetben lekéri és megjeleníti a read-onl
   await expect(ledger.getByText('ATT-2026-0001')).toBeVisible()
   await expect(ledger.getByText('BIZ-2026-0001')).toBeVisible()
   await expect(ledger.getByText('VAULT BUD01')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Készletkorrekció #41 jóváhagyás' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Készletkorrekció #41 elutasítás' })).toBeVisible()
+
+  const horizontalOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  )
+  expect(horizontalOverflow).toBe(false)
+})
+
+test('értéktári készletkorrekció gombok POST approve/reject backend szerződést hívnak', async ({ page }) => {
+  const apiCalls = await mockApis(page)
+  await login(page)
+  page.on('dialog', dialog => dialog.accept())
+
+  await page.goto('/treasury', { waitUntil: 'domcontentloaded' })
+
+  const ledger = page.getByTestId('ertektar-readonly-ledger')
+  await expect(ledger).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Készletkorrekció #41 jóváhagyás' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Készletkorrekció #41 elutasítás' })).toBeVisible()
+
+  const approveRequest = page.waitForRequest(request =>
+    request.method() === 'POST'
+    && new URL(request.url()).pathname === '/api/v1/ertektar/corrections/41/approve'
+  )
+  await page.getByRole('button', { name: 'Készletkorrekció #41 jóváhagyás' }).click()
+  await approveRequest
+
+  const rejectRequest = page.waitForRequest(request =>
+    request.method() === 'POST'
+    && new URL(request.url()).pathname === '/api/v1/ertektar/corrections/41/reject'
+  )
+  await page.getByRole('button', { name: 'Készletkorrekció #41 elutasítás' }).click()
+  await rejectRequest
+
+  expect(apiCalls.correctionDecisions).toEqual(['41:approve', '41:reject'])
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

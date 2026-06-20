@@ -83,6 +83,7 @@ export default function TreasuryDashboard() {
   const [stockCorrections, setStockCorrections] = useState<StockCorrectionItem[]>([])
   const [pendingStockCorrections, setPendingStockCorrections] = useState<StockCorrectionItem[]>([])
   const [statusAction, setStatusAction] = useState<string | null>(null)
+  const [correctionAction, setCorrectionAction] = useState<string | null>(null)
   const [statusActionError, setStatusActionError] = useState<string | null>(null)
   const [treasuryApiRestricted, setTreasuryApiRestricted] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(new Date())
@@ -374,6 +375,29 @@ export default function TreasuryDashboard() {
     }
   }
 
+  const decideStockCorrection = async (id: number, decision: 'approve' | 'reject') => {
+    const label = decision === 'approve' ? 'jóváhagyja' : 'elutasítja'
+    if (!window.confirm(`Biztosan ${label} a #${id} készletkorrekciót?`)) return
+
+    const actionKey = `correction:${id}:${decision}`
+    try {
+      setCorrectionAction(actionKey)
+      setStatusActionError(null)
+      if (decision === 'approve') {
+        await ertektarApi.approveCorrection(id)
+      } else {
+        await ertektarApi.rejectCorrection(id)
+      }
+      await fetchData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Készletkorrekció döntés sikertelen.'
+      setStatusActionError(message)
+      logger.error('TreasuryDashboard', 'Stock correction decision error:', err)
+    } finally {
+      setCorrectionAction(null)
+    }
+  }
+
   if (loading) return <DashboardSkeleton />
 
   const totalTx = (turnover?.totalBuyCount ?? 0) + (turnover?.totalSellCount ?? 0)
@@ -604,6 +628,21 @@ export default function TreasuryDashboard() {
               secondary: `${row.currencyCode} ${formatInteger(Number(row.difference ?? 0))}`,
               status: row.status,
             }))}
+            busyKey={correctionAction}
+            actions={(row) => row.status === 'PENDING' ? [
+              {
+                key: `correction:${row.id}:approve`,
+                label: 'Jóváhagyás',
+                ariaLabel: `Készletkorrekció #${row.id} jóváhagyás`,
+                onClick: () => void decideStockCorrection(row.id, 'approve'),
+              },
+              {
+                key: `correction:${row.id}:reject`,
+                label: 'Elutasítás',
+                ariaLabel: `Készletkorrekció #${row.id} elutasítás`,
+                onClick: () => void decideStockCorrection(row.id, 'reject'),
+              },
+            ] : []}
           />
         </div>
       </div>
@@ -774,14 +813,25 @@ interface ReadOnlyQueueRow {
   status: string
 }
 
+interface ReadOnlyQueueAction {
+  key: string
+  label: string
+  ariaLabel: string
+  onClick: () => void
+}
+
 function ReadOnlyQueue({
   title,
   summary,
   rows,
+  busyKey,
+  actions,
 }: {
   title: string
   summary: string
   rows: ReadOnlyQueueRow[]
+  busyKey?: string | null
+  actions?: (row: ReadOnlyQueueRow) => ReadOnlyQueueAction[]
 }) {
   return (
     <section className="rounded-lg border border-secondary-100 bg-white p-3">
@@ -795,19 +845,38 @@ function ReadOnlyQueue({
         </p>
       ) : (
         <div className="space-y-2">
-          {rows.map((row) => (
-            <div key={row.id} className="rounded border border-secondary-100 bg-secondary-50 p-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="break-words text-sm font-semibold text-secondary-900">{row.primary}</div>
-                  <div className="text-xs text-secondary-500">{row.secondary}</div>
+          {rows.map((row) => {
+            const rowActions = actions?.(row) ?? []
+            return (
+              <div key={row.id} className="rounded border border-secondary-100 bg-secondary-50 p-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="break-words text-sm font-semibold text-secondary-900">{row.primary}</div>
+                    <div className="text-xs text-secondary-500">{row.secondary}</div>
+                  </div>
+                  <span className="shrink-0 rounded bg-white px-2 py-1 text-[11px] font-semibold text-secondary-700">
+                    {row.status}
+                  </span>
                 </div>
-                <span className="shrink-0 rounded bg-white px-2 py-1 text-[11px] font-semibold text-secondary-700">
-                  {row.status}
-                </span>
+                {rowActions.length > 0 && (
+                  <div className="mt-2 grid grid-cols-2 gap-1.5">
+                    {rowActions.map((action) => (
+                      <button
+                        key={action.key}
+                        type="button"
+                        className="min-h-9 rounded border border-secondary-200 bg-white px-2 text-[11px] font-semibold text-secondary-800 disabled:opacity-50"
+                        disabled={busyKey === action.key}
+                        onClick={action.onClick}
+                        aria-label={action.ariaLabel}
+                      >
+                        {busyKey === action.key ? '...' : action.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </section>
