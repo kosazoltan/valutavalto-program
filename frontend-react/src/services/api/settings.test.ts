@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { adminCompanyApi, branchApi, cameraExportApi, commissionCalculationApi, documentScannerApi, handlingFeeConfigApi, handlingFeeTransactionApi, mfaAdminApi, navIntegrationApi, notificationApi, ownCompanyApi, posTerminalApi, supervisorPinApi, systemParameterApi, turnoverApi, workerCommissionApi } from './settings'
+import { adminCompanyApi, branchApi, cameraExportApi, commissionCalculationApi, documentScannerApi, handlingFeeConfigApi, handlingFeeTransactionApi, mfaAdminApi, navIntegrationApi, notificationApi, ownCompanyApi, posTerminalApi, supervisorPinApi, synchronizationApi, systemParameterApi, turnoverApi, workerCommissionApi } from './settings'
 import { api } from './client'
 
 vi.mock('./client', () => {
@@ -59,6 +59,38 @@ describe('turnoverApi backend query contract', () => {
 
     expect(mockApi.get).toHaveBeenCalledWith('/turnover/yearly', {
       params: { branchId: 'branch-123', year: 2026 },
+    })
+  })
+})
+
+describe('synchronizationApi backend contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('shouldSync normalizálja a backend boolean választ a frontend probe alakjára', async () => {
+    mockApi.get.mockResolvedValue({ data: true })
+
+    await expect(synchronizationApi.shouldSync()).resolves.toEqual({
+      shouldSync: true,
+      pendingCount: 0,
+    })
+
+    expect(mockApi.get).toHaveBeenCalledWith('/synchronization/should-sync', {
+      params: undefined,
+    })
+  })
+
+  it('shouldSync branchId paraméterrel hívja a backend should-sync végpontot', async () => {
+    mockApi.get.mockResolvedValue({ data: false })
+
+    await expect(synchronizationApi.shouldSync('branch-123')).resolves.toEqual({
+      shouldSync: false,
+      pendingCount: 0,
+    })
+
+    expect(mockApi.get).toHaveBeenCalledWith('/synchronization/should-sync', {
+      params: { branchId: 'branch-123' },
     })
   })
 })

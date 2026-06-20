@@ -960,10 +960,18 @@ export const reservationsApi = {
 }
 
 export interface SynchronizationResult { success: boolean; recordsSynced: number; errors: string[] }
+export interface SynchronizationProbe { shouldSync: boolean; pendingCount: number }
 export const synchronizationApi = {
   synchronize: async (branchId: string, workerId: string, options?: { direction?: string; entityTypes?: string[] }): Promise<SynchronizationResult> => (await api.post<SynchronizationResult>('/synchronization/sync', options || null, { params: { branchId, workerId } })).data,
-  shouldSync: async (): Promise<{ shouldSync: boolean; pendingCount: number }> => (await api.get<{ shouldSync: boolean; pendingCount: number }>('/synchronization/should-sync')).data,
-  shouldAutoSync: async (branchId: string): Promise<boolean> => (await api.get<boolean>('/synchronization/should-sync', { params: { branchId } })).data,
+  shouldSync: async (branchId?: string): Promise<SynchronizationProbe> => {
+    const response = await api.get<boolean | SynchronizationProbe>('/synchronization/should-sync', {
+      params: branchId ? { branchId } : undefined,
+    })
+    if (typeof response.data === 'boolean') {
+      return { shouldSync: response.data, pendingCount: 0 }
+    }
+    return response.data
+  },
 }
 
 export interface PosTerminal { id: string; terminalId: string; terminalName: string; branchId?: string; branchName?: string; isActive: boolean; lastTransactionAt?: string; connectionType?: string; comPort?: string; baudRate?: number; ipAddress?: string; port?: number }
