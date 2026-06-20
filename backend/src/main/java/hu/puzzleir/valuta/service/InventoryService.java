@@ -476,8 +476,17 @@ public class InventoryService {
         // breakdown. A logokat a Hetzner prod-on érhető el a `journalctl -u valuta-backend`.
         log.info("FK-005 getAllStock START: companyId={}, territoryFilter={}", companyId, territoryFilter);
 
-        java.util.function.Predicate<CashBalance> activeBranch =
-                cb -> cb.getBranch() != null && Boolean.TRUE.equals(cb.getBranch().getIsActive());
+        // FK-036 (2026-06-20): az is_vault=TRUE branch-ek (ertektarak) NEM jelenhetnek meg az
+        // Orszagos keszlet (penztari cash_balance) nezetben — sem valodi, sem szintetikus sorkent.
+        // Gyokerok: a V247 a deaktivalt KORUT penztar egyenleget tevesen BR020 (is_vault=TRUE)
+        // branch-be rakta; az ertektar-keszlet helyesen a currency_stock/vault_territory utvonalon
+        // el. A szintetikus sorok mar kizarjak a vaultot (appendSyntheticZeroRows !isVault); ez a
+        // predikatum a VALODI cash_balance sorokra is kiterjeszti a kizarast, mindket scope-ban
+        // (kozponti + territory), igy a vault-szivargas nem fugg attol, hogy a sor valodi-e.
+        java.util.function.Predicate<CashBalance> activeNonVaultBranch =
+                cb -> cb.getBranch() != null
+                        && Boolean.TRUE.equals(cb.getBranch().getIsActive())
+                        && !Boolean.TRUE.equals(cb.getBranch().getIsVault());
 
         List<CashBalance> allRaw = cashBalanceRepository.findByCompanyId(companyId);
         log.info("FK-005 getAllStock: findByCompanyId returned {} cash_balance rows", allRaw.size());
@@ -499,7 +508,7 @@ public class InventoryService {
         }
 
         if (territoryFilter == null) {
-            List<CashBalance> result = allRaw.stream().filter(activeBranch).toList();
+            List<CashBalance> result = allRaw.stream().filter(activeNonVaultBranch).toList();
             log.info("FK-005 getAllStock END (no territory): {} rows after activeBranch filter (was {})",
                     result.size(), allRaw.size());
             // FK-029: a hívó scope-ján belül minden aktív, nem-vault branch × aktív valuta kapjon
@@ -511,7 +520,7 @@ public class InventoryService {
         log.info("FK-005 getAllStock: territoryBranchIds={} (territoryFilter={})",
                 territoryBranchIds.size(), territoryFilter);
         List<CashBalance> result = allRaw.stream()
-                .filter(activeBranch)
+                .filter(activeNonVaultBranch)
                 .filter(cb -> territoryBranchIds.contains(cb.getBranch().getId()))
                 .toList();
         log.info("FK-005 getAllStock END (territory={}): {} rows after activeBranch+territory filter (was {})",
