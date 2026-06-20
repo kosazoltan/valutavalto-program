@@ -509,7 +509,7 @@ public class InventoryService {
 
         if (territoryFilter == null) {
             List<CashBalance> result = allRaw.stream().filter(activeNonVaultBranch).toList();
-            log.info("FK-005 getAllStock END (no territory): {} rows after activeBranch filter (was {})",
+            log.info("FK-005 getAllStock END (no territory): {} rows after activeNonVaultBranch filter (was {})",
                     result.size(), allRaw.size());
             // FK-029: a hívó scope-ján belül minden aktív, nem-vault branch × aktív valuta kapjon
             // (szintetikus, NEM perzisztált) 0-sort, ha nincs valódi cash_balance rekordja.
@@ -523,7 +523,7 @@ public class InventoryService {
                 .filter(activeNonVaultBranch)
                 .filter(cb -> territoryBranchIds.contains(cb.getBranch().getId()))
                 .toList();
-        log.info("FK-005 getAllStock END (territory={}): {} rows after activeBranch+territory filter (was {})",
+        log.info("FK-005 getAllStock END (territory={}): {} rows after activeNonVaultBranch+territory filter (was {})",
                 territoryFilter, result.size(), allRaw.size());
         // FK-029: territory-scope-helyes szintézis (ugyanaz a territoryFilter, mint a valódi soroknál).
         return appendSyntheticZeroRows(result, companyId, territoryFilter);

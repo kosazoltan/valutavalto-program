@@ -14,6 +14,10 @@
 -- SCOPE / BIZTONSAG: kizarolag is_vault=TRUE ES is_active=TRUE ES company.code='EBC' branch-ek
 -- cash_balance sorait torli. Mas branch, mas ceg, inaktiv branch NEM erintett. A currency_stock,
 -- branch, vault_territory, audit_log tablak ERINTETLENEK maradnak (csak cash_balance DELETE).
+-- SZANDEKOSAN dinamikus (NEM BR020-kodra hardkodolt): a torles az is_vault-invariansra epul —
+-- ertektar (is_vault=TRUE) branch-nek SOHA nem szabad cash_balance sora legyen, igy barmely ilyen
+-- sor hibas adat es torlendo. Jelenleg az EBC scope-ban CSAK a BR020 illik a feltetelre (a
+-- felterkepezes szerint 3 nem-nulla sor); a dinamikus szuro a jovobeni ujabb szivargast is fedi.
 --
 -- ELLENORZO SELECT (a torles ELOTT futtathato; varhato eredmeny: pontosan a BR020 branch sorai):
 --   SELECT b.code, b.name, b.is_vault, COUNT(cb.id) AS cash_balance_rows
