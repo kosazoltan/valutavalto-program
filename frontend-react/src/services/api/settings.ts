@@ -982,7 +982,6 @@ export const posTerminalApi = {
   status: async (terminalId: string): Promise<PosTerminalRuntimeStatus> => (
     await api.get<PosTerminalRuntimeStatus>('/pos-terminal-stub/status', { params: { terminalId } })
   ).data,
-  processTransaction: async (terminalId: string, amount: number, currency: string): Promise<Record<string, unknown>> => (await api.post('/pos-terminal/process-transaction', null, { params: { terminalId, amount, currency } })).data,
 }
 
 export interface NavSendResult { success: boolean; receiptNumber?: string; error?: string }

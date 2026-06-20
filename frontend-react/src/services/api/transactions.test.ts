@@ -127,15 +127,6 @@ describe('transactionApi', () => {
     })
   })
 
-  describe('reversal', () => {
-    it('calls POST /transactions/reversal', async () => {
-      mockApi.post.mockResolvedValue({ data: mockTransaction })
-      const request = { originalTransactionId: 1, reason: 'Hiba' }
-      await transactionApi.reversal(request)
-      expect(mockApi.post).toHaveBeenCalledWith('/transactions/reversal', request)
-    })
-  })
-
   describe('conversion', () => {
     it('calls POST /transactions/conversion', async () => {
       mockApi.post.mockResolvedValue({ data: mockTransaction })
@@ -189,15 +180,6 @@ describe('stornoApi', () => {
     expect(mockApi.post).toHaveBeenCalledWith('/stornos/execute', request)
   })
 
-  it('executePos: sends only backend-supported POS storno query params', async () => {
-    mockApi.post.mockResolvedValue({ data: mockTransaction })
-
-    await stornoApi.executePos('pos-tx-1', 'POS terminál sztornó')
-
-    expect(mockApi.post).toHaveBeenCalledWith('/stornos/pos', null, {
-      params: { posTransactionId: 'pos-tx-1', reason: 'POS terminál sztornó' },
-    })
-  })
 })
 
 describe('customerApi', () => {

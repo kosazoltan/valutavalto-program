@@ -474,12 +474,6 @@ export interface CashierCustomRateQuota {
   minAmountHuf: number
 }
 
-export interface ReversalRequest {
-  originalTransactionId: number
-  reason: string
-  approvedBy?: string
-}
-
 export interface ConversionRequest {
   /** AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, ha a tranzakcio felsovezetoi jovahagyast igenyelt. */
   approverWorkerId?: number
@@ -588,10 +582,6 @@ export const transactionApi = {
   },
   sell: async (data: SellRequest): Promise<Transaction> => {
     const response = await api.post<Transaction>('/transactions/sell', data)
-    return response.data
-  },
-  reversal: async (data: ReversalRequest): Promise<Transaction> => {
-    const response = await api.post<Transaction>('/transactions/reversal', data)
     return response.data
   },
   conversion: async (data: ConversionRequest): Promise<Transaction> => {
@@ -1014,12 +1004,6 @@ export const stornoApi = {
   },
   execute: async (request: StornoRequest): Promise<Transaction> => {
     const response = await api.post<Transaction>('/stornos/execute', request)
-    return response.data
-  },
-  executePos: async (posTransactionId: string, reason: string): Promise<Transaction> => {
-    const response = await api.post<Transaction>('/stornos/pos', null, {
-      params: { posTransactionId, reason }
-    })
     return response.data
   }
 }
