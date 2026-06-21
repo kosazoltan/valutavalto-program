@@ -37,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -173,6 +174,42 @@ class DailySessionServiceTest {
         assertNotNull(result);
         // Issue #110: auto-init kell hogy meghivva legyen pontosan 1x
         verify(cashBalanceService, times(1)).initializeBranchBalances(branchId);
+    }
+
+    @Test
+    @DisplayName("FK-038: openDay ÉRTÉKTÁR fiókra ValidationException — NINCS daily_session, NINCS cash_balance init")
+    void openDay_vaultBranch_rejected() {
+        Company company = Company.builder().id(companyId).code("EBC").name("EBC").build();
+        Branch vault = Branch.builder().id(branchId).code("BR020").name("Szeged Értéktár")
+                .company(company).isVault(true).build();
+
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(vault));
+
+        // FK-038: a gate a metódus elején, a stale-session-zárás és a session-mentés ELŐTT dob.
+        assertThatThrownBy(() -> service.openDay())
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Értéktári fiók nem nyithat");
+
+        verify(dailySessionRepository, never()).save(any(DailySession.class));
+        verify(cashBalanceService, never()).initializeBranchBalances(any());
+    }
+
+    @Test
+    @DisplayName("FK-038: getSessionHistory az ÉRTÉKTÁR-kizáró query-t hívja (a Zárási-állapot widget A-forrása)")
+    void getSessionHistory_excludesVault() {
+        LocalDate from = LocalDate.now();
+        LocalDate to = LocalDate.now();
+        DailySession penztarSession = DailySession.builder().id(1L).sessionDate(from).build();
+        when(dailySessionRepository.findByDateRangeExcludingVault(companyId, from, to))
+                .thenReturn(List.of(penztarSession));
+
+        List<DailySession> result = service.getSessionHistory(from, to);
+
+        assertEquals(1, result.size());
+        // A widget A-forrása a vault-KIZÁRÓ query-t hívja — NEM a sima findByDateRange-t, különben
+        // egy (legacy) vault daily_session tévesen megjelenne a pénztári zárás-állapot csempén.
+        verify(dailySessionRepository).findByDateRangeExcludingVault(companyId, from, to);
+        verify(dailySessionRepository, never()).findByDateRange(any(), any(), any());
     }
 
     // === Codex P1 (2026-05-31, #944 review) — sztorno-plafon lockolo szamlalo ===

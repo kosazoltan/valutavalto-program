@@ -117,6 +117,29 @@ class SessionOpenServiceTest {
     }
 
     @Test
+    @DisplayName("FK-038: openSession ÉRTÉKTÁR fiókra ValidationException — NINCS session, NINCS cash_balance lazy-init")
+    void testOpenSession_vaultBranch_rejected() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+
+            Branch vault = createBranch();
+            vault.setIsVault(true);
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(createCompany()));
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(vault));
+
+            // FK-038: az értéktár NEM nyithat pénztári napi munkamenetet — a gate a branch betöltése
+            // után, MINDEN mellékhatás (cash_balance lazy-init, session-mentés) ELŐTT dob.
+            assertThatThrownBy(() -> service.openSession(WORKER_ID, BRANCH_ID))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("Értéktári fiók nem nyithat");
+
+            verify(dailySessionRepository, never()).save(any(DailySession.class));
+            verify(cashBalanceService, never()).initializeBranchBalances(any());
+            verify(cashBalanceRepository, never()).existsByBranchId(any());
+        }
+    }
+
+    @Test
     @DisplayName("openSession → cash_balance lazy init failure blocks session opening")
     void testOpenSession_cashBalanceInitFailure_blocksOpening() {
         try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {

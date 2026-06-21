@@ -110,6 +110,31 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
     );
 
     /**
+     * FK-038 (2026-06-21): session-történet az ÉRTÉKTÁR (is_vault=TRUE) branch-ek KIZÁRÁSÁVAL —
+     * a {@link #findByDateRange} defenzív, PÉNZTÁR-only párja a Dashboard „Zárási állapot (ma)"
+     * widget A-forrásához (getSessionHistory). Értéktár nem nyit pénztári napi munkamenetet
+     * (DailySessionService.openDay / SessionOpenService.openSession gate); ez a read-oldali
+     * védelem a (legacy) esetlegesen már létező vault-session sorok kiszűrésére is — így egy
+     * értéktár SOHA nem jelenik meg a pénztári zárás-állapot csempén. A predikátum a
+     * {@link hu.puzzleir.valuta.repository.BranchRepository#findRateCreationAssignableCashierBranches(UUID)}
+     * (FK02-C) is_vault=false szűrőjét tükrözi.
+     */
+    @Query("SELECT ds FROM DailySession ds " +
+           "JOIN FETCH ds.branch " +
+           "JOIN FETCH ds.company " +
+           "LEFT JOIN FETCH ds.openedByWorker " +
+           "LEFT JOIN FETCH ds.closedByWorker " +
+           "WHERE ds.company.id = :companyId " +
+           "AND ds.sessionDate BETWEEN :startDate AND :endDate " +
+           "AND (ds.branch.isVault IS NULL OR ds.branch.isVault = false) " +
+           "ORDER BY ds.sessionDate DESC")
+    List<DailySession> findByDateRangeExcludingVault(
+        @Param("companyId") UUID companyId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate
+    );
+
+    /**
      * Nyitott sessionök a céghez (JOIN FETCH)
      */
     @Query("SELECT ds FROM DailySession ds " +

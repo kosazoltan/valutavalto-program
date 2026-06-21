@@ -223,6 +223,49 @@ class CashBalanceServiceTest {
         }
     }
 
+    @Test
+    @DisplayName("FK-038: getCompanyBalances az ÉRTÉKTÁR-kizáró metódust hívja (a Zárási-állapot widget ne listázzon vaultot)")
+    void getCompanyBalances_excludesVault() {
+        UUID companyId = UUID.randomUUID();
+        CashBalance penztarBalance = CashBalance.builder().currentBalance(new BigDecimal("1000")).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            when(cashBalanceRepository.findByCompanyIdExcludingVault(companyId))
+                    .thenReturn(List.of(penztarBalance));
+
+            List<CashBalance> result = service.getCompanyBalances();
+
+            // FK-038 / V334 invariáns: a cég-szintű kassza-nézet (Dashboard TOP Irodák +
+            // Zárási állapot widget + StockMatrix forrása) a vault-KIZÁRÓ metódust hívja —
+            // NEM a sima findByCompanyId-t, különben egy beszivárgott értéktár cash_balance sor
+            // (V247-bug típus) ismét tévesen megjelenne a listán.
+            verify(cashBalanceRepository).findByCompanyIdExcludingVault(companyId);
+            verify(cashBalanceRepository, never()).findByCompanyId(companyId);
+            assertThat(result).hasSize(1);
+        }
+    }
+
+    @Test
+    @DisplayName("FK-038: initializeBranchBalances ÉRTÉKTÁR fiókra 0-t ad és NEM hoz létre cash_balance-t")
+    void initializeBranchBalances_vaultBranch_skipped() {
+        UUID vaultBranchId = UUID.randomUUID();
+        Company company = Company.builder().id(UUID.randomUUID()).build();
+        Branch vault = Branch.builder().id(vaultBranchId).company(company).name("Szeged Értéktár").isVault(true).build();
+
+        // startup/async path (nincs authentikáció) → a tenant-guard kihagyva, egyből a vault-skiphez ér.
+        // FK-038 invariáns: értéktárnak nincs cash_balance — a write-oldali gyökér-gate itt áll, így a
+        // branch-létrehozás / bulk-init / lazy-init egyike sem hoz létre vault cash_balance sort.
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        when(branchRepository.findById(vaultBranchId)).thenReturn(Optional.of(vault));
+
+        int created = service.initializeBranchBalances(vaultBranchId);
+
+        assertThat(created).isZero();
+        verify(cashBalanceRepository, never()).save(any());
+        verify(currencyRepository, never()).findAllActiveOrdered();
+    }
+
     /** Helper: beallit egy authentikalt SecurityContext-et a teszt erejeig. */
     private static void setAuthenticatedContext(String principal) {
         org.springframework.security.authentication.UsernamePasswordAuthenticationToken auth =

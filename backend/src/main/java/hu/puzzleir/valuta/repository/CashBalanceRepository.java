@@ -81,6 +81,32 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
     List<CashBalance> findByCompanyId(@Param("companyId") UUID companyId);
 
     /**
+     * FK-038 (2026-06-21): cég-szintű kassza-egyenlegek az ÉRTÉKTÁR (is_vault=TRUE) branch-ek
+     * KIZÁRÁSÁVAL — a {@link #findByCompanyId(UUID)} defenzív, pénztár-only párja.
+     *
+     * INVARIÁNS (V334/FK-036): egy értéktár (is_vault=TRUE) branch-nek SOHA nem szabad
+     * cash_balance (pénztár-kassza) sora legyen; az értéktár-készlet a currency_stock /
+     * vault_territory úton él. A V247-bug korábban hibásan a BR020 értéktárba szivárogtatott
+     * pénztár-egyenleget, amit a V334 fizikailag takarított. Ez a query DEFENSE-IN-DEPTH:
+     * ha a jövőben ismét „beszivárogna" egy értéktár cash_balance sor, a cég-szintű pénztári
+     * kassza-nézet (CashBalanceService.getCompanyBalances → /cash-balances/company:
+     * Dashboard „TOP Irodák" + „Zárási állapot (ma)" widget + StockMatrix) akkor se listázza.
+     *
+     * A predikátum a {@link BranchRepository#findRateCreationAssignableCashierBranches(UUID)}
+     * (FK02-C) bevált is_vault=false szűrőjét tükrözi. A branch JOIN FETCH-elt, így OSIV-off
+     * mellett is biztonságos (a totals/position aggregátumok szándékosan a sima findByCompanyId-n
+     * maradnak — az külön üzleti döntés).
+     */
+    @Query("SELECT cb FROM CashBalance cb " +
+           "JOIN FETCH cb.branch " +
+           "JOIN FETCH cb.currency " +
+           "JOIN FETCH cb.company " +
+           "WHERE cb.company.id = :companyId " +
+           "AND (cb.branch.isVault IS NULL OR cb.branch.isVault = false) " +
+           "ORDER BY cb.branch.name, cb.currency.displayOrder")
+    List<CashBalance> findByCompanyIdExcludingVault(@Param("companyId") UUID companyId);
+
+    /**
      * Alacsony készletű egyenlegek (JOIN FETCH)
      */
     @Query("SELECT cb FROM CashBalance cb " +
