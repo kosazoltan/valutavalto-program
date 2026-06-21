@@ -56,6 +56,17 @@ public class DailySessionService {
         Long workerId = SecurityUtils.getCurrentWorkerId();
         LocalDate today = LocalDate.now();
 
+        // FK-038 (2026-06-21): értéktári (is_vault=TRUE) fiók NEM nyithat napi pénztári munkamenetet.
+        // Az értéktárnak nincs pénztári napizárása (a zárás a VaultClosingChecklist + ClosingControl
+        // úton megy, a készlet a currency_stock/vault_territory-ban él), és egy vault daily_session
+        // tévesen megjelenne a Dashboard „Zárási állapot (ma)" widget A-forrásában. A gate a metódus
+        // ELEJÉN áll, hogy a REOPEN- és az új-session-ágat is fedje, bármilyen mellékhatás előtt.
+        Branch vaultGuardBranch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található"));
+        if (Boolean.TRUE.equals(vaultGuardBranch.getIsVault())) {
+            throw new ValidationException("Értéktári fiók nem nyithat napi pénztári munkamenetet");
+        }
+
         // Stale sessionök automatikus lezárása (korábbi napok)
         List<DailySession> staleSessions = dailySessionRepository.findOpenSessionsByBranch(branchId).stream()
                 .filter(s -> s.getSessionDate() != null && s.getSessionDate().isBefore(today))
@@ -116,8 +127,8 @@ public class DailySessionService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Company nem található"));
 
-        Branch branch = branchRepository.findById(branchId)
-                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található"));
+        // FK-038: a branch-et a metódus elején már betöltöttük (vaultGuardBranch) — újrahasznosítjuk.
+        Branch branch = vaultGuardBranch;
 
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
@@ -365,7 +376,11 @@ public class DailySessionService {
     @Transactional(readOnly = true)
     public List<DailySession> getSessionHistory(LocalDate startDate, LocalDate endDate) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        return dailySessionRepository.findByDateRange(companyId, startDate, endDate);
+        // FK-038 (2026-06-21): az értéktár (is_vault=TRUE) kizárva — ez a Dashboard „Zárási állapot
+        // (ma)" widget A-forrása; egy (legacy) vault daily_session sem jelenhet meg a pénztári
+        // zárás-állapot csempén. Az értéktár pénztári napizárást eleve nem nyit (openDay/openSession
+        // gate); ez a read-oldali defense-in-depth.
+        return dailySessionRepository.findByDateRangeExcludingVault(companyId, startDate, endDate);
     }
 
     /**

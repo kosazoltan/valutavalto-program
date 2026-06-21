@@ -85,12 +85,21 @@ public class CashBalanceService {
     }
 
     /**
-     * Összes egyenleg lekérése a céghez
+     * Összes egyenleg lekérése a céghez — ÉRTÉKTÁR (is_vault=TRUE) branch-ek KIZÁRVA.
+     *
+     * FK-038 (2026-06-21): ez az endpoint (GET /cash-balances/company) a Dashboard „TOP Irodák",
+     * „Zárási állapot (ma)" widget és a StockMatrix forrása. A cég-szintű kassza-nézet per
+     * definíció PÉNZTÁR-only; az értéktár-készlet a currency_stock/vault_territory úton él, és a
+     * V334/FK-036 invariáns szerint értéktárnak nincs is cash_balance sora. Defense-in-depth: ha
+     * mégis „beszivárogna" ilyen sor (mint a V247-bugnál a BR020-ba), a widget akkor se listázza
+     * tévesen az értéktárat. A FK-036 mintát (InventoryService.getAllStock activeNonVaultBranch)
+     * követi: a kizárás a fogyasztó-specifikus metódusban, nem a megosztott findByCompanyId-ben
+     * (azt a totals/position aggregátumok is használják — szándékosan változatlan).
      */
     @Transactional(readOnly = true)
     public List<CashBalance> getCompanyBalances() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        return cashBalanceRepository.findByCompanyId(companyId);
+        return cashBalanceRepository.findByCompanyIdExcludingVault(companyId);
     }
 
     /**
@@ -168,6 +177,19 @@ public class CashBalanceService {
                 throw new org.springframework.security.access.AccessDeniedException(
                         "Csak saját cég branch-eire inicializálhat kassza egyenleget (cross-tenant tiltott)");
             }
+        }
+
+        // FK-038 (2026-06-21): ÉRTÉKTÁR (is_vault=TRUE) branch-nek NEM szabad cash_balance
+        // (pénztár-kassza) sora legyen — az értéktár-készlet a currency_stock/vault_territory
+        // úton él (V334/FK-036 invariáns). Ez a write-oldali GYÖKÉR-gate: a branch-létrehozás
+        // (BranchService), a bulk-init (initializeAllBranchBalancesForCurrentCompany) és a
+        // session-nyitás lazy-init útvonala mind ezen a metóduson megy át, ezért itt EGY ponton
+        // megakadályozzuk, hogy értéktár cash_balance sort kapjon (a V247-típusú szivárgás megelőzése).
+        // Idempotens szemantika: 0 = nem jött létre rekord.
+        if (Boolean.TRUE.equals(branch.getIsVault())) {
+            log.info("initializeBranchBalances: ÉRTÉKTÁR branch ({}) kihagyva — értéktárnak nincs cash_balance (FK-038 invariáns)",
+                    branch.getName());
+            return 0;
         }
 
         Company company = branch.getCompany();

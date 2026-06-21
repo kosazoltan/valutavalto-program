@@ -58,6 +58,14 @@ public class SessionOpenService {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
 
+        // FK-038 (2026-06-21): értéktári (is_vault=TRUE) fiók NEM nyithat napi pénztári munkamenetet
+        // (lásd DailySessionService.openDay) — még a cash_balance lazy-init (lentebb) ELŐTT, hogy egy
+        // értéktár ne is kapjon pénztár-kassza sort, és ne keletkezzen vault daily_session (a Dashboard
+        // „Zárási állapot" widget A-forrása).
+        if (Boolean.TRUE.equals(branch.getIsVault())) {
+            throw new ValidationException("Értéktári fiók nem nyithat napi pénztári munkamenetet");
+        }
+
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található: " + workerId));
 

@@ -53,7 +53,6 @@ type ClosingStatus = 'CLOSED' | 'IN_PROGRESS' | 'NOT_CLOSED'
 interface BranchClosing {
   id: string
   name: string
-  shortName: string
   closingStatus: ClosingStatus
 }
 
@@ -340,7 +339,6 @@ export default function TreasuryDashboard() {
         closingMap.set(s.branchId, {
           id: s.branchId,
           name: s.branchName ?? s.branchId,
-          shortName: (s.branchName ?? s.branchId).split(' ').slice(0, 2).join(' '),
           closingStatus: s.status === 'CLOSED' ? 'CLOSED' : 'IN_PROGRESS',
         })
       }
@@ -349,7 +347,6 @@ export default function TreasuryDashboard() {
           closingMap.set(b.id, {
             id: b.id,
             name: b.name,
-            shortName: b.name.split(' ').slice(0, 2).join(' '),
             closingStatus: 'NOT_CLOSED',
           })
         }
@@ -1339,7 +1336,7 @@ export default function TreasuryDashboard() {
                 {branch.closingStatus === 'CLOSED' && <CheckCircle size={12} />}
                 {branch.closingStatus === 'IN_PROGRESS' && <Clock size={12} />}
                 {branch.closingStatus === 'NOT_CLOSED' && <XCircle size={12} />}
-                {branch.shortName}
+                {branch.name}
               </div>
             ))}
             {closingStatuses.length === 0 && (

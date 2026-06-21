@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TreasuryDashboard from './TreasuryDashboard'
@@ -452,6 +452,50 @@ describe('TreasuryDashboard', () => {
 
     // A nem-központi adat (napi forgalom) ettől még betölt.
     expect(mocks.getDailyTurnover).toHaveBeenCalled()
+  })
+
+  it('a "Zárási állapot" widget a TELJES iroda-nevet jeleníti meg (nincs 2-szavas csonkítás)', async () => {
+    // Regresszió: a widget korábban csak az iroda nevének első 2 szavát mutatta
+    // (shortName = name.split(' ').slice(0,2)), így a "Szeged Tisza Sarok" és a
+    // "Szeged Tisza" megkülönböztethetetlenül "Szeged Tisza"-ként jelent meg.
+    // A javítás után a chip a teljes branch.name-et rendereli (mint a TOP Irodák widget).
+    mocks.getCompanyBalances.mockResolvedValue([
+      {
+        id: 1,
+        branchId: 'branch-tisza',
+        branchName: 'Szeged Tisza',
+        currencyId: 1,
+        currencyCode: 'EUR',
+        currentBalance: 500,
+        openingBalance: 0,
+        createdAt: '2026-06-18T08:00:00',
+      },
+      {
+        id: 2,
+        branchId: 'branch-tisza-sarok',
+        branchName: 'Szeged Tisza Sarok',
+        currencyId: 1,
+        currencyCode: 'EUR',
+        currentBalance: 400,
+        openingBalance: 0,
+        createdAt: '2026-06-18T08:00:00',
+      },
+    ])
+    mocks.getHistory.mockResolvedValue([])
+
+    render(<TreasuryDashboard />)
+
+    const panel = (await screen.findByText('treasury.zarasiAllapotMa')).closest(
+      '.form-panel',
+    ) as HTMLElement
+    expect(panel).not.toBeNull()
+
+    // Mindkét iroda külön chipként, a TELJES nevén (nem "Szeged Tisza"-ra csonkítva).
+    await waitFor(() => {
+      expect(within(panel).getByText('Szeged Tisza Sarok')).toBeInTheDocument()
+    })
+    // Exact-match: a "Szeged Tisza" pontosan egy chip (a másik "Szeged Tisza Sarok").
+    expect(within(panel).getByText('Szeged Tisza')).toBeInTheDocument()
   })
 
   it('a teljes készletértéket a backend HUF-egyenértékes company-position válaszából mutatja', async () => {
