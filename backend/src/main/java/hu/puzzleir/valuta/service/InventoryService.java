@@ -390,74 +390,17 @@ public class InventoryService {
 
     // ============ QUERIES ============
 
-    /**
-     * v2.5.1-D B6: a lokál értéktáros (mode='ertektar') worker területi szűrésére használt
-     * roles set — ezek a NEM-központi role-ok, akiknek csak a saját területük látszódhat.
-     *
-     * <p>A foertektar / ugyvezeto / admin "központi" szerepkörök NINCSENEK ebben a halmazban,
-     * ők MINDENT látnak (multi-tenant scope-on belül).</p>
-     */
-    private static final java.util.Set<String> TERRITORY_SCOPED_ROLES = java.util.Set.of(
-            "ertektar", "ERTEKTAR", "ertektaros", "VAULT_KEEPER", "vault_keeper",
-            "irodavezeto", "IRODAVEZETO"
-    );
+    // FK-039: a territory-scoped role-halmaz és a feloldó logika kiszervezve a
+    // hu.puzzleir.valuta.security.TerritoryScopeResolver-be — EGYETLEN forrás, amelyet az
+    // InventoryMovementService (movement-log RBAC, FR-0) is használ. Az alábbi két metódus delegál,
+    // hogy a hívási helyek (getAllStock / getVaultStockFlow / getStockMatrix) változatlanok maradjanak.
 
-    /**
-     * v2.5.1-D B6: a bejelentkezett worker vault_territory_id-je, ha a role-ja territory-scoped.
-     *
-     * <p>Visszaad null-t (= nincs területi szűrés) ha:
-     *  - a worker role-ja "központi" (foertektar/ugyvezeto/admin) — ők mindent látnak,
-     *  - a worker branch-ének nincs vault_territory_id-je,
-     *  - nincs bejelentkezett user (pl. test context, scheduler).</p>
-     *
-     * <p>Defensive: minden exception-t elnyel és null-t ad vissza, hogy ne dobja meg
-     * a meglévő endpoint flow-t. Smoke teszt v2.5.0-nál ezt elmulasztotta — most
-     * try/catch + log.warn helyettesít.</p>
-     */
-    /**
-     * FK-ÉRTÉKTÁR (2026-06-02): az aktuális role territory-scoped-e (ertektar/irodavezeto stb.).
-     * A {@link #getCurrentTerritoryFilterOrNull()} null-t ad vissza KÖZPONTI role-ra ÉS territory-
-     * scoped role-ra is, ha nincs vault_territory — ez a metódus a kettő megkülönböztetésére kell
-     * (fail-closed döntéshez). Defenzív: exception esetén false (nincs téves szűkítés a teszt/
-     * scheduler kontextusban).
-     */
     private boolean isCurrentRoleTerritoryScoped() {
-        try {
-            String activeRole = hu.puzzleir.valuta.security.SecurityUtils.getActiveOperationalRole();
-            String currentRole = hu.puzzleir.valuta.security.SecurityUtils.getCurrentRole();
-            String role = activeRole != null ? activeRole : currentRole;
-            return role != null && TERRITORY_SCOPED_ROLES.contains(role);
-        } catch (Exception e) {
-            return false;
-        }
+        return hu.puzzleir.valuta.security.TerritoryScopeResolver.isCurrentRoleTerritoryScoped();
     }
 
     private Integer getCurrentTerritoryFilterOrNull() {
-        try {
-            String activeRole = hu.puzzleir.valuta.security.SecurityUtils.getActiveOperationalRole();
-            String currentRole = hu.puzzleir.valuta.security.SecurityUtils.getCurrentRole();
-            String role = activeRole != null ? activeRole : currentRole;
-            log.info("FK-005 territoryFilter: activeRole={}, currentRole={}, effectiveRole={}",
-                    activeRole, currentRole, role);
-            if (role == null || !TERRITORY_SCOPED_ROLES.contains(role)) {
-                log.info("FK-005 territoryFilter: role NEM territory-scoped → null (központi role)");
-                return null; // központi role — nincs területi szűrés
-            }
-            UUID branchId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentBranchIdOrNull();
-            log.info("FK-005 territoryFilter: territory-scoped role={}, user branchId={}", role, branchId);
-            if (branchId == null) {
-                log.warn("FK-005 territoryFilter: territory-scoped role-nak NINCS user branchId-je → null (defensive)");
-                return null;
-            }
-            Integer filter = branchRepository.findById(branchId)
-                    .map(Branch::getVaultTerritoryId)
-                    .orElse(null);
-            log.info("FK-005 territoryFilter: branch.vaultTerritoryId={}", filter);
-            return filter;
-        } catch (Exception e) {
-            log.warn("FK-005 territoryFilter: exception (defensive null fallback): {}", e.getMessage());
-            return null;
-        }
+        return hu.puzzleir.valuta.security.TerritoryScopeResolver.currentTerritoryFilterOrNull(branchRepository);
     }
 
     /**

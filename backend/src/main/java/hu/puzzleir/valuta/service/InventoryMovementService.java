@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.inventory.InventoryBalanceDto;
 import hu.puzzleir.valuta.dto.inventory.InventoryMovementDto;
+import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.InventoryMovement;
 import hu.puzzleir.valuta.entity.MovementType;
@@ -10,6 +11,7 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.InventoryMovementRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.security.TerritoryScopeResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -45,6 +47,20 @@ public class InventoryMovementService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (branchId == null || !branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
             throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
+        // FR-0 (FK-039): territory-scoped szerepkör (pl. ERTEKTAR) CSAK a saját vault_territory-jához
+        // tartozó pénztár mozgásait kérheti le. Központi role (foertektar/ugyvezeto/manager/admin) →
+        // nincs területi megkötés (a fenti companyId-scope a határ). FAIL-CLOSED: ha a role
+        // territory-scoped, de nincs meghatározható saját territory, VAGY a kért pénztár más
+        // territory-é → 404 (a cross-tenant 404-gyel azonos viselkedés; nincs cross-territory szivárgás).
+        if (TerritoryScopeResolver.isCurrentRoleTerritoryScoped()) {
+            Integer ownTerritory = TerritoryScopeResolver.currentTerritoryFilterOrNull(branchRepository);
+            Integer branchTerritory = branchRepository.findById(branchId)
+                    .map(Branch::getVaultTerritoryId)
+                    .orElse(null);
+            if (ownTerritory == null || !ownTerritory.equals(branchTerritory)) {
+                throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+            }
         }
         return companyId;
     }

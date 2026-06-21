@@ -1,6 +1,8 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.inventory.InventoryBalanceDto;
+import hu.puzzleir.valuta.dto.inventory.InventoryMovementDto;
+import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
@@ -24,6 +26,7 @@ import org.springframework.data.domain.Page;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
@@ -104,5 +107,81 @@ class InventoryMovementServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getClosingBalance()).isEqualByComparingTo(new BigDecimal("1000.0000"));
         verify(movementRepository).search(eq(COMPANY_ID), eq(OWN_BRANCH), any(), any(), any(), any(), any());
+    }
+
+    // ============ FR-0 (FK-039): movement-log territory-scoping ============
+    // ERTEKTAR (territory-scoped) CSAK a saját vault_territory pénztárainak mozgásait kérheti le.
+    // Központi role (foertektar/ugyvezeto/manager/admin) → companyId-scope a határ, nincs területi megkötés.
+
+    private static final UUID USER_BRANCH = UUID.randomUUID();
+
+    private static Branch branchWithTerritory(Integer territoryId) {
+        return Branch.builder().vaultTerritoryId(territoryId).build();
+    }
+
+    @Test
+    @DisplayName("getMovements: ERTEKTAR a SAJÁT territory pénztárát lekérheti (mozgás-query fut)")
+    void getMovements_ertektar_ownTerritory_succeeds() {
+        when(branchRepository.existsByIdAndCompanyId(OWN_BRANCH, COMPANY_ID)).thenReturn(true);
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(USER_BRANCH);
+        when(branchRepository.findById(USER_BRANCH)).thenReturn(Optional.of(branchWithTerritory(1)));
+        when(branchRepository.findById(OWN_BRANCH)).thenReturn(Optional.of(branchWithTerritory(1)));
+        when(movementRepository.search(eq(COMPANY_ID), eq(OWN_BRANCH), any(), any(), any(), any(), any()))
+                .thenReturn(Page.empty());
+
+        List<InventoryMovementDto> result = service.getMovements(OWN_BRANCH, null, LocalDate.now());
+
+        assertThat(result).isNotNull();
+        verify(movementRepository).search(eq(COMPANY_ID), eq(OWN_BRANCH), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("getMovements: ERTEKTAR IDEGEN territory pénztárát NEM kérheti le (404, nincs mozgás-query)")
+    void getMovements_ertektar_otherTerritory_throws404() {
+        when(branchRepository.existsByIdAndCompanyId(OWN_BRANCH, COMPANY_ID)).thenReturn(true);
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(USER_BRANCH);
+        when(branchRepository.findById(USER_BRANCH)).thenReturn(Optional.of(branchWithTerritory(1)));
+        when(branchRepository.findById(OWN_BRANCH)).thenReturn(Optional.of(branchWithTerritory(2)));
+
+        assertThatThrownBy(() -> service.getMovements(OWN_BRANCH, null, LocalDate.now()))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Iroda nem található");
+        verify(movementRepository, never()).search(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("getMovements: ERTEKTAR vault_territory NÉLKÜL → fail-closed (404, nincs mozgás-query)")
+    void getMovements_ertektar_noTerritory_failClosed() {
+        when(branchRepository.existsByIdAndCompanyId(OWN_BRANCH, COMPANY_ID)).thenReturn(true);
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(USER_BRANCH);
+        when(branchRepository.findById(USER_BRANCH)).thenReturn(Optional.of(branchWithTerritory(null)));
+
+        assertThatThrownBy(() -> service.getMovements(OWN_BRANCH, null, LocalDate.now()))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Iroda nem található");
+        verify(movementRepository, never()).search(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("getMovements: központi role (ugyvezeto) területi megkötés NÉLKÜL kérheti le a cégen belüli pénztárt")
+    void getMovements_centralRole_anyBranch_succeeds() {
+        when(branchRepository.existsByIdAndCompanyId(OWN_BRANCH, COMPANY_ID)).thenReturn(true);
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ugyvezeto");
+        securityUtilsMock.when(SecurityUtils::getCurrentRole).thenReturn("ugyvezeto");
+        when(movementRepository.search(eq(COMPANY_ID), eq(OWN_BRANCH), any(), any(), any(), any(), any()))
+                .thenReturn(Page.empty());
+
+        List<InventoryMovementDto> result = service.getMovements(OWN_BRANCH, null, LocalDate.now());
+
+        assertThat(result).isNotNull();
+        verify(movementRepository).search(eq(COMPANY_ID), eq(OWN_BRANCH), any(), any(), any(), any(), any());
+        // központi role → NEM kérdez le user-branch territory-t
+        verify(branchRepository, never()).findById(any());
     }
 }
