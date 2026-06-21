@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.ClosingControlDto;
+import hu.puzzleir.valuta.dto.ClosingMarkType;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.ClosingControl;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
@@ -29,6 +30,7 @@ public class ClosingControlService {
     private final ClosingControlRepository closingControlRepository;
     private final BranchRepository branchRepository;
     private final NotificationService notificationService;
+    private final AuditLogService auditLogService;
 
     /**
      * Összes iroda zárási állapota egy adott napon
@@ -105,6 +107,47 @@ public class ClosingControlService {
         log.info("Figyelmeztetés rögzítve és értesítés küldve: branch={}", branchId);
     }
 
+    /**
+     * Backend jelzés arról, hogy egy iroda adott napi zárása beérkezett.
+     */
+    public ClosingControlDto markClosingDone(UUID companyId, UUID branchId, LocalDate date, ClosingMarkType type) {
+        Branch branch = requireBranchInCompany(branchId, companyId, true);
+        ClosingControl control = closingControlRepository.findByCompanyIdAndBranchIdAndControlDate(companyId, branchId, date)
+                .orElseGet(() -> closingControlRepository.save(ClosingControl.builder()
+                        .branchId(branchId)
+                        .companyId(companyId)
+                        .controlDate(date)
+                        .dailyClosingDone(false)
+                        .eveningClosingDone(false)
+                        .navClosingDone(false)
+                        .alertLevel("WARNING")
+                        .build()));
+
+        if (type == ClosingMarkType.DAILY) {
+            control.setDailyClosingDone(true);
+        } else if (type == ClosingMarkType.EVENING) {
+            control.setEveningClosingDone(true);
+        } else {
+            throw new ValidationException("Ismeretlen zárás típus: " + type);
+        }
+        control.setAlertLevel(resolveAlertLevel(control, branch, date));
+        ClosingControl saved = closingControlRepository.save(control);
+
+        String action = type == ClosingMarkType.DAILY ? "CLOSING_RECEIVED_DAILY" : "CLOSING_RECEIVED_EVENING";
+        Long workerId = currentWorkerIdOrNull();
+        auditLogService.log(action,
+                "ClosingControl",
+                saved.getId() != null ? saved.getId().toString() : null,
+                workerId != null ? workerId.toString() : null,
+                null,
+                branchId.toString(),
+                branch.getName(),
+                "{\"date\":\"" + date + "\",\"type\":\"" + type + "\"}",
+                null,
+                null);
+        return toDto(saved, branch, date);
+    }
+
     // --- Helper ---
 
     private ClosingControlDto toDto(ClosingControl entity, Branch branch, LocalDate date) {
@@ -112,8 +155,9 @@ public class ClosingControlService {
         boolean dailyDone = entity != null && Boolean.TRUE.equals(entity.getDailyClosingDone());
         boolean eveningDone = entity != null && Boolean.TRUE.equals(entity.getEveningClosingDone());
         boolean navDone = entity != null && Boolean.TRUE.equals(entity.getNavClosingDone());
-        int completed = countDone(dailyDone, eveningDone, navDone);
-        int required = 3;
+        boolean requiredDone = isRequiredClosingDone(branch, dailyDone, eveningDone);
+        int completed = requiredDone ? 1 : 0;
+        int required = 1;
 
         return ClosingControlDto.builder()
                 .id(entity != null ? entity.getId() : null)
@@ -126,7 +170,7 @@ public class ClosingControlService {
                 .eveningClosingDone(eveningDone)
                 .navClosingDone(navDone)
                 .lastTransactionAt(entity != null ? entity.getLastTransactionAt() : null)
-                .alertLevel(resolveAlertLevel(entity, date, completed, required))
+                .alertLevel(resolveAlertLevel(entity, branch, date))
                 .notes(entity != null ? entity.getNotes() : null)
                 .completedCount(completed)
                 .requiredCount(required)
@@ -135,9 +179,26 @@ public class ClosingControlService {
     }
 
     private Branch requireBranchInCurrentCompany(UUID branchId, UUID companyId) {
+        return requireBranchInCompany(branchId, companyId, false);
+    }
+
+    private Branch requireBranchInCompany(UUID branchId, UUID companyId, boolean auditTenantViolation) {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
         if (branch.getCompany() == null || !companyId.equals(branch.getCompany().getId())) {
+            if (auditTenantViolation) {
+                Long workerId = currentWorkerIdOrNull();
+                auditLogService.log("VV-TENANT-001",
+                        "ClosingControl",
+                        branchId.toString(),
+                        workerId != null ? workerId.toString() : null,
+                        null,
+                        null,
+                        null,
+                        "Idegen tenant zárásjelzés kísérlet",
+                        null,
+                        null);
+            }
             throw new ResourceNotFoundException("Iroda nem található: " + branchId);
         }
         if (!Boolean.TRUE.equals(branch.getIsActive())) {
@@ -146,12 +207,22 @@ public class ClosingControlService {
         return branch;
     }
 
-    private String resolveAlertLevel(ClosingControl entity, LocalDate date, int completed, int required) {
+    private Long currentWorkerIdOrNull() {
+        try {
+            return SecurityUtils.getCurrentWorkerId();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String resolveAlertLevel(ClosingControl entity, Branch branch, LocalDate date) {
+        boolean dailyDone = entity != null && Boolean.TRUE.equals(entity.getDailyClosingDone());
+        boolean eveningDone = entity != null && Boolean.TRUE.equals(entity.getEveningClosingDone());
+        if (isRequiredClosingDone(branch, dailyDone, eveningDone)) {
+            return "NONE";
+        }
         if (entity != null && entity.getAlertLevel() != null && !"NONE".equalsIgnoreCase(entity.getAlertLevel())) {
             return entity.getAlertLevel();
-        }
-        if (completed >= required) {
-            return "NONE";
         }
         if (date.isBefore(LocalDate.now())) {
             return "CRITICAL";
@@ -159,13 +230,10 @@ public class ClosingControlService {
         return "WARNING";
     }
 
-    private int countDone(boolean... values) {
-        int count = 0;
-        for (boolean value : values) {
-            if (value) {
-                count++;
-            }
+    private boolean isRequiredClosingDone(Branch branch, boolean dailyDone, boolean eveningDone) {
+        if (branch != null && Boolean.TRUE.equals(branch.getIsVault())) {
+            return eveningDone;
         }
-        return count;
+        return dailyDone;
     }
 }

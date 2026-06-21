@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.dto.ClosingMarkType;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.eveningclosing.DailyDataPackage;
 import hu.puzzleir.valuta.dto.eveningclosing.DataSyncResult;
@@ -73,6 +74,7 @@ public class DailyClosingService {
     private final DecadeReportService decadeReportService;
     private final AmlService amlService;
     private final ReceiptSequenceService receiptSequenceService;
+    private final ClosingControlService closingControlService;
 
     @Value("${nav.bridge.simulated-success-enabled:false}")
     private boolean navBridgeSimulatedSuccessEnabled;
@@ -130,6 +132,7 @@ public class DailyClosingService {
         if (allPassed) {
             // Napzaras vegrehajtasa
             executeClosing(branchId, companyId, closingDate);
+            closingControlService.markClosingDone(companyId, branchId, closingDate, ClosingMarkType.DAILY);
             wizard.setWizardStatus(WizardStatus.COMPLETED);
             wizard.setCompletedAt(LocalDateTime.now());
             log.info("Napzaras SIKERES: datum={}, iroda={}", closingDate, branchId);

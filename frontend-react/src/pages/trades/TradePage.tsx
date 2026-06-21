@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Check, CircleX, Loader2, Plus, RefreshCw, Send, Trash2 } from 'lucide-react'
+import { branchApi, type BranchInfo } from '../../services/api'
 import { tradeApi, type TradeDto } from '../../services/api/trades'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -37,6 +38,9 @@ export default function TradePage() {
   const [from, setFrom] = useState(oneMonthAgoIsoDate())
   const [to, setTo] = useState(todayIsoDate())
   const [toBranchId, setToBranchId] = useState('')
+  const [targetBranches, setTargetBranches] = useState<BranchInfo[]>([])
+  const [targetLoading, setTargetLoading] = useState(true)
+  const [targetError, setTargetError] = useState<string | null>(null)
   const [currencyCode, setCurrencyCode] = useState('EUR')
   const [amount, setAmount] = useState('')
   const [rate, setRate] = useState('1')
@@ -48,6 +52,8 @@ export default function TradePage() {
 
   const pendingCount = pending.length
   const acceptedCount = useMemo(() => pending.filter((trade) => trade.status === 'ACCEPTED').length, [pending])
+  const sourceBranchLabel = worker?.branchName || currentBranchId
+  const canCreateTrade = !submitting && !targetLoading && !targetError && targetBranches.length > 0 && Boolean(toBranchId)
 
   const loadTrades = useCallback(async () => {
     if (!currentBranchId) {
@@ -77,10 +83,35 @@ export default function TradePage() {
     void loadTrades()
   }, [loadTrades])
 
+  const loadTargetBranches = useCallback(async () => {
+    try {
+      setTargetLoading(true)
+      setTargetError(null)
+      const response = await branchApi.listVaultCounterparties()
+      const flattened = [
+        ...(response.territorialCashiers ?? []),
+        ...(response.peerVaults ?? []),
+        ...(response.fixedCounterparties ?? []),
+      ].filter((branch) => branch.id && branch.id !== currentBranchId)
+      setTargetBranches(flattened)
+    } catch (err) {
+      const message = getErrorMessage(err)
+      setTargetError(message)
+      setTargetBranches([])
+      logger.error('TradePage', 'target branches load failed', err)
+    } finally {
+      setTargetLoading(false)
+    }
+  }, [currentBranchId])
+
+  useEffect(() => {
+    void loadTargetBranches()
+  }, [loadTargetBranches])
+
   const proposeTrade = async () => {
     const parsedAmount = Number(amount)
     const parsedRate = Number(rate)
-    if (!currentBranchId || !toBranchId.trim() || !currencyCode.trim() || parsedAmount <= 0 || parsedRate <= 0) {
+    if (!currentBranchId || !toBranchId.trim() || targetError || !currencyCode.trim() || parsedAmount <= 0 || parsedRate <= 0) {
       setError('Forrás iroda, cél iroda, valuta, pozitív összeg és pozitív árfolyam kötelező.')
       return
     }
@@ -230,11 +261,28 @@ export default function TradePage() {
           <div className="space-y-2">
             <div>
               <label className="form-label">Forrás iroda</label>
-              <input className="form-input w-full" value={currentBranchId} disabled />
+              <input className="form-input w-full" value={sourceBranchLabel} disabled />
             </div>
             <div>
-              <label className="form-label" htmlFor="trade-to-branch">Cél iroda UUID</label>
-              <input id="trade-to-branch" className="form-input w-full" value={toBranchId} onChange={(event) => setToBranchId(event.target.value)} />
+              <label className="form-label" htmlFor="trade-to-branch">Cél iroda</label>
+              <select
+                id="trade-to-branch"
+                className="form-input w-full"
+                value={toBranchId}
+                onChange={(event) => setToBranchId(event.target.value)}
+                disabled={targetLoading || Boolean(targetError) || targetBranches.length === 0}
+              >
+                <option value="">{targetLoading ? 'Irodák betöltése...' : 'Válassz cél irodát'}</option>
+                {targetBranches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.code ? `${branch.code} - ${branch.name}` : branch.name}
+                  </option>
+                ))}
+              </select>
+              {targetError && <p className="mt-1 text-xs text-red-600">Cél irodák betöltése sikertelen: {targetError}</p>}
+              {!targetLoading && !targetError && targetBranches.length === 0 && (
+                <p className="mt-1 text-xs text-amber-700">Nincs választható cél iroda.</p>
+              )}
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div>
@@ -254,7 +302,7 @@ export default function TradePage() {
               <label className="form-label" htmlFor="trade-notes">Megjegyzés</label>
               <textarea id="trade-notes" className="form-input min-h-20 w-full" value={notes} onChange={(event) => setNotes(event.target.value)} />
             </div>
-            <button className="form-button-primary inline-flex min-h-10 w-full items-center justify-center gap-2" onClick={() => void proposeTrade()} disabled={submitting}>
+            <button className="form-button-primary inline-flex min-h-10 w-full items-center justify-center gap-2" onClick={() => void proposeTrade()} disabled={!canCreateTrade}>
               {submitting ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
               Ajánlat létrehozása
             </button>

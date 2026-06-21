@@ -36,9 +36,9 @@ export default function ShipmentNewPage() {
   const [searchParams] = useSearchParams()
   /**
    * Bali Henriett (2026-05-27) kérés A.: ÁTADÁS és ÁTVÉTEL teljesen elkülönülve.
-   *  - `outbound` = Értéktárból a Pénztárnak (a B+C PR lezárja a Kérő iroda mezőt
+   *  - `outbound` = Értéktárból a Pénztárnak (a B+C PR lezárja az Átadó mezőt
    *    a saját értéktárra).
-   *  - `inbound`  = Pénztárból az Értéktárba (a Cél iroda zárul a saját értéktárra).
+   *  - `inbound`  = Pénztárból az Értéktárba (az Átvevő mező zárul a saját értéktárra).
    * Visszafelé-kompatibilis: paraméter nélkül a régi univerzális űrlap fut.
    */
   const direction = useMemo<'outbound' | 'inbound' | null>(() => {
@@ -53,8 +53,8 @@ export default function ShipmentNewPage() {
   const worker = useAuthStore((state) => state.worker)
   /**
    * Bali Henriett kérés B.: a saját értéktár mindig a tranzakció egyik szereplője.
-   *  - outbound (ÁTADÁS): Kérő iroda = saját értéktár → fromBranchId előtöltve, locked.
-   *  - inbound  (ÁTVÉTEL): Cél iroda = saját értéktár → toBranchId előtöltve, locked.
+   *  - outbound (ÁTADÁS): Átadó = saját értéktár → fromBranchId előtöltve, locked.
+   *  - inbound  (ÁTVÉTEL): Átvevő = saját értéktár → toBranchId előtöltve, locked.
    *  - null (régi univerzális): semmi nincs zárolva.
    */
   const ownBranchId = worker?.branchId ?? ''
@@ -100,6 +100,16 @@ export default function ShipmentNewPage() {
     () => currencies.find((currency) => String(currency.id) === form.currencyId),
     [currencies, form.currencyId],
   )
+  const ownBranchOption = useMemo<BranchInfo | null>(() => {
+    if (!ownBranchId || !worker?.branchName) return null
+    return {
+      id: ownBranchId,
+      code: worker.branchCode || '',
+      name: worker.branchName,
+      isActive: true,
+      isVault: true,
+    }
+  }, [ownBranchId, worker?.branchCode, worker?.branchName])
 
   useEffect(() => {
     // Worker-betöltés után a saját értéktár-id pótlása az irány által megszabott oldalon.
@@ -143,7 +153,7 @@ export default function ShipmentNewPage() {
 
   useEffect(() => {
     let active = true
-    // FK-005/B4: a Kérő/Cél iroda legördülő CSAK a saját terület pénztárait mutatja, ha a
+    // FK-005/B4: az Átadó/Átvevő legördülő CSAK a saját terület pénztárait mutatja, ha a
     // felhasználó értéktárosként operál (vault-authority → region-scope); egyébként minden
     // aktív. A backend AccessScopeService dönt (a vault-authority precedál a base-role felett).
     //
@@ -221,11 +231,11 @@ export default function ShipmentNewPage() {
     setError(null)
     const amount = Number(form.amount.replace(',', '.'))
     if (!form.fromBranchId || !form.toBranchId || !form.currencyId || !Number.isFinite(amount) || amount <= 0) {
-      setError('Kérő iroda, cél iroda, valuta és pozitív összeg megadása kötelező.')
+      setError('Átadó, átvevő, valuta és pozitív összeg megadása kötelező.')
       return
     }
     if (form.fromBranchId === form.toBranchId) {
-      setError('A kérő és a cél iroda nem lehet ugyanaz.')
+      setError('Az átadó és az átvevő nem lehet ugyanaz.')
       return
     }
     // FK02 (FR-1..3, NFR-1,2): szállító + plombaszám kötelező + hossz/formátum — közös validátor
@@ -273,13 +283,14 @@ export default function ShipmentNewPage() {
         }],
       })
       if (!created.id) throw new Error('A szerver nem adott szállítmány azonosítót.')
-      await shipmentRequestApi.submit(created.id)
+      const submitted = await shipmentRequestApi.submit(created.id)
+      const receiptShipment = { ...created, ...submitted }
       // FR-1..3: a beküldés után NEM navigálunk azonnal — megnyitjuk a Bizonylat Előnézet modalt.
-      // A bizonylat adatait a szerver-válaszból (created: kérő/cél iroda NEVE, szállító, plomba,
+      // A bizonylat adatait a szerver-válaszból (átadó/átvevő iroda NEVE, szállító, plomba,
       // bizonylatszám) + a lokális, már megjelenített valuta/összeg/forintosított értékből építjük.
       const currencyCode = selectedCurrency?.code ?? ''
-      // „KÓD - Név" feloldás a már betöltött iroda-listákból (a cél lehet virtuális partner is,
-      // ezért a vault-counterparty csoportokat is bevonjuk); fallback a szerver-válasz nevére.
+      // Elsődleges forrás: backend DTO from/to branch kód+név. Csak régi/hiányos válasznál
+      // esünk vissza a már betöltött listára (a cél lehet virtuális partner is).
       const allBranches: BranchInfo[] = [
         ...branches,
         ...(vaultCounterparties
@@ -290,9 +301,15 @@ export default function ShipmentNewPage() {
             ]
           : []),
       ]
-      const branchLabel = (id: string, fallbackName?: string): string => {
+      const branchLabelFromBackend = (code?: string, name?: string): string => {
+        if (code && name) return `${code} - ${name}`
+        return name || code || ''
+      }
+      const branchLabel = (id: string, fallbackName?: string, fallbackCode?: string): string => {
+        const serverLabel = branchLabelFromBackend(fallbackCode, fallbackName)
+        if (serverLabel) return serverLabel
         const b = allBranches.find((x) => x.id === id)
-        return b ? `${b.code} - ${b.name}` : (fallbackName ?? '')
+        return b ? `${b.code} - ${b.name}` : ''
       }
       const branchAddress = (id: string): string | undefined => {
         const b = allBranches.find((x) => x.id === id)
@@ -308,12 +325,16 @@ export default function ShipmentNewPage() {
       setPrintReceiptData({
         type: 'transfer',
         companyType: getCompanyType(worker),
-        receiptNumber: created.requestNumber || created.id,
-        // Kérő iroda (az átadó értéktár), Cél iroda (a fogadó pénztár) — „KÓD - Név" formátumban.
-        branchCode: branchLabel(form.fromBranchId, created.requestingBranchName),
-        cashierName: created.requestedByWorkerName || worker?.fullName || '',
+        receiptNumber: receiptShipment.requestNumber || receiptShipment.id,
+        // Átadó / Átvevő — backend DTO-ból, „KÓD - Név" formátumban.
+        branchCode: branchLabel(
+          form.fromBranchId,
+          receiptShipment.fromBranchName || receiptShipment.requestingBranchName,
+          receiptShipment.fromBranchCode,
+        ),
+        cashierName: receiptShipment.requestedByWorkerName || worker?.fullName || '',
         // A fejléc dátuma a KIÁLLÍTÁS dátuma (Codex P2); a kért kézbesítési dátum külön mezőben (lentebb).
-        date: created.requestedAt?.slice(0, 10) || localIsoDate(),
+        date: receiptShipment.requestedAt?.slice(0, 10) || localIsoDate(),
         time: now.toTimeString().slice(0, 8),
         currencyCode,
         rate: appliedRate ?? undefined,
@@ -323,14 +344,18 @@ export default function ShipmentNewPage() {
         // bizonylaton a felhasználónak már megjelenített, szerver-autoritatív rate-tel számolt becslés szerepel.
         roundedHufAmount: hufValue ?? undefined,
         // FR-2: kért kézbesítési dátum (külön a kiállítási dátumtól).
-        deliveryDate: created.requestedDeliveryDate || form.deliveryDate || undefined,
-        transferTarget: branchLabel(form.toBranchId, created.targetBranchName),
+        deliveryDate: receiptShipment.requestedDeliveryDate || form.deliveryDate || undefined,
+        transferTarget: branchLabel(
+          form.toBranchId,
+          receiptShipment.toBranchName || receiptShipment.targetBranchName,
+          receiptShipment.toBranchCode,
+        ),
         vaultAddress: branchAddress(ownBranchId),
         vaultPhone: branchPhone(ownBranchId), // FR-2 (fejléc-javítás)
         transferDocType: direction === 'inbound' ? 'receipt' : 'handover',
-        transferNote: created.notes || form.notes || undefined,
-        carrierName: created.carrierName || form.carrierName.trim(),
-        sealNumber: created.sealNumber || form.sealNumber.trim(),
+        transferNote: receiptShipment.notes || form.notes || undefined,
+        carrierName: receiptShipment.carrierName || form.carrierName.trim(),
+        sealNumber: receiptShipment.sealNumber || form.sealNumber.trim(),
         denominations: normalizedDenominations.length > 0 ? normalizedDenominations : undefined,
       })
       setShowReceiptModal(true)
@@ -363,7 +388,7 @@ export default function ShipmentNewPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="block">
             <span className="form-label">
-              Kérő iroda{direction === 'outbound' && <span className="ml-1 text-xs text-gray-500">(automatikus — Ön értéktára)</span>}
+              Átadó{direction === 'outbound' && <span className="ml-1 text-xs text-gray-500">(automatikus — Ön értéktára)</span>}
             </span>
             <select
               className={`form-input ${direction === 'outbound' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
@@ -371,12 +396,19 @@ export default function ShipmentNewPage() {
               disabled={disabled || direction === 'outbound'}
               onChange={(e) => patch({ fromBranchId: e.target.value })}
             >
-              <option value="">Válasszon irodát</option>
+              <option value="">Válasszon átadót</option>
               {vaultCounterparties ? (
                 // FK-013: 3-csoportos optgroup értéktáros user esetén
                 // Audit follow-up: defenzív `?? []` — ha a backend Jackson kihagy egy null
                 // mezőt (Include.NON_NULL), a frontend ne crash-eljen `undefined.length` miatt.
                 <>
+                  {ownBranchOption && form.fromBranchId === ownBranchId && (
+                    <optgroup label="Saját értéktár">
+                      <option value={ownBranchOption.id}>
+                        {ownBranchOption.code ? `${ownBranchOption.code} - ${ownBranchOption.name}` : ownBranchOption.name}
+                      </option>
+                    </optgroup>
+                  )}
                   {(vaultCounterparties.territorialCashiers ?? []).length > 0 && (
                     <optgroup label="Helyi Pénztárak">
                       {(vaultCounterparties.territorialCashiers ?? [])
@@ -406,7 +438,7 @@ export default function ShipmentNewPage() {
           </label>
           <label className="block">
             <span className="form-label">
-              Cél iroda{direction === 'inbound' && <span className="ml-1 text-xs text-gray-500">(automatikus — Ön értéktára)</span>}
+              Átvevő{direction === 'inbound' && <span className="ml-1 text-xs text-gray-500">(automatikus — Ön értéktára)</span>}
             </span>
             <select
               className={`form-input ${direction === 'inbound' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
@@ -414,12 +446,19 @@ export default function ShipmentNewPage() {
               disabled={disabled || direction === 'inbound'}
               onChange={(e) => patch({ toBranchId: e.target.value })}
             >
-              <option value="">Válasszon cél irodát</option>
+              <option value="">Válasszon átvevőt</option>
               {vaultCounterparties ? (
                 // FK-013: 3-csoportos optgroup értéktáros user esetén
                 // Audit follow-up: defenzív `?? []` — ha a backend Jackson kihagy egy null
                 // mezőt (Include.NON_NULL), a frontend ne crash-eljen `undefined.length` miatt.
                 <>
+                  {ownBranchOption && form.toBranchId === ownBranchId && (
+                    <optgroup label="Saját értéktár">
+                      <option value={ownBranchOption.id}>
+                        {ownBranchOption.code ? `${ownBranchOption.code} - ${ownBranchOption.name}` : ownBranchOption.name}
+                      </option>
+                    </optgroup>
+                  )}
                   {(vaultCounterparties.territorialCashiers ?? []).length > 0 && (
                     <optgroup label="Helyi Pénztárak">
                       {(vaultCounterparties.territorialCashiers ?? [])

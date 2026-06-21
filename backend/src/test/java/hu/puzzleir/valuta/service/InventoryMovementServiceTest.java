@@ -44,6 +44,7 @@ class InventoryMovementServiceTest {
     @Mock private InventoryMovementRepository movementRepository;
     @Mock private CashBalanceRepository cashBalanceRepository;
     @Mock private BranchRepository branchRepository;
+    @Mock private AccessScopeService accessScopeService;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID OWN_BRANCH = UUID.randomUUID();
@@ -55,6 +56,8 @@ class InventoryMovementServiceTest {
     void setUp() {
         securityUtilsMock = mockStatic(SecurityUtils.class);
         securityUtilsMock.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+        when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+        when(accessScopeService.isBranchVisible(isNull(), anyString())).thenReturn(true);
     }
 
     @AfterEach

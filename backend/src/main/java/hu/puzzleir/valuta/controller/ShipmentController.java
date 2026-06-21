@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
 import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
 import hu.puzzleir.valuta.service.ShipmentService;
@@ -41,12 +42,12 @@ public class ShipmentController {
      * — megszünteti a kliens-oldali "összes letöltése + filter" mintát.
      */
     @GetMapping
-    public ResponseEntity<Page<ShipmentRequest>> findAll(
+    public ResponseEntity<Page<ShipmentRequestResponseDto>> findAll(
             @RequestParam(required = false) ShipmentRequestStatus status,
             @RequestParam(required = false) UUID branchId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(shipmentService.findAll(status, branchId, PageRequest.of(page, size)));
+        return ResponseEntity.ok(shipmentService.findAllResponse(status, branchId, PageRequest.of(page, size)));
     }
 
     /**
@@ -54,8 +55,8 @@ public class ShipmentController {
      * GET /api/v1/shipments/{id}
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ShipmentRequest> findById(@PathVariable UUID id) {
-        return ResponseEntity.ok(shipmentService.findById(id));
+    public ResponseEntity<ShipmentRequestResponseDto> findById(@PathVariable UUID id) {
+        return ResponseEntity.ok(shipmentService.findByIdResponse(id));
     }
 
     /**
@@ -63,8 +64,8 @@ public class ShipmentController {
      * POST /api/v1/shipments
      */
     @PostMapping
-    public ResponseEntity<ShipmentRequest> create(@Valid @RequestBody ShipmentRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(shipmentService.create(request));
+    public ResponseEntity<ShipmentRequestResponseDto> create(@Valid @RequestBody ShipmentRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(shipmentService.createResponse(request));
     }
 
     /**
@@ -72,10 +73,10 @@ public class ShipmentController {
      * PUT /api/v1/shipments/{id}
      */
     @PutMapping("/{id}")
-    public ResponseEntity<ShipmentRequest> update(
+    public ResponseEntity<ShipmentRequestResponseDto> update(
             @PathVariable UUID id,
             @Valid @RequestBody ShipmentRequest request) {
-        return ResponseEntity.ok(shipmentService.update(id, request));
+        return ResponseEntity.ok(shipmentService.updateResponse(id, request));
     }
 
     /**
@@ -83,8 +84,8 @@ public class ShipmentController {
      * POST /api/v1/shipments/{id}/submit
      */
     @PostMapping("/{id}/submit")
-    public ResponseEntity<ShipmentRequest> submit(@PathVariable UUID id) {
-        return ResponseEntity.ok(shipmentService.submit(id));
+    public ResponseEntity<ShipmentRequestResponseDto> submit(@PathVariable UUID id) {
+        return ResponseEntity.ok(shipmentService.submitResponse(id));
     }
 
     /**
@@ -93,8 +94,8 @@ public class ShipmentController {
      */
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
-    public ResponseEntity<ShipmentRequest> approve(@PathVariable UUID id) {
-        return ResponseEntity.ok(shipmentService.approve(id));
+    public ResponseEntity<ShipmentRequestResponseDto> approve(@PathVariable UUID id) {
+        return ResponseEntity.ok(shipmentService.approveResponse(id));
     }
 
     /**
@@ -102,8 +103,8 @@ public class ShipmentController {
      * POST /api/v1/shipments/{id}/deliver
      */
     @PostMapping("/{id}/deliver")
-    public ResponseEntity<ShipmentRequest> deliver(@PathVariable UUID id) {
-        return ResponseEntity.ok(shipmentService.deliver(id));
+    public ResponseEntity<ShipmentRequestResponseDto> deliver(@PathVariable UUID id) {
+        return ResponseEntity.ok(shipmentService.deliverResponse(id));
     }
 
     /**
@@ -111,8 +112,8 @@ public class ShipmentController {
      * POST /api/v1/shipments/{id}/cancel
      */
     @PostMapping("/{id}/cancel")
-    public ResponseEntity<ShipmentRequest> cancel(@PathVariable UUID id) {
-        return ResponseEntity.ok(shipmentService.cancel(id));
+    public ResponseEntity<ShipmentRequestResponseDto> cancel(@PathVariable UUID id) {
+        return ResponseEntity.ok(shipmentService.cancelResponse(id));
     }
 
     /**
@@ -125,9 +126,9 @@ public class ShipmentController {
      */
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
-    public ResponseEntity<ShipmentRequest> reject(
+    public ResponseEntity<ShipmentRequestResponseDto> reject(
             @PathVariable UUID id,
             @RequestParam(required = false) String reason) {
-        return ResponseEntity.ok(shipmentService.reject(id, reason));
+        return ResponseEntity.ok(shipmentService.rejectResponse(id, reason));
     }
 }

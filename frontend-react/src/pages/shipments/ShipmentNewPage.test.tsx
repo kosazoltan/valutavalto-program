@@ -47,8 +47,21 @@ describe('ShipmentNewPage', () => {
     mocks.currencyApi.getActive.mockResolvedValue([{ id: 4, code: 'EUR', name: 'Euró', decimals: 2, active: true }])
     // D követelmény: a valuta-választás után a frontend lekéri az aktuális elszámoló árfolyamot.
     mocks.exchangeRateApi.getByCurrencyId.mockResolvedValue({ currencyId: 4, currencyCode: 'EUR', officialRate: 400, baseBuyRate: 395, baseSellRate: 405, validDate: '2026-05-28', validTime: '12:00', active: true })
-    mocks.shipmentRequestApi.create.mockResolvedValue({ id: 'shipment-1' })
-    mocks.shipmentRequestApi.submit.mockResolvedValue({ id: 'shipment-1', requestStatus: 'SUBMITTED' })
+    const shipmentResponse = {
+      id: 'shipment-1',
+      requestNumber: 'AT-000001',
+      fromBranchCode: 'BR075',
+      fromBranchName: 'Szeged Értéktár',
+      toBranchCode: 'BR027',
+      toBranchName: 'Szeged Tesco',
+      requestedByWorkerName: 'Bali Henriett',
+      requestedAt: '2026-06-21T10:00:00',
+      requestedDeliveryDate: '2026-06-22',
+      carrierName: "Brink's Hungary Kft.",
+      sealNumber: 'ABC/12-3',
+    }
+    mocks.shipmentRequestApi.create.mockResolvedValue(shipmentResponse)
+    mocks.shipmentRequestApi.submit.mockResolvedValue({ ...shipmentResponse, requestStatus: 'SUBMITTED' })
   })
 
   it('creates and submits a shipment request from the real form', async () => {
@@ -56,8 +69,8 @@ describe('ShipmentNewPage', () => {
     render(<MemoryRouter><ShipmentNewPage /></MemoryRouter>)
 
     expect(screen.queryByText(/v2\.5\.0-ban érkezik/i)).not.toBeInTheDocument()
-    await waitFor(() => expect(screen.getByLabelText(/Cél iroda/i)).not.toBeDisabled())
-    await user.selectOptions(screen.getByLabelText(/Cél iroda/i), 'BR-B')
+    await waitFor(() => expect(screen.getByLabelText(/Átvevő/i)).not.toBeDisabled())
+    await user.selectOptions(screen.getByLabelText(/Átvevő/i), 'BR-B')
     await user.selectOptions(screen.getByLabelText(/Valuta/i), '4')
     await user.type(screen.getByLabelText(/Összeg/i), '1250')
     // FK02: a szállító + plombaszám kötelező — kitöltjük, különben a validáció blokkolja a beküldést.
@@ -77,14 +90,18 @@ describe('ShipmentNewPage', () => {
       items: [{ currencyId: '4', requestedAmount: 1250 }],
     }))
     expect(mocks.shipmentRequestApi.submit).toHaveBeenCalledWith('shipment-1')
+    await waitFor(() => expect(screen.getByText('Átadó:')).toBeInTheDocument())
+    expect(screen.getByText(/BR075 - Szeged Értéktár/)).toBeInTheDocument()
+    expect(screen.getByText('Átvevő:')).toBeInTheDocument()
+    expect(screen.getByText(/BR027 - Szeged Tesco/)).toBeInTheDocument()
   })
 
   it('FK02: hiányzó szállító/plombaszám esetén blokkolja a beküldést és hibát mutat', async () => {
     const user = userEvent.setup()
     render(<MemoryRouter><ShipmentNewPage /></MemoryRouter>)
 
-    await waitFor(() => expect(screen.getByLabelText(/Cél iroda/i)).not.toBeDisabled())
-    await user.selectOptions(screen.getByLabelText(/Cél iroda/i), 'BR-B')
+    await waitFor(() => expect(screen.getByLabelText(/Átvevő/i)).not.toBeDisabled())
+    await user.selectOptions(screen.getByLabelText(/Átvevő/i), 'BR-B')
     await user.selectOptions(screen.getByLabelText(/Valuta/i), '4')
     await user.type(screen.getByLabelText(/Összeg/i), '1250')
     // Szándékosan NEM töltjük ki a szállító + plombaszám mezőt.
@@ -96,7 +113,29 @@ describe('ShipmentNewPage', () => {
     expect(mocks.shipmentRequestApi.submit).not.toHaveBeenCalled()
   })
 
-  it('FK-013: értéktáros user esetén 3-csoportos optgroup a Cél iroda dropdown-ban', async () => {
+  it('outbound átadásnál a zárolt Átadó mező a saját értéktár nevét mutatja', async () => {
+    useAuthStore.setState({
+      worker: { id: 99, workerCode: 'BALI', firstName: 'Henriett', lastName: 'Bali', fullName: 'Bali Henriett', role: 'CASHIER', branchId: 'BR-VAULT-SZEGED', branchCode: 'BR075', branchName: 'Szeged Értéktár', companyId: 'C-1', companyCode: 'EBC', companyName: 'EBC' },
+      isAuthenticated: true,
+      roles: ['ertektar'],
+      activeRole: 'ertektar',
+    })
+    mocks.branchApi.listVaultCounterparties.mockResolvedValue({
+      territorialCashiers: [
+        { id: 'BR-TER-1', code: 'BR026', name: 'Szeged Móra', isActive: true },
+      ],
+      peerVaults: [],
+      fixedCounterparties: [],
+    })
+
+    render(<MemoryRouter initialEntries={['/shipments/new?direction=outbound']}><ShipmentNewPage /></MemoryRouter>)
+
+    const fromSelect = await screen.findByLabelText(/Átadó/i)
+    await waitFor(() => expect(fromSelect).toBeDisabled())
+    expect(fromSelect).toHaveDisplayValue('BR075 - Szeged Értéktár')
+  })
+
+  it('FK-013: értéktáros user esetén 3-csoportos optgroup az Átvevő dropdown-ban', async () => {
     // Értéktáros worker → hasCanonicalRole('ertektar') → listVaultCounterparties
     useAuthStore.setState({
       worker: { id: 99, workerCode: 'BALI', firstName: 'Henriett', lastName: 'Bali', fullName: 'Bali Henriett', role: 'CASHIER', branchId: 'BR-VAULT-SZEGED', branchCode: 'BR-VAULT-SZEGED', branchName: 'Szeged Értéktár', companyId: 'C-1', companyCode: 'EBC', companyName: 'EBC' },
@@ -127,7 +166,7 @@ describe('ShipmentNewPage', () => {
 
     // 3 optgroup csoport — <optgroup label="..."> role='group' name-attribute-szel
     // (a getByText az `label` attribute-ot NEM látja text-content-ként). Mind a 2 select-en
-    // (Kérő iroda + Cél iroda) renderelődik, ezért getAllByRole + length-assert.
+    // (Átadó + Átvevő) renderelődik, ezért getAllByRole + length-assert.
     await waitFor(() => {
       const territorialGroups = screen.getAllByRole('group', { name: /Helyi Pénztárak/i })
       expect(territorialGroups.length).toBeGreaterThanOrEqual(1)

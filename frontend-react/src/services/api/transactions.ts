@@ -1330,6 +1330,10 @@ export interface ShipmentRequest {
   requestingBranchName: string
   targetBranchId: string
   targetBranchName: string
+  fromBranchCode?: string
+  fromBranchName?: string
+  toBranchCode?: string
+  toBranchName?: string
   sourceBranchId?: string
   sourceBranchName?: string
   shipmentType: string
@@ -1402,6 +1406,8 @@ function normalizeShipmentRequest(raw: Record<string, unknown>): ShipmentRequest
         requestedDeliveryDate: (r.requestedDeliveryDate ?? r['deliveryDate']) as ShipmentRequest['requestedDeliveryDate'],
         requestingBranchId: (r.requestingBranchId ?? r['fromBranchId']) as ShipmentRequest['requestingBranchId'],
         targetBranchId: (r.targetBranchId ?? r['toBranchId']) as ShipmentRequest['targetBranchId'],
+        fromBranchName: (r.fromBranchName ?? r['requestingBranchName']) as ShipmentRequest['fromBranchName'],
+        toBranchName: (r.toBranchName ?? r['targetBranchName']) as ShipmentRequest['toBranchName'],
         requestingBranchName: (r.requestingBranchName ?? r['fromBranchName']) as ShipmentRequest['requestingBranchName'],
         targetBranchName: (r.targetBranchName ?? r['toBranchName']) as ShipmentRequest['targetBranchName'],
         requestedByWorkerName: (r.requestedByWorkerName ?? r['requestedBy']) as ShipmentRequest['requestedByWorkerName'],

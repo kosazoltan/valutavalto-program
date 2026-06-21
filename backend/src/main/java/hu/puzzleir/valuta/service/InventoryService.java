@@ -676,6 +676,15 @@ public class InventoryService {
                 .filter(b -> !territoryScoped || territoryFilter.equals(b.getVaultTerritoryId()))
                 .map(Branch::getId)
                 .collect(java.util.stream.Collectors.toSet());
+        java.util.Map<String, UUID> vaultBranchIdByTerritory = branchRepository
+                .findByCompanyIdAndIsVaultTrueAndIsActiveTrue(companyId)
+                .stream()
+                .filter(b -> b.getVaultTerritoryId() != null)
+                .filter(b -> !territoryScoped || territoryFilter.equals(b.getVaultTerritoryId()))
+                .collect(java.util.stream.Collectors.toMap(
+                        b -> String.valueOf(b.getVaultTerritoryId()),
+                        Branch::getId,
+                        (left, right) -> left));
 
         // Mai RECEIVED mozgasok a cegen belul, vault-branch-et erinto reszek
         var todayMovements = movementRepository
@@ -712,6 +721,8 @@ public class InventoryService {
                     return hu.puzzleir.valuta.dto.inventory.VaultStockRowDto.builder()
                             .currencyCode(cs.getCurrencyCode())
                             .currencyName(name)
+                            .vaultTerritoryId(cs.getEntityId())
+                            .branchId(vaultBranchIdByTerritory.get(cs.getEntityId()))
                             .opening(opening)
                             .received(received)
                             .issued(issued)

@@ -31,7 +31,7 @@ public class InventoryMovementController {
      * KĂ©szlet mozgĂˇsok listĂˇzĂˇsa
      */
     @GetMapping("/movement-log")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'IRODAVEZETO', 'ERTEKTAR')")
     public ResponseEntity<List<InventoryMovementDto>> getMovements(
             @RequestParam UUID branchId,
             @RequestParam(required = false) String currency,
@@ -43,7 +43,7 @@ public class InventoryMovementController {
      * Napi kĂ©szlet egyenleg
      */
     @GetMapping("/daily-balance")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'IRODAVEZETO', 'ERTEKTAR')")
     public ResponseEntity<InventoryBalanceDto> getDailyBalance(
             @RequestParam UUID branchId,
             @RequestParam(required = false) String currency,

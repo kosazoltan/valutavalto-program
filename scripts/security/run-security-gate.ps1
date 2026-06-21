@@ -1,7 +1,11 @@
 param(
     [string]$RepoRoot = (Resolve-Path "$PSScriptRoot\..\..").Path,
-    [int]$BackendDependencyCheckTimeoutSec = 600,
+    [int]$BackendDependencyCheckTimeoutSec = 1800,
     [int]$ScannerTimeoutSec = 180,
+    [int]$NvdApiTestTimeoutSec = 120,
+    [int]$NvdApiDelayMs = 3500,
+    [int]$NvdMaxRetryCount = 10,
+    [string]$BackendDependencyScanner = $env:BACKEND_DEPENDENCY_SCANNER,
     [string]$NvdApiKey = $env:NVD_API_KEY
 )
 
@@ -35,6 +39,13 @@ if ([string]::IsNullOrWhiteSpace($NvdApiKey)) {
 if ($NvdApiKey -and $NvdApiKey.Trim().Length -gt 0) {
     # Allow explicit parameter override while still supporting environment-based use.
     $env:NVD_API_KEY = $NvdApiKey
+}
+
+if ([string]::IsNullOrWhiteSpace($BackendDependencyScanner)) {
+    $BackendDependencyScanner = "dependency-check"
+}
+if ($BackendDependencyScanner -notin @("dependency-check", "osv-sbom")) {
+    throw "Unsupported backend dependency scanner: $BackendDependencyScanner"
 }
 
 # Local IDE / dev: remote DB often has no flyway_schema_history yet. CI sets CI=true -> strict unless overridden.
@@ -319,6 +330,53 @@ function Invoke-OptionalCheckWithTimeout {
         -Mode $Mode
 }
 
+function Resolve-PythonAuditInterpreter {
+    $defaultVenvRoot = Join-Path $env:LOCALAPPDATA "Valutavalto\SecurityGate\python-audit"
+    $venvRoot = if ([string]::IsNullOrWhiteSpace($env:SECURITY_GATE_PYTHON_AUDIT_VENV)) {
+        $defaultVenvRoot
+    }
+    else {
+        $env:SECURITY_GATE_PYTHON_AUDIT_VENV
+    }
+
+    $pythonExe = Join-Path $venvRoot "Scripts\python.exe"
+    if (!(Test-Path -LiteralPath $pythonExe)) {
+        python -m venv "$venvRoot" | Out-Null
+    }
+
+    if (!(Test-Path -LiteralPath $pythonExe)) {
+        throw "Python audit venv could not be created: $venvRoot"
+    }
+
+    $installOutput = & $pythonExe -m pip install --disable-pip-version-check --quiet --upgrade pip-audit==2.10.1 safety==3.8.1 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Python audit tools install failed in $venvRoot`: $installOutput"
+    }
+
+    return $pythonExe
+}
+
+function Resolve-OsvScannerPath {
+    if (-not [string]::IsNullOrWhiteSpace($env:OSV_SCANNER_PATH)) {
+        if (Test-Path -LiteralPath $env:OSV_SCANNER_PATH) {
+            return (Resolve-Path -LiteralPath $env:OSV_SCANNER_PATH).Path
+        }
+        throw "OSV_SCANNER_PATH does not exist: $($env:OSV_SCANNER_PATH)"
+    }
+
+    $localOsvPath = Join-Path $env:LOCALAPPDATA "Valutavalto\Tools\osv-scanner\v2.4.0\osv-scanner_windows_arm64.exe"
+    if (Test-Path -LiteralPath $localOsvPath) {
+        return $localOsvPath
+    }
+
+    $command = Get-Command "osv-scanner" -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+
+    throw "OSV scanner not found. Set OSV_SCANNER_PATH or install osv-scanner."
+}
+
 Write-Section "Security gate bootstrap"
 
 if (!(Test-Path -LiteralPath $RepoRoot)) {
@@ -357,7 +415,7 @@ Write-Host ("NVD API key configured: " + $(if ($env:NVD_API_KEY) { "YES" } else 
 $dbPreflightScript = Join-Path $RepoRoot "scripts\security\mandatory-db-preflight.ps1"
 if (Test-Path -LiteralPath $dbPreflightScript) {
     $escapedRepoRoot = $RepoRoot.Replace('"', '""')
-    $dbPreflightCommand = "powershell -NoProfile -ExecutionPolicy Bypass -File `"$dbPreflightScript`" -RepoRoot `"$escapedRepoRoot`""
+    $dbPreflightCommand = "pwsh -NoProfile -ExecutionPolicy Bypass -File `"$dbPreflightScript`" -RepoRoot `"$escapedRepoRoot`""
     $results.Add((Invoke-CheckWithTimeout `
         -Name "mandatory_db_preflight" `
         -WorkingDir $RepoRoot `
@@ -377,13 +435,13 @@ else {
     })
 }
 
-if ($env:NVD_API_KEY -and $env:NVD_API_KEY.Trim().Length -gt 0) {
+if ($BackendDependencyScanner -eq "dependency-check" -and $env:NVD_API_KEY -and $env:NVD_API_KEY.Trim().Length -gt 0) {
     $nvdCheckOutput = Join-Path $reportDir "nvd_api_key_check.txt"
     try {
         $response = Invoke-WebRequest -UseBasicParsing `
             -Uri "https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=1" `
             -Headers @{ apiKey = $env:NVD_API_KEY } `
-            -TimeoutSec 30
+            -TimeoutSec $NvdApiTestTimeoutSec
 
         $status = if ($response.StatusCode -eq 200) { "PASSED" } else { "FAILED" }
         $note = "HTTP $($response.StatusCode)"
@@ -405,14 +463,27 @@ if ($env:NVD_API_KEY -and $env:NVD_API_KEY.Trim().Length -gt 0) {
 }
 
 if ($hasJava -and (Test-Path -LiteralPath $backendDir)) {
-    # Use Maven Wrapper to avoid local Maven PATH dependency and apply explicit timeout.
-    # Use absolute path to mvnw.cmd so cmd.exe /d can find it without CWD search.
     $mvnwPath = Join-Path $backendDir "mvnw.cmd"
-    $backendCommand = "$mvnwPath dependency-check:check -DfailBuildOnCVSS=7"
-    $backendDisplayCommand = "mvnw.cmd dependency-check:check -DfailBuildOnCVSS=7"
-    if ($env:NVD_API_KEY -and $env:NVD_API_KEY.Trim().Length -gt 0) {
-        $backendCommand = "$mvnwPath dependency-check:check -DfailBuildOnCVSS=7 -DnvdApiKey=$env:NVD_API_KEY"
-        $backendDisplayCommand = "mvnw.cmd dependency-check:check -DfailBuildOnCVSS=7 -DnvdApiKey=***"
+    if ($BackendDependencyScanner -eq "osv-sbom") {
+        $osvScannerPath = Resolve-OsvScannerPath
+        $osvScannerPathForCmd = $osvScannerPath -replace '"', '""'
+        $osvReportPath = Join-Path $reportDir "backend_osv_sbom_result.json"
+        $osvReportPathForCmd = $osvReportPath -replace '"', '""'
+        $bomPath = Join-Path $backendDir "target\bom.json"
+        $bomPathForCmd = $bomPath -replace '"', '""'
+        $backendCommand = "`"$mvnwPath`" -q org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeBom -Dcyclonedx.outputFormat=json && `"$osvScannerPathForCmd`" scan source --format json --output-file `"$osvReportPathForCmd`" --lockfile `"$bomPathForCmd`""
+        $backendDisplayCommand = "mvnw.cmd -q org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeBom -Dcyclonedx.outputFormat=json && osv-scanner scan source --format json --output-file backend_osv_sbom_result.json --lockfile target/bom.json"
+    }
+    else {
+        # Use Maven Wrapper to avoid local Maven PATH dependency and apply explicit timeout.
+        # Use absolute path to mvnw.cmd so cmd.exe /d can find it without CWD search.
+        $dependencyCheckNvdProperties = "-DnvdApiDelay=$NvdApiDelayMs -DnvdMaxRetryCount=$NvdMaxRetryCount"
+        $backendCommand = "$mvnwPath dependency-check:check -DfailBuildOnCVSS=7 $dependencyCheckNvdProperties"
+        $backendDisplayCommand = "mvnw.cmd dependency-check:check -DfailBuildOnCVSS=7 $dependencyCheckNvdProperties"
+        if ($env:NVD_API_KEY -and $env:NVD_API_KEY.Trim().Length -gt 0) {
+            $backendCommand = "$backendCommand -DnvdApiKeyEnvironmentVariable=NVD_API_KEY"
+            $backendDisplayCommand = "$backendDisplayCommand -DnvdApiKeyEnvironmentVariable=NVD_API_KEY"
+        }
     }
 
     # No ProbeCommand needed: hasJava already verified Java availability above.
@@ -448,12 +519,14 @@ if (Test-Path -LiteralPath $electronDir) {
 
 if ($hasPython) {
     $pythonDependencyFileForCmd = $pythonDependencyFile -replace '"', '""'
-    $pythonProbeCommand = "`$env:PYTHONIOENCODING='utf-8'; python -m pip_audit --version"
+    $pythonAuditExe = Resolve-PythonAuditInterpreter
+    $pythonAuditExeForCmd = $pythonAuditExe -replace '"', '""'
+    $pythonProbeCommand = "`$env:PYTHONIOENCODING='utf-8'; & `"$pythonAuditExe`" -m pip_audit --version"
 
     $pythonPipAuditResult = Invoke-OptionalCheckWithTimeout `
         -Name "python_pip_audit" `
         -WorkingDir $RepoRoot `
-        -Command ('set PYTHONIOENCODING=utf-8 && python -m pip_audit --desc --format=json -r "{0}"' -f $pythonDependencyFileForCmd) `
+        -Command ('set PYTHONIOENCODING=utf-8 && "{0}" -m pip_audit --desc --format=json -r "{1}"' -f $pythonAuditExeForCmd, $pythonDependencyFileForCmd) `
         -ProbeCommand $pythonProbeCommand `
         -TimeoutSeconds $ScannerTimeoutSec `
         -DisplayCommand ('python -m pip_audit --desc --format=json -r "{0}"' -f $pythonDependencyFileForCmd) `
@@ -463,8 +536,8 @@ if ($hasPython) {
     $pythonSafetyResult = Invoke-OptionalCheckWithTimeout `
         -Name "python_safety_check" `
         -WorkingDir $RepoRoot `
-        -Command ('set PYTHONIOENCODING=utf-8 && python -m safety check -r "{0}" --json' -f $pythonDependencyFileForCmd) `
-        -ProbeCommand "python -m safety --version" `
+        -Command ('set PYTHONIOENCODING=utf-8 && "{0}" -m safety check -r "{1}" --json' -f $pythonAuditExeForCmd, $pythonDependencyFileForCmd) `
+        -ProbeCommand ('& "{0}" -m safety --version' -f $pythonAuditExeForCmd) `
         -TimeoutSeconds $ScannerTimeoutSec `
         -DisplayCommand ('python -m safety check -r "{0}" --json' -f $pythonDependencyFileForCmd) `
         -OutputFile (Join-Path $reportDir "python_safety_check.txt")

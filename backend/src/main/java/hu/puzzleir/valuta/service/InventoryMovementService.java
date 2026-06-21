@@ -34,6 +34,7 @@ public class InventoryMovementService {
     private final InventoryMovementRepository movementRepository;
     private final CashBalanceRepository cashBalanceRepository;
     private final BranchRepository branchRepository;
+    private final AccessScopeService accessScopeService;
 
     /**
      * Multi-tenant izoláció (audit/Codex P1 #934): a branchId-vel paraméterezett lekérdezések
@@ -44,6 +45,10 @@ public class InventoryMovementService {
     private UUID requireOwnBranch(UUID branchId) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         if (branchId == null || !branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
+        var scope = accessScopeService.vaultRegionBranchScopeOrNull();
+        if (!accessScopeService.isBranchVisible(scope, branchId.toString())) {
             throw new ResourceNotFoundException("Iroda nem található: " + branchId);
         }
         return companyId;

@@ -2,6 +2,8 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.AlertRequestDto;
 import hu.puzzleir.valuta.dto.ClosingControlDto;
+import hu.puzzleir.valuta.dto.ClosingMarkDoneRequestDto;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.ClosingControlService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -57,5 +59,19 @@ public class ClosingControlController {
         log.info("POST /api/v1/closing-control/alert - branch: {}", dto.getBranchId());
         closingControlService.sendAlert(dto.getBranchId(), dto.getMessage());
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * POST /api/v1/closing-control/mark-done — ideiglenes admin/teszt zárásjelzés.
+     */
+    @PostMapping("/mark-done")
+    @PreAuthorize("hasRole('FOERTEKTAR')")
+    public ResponseEntity<ClosingControlDto> markDone(@Valid @RequestBody ClosingMarkDoneRequestDto dto) {
+        log.info("POST /api/v1/closing-control/mark-done - branch: {}, type: {}", dto.getBranchId(), dto.getType());
+        return ResponseEntity.ok(closingControlService.markClosingDone(
+                SecurityUtils.getCurrentCompanyId(),
+                dto.getBranchId(),
+                dto.getDate(),
+                dto.getType()));
     }
 }
