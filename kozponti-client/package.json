@@ -39,6 +39,12 @@
   },
   "overrides": {
     "tmp": "^0.2.6",
-    "shell-quote": "^1.8.4"
+    "shell-quote": "^1.8.4",
+    "@electron/get": {
+      "undici": "^7.28.0"
+    },
+    "node-gyp": {
+      "undici": "^6.27.0"
+    }
   }
 }

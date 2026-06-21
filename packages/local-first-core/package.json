@@ -16,5 +16,10 @@
     "@types/node": "^25.7.0",
     "@types/sql.js": "^1.4.11",
     "typescript": "^6.0.3"
+  },
+  "overrides": {
+    "@electron/get": {
+      "undici": "^7.28.0"
+    }
   }
 }
