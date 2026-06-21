@@ -187,8 +187,8 @@ public class CashBalanceService {
         // megakadályozzuk, hogy értéktár cash_balance sort kapjon (a V247-típusú szivárgás megelőzése).
         // Idempotens szemantika: 0 = nem jött létre rekord.
         if (Boolean.TRUE.equals(branch.getIsVault())) {
-            log.info("initializeBranchBalances: ÉRTÉKTÁR branch ({}) kihagyva — értéktárnak nincs cash_balance (FK-038 invariáns)",
-                    branch.getName());
+            log.info("initializeBranchBalances: ÉRTÉKTÁR branch (id={}, {}) kihagyva — értéktárnak nincs cash_balance (FK-038 invariáns)",
+                    branchId, branch.getName());
             return 0;
         }
 

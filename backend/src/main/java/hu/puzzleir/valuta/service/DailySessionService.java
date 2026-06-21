@@ -62,7 +62,7 @@ public class DailySessionService {
         // tévesen megjelenne a Dashboard „Zárási állapot (ma)" widget A-forrásában. A gate a metódus
         // ELEJÉN áll, hogy a REOPEN- és az új-session-ágat is fedje, bármilyen mellékhatás előtt.
         Branch vaultGuardBranch = branchRepository.findById(branchId)
-                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található"));
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
         if (Boolean.TRUE.equals(vaultGuardBranch.getIsVault())) {
             throw new ValidationException("Értéktári fiók nem nyithat napi pénztári munkamenetet");
         }

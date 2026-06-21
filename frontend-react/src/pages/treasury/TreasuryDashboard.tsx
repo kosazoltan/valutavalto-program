@@ -1325,6 +1325,7 @@ export default function TreasuryDashboard() {
             {closingStatuses.map((branch) => (
               <div
                 key={branch.id}
+                title={branch.name}
                 className={`px-2 py-1 rounded border text-xs font-semibold flex items-center gap-1 ${
                   branch.closingStatus === 'CLOSED'
                     ? 'bg-success-50 border-success-200 text-success-700'
