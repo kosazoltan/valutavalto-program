@@ -11,15 +11,22 @@ function createJwt(payload: Record<string, unknown>) {
   return `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode(payload)}.signature`
 }
 
-type Role = 'arfolyam_nezo' | 'foertektar'
+type Role = 'arfolyam_nezo' | 'foertektar' | 'penztar'
+
+const WORKER_META: Record<Role, { code: string; first: string; last: string }> = {
+  arfolyam_nezo: { code: 'ARFNEZO1', first: 'Árfolyam', last: 'Néző' },
+  foertektar: { code: 'FOERT1', first: 'Fő', last: 'Értéktáros' },
+  penztar: { code: 'PENZ1', first: 'Pénz', last: 'Táros' },
+}
 
 function makeWorker(role: Role, roles: Role[]) {
+  const meta = WORKER_META[role]
   return {
     id: 11,
-    workerCode: role === 'arfolyam_nezo' ? 'ARFNEZO1' : 'FOERT1',
-    firstName: role === 'arfolyam_nezo' ? 'Árfolyam' : 'Fő',
-    lastName: role === 'arfolyam_nezo' ? 'Néző' : 'Értéktáros',
-    fullName: role === 'arfolyam_nezo' ? 'Árfolyam Néző' : 'Fő Értéktáros',
+    workerCode: meta.code,
+    firstName: meta.first,
+    lastName: meta.last,
+    fullName: `${meta.first} ${meta.last}`,
     role,
     branchId: 'branch-szeged',
     branchCode: 'BR-SZEGED',
@@ -153,4 +160,26 @@ test('FK-041/II: a főértéktár+néző multirole user NINCS bezárva a beíró
     path: 'test-results/fk041-multirole-foertektar-rates.png',
     fullPage: false,
   })
+})
+
+test('FK-041/II hardening: penztáros+néző multirole FULL (Szerver) módban is a beíró oldalra záródik', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  // roles=['penztar','arfolyam_nezo']; full módban a penztar NEM használható (isRoleSelectableForAppMode
+  // ===false), így effektíve csak néző — a guardnak ZÁRNIA kell. (A bug elŐtt a penztar precedenciája
+  // /cashier-re oldott, és a néző URL-beírással elérte a belső felügyeleti shellt.)
+  await mockApis(page, 'arfolyam_nezo', ['penztar', 'arfolyam_nezo'])
+  page.on('dialog', (dialog) => void dialog.accept())
+
+  await login(page, 'ARFNEZO1')
+  await expect(page).toHaveURL(/\/competitor-rates$/)
+
+  // Belső felügyeleti + lokál route-ok URL-beírással → mind a beíró oldalra irányul.
+  for (const route of ['/central-workstation', '/foertektar', '/cashier', '/rates', '/']) {
+    await page.goto(route, { waitUntil: 'domcontentloaded' })
+    await expect(page, `"${route}" full módban a néző-zárnak érvényesülnie kell`).toHaveURL(
+      /\/competitor-rates$/,
+    )
+  }
 })

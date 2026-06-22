@@ -115,4 +115,47 @@ describe('CompetitorRateEntryPage (FK-041/II)', () => {
     await waitFor(() => expect((buyEur as HTMLInputElement).value).toBe('388'))
     expect((screen.getByTestId('sell-EUR') as HTMLInputElement).value).toBe('402')
   })
+
+  it('FK-041/II: a today() prefill hibája toastot mutat (nem nyeli el némán)', async () => {
+    mocks.today.mockRejectedValue(new Error('network'))
+    render(<CompetitorRateEntryPage />)
+    const select = await screen.findByTestId('competitor-select')
+
+    fireEvent.change(select, { target: { value: 'c1' } })
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
+  })
+
+  it('FK-041/II race-guard: gyors versenyhely-váltás után a STALE válasz NEM írja felül az új állapotot', async () => {
+    mocks.bootstrap.mockResolvedValue({
+      competitors: [
+        { id: 'c1', name: 'Rivál Egy', branchName: 'Tisza' },
+        { id: 'c2', name: 'Rivál Kettő', branchName: 'Tisza' },
+      ],
+      currencies: [{ id: 1, code: 'EUR', name: 'Euró' }],
+    })
+    // c1 today() KÉSŐN resolve-ol (stale), c2 today() azonnal üres.
+    let resolveC1: (
+      value: { currencyId: number; currencyCode: string; buyRate: number; sellRate: number }[],
+    ) => void = () => {}
+    mocks.today.mockImplementation((id: string) => {
+      if (id === 'c1') return new Promise((res) => (resolveC1 = res))
+      return Promise.resolve([])
+    })
+
+    render(<CompetitorRateEntryPage />)
+    const select = await screen.findByTestId('competitor-select')
+
+    fireEvent.change(select, { target: { value: 'c1' } }) // c1 today() függőben marad
+    fireEvent.change(select, { target: { value: 'c2' } }) // c2 today() üresen resolve-ol
+    await waitFor(() => expect(mocks.today).toHaveBeenCalledWith('c2'))
+    await screen.findByTestId('buy-EUR')
+
+    // A KÉSEI c1 válasz beérkezik (EUR=388), de már c2 van kiválasztva → a guardnak el kell dobnia.
+    resolveC1([{ currencyId: 1, currencyCode: 'EUR', buyRate: 388, sellRate: 402 }])
+    await new Promise((r) => setTimeout(r, 20))
+
+    // c2 üres maradt — a stale c1 (388) NEM írta felül.
+    expect((screen.getByTestId('buy-EUR') as HTMLInputElement).value).toBe('')
+  })
 })

@@ -243,16 +243,28 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
  *
  * A „kizárólag néző" feltétel a multirole-helyes EGYETLEN forrásigazságból jön
  * (`getDefaultRouteForRoles`): csak akkor zár, ha a user kanonikus default route-ja a
- * `/competitor-rates` — azaz nincs magasabb prioritású operatív szerepe (penztar / ertekszallito /
- * ertektar / foertektar / ugyvezeto). Így egy penztáros+néző vagy főértéktáros+néző user NEM esik
- * ide, megtartja a teljes hozzáférését.
+ * `/competitor-rates` — azaz nincs magasabb prioritású operatív szerepe.
+ *
+ * appMode-tudatosság (FK-041/II hardening): a default route-ot KIZÁRÓLAG az AKTUÁLIS appMode-ban
+ * használható szerepekből számítjuk. Enélkül egy `penztar`+`arfolyam_nezo` user full (Szerver) módban
+ * — ahol a `penztar` NEM választható (isRoleSelectableForAppMode('penztar','full')===false), de a
+ * backend a teljes, szűretlen role-listát adja vissza — a penztar precedenciája miatt `/cashier`-re
+ * oldódna, és kikerülné a néző-izolációt (eléri pl. a /central-workstation, /foertektar shellt). A
+ * szűréssel full módban a penztar/ertektar/ertekszallito kiesik → marad az arfolyam_nezo → a guard zár.
+ * Egy penztáros+néző PENZTÁR módban viszont a penztar marad érvényes → /cashier → NEM zár (helyes).
  */
 function RateWatcherGuard({ children }: { children: React.ReactNode }) {
   const location = useLocation()
+  const { mode: appMode } = useAppMode()
   const roles = useAuthStore((state) => state.roles)
   const activeRole = useAuthStore((state) => state.activeRole)
 
-  const belongsToWatcherOnly = getDefaultRouteForRoles(roles, activeRole) === '/competitor-rates'
+  const effectiveRoles = roles.filter((r) => isRoleSelectableForAppMode(r, appMode))
+  const effectiveActiveRole =
+    activeRole && isRoleSelectableForAppMode(activeRole, appMode) ? activeRole : null
+
+  const belongsToWatcherOnly =
+    getDefaultRouteForRoles(effectiveRoles, effectiveActiveRole) === '/competitor-rates'
   if (belongsToWatcherOnly && location.pathname !== '/competitor-rates') {
     return <Navigate to="/competitor-rates" replace />
   }
