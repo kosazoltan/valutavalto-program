@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
 import RoleGate from './components/RoleGate'
-import { menuGroups } from './layouts/menuGroups'
+import { menuGroups, getDefaultRouteForRoles } from './layouts/menuGroups'
 import { effectiveCanonicalRolesForPath } from './layouts/menuVisibility'
 import { Toaster } from './components/ui/toaster'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -228,6 +228,33 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
+  }
+
+  return <>{children}</>
+}
+
+/**
+ * RateWatcherGuard — FK-041/II route-szintű izoláció az „árfolyam néző"-nek.
+ *
+ * Követelmény: az árfolyam néző CSAK versenytárs-árfolyamot vihet be, belső árfolyamot /
+ * pénztárnevet / készletet NEM láthat. A menü-rejtés és a backend 403 mellé ez a defense-in-depth
+ * réteg gondoskodik arról, hogy URL-beírással se töltse be a belső oldalak shell-jét, és belépés
+ * után ne egy üres irányítóközpontra, hanem a saját beíró oldalára landoljon.
+ *
+ * A „kizárólag néző" feltétel a multirole-helyes EGYETLEN forrásigazságból jön
+ * (`getDefaultRouteForRoles`): csak akkor zár, ha a user kanonikus default route-ja a
+ * `/competitor-rates` — azaz nincs magasabb prioritású operatív szerepe (penztar / ertekszallito /
+ * ertektar / foertektar / ugyvezeto). Így egy penztáros+néző vagy főértéktáros+néző user NEM esik
+ * ide, megtartja a teljes hozzáférését.
+ */
+function RateWatcherGuard({ children }: { children: React.ReactNode }) {
+  const location = useLocation()
+  const roles = useAuthStore((state) => state.roles)
+  const activeRole = useAuthStore((state) => state.activeRole)
+
+  const belongsToWatcherOnly = getDefaultRouteForRoles(roles, activeRole) === '/competitor-rates'
+  if (belongsToWatcherOnly && location.pathname !== '/competitor-rates') {
+    return <Navigate to="/competitor-rates" replace />
   }
 
   return <>{children}</>
@@ -528,7 +555,9 @@ export default function App() {
               <Route
                 element={
                   <ProtectedRoute>
-                    <MainLayout />
+                    <RateWatcherGuard>
+                      <MainLayout />
+                    </RateWatcherGuard>
                   </ProtectedRoute>
                 }
               >

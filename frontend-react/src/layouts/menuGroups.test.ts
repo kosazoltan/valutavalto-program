@@ -41,4 +41,33 @@ describe('menuGroups ertekszallito appMode', () => {
       '/dashboard',
     )
   })
+
+  // FK-041/II RateWatcherGuard-regresszió: a route-szintű néző-izoláció feltétele
+  // `getDefaultRouteForRoles(...) === '/competitor-rates'`. Ezért bizonyítani kell, hogy MINDEN
+  // operatív multirole-kombináció a SAJÁT oldalára megy, NEM a néző-beíróra — különben a guard
+  // tévesen oda zárná (pl. egy pénztáros+néző usert elvágna a /cashier-től).
+  it('FK-041/II: penztaros+arfolyam_nezo a penztar oldalra megy (guard NEM zarja a beiroba)', () => {
+    expect(getDefaultRouteForRoles(['penztar', 'arfolyam_nezo'], 'penztar')).toBe('/cashier')
+    // aktiv nezo-szerep mellett is a magasabb prioritasu penztar nyer (multirole forrasigazsag)
+    expect(getDefaultRouteForRoles(['penztar', 'arfolyam_nezo'], 'arfolyam_nezo')).toBe('/cashier')
+  })
+
+  it('FK-041/II: ertektaros+arfolyam_nezo a treasury oldalra megy (guard NEM zarja a beiroba)', () => {
+    expect(getDefaultRouteForRoles(['ertektar', 'arfolyam_nezo'], 'ertektar')).toBe('/treasury')
+  })
+
+  it('FK-041/II: ertekszallito+arfolyam_nezo a transfers oldalra megy (guard NEM zarja a beiroba)', () => {
+    expect(getDefaultRouteForRoles(['ertekszallito', 'arfolyam_nezo'], 'ertekszallito')).toBe(
+      '/transfers',
+    )
+  })
+
+  it('FK-041/II: ugyvezeto+arfolyam_nezo a dashboardra megy (guard NEM zarja a beiroba)', () => {
+    expect(getDefaultRouteForRoles(['arfolyam_nezo', 'ugyvezeto'], 'ugyvezeto')).toBe('/dashboard')
+  })
+
+  it('FK-041/II: KIZAROLAG arfolyam_nezo eseten a beiro oldal (a guard ekkor zar)', () => {
+    expect(getDefaultRouteForRoles(['arfolyam_nezo'], 'arfolyam_nezo')).toBe('/competitor-rates')
+    expect(getDefaultRouteForRoles(['arfolyam_nezo'], null)).toBe('/competitor-rates')
+  })
 })

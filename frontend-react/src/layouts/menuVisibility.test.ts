@@ -43,6 +43,30 @@ describe('menuVisibility — konzisztens szigorítás (full mód)', () => {
     expect(isMenuGroupVisible(competitor, ctxFor(['arfolyam_nezo'], 'full'))).toBe(true)
   })
 
+  it('FK-041/II: arfolyam_nezo (full): NEM látja a "Központ" csoportot (nincs a SZERVER_ROLES-ban)', () => {
+    expect(isMenuGroupVisible(groupByLabel('Központ'), ctxFor(['arfolyam_nezo'], 'full'))).toBe(
+      false,
+    )
+  })
+
+  it('FK-041/II: arfolyam_nezo (full): NEM látja a "Főoldal" (Irányítópult) csoportot', () => {
+    expect(isMenuGroupVisible(groupByLabel('Főoldal'), ctxFor(['arfolyam_nezo'], 'full'))).toBe(
+      false,
+    )
+  })
+
+  it('FK-041/II: arfolyam_nezo (full) KIZÁRÓLAG a "Versenytárs-árfolyam" csoportot látja — SEMMILYEN belső csoportot', () => {
+    const ctx = ctxFor(['arfolyam_nezo'], 'full')
+    const visibleLabels = menuGroups.filter((g) => isMenuGroupVisible(g, ctx)).map((g) => g.label)
+    expect(visibleLabels).toEqual(['Versenytárs-árfolyam'])
+  })
+
+  it('FK-041/II regresszió: a foertektar TOVÁBBRA is látja a "Központ" és "Főoldal" csoportot', () => {
+    const ctx = ctxFor(['foertektar'], 'full')
+    expect(isMenuGroupVisible(groupByLabel('Központ'), ctx)).toBe(true)
+    expect(isMenuGroupVisible(groupByLabel('Főoldal'), ctx)).toBe(true)
+  })
+
   it('FK-041/II: foertektar (full): a belső "Árfolyamok (nézet)" csoportot továbbra is látja', () => {
     const rates = groupByLabel('Árfolyamok (nézet)')
     expect(isMenuGroupVisible(rates, ctxFor(['foertektar'], 'full'))).toBe(true)
