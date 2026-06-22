@@ -113,6 +113,15 @@ powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1
 A security gate parancs deploy/release vagy security-sensitive valtozas elott
 kell, nem minden apro kod- vagy dokumentacios szerkeszteshez.
 
+## Kod-stilus (Prettier)
+
+Gepfuggetlen formazas: a gyoker `.prettierrc.json` rogziti a stilust (Prettier 3.x,
+pinned verzio). Ellenorzes `npm run format:check`, teljes formazas `npm run format`,
+egy fajl `npx prettier --write <fajl>`. Modul-elteres: `penztar-client` pontosvesszos
+(`semi: true`), a tobbi modul (frontend-react, kozponti-client, arfolyam-keszito-client)
+pontosvesszo nelkuli. Az ESLint NEM formaz, igy nincs utkozes. Reszletes leiras es a
+masik-gep / masik-ugynok munkafolyamat: `docs/code-style.md`.
+
 ## Defenziv biztonsagi audit (on-demand)
 
 Biztonsagi auditnal / sebezhetoseg-keresesnel tobbkoros, taint-flow alapu munkamod

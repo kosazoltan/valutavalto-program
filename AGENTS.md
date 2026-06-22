@@ -206,6 +206,15 @@ Ha egy platformfajl teljes gate-et vagy minden taskban security auditot kovetel,
 azt ezzel a fajllal osszhangban kell ertelmezni: teljes gate csak magas
 kockazatnal, push/merge/deploy/release elott kotelezo.
 
+## 9. Kod-stilus (Prettier)
+
+A kod gepfuggetlen formazasat a gyoker `.prettierrc.json` rogziti (Prettier 3.x,
+pinned verzio). Uj vagy szerkesztett kodot eszerint formazz: `npx prettier --write <fajl>`,
+ellenorzes `npm run format:check`. Modul-elteres: `penztar-client` pontosvesszos
+(`semi: true`), a tobbi modul (frontend-react, kozponti-client, arfolyam-keszito-client)
+pontosvesszo nelkuli. Az ESLint NEM formaz, igy nincs utkozes a Prettierrel. Reszletes
+leiras es a masik-gep / masik-ugynok munkafolyamat: `docs/code-style.md`.
+
 <!-- agentic-qa-kit:begin v1.2 — NE szerkeszd kézzel a blokkon belül; frissítés: update-all.mjs -->
 ## Agentic QA szabályok (agentic-qa-kit v1.2)
 
