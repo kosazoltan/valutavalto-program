@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '../../stores/authStore'
 import { toast } from '../../components/ui/toaster'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { isCentralWorkstationFlavor } from '../../utils/clientEnv'
 
 // Extend AxiosRequestConfig to support custom flags.
@@ -55,9 +55,17 @@ let API_BASE_URL = import.meta.env.VITE_API_URL
 // inline-oljuk a kovetkezetesseg miatt.
 const PRODUCTION_API_URL = 'https://excvaluta.com/api/v1'
 if (typeof window !== 'undefined' && window.electronAPI && !import.meta.env.DEV) {
-  if (typeof API_BASE_URL === 'string' && /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.)/i.test(API_BASE_URL)) {
-    logger.warn('[api.client] Electron prod build, de VITE_API_URL localhost-ra mutat:', API_BASE_URL,
-        '-> azonnali felulirasa', PRODUCTION_API_URL, '(race condition prevention)')
+  if (
+    typeof API_BASE_URL === 'string' &&
+    /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.)/i.test(API_BASE_URL)
+  ) {
+    logger.warn(
+      '[api.client] Electron prod build, de VITE_API_URL localhost-ra mutat:',
+      API_BASE_URL,
+      '-> azonnali felulirasa',
+      PRODUCTION_API_URL,
+      '(race condition prevention)',
+    )
     API_BASE_URL = PRODUCTION_API_URL
   }
 }
@@ -97,17 +105,31 @@ if (!API_BASE_URL) {
 // (pl. localhost:8080 a dev build .env-bol), es a futasi kornyezet-specifikus
 // URL-t a felhasznalo altal konfiguralt server_url-nek kell biztositania.
 if (!import.meta.env.DEV && typeof window !== 'undefined' && window.electronAPI?.getConfig) {
-  window.electronAPI.getConfig('server_url').then((url: string | null) => {
-    if (url && url.trim().length > 0) {
-      const normalized = url.endsWith('/api/v1') ? url : `${url.replace(/\/$/, '')}/api/v1`
-      if (api.defaults.baseURL !== normalized) {
-        logger.info('[api.client]', 'SQLite server_url override applied:', normalized, '(volt:', api.defaults.baseURL, ')')
-        api.defaults.baseURL = normalized
+  window.electronAPI
+    .getConfig('server_url')
+    .then((url: string | null) => {
+      if (url && url.trim().length > 0) {
+        const normalized = url.endsWith('/api/v1') ? url : `${url.replace(/\/$/, '')}/api/v1`
+        if (api.defaults.baseURL !== normalized) {
+          logger.info(
+            '[api.client]',
+            'SQLite server_url override applied:',
+            normalized,
+            '(volt:',
+            api.defaults.baseURL,
+            ')',
+          )
+          api.defaults.baseURL = normalized
+        }
       }
-    }
-  }).catch((err) => {
-    logger.warn('[api.client]', 'SQLite server_url read failed, marad a default:', err instanceof Error ? err.message : err)
-  })
+    })
+    .catch((err) => {
+      logger.warn(
+        '[api.client]',
+        'SQLite server_url read failed, marad a default:',
+        err instanceof Error ? err.message : err,
+      )
+    })
 }
 
 // 2026-04-29 v2.3.11 (E-B6 renderer fagyás fix):
@@ -132,12 +154,26 @@ const AXIOS_GLOBAL_TIMEOUT_MS = 30_000
 // Create axios instance
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true,  // HttpOnly refresh cookie (vezerlokonyv par.12.3)
+  withCredentials: true, // HttpOnly refresh cookie (vezerlokonyv par.12.3)
   timeout: AXIOS_GLOBAL_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
   },
 })
+
+/**
+ * A PUBLIKUS web-alkalmazas origin URL-je (PWA telepiteshez / megosztashoz, pl. arfolyam nezo
+ * telefonjanak QR-kodja). Electron kliensben a window.location.origin a lokalis (app://, 127.0.0.1)
+ * cim — NEM a publikus URL; ezert az api.defaults.baseURL abszolut API URL-jebol (https://excvaluta.com/api/v1)
+ * vezetjuk le az origint. Webes proxy mogott (relativ /api/v1) a bongeszo sajat origin-je a helyes.
+ */
+export function getPublicWebUrl(): string {
+  const base = String(api.defaults.baseURL ?? '')
+  const match = base.match(/^https?:\/\/[^/]+/i)
+  if (match) return match[0]
+  if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin
+  return 'https://excvaluta.com'
+}
 
 // v2.5.25 ESET MITM VEGLEGES FIX: Electron production-ban MINDEN axios hivas a main process
 // electron.net.request-en megy at (IPC 'api:fetch'). A renderer Chromium fetch ESET/Kaspersky/
@@ -149,9 +185,7 @@ export const api = axios.create({
 if (typeof window !== 'undefined' && window.electronAPI?.apiRequest && !import.meta.env.DEV) {
   api.defaults.adapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
     const baseUrl = config.baseURL ?? api.defaults.baseURL ?? ''
-    let url = config.url?.startsWith('http')
-      ? config.url
-      : `${baseUrl}${config.url ?? ''}`
+    let url = config.url?.startsWith('http') ? config.url : `${baseUrl}${config.url ?? ''}`
 
     // Codex P1: config.params must be serialized into the URL query string
     if (config.params && typeof config.params === 'object') {
@@ -159,7 +193,12 @@ if (typeof window !== 'undefined' && window.electronAPI?.apiRequest && !import.m
       let queryString: string
       if (typeof serializer === 'function') {
         queryString = serializer(config.params)
-      } else if (serializer && typeof serializer === 'object' && 'serialize' in serializer && typeof serializer.serialize === 'function') {
+      } else if (
+        serializer &&
+        typeof serializer === 'object' &&
+        'serialize' in serializer &&
+        typeof serializer.serialize === 'function'
+      ) {
         queryString = serializer.serialize(config.params, serializer)
       } else {
         const searchParams = new URLSearchParams()
@@ -209,13 +248,21 @@ if (typeof window !== 'undefined' && window.electronAPI?.apiRequest && !import.m
       const contentType = proxyResponse.headers['content-type'] ?? ''
 
       // Codex P1: responseType blob/arraybuffer — reconstruct binary from base64
-      if ((config.responseType === 'blob' || config.responseType === 'arraybuffer') && proxyResponse.isBase64) {
-        const binary = Uint8Array.from(atob(proxyResponse.body), c => c.charCodeAt(0))
-        parsedData = config.responseType === 'blob'
-          ? new Blob([binary], { type: contentType.split(';')[0] || 'application/octet-stream' })
-          : binary.buffer
+      if (
+        (config.responseType === 'blob' || config.responseType === 'arraybuffer') &&
+        proxyResponse.isBase64
+      ) {
+        const binary = Uint8Array.from(atob(proxyResponse.body), (c) => c.charCodeAt(0))
+        parsedData =
+          config.responseType === 'blob'
+            ? new Blob([binary], { type: contentType.split(';')[0] || 'application/octet-stream' })
+            : binary.buffer
       } else if (contentType.includes('json') && typeof proxyResponse.body === 'string') {
-        try { parsedData = JSON.parse(proxyResponse.body) } catch { /* keep raw string */ }
+        try {
+          parsedData = JSON.parse(proxyResponse.body)
+        } catch {
+          /* keep raw string */
+        }
       }
 
       const axiosResponse: AxiosResponse = {
@@ -230,7 +277,9 @@ if (typeof window !== 'undefined' && window.electronAPI?.apiRequest && !import.m
       if (!proxyResponse.ok) {
         const error = new AxiosError(
           `Request failed with status code ${proxyResponse.status}`,
-          proxyResponse.status >= 400 && proxyResponse.status < 500 ? 'ERR_BAD_REQUEST' : 'ERR_BAD_RESPONSE',
+          proxyResponse.status >= 400 && proxyResponse.status < 500
+            ? 'ERR_BAD_REQUEST'
+            : 'ERR_BAD_RESPONSE',
           config,
           {},
           axiosResponse,
@@ -257,9 +306,19 @@ if (typeof window !== 'undefined' && window.electronAPI?.apiRequest && !import.m
 // v2.5.13: kliens-oldali hibajelentes a backend `/diagnostics/error-report` endpointra.
 // Send-and-forget IPC-n keresztul a main process-be (Electron) -> backend.
 // A diagnostics endpoint ONMAGABA NEM riportolunk (vegtelen-loop elkerulese).
-function reportClientError(payload: { component: string; message: string; stack?: string; context?: Record<string, unknown> }): void {
+function reportClientError(payload: {
+  component: string
+  message: string
+  stack?: string
+  context?: Record<string, unknown>
+}): void {
   if (typeof window === 'undefined' || !window.electronAPI?.reportError) return
-  if (payload.context && typeof payload.context.url === 'string' && payload.context.url.includes('/diagnostics/')) return
+  if (
+    payload.context &&
+    typeof payload.context.url === 'string' &&
+    payload.context.url.includes('/diagnostics/')
+  )
+    return
   try {
     void window.electronAPI.reportError(payload)
   } catch {
@@ -272,8 +331,13 @@ function reportClientError(payload: { component: string; message: string; stack?
 // es `/auth/google-login` POST-ok ertek leesnek, de egy retry tipikusan sikerul (a 08:56 nginx-log
 // igazolja, hogy a backend el, csak az ESET-tel terhelt TLS conn drop-pelodik).
 // Ezert a kritikus auth endpointokra es a sync polling-ra automatikus retry-t alkalmazunk.
-const RETRYABLE_ENDPOINTS = ['/auth/login', '/auth/google-login', '/auth/refresh-cookie',
-                             '/auth/bootstrap-status', '/transit/incoming']
+const RETRYABLE_ENDPOINTS = [
+  '/auth/login',
+  '/auth/google-login',
+  '/auth/refresh-cookie',
+  '/auth/bootstrap-status',
+  '/transit/incoming',
+]
 const MAX_RETRY_COUNT = 2
 
 interface RetryableConfig extends InternalAxiosRequestConfig {
@@ -282,13 +346,15 @@ interface RetryableConfig extends InternalAxiosRequestConfig {
 
 function isNetworkOrTimeoutError(error: AxiosError): boolean {
   const status = error.response?.status
-  if (status) return false   // 4xx/5xx — backend valaszolt, nem retry-zunk
+  if (status) return false // 4xx/5xx — backend valaszolt, nem retry-zunk
   const code = error.code
   const msg = error.message ?? ''
-  return code === 'ECONNABORTED'
-      || code === 'ERR_NETWORK'
-      || msg === 'Network Error'
-      || /timeout of \d+ms exceeded/.test(msg)
+  return (
+    code === 'ECONNABORTED' ||
+    code === 'ERR_NETWORK' ||
+    msg === 'Network Error' ||
+    /timeout of \d+ms exceeded/.test(msg)
+  )
 }
 
 // Axios response interceptor: retry network-level hibakra + 4xx/5xx hibakat hibajelentora kuldjuk.
@@ -302,23 +368,31 @@ api.interceptors.response.use(
     // v2.5.20 Borsi-retry: kritikus auth endpointokra automatikus retry hatszer (1s, 3s wait).
     // A `/auth/login` `401`-et `isNetworkOrTimeoutError` kizar (status truthy → false),
     // szoval a rossz jelszo nem indit retry-t.
-    const retryable = config
-        && isNetworkOrTimeoutError(error)
-        && typeof url === 'string'
-        && RETRYABLE_ENDPOINTS.some(p => url.includes(p))
+    const retryable =
+      config &&
+      isNetworkOrTimeoutError(error) &&
+      typeof url === 'string' &&
+      RETRYABLE_ENDPOINTS.some((p) => url.includes(p))
     if (retryable && config) {
       const retryCount = config._retryCount ?? 0
       if (retryCount < MAX_RETRY_COUNT) {
         config._retryCount = retryCount + 1
         const delayMs = retryCount === 0 ? 1000 : 3000
-        logger.warn('[api.client]', `Retry ${config._retryCount}/${MAX_RETRY_COUNT} after ${delayMs}ms for ${url} — reason: ${error.message}`)
+        logger.warn(
+          '[api.client]',
+          `Retry ${config._retryCount}/${MAX_RETRY_COUNT} after ${delayMs}ms for ${url} — reason: ${error.message}`,
+        )
         await new Promise((r) => setTimeout(r, delayMs))
         return api.request(config)
       }
     }
 
     try {
-      const isLoginAttempt = typeof url === 'string' && (url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/google-login'))
+      const isLoginAttempt =
+        typeof url === 'string' &&
+        (url.includes('/auth/login') ||
+          url.includes('/auth/refresh') ||
+          url.includes('/auth/google-login'))
       if (status !== 401 || !isLoginAttempt) {
         reportClientError({
           component: 'axios-http',
@@ -329,7 +403,10 @@ api.interceptors.response.use(
             method: config?.method,
             status,
             retryAttempts: config?._retryCount ?? 0,
-            responseData: typeof error.response?.data === 'object' ? JSON.stringify(error.response.data).slice(0, 500) : String(error.response?.data ?? '').slice(0, 500),
+            responseData:
+              typeof error.response?.data === 'object'
+                ? JSON.stringify(error.response.data).slice(0, 500)
+                : String(error.response?.data ?? '').slice(0, 500),
           },
         })
       }
@@ -337,7 +414,7 @@ api.interceptors.response.use(
       // never throw on error-reporting
     }
     return Promise.reject(error)
-  }
+  },
 )
 
 // window.onerror + window.onunhandledrejection: minden uncaught JS hiba a renderer-ben
@@ -347,7 +424,12 @@ if (typeof window !== 'undefined') {
       component: 'electron-renderer',
       message: event.message,
       stack: event.error?.stack,
-      context: { source: 'window.onerror', filename: event.filename, lineno: event.lineno, colno: event.colno },
+      context: {
+        source: 'window.onerror',
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+      },
     })
   })
   window.addEventListener('unhandledrejection', (event) => {
@@ -366,7 +448,7 @@ if (typeof window !== 'undefined') {
 // Request interceptor - add auth token + Idempotency-Key for write requests
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const {token} = useAuthStore.getState()
+    const { token } = useAuthStore.getState()
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -386,9 +468,10 @@ api.interceptors.request.use(
     // Fix: axios 1.x AxiosHeaders set() API hasznalata a direkt assignment helyett
     const method = (config.method ?? '').toUpperCase()
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && config.headers) {
-      const existing = typeof config.headers.get === 'function'
-        ? config.headers.get('Idempotency-Key')
-        : config.headers['Idempotency-Key']
+      const existing =
+        typeof config.headers.get === 'function'
+          ? config.headers.get('Idempotency-Key')
+          : config.headers['Idempotency-Key']
       if (!existing) {
         const newKey = crypto.randomUUID()
         if (typeof config.headers.set === 'function') {
@@ -403,7 +486,7 @@ api.interceptors.request.use(
   (error: AxiosError) => {
     logger.error('client', 'Request interceptor error:', error)
     return Promise.reject(error)
-  }
+  },
 )
 
 // Token refresh state — megakadályozza a párhuzamos refresh kéréseket
@@ -430,7 +513,14 @@ api.interceptors.response.use(
     // Skip unwrap when request has _preservePaged flag (for paginated UI components).
     const d = response.data
     const preservePaged = response.config?._preservePaged === true
-    if (!preservePaged && d && typeof d === 'object' && !Array.isArray(d) && Array.isArray(d.content) && ('totalElements' in d || 'totalPages' in d || 'number' in d)) {
+    if (
+      !preservePaged &&
+      d &&
+      typeof d === 'object' &&
+      !Array.isArray(d) &&
+      Array.isArray(d.content) &&
+      ('totalElements' in d || 'totalPages' in d || 'number' in d)
+    ) {
       response.data = d.content
     }
     return response
@@ -472,8 +562,17 @@ api.interceptors.response.use(
         const newToken = response.data.token
         const authStore = useAuthStore.getState()
         if (authStore.worker) {
-          authStore.login(authStore.worker, newToken, authStore.tokenType ?? 'Bearer', authStore.expiresAt ?? '',
-            authStore.activeRole, authStore.permissions, authStore.roles, false, authStore.centralModules)
+          authStore.login(
+            authStore.worker,
+            newToken,
+            authStore.tokenType ?? 'Bearer',
+            authStore.expiresAt ?? '',
+            authStore.activeRole,
+            authStore.permissions,
+            authStore.roles,
+            false,
+            authStore.centralModules,
+          )
         }
         processQueue(null, newToken)
         if (originalRequest.headers) {
@@ -496,10 +595,15 @@ api.interceptors.response.use(
       if (originalRequest._skipGlobal403Toast) {
         logger.warn('client', '403 Forbidden (global toast skipped):', originalRequest.url)
       } else {
-        logger.warn('client', '403 Forbidden:', originalRequest.url, '— Nincs jogosultság ehhez a művelethez')
+        logger.warn(
+          'client',
+          '403 Forbidden:',
+          originalRequest.url,
+          '— Nincs jogosultság ehhez a művelethez',
+        )
         toast.error(
           'Hozzáférés megtagadva',
-          'Nincs jogosultságod ehhez a művelethez. Kérj hozzáférést az adminisztrátortól.'
+          'Nincs jogosultságod ehhez a művelethez. Kérj hozzáférést az adminisztrátortól.',
         )
       }
     }
@@ -524,7 +628,7 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error)
-  }
+  },
 )
 
 // Generic API response type
@@ -622,7 +726,11 @@ export async function persistToken(token: string): Promise<void> {
     // Codex P2 #384 (2026-05-04): session hint flag, hogy a kovetkezo page-load-on
     // a `hasPersistedToken` true-t adjon -> az App restore flow lefusson a refresh-cookie
     // bootstrap-ra. Logout-ot kovetoen a `clearPersistedToken` torli (lasd alabb).
-    try { window.localStorage.setItem(WEB_SESSION_HINT_KEY, '1') } catch { /* ignore (private mode) */ }
+    try {
+      window.localStorage.setItem(WEB_SESSION_HINT_KEY, '1')
+    } catch {
+      /* ignore (private mode) */
+    }
   } catch (err) {
     logger.error('client', 'persistToken failed:', err)
     throw err
@@ -644,11 +752,19 @@ export async function clearPersistedToken(): Promise<void> {
 
     // Audit P1.3: in-memory clear; legacy localStorage cleanup (P1.3 migracio)
     _webAccessToken = null
-    try { window.localStorage.removeItem(WEB_AUTH_TOKEN_KEY) } catch { /* ignore */ }
+    try {
+      window.localStorage.removeItem(WEB_AUTH_TOKEN_KEY)
+    } catch {
+      /* ignore */
+    }
     // Codex P2 #384: session hint flag clear, hogy a kovetkezo page-load-on
     // a `hasPersistedToken` false-t adjon -> az App restore flow NE blokkolodjon a
     // 15s refresh-cookie probe splash-en, ha a user kijelentkezett.
-    try { window.localStorage.removeItem(WEB_SESSION_HINT_KEY) } catch { /* ignore */ }
+    try {
+      window.localStorage.removeItem(WEB_SESSION_HINT_KEY)
+    } catch {
+      /* ignore */
+    }
   } catch (err) {
     logger.error('client', 'clearPersistedToken failed:', err)
     throw err
@@ -684,7 +800,11 @@ export async function loadPersistedToken(): Promise<string | null> {
         try {
           await persistToken(refreshedToken)
         } catch (err) {
-          logger.warn('client', 'Electron refreshed token persistence failed; using in-memory token for this startup', err)
+          logger.warn(
+            'client',
+            'Electron refreshed token persistence failed; using in-memory token for this startup',
+            err,
+          )
         }
         _electronTokenPresent = true
         return refreshedToken
@@ -702,7 +822,9 @@ export async function loadPersistedToken(): Promise<string | null> {
       window.localStorage.removeItem(WEB_AUTH_TOKEN_KEY)
       logger.info('client', 'Audit P1.3: legacy localStorage auth_token torolve (XSS-hardening)')
     }
-  } catch { /* ignore (private mode browsers) */ }
+  } catch {
+    /* ignore (private mode browsers) */
+  }
 
   // Ha mar van in-memory token (login utan VAGY refresh-cookie sikeres volt), add vissza
   if (_webAccessToken) return _webAccessToken
@@ -715,13 +837,21 @@ export async function loadPersistedToken(): Promise<string | null> {
     _webAccessToken = newToken
     // Codex P2 #384: a sikeres refresh-cookie bizonyitja, hogy van session.
     // Frissitjuk a hint-et arra az esetre ha a localStorage uritodott (pl. private mode).
-    try { window.localStorage.setItem(WEB_SESSION_HINT_KEY, '1') } catch { /* ignore */ }
+    try {
+      window.localStorage.setItem(WEB_SESSION_HINT_KEY, '1')
+    } catch {
+      /* ignore */
+    }
     return newToken
   } else {
     // Refresh cookie hianyzik VAGY lejart — normalis ha a user nincs bejelentkezve.
     // Codex P2 #384: a hint-et toroljuk, hogy a kovetkezo page-load-on a hasPersistedToken
     // false-t adjon es az App splash-mentes login-ra menjen.
-    try { window.localStorage.removeItem(WEB_SESSION_HINT_KEY) } catch { /* ignore */ }
+    try {
+      window.localStorage.removeItem(WEB_SESSION_HINT_KEY)
+    } catch {
+      /* ignore */
+    }
   }
   return null
 }
@@ -747,7 +877,10 @@ export async function loadPersistedToken(): Promise<string | null> {
  */
 export function hasPersistedToken(): boolean {
   if (window.electronAPI) {
-    return _electronTokenPresent ?? (window.electronAPI.secureLoadToken != null || window.electronAPI.getConfig != null)
+    return (
+      _electronTokenPresent ??
+      (window.electronAPI.secureLoadToken != null || window.electronAPI.getConfig != null)
+    )
   }
 
   if (_webAccessToken) return true
