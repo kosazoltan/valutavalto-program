@@ -108,7 +108,9 @@ export default function BranchEditPage() {
       // Ez a hívás best-effort (csak admin metaadatot tölt), ezért a globális 403-toast itt
       // félrevezető — `_skipGlobal403Toast: true`-val elnyomjuk; a Promise.all tovább tölt.
       api.get<BranchAdminDetails>(`/admin/branches/${id}`, { _skipGlobal403Toast: true }).catch((err: unknown) => {
-        logger.error('BranchEditPage', 'Admin branch részlet betöltési hiba:', err)
+        // FK-038 (Copilot review): best-effort admin-metaadat. Foertektar/ugyvezeto 403-at kap
+        // (VÁRT állapot, ADMIN-only végpont) — ezért warn, nem error, hogy ne legyen zajos a Sentry/console.
+        logger.warn('BranchEditPage', 'Admin branch részlet nem tölthető (best-effort, pl. 403 ADMIN-only):', err)
         return null
       }),
     ])

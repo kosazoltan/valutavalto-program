@@ -265,7 +265,7 @@ test('FK-022 FR-5: inaktív iroda visszaaktiválása megerősítéssel → isAct
   expect(capture.body).toMatchObject({ isActive: true })
 })
 
-test('FK-038: /admin/branches 403 → NINCS "Hozzáférés megtagadva" toast, a form betölt (1920×1080)', async ({ page }) => {
+test('FK-038: /admin/branches 403 → NINCS "Hozzáférés megtagadva" toast, a form betölt (1920×1080)', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1920, height: 1080 })
   const capture: PutCapture = { body: null }
   await loginWithBranchMocks(page, capture, undefined, { admin403: true })
@@ -289,6 +289,9 @@ test('FK-038: /admin/branches 403 → NINCS "Hozzáférés megtagadva" toast, a 
   )
   expect(horizontalOverflow).toBe(false)
 
-  // Vizuális bizonyíték a jelentéshez.
-  await page.screenshot({ path: 'test-results/fk038-branch-edit-403-no-toast.png', fullPage: true })
+  // Vizuális bizonyíték a report-hoz — testInfo.attach: egyedi név, parallel/retry-biztos (Copilot review).
+  await testInfo.attach('fk038-branch-edit-403-no-toast', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  })
 })
