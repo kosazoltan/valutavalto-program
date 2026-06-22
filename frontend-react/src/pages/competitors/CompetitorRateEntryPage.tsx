@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Store } from 'lucide-react'
 import {
@@ -25,6 +25,10 @@ export default function CompetitorRateEntryPage() {
   const [competitorId, setCompetitorId] = useState('')
   const [rows, setRows] = useState<Record<number, RateInput>>({})
   const [saving, setSaving] = useState(false)
+  // FK-041/II race-guard: a legutóbb kiválasztott versenyhely id-je. A today() prefill async válasza
+  // CSAK akkor kerül alkalmazásra, ha még mindig ez a kiválasztott versenyhely — gyors A→B váltásnál
+  // a késve beérkező A-válasz NE írja felül B sorait (különben A árfolyamai mehetnének B-hez).
+  const latestCompetitorRef = useRef<string>('')
 
   useEffect(() => {
     void (async () => {
@@ -41,10 +45,13 @@ export default function CompetitorRateEntryPage() {
 
   const onSelectCompetitor = async (id: string) => {
     setCompetitorId(id)
+    latestCompetitorRef.current = id
     setRows({})
     if (!id) return
     try {
       const today = await competitorRatesApi.today(id)
+      // Stale válasz eldobása: időközben másik (vagy üres) versenyhelyre váltottak.
+      if (latestCompetitorRef.current !== id) return
       const next: Record<number, RateInput> = {}
       today.forEach((r) => {
         next[r.currencyId] = {
@@ -54,7 +61,10 @@ export default function CompetitorRateEntryPage() {
       })
       setRows(next)
     } catch (err) {
+      // A már nem aktuális kiválasztás hibáját elnyeljük (a user továbblépett).
+      if (latestCompetitorRef.current !== id) return
       logger.error('CompetitorRateEntryPage', 'Mai árfolyamok betöltési hiba:', err)
+      toast.error(t('competitorRates.betoltesiHiba'), getErrorMessage(err))
     }
   }
 
