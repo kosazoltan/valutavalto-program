@@ -120,9 +120,11 @@ test('havi zárás mobilnézetben az elavult HRK szekciók nélkül renderel (FK
 
   await page.goto('/closing/monthly', { waitUntil: 'domcontentloaded' })
 
-  // A valós havi zárás renderel.
+  // A valós havi zárás renderel (akciópanel + a lezárt hónapok lista sora).
   await expect(page.getByTestId('monthly-closing-action-panel')).toBeVisible()
-  await expect(page.getByText('Budapest 01')).toBeVisible()
+  // A '2026-06' a lista-sor egyedi szovege (a fejléc telephely-neve viszont tobbszor szerepel,
+  // ezert azt strict-mode-ban nem hasznaljuk).
+  await expect(page.getByText('2026-06')).toBeVisible()
 
   // Az elavult HRK szekciók NEM jelennek meg.
   await expect(page.getByTestId('hrk-monthly-panel')).toHaveCount(0)
