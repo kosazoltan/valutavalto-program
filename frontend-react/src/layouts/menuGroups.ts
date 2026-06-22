@@ -25,6 +25,13 @@ import type { AppMode } from '../types/appMode'
 export const PENZTAR_ROLES = ['penztar'] as const
 export const ERTEKTAR_ROLES = ['ertektar'] as const
 export const ERTEKSZALLITO_ROLES = ['ertekszallito'] as const
+// SZERVER_ROLES = a központi (full) felület ÁLTALÁNOS irodai/felügyeleti szerepkörei. Ez vezérli a
+// „Központ"/„Főoldal" menücsoportok láthatóságát ÉS a lokál-módú oversight bypass-t (hasSupervisoryAccess).
+// FK-041/II: az `arfolyam_nezo` (Árfolyam néző) SZÁNDÉKOSAN NINCS itt — ő NEM általános irodai/felügyeleti
+// user, csak a saját szűk „Versenytárs-árfolyam" beíró szkópját látja (lentebb, explicit canonicalRoles).
+// A full-módú belépési érvényesség külön listából jön (appModeRoles.ts SERVER_ALLOWED_CANONICAL_ROLES),
+// így a néző belépése full módban érintetlen. Ha ide visszakerülne, a néző menüjébe beszivárogna a Központ
+// (Irányítóközpont/Mobil felügyelet/Zárás beérkezés/Beérkezett adatok) és tévesen felügyeletinek minősülne.
 export const SZERVER_ROLES = [
   'ugyvezeto',
   'foertektar',
@@ -36,7 +43,6 @@ export const SZERVER_ROLES = [
   'penzugyi_vezeto',
   'irodai_dolgozo',
   'csoportvezeto',
-  'arfolyam_nezo',
 ] as const
 
 export interface MenuItem {
@@ -361,6 +367,10 @@ export const menuGroups: MenuGroup[] = [
   },
   {
     label: 'Főoldal',
+    // FK-041/II: a Főoldal (Irányítópult /dashboard) az általános központi felület — a szűk szkópú
+    // árfolyam néző NEM látja (eddig korlátlan volt → minden full-user, így a néző is látta). A többi
+    // (felügyeleti) szerver-user változatlanul látja (mind benne van a SZERVER_ROLES-ban).
+    canonicalRoles: SZERVER_ROLES,
     modes: ['full'],
     items: [{ path: '/dashboard', label: 'Irányítópult', icon: Home }],
   },
