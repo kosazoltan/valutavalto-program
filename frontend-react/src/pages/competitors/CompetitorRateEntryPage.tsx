@@ -9,6 +9,7 @@ import {
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import PwaInstallHelp from './PwaInstallHelp'
 
 type RateInput = { buy: string; sell: string }
 
@@ -201,6 +202,8 @@ export default function CompetitorRateEntryPage() {
           </button>
         </form>
       )}
+
+      <PwaInstallHelp />
     </div>
   )
 }

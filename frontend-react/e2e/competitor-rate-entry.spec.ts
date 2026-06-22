@@ -124,8 +124,8 @@ test('FK-041/II: árfolyam néző beviszi a versenytárs-árfolyamot (Chromium)'
   page.on('dialog', (dialog) => void dialog.accept())
   await login(page)
 
-  await page.goto('/competitor-rates', { waitUntil: 'domcontentloaded' })
-
+  // FK-041/II login-redirect: belépés után AUTOMATIKUSAN a beíró oldalra landol (nincs explicit goto).
+  await expect(page).toHaveURL(/\/competitor-rates$/)
   await expect(page.getByTestId('competitor-rate-entry')).toBeVisible()
   await page.getByTestId('competitor-select').selectOption('c1')
 
@@ -142,7 +142,10 @@ test('FK-041/II: árfolyam néző beviszi a versenytárs-árfolyamot (Chromium)'
     rates: [{ currencyId: 1, buyRate: 390, sellRate: 400 }],
   })
 
-  await page.screenshot({ path: 'test-results/fk041-competitor-entry.png', fullPage: false })
+  // A „Telepítés a telefonra" segéd (URL + QR + lépések) megnyitása a vizuális bizonyítékhoz.
+  await page.getByTestId('pwa-install-toggle').click()
+  await expect(page.getByTestId('pwa-install-qr')).toBeVisible()
+  await page.screenshot({ path: 'test-results/fk041-competitor-entry.png', fullPage: true })
 })
 
 test('FK-041/II: az árfolyam néző a /rates-ről a beíró oldalra irányít (nem lát belső árfolyamot)', async ({

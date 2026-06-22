@@ -1,7 +1,7 @@
 {
   "name": "Valuta Pénztári Rendszer — Best Change",
   "short_name": "Valuta Pénztár",
-  "description": "Multi-tenant valutaváltó ERP — Sprint 5 (PWA mobile)",
+  "description": "Multi-tenant valutaváltó ERP — telepíthető web-alkalmazás (PWA)",
   "id": "/",
   "start_url": "/",
   "scope": "/",
@@ -10,7 +10,28 @@
   "theme_color": "#1e40af",
   "background_color": "#ffffff",
   "lang": "hu",
-  "icons": [],
+  "icons": [
+    {
+      "src": "/pwa-icon-256.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
   "categories": ["business", "finance", "productivity"],
-  "screenshots": []
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Versenytárs-árfolyam bevitel",
+      "short_name": "Versenytárs-árfolyam",
+      "description": "A területén lévő versenyhely vételi/eladási árfolyamainak rögzítése",
+      "url": "/competitor-rates"
+    }
+  ]
 }
