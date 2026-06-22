@@ -19,6 +19,7 @@ export * from './transfer-documents'
 export * from './translations'
 export * from './trades'
 export * from './hrk'
+export * from './competitor-rates'
 
 export { publicApi } from "./public"
 export type { GoogleConfigStatus, PublicWorker, PublicBranch, SetupGoogleIdentifyRequest, SetupGoogleIdentifyResponse } from "./public"

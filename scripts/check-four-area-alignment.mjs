@@ -223,7 +223,9 @@ for (const area of functionalAreas) {
   check(backendAppModeRoles.includes(area.backendModeMarker),
     `${area.name}: backend appMode-szűrés nem kezeli külön ezt az appMode-ot`,
     area.appMode)
-  check(menuGroups.includes(area.menuModeMarker) || area.name === 'rfm-keszito',
+  // Idézőjel-független: a Prettier a menuGroups.ts-ben dupla->szimpla idézőjelre formázhat
+  // (modes: ["full"] -> modes: ['full']); a mód-jelölés megléte a lényeg, nem az idézőjel-stílus.
+  check(menuGroups.replace(/'/g, '"').includes(area.menuModeMarker) || area.name === 'rfm-keszito',
     `${area.name}: menü/flavor nem tartalmazza a működési mód jelölését`,
     area.menuModeMarker)
   check(appRoutes.includes(`path="${area.route}"`) || appRoutes.includes(`to="${area.route}"`),

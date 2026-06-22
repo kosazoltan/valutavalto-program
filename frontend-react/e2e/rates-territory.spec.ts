@@ -8,8 +8,9 @@ import { expect, test, type Page } from '@playwright/test'
 // Render-feltétel: canEdit = appMode==='full' && hasCanonicalRole(['foertektar','ugyvezeto']).
 // Az ERTEKTAR a saját Electron ertektar-módjában (appMode!=='full') látja → canEdit=false. A böngészős
 // dev szerver 'full' (Szerver) módban fut és elutasítja az ERTEKTAR szerepkört, ezért itt egy
-// Szerver-módban ÉRVÉNYES, de NEM-szerkesztő szerepkörrel (arfolyam_nezo / Árfolyam néző) váltjuk ki
-// ugyanazt a canEdit=false render-útvonalat — a territory-tábla DOM-ja azonos azzal, amit az értéktáros lát.
+// Szerver-módban ÉRVÉNYES, de NEM-szerkesztő szerepkörrel (irodavezeto) váltjuk ki ugyanazt a
+// canEdit=false render-útvonalat — a territory-tábla DOM-ja azonos azzal, amit az értéktáros lát.
+// (Az 'arfolyam_nezo'-t FK-041/II óta a RatesPage guard átirányítja, ezért NEM jó proxinak ide.)
 
 function createJwt(payload: Record<string, unknown>) {
   const encode = (value: Record<string, unknown>) =>
@@ -17,15 +18,15 @@ function createJwt(payload: Record<string, unknown>) {
   return `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode(payload)}.signature`
 }
 
-// 'arfolyam_nezo' (Árfolyam néző): Szerver-módban ÉRVÉNYES szerepkör (SERVER_ALLOWED_CANONICAL_ROLES),
-// de NEM szerkesztő (nem foertektar/ugyvezeto) → canEdit=false → a read-only territory nézet renderel.
+// 'irodavezeto': Szerver-módban ÉRVÉNYES szerepkör (SERVER_ALLOWED_CANONICAL_ROLES), de NEM szerkesztő
+// (nem foertektar/ugyvezeto) és NEM árfolyam néző → canEdit=false, nincs redirect → territory nézet renderel.
 const worker = {
   id: 88,
-  workerCode: 'NEZO1',
-  firstName: 'Árfolyam',
-  lastName: 'Néző',
-  fullName: 'Árfolyam Néző',
-  role: 'arfolyam_nezo',
+  workerCode: 'IRV1',
+  firstName: 'Iroda',
+  lastName: 'Vezető',
+  fullName: 'Iroda Vezető',
+  role: 'irodavezeto',
   branchId: 'branch-szeged',
   branchCode: 'BR-SZEGED',
   branchName: 'Tisza Sarok',
@@ -103,9 +104,9 @@ const territoryGroups = [
 async function mockApis(page: Page) {
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
-    activeRole: 'arfolyam_nezo',
+    activeRole: 'irodavezeto',
     permissions: ['READ'],
-    roles: ['arfolyam_nezo'],
+    roles: ['irodavezeto'],
   })
 
   await page.route('**/api/v1/**', async (route) => {
@@ -122,9 +123,9 @@ async function mockApis(page: Page) {
           tokenType: 'Bearer',
           expiresAt: new Date(Date.now() + 3600_000).toISOString(),
           worker,
-          activeRole: 'arfolyam_nezo',
+          activeRole: 'irodavezeto',
           permissions: ['READ'],
-          roles: ['arfolyam_nezo'],
+          roles: ['irodavezeto'],
           roleSelectionRequired: false,
         }),
       })
@@ -161,7 +162,7 @@ async function login(page: Page) {
   await page.goto('/login')
   const textboxes = page.getByRole('textbox')
   await textboxes.nth(0).fill('EBC')
-  await textboxes.nth(1).fill('NEZO1')
+  await textboxes.nth(1).fill('IRV1')
   await page.locator('input[type="password"]').fill('1234')
   await page.getByRole('button', { name: /Bejelentkezés/i }).click()
   // Bejelentkezés után elnavigál a /login-ról (a cél role-függő — nem kötjük konkrét útvonalhoz).
