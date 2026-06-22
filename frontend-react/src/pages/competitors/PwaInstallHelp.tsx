@@ -11,7 +11,7 @@ import { logger } from '../../utils/logger'
  * A QR-kód egy MÁSIK eszközről (pl. a főértéktáros desktop-képernyőjéről) beolvasva köti össze a néző
  * telefonját; a telepítési lépések a néző telefonján is olvashatók.
  */
-export default function PwaInstallHelp({ url }: { url?: string }) {
+export default function PwaInstallHelp({ url, title }: { url?: string; title?: string }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [qr, setQr] = useState<string>('')
@@ -49,7 +49,7 @@ export default function PwaInstallHelp({ url }: { url?: string }) {
       >
         <span className="flex items-center gap-2 text-sm font-semibold text-gray-700">
           <Smartphone size={18} className="text-blue-700" />
-          {t('pwaInstall.cim')}
+          {title ?? t('pwaInstall.cim')}
         </span>
         {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
       </button>

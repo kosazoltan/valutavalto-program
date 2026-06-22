@@ -1195,6 +1195,7 @@
   "pwaInstall": {
     "android": "A böngésző menüjében (⋮) válassza az „Alkalmazás telepítése\" / „Hozzáadás a kezdőképernyőhöz\" lehetőséget.",
     "cim": "Telepítés a telefonra",
+    "cimErtektar": "Árfolyam-néző telefonjának összekötése (QR)",
     "ios": "A Megosztás ikonra koppintva válassza a „Főképernyőhöz adás\" lehetőséget.",
     "leiras": "A telefonra nem kell külön programot telepíteni: nyissa meg az alábbi címet a telefon böngészőjében (vagy olvassa be a QR-kódot egy másik eszközről), majd tegye ki a kezdőképernyőre — onnantól egy gombbal indítható alkalmazásként.",
     "lepes1": "Nyissa meg a címet a telefon böngészőjében, vagy olvassa be a QR-kódot.",
