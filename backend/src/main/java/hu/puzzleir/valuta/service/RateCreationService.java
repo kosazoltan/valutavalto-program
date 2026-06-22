@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.dto.ratecreation.CompetitorRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.GroupRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.RateCreationResponseDTO;
 import hu.puzzleir.valuta.dto.ratecreation.RateOverviewDTO;
+import hu.puzzleir.valuta.dto.ratecreation.TerritoryWorkgroupRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.WorkgroupDetailDTO;
 import hu.puzzleir.valuta.dto.ratemaker.LocalRateMakerBootstrapDto;
 import hu.puzzleir.valuta.dto.ratemaker.LocalRatePackageDto;
@@ -40,8 +41,10 @@ import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.Collator;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.HexFormat;
 import java.util.stream.Collectors;
@@ -70,6 +73,10 @@ public class RateCreationService {
     private final RatePublishService ratePublishService;
     private final ObjectMapper objectMapper;
     private final SystemParameterService systemParameterService;
+    private final AccessScopeService accessScopeService;
+
+    /** FK-041: a publikálási idő (validTime) HH:mm formázója a területi nézethez. */
+    private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
 
     /**
      * Bank árfolyamok lekérése az aktuális rátákból.
@@ -294,6 +301,98 @@ public class RateCreationService {
                     .protectionEnabled(wg.getProtectionEnabled())
                     .build();
         }).collect(Collectors.toList());
+    }
+
+    /**
+     * FK-041: a hívó TERÜLETÉNEK (régió) munkacsoportonkénti árfolyam-variánsai az értéktáros
+     * read-only nézetéhez. A főértéktáros a pénztárakat munkacsoportokba sorolja; egy munkacsoport
+     * összes pénztára AZONOS publikált árfolyamot kap, ezért a variánsok száma = a területen lévő
+     * munkacsoportok száma. Az ERTEKTAR a saját régiója munkacsoportjait/pénztárait látja
+     * (AccessScopeService.vaultRegionBranchScopeOrNull → Set), a FŐÉRTÉKTÁR/cég-szintű role
+     * országosan (scope == null).
+     *
+     * <p>OSIV ki van kapcsolva — a LAZY {@code wg.getBranches()} / {@code branch.getRegion()} ebben a
+     * {@code @Transactional(readOnly = true)} metódusban töltődik be.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<TerritoryWorkgroupRateDTO> getTerritoryWorkgroupRates() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        // null = nincs terület-szűkítés (FŐÉRTÉKTÁR/cég-szintű); Set<UUID> = a régió látható pénztárai (ERTEKTAR).
+        Set<UUID> scope = accessScopeService.vaultRegionBranchScopeOrNull();
+        // Magyar ábécé-sorrend a pénztárnevekhez (az ékezetes Á/É/Ö/Ü ne kerüljön a Z mögé).
+        Collator huCollator = Collator.getInstance(Locale.of("hu", "HU"));
+
+        List<RateWorkgroup> workgroups = rateWorkgroupRepository.findByCompanyIdAndActiveTrue(companyId);
+        List<Currency> currencies = currencyRepository.findByActiveTrueOrderByDisplayOrderAsc().stream()
+                .filter(c -> !"HUF".equals(c.getCode()))
+                .collect(Collectors.toList());
+
+        List<TerritoryWorkgroupRateDTO> result = new ArrayList<>();
+        for (RateWorkgroup wg : workgroups) {
+            // A munkacsoport pénztárai a hívó scope-jában (régió; országosnál mind).
+            List<Branch> scopedBranches = wg.getBranches().stream()
+                    .filter(b -> scope == null || scope.contains(b.getId()))
+                    .sorted((a, b) -> huCollator.compare(a.getName(), b.getName()))
+                    .collect(Collectors.toList());
+            if (scopedBranches.isEmpty()) {
+                continue; // ennek a munkacsoportnak nincs pénztára a hívó területén
+            }
+
+            // A megjelenített ráta a REPREZENTATÍV (betűrendben első) pénztáré. Happy-path-on ez korrekt:
+            // a RatePublishService a munkacsoport minden pénztárára KÜLÖN, AZONOS értékű branch-specifikus
+            // exchange_rate sort ír, így a munkacsoport összes pénztára azonos publikált árfolyamon van.
+            // Ismert él: ha egy pénztárt áthelyeznek ebbe a munkacsoportba, de azóta NEM publikáltak újra,
+            // az áthelyezett pénztár a régi rátáját tartja — a read-only nézet ilyenkor a reprezentatív
+            // pénztár rátáját mutatja. (Divergencia-detektáláshoz a csoport összes pénztárát be kellene
+            // olvasni; ez egy ritka adat-anomália, ezért tudatosan a reprezentatív rátát mutatjuk.)
+            UUID repBranchId = scopedBranches.get(0).getId();
+            Map<Long, ExchangeRate> rateByCurrency = new LinkedHashMap<>();
+            for (ExchangeRate r : exchangeRateRepository.findAllActiveRates(companyId, repBranchId)) {
+                rateByCurrency.putIfAbsent(r.getCurrency().getId(), r);
+            }
+
+            List<TerritoryWorkgroupRateDTO.CurrencyRate> currencyRates = currencies.stream()
+                    .map(c -> {
+                        ExchangeRate r = rateByCurrency.get(c.getId());
+                        TerritoryWorkgroupRateDTO.CurrencyRate.CurrencyRateBuilder b =
+                                TerritoryWorkgroupRateDTO.CurrencyRate.builder()
+                                        .currencyId(c.getId())
+                                        .currencyCode(c.getCode())
+                                        .currencyName(c.getName())
+                                        .hasRate(r != null);
+                        if (r != null) {
+                            b.baseBuyRate(r.getBaseBuyRate())
+                                    .baseSellRate(r.getBaseSellRate())
+                                    .officialRate(r.getOfficialRate())
+                                    .limit1Amount(r.getLimit1Amount())
+                                    .limit1BuyRate(r.getLimit1BuyRate())
+                                    .limit1SellRate(r.getLimit1SellRate())
+                                    .limit2Amount(r.getLimit2Amount())
+                                    .limit2BuyRate(r.getLimit2BuyRate())
+                                    .limit2SellRate(r.getLimit2SellRate())
+                                    .limit3Amount(r.getLimit3Amount())
+                                    .limit3BuyRate(r.getLimit3BuyRate())
+                                    .limit3SellRate(r.getLimit3SellRate())
+                                    // HH:mm — explicit formázó, független a LocalTime.toString() ISO-formátumától.
+                                    .validTime(r.getValidTime() != null ? r.getValidTime().format(HH_MM) : null);
+                        }
+                        return b.build();
+                    })
+                    .collect(Collectors.toList());
+
+            result.add(TerritoryWorkgroupRateDTO.builder()
+                    .workgroupId(wg.getId())
+                    .workgroupCode(wg.getCode())
+                    .workgroupName(wg.getName())
+                    .tileColor(wg.getTileColor())
+                    .branchNames(scopedBranches.stream().map(Branch::getName).collect(Collectors.toList()))
+                    .limit1Boundary(wg.getLimit1Boundary() != null ? wg.getLimit1Boundary() : BigDecimal.valueOf(50000))
+                    .limit2Boundary(wg.getLimit2Boundary() != null ? wg.getLimit2Boundary() : BigDecimal.valueOf(300000))
+                    .limit3Boundary(wg.getLimit3Boundary() != null ? wg.getLimit3Boundary() : BigDecimal.valueOf(1000000))
+                    .currencies(currencyRates)
+                    .build());
+        }
+        return result;
     }
 
     /**

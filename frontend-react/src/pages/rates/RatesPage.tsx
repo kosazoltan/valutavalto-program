@@ -1,5 +1,17 @@
-import { useState, useEffect, useCallback, type ChangeEvent } from 'react'
-import { TrendingUp, RefreshCw, Edit, Save, X, Clock, Download, Eye, Calculator, Upload, ShieldCheck } from 'lucide-react'
+import { Fragment, useState, useEffect, useCallback, type ChangeEvent } from 'react'
+import {
+  TrendingUp,
+  RefreshCw,
+  Edit,
+  Save,
+  X,
+  Clock,
+  Download,
+  Eye,
+  Calculator,
+  Upload,
+  ShieldCheck,
+} from 'lucide-react'
 import {
   exchangeRateApi,
   exchangeRatePollingApi,
@@ -22,6 +34,7 @@ import {
   type CurrencyExchangeMatrix,
   type CurrencyReverseResult,
   type ParsedRateFile,
+  type TerritoryWorkgroupRateDTO,
 } from '../../services/api/index'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal } from '../../utils/numberFormat'
@@ -70,7 +83,10 @@ function mapExchangeRateToRow(rate: ExchangeRate): RateRow {
     mnbRate: rate.officialRate ?? 0,
     lastUpdate: rate.validTime
       ? rate.validTime.substring(0, 5)
-      : new Date(rate.createdAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }),
+      : new Date(rate.createdAt).toLocaleTimeString('hu-HU', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
     currencyId: rate.currencyId,
     limit1Amount: rate.limit1Amount ?? undefined,
     limit1BuyRate: rate.limit1BuyRate ?? undefined,
@@ -113,8 +129,10 @@ function buildRows(currencies: Currency[], rates: ExchangeRate[]): RateRow[] {
     })
 }
 
-function formatHuf(amount: number): string {
-  return amount.toLocaleString('hu-HU')
+function formatHuf(amount: number | null | undefined): string {
+  // Null-safe (mint a numberFormat.ts társai): a hívók ma őrzött nem-null értéket adnak, de a
+  // sávhatár-összegek típusa number|null|undefined — egy jövőbeli őr-lazítás ne dönthesse el a nézetet.
+  return amount == null ? '—' : amount.toLocaleString('hu-HU')
 }
 
 function numericAmount(value: number | string | null | undefined): number {
@@ -124,9 +142,11 @@ function numericAmount(value: number | string | null | undefined): number {
 
 /** Check if ANY rate in the dataset has a given tier */
 function anyHasTier(rates: RateRow[], tier: 1 | 2 | 3): boolean {
-  return rates.some(r => {
-    if (tier === 1) return r.limit1Amount != null && (r.limit1BuyRate != null || r.limit1SellRate != null)
-    if (tier === 2) return r.limit2Amount != null && (r.limit2BuyRate != null || r.limit2SellRate != null)
+  return rates.some((r) => {
+    if (tier === 1)
+      return r.limit1Amount != null && (r.limit1BuyRate != null || r.limit1SellRate != null)
+    if (tier === 2)
+      return r.limit2Amount != null && (r.limit2BuyRate != null || r.limit2SellRate != null)
     return r.limit3Amount != null && (r.limit3BuyRate != null || r.limit3SellRate != null)
   })
 }
@@ -134,6 +154,8 @@ function anyHasTier(rates: RateRow[], tier: 1 | 2 | 3): boolean {
 export default function RatesPage() {
   const { t } = useTranslation()
   const [rates, setRates] = useState<RateRow[]>([])
+  // FK-041: a terület munkacsoportonkénti árfolyam-variánsai (read-only értéktár nézet).
+  const [territoryGroups, setTerritoryGroups] = useState<TerritoryWorkgroupRateDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<string>('')
@@ -214,56 +236,61 @@ export default function RatesPage() {
         return loadedRows[0]?.currencyId ?? ''
       })
       setLastRefresh(new Date().toLocaleString('hu-HU'))
-      try {
-        setMatrix(await currencyCalculatorApi.matrix())
-      } catch (matrixErr) {
-        logger.warn('RatesPage', 'Átváltási mátrix nem elérhető:', matrixErr)
-        setMatrix({})
-      }
-      try {
-        const [status, sources] = await Promise.all([
-          exchangeRatePollingApi.status(),
-          exchangeRatePollingApi.sources(),
-        ])
-        setPollingStatus(status)
-        setPollingSources(safeArray<ExchangeRatePollingSource>(sources))
-        setPollingError(null)
-      } catch (pollingErr) {
-        logger.warn('RatesPage', 'Árfolyam polling státusz nem elérhető:', pollingErr)
-        setPollingStatus(null)
-        setPollingSources([])
-        setPollingError(getErrorMessage(pollingErr))
-      }
-      try {
-        setEcbRates(await exchangeRatePollingApi.ecbRates())
-        setEcbRateError(null)
-      } catch (ecbErr) {
-        logger.warn('RatesPage', 'ECB árfolyam snapshot nem elérhető:', ecbErr)
-        setEcbRates({})
-        setEcbRateError(getErrorMessage(ecbErr))
-      }
-      try {
-        const [bankRateRows, competitorRateRows] = await Promise.all([
-          rateCreationApi.getBankRates(),
-          rateCreationApi.getCompetitorRates(),
-        ])
-        setBankRates(safeArray<BankRateDTO>(bankRateRows))
-        setCompetitorRates(safeArray<CompetitorRateDTO>(competitorRateRows))
-        setMarketRateError(null)
-      } catch (marketErr) {
-        logger.warn('RatesPage', 'Bank/versenytárs árfolyamok nem elérhetők:', marketErr)
-        setBankRates([])
-        setCompetitorRates([])
-        setMarketRateError(getErrorMessage(marketErr))
-      }
+      // FK-041: az editor-only metrikák/eszközök adatait (mátrix, polling, ECB, piaci összehasonlítás,
+      // kerekítési szabályok) CSAK szerkesztő (full + főértéktár) módban töltjük. A read-only értéktár-
+      // nézethez elég a tiszta árfolyam-táblázat — felesleges háttér-hívások nélkül, gyorsabban.
       if (canEdit) {
+        // A szerkesztő-nézet a sűrű (szerkeszthető) táblát használja, nem a területi nézetet.
+        setTerritoryGroups([])
+        try {
+          setMatrix(await currencyCalculatorApi.matrix())
+        } catch (matrixErr) {
+          logger.warn('RatesPage', 'Átváltási mátrix nem elérhető:', matrixErr)
+          setMatrix({})
+        }
+        try {
+          const [status, sources] = await Promise.all([
+            exchangeRatePollingApi.status(),
+            exchangeRatePollingApi.sources(),
+          ])
+          setPollingStatus(status)
+          setPollingSources(safeArray<ExchangeRatePollingSource>(sources))
+          setPollingError(null)
+        } catch (pollingErr) {
+          logger.warn('RatesPage', 'Árfolyam polling státusz nem elérhető:', pollingErr)
+          setPollingStatus(null)
+          setPollingSources([])
+          setPollingError(getErrorMessage(pollingErr))
+        }
+        try {
+          setEcbRates(await exchangeRatePollingApi.ecbRates())
+          setEcbRateError(null)
+        } catch (ecbErr) {
+          logger.warn('RatesPage', 'ECB árfolyam snapshot nem elérhető:', ecbErr)
+          setEcbRates({})
+          setEcbRateError(getErrorMessage(ecbErr))
+        }
+        try {
+          const [bankRateRows, competitorRateRows] = await Promise.all([
+            rateCreationApi.getBankRates(),
+            rateCreationApi.getCompetitorRates(),
+          ])
+          setBankRates(safeArray<BankRateDTO>(bankRateRows))
+          setCompetitorRates(safeArray<CompetitorRateDTO>(competitorRateRows))
+          setMarketRateError(null)
+        } catch (marketErr) {
+          logger.warn('RatesPage', 'Bank/versenytárs árfolyamok nem elérhetők:', marketErr)
+          setBankRates([])
+          setCompetitorRates([])
+          setMarketRateError(getErrorMessage(marketErr))
+        }
         try {
           const rules = safeArray<RoundingRule>(await roundingRuleApi.list())
           setRoundingRules(rules)
           setRoundingError(null)
           setRoundingCurrency((current) =>
             rules.length > 0 && !rules.some((rule) => rule.currencyCode === current)
-              ? rules[0]?.currencyCode ?? current
+              ? (rules[0]?.currencyCode ?? current)
               : current,
           )
         } catch (roundingErr) {
@@ -272,10 +299,27 @@ export default function RatesPage() {
           setRoundingError(getErrorMessage(roundingErr))
         }
       } else {
+        setMatrix({})
+        setPollingStatus(null)
+        setPollingSources([])
+        setPollingError(null)
+        setEcbRates({})
+        setEcbRateError(null)
+        setBankRates([])
+        setCompetitorRates([])
+        setMarketRateError(null)
         setRoundingRules([])
         setRoundingRule(null)
         setRoundingResult(null)
         setRoundingError(null)
+        // FK-041: a read-only értéktár nézethez a terület munkacsoportonkénti árfolyam-variánsai
+        // (régió-scope-olt; a backend AccessScopeService szűr). Hiba esetén a sima tábla a fallback.
+        try {
+          setTerritoryGroups(await rateCreationApi.getTerritoryWorkgroupRates())
+        } catch (twgErr) {
+          logger.warn('RatesPage', 'Területi munkacsoport-árfolyamok nem elérhetők:', twgErr)
+          setTerritoryGroups([])
+        }
       }
     } catch (err) {
       logger.error('RatesPage', 'Árfolyamok betöltési hiba:', err)
@@ -295,7 +339,7 @@ export default function RatesPage() {
   }
 
   const saveEdit = async (code: string) => {
-    const rate = rates.find(r => r.code === code)
+    const rate = rates.find((r) => r.code === code)
     if (!rate) return
 
     if (editValues.buyRate >= editValues.sellRate) {
@@ -339,7 +383,7 @@ export default function RatesPage() {
   }
 
   const requestRateApproval = async (code: string) => {
-    const rate = rates.find(r => r.code === code)
+    const rate = rates.find((r) => r.code === code)
     if (!rate) return
 
     if (editValues.buyRate >= editValues.sellRate) {
@@ -349,7 +393,9 @@ export default function RatesPage() {
 
     if (!worker?.branchId) {
       setRateApprovalMessage(null)
-      setRateApprovalError('Árfolyam jóváhagyási kérelemhez hiányzik a bejelentkezett iroda azonosítója.')
+      setRateApprovalError(
+        'Árfolyam jóváhagyási kérelemhez hiányzik a bejelentkezett iroda azonosítója.',
+      )
       return
     }
 
@@ -364,7 +410,9 @@ export default function RatesPage() {
         newSellRate: editValues.sellRate,
         reason: `Árfolyam módosítási kérelem: ${rate.code}`,
       })
-      setRateApprovalMessage(`${approval.currencyCode} jóváhagyási kérelem elküldve (${approval.status ?? 'PENDING'}).`)
+      setRateApprovalMessage(
+        `${approval.currencyCode} jóváhagyási kérelem elküldve (${approval.status ?? 'PENDING'}).`,
+      )
       setEditingCode(null)
     } catch (err) {
       logger.error('RatesPage', 'Árfolyam jóváhagyási kérelem sikertelen:', err)
@@ -433,7 +481,9 @@ export default function RatesPage() {
     setPollingActionError(null)
     try {
       const updated = await exchangeRatePollingApi.updateSource(source.id, data)
-      setPollingSources((current) => current.map((item) => item.id === updated.id ? updated : item))
+      setPollingSources((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      )
       setPollingActionMessage(`${updated.name} forrás frissítve`)
     } catch (err) {
       logger.error('RatesPage', 'Árfolyam forrás frissítés sikertelen:', err)
@@ -459,12 +509,14 @@ export default function RatesPage() {
     setCalculatorLoading(true)
     setCalculatorError(null)
     try {
-      setCalculatorResult(await currencyCalculatorApi.convert({
-        fromCurrency: calculatorFrom,
-        toCurrency: calculatorTo,
-        amount,
-        direction: calculatorDirection,
-      }))
+      setCalculatorResult(
+        await currencyCalculatorApi.convert({
+          fromCurrency: calculatorFrom,
+          toCurrency: calculatorTo,
+          amount,
+          direction: calculatorDirection,
+        }),
+      )
     } catch (err) {
       logger.error('RatesPage', 'Átváltás kalkuláció sikertelen:', err)
       setCalculatorResult(null)
@@ -485,10 +537,12 @@ export default function RatesPage() {
     setReverseLoading(true)
     setCalculatorError(null)
     try {
-      setReverseResult(await currencyCalculatorApi.reverse({
-        currency: reverseCurrency,
-        hufAmount,
-      }))
+      setReverseResult(
+        await currencyCalculatorApi.reverse({
+          currency: reverseCurrency,
+          hufAmount,
+        }),
+      )
     } catch (err) {
       logger.error('RatesPage', 'Fordított kalkuláció sikertelen:', err)
       setReverseResult(null)
@@ -546,7 +600,9 @@ export default function RatesPage() {
     try {
       const parsed = await exchangeRateApi.uploadRateFile(rateFile)
       setParsedRateFile(parsed)
-      setRateFileMessage(`${parsed.parsedLineCount} feldolgozott sor, ${parsed.skippedLineCount} kihagyott sor.`)
+      setRateFileMessage(
+        `${parsed.parsedLineCount} feldolgozott sor, ${parsed.skippedLineCount} kihagyott sor.`,
+      )
     } catch (err) {
       logger.error('RatesPage', 'Árfolyamfájl előnézet sikertelen:', err)
       setParsedRateFile(null)
@@ -591,9 +647,9 @@ export default function RatesPage() {
     const rate = rates.find((item) => item.code === code)
     return rate ? `${rate.code} - ${rate.name}` : code
   }
-  const matrixPreview = Object.entries(matrix).flatMap(([from, row]) =>
-    Object.entries(row).map(([to, value]) => ({ from, to, value })),
-  ).slice(0, 4)
+  const matrixPreview = Object.entries(matrix)
+    .flatMap(([from, row]) => Object.entries(row).map(([to, value]) => ({ from, to, value })))
+    .slice(0, 4)
   const activePollingSources = pollingSources.filter((source) => source.active).length
   const ecbRateEntries = Object.entries(ecbRates).slice(0, 4)
   const currentBankRates = bankRates.filter((rate) => rate.isCurrent !== false)
@@ -603,16 +659,21 @@ export default function RatesPage() {
     ...bankRates.map((rate) => rate.currencyCode).filter(Boolean),
     ...competitorRates.map((rate) => rate.currencyCode).filter(Boolean),
   ]).size
-  const roundingCurrencyOptions = Array.from(new Set([
-    ...roundingRules.map((rule) => rule.currencyCode),
-    ...currencyCodes,
-  ])).filter(Boolean)
+  const roundingCurrencyOptions = Array.from(
+    new Set([...roundingRules.map((rule) => rule.currencyCode), ...currencyCodes]),
+  ).filter(Boolean)
   const pollingStatusLabel = pollingStatus
-    ? pollingStatus.lastPollSuccess ? 'Sikeres' : 'Hibás'
-    : pollingError ? 'Nem elérhető' : 'Betöltés alatt'
+    ? pollingStatus.lastPollSuccess
+      ? 'Sikeres'
+      : 'Hibás'
+    : pollingError
+      ? 'Nem elérhető'
+      : 'Betöltés alatt'
   const pollingStatusClass = pollingStatus?.lastPollSuccess
     ? 'badge-green'
-    : pollingStatus || pollingError ? 'badge-red' : 'badge-gray'
+    : pollingStatus || pollingError
+      ? 'badge-red'
+      : 'badge-gray'
 
   return (
     <div className="space-y-1">
@@ -620,15 +681,21 @@ export default function RatesPage() {
       <div className="flex justify-between items-center gap-2 flex-wrap">
         <h1 className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
           <TrendingUp size={16} />
-          {t('cashier.rates')}{!canEdit && <span className="text-[10px] text-gray-500 font-normal">{t('rates.nezet')}</span>}
+          {t('cashier.rates')}
+          {!canEdit && (
+            <span className="text-[10px] text-gray-500 font-normal">{t('rates.nezet')}</span>
+          )}
           {!canEdit && (
             <span className="text-[10px] text-blue-700 font-normal flex items-center gap-0.5 ml-1">
-              <Eye size={10} />{t('rates.csakFoertektarSzerkesztheti')}
+              <Eye size={10} />
+              {t('rates.csakFoertektarSzerkesztheti')}
             </span>
           )}
           {lastRefresh && (
             <span className="text-[10px] text-gray-500 font-normal flex items-center gap-0.5 ml-1">
-              <Clock size={10} />{t('rates.utolsoFrissites')} {lastRefresh}{rates.length > 0 && ` · ${rates.length} valuta`}
+              <Clock size={10} />
+              {t('rates.utolsoFrissites')} {lastRefresh}
+              {rates.length > 0 && ` · ${rates.length} valuta`}
             </span>
           )}
         </h1>
@@ -662,7 +729,9 @@ export default function RatesPage() {
       )}
 
       {(rateApprovalMessage || rateApprovalError) && (
-        <div className={`form-panel px-2 py-1 text-xs rounded ${rateApprovalError ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
+        <div
+          className={`form-panel px-2 py-1 text-xs rounded ${rateApprovalError ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}
+        >
           {rateApprovalError || rateApprovalMessage}
         </div>
       )}
@@ -673,49 +742,454 @@ export default function RatesPage() {
         </div>
       )}
 
-      {rates.length > 0 && (
+      {/* FK-041 — read-only (értéktár) TERÜLETI nézet: valutánként egy sor, és munkacsoportonként
+          (árfolyam-variánsonként) egy oszlopcsoport a hozzá tartozó pénztárnevekkel a címsorban;
+          a cellában az alap vétel/eladás + a kedvezmény-sávok. A főértéktáros a területen belül a
+          pénztáraknak eltérő árfolyamot ad → minden eltérő variáns külön oszlopcsoport. */}
+      {!canEdit &&
+        territoryGroups.length > 0 &&
+        (() => {
+          // A sor-gerinc az ELSŐ munkacsoport valutalistája. Biztonságos, mert a backend MINDEN
+          // munkacsoporthoz UGYANAZT az aktív valutalistát építi (findByActiveTrueOrderByDisplayOrderAsc),
+          // így a currencyId-halmaz és a sorrend csoportonként azonos (TerritoryWorkgroupRateDTO).
+          const spine = territoryGroups[0]?.currencies ?? []
+          const findRate = (g: TerritoryWorkgroupRateDTO, currencyId: number) =>
+            g.currencies.find((c) => c.currencyId === currencyId)
+          const fmtRate = (v: number | null | undefined) =>
+            v != null ? formatDecimal(v, 2, 2) : '—'
+          return (
+            <Fragment>
+              {/* Desktop: munkacsoportonkénti oszlopcsoportok */}
+              <div
+                className="form-panel hidden overflow-x-auto p-0 md:block"
+                data-testid="rates-territory-table"
+              >
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-300 bg-gray-100 text-gray-600">
+                      <th
+                        scope="col"
+                        rowSpan={2}
+                        className="sticky left-0 z-10 bg-gray-100 px-3 py-2 text-left align-bottom font-semibold uppercase tracking-wide"
+                      >
+                        Valuta
+                      </th>
+                      {territoryGroups.map((g) => (
+                        <th
+                          key={g.workgroupId}
+                          scope="colgroup"
+                          colSpan={2}
+                          className="border-r border-gray-300 px-3 py-2 text-left align-bottom"
+                        >
+                          <div className="font-semibold text-gray-800">{g.workgroupName}</div>
+                          {g.branchNames.length > 0 && (
+                            <div className="text-[11px] font-normal text-gray-500">
+                              {g.branchNames.join(' · ')}
+                            </div>
+                          )}
+                        </th>
+                      ))}
+                      <th
+                        scope="col"
+                        rowSpan={2}
+                        className="px-3 py-2 text-right align-bottom font-semibold uppercase tracking-wide text-gray-400"
+                      >
+                        MNB
+                      </th>
+                    </tr>
+                    <tr className="border-b-2 border-gray-300 bg-gray-50">
+                      {territoryGroups.map((g) => (
+                        <Fragment key={g.workgroupId}>
+                          <th
+                            scope="col"
+                            className="px-3 py-1 text-right text-[11px] font-medium uppercase text-green-700"
+                          >
+                            {t('rates.vetel')}
+                          </th>
+                          <th
+                            scope="col"
+                            className="border-r border-gray-300 px-3 py-1 text-right text-[11px] font-medium uppercase text-red-700"
+                          >
+                            {t('rates.eladas')}
+                          </th>
+                        </Fragment>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {spine.map((s, idx) => {
+                      const anyRate = territoryGroups
+                        .map((g) => findRate(g, s.currencyId))
+                        .find((c) => c?.hasRate)
+                      return (
+                        <tr
+                          key={s.currencyId}
+                          className={`${idx % 2 === 1 ? 'bg-gray-50/70' : 'bg-white'} border-b border-gray-100 last:border-0 hover:bg-blue-50/60`}
+                        >
+                          <td className="sticky left-0 z-10 whitespace-nowrap bg-inherit px-3 py-2 align-top">
+                            <span className="font-mono text-base font-bold text-blue-800">
+                              {s.currencyCode}
+                            </span>
+                            <span className="ml-2 text-gray-500">{s.currencyName}</span>
+                          </td>
+                          {territoryGroups.map((g) => {
+                            const cr = findRate(g, s.currencyId)
+                            return (
+                              <td
+                                key={g.workgroupId}
+                                colSpan={2}
+                                className="border-r border-gray-200 px-3 py-2 align-top"
+                              >
+                                {cr?.hasRate ? (
+                                  <>
+                                    <div className="font-mono text-base font-semibold tabular-nums">
+                                      <span className="text-green-700">
+                                        {fmtRate(cr.baseBuyRate)}
+                                      </span>
+                                      <span className="mx-1 text-gray-300">/</span>
+                                      <span className="text-red-700">
+                                        {fmtRate(cr.baseSellRate)}
+                                      </span>
+                                    </div>
+                                    <div className="mt-1 space-y-0.5">
+                                      {cr.limit1Amount != null &&
+                                        (cr.limit1BuyRate != null || cr.limit1SellRate != null) && (
+                                          <div className="whitespace-nowrap font-mono text-[10.5px] text-gray-500">
+                                            ≥{formatHuf(cr.limit1Amount)}{' '}
+                                            {fmtRate(cr.limit1BuyRate)} /{' '}
+                                            {fmtRate(cr.limit1SellRate)}
+                                          </div>
+                                        )}
+                                      {cr.limit2Amount != null &&
+                                        (cr.limit2BuyRate != null || cr.limit2SellRate != null) && (
+                                          <div className="whitespace-nowrap font-mono text-[10.5px] text-gray-500">
+                                            ≥{formatHuf(cr.limit2Amount)}{' '}
+                                            {fmtRate(cr.limit2BuyRate)} /{' '}
+                                            {fmtRate(cr.limit2SellRate)}
+                                          </div>
+                                        )}
+                                      {cr.limit3Amount != null &&
+                                        (cr.limit3BuyRate != null || cr.limit3SellRate != null) && (
+                                          <div className="whitespace-nowrap font-mono text-[10.5px] text-gray-500">
+                                            ≥{formatHuf(cr.limit3Amount)}{' '}
+                                            {fmtRate(cr.limit3BuyRate)} /{' '}
+                                            {fmtRate(cr.limit3SellRate)}
+                                          </div>
+                                        )}
+                                    </div>
+                                    {cr.validTime && (
+                                      <div className="mt-1 text-[10px] text-gray-400">
+                                        frissítve {cr.validTime}
+                                      </div>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-gray-300">—</span>
+                                )}
+                              </td>
+                            )
+                          })}
+                          <td className="px-3 py-2 text-right align-top font-mono tabular-nums text-gray-500">
+                            {anyRate?.officialRate != null
+                              ? formatDecimal(anyRate.officialRate, 2, 2)
+                              : '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobil: valutánként kártya, benne munkacsoportonkénti soronkénti árfolyam */}
+              <div className="space-y-2 md:hidden">
+                {spine.map((s) => (
+                  <div
+                    key={s.currencyId}
+                    className="form-panel space-y-1.5"
+                    data-testid="rates-territory-mobile-row"
+                  >
+                    <div className="font-mono text-base font-bold text-blue-800">
+                      {s.currencyCode}
+                      <span className="ml-2 text-sm font-normal text-gray-500">
+                        {s.currencyName}
+                      </span>
+                    </div>
+                    {territoryGroups.map((g) => {
+                      const cr = findRate(g, s.currencyId)
+                      return (
+                        <div
+                          key={g.workgroupId}
+                          className="rounded border border-gray-200 px-2 py-1.5"
+                        >
+                          <div className="text-[11px] font-semibold text-gray-700">
+                            {g.workgroupName}
+                          </div>
+                          {g.branchNames.length > 0 && (
+                            <div className="text-[10px] text-gray-500">
+                              {g.branchNames.join(' · ')}
+                            </div>
+                          )}
+                          <div className="mt-1 font-mono text-sm font-semibold tabular-nums">
+                            <span className="text-green-700">{fmtRate(cr?.baseBuyRate)}</span>
+                            <span className="mx-1 text-gray-300">/</span>
+                            <span className="text-red-700">{fmtRate(cr?.baseSellRate)}</span>
+                          </div>
+                          {cr?.hasRate && (
+                            <div className="mt-1 space-y-0.5">
+                              {cr.limit1Amount != null &&
+                                (cr.limit1BuyRate != null || cr.limit1SellRate != null) && (
+                                  <div className="whitespace-nowrap font-mono text-[10px] text-gray-500">
+                                    ≥{formatHuf(cr.limit1Amount)} {fmtRate(cr.limit1BuyRate)} /{' '}
+                                    {fmtRate(cr.limit1SellRate)}
+                                  </div>
+                                )}
+                              {cr.limit2Amount != null &&
+                                (cr.limit2BuyRate != null || cr.limit2SellRate != null) && (
+                                  <div className="whitespace-nowrap font-mono text-[10px] text-gray-500">
+                                    ≥{formatHuf(cr.limit2Amount)} {fmtRate(cr.limit2BuyRate)} /{' '}
+                                    {fmtRate(cr.limit2SellRate)}
+                                  </div>
+                                )}
+                              {cr.limit3Amount != null &&
+                                (cr.limit3BuyRate != null || cr.limit3SellRate != null) && (
+                                  <div className="whitespace-nowrap font-mono text-[10px] text-gray-500">
+                                    ≥{formatHuf(cr.limit3Amount)} {fmtRate(cr.limit3BuyRate)} /{' '}
+                                    {fmtRate(cr.limit3SellRate)}
+                                  </div>
+                                )}
+                            </div>
+                          )}
+                          {cr?.validTime && (
+                            <div className="mt-0.5 text-[10px] text-gray-400">
+                              frissítve {cr.validTime}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            </Fragment>
+          )
+        })()}
+
+      {/* FK-041 fallback — ha nincs területi munkacsoport-adat: egyszerű, gyorsan olvasható
+          per-valuta táblázat (a korábbi read-only nézet). */}
+      {!canEdit && !loading && territoryGroups.length === 0 && rates.length > 0 && (
+        <>
+          {/* Desktop: tiszta árfolyam-táblázat */}
+          <div
+            className="form-panel hidden overflow-x-auto p-0 md:block"
+            data-testid="rates-readonly-table"
+          >
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b-2 border-gray-300 bg-gray-100 text-gray-600">
+                  <th className="px-3 py-2 text-left font-semibold uppercase tracking-wide">
+                    Valuta
+                  </th>
+                  <th className="px-3 py-2 text-right font-semibold uppercase tracking-wide text-green-700">
+                    {t('rates.vetel')}
+                  </th>
+                  <th className="px-3 py-2 text-right font-semibold uppercase tracking-wide text-red-700">
+                    {t('rates.eladas')}
+                  </th>
+                  {showTier1 && (
+                    <th className="px-3 py-2 text-right font-semibold uppercase tracking-wide text-emerald-700">
+                      {t('rates.sav1')}
+                    </th>
+                  )}
+                  {showTier2 && (
+                    <th className="px-3 py-2 text-right font-semibold uppercase tracking-wide text-amber-700">
+                      {t('rates.sav2')}
+                    </th>
+                  )}
+                  {showTier3 && (
+                    <th className="px-3 py-2 text-right font-semibold uppercase tracking-wide text-purple-700">
+                      {t('rates.sav3')}
+                    </th>
+                  )}
+                  <th className="px-3 py-2 text-right font-semibold uppercase tracking-wide text-gray-400">
+                    MNB
+                  </th>
+                  <th className="px-3 py-2 text-right font-semibold uppercase tracking-wide text-gray-400">
+                    Frissítve
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rates.map((rate, idx) => (
+                  <tr
+                    key={rate.id}
+                    className={`${idx % 2 === 1 ? 'bg-gray-50/70' : 'bg-white'} border-b border-gray-100 last:border-0 hover:bg-blue-50/60`}
+                  >
+                    <td className="whitespace-nowrap px-3 py-2">
+                      <span className="font-mono text-base font-bold text-blue-800">
+                        {rate.code}
+                      </span>
+                      <span className="ml-2 text-gray-500">{rate.name}</span>
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-base font-semibold tabular-nums text-green-700">
+                      {rate.hasRate ? (
+                        formatDecimal(rate.buyRate, 2, 2)
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-base font-semibold tabular-nums text-red-700">
+                      {rate.hasRate ? (
+                        formatDecimal(rate.sellRate, 2, 2)
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+                    {showTier1 && (
+                      <td
+                        className="px-3 py-2 text-right font-mono tabular-nums text-gray-700"
+                        title={
+                          rate.limit1Amount != null ? `≥ ${formatHuf(rate.limit1Amount)} Ft` : ''
+                        }
+                      >
+                        {rate.limit1BuyRate != null || rate.limit1SellRate != null
+                          ? `${rate.limit1BuyRate != null ? formatDecimal(rate.limit1BuyRate, 2, 2) : '—'} / ${rate.limit1SellRate != null ? formatDecimal(rate.limit1SellRate, 2, 2) : '—'}`
+                          : '—'}
+                      </td>
+                    )}
+                    {showTier2 && (
+                      <td
+                        className="px-3 py-2 text-right font-mono tabular-nums text-gray-700"
+                        title={
+                          rate.limit2Amount != null ? `≥ ${formatHuf(rate.limit2Amount)} Ft` : ''
+                        }
+                      >
+                        {rate.limit2BuyRate != null || rate.limit2SellRate != null
+                          ? `${rate.limit2BuyRate != null ? formatDecimal(rate.limit2BuyRate, 2, 2) : '—'} / ${rate.limit2SellRate != null ? formatDecimal(rate.limit2SellRate, 2, 2) : '—'}`
+                          : '—'}
+                      </td>
+                    )}
+                    {showTier3 && (
+                      <td
+                        className="px-3 py-2 text-right font-mono tabular-nums text-gray-700"
+                        title={
+                          rate.limit3Amount != null ? `≥ ${formatHuf(rate.limit3Amount)} Ft` : ''
+                        }
+                      >
+                        {rate.limit3BuyRate != null || rate.limit3SellRate != null
+                          ? `${rate.limit3BuyRate != null ? formatDecimal(rate.limit3BuyRate, 2, 2) : '—'} / ${rate.limit3SellRate != null ? formatDecimal(rate.limit3SellRate, 2, 2) : '—'}`
+                          : '—'}
+                      </td>
+                    )}
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-gray-500">
+                      {rate.mnbRate > 0 ? formatDecimal(rate.mnbRate, 2, 2) : '—'}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-right text-xs text-gray-400">
+                      {rate.lastUpdate || '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobil: egyszerű, soronkénti árfolyam-lista */}
+          <div className="space-y-1.5 md:hidden">
+            {rates.map((rate) => (
+              <div
+                key={rate.id}
+                className="form-panel flex items-center justify-between gap-3 py-2"
+                data-testid="rates-readonly-row"
+              >
+                <div className="min-w-0">
+                  <div className="font-mono text-base font-bold text-blue-800">{rate.code}</div>
+                  <div className="truncate text-xs text-gray-500">{rate.name}</div>
+                </div>
+                <div className="flex shrink-0 items-center gap-4 text-right">
+                  <div>
+                    <div className="text-[10px] uppercase text-gray-400">{t('rates.vetel')}</div>
+                    <div className="font-mono text-base font-semibold text-green-700">
+                      {rate.hasRate ? formatDecimal(rate.buyRate, 2, 2) : '—'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase text-gray-400">{t('rates.eladas')}</div>
+                    <div className="font-mono text-base font-semibold text-red-700">
+                      {rate.hasRate ? formatDecimal(rate.sellRate, 2, 2) : '—'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* FK-041: a metrika-kártyák (polling/ECB/piaci) + vezérlés CSAK szerkesztőnek. */}
+      {canEdit && rates.length > 0 && (
         <div className="form-panel">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             <div className="rounded border border-gray-200 bg-white p-3">
               <div className="mb-1 flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold uppercase text-gray-500">Polling státusz</span>
+                <span className="text-xs font-semibold uppercase text-gray-500">
+                  Polling státusz
+                </span>
                 <span className={`badge ${pollingStatusClass}`}>{pollingStatusLabel}</span>
               </div>
               <div className="text-sm text-gray-900">
                 Forrás: {pollingStatus?.lastPollSource || '-'}
               </div>
               <div className="text-xs text-gray-500">
-                Utolsó futás: {pollingStatus?.lastPollTime ? new Date(pollingStatus.lastPollTime).toLocaleString('hu-HU') : '-'}
+                Utolsó futás:{' '}
+                {pollingStatus?.lastPollTime
+                  ? new Date(pollingStatus.lastPollTime).toLocaleString('hu-HU')
+                  : '-'}
               </div>
               {pollingStatus?.lastPollError && (
                 <div className="mt-1 text-xs text-red-700">{pollingStatus.lastPollError}</div>
               )}
-              {pollingError && (
-                <div className="mt-1 text-xs text-red-700">{pollingError}</div>
-              )}
+              {pollingError && <div className="mt-1 text-xs text-red-700">{pollingError}</div>}
             </div>
             <div className="rounded border border-gray-200 bg-white p-3">
-              <div className="text-xs font-semibold uppercase text-gray-500">Frissített tételek</div>
-              <div className="mt-1 text-2xl font-bold text-gray-900">{pollingStatus?.lastPollUpdatedCount ?? 0}</div>
+              <div className="text-xs font-semibold uppercase text-gray-500">
+                Frissített tételek
+              </div>
+              <div className="mt-1 text-2xl font-bold text-gray-900">
+                {pollingStatus?.lastPollUpdatedCount ?? 0}
+              </div>
               <div className="text-xs text-gray-500">utolsó polling futásban</div>
             </div>
             <div className="rounded border border-gray-200 bg-white p-3">
               <div className="text-xs font-semibold uppercase text-gray-500">Árfolyam források</div>
-              <div className="mt-1 text-2xl font-bold text-gray-900">{activePollingSources} / {pollingSources.length}</div>
+              <div className="mt-1 text-2xl font-bold text-gray-900">
+                {activePollingSources} / {pollingSources.length}
+              </div>
               <div className="mt-2 flex flex-wrap gap-1">
                 {pollingSources.length === 0 ? (
                   <span className="text-xs text-gray-500">Nincs forrásadat.</span>
-                ) : pollingSources.slice(0, 4).map((source) => (
-                  <span key={source.id} className={`badge ${source.active ? 'badge-green' : 'badge-gray'}`}>
-                    {source.name}
-                  </span>
-                ))}
+                ) : (
+                  pollingSources.slice(0, 4).map((source) => (
+                    <span
+                      key={source.id}
+                      className={`badge ${source.active ? 'badge-green' : 'badge-gray'}`}
+                    >
+                      {source.name}
+                    </span>
+                  ))
+                )}
               </div>
             </div>
-            <div className="rounded border border-gray-200 bg-white p-3" data-testid="ecb-rate-snapshot">
+            <div
+              className="rounded border border-gray-200 bg-white p-3"
+              data-testid="ecb-rate-snapshot"
+            >
               <div className="mb-1 flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold uppercase text-gray-500">{t('rates.ecbSnapshot')}</span>
-                <span className={`badge ${ecbRateError ? 'badge-red' : ecbRateEntries.length > 0 ? 'badge-green' : 'badge-gray'}`}>
+                <span className="text-xs font-semibold uppercase text-gray-500">
+                  {t('rates.ecbSnapshot')}
+                </span>
+                <span
+                  className={`badge ${ecbRateError ? 'badge-red' : ecbRateEntries.length > 0 ? 'badge-green' : 'badge-gray'}`}
+                >
                   {ecbRateError ? 'Nem elérhető' : `${Object.keys(ecbRates).length} deviza`}
                 </span>
               </div>
@@ -727,16 +1201,25 @@ export default function RatesPage() {
                 <div className="mt-2 grid grid-cols-2 gap-1 text-xs">
                   {ecbRateEntries.map(([currency, value]) => (
                     <div key={currency} className="rounded bg-emerald-50 px-2 py-1">
-                      <div className="text-[10px] font-semibold uppercase text-emerald-700">{currency}</div>
-                      <div className="font-semibold text-emerald-900">{formatDecimal(numericAmount(value), 2, 4)}</div>
+                      <div className="text-[10px] font-semibold uppercase text-emerald-700">
+                        {currency}
+                      </div>
+                      <div className="font-semibold text-emerald-900">
+                        {formatDecimal(numericAmount(value), 2, 4)}
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-            <div className="rounded border border-gray-200 bg-white p-3" data-testid="market-rate-snapshot">
+            <div
+              className="rounded border border-gray-200 bg-white p-3"
+              data-testid="market-rate-snapshot"
+            >
               <div className="mb-1 flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold uppercase text-gray-500">Piaci összehasonlítás</span>
+                <span className="text-xs font-semibold uppercase text-gray-500">
+                  Piaci összehasonlítás
+                </span>
                 <span className={`badge ${marketRateError ? 'badge-red' : 'badge-green'}`}>
                   {marketRateError ? 'Nem elérhető' : `${marketCurrencyCount} deviza`}
                 </span>
@@ -748,7 +1231,9 @@ export default function RatesPage() {
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="rounded bg-blue-50 px-2 py-1">
                       <div className="text-[10px] uppercase text-blue-700">Bank ráták</div>
-                      <div className="font-semibold text-blue-900">{currentBankRates.length} / {bankRates.length}</div>
+                      <div className="font-semibold text-blue-900">
+                        {currentBankRates.length} / {bankRates.length}
+                      </div>
                     </div>
                     <div className="rounded bg-amber-50 px-2 py-1">
                       <div className="text-[10px] uppercase text-amber-700">Versenytárs</div>
@@ -757,10 +1242,16 @@ export default function RatesPage() {
                   </div>
                   <div className="mt-2 space-y-1 text-xs text-gray-600">
                     <div>
-                      Bank: {latestBankRate ? `${latestBankRate.bankCode ?? latestBankRate.bankName} ${latestBankRate.currencyCode} ${formatDecimal(numericAmount(latestBankRate.buyRate), 2, 4)} / ${formatDecimal(numericAmount(latestBankRate.sellRate), 2, 4)}` : '-'}
+                      Bank:{' '}
+                      {latestBankRate
+                        ? `${latestBankRate.bankCode ?? latestBankRate.bankName} ${latestBankRate.currencyCode} ${formatDecimal(numericAmount(latestBankRate.buyRate), 2, 4)} / ${formatDecimal(numericAmount(latestBankRate.sellRate), 2, 4)}`
+                        : '-'}
                     </div>
                     <div>
-                      Versenytárs: {latestCompetitorRate ? `${latestCompetitorRate.competitorCode ?? latestCompetitorRate.competitorName} ${latestCompetitorRate.currencyCode} ${formatDecimal(numericAmount(latestCompetitorRate.buyRate), 2, 4)} / ${formatDecimal(numericAmount(latestCompetitorRate.sellRate), 2, 4)}` : '-'}
+                      Versenytárs:{' '}
+                      {latestCompetitorRate
+                        ? `${latestCompetitorRate.competitorCode ?? latestCompetitorRate.competitorName} ${latestCompetitorRate.currencyCode} ${formatDecimal(numericAmount(latestCompetitorRate.buyRate), 2, 4)} / ${formatDecimal(numericAmount(latestCompetitorRate.sellRate), 2, 4)}`
+                        : '-'}
                     </div>
                   </div>
                 </>
@@ -768,11 +1259,18 @@ export default function RatesPage() {
             </div>
           </div>
           {canEdit && (
-            <div className="mt-3 rounded border border-gray-200 bg-gray-50 p-3" data-testid="rate-polling-control-panel">
+            <div
+              className="mt-3 rounded border border-gray-200 bg-gray-50 p-3"
+              data-testid="rate-polling-control-panel"
+            >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <div className="text-xs font-semibold uppercase text-gray-500">Árfolyam polling vezérlés</div>
-                  <div className="text-xs text-gray-600">MNB polling indítás, margin alkalmazás és forráskonfiguráció.</div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">
+                    Árfolyam polling vezérlés
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    MNB polling indítás, margin alkalmazás és forráskonfiguráció.
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -786,14 +1284,18 @@ export default function RatesPage() {
 
               <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
                 <div className="rounded border border-gray-200 bg-white p-3">
-                  <div className="text-xs font-semibold uppercase text-gray-500">Margin alkalmazás</div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">
+                    Margin alkalmazás
+                  </div>
                   <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_110px_auto] sm:items-end lg:grid-cols-1 xl:grid-cols-[minmax(0,1fr)_110px_auto]">
                     <div>
                       <label className="form-label">Devizanem</label>
                       <select
                         className="form-input h-9"
                         value={marginCurrencyId}
-                        onChange={(event) => setMarginCurrencyId(event.target.value ? Number(event.target.value) : '')}
+                        onChange={(event) =>
+                          setMarginCurrencyId(event.target.value ? Number(event.target.value) : '')
+                        }
                       >
                         {rates.map((rate) => (
                           <option key={rate.currencyId} value={rate.currencyId}>
@@ -803,7 +1305,9 @@ export default function RatesPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="form-label" htmlFor="polling-margin-spread">Spread</label>
+                      <label className="form-label" htmlFor="polling-margin-spread">
+                        Spread
+                      </label>
                       <NumberInput
                         id="polling-margin-spread"
                         value={marginSpread}
@@ -830,49 +1334,75 @@ export default function RatesPage() {
                   <div className="mt-2 space-y-2">
                     {pollingSources.length === 0 ? (
                       <div className="text-xs text-gray-500">Nincs módosítható polling forrás.</div>
-                    ) : pollingSources.map((source) => (
-                      <div key={source.id} className="grid gap-2 rounded border border-gray-100 bg-gray-50 p-2 text-xs sm:grid-cols-[minmax(0,1fr)_110px_110px] sm:items-center">
-                        <div className="min-w-0">
-                          <div className="font-semibold text-gray-900">{source.name}</div>
-                          <div className="truncate text-gray-500">{source.url ?? 'Nincs URL'}</div>
-                        </div>
-                        <label className="inline-flex items-center gap-2 font-semibold text-gray-700">
-                          <input
-                            type="checkbox"
-                            checked={source.active}
-                            disabled={pollingActionLoading === `source-${source.id}`}
-                            onChange={(event) => void handleUpdatePollingSource(source, { active: event.target.checked })}
-                          />
-                          Aktív
-                        </label>
-                        <select
-                          className="form-input h-8 text-xs"
-                          value={source.pollIntervalMinutes ?? ''}
-                          disabled={pollingActionLoading === `source-${source.id}`}
-                          aria-label={`${source.name} polling intervallum`}
-                          onChange={(event) => void handleUpdatePollingSource(source, { pollIntervalMinutes: Number(event.target.value) })}
+                    ) : (
+                      pollingSources.map((source) => (
+                        <div
+                          key={source.id}
+                          className="grid gap-2 rounded border border-gray-100 bg-gray-50 p-2 text-xs sm:grid-cols-[minmax(0,1fr)_110px_110px] sm:items-center"
                         >
-                          {[15, 30, 60, 180, 360, 720, 1440].map((minutes) => (
-                            <option key={minutes} value={minutes}>{minutes} perc</option>
-                          ))}
-                        </select>
-                      </div>
-                    ))}
+                          <div className="min-w-0">
+                            <div className="font-semibold text-gray-900">{source.name}</div>
+                            <div className="truncate text-gray-500">
+                              {source.url ?? 'Nincs URL'}
+                            </div>
+                          </div>
+                          <label className="inline-flex items-center gap-2 font-semibold text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={source.active}
+                              disabled={pollingActionLoading === `source-${source.id}`}
+                              onChange={(event) =>
+                                void handleUpdatePollingSource(source, {
+                                  active: event.target.checked,
+                                })
+                              }
+                            />
+                            Aktív
+                          </label>
+                          <select
+                            className="form-input h-8 text-xs"
+                            value={source.pollIntervalMinutes ?? ''}
+                            disabled={pollingActionLoading === `source-${source.id}`}
+                            aria-label={`${source.name} polling intervallum`}
+                            onChange={(event) =>
+                              void handleUpdatePollingSource(source, {
+                                pollIntervalMinutes: Number(event.target.value),
+                              })
+                            }
+                          >
+                            {[15, 30, 60, 180, 360, 720, 1440].map((minutes) => (
+                              <option key={minutes} value={minutes}>
+                                {minutes} perc
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
 
               {(pollingActionMessage || pollingActionError) && (
-                <div className={`mt-3 rounded px-3 py-2 text-xs ${pollingActionError ? 'border border-red-200 bg-red-50 text-red-700' : 'border border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
+                <div
+                  className={`mt-3 rounded px-3 py-2 text-xs ${pollingActionError ? 'border border-red-200 bg-red-50 text-red-700' : 'border border-emerald-200 bg-emerald-50 text-emerald-800'}`}
+                >
                   {pollingActionError || pollingActionMessage}
                 </div>
               )}
 
-              <div className="mt-3 rounded border border-gray-200 bg-white p-3" data-testid="rate-file-import-panel">
+              <div
+                className="mt-3 rounded border border-gray-200 bg-white p-3"
+                data-testid="rate-file-import-panel"
+              >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <div className="text-xs font-semibold uppercase text-gray-500">GETARF árfolyamfájl</div>
-                    <div className="text-xs text-gray-600">Legacy árfolyamfájl előnézet és célzott import a backend parseren keresztül.</div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">
+                      GETARF árfolyamfájl
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      Legacy árfolyamfájl előnézet és célzott import a backend parseren keresztül.
+                    </div>
                   </div>
                   <span className={`badge ${parsedRateFile ? 'badge-green' : 'badge-gray'}`}>
                     {parsedRateFile ? `${parsedRateFile.rates.length} deviza` : 'Nincs előnézet'}
@@ -880,7 +1410,9 @@ export default function RatesPage() {
                 </div>
                 <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-end">
                   <div>
-                    <label className="form-label" htmlFor="rate-file-input">Árfolyamfájl</label>
+                    <label className="form-label" htmlFor="rate-file-input">
+                      Árfolyamfájl
+                    </label>
                     <input
                       id="rate-file-input"
                       type="file"
@@ -911,7 +1443,9 @@ export default function RatesPage() {
                   </button>
                 </div>
                 {(rateFileMessage || rateFileError) && (
-                  <div className={`mt-3 rounded px-3 py-2 text-xs ${rateFileError ? 'border border-red-200 bg-red-50 text-red-700' : 'border border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
+                  <div
+                    className={`mt-3 rounded px-3 py-2 text-xs ${rateFileError ? 'border border-red-200 bg-red-50 text-red-700' : 'border border-emerald-200 bg-emerald-50 text-emerald-800'}`}
+                  >
                     {rateFileError || rateFileMessage}
                   </div>
                 )}
@@ -932,11 +1466,21 @@ export default function RatesPage() {
                         {parsedRateFile.rates.slice(0, 8).map((rate) => (
                           <tr key={rate.currencyCode}>
                             <td className="font-mono font-semibold">{rate.currencyCode}</td>
-                            <td className="font-mono">{formatDecimal(numericAmount(rate.buyRate), 2, 4)}</td>
-                            <td className="font-mono">{formatDecimal(numericAmount(rate.sellRate), 2, 4)}</td>
-                            <td className="font-mono">{formatDecimal(numericAmount(rate.mnbRate), 2, 4)}</td>
-                            <td className="font-mono">{formatDecimal(numericAmount(rate.discountBuy), 2, 4)}</td>
-                            <td className="font-mono">{formatDecimal(numericAmount(rate.discountSell), 2, 4)}</td>
+                            <td className="font-mono">
+                              {formatDecimal(numericAmount(rate.buyRate), 2, 4)}
+                            </td>
+                            <td className="font-mono">
+                              {formatDecimal(numericAmount(rate.sellRate), 2, 4)}
+                            </td>
+                            <td className="font-mono">
+                              {formatDecimal(numericAmount(rate.mnbRate), 2, 4)}
+                            </td>
+                            <td className="font-mono">
+                              {formatDecimal(numericAmount(rate.discountBuy), 2, 4)}
+                            </td>
+                            <td className="font-mono">
+                              {formatDecimal(numericAmount(rate.discountSell), 2, 4)}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -949,7 +1493,8 @@ export default function RatesPage() {
         </div>
       )}
 
-      {rates.length > 0 && (
+      {/* FK-041: a kalkulátor CSAK szerkesztőnek (a read-only értéktár-nézet egyszerű marad). */}
+      {canEdit && rates.length > 0 && (
         <div className="form-panel">
           <div className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-800">
             <Calculator size={16} />
@@ -970,16 +1515,32 @@ export default function RatesPage() {
               </div>
               <div>
                 <label className="form-label">Forrás</label>
-                <select className="form-input h-9" value={calculatorFrom} onChange={(event) => setCalculatorFrom(event.target.value)}>
-                  {currencyCodes.map((code) => <option key={code} value={code}>{currencyLabel(code)}</option>)}
+                <select
+                  className="form-input h-9"
+                  value={calculatorFrom}
+                  onChange={(event) => setCalculatorFrom(event.target.value)}
+                >
+                  {currencyCodes.map((code) => (
+                    <option key={code} value={code}>
+                      {currencyLabel(code)}
+                    </option>
+                  ))}
                   <option value="HUF">{currencyLabel('HUF')}</option>
                 </select>
               </div>
               <div>
                 <label className="form-label">Cél</label>
-                <select className="form-input h-9" value={calculatorTo} onChange={(event) => setCalculatorTo(event.target.value)}>
+                <select
+                  className="form-input h-9"
+                  value={calculatorTo}
+                  onChange={(event) => setCalculatorTo(event.target.value)}
+                >
                   <option value="HUF">{currencyLabel('HUF')}</option>
-                  {currencyCodes.map((code) => <option key={code} value={code}>{currencyLabel(code)}</option>)}
+                  {currencyCodes.map((code) => (
+                    <option key={code} value={code}>
+                      {currencyLabel(code)}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -987,7 +1548,9 @@ export default function RatesPage() {
                 <select
                   className="form-input h-9"
                   value={calculatorDirection}
-                  onChange={(event) => setCalculatorDirection(event.target.value as CalculatorDirection)}
+                  onChange={(event) =>
+                    setCalculatorDirection(event.target.value as CalculatorDirection)
+                  }
                 >
                   <option value="BUY">BUY</option>
                   <option value="SELL">SELL</option>
@@ -1017,8 +1580,16 @@ export default function RatesPage() {
               </div>
               <div>
                 <label className="form-label">Deviza</label>
-                <select className="form-input h-9" value={reverseCurrency} onChange={(event) => setReverseCurrency(event.target.value)}>
-                  {currencyCodes.map((code) => <option key={code} value={code}>{currencyLabel(code)}</option>)}
+                <select
+                  className="form-input h-9"
+                  value={reverseCurrency}
+                  onChange={(event) => setReverseCurrency(event.target.value)}
+                >
+                  {currencyCodes.map((code) => (
+                    <option key={code} value={code}>
+                      {currencyLabel(code)}
+                    </option>
+                  ))}
                 </select>
               </div>
               <button
@@ -1052,14 +1623,25 @@ export default function RatesPage() {
               {calculatorResult && (
                 <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-blue-900">
                   <div className="font-semibold">Átváltás eredménye</div>
-                  <div>{calculatorResult.fromAmount} {calculatorResult.fromCurrency} → {formatDecimal(Number(calculatorResult.toAmount), 2, 4)} {calculatorResult.toCurrency}</div>
-                  <div>Árfolyam: {formatDecimal(Number(calculatorResult.appliedRate), 2, 6)} · Díj: {formatDecimal(Number(calculatorResult.commission), 0, 0)} Ft</div>
+                  <div>
+                    {calculatorResult.fromAmount} {calculatorResult.fromCurrency} →{' '}
+                    {formatDecimal(Number(calculatorResult.toAmount), 2, 4)}{' '}
+                    {calculatorResult.toCurrency}
+                  </div>
+                  <div>
+                    Árfolyam: {formatDecimal(Number(calculatorResult.appliedRate), 2, 6)} · Díj:{' '}
+                    {formatDecimal(Number(calculatorResult.commission), 0, 0)} Ft
+                  </div>
                 </div>
               )}
               {reverseResult && (
                 <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900">
                   <div className="font-semibold">Fordított kalkuláció</div>
-                  <div>{formatDecimal(Number(reverseResult.hufAmount), 0, 0)} HUF → {formatDecimal(Number(reverseResult.foreignAmount), 2, 4)} {reverseResult.currency}</div>
+                  <div>
+                    {formatDecimal(Number(reverseResult.hufAmount), 0, 0)} HUF →{' '}
+                    {formatDecimal(Number(reverseResult.foreignAmount), 2, 4)}{' '}
+                    {reverseResult.currency}
+                  </div>
                 </div>
               )}
               {calculatorError && (
@@ -1085,30 +1667,40 @@ export default function RatesPage() {
                   <div className="rounded border border-gray-200 bg-white p-3 text-xs text-gray-500">
                     Nincs kerekítési szabályadat.
                   </div>
-                ) : roundingRules.slice(0, 6).map((rule) => (
-                  <div key={rule.id ?? rule.currencyCode} className="rounded border border-gray-200 bg-white p-3" data-testid="rounding-rule-mobile-card">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="font-mono text-sm font-bold text-blue-700">{rule.currencyCode}</div>
-                      <span className="badge badge-gray">{formatDecimal(numericAmount(rule.precisionValue), 0, 4)}</span>
-                    </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                      <div className="rounded bg-emerald-50 px-2 py-1">
-                        <div className="text-[10px] uppercase text-emerald-700">Kis összeg</div>
-                        <div className="font-mono font-semibold text-emerald-900">
-                          &lt; {formatDecimal(numericAmount(rule.smallThreshold), 0, 2)}
+                ) : (
+                  roundingRules.slice(0, 6).map((rule) => (
+                    <div
+                      key={rule.id ?? rule.currencyCode}
+                      className="rounded border border-gray-200 bg-white p-3"
+                      data-testid="rounding-rule-mobile-card"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-mono text-sm font-bold text-blue-700">
+                          {rule.currencyCode}
                         </div>
-                        <div className="text-[11px] text-emerald-700">{rule.smallRounding}</div>
+                        <span className="badge badge-gray">
+                          {formatDecimal(numericAmount(rule.precisionValue), 0, 4)}
+                        </span>
                       </div>
-                      <div className="rounded bg-amber-50 px-2 py-1">
-                        <div className="text-[10px] uppercase text-amber-700">Nagy összeg</div>
-                        <div className="font-mono font-semibold text-amber-900">
-                          &gt; {formatDecimal(numericAmount(rule.largeThreshold), 0, 2)}
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                        <div className="rounded bg-emerald-50 px-2 py-1">
+                          <div className="text-[10px] uppercase text-emerald-700">Kis összeg</div>
+                          <div className="font-mono font-semibold text-emerald-900">
+                            &lt; {formatDecimal(numericAmount(rule.smallThreshold), 0, 2)}
+                          </div>
+                          <div className="text-[11px] text-emerald-700">{rule.smallRounding}</div>
                         </div>
-                        <div className="text-[11px] text-amber-700">{rule.largeRounding}</div>
+                        <div className="rounded bg-amber-50 px-2 py-1">
+                          <div className="text-[10px] uppercase text-amber-700">Nagy összeg</div>
+                          <div className="font-mono font-semibold text-amber-900">
+                            &gt; {formatDecimal(numericAmount(rule.largeThreshold), 0, 2)}
+                          </div>
+                          <div className="text-[11px] text-amber-700">{rule.largeRounding}</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
               {roundingRules.length > 6 && (
                 <div className="text-[11px] text-gray-500">
@@ -1133,9 +1725,18 @@ export default function RatesPage() {
                 </div>
                 <div>
                   <label className="form-label">Deviza</label>
-                  <select className="form-input h-9" value={roundingCurrency} onChange={(event) => setRoundingCurrency(event.target.value)}>
-                    {(roundingCurrencyOptions.length > 0 ? roundingCurrencyOptions : currencyCodes).map((code) => (
-                      <option key={code} value={code}>{currencyLabel(code)}</option>
+                  <select
+                    className="form-input h-9"
+                    value={roundingCurrency}
+                    onChange={(event) => setRoundingCurrency(event.target.value)}
+                  >
+                    {(roundingCurrencyOptions.length > 0
+                      ? roundingCurrencyOptions
+                      : currencyCodes
+                    ).map((code) => (
+                      <option key={code} value={code}>
+                        {currencyLabel(code)}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1144,7 +1745,9 @@ export default function RatesPage() {
                   <select
                     className="form-input h-9"
                     value={roundingDirection}
-                    onChange={(event) => setRoundingDirection(event.target.value as RoundingDirection)}
+                    onChange={(event) =>
+                      setRoundingDirection(event.target.value as RoundingDirection)
+                    }
                   >
                     <option value="BUY">BUY</option>
                     <option value="SELL">SELL</option>
@@ -1163,8 +1766,12 @@ export default function RatesPage() {
                 <div className="mt-3 space-y-2 text-xs">
                   {roundingRule && (
                     <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-blue-900">
-                      <div className="font-semibold">Aktív szabály: {roundingRule.currencyCode}</div>
-                      <div>Precízió: {formatDecimal(numericAmount(roundingRule.precisionValue), 0, 4)}</div>
+                      <div className="font-semibold">
+                        Aktív szabály: {roundingRule.currencyCode}
+                      </div>
+                      <div>
+                        Precízió: {formatDecimal(numericAmount(roundingRule.precisionValue), 0, 4)}
+                      </div>
                     </div>
                   )}
                   {roundingResult && (
@@ -1189,8 +1796,9 @@ export default function RatesPage() {
         </div>
       )}
 
-      {/* Dense table — all currencies + discount tiers as separate columns */}
-      {rates.length > 0 && (
+      {/* Dense editor table (mobile cards) — CSAK szerkesztőnek; a read-only nézet a fenti
+          tiszta táblát/listát használja (FK-041). */}
+      {canEdit && rates.length > 0 && (
         <div className="grid gap-2 md:hidden">
           {rates.map((rate) => (
             <div key={rate.id} className="form-panel space-y-2" data-testid="rate-mobile-card">
@@ -1229,20 +1837,47 @@ export default function RatesPage() {
                 <div className="grid gap-1 text-[11px] text-gray-600">
                   {showTier1 && (
                     <div className="flex justify-between rounded bg-emerald-50 px-2 py-1">
-                      <span>1. sáv {rate.limit1Amount != null ? `>= ${formatHuf(rate.limit1Amount)} Ft` : ''}</span>
-                      <span className="font-mono">{rate.limit1BuyRate != null ? formatDecimal(rate.limit1BuyRate, 2, 2) : '-'} / {rate.limit1SellRate != null ? formatDecimal(rate.limit1SellRate, 2, 2) : '-'}</span>
+                      <span>
+                        1. sáv{' '}
+                        {rate.limit1Amount != null ? `>= ${formatHuf(rate.limit1Amount)} Ft` : ''}
+                      </span>
+                      <span className="font-mono">
+                        {rate.limit1BuyRate != null ? formatDecimal(rate.limit1BuyRate, 2, 2) : '-'}{' '}
+                        /{' '}
+                        {rate.limit1SellRate != null
+                          ? formatDecimal(rate.limit1SellRate, 2, 2)
+                          : '-'}
+                      </span>
                     </div>
                   )}
                   {showTier2 && (
                     <div className="flex justify-between rounded bg-amber-50 px-2 py-1">
-                      <span>2. sáv {rate.limit2Amount != null ? `>= ${formatHuf(rate.limit2Amount)} Ft` : ''}</span>
-                      <span className="font-mono">{rate.limit2BuyRate != null ? formatDecimal(rate.limit2BuyRate, 2, 2) : '-'} / {rate.limit2SellRate != null ? formatDecimal(rate.limit2SellRate, 2, 2) : '-'}</span>
+                      <span>
+                        2. sáv{' '}
+                        {rate.limit2Amount != null ? `>= ${formatHuf(rate.limit2Amount)} Ft` : ''}
+                      </span>
+                      <span className="font-mono">
+                        {rate.limit2BuyRate != null ? formatDecimal(rate.limit2BuyRate, 2, 2) : '-'}{' '}
+                        /{' '}
+                        {rate.limit2SellRate != null
+                          ? formatDecimal(rate.limit2SellRate, 2, 2)
+                          : '-'}
+                      </span>
                     </div>
                   )}
                   {showTier3 && (
                     <div className="flex justify-between rounded bg-purple-50 px-2 py-1">
-                      <span>3. sáv {rate.limit3Amount != null ? `>= ${formatHuf(rate.limit3Amount)} Ft` : ''}</span>
-                      <span className="font-mono">{rate.limit3BuyRate != null ? formatDecimal(rate.limit3BuyRate, 2, 2) : '-'} / {rate.limit3SellRate != null ? formatDecimal(rate.limit3SellRate, 2, 2) : '-'}</span>
+                      <span>
+                        3. sáv{' '}
+                        {rate.limit3Amount != null ? `>= ${formatHuf(rate.limit3Amount)} Ft` : ''}
+                      </span>
+                      <span className="font-mono">
+                        {rate.limit3BuyRate != null ? formatDecimal(rate.limit3BuyRate, 2, 2) : '-'}{' '}
+                        /{' '}
+                        {rate.limit3SellRate != null
+                          ? formatDecimal(rate.limit3SellRate, 2, 2)
+                          : '-'}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1262,39 +1897,60 @@ export default function RatesPage() {
         </div>
       )}
 
-      {rates.length > 0 && (
+      {canEdit && rates.length > 0 && (
         <div className="form-panel hidden p-0 overflow-x-auto md:block">
           <table className="w-full border-collapse" style={{ fontSize: '11px' }}>
             {/* Two-row header: tier group names + buy/sell sub-headers */}
             <thead>
               {/* Row 1: grouped tier headers */}
               <tr className="bg-gray-100 border-b border-gray-300">
-                <th rowSpan={2} className="px-1 py-0.5 text-left text-[10px] uppercase text-gray-500 border-r border-gray-200 w-10 font-semibold">
+                <th
+                  rowSpan={2}
+                  className="px-1 py-0.5 text-left text-[10px] uppercase text-gray-500 border-r border-gray-200 w-10 font-semibold"
+                >
                   {t('common.code')}
                 </th>
-                <th colSpan={2} className="px-1 py-0.5 text-center text-[10px] uppercase font-semibold border-r border-gray-300 bg-blue-50 text-blue-800">
+                <th
+                  colSpan={2}
+                  className="px-1 py-0.5 text-center text-[10px] uppercase font-semibold border-r border-gray-300 bg-blue-50 text-blue-800"
+                >
                   {t('rates.alap')}
                 </th>
                 {showTier1 && (
-                  <th colSpan={2} className="px-1 py-0.5 text-center text-[10px] uppercase font-semibold border-r border-gray-300 bg-emerald-50 text-emerald-800">
+                  <th
+                    colSpan={2}
+                    className="px-1 py-0.5 text-center text-[10px] uppercase font-semibold border-r border-gray-300 bg-emerald-50 text-emerald-800"
+                  >
                     {t('rates.sav1')}
                   </th>
                 )}
                 {showTier2 && (
-                  <th colSpan={2} className="px-1 py-0.5 text-center text-[10px] uppercase font-semibold border-r border-gray-300 bg-amber-50 text-amber-800">
+                  <th
+                    colSpan={2}
+                    className="px-1 py-0.5 text-center text-[10px] uppercase font-semibold border-r border-gray-300 bg-amber-50 text-amber-800"
+                  >
                     {t('rates.sav2')}
                   </th>
                 )}
                 {showTier3 && (
-                  <th colSpan={2} className="px-1 py-0.5 text-center text-[10px] uppercase font-semibold border-r border-gray-300 bg-purple-50 text-purple-800">
+                  <th
+                    colSpan={2}
+                    className="px-1 py-0.5 text-center text-[10px] uppercase font-semibold border-r border-gray-300 bg-purple-50 text-purple-800"
+                  >
                     {t('rates.sav3')}
                   </th>
                 )}
-                <th rowSpan={2} className="px-1 py-0.5 text-center text-[10px] uppercase text-gray-500 w-14 font-semibold">
+                <th
+                  rowSpan={2}
+                  className="px-1 py-0.5 text-center text-[10px] uppercase text-gray-500 w-14 font-semibold"
+                >
                   MNB
                 </th>
                 {canEdit && (
-                  <th rowSpan={2} className="px-0.5 py-0.5 text-center text-[10px] uppercase text-gray-500 w-10 font-semibold">
+                  <th
+                    rowSpan={2}
+                    className="px-0.5 py-0.5 text-center text-[10px] uppercase text-gray-500 w-10 font-semibold"
+                  >
                     <Edit size={10} className="mx-auto" />
                   </th>
                 )}
@@ -1352,7 +2008,10 @@ export default function RatesPage() {
                 >
                   {/* Currency code */}
                   <td className="px-1 py-px border-r border-gray-100">
-                    <span className="font-mono font-bold text-blue-700 text-[11px]" title={rate.name}>
+                    <span
+                      className="font-mono font-bold text-blue-700 text-[11px]"
+                      title={rate.name}
+                    >
                       {rate.code}
                     </span>
                   </td>
@@ -1362,7 +2021,12 @@ export default function RatesPage() {
                     {editingCode === rate.code && canEdit ? (
                       <NumberInput
                         value={editValues.buyRate.toString().replace('.', ',')}
-                        onChange={(val) => setEditValues({ ...editValues, buyRate: parseFloat(val.replace(',', '.')) || 0 })}
+                        onChange={(val) =>
+                          setEditValues({
+                            ...editValues,
+                            buyRate: parseFloat(val.replace(',', '.')) || 0,
+                          })
+                        }
                         className="form-input w-16 text-right text-[11px] py-0 px-0.5"
                         allowDecimals={true}
                         allowNegative={false}
@@ -1370,7 +2034,9 @@ export default function RatesPage() {
                         disabled={!canEdit}
                       />
                     ) : rate.hasRate ? (
-                      <span className="font-mono text-green-700 font-semibold">{formatDecimal(rate.buyRate, 2, 2)}</span>
+                      <span className="font-mono text-green-700 font-semibold">
+                        {formatDecimal(rate.buyRate, 2, 2)}
+                      </span>
                     ) : (
                       <span className="text-gray-300">&mdash;</span>
                     )}
@@ -1381,7 +2047,12 @@ export default function RatesPage() {
                     {editingCode === rate.code && canEdit ? (
                       <NumberInput
                         value={editValues.sellRate.toString().replace('.', ',')}
-                        onChange={(val) => setEditValues({ ...editValues, sellRate: parseFloat(val.replace(',', '.')) || 0 })}
+                        onChange={(val) =>
+                          setEditValues({
+                            ...editValues,
+                            sellRate: parseFloat(val.replace(',', '.')) || 0,
+                          })
+                        }
                         className="form-input w-16 text-right text-[11px] py-0 px-0.5"
                         allowDecimals={true}
                         allowNegative={false}
@@ -1389,7 +2060,9 @@ export default function RatesPage() {
                         disabled={!canEdit}
                       />
                     ) : rate.hasRate ? (
-                      <span className="font-mono text-red-700 font-semibold">{formatDecimal(rate.sellRate, 2, 2)}</span>
+                      <span className="font-mono text-red-700 font-semibold">
+                        {formatDecimal(rate.sellRate, 2, 2)}
+                      </span>
                     ) : (
                       <span className="text-gray-300">&mdash;</span>
                     )}
@@ -1399,10 +2072,14 @@ export default function RatesPage() {
                   {showTier1 && (
                     <td
                       className="px-1 py-px text-right font-mono border-r border-gray-100"
-                      title={rate.limit1Amount != null ? `≥ ${formatHuf(rate.limit1Amount)} Ft` : ''}
+                      title={
+                        rate.limit1Amount != null ? `≥ ${formatHuf(rate.limit1Amount)} Ft` : ''
+                      }
                     >
                       {rate.limit1BuyRate != null ? (
-                        <span className="text-green-600">{formatDecimal(rate.limit1BuyRate, 2, 2)}</span>
+                        <span className="text-green-600">
+                          {formatDecimal(rate.limit1BuyRate, 2, 2)}
+                        </span>
                       ) : (
                         <span className="text-gray-300">&mdash;</span>
                       )}
@@ -1412,10 +2089,14 @@ export default function RatesPage() {
                   {showTier1 && (
                     <td
                       className="px-1 py-px text-right font-mono border-r border-gray-200"
-                      title={rate.limit1Amount != null ? `≥ ${formatHuf(rate.limit1Amount)} Ft` : ''}
+                      title={
+                        rate.limit1Amount != null ? `≥ ${formatHuf(rate.limit1Amount)} Ft` : ''
+                      }
                     >
                       {rate.limit1SellRate != null ? (
-                        <span className="text-red-600">{formatDecimal(rate.limit1SellRate, 2, 2)}</span>
+                        <span className="text-red-600">
+                          {formatDecimal(rate.limit1SellRate, 2, 2)}
+                        </span>
                       ) : (
                         <span className="text-gray-300">&mdash;</span>
                       )}
@@ -1426,10 +2107,14 @@ export default function RatesPage() {
                   {showTier2 && (
                     <td
                       className="px-1 py-px text-right font-mono border-r border-gray-100"
-                      title={rate.limit2Amount != null ? `≥ ${formatHuf(rate.limit2Amount)} Ft` : ''}
+                      title={
+                        rate.limit2Amount != null ? `≥ ${formatHuf(rate.limit2Amount)} Ft` : ''
+                      }
                     >
                       {rate.limit2BuyRate != null ? (
-                        <span className="text-green-600">{formatDecimal(rate.limit2BuyRate, 2, 2)}</span>
+                        <span className="text-green-600">
+                          {formatDecimal(rate.limit2BuyRate, 2, 2)}
+                        </span>
                       ) : (
                         <span className="text-gray-300">&mdash;</span>
                       )}
@@ -1439,10 +2124,14 @@ export default function RatesPage() {
                   {showTier2 && (
                     <td
                       className="px-1 py-px text-right font-mono border-r border-gray-200"
-                      title={rate.limit2Amount != null ? `≥ ${formatHuf(rate.limit2Amount)} Ft` : ''}
+                      title={
+                        rate.limit2Amount != null ? `≥ ${formatHuf(rate.limit2Amount)} Ft` : ''
+                      }
                     >
                       {rate.limit2SellRate != null ? (
-                        <span className="text-red-600">{formatDecimal(rate.limit2SellRate, 2, 2)}</span>
+                        <span className="text-red-600">
+                          {formatDecimal(rate.limit2SellRate, 2, 2)}
+                        </span>
                       ) : (
                         <span className="text-gray-300">&mdash;</span>
                       )}
@@ -1453,10 +2142,14 @@ export default function RatesPage() {
                   {showTier3 && (
                     <td
                       className="px-1 py-px text-right font-mono border-r border-gray-100"
-                      title={rate.limit3Amount != null ? `≥ ${formatHuf(rate.limit3Amount)} Ft` : ''}
+                      title={
+                        rate.limit3Amount != null ? `≥ ${formatHuf(rate.limit3Amount)} Ft` : ''
+                      }
                     >
                       {rate.limit3BuyRate != null ? (
-                        <span className="text-green-600">{formatDecimal(rate.limit3BuyRate, 2, 2)}</span>
+                        <span className="text-green-600">
+                          {formatDecimal(rate.limit3BuyRate, 2, 2)}
+                        </span>
                       ) : (
                         <span className="text-gray-300">&mdash;</span>
                       )}
@@ -1466,10 +2159,14 @@ export default function RatesPage() {
                   {showTier3 && (
                     <td
                       className="px-1 py-px text-right font-mono border-r border-gray-200"
-                      title={rate.limit3Amount != null ? `≥ ${formatHuf(rate.limit3Amount)} Ft` : ''}
+                      title={
+                        rate.limit3Amount != null ? `≥ ${formatHuf(rate.limit3Amount)} Ft` : ''
+                      }
                     >
                       {rate.limit3SellRate != null ? (
-                        <span className="text-red-600">{formatDecimal(rate.limit3SellRate, 2, 2)}</span>
+                        <span className="text-red-600">
+                          {formatDecimal(rate.limit3SellRate, 2, 2)}
+                        </span>
                       ) : (
                         <span className="text-gray-300">&mdash;</span>
                       )}
@@ -1499,7 +2196,11 @@ export default function RatesPage() {
                             title="Jóváhagyás kérés"
                             disabled={rateApprovalLoadingCode === rate.code}
                           >
-                            {rateApprovalLoadingCode === rate.code ? <RefreshCw size={10} className="animate-spin" /> : <ShieldCheck size={10} />}
+                            {rateApprovalLoadingCode === rate.code ? (
+                              <RefreshCw size={10} className="animate-spin" />
+                            ) : (
+                              <ShieldCheck size={10} />
+                            )}
                           </button>
                           <button
                             onClick={cancelEdit}
@@ -1529,22 +2230,36 @@ export default function RatesPage() {
           {tierCount > 0 && (
             <div className="px-2 py-1 bg-gray-50 border-t border-gray-200 text-[9px] text-gray-500 flex flex-wrap gap-x-4 gap-y-0.5">
               <span className="font-semibold uppercase">{t('rates.kedvezmenySavokMinOsszeg')}</span>
-              {rates.filter(r => r.limit1Amount != null || r.limit2Amount != null || r.limit3Amount != null).map(r => (
-                <span key={r.code} className="font-mono">
-                  {r.code}:
-                  {r.limit1Amount != null && <span className="text-emerald-700 ml-0.5">1.≥{formatHuf(r.limit1Amount)}</span>}
-                  {r.limit2Amount != null && <span className="text-amber-700 ml-0.5">2.≥{formatHuf(r.limit2Amount)}</span>}
-                  {r.limit3Amount != null && <span className="text-purple-700 ml-0.5">3.≥{formatHuf(r.limit3Amount)}</span>}
-                </span>
-              ))}
+              {rates
+                .filter(
+                  (r) => r.limit1Amount != null || r.limit2Amount != null || r.limit3Amount != null,
+                )
+                .map((r) => (
+                  <span key={r.code} className="font-mono">
+                    {r.code}:
+                    {r.limit1Amount != null && (
+                      <span className="text-emerald-700 ml-0.5">
+                        1.≥{formatHuf(r.limit1Amount)}
+                      </span>
+                    )}
+                    {r.limit2Amount != null && (
+                      <span className="text-amber-700 ml-0.5">2.≥{formatHuf(r.limit2Amount)}</span>
+                    )}
+                    {r.limit3Amount != null && (
+                      <span className="text-purple-700 ml-0.5">3.≥{formatHuf(r.limit3Amount)}</span>
+                    )}
+                  </span>
+                ))}
             </div>
           )}
         </div>
       )}
 
-      {!loading && rates.length === 0 && !error && (
+      {!loading && rates.length === 0 && territoryGroups.length === 0 && !error && (
         <div className="form-panel text-center text-gray-500 py-6 text-xs">
-          {t('rates.nincsenekElerhetoArfolyamokKerjukHozzonLetreArfolyamotAzArfolyamkeszitesOldalon')}
+          {t(
+            'rates.nincsenekElerhetoArfolyamokKerjukHozzonLetreArfolyamotAzArfolyamkeszitesOldalon',
+          )}
         </div>
       )}
     </div>
