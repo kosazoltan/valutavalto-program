@@ -32,6 +32,13 @@ public interface InventoryMovementRepository extends JpaRepository<InventoryMove
     // szűr (fromBranch VAGY toBranch a cégé). A bal-oldali JOIN-ok null-biztosak a
     // bank-mozgásokra is (BANK_WITHDRAW: fromBranch=null, BANK_DEPOSIT: toBranch=null),
     // így azok sem esnek ki implicit inner-join miatt.
+    //
+    // FK-039 (2026-06-22): a NON-NULL dátum-paramétereknél a `(:param IS NULL OR ...)` minta
+    // PostgreSQL-en elszállt: "could not determine data type of parameter $N" (PSQLException →
+    // 500 a /inventory "Készlet riportok" movement-log + daily-balance végpontjain). A standalone
+    // `:startDate IS NULL` / `:endDate IS NULL` operandusnak nincs típus-kontextusa, ezért a JDBC
+    // extended protocol-on a PG nem tudja a típust kikövetkeztetni. Megoldás a már bevált CAST
+    // type-hint (lásd findBankFlows alább, issue #327): CAST(:param AS DATE) a IS NULL ágon.
     @Query("SELECT m FROM InventoryMovement m " +
            "LEFT JOIN m.fromBranch fb " +
            "LEFT JOIN fb.company fbc " +
@@ -39,8 +46,8 @@ public interface InventoryMovementRepository extends JpaRepository<InventoryMove
            "LEFT JOIN tb.company tbc " +
            "WHERE (fbc.id = :companyId OR tbc.id = :companyId) " +
            "AND (:branchId IS NULL OR fb.id = :branchId OR tb.id = :branchId) " +
-           "AND (:startDate IS NULL OR m.movementDate >= :startDate) " +
-           "AND (:endDate IS NULL OR m.movementDate <= :endDate) " +
+           "AND (CAST(:startDate AS DATE) IS NULL OR m.movementDate >= :startDate) " +
+           "AND (CAST(:endDate AS DATE) IS NULL OR m.movementDate <= :endDate) " +
            "AND (:status IS NULL OR m.status = :status) " +
            "AND (:type IS NULL OR m.movementType = :type) " +
            "ORDER BY m.movementDate DESC, m.movementTime DESC")
