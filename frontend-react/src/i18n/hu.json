@@ -1192,6 +1192,15 @@
     "nettoHaszon": "Nettó haszon",
     "vetelHuf": "Vétel HUF"
   },
+  "pwaInstall": {
+    "android": "A böngésző menüjében (⋮) válassza az „Alkalmazás telepítése\" / „Hozzáadás a kezdőképernyőhöz\" lehetőséget.",
+    "cim": "Telepítés a telefonra",
+    "ios": "A Megosztás ikonra koppintva válassza a „Főképernyőhöz adás\" lehetőséget.",
+    "leiras": "A telefonra nem kell külön programot telepíteni: nyissa meg az alábbi címet a telefon böngészőjében (vagy olvassa be a QR-kódot egy másik eszközről), majd tegye ki a kezdőképernyőre — onnantól egy gombbal indítható alkalmazásként.",
+    "lepes1": "Nyissa meg a címet a telefon böngészőjében, vagy olvassa be a QR-kódot.",
+    "lepes2": "Jelentkezzen be a saját kódjával és jelszavával.",
+    "qrAlt": "QR-kód a megnyitáshoz"
+  },
   "rate-management": {
     "arfolyamPublikalas": "Árfolyam publikálás",
     "elosztasStatusz": "Elosztás státusz (",

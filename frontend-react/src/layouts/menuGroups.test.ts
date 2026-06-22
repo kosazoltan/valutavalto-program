@@ -31,4 +31,14 @@ describe('menuGroups ertekszallito appMode', () => {
   it('legacy COURIER role alapertelmezett route-ja is a transfers oldal', () => {
     expect(getDefaultRouteForRoles(['COURIER'], 'COURIER')).toBe('/transfers')
   })
+
+  it('FK-041/II: arfolyam_nezo alapertelmezett route-ja a versenytars-arfolyam bevitel', () => {
+    expect(getDefaultRouteForRoles(['arfolyam_nezo'], 'arfolyam_nezo')).toBe('/competitor-rates')
+  })
+
+  it('FK-041/II: ha az arfolyam_nezo magasabb jogu szerepkorrel is rendelkezik, NEM a beiro oldalra megy', () => {
+    expect(getDefaultRouteForRoles(['arfolyam_nezo', 'foertektar'], 'foertektar')).toBe(
+      '/dashboard',
+    )
+  })
 })

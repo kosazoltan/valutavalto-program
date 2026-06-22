@@ -7,9 +7,24 @@ import { Eye, EyeOff, User, Lock, Building2, Shield, RefreshCw, ChevronDown } fr
 import { getErrorMessage, humanizeIpcError } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useAppMode } from '../../hooks/useAppMode'
-import { appModeLabel, canonicalizeRoleForAppMode, isRoleSelectableForAppMode, roleDisplayName, selectableLocalAppModes, preferredRoleForAppMode } from '../../utils/appModeRoles'
-import { setSessionAppMode, clearSessionAppMode, getSessionAppMode } from '../../utils/sessionAppMode'
-import { isLocalTerminalClient, isCentralWorkstationFlavor, isRateMakerFlavor } from '../../utils/clientEnv'
+import {
+  appModeLabel,
+  canonicalizeRoleForAppMode,
+  isRoleSelectableForAppMode,
+  roleDisplayName,
+  selectableLocalAppModes,
+  preferredRoleForAppMode,
+} from '../../utils/appModeRoles'
+import {
+  setSessionAppMode,
+  clearSessionAppMode,
+  getSessionAppMode,
+} from '../../utils/sessionAppMode'
+import {
+  isLocalTerminalClient,
+  isCentralWorkstationFlavor,
+  isRateMakerFlavor,
+} from '../../utils/clientEnv'
 import type { AppMode } from '../../types/appMode'
 import { useTranslation } from 'react-i18next'
 
@@ -21,7 +36,11 @@ function readSetupConfig(): { companyCode?: string; workerCode?: string; workerN
   try {
     const raw = localStorage.getItem('valuta-setup-config')
     if (!raw) return {}
-    const parsed = JSON.parse(raw) as { companyCode?: string; workerCode?: string; workerName?: string }
+    const parsed = JSON.parse(raw) as {
+      companyCode?: string
+      workerCode?: string
+      workerName?: string
+    }
     return parsed
   } catch {
     return {}
@@ -42,7 +61,9 @@ export default function LoginPage() {
 
   // v2.1.4: Branch-alapu dolgozo dropdown. VITE_BRANCH_CODE a Setup Wizard altal kiirt
   // .env-bol jon; ha nincs (webes, offline), text input fallback marad.
-  const configuredBranchCode = String(import.meta.env.VITE_BRANCH_CODE ?? '').trim().toUpperCase()
+  const configuredBranchCode = String(import.meta.env.VITE_BRANCH_CODE ?? '')
+    .trim()
+    .toUpperCase()
   const [workers, setWorkers] = useState<PublicWorker[]>([])
   const [workersLoading, setWorkersLoading] = useState(false)
   const [workersError, setWorkersError] = useState<string | null>(null)
@@ -58,14 +79,18 @@ export default function LoginPage() {
 
   // V57: Role-választó modal state
   const [showRoleSelector, setShowRoleSelector] = useState(false)
-  const [pendingLoginResponse, setPendingLoginResponse] = useState<Awaited<ReturnType<typeof authApi.login>> | null>(null)
+  const [pendingLoginResponse, setPendingLoginResponse] = useState<Awaited<
+    ReturnType<typeof authApi.login>
+  > | null>(null)
   const [selectedRole, setSelectedRole] = useState<string | null>(null)
   const [roleLoading, setRoleLoading] = useState(false)
 
   // MFA login 2. lépés: a token még nem kerülhet a perzisztált auth store-ba.
   const [showMfaChallenge, setShowMfaChallenge] = useState(false)
   const [pendingMfaResponse, setPendingMfaResponse] = useState<LoginResponse | null>(null)
-  const [pendingMfaGoogleIdToken, setPendingMfaGoogleIdToken] = useState<string | undefined>(undefined)
+  const [pendingMfaGoogleIdToken, setPendingMfaGoogleIdToken] = useState<string | undefined>(
+    undefined,
+  )
   const [mfaCode, setMfaCode] = useState('')
   const [mfaBackupMode, setMfaBackupMode] = useState(false)
   const [mfaLoading, setMfaLoading] = useState(false)
@@ -73,13 +98,17 @@ export default function LoginPage() {
 
   // HIBA 2026-05-26: program-mód választó (értéktáros/vezető több módba is beléphet)
   const [showModeSelector, setShowModeSelector] = useState(false)
-  const [pendingModeResponse, setPendingModeResponse] = useState<Awaited<ReturnType<typeof authApi.login>> | null>(null)
+  const [pendingModeResponse, setPendingModeResponse] = useState<Awaited<
+    ReturnType<typeof authApi.login>
+  > | null>(null)
   const [modeSelectorOptions, setModeSelectorOptions] = useState<AppMode[]>([])
   const [modeLoading, setModeLoading] = useState(false)
 
   // FK-ÉRTÉKTÁR (V285): kétlépcsős értéktári belépés — Google után dolgozóválasztó + jelszó.
   const [showVaultWorkerSelect, setShowVaultWorkerSelect] = useState(false)
-  const [vaultWorkers, setVaultWorkers] = useState<import('../../services/api/auth').VaultWorkerOption[]>([])
+  const [vaultWorkers, setVaultWorkers] = useState<
+    import('../../services/api/auth').VaultWorkerOption[]
+  >([])
   const [vaultBranchName, setVaultBranchName] = useState<string>('')
   const [vaultIdToken, setVaultIdToken] = useState<string>('')
   const [selectedVaultWorkerId, setSelectedVaultWorkerId] = useState<number | null>(null)
@@ -100,13 +129,18 @@ export default function LoginPage() {
   //   client ID-t fogadnia kell — `GoogleLoginConfig.googleIdTokenVerifier`).
   const rawGoogleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
   const googleOAuthDisabled = import.meta.env.VITE_DISABLE_GOOGLE_OAUTH === '1'
-  const googleClientId = !googleOAuthDisabled && rawGoogleClientId && rawGoogleClientId !== 'none' && rawGoogleClientId.trim().length > 0
-    ? rawGoogleClientId.trim()
-    : null
+  const googleClientId =
+    !googleOAuthDisabled &&
+    rawGoogleClientId &&
+    rawGoogleClientId !== 'none' &&
+    rawGoogleClientId.trim().length > 0
+      ? rawGoogleClientId.trim()
+      : null
 
-  const isElectron = typeof window !== 'undefined'
-    && Boolean(window.electronAPI?.googleOAuthFlow)
-    && !googleOAuthDisabled
+  const isElectron =
+    typeof window !== 'undefined' &&
+    Boolean(window.electronAPI?.googleOAuthFlow) &&
+    !googleOAuthDisabled
   const [googleLoadingElectron, setGoogleLoadingElectron] = useState(false)
 
   /**
@@ -123,7 +157,9 @@ export default function LoginPage() {
       )
       setWorkers(list)
       if (list.length === 0) {
-        setWorkersError(`Nincs aktiv dolgozo a ${configuredBranchCode} penztar regiojahoz rendelve.`)
+        setWorkersError(
+          `Nincs aktiv dolgozo a ${configuredBranchCode} penztar regiojahoz rendelve.`,
+        )
       }
     } catch (err) {
       setWorkersError('A dolgozo-lista lekerese nem sikerult a szerverrol. Kezi bevitel.')
@@ -150,6 +186,9 @@ export default function LoginPage() {
     // Codex/Copilot #581 fix: rate-maker app default landing /rates/main (Főlap, 0-s lap)
     // — konzisztens az App.tsx-ben definiált defaultProtectedRoute-tal.
     if (appMode === 'rate-maker' || isRateMakerFlavor()) return '/rates/main'
+    // FK-041/II: az árfolyam néző (full/Szerver mód, böngészőből) a versenytárs-árfolyam beíró oldalra
+    // landol — ez az egyetlen feladata (mobil/PWA). A /central-workstation általános full-landing elé.
+    if (canonicalizeRoleForAppMode(role) === 'arfolyam_nezo') return '/competitor-rates'
     if (appMode === 'full') return '/central-workstation'
     const canonical = canonicalizeRoleForAppMode(role)
     if (canonical === 'penztar') return '/cashier'
@@ -242,8 +281,11 @@ export default function LoginPage() {
       setVaultWorkers(response.vaultWorkers ?? [])
       setVaultBranchName(response.vaultBranchName ?? '')
       setVaultIdToken(googleIdToken)
-      setSelectedVaultWorkerId((response.vaultWorkers && response.vaultWorkers.length === 1)
-        ? response.vaultWorkers[0]!.id : null)
+      setSelectedVaultWorkerId(
+        response.vaultWorkers && response.vaultWorkers.length === 1
+          ? response.vaultWorkers[0]!.id
+          : null,
+      )
       setVaultPassword('')
       setVaultError(null)
       setShowVaultWorkerSelect(true)
@@ -286,30 +328,44 @@ export default function LoginPage() {
       const hasFullAccess = response.validAppModes.includes('full')
       const hasRequestedAppAccess = response.validAppModes.includes(appMode)
       if (!hasRequestedAppAccess && !(appMode !== 'rate-maker' && hasFullAccess)) {
-        const allowedProgs = response.validAppModes.map((m) => {
-          if (m === 'penztar') return 'Valutaváltó Pénztár (lokál)'
-          if (m === 'ertektar') return 'Értéktár (lokál)'
-          if (m === 'ertekszallito') return 'Értékszállító (lokál)'
-          if (m === 'rate-maker') return 'Árfolyamkészítő (lokál)'
-          if (m === 'full') return 'Szerver (böngésző)'
-          return m
-        }).join(', ')
-        setError('Hozzáférés megtagadva. A munkaköröd alapján ezekbe a programokba léphetsz be: ' + allowedProgs + '. Most "' + appMode + '" módban próbálsz belépni.')
+        const allowedProgs = response.validAppModes
+          .map((m) => {
+            if (m === 'penztar') return 'Valutaváltó Pénztár (lokál)'
+            if (m === 'ertektar') return 'Értéktár (lokál)'
+            if (m === 'ertekszallito') return 'Értékszállító (lokál)'
+            if (m === 'rate-maker') return 'Árfolyamkészítő (lokál)'
+            if (m === 'full') return 'Szerver (böngésző)'
+            return m
+          })
+          .join(', ')
+        setError(
+          'Hozzáférés megtagadva. A munkaköröd alapján ezekbe a programokba léphetsz be: ' +
+            allowedProgs +
+            '. Most "' +
+            appMode +
+            '" módban próbálsz belépni.',
+        )
         return
       }
     } else if (appMode === 'full' && !serverAllowed) {
-      setError('Hozzáférés megtagadva. A szerverre csak főértéktáros, belső ellenőr, irodavezető, ügyvezető és egyéb szerver-oldali munkakörök léphetnek be. Pénztárosok és értéktárosok a lokál alkalmazást használják.')
+      setError(
+        'Hozzáférés megtagadva. A szerverre csak főértéktáros, belső ellenőr, irodavezető, ügyvezető és egyéb szerver-oldali munkakörök léphetnek be. Pénztárosok és értéktárosok a lokál alkalmazást használják.',
+      )
       return
     }
 
     if (response.roleSelectionRequired) {
       if (!response.roles || response.roles.length < 1) {
-        setError('A bejelentkezés szerepkör-választást kér, de a szerver nem adott választható szerepköröket.')
+        setError(
+          'A bejelentkezés szerepkör-választást kér, de a szerver nem adott választható szerepköröket.',
+        )
         return
       }
       const selectableRoles = response.roles
       if (selectableRoles.length === 0) {
-        setError(`Hozzáférés megtagadva. Egyik választható szerepkör sem használható ebben a programban: ${appModeLabel(appMode)}.`)
+        setError(
+          `Hozzáférés megtagadva. Egyik választható szerepkör sem használható ebben a programban: ${appModeLabel(appMode)}.`,
+        )
         return
       }
       // Multi-role worker: a session itt meg ideiglenes. Nem mentjuk a tokent
@@ -340,7 +396,9 @@ export default function LoginPage() {
     const submittedCode = mfaCode.trim()
     const requiredLength = mfaBackupMode ? 8 : 6
     if (!new RegExp(`^\\d{${requiredLength}}$`).test(submittedCode)) {
-      setMfaError(mfaBackupMode ? 'A backup kód pontosan 8 számjegyű.' : 'A TOTP kód pontosan 6 számjegyű.')
+      setMfaError(
+        mfaBackupMode ? 'A backup kód pontosan 8 számjegyű.' : 'A TOTP kód pontosan 6 számjegyű.',
+      )
       return
     }
 
@@ -451,8 +509,14 @@ export default function LoginPage() {
    * dolgozó jelszavas hitelesítése. A Google ID tokent (1. fázisból) újraküldjük.
    */
   const handleVaultWorkerLogin = async () => {
-    if (!selectedVaultWorkerId) { setVaultError('Válaszd ki a neved a listából!'); return }
-    if (!vaultPassword) { setVaultError('Add meg a jelszavad!'); return }
+    if (!selectedVaultWorkerId) {
+      setVaultError('Válaszd ki a neved a listából!')
+      return
+    }
+    if (!vaultPassword) {
+      setVaultError('Add meg a jelszavad!')
+      return
+    }
     setVaultError(null)
     setVaultLoading(true)
     try {
@@ -528,7 +592,10 @@ export default function LoginPage() {
         }
         // A backend `/auth/google-login` JSON-t explicit `response` mezoben adjuk at,
         // hogy az IPC ok/email boritek ne keveredjen a LoginResponse mezoi koze.
-        handleLoginResponse(result.response as Awaited<ReturnType<typeof authApi.googleLogin>>, result.idToken)
+        handleLoginResponse(
+          result.response as Awaited<ReturnType<typeof authApi.googleLogin>>,
+          result.idToken,
+        )
         return
       }
       if (!window.electronAPI?.googleOAuthFlow) {
@@ -542,7 +609,11 @@ export default function LoginPage() {
         }
         return
       }
-      const response = await authApi.googleLogin({ idToken: result.idToken, appMode, supportsVaultWorkerSelection: true })
+      const response = await authApi.googleLogin({
+        idToken: result.idToken,
+        appMode,
+        supportsVaultWorkerSelection: true,
+      })
       handleLoginResponse(response, result.idToken)
     } catch (err: unknown) {
       setError(getErrorMessage(err))
@@ -585,7 +656,10 @@ export default function LoginPage() {
                     key={w.id}
                     type="button"
                     disabled={vaultLoading}
-                    onClick={() => { setSelectedVaultWorkerId(w.id); setVaultError(null) }}
+                    onClick={() => {
+                      setSelectedVaultWorkerId(w.id)
+                      setVaultError(null)
+                    }}
                     className={`w-full text-left p-2.5 border rounded text-sm disabled:opacity-50 ${
                       selectedVaultWorkerId === w.id
                         ? 'border-primary bg-blue-50 font-semibold'
@@ -599,7 +673,12 @@ export default function LoginPage() {
             )}
 
             {vaultWorkers.length > 0 && (
-              <form onSubmit={(e) => { e.preventDefault(); void handleVaultWorkerLogin() }}>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void handleVaultWorkerLogin()
+                }}
+              >
                 <label className="block mb-3">
                   <span className="form-label">Jelszó</span>
                   <input
@@ -621,7 +700,11 @@ export default function LoginPage() {
                   >
                     Elfelejtett jelszó?
                   </button>
-                  <button type="submit" className="form-button" disabled={vaultLoading || !selectedVaultWorkerId}>
+                  <button
+                    type="submit"
+                    className="form-button"
+                    disabled={vaultLoading || !selectedVaultWorkerId}
+                  >
                     {vaultLoading ? 'Belépés...' : 'Belépés'}
                   </button>
                 </div>
@@ -630,8 +713,8 @@ export default function LoginPage() {
 
             {showVaultForgot && (
               <div className="mt-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs p-2.5 rounded">
-                Az elfelejtett jelszó visszaállítását az adminisztrátor végzi. Kérj tőle új
-                jelszót — a felületen nincs önkiszolgáló visszaállítás.
+                Az elfelejtett jelszó visszaállítását az adminisztrátor végzi. Kérj tőle új jelszót
+                — a felületen nincs önkiszolgáló visszaállítás.
                 <button
                   type="button"
                   className="block mt-1.5 text-primary hover:underline"
@@ -676,7 +759,8 @@ export default function LoginPage() {
           </div>
           <div className="p-4">
             <p className="text-sm text-gray-600 mb-3">
-              A munkaköröd alapján több programba is beléphetsz. Válaszd ki, melyikkel szeretnél dolgozni.
+              A munkaköröd alapján több programba is beléphetsz. Válaszd ki, melyikkel szeretnél
+              dolgozni.
             </p>
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3">
@@ -694,9 +778,21 @@ export default function LoginPage() {
                   className="w-full text-left p-3 border rounded text-sm border-form-border hover:bg-blue-50 hover:border-primary disabled:opacity-50"
                 >
                   <span className="font-semibold">{appModeLabel(m)}</span>
-                  {m === 'penztar' && <span className="block text-xs text-gray-500">Valutaváltó pénztár — vétel/eladás/konverzió, pénztár-ellenőrzés</span>}
-                  {m === 'ertektar' && <span className="block text-xs text-gray-500">Értéktár — készletek, átadás-átvétel, zárások</span>}
-                  {m === 'ertekszallito' && <span className="block text-xs text-gray-500">Értékszállító — átadólapok aláírása</span>}
+                  {m === 'penztar' && (
+                    <span className="block text-xs text-gray-500">
+                      Valutaváltó pénztár — vétel/eladás/konverzió, pénztár-ellenőrzés
+                    </span>
+                  )}
+                  {m === 'ertektar' && (
+                    <span className="block text-xs text-gray-500">
+                      Értéktár — készletek, átadás-átvétel, zárások
+                    </span>
+                  )}
+                  {m === 'ertekszallito' && (
+                    <span className="block text-xs text-gray-500">
+                      Értékszállító — átadólapok aláírása
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -732,17 +828,23 @@ export default function LoginPage() {
           </div>
           <div className="p-4">
             <p className="text-sm text-gray-600 mb-3">
-              Add meg az authenticator app 6 számjegyű kódját, vagy válts egyszer használható backup kódra.
+              Add meg az authenticator app 6 számjegyű kódját, vagy válts egyszer használható backup
+              kódra.
             </p>
             {mfaError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3" data-testid="login-mfa-error">
+              <div
+                className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3"
+                data-testid="login-mfa-error"
+              >
                 {mfaError}
               </div>
             )}
 
             <div className="space-y-3">
               <div className="form-group-box pt-4">
-                <span className="form-group-box-title">{mfaBackupMode ? 'Backup kód' : 'TOTP kód'}</span>
+                <span className="form-group-box-title">
+                  {mfaBackupMode ? 'Backup kód' : 'TOTP kód'}
+                </span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -750,7 +852,11 @@ export default function LoginPage() {
                   maxLength={mfaBackupMode ? 8 : 6}
                   className="form-input w-full text-center font-mono text-lg"
                   value={mfaCode}
-                  onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, '').slice(0, mfaBackupMode ? 8 : 6))}
+                  onChange={(event) =>
+                    setMfaCode(
+                      event.target.value.replace(/\D/g, '').slice(0, mfaBackupMode ? 8 : 6),
+                    )
+                  }
                   placeholder={mfaBackupMode ? '12345678' : '123456'}
                   data-testid="login-mfa-code"
                   autoFocus
@@ -872,7 +978,8 @@ export default function LoginPage() {
           <div className="text-center mb-4">
             <div className="text-lg font-bold text-primary">{t('auth.exclusiveBestChange')}</div>
             <div className="text-xs text-gray-500">
-              {t('auth.penzvaltoRendszerV')}{import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__}
+              {t('auth.penzvaltoRendszerV')}
+              {import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__}
             </div>
           </div>
 
@@ -890,13 +997,27 @@ export default function LoginPage() {
                 data-testid="login-google-electron"
               >
                 <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-                  <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
-                  <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
-                  <path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/>
-                  <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+                  <path
+                    fill="#4285F4"
+                    d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
+                  />
                 </svg>
                 <span className="text-sm text-gray-700 font-medium">
-                  {googleLoadingElectron ? 'Bejelentkezés folyamatban...' : 'Belépés Google fiókkal'}
+                  {googleLoadingElectron
+                    ? 'Bejelentkezés folyamatban...'
+                    : 'Belépés Google fiókkal'}
                 </span>
               </button>
             </div>
@@ -926,7 +1047,10 @@ export default function LoginPage() {
 
           {/* Error message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3" data-testid="login-error">
+            <div
+              className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3"
+              data-testid="login-error"
+            >
               {error}
             </div>
           )}
@@ -950,7 +1074,8 @@ export default function LoginPage() {
             {/* Worker code - v2.1.4 dropdown (regio-alapu) + szoveges fallback */}
             <div className="form-group-box pt-4">
               <span className="form-group-box-title">
-                {t('components.penztaros2')}{configuredBranchCode ? `(${configuredBranchCode} régió)` : 'kód'}
+                {t('components.penztaros2')}
+                {configuredBranchCode ? `(${configuredBranchCode} régió)` : 'kód'}
               </span>
               <div className="flex items-center gap-2">
                 <User size={18} className="text-gray-400" />
@@ -971,7 +1096,10 @@ export default function LoginPage() {
                           </option>
                         ))}
                       </select>
-                      <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                      <ChevronDown
+                        size={14}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                      />
                     </div>
                     <button
                       type="button"
@@ -980,7 +1108,10 @@ export default function LoginPage() {
                       className="p-1 hover:bg-gray-100 rounded"
                       title="Dolgozó-lista frissítése a szerverről"
                     >
-                      <RefreshCw size={14} className={workersLoading ? 'animate-spin text-gray-300' : 'text-gray-500'} />
+                      <RefreshCw
+                        size={14}
+                        className={workersLoading ? 'animate-spin text-gray-300' : 'text-gray-500'}
+                      />
                     </button>
                   </div>
                 ) : (
@@ -991,16 +1122,21 @@ export default function LoginPage() {
                     className="form-input flex-1"
                     autoFocus
                     data-testid="login-worker-code"
-                    placeholder={workersLoading ? 'Dolgozók betöltése...' : configuredBranchCode ? 'Pénztáros kód vagy név' : 'Pénztáros kód'}
+                    placeholder={
+                      workersLoading
+                        ? 'Dolgozók betöltése...'
+                        : configuredBranchCode
+                          ? 'Pénztáros kód vagy név'
+                          : 'Pénztáros kód'
+                    }
                   />
                 )}
               </div>
-              {workersError && (
-                <div className="text-xs text-amber-600 mt-1">{workersError}</div>
-              )}
+              {workersError && <div className="text-xs text-amber-600 mt-1">{workersError}</div>}
               {prefilledWorkerName && workerCode === (setupConfig.workerCode || '') && (
                 <div className="text-xs text-green-600 mt-1">
-                  {t('auth.ATelepitobenKivalasztottDolgozo')}<strong>{prefilledWorkerName}</strong>
+                  {t('auth.ATelepitobenKivalasztottDolgozo')}
+                  <strong>{prefilledWorkerName}</strong>
                 </div>
               )}
             </div>
@@ -1070,13 +1206,23 @@ export default function LoginPage() {
 
       {/* v2.3.0: Elfelejtett jelszo modal */}
       {showForgotPassword && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowForgotPassword(false)}>
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-secondary-900 mb-4">{t('auth.elfelejtettJelszo')}</h2>
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowForgotPassword(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">
+              {t('auth.elfelejtettJelszo')}
+            </h2>
             {!forgotMessage ? (
               <>
                 <p className="text-sm text-secondary-600 mb-4">
-                  {t('auth.addMegAzEmailCimedHaRegisztralvaVanEgyResetTokenTKapszVisszaDevModbanIttJelenikMegElesbenEmailBenErkezik')}
+                  {t(
+                    'auth.addMegAzEmailCimedHaRegisztralvaVanEgyResetTokenTKapszVisszaDevModbanIttJelenikMegElesbenEmailBenErkezik',
+                  )}
                 </p>
                 <input
                   type="email"
@@ -1090,8 +1236,14 @@ export default function LoginPage() {
                   <button
                     type="button"
                     className="form-button"
-                    onClick={() => { setShowForgotPassword(false); setForgotEmail(''); setForgotMessage(null); }}
-                  >{t('common.cancel')}</button>
+                    onClick={() => {
+                      setShowForgotPassword(false)
+                      setForgotEmail('')
+                      setForgotMessage(null)
+                    }}
+                  >
+                    {t('common.cancel')}
+                  </button>
                   <button
                     type="button"
                     className="form-button-primary"
@@ -1111,14 +1263,19 @@ export default function LoginPage() {
                         // error ugyanazt mutatja). A hiba-reszleteket CSAK dev mode-ban logoljuk
                         // (logger.debug production-ban suppressed), hogy ne szivargjon info a networkon.
                         // Sourcery PR #223 P3 fix: non-user-visible error capture dev-only log-gal.
-                        logger.debug('LoginPage', 'forgotPassword request failed (dev-only):',
-                          err instanceof Error ? err.message : String(err))
+                        logger.debug(
+                          'LoginPage',
+                          'forgotPassword request failed (dev-only):',
+                          err instanceof Error ? err.message : String(err),
+                        )
                         setForgotMessage('Ha az email regisztrált, a reset tokent elküldtük.')
                       } finally {
                         setForgotLoading(false)
                       }
                     }}
-                  >{forgotLoading ? 'Küldés...' : 'Küldés'}</button>
+                  >
+                    {forgotLoading ? 'Küldés...' : 'Küldés'}
+                  </button>
                 </div>
               </>
             ) : (
@@ -1128,7 +1285,9 @@ export default function LoginPage() {
                 </div>
                 {resetToken && (
                   <>
-                    <label className="block text-sm font-semibold mb-1">{t('auth.ujJelszoMin8Kar')}</label>
+                    <label className="block text-sm font-semibold mb-1">
+                      {t('auth.ujJelszoMin8Kar')}
+                    </label>
                     <input
                       type="password"
                       value={newPasswordInput}
@@ -1140,8 +1299,16 @@ export default function LoginPage() {
                       <button
                         type="button"
                         className="form-button"
-                        onClick={() => { setShowForgotPassword(false); setForgotEmail(''); setForgotMessage(null); setResetToken(''); setNewPasswordInput(''); }}
-                      >{t('common.cancel')}</button>
+                        onClick={() => {
+                          setShowForgotPassword(false)
+                          setForgotEmail('')
+                          setForgotMessage(null)
+                          setResetToken('')
+                          setNewPasswordInput('')
+                        }}
+                      >
+                        {t('common.cancel')}
+                      </button>
                       <button
                         type="button"
                         className="form-button-primary"
@@ -1150,7 +1317,9 @@ export default function LoginPage() {
                           setResetLoading(true)
                           try {
                             await authApi.resetPassword(resetToken, newPasswordInput)
-                            setForgotMessage('Jelszó sikeresen beállítva. Most már bejelentkezhetsz.')
+                            setForgotMessage(
+                              'Jelszó sikeresen beállítva. Most már bejelentkezhetsz.',
+                            )
                             setResetToken('')
                             setNewPasswordInput('')
                             setTimeout(() => {
@@ -1159,12 +1328,16 @@ export default function LoginPage() {
                               setForgotMessage(null)
                             }, 2000)
                           } catch (err) {
-                            setForgotMessage(err instanceof Error ? err.message : 'Hiba a jelszó beállításakor.')
+                            setForgotMessage(
+                              err instanceof Error ? err.message : 'Hiba a jelszó beállításakor.',
+                            )
                           } finally {
                             setResetLoading(false)
                           }
                         }}
-                      >{resetLoading ? 'Mentés...' : 'Új jelszó beállítása'}</button>
+                      >
+                        {resetLoading ? 'Mentés...' : 'Új jelszó beállítása'}
+                      </button>
                     </div>
                   </>
                 )}

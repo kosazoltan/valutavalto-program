@@ -377,5 +377,10 @@ export function getDefaultRouteForRoles(
   // ertekszallito role: az atadas-atveteli bizonylat alairasanak UI-ja
   if (all.has('ertekszallito')) return '/transfers'
   if (all.has('ertektar')) return '/treasury'
+  // FK-041/II: az árfolyam néző egyetlen feladata a versenytárs-árfolyam bevitel (mobil/PWA) —
+  // belépés után közvetlenül oda landol. (Csak akkor, ha nincs magasabb jogú szerepköre.)
+  if (all.has('arfolyam_nezo') && !all.has('foertektar') && !all.has('ugyvezeto')) {
+    return '/competitor-rates'
+  }
   return '/dashboard'
 }
