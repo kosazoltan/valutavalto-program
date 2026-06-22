@@ -759,11 +759,9 @@ export default function RatesPage() {
             v != null ? formatDecimal(v, 2, 2) : '—'
           return (
             <Fragment>
-              {/* Desktop: munkacsoportonkénti oszlopcsoportok */}
-              <div
-                className="form-panel hidden overflow-x-auto p-0 md:block"
-                data-testid="rates-territory-table"
-              >
+              {/* Munkacsoportonkénti oszlopcsoportok. A read-only nézet elsődleges fogyasztója a
+                  local-first desktop értéktár-kliens; szűk web/PWA képernyőn vízszintes görgetés. */}
+              <div className="form-panel overflow-x-auto p-0" data-testid="rates-territory-table">
                 <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-gray-300 bg-gray-100 text-gray-600">
@@ -899,77 +897,6 @@ export default function RatesPage() {
                     })}
                   </tbody>
                 </table>
-              </div>
-
-              {/* Mobil: valutánként kártya, benne munkacsoportonkénti soronkénti árfolyam */}
-              <div className="space-y-2 md:hidden">
-                {spine.map((s) => (
-                  <div
-                    key={s.currencyId}
-                    className="form-panel space-y-1.5"
-                    data-testid="rates-territory-mobile-row"
-                  >
-                    <div className="font-mono text-base font-bold text-blue-800">
-                      {s.currencyCode}
-                      <span className="ml-2 text-sm font-normal text-gray-500">
-                        {s.currencyName}
-                      </span>
-                    </div>
-                    {territoryGroups.map((g) => {
-                      const cr = findRate(g, s.currencyId)
-                      return (
-                        <div
-                          key={g.workgroupId}
-                          className="rounded border border-gray-200 px-2 py-1.5"
-                        >
-                          <div className="text-[11px] font-semibold text-gray-700">
-                            {g.workgroupName}
-                          </div>
-                          {g.branchNames.length > 0 && (
-                            <div className="text-[10px] text-gray-500">
-                              {g.branchNames.join(' · ')}
-                            </div>
-                          )}
-                          <div className="mt-1 font-mono text-sm font-semibold tabular-nums">
-                            <span className="text-green-700">{fmtRate(cr?.baseBuyRate)}</span>
-                            <span className="mx-1 text-gray-300">/</span>
-                            <span className="text-red-700">{fmtRate(cr?.baseSellRate)}</span>
-                          </div>
-                          {cr?.hasRate && (
-                            <div className="mt-1 space-y-0.5">
-                              {cr.limit1Amount != null &&
-                                (cr.limit1BuyRate != null || cr.limit1SellRate != null) && (
-                                  <div className="whitespace-nowrap font-mono text-[10px] text-gray-500">
-                                    ≥{formatHuf(cr.limit1Amount)} {fmtRate(cr.limit1BuyRate)} /{' '}
-                                    {fmtRate(cr.limit1SellRate)}
-                                  </div>
-                                )}
-                              {cr.limit2Amount != null &&
-                                (cr.limit2BuyRate != null || cr.limit2SellRate != null) && (
-                                  <div className="whitespace-nowrap font-mono text-[10px] text-gray-500">
-                                    ≥{formatHuf(cr.limit2Amount)} {fmtRate(cr.limit2BuyRate)} /{' '}
-                                    {fmtRate(cr.limit2SellRate)}
-                                  </div>
-                                )}
-                              {cr.limit3Amount != null &&
-                                (cr.limit3BuyRate != null || cr.limit3SellRate != null) && (
-                                  <div className="whitespace-nowrap font-mono text-[10px] text-gray-500">
-                                    ≥{formatHuf(cr.limit3Amount)} {fmtRate(cr.limit3BuyRate)} /{' '}
-                                    {fmtRate(cr.limit3SellRate)}
-                                  </div>
-                                )}
-                            </div>
-                          )}
-                          {cr?.validTime && (
-                            <div className="mt-0.5 text-[10px] text-gray-400">
-                              frissítve {cr.validTime}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
               </div>
             </Fragment>
           )
