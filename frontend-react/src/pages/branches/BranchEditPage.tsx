@@ -103,7 +103,11 @@ export default function BranchEditPage() {
       dictionaryApi.getByCategory('REGION'),
       api.get<BranchInfo[]>(`/branches/${id}/path`),
       api.get<BranchInfo[]>(`/branches/${id}/children`),
-      api.get<BranchAdminDetails>(`/admin/branches/${id}`).catch((err: unknown) => {
+      // FK-038: a /admin/branches/{id} ADMIN-only (CompanyAdminController osztály-szintű
+      // @PreAuthorize("hasRole('ADMIN')")), ezért foertektar/ugyvezeto felhasználónak 403-at ad.
+      // Ez a hívás best-effort (csak admin metaadatot tölt), ezért a globális 403-toast itt
+      // félrevezető — `_skipGlobal403Toast: true`-val elnyomjuk; a Promise.all tovább tölt.
+      api.get<BranchAdminDetails>(`/admin/branches/${id}`, { _skipGlobal403Toast: true }).catch((err: unknown) => {
         logger.error('BranchEditPage', 'Admin branch részlet betöltési hiba:', err)
         return null
       }),

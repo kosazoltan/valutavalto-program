@@ -62,7 +62,7 @@ type PutCapture = { body: Record<string, unknown> | null }
  * Copilot #1076: az API teljesen mockolt, így a login determinisztikus — hard assert,
  * nem graceful skip (a skip elrejtené a valódi regressziót).
  */
-async function loginWithBranchMocks(page: Page, capture: PutCapture, branchOverride?: Partial<typeof BRANCH>): Promise<void> {
+async function loginWithBranchMocks(page: Page, capture: PutCapture, branchOverride?: Partial<typeof BRANCH>, opts?: { admin403?: boolean }): Promise<void> {
   const branch = { ...BRANCH, ...branchOverride }
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
@@ -113,6 +113,16 @@ async function loginWithBranchMocks(page: Page, capture: PutCapture, branchOverr
     }
 
     if (path.endsWith(`/admin/branches/${branch.id}`) && method === 'GET') {
+      // FK-038: a valos rendszerben ez ADMIN-only (CompanyAdminController @PreAuthorize hasRole('ADMIN')),
+      // ezert foertektar/ugyvezeto felhasznalonak 403-at ad. A frontend best-effort hivja, a globalis
+      // 403-toastot a _skipGlobal403Toast: true elnyomja — ezt validalja az FK-038 teszt.
+      if (opts?.admin403) {
+        return route.fulfill({
+          status: 403,
+          contentType: 'application/json',
+          body: JSON.stringify({ status: 403, error: 'FORBIDDEN', message: 'Nincs jogosultságod ehhez a művelethez.' }),
+        })
+      }
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -253,4 +263,32 @@ test('FK-022 FR-5: inaktív iroda visszaaktiválása megerősítéssel → isAct
   await page.getByRole('button', { name: 'Igen' }).click()
   await expect(page).toHaveURL(/\/admin\/branches$/, { timeout: 8000 })
   expect(capture.body).toMatchObject({ isActive: true })
+})
+
+test('FK-038: /admin/branches 403 → NINCS "Hozzáférés megtagadva" toast, a form betölt (1920×1080)', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  const capture: PutCapture = { body: null }
+  await loginWithBranchMocks(page, capture, undefined, { admin403: true })
+
+  // A betöltéskori best-effort GET /admin/branches/{id} 403-at kap (admin403 mock = a valós
+  // foertektar-helyzet, mert a végpont ADMIN-only). A form a /branches/{id} 200-ból töltődik;
+  // ha a fix nem lenne, a globális interceptor "Hozzáférés megtagadva" toastot dobna.
+  await openEditPage(page)
+
+  // A form betöltődik — a 403-at a betöltő Promise.all .catch-e elnyeli, a form NEM bukik el.
+  await expect(page.getByText('1. Alapadatok')).toBeVisible()
+  await expect(page.getByLabel(/Megjelenítendő név/)).toHaveValue('Szeged Tesco')
+
+  // A FIX lényege: a globális 403-toast NEM jelenik meg (a _skipGlobal403Toast: true miatt).
+  await expect(page.getByText(/Hozzáférés megtagadva/i)).toHaveCount(0)
+  await expect(page.getByText(/Nincs jogosultság/i)).toHaveCount(0)
+
+  // Teljes képernyős render-épség: nincs váratlan vízszintes scrollbar / viewport overflow.
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+  )
+  expect(horizontalOverflow).toBe(false)
+
+  // Vizuális bizonyíték a jelentéshez.
+  await page.screenshot({ path: 'test-results/fk038-branch-edit-403-no-toast.png', fullPage: true })
 })
