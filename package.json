@@ -102,10 +102,13 @@
     "installer:smoke:clean-vm": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/installer-clean-vm-smoke.ps1",
     "stop:db": "docker stop valuta-postgres",
     "qa:size": "node scripts/qa/pr-size-check.mjs",
-    "qa:audit": "node scripts/qa/pre-push-audit-lite.mjs"
+    "qa:audit": "node scripts/qa/pre-push-audit-lite.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
+    "prettier": "3.8.4",
     "wait-on": "^9.0.10"
   },
   "overrides": {

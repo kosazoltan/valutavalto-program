@@ -900,7 +900,10 @@ describe('MobileOverviewPage', () => {
         reason: 'Mobil díj korrekció',
       })
     })
-  })
+    // Ez a teszt ~20 egymást követő userEvent interakciót + waitFor-t futtat; a teljes
+    // (1769 teszt) suite párhuzamos terhelése alatt az 5000ms vitest-default kevés és flaky
+    // timeoutot okoz (izoláltan stabilan zöld). Explicit, bővebb timeout a flaky ellen.
+  }, 20000)
 
   it('mobil jóváhagyásból meghívja a sztornó approve backend szerződést', async () => {
     const user = userEvent.setup()
