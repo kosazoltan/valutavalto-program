@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Vault, RefreshCw, AlertTriangle, Info, Printer } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { getErrorMessage, isNotFoundError } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
@@ -310,8 +310,17 @@ export default function InventoryPage() {
       dailyBalanceResult,
       regenerationResult,
     ]
+    // FK-039 (2026-06-22): a /inventory/regeneration/last 404-et ad, ha az adott fiókon MÉG
+    // sosem futott készlet-regenerálás — ez normál üres állapot (a „Mégsem regenerált" widget),
+    // NEM betöltési hiba. A 404-et csak ennél az egy (opcionális) végpontnál nyomjuk el; a
+    // regeneration egyéb hibái (pl. valódi 500) és a többi végpont 404/500-jai továbbra is
+    // bannert dobnak. (Korábban ezt a 404-et a movement-log/daily-balance 500-ja elnyomta;
+    // a backend CAST-fix után ez maradt volna az egyetlen látható „hiba".)
     const realFailure = results.find(
-      (r): r is PromiseRejectedResult => r.status === 'rejected' && !isForbiddenError(r.reason),
+      (r): r is PromiseRejectedResult =>
+        r.status === 'rejected'
+        && !isForbiddenError(r.reason)
+        && !(r === regenerationResult && isNotFoundError(r.reason)),
     )
     if (realFailure) {
       const msg = getErrorMessage(realFailure.reason)
