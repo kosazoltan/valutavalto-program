@@ -507,6 +507,25 @@
     "szamlaszam": "Számlaszám",
     "ujCeg": "Új cég"
   },
+  "competitorRates": {
+    "betoltes": "Betöltés…",
+    "betoltesiHiba": "A versenytárs-bevitel nem tölthető be",
+    "cim": "Versenytárs-árfolyam bevitel",
+    "eladas": "Eladás",
+    "ervenytelenSzam": "Érvénytelen árfolyam-érték",
+    "felKitoltottSor": "Egy vagy több valutánál csak a vétel vagy csak az eladás van kitöltve — kérjük, töltse ki mindkettőt vagy hagyja üresen.",
+    "hiba": "Hiba",
+    "leiras": "A területén lévő versenyhely vételi/eladási árfolyamait rögzítheti.",
+    "mentes": "Mentés…",
+    "mentve": "Versenytárs-árfolyam rögzítve",
+    "nincsVersenyhely": "Nincs versenyhely a területén. Kérjen felvételt a vezetőtől.",
+    "rogzites": "Árfolyamok rögzítése",
+    "toltsKiLegalabbEgyet": "Töltsön ki legalább egy valuta vételi/eladási árfolyamot",
+    "valasszVersenyhelyet": "Válasszon versenyhelyet…",
+    "valasszVersenyhelyetFigyelmeztetes": "Válasszon versenyhelyet",
+    "versenyhely": "Versenyhely",
+    "vetel": "Vétel"
+  },
   "competitors": {
     "aktiv": "Aktiv",
     "cim": "Cim",

@@ -1,4 +1,5 @@
 import { Fragment, useState, useEffect, useCallback, type ChangeEvent } from 'react'
+import { Navigate } from 'react-router-dom'
 import {
   TrendingUp,
   RefreshCw,
@@ -207,6 +208,10 @@ export default function RatesPage() {
   const worker = useAuthStore((state) => state.worker)
   const hasCanonicalRole = useAuthStore((state) => state.hasCanonicalRole)
   const canEdit = appMode === 'full' && hasCanonicalRole([...RATE_EDITOR_ROLES])
+  // FK-041/II: az árfolyam néző (és csak ő) nem láthatja a belső területi árfolyamokat — sem a
+  // renderelt nézetet, sem a háttér-fetchet (defenzív, a route-on túl is).
+  const isRateWatcherOnly =
+    hasCanonicalRole(['arfolyam_nezo']) && !hasCanonicalRole([...RATE_EDITOR_ROLES])
 
   useEffect(() => {
     if (!canEdit && editingCode !== null) {
@@ -217,6 +222,11 @@ export default function RatesPage() {
   }, [canEdit])
 
   const loadRates = useCallback(async () => {
+    // FK-041/II: az árfolyam néző NEM kér le belső területi árfolyamot (a render is átirányít).
+    if (isRateWatcherOnly) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
     try {
@@ -327,7 +337,7 @@ export default function RatesPage() {
     } finally {
       setLoading(false)
     }
-  }, [canEdit])
+  }, [canEdit, isRateWatcherOnly])
 
   useEffect(() => {
     void loadRates()
@@ -674,6 +684,12 @@ export default function RatesPage() {
     : pollingStatus || pollingError
       ? 'badge-red'
       : 'badge-gray'
+
+  // FK-041/II: az árfolyam néző NEM látja a belső területi árfolyamokat — a dedikált versenytárs-árfolyam
+  // beíró oldalra irányítjuk (külön szkóp; a /rates-et más szerepköröknek nem szabályozzuk).
+  if (isRateWatcherOnly) {
+    return <Navigate to="/competitor-rates" replace />
+  }
 
   return (
     <div className="space-y-1">

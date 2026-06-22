@@ -1,12 +1,43 @@
-import { Home, ArrowLeftRight, Users, TrendingUp, Wallet, FileText, Settings, Sun, Shield, ShieldAlert, LayoutDashboard, Download, Camera, Package, ClipboardCheck, Building2, MonitorCheck, Smartphone } from "lucide-react"
-import type { LucideIcon } from "lucide-react"
-import { canonicalizeRoleForAppMode } from "../utils/appModeRoles"
-import type { AppMode } from "../types/appMode"
+import {
+  Home,
+  ArrowLeftRight,
+  Users,
+  TrendingUp,
+  Wallet,
+  FileText,
+  Settings,
+  Sun,
+  Shield,
+  ShieldAlert,
+  LayoutDashboard,
+  Download,
+  Camera,
+  Package,
+  ClipboardCheck,
+  Building2,
+  MonitorCheck,
+  Smartphone,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { canonicalizeRoleForAppMode } from '../utils/appModeRoles'
+import type { AppMode } from '../types/appMode'
 
-export const PENZTAR_ROLES = ["penztar"] as const
-export const ERTEKTAR_ROLES = ["ertektar"] as const
-export const ERTEKSZALLITO_ROLES = ["ertekszallito"] as const
-export const SZERVER_ROLES = ["ugyvezeto", "foertektar", "irodavezeto", "belso_ellenor", "teruleti_vezeto", "biztonsagi_vezeto", "berszamfejto", "penzugyi_vezeto", "irodai_dolgozo", "csoportvezeto", "arfolyam_nezo"] as const
+export const PENZTAR_ROLES = ['penztar'] as const
+export const ERTEKTAR_ROLES = ['ertektar'] as const
+export const ERTEKSZALLITO_ROLES = ['ertekszallito'] as const
+export const SZERVER_ROLES = [
+  'ugyvezeto',
+  'foertektar',
+  'irodavezeto',
+  'belso_ellenor',
+  'teruleti_vezeto',
+  'biztonsagi_vezeto',
+  'berszamfejto',
+  'penzugyi_vezeto',
+  'irodai_dolgozo',
+  'csoportvezeto',
+  'arfolyam_nezo',
+] as const
 
 export interface MenuItem {
   path: string
@@ -17,7 +48,7 @@ export interface MenuItem {
   minRole?: string
 }
 
-export type FeatureFlagKey = "camera" | "yearOpeningScheduler" | "navIntegration"
+export type FeatureFlagKey = 'camera' | 'yearOpeningScheduler' | 'navIntegration'
 
 export interface MenuGroup {
   label: string
@@ -33,229 +64,318 @@ export interface MenuGroup {
 
 export const menuGroups: MenuGroup[] = [
   {
-    label: "Központ",
+    label: 'Központ',
     canonicalRoles: SZERVER_ROLES,
-    modes: ["full"],
+    modes: ['full'],
     items: [
-      { path: "/central-workstation", label: "Irányítóközpont", icon: MonitorCheck },
-      { path: "/mobile", label: "Mobil felügyelet", icon: Smartphone },
-      { path: "/central/closing-control", label: "Zárás beérkezés", icon: ClipboardCheck },
-      { path: "/central/received-data", label: "Beérkezett adatok", icon: FileText },
+      { path: '/central-workstation', label: 'Irányítóközpont', icon: MonitorCheck },
+      { path: '/mobile', label: 'Mobil felügyelet', icon: Smartphone },
+      { path: '/central/closing-control', label: 'Zárás beérkezés', icon: ClipboardCheck },
+      { path: '/central/received-data', label: 'Beérkezett adatok', icon: FileText },
     ],
   },
   {
-    label: "Főértéktár",
-    canonicalRoles: ["foertektar", "ugyvezeto"],
-    modes: ["full"],
+    label: 'Főértéktár',
+    canonicalRoles: ['foertektar', 'ugyvezeto'],
+    modes: ['full'],
     items: [
-      { path: "/foertektar", label: "Országos dashboard", icon: LayoutDashboard },
-      { path: "/mnb/reports", label: "MNB jelentések", icon: FileText },
-      { path: "/statistics/cashier-kpi", label: "Pénztáros KPI", icon: Users },
-      { path: "/cashier-stocks", label: "Országos készlet", icon: Wallet },
-      { path: "/stock-snapshot", label: "Készlet-snapshot", icon: FileText },
-      { path: "/vault-stocktake", label: "Értéktár leltár", icon: Package },
-      { path: "/bank-orders", label: "Banki rendelések", icon: Building2 },
+      { path: '/foertektar', label: 'Országos dashboard', icon: LayoutDashboard },
+      { path: '/mnb/reports', label: 'MNB jelentések', icon: FileText },
+      { path: '/statistics/cashier-kpi', label: 'Pénztáros KPI', icon: Users },
+      { path: '/cashier-stocks', label: 'Országos készlet', icon: Wallet },
+      { path: '/stock-snapshot', label: 'Készlet-snapshot', icon: FileText },
+      { path: '/vault-stocktake', label: 'Értéktár leltár', icon: Package },
+      { path: '/bank-orders', label: 'Banki rendelések', icon: Building2 },
       // Bali Henriett 2. pont (2026-05-27, Copilot #891): a főértéktárosnak is
       // elérhetőnek kell lennie (endpoint engedi FOERTEKTAR + UGYVEZETO + ADMIN-t).
-      { path: "/branches/new-cashier", label: "Új pénztár felrögzítése", icon: Building2 },
+      { path: '/branches/new-cashier', label: 'Új pénztár felrögzítése', icon: Building2 },
     ],
   },
   {
-    label: "Pénztár (Valutaváltó)",
+    label: 'Pénztár (Valutaváltó)',
     canonicalRoles: PENZTAR_ROLES,
-    modes: ["penztar"],
+    modes: ['penztar'],
     items: [
-      { path: "/cashier", label: "Pénztáros főmenü", icon: LayoutDashboard },
-      { path: "/cashdesk/day-open", label: "Napnyitás", icon: Sun },
-      { path: "/transactions/cashier", label: "Valuta vétel / eladás", icon: ArrowLeftRight },
-      { path: "/transactions/conversion", label: "Konverzió", icon: ArrowLeftRight },
-      { path: "/trades", label: "Irodaközi trade", icon: ArrowLeftRight },
-      { path: "/cashdesk", label: "Kassza / készlet", icon: Wallet },
-      { path: "/cashdesk/denominations", label: "Címletezés", icon: FileText },
+      { path: '/cashier', label: 'Pénztáros főmenü', icon: LayoutDashboard },
+      { path: '/cashdesk/day-open', label: 'Napnyitás', icon: Sun },
+      { path: '/transactions/cashier', label: 'Valuta vétel / eladás', icon: ArrowLeftRight },
+      { path: '/transactions/conversion', label: 'Konverzió', icon: ArrowLeftRight },
+      { path: '/trades', label: 'Irodaközi trade', icon: ArrowLeftRight },
+      { path: '/cashdesk', label: 'Kassza / készlet', icon: Wallet },
+      { path: '/cashdesk/denominations', label: 'Címletezés', icon: FileText },
       // EXCMD b5 FR-KC-05: zárási címletezések választó-menüje.
-      { path: "/closing/denominations-menu", label: "Címletezés – zárások", icon: FileText },
-      { path: "/customers", label: "Ügyfelek", icon: Users },
-      { path: "/transit", label: "Úton lévő csomagok", icon: ArrowLeftRight },
-      { path: "/closing/wizard", label: "Napzárás", icon: FileText },
-      { path: "/rates", label: "Árfolyamok (nézet)", icon: TrendingUp },
-      { path: "/transactions", label: "Tranzakciólista", icon: FileText },
+      { path: '/closing/denominations-menu', label: 'Címletezés – zárások', icon: FileText },
+      { path: '/customers', label: 'Ügyfelek', icon: Users },
+      { path: '/transit', label: 'Úton lévő csomagok', icon: ArrowLeftRight },
+      { path: '/closing/wizard', label: 'Napzárás', icon: FileText },
+      { path: '/rates', label: 'Árfolyamok (nézet)', icon: TrendingUp },
+      { path: '/transactions', label: 'Tranzakciólista', icon: FileText },
       // EXCMD b6b FR-EFM-01: konszolidált „Egyéb feladatok" menü (NAV/POS variáns a konfiguráció szerint).
-      { path: "/other-tasks", label: "Egyéb feladatok", icon: Settings },
+      { path: '/other-tasks', label: 'Egyéb feladatok', icon: Settings },
       // Batch2-B (Fabulya-teszt 2026-06-12): a kezelési díj konfiguráció a pénztár-kliensben
       // is elérhető legyen. Pénztárosnak READ-ONLY nézet (a PUT szerver-oldalon továbbra is
       // vezetői jog — a HandlingFeeConfigPage a szerepkör szerint tiltja a szerkesztést).
       // Explicit canonicalRoles: a route-gate (effectiveCanonicalRolesForPath UNIÓ) így a
       // pénztárost ÉS az oversight-bypass-szal belépő vezetőket is átengedi.
-      { path: "/handling-fee-config", label: "Kezelési költség beállítások", icon: Wallet, canonicalRoles: ["penztar", "foertektar", "ugyvezeto", "irodavezeto", "belso_ellenor"] },
+      {
+        path: '/handling-fee-config',
+        label: 'Kezelési költség beállítások',
+        icon: Wallet,
+        canonicalRoles: ['penztar', 'foertektar', 'ugyvezeto', 'irodavezeto', 'belso_ellenor'],
+      },
     ],
   },
   {
-    label: "Értéktár (lokál)",
+    label: 'Értéktár (lokál)',
     canonicalRoles: ERTEKTAR_ROLES,
-    modes: ["ertektar"],
+    modes: ['ertektar'],
     items: [
-      { path: "/treasury", label: "Értéktári dashboard", icon: LayoutDashboard },
+      { path: '/treasury', label: 'Értéktári dashboard', icon: LayoutDashboard },
       // FK-013 (Bali Henriett / Kasza Helga 2026-05-28): a két régi menüpont
       // (`Átadás-átvétel (pénztáraknak)` + `Átadás bank / másik értéktár`) egybevonva
       // EGY egységes menüpontba. A "Cél iroda" dropdown 3 csoportos (saját terület
       // pénztárai + társ értéktárak + 10 fix banki/speciális partner).
-      { path: "/shipments", label: "Átadás-átvétel", icon: ArrowLeftRight },
-      { path: "/trades", label: "Irodaközi trade", icon: ArrowLeftRight },
-      { path: "/transfer-documents", label: "Szállítólevelek", icon: FileText },
-      { path: "/transit", label: "Úton lévő csomagok", icon: ArrowLeftRight },
-      { path: "/inventory", label: "Értéktári készlet", icon: Wallet },
-      { path: "/cashier-stocks", label: "Pénztári készletek", icon: Wallet },
+      { path: '/shipments', label: 'Átadás-átvétel', icon: ArrowLeftRight },
+      { path: '/trades', label: 'Irodaközi trade', icon: ArrowLeftRight },
+      { path: '/transfer-documents', label: 'Szállítólevelek', icon: FileText },
+      { path: '/transit', label: 'Úton lévő csomagok', icon: ArrowLeftRight },
+      { path: '/inventory', label: 'Értéktári készlet', icon: Wallet },
+      { path: '/cashier-stocks', label: 'Pénztári készletek', icon: Wallet },
       // Bali Henriett 2. pont (2026-05-27): manuális pénztár-felrögzítés értéktáros által.
-      { path: "/branches/new-cashier", label: "Új pénztár felrögzítése", icon: Building2 },
+      { path: '/branches/new-cashier', label: 'Új pénztár felrögzítése', icon: Building2 },
       // FK-ÉRTÉKTÁR (V285): új személyes értéktári munkatárs felvétele (név + jelszó).
-      { path: "/vault-workers/new", label: "Új munkatárs felvétele", icon: Users },
-      { path: "/daybook", label: "Naplókönyv", icon: FileText },
-      { path: "/evening-closing", label: "Napi zárás", icon: FileText },
-      { path: "/closing/monthly", label: "Havi zárás", icon: FileText },
-      { path: "/customers", label: "Ügyfelek", icon: Users },
-      { path: "/rates", label: "Árfolyamok (nézet)", icon: TrendingUp },
+      { path: '/vault-workers/new', label: 'Új munkatárs felvétele', icon: Users },
+      { path: '/daybook', label: 'Naplókönyv', icon: FileText },
+      { path: '/evening-closing', label: 'Napi zárás', icon: FileText },
+      { path: '/closing/monthly', label: 'Havi zárás', icon: FileText },
+      { path: '/customers', label: 'Ügyfelek', icon: Users },
+      { path: '/rates', label: 'Árfolyamok (nézet)', icon: TrendingUp },
     ],
   },
   {
-    label: "Értékszállító",
+    label: 'Értékszállító',
     canonicalRoles: ERTEKSZALLITO_ROLES,
-    modes: ["ertekszallito"],
+    modes: ['ertekszallito'],
     items: [
-      { path: "/transfers", label: "Átadás-átvétel aláírás", icon: ArrowLeftRight },
-      { path: "/transfer-documents", label: "Szállítólevelek", icon: FileText },
-      { path: "/transit", label: "Úton lévő csomagok", icon: ArrowLeftRight },
+      { path: '/transfers', label: 'Átadás-átvétel aláírás', icon: ArrowLeftRight },
+      { path: '/transfer-documents', label: 'Szállítólevelek', icon: FileText },
+      { path: '/transit', label: 'Úton lévő csomagok', icon: ArrowLeftRight },
     ],
   },
   {
-    label: "Árfolyamok (nézet)",
-    canonicalRoles: ["foertektar", "arfolyam_nezo", "ugyvezeto"],
-    modes: ["full"],
+    // FK-041/II: az `arfolyam_nezo` (Árfolyam néző) NEM látja a belső területi árfolyamokat — neki
+    // dedikált, szűk szkópja van (lentebb: „Versenytárs-árfolyam"). A nézetet a főértéktár/ügyvezető látja.
+    label: 'Árfolyamok (nézet)',
+    canonicalRoles: ['foertektar', 'ugyvezeto'],
+    modes: ['full'],
     items: [
-      { path: "/rates", label: "Aktuális árfolyamok", icon: TrendingUp },
-      { path: "/rates/history", label: "Árfolyam történet", icon: FileText },
-      { path: "/rates/categories", label: "Árfolyam kategóriák", icon: FileText, canonicalRoles: ["foertektar", "ugyvezeto"] },
+      { path: '/rates', label: 'Aktuális árfolyamok', icon: TrendingUp },
+      { path: '/rates/history', label: 'Árfolyam történet', icon: FileText },
+      {
+        path: '/rates/categories',
+        label: 'Árfolyam kategóriák',
+        icon: FileText,
+        canonicalRoles: ['foertektar', 'ugyvezeto'],
+      },
     ],
+  },
+  {
+    // FK-041/II: az árfolyam néző dedikált (mobil/PWA-barát) versenytárs-árfolyam beíró szkópja — csak a
+    // saját területe (régió) versenyhelyeihez. A bevitt adat a főértéktár konkurencia-adatlapján jelenik meg.
+    label: 'Versenytárs-árfolyam',
+    canonicalRoles: ['arfolyam_nezo', 'foertektar', 'ugyvezeto'],
+    modes: ['full'],
+    items: [{ path: '/competitor-rates', label: 'Versenytárs-árfolyam bevitel', icon: Building2 }],
   },
   {
     // #ERR-RATE-INTEG-01: a rate-maker (Árfolyamkészítő) módnak eddig NEM volt menücsoportja,
     // ezért a sidebar üresen jelent meg. A főlap (/rates/main) saját navigációval működik, de
     // az üres sidebar UX-hiba volt — ez a csoport adja a dedikált sidebar-navigációt rate-maker módban.
-    label: "Árfolyamkészítés",
-    canonicalRoles: ["foertektar", "ugyvezeto"],
-    modes: ["rate-maker"],
+    label: 'Árfolyamkészítés',
+    canonicalRoles: ['foertektar', 'ugyvezeto'],
+    modes: ['rate-maker'],
     items: [
-      { path: "/rates/main", label: "Főlap (0-s elszámoló)", icon: TrendingUp },
-      { path: "/rates/creation", label: "Csoport árfolyamlapok", icon: FileText },
-      { path: "/rates/history", label: "Árfolyam történet", icon: FileText },
+      { path: '/rates/main', label: 'Főlap (0-s elszámoló)', icon: TrendingUp },
+      { path: '/rates/creation', label: 'Csoport árfolyamlapok', icon: FileText },
+      { path: '/rates/history', label: 'Árfolyam történet', icon: FileText },
     ],
   },
   {
-    label: "Riportok",
-    canonicalRoles: ["foertektar", "ugyvezeto", "irodavezeto", "belso_ellenor", "teruleti_vezeto", "penzugyi_vezeto"],
-    modes: ["full"],
+    label: 'Riportok',
+    canonicalRoles: [
+      'foertektar',
+      'ugyvezeto',
+      'irodavezeto',
+      'belso_ellenor',
+      'teruleti_vezeto',
+      'penzugyi_vezeto',
+    ],
+    modes: ['full'],
     items: [
-      { path: "/reports", label: "Riportok", icon: FileText },
-      { path: "/reports/extended", label: "Kiterjesztett riportok", icon: FileText },
-      { path: "/reports/mnb", label: "MNB riportok", icon: FileText },
-      { path: "/reports/handling-fee-decade", label: "Kezelési díj — dekád", icon: FileText },
-      { path: "/reports/bank-transactions", label: "Banki tranzakciók", icon: FileText },
-      { path: "/reports/cashier-turnover", label: "Pénztáros forgalom", icon: FileText },
-      { path: "/reports/recurring-customers", label: "Visszatérő ügyfél (AML)", icon: FileText },
-      { path: "/reports/average-rate", label: "Átlag árfolyam", icon: TrendingUp },
-      { path: "/reports/daily-journal", label: "Napkönyv (PDF)", icon: FileText },
-      { path: "/reports/central", label: "Központi riportok (CSV)", icon: Building2 },
-      { path: "/reports/nav", label: "NAV adatszolgáltatás", icon: ShieldAlert },
-      { path: "/daily-turnover", label: "Napi forgalom", icon: TrendingUp },
-      { path: "/profit", label: "Nyereség (haszon)", icon: TrendingUp },
-      { path: "/stock-snapshot", label: "Készlet pillanatképek", icon: FileText },
-      { path: "/booking-export", label: "Könyvelés export", icon: Download },
+      { path: '/reports', label: 'Riportok', icon: FileText },
+      { path: '/reports/extended', label: 'Kiterjesztett riportok', icon: FileText },
+      { path: '/reports/mnb', label: 'MNB riportok', icon: FileText },
+      { path: '/reports/handling-fee-decade', label: 'Kezelési díj — dekád', icon: FileText },
+      { path: '/reports/bank-transactions', label: 'Banki tranzakciók', icon: FileText },
+      { path: '/reports/cashier-turnover', label: 'Pénztáros forgalom', icon: FileText },
+      { path: '/reports/recurring-customers', label: 'Visszatérő ügyfél (AML)', icon: FileText },
+      { path: '/reports/average-rate', label: 'Átlag árfolyam', icon: TrendingUp },
+      { path: '/reports/daily-journal', label: 'Napkönyv (PDF)', icon: FileText },
+      { path: '/reports/central', label: 'Központi riportok (CSV)', icon: Building2 },
+      { path: '/reports/nav', label: 'NAV adatszolgáltatás', icon: ShieldAlert },
+      { path: '/daily-turnover', label: 'Napi forgalom', icon: TrendingUp },
+      { path: '/profit', label: 'Nyereség (haszon)', icon: TrendingUp },
+      { path: '/stock-snapshot', label: 'Készlet pillanatképek', icon: FileText },
+      { path: '/booking-export', label: 'Könyvelés export', icon: Download },
     ],
   },
   {
-    label: "AML / Compliance",
-    canonicalRoles: ["belso_ellenor", "biztonsagi_vezeto", "ugyvezeto"],
-    modes: ["full"],
+    label: 'AML / Compliance',
+    canonicalRoles: ['belso_ellenor', 'biztonsagi_vezeto', 'ugyvezeto'],
+    modes: ['full'],
     items: [
-      { path: "/police-requests", label: "Rendőrségi megkeresések", icon: Shield },
-      { path: "/audit-log", label: "Audit napló", icon: Shield },
-      { path: "/admin/error-monitor", label: "Hiba-monitor", icon: ShieldAlert, canonicalRoles: ["ugyvezeto", "belso_ellenor", "biztonsagi_vezeto"] },
-      { path: "/admin/audit-diagnostics", label: "Audit-diagnosztika (V234)", icon: ShieldAlert, canonicalRoles: ["ugyvezeto", "belso_ellenor", "biztonsagi_vezeto"] },
-      { path: "/sanction", label: "Szankciós lista (AML)", icon: ShieldAlert },
-      { path: "/seal-tracking", label: "Plomba nyilvántartás", icon: Shield },
-      { path: "/compliance", label: "Compliance Dashboard", icon: ClipboardCheck },
+      { path: '/police-requests', label: 'Rendőrségi megkeresések', icon: Shield },
+      { path: '/audit-log', label: 'Audit napló', icon: Shield },
+      {
+        path: '/admin/error-monitor',
+        label: 'Hiba-monitor',
+        icon: ShieldAlert,
+        canonicalRoles: ['ugyvezeto', 'belso_ellenor', 'biztonsagi_vezeto'],
+      },
+      {
+        path: '/admin/audit-diagnostics',
+        label: 'Audit-diagnosztika (V234)',
+        icon: ShieldAlert,
+        canonicalRoles: ['ugyvezeto', 'belso_ellenor', 'biztonsagi_vezeto'],
+      },
+      { path: '/sanction', label: 'Szankciós lista (AML)', icon: ShieldAlert },
+      { path: '/seal-tracking', label: 'Plomba nyilvántartás', icon: Shield },
+      { path: '/compliance', label: 'Compliance Dashboard', icon: ClipboardCheck },
     ],
   },
   {
-    label: "Ügyfelek",
-    canonicalRoles: ["ugyvezeto", "foertektar", "irodavezeto", "belso_ellenor", "teruleti_vezeto", "biztonsagi_vezeto", "berszamfejto", "penzugyi_vezeto", "irodai_dolgozo"],
-    modes: ["full"],
+    label: 'Ügyfelek',
+    canonicalRoles: [
+      'ugyvezeto',
+      'foertektar',
+      'irodavezeto',
+      'belso_ellenor',
+      'teruleti_vezeto',
+      'biztonsagi_vezeto',
+      'berszamfejto',
+      'penzugyi_vezeto',
+      'irodai_dolgozo',
+    ],
+    modes: ['full'],
     items: [
-      { path: "/customers", label: "Ügyfélkezelés", icon: Users },
-      { path: "/representatives", label: "Meghatalmazottak", icon: Users },
+      { path: '/customers', label: 'Ügyfélkezelés', icon: Users },
+      { path: '/representatives', label: 'Meghatalmazottak', icon: Users },
     ],
   },
   {
-    label: "Adminisztráció",
-    canonicalRoles: ["ugyvezeto", "irodavezeto", "irodai_dolgozo"],
-    modes: ["full"],
+    label: 'Adminisztráció',
+    canonicalRoles: ['ugyvezeto', 'irodavezeto', 'irodai_dolgozo'],
+    modes: ['full'],
     items: [
       // FK-020: Pénztár Törzs Adatbázis lista (olvasás: foertektar/helyettes, belso_ellenor, ugyvezeto).
-      { path: "/admin/branches", label: "Pénztár Törzs Adatbázis", icon: Building2, canonicalRoles: ["foertektar", "belso_ellenor", "ugyvezeto"] },
+      {
+        path: '/admin/branches',
+        label: 'Pénztár Törzs Adatbázis',
+        icon: Building2,
+        canonicalRoles: ['foertektar', 'belso_ellenor', 'ugyvezeto'],
+      },
       // FK-026: Dolgozói Törzs Adatbázis read-only lista (ugyanazon olvasó szerepkörök).
-      { path: "/admin/workers-database", label: "Dolgozói Törzs Adatbázis", icon: Users, canonicalRoles: ["foertektar", "belso_ellenor", "ugyvezeto"] },
-      { path: "/workers", label: "Dolgozók", icon: Users },
+      {
+        path: '/admin/workers-database',
+        label: 'Dolgozói Törzs Adatbázis',
+        icon: Users,
+        canonicalRoles: ['foertektar', 'belso_ellenor', 'ugyvezeto'],
+      },
+      { path: '/workers', label: 'Dolgozók', icon: Users },
       // #954 four-eyes előfeltétel: supervisor sztornó-jóváhagyó lista (backend
       // @PreAuthorize SUPERVISOR/MANAGER/ADMIN a hiteles enforcement).
-      { path: "/stornos/approvals", label: "Sztornó jóváhagyások", icon: ClipboardCheck, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
-      { path: "/employees", label: "HR (munkavállalók)", icon: Users },
-      { path: "/attendance", label: "Munkaidő nyilvántartás", icon: Users },
-      { path: "/licenses", label: "Engedélyek", icon: Shield },
-      { path: "/settings", label: "Rendszerbeállítások", icon: Settings, canonicalRoles: ["ugyvezeto"] },
-      { path: "/settings/permission-matrix", label: "Jogosultság mátrix", icon: Shield, canonicalRoles: ["ugyvezeto"] },
-      { path: "/scheduler", label: "Ütemező", icon: FileText, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
-      { path: "/email-settings", label: "E-mail beállítások", icon: Settings, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
-      { path: "/handling-fee-config", label: "Kezelési költség beállítások", icon: Wallet, canonicalRoles: ["ugyvezeto", "irodavezeto", "belso_ellenor"] },
-      { path: "/packaging", label: "Göngyöleg nyilvántartás", icon: Package, canonicalRoles: ["ugyvezeto", "irodavezeto"] },
+      {
+        path: '/stornos/approvals',
+        label: 'Sztornó jóváhagyások',
+        icon: ClipboardCheck,
+        canonicalRoles: ['ugyvezeto', 'irodavezeto'],
+      },
+      { path: '/employees', label: 'HR (munkavállalók)', icon: Users },
+      { path: '/attendance', label: 'Munkaidő nyilvántartás', icon: Users },
+      { path: '/licenses', label: 'Engedélyek', icon: Shield },
+      {
+        path: '/settings',
+        label: 'Rendszerbeállítások',
+        icon: Settings,
+        canonicalRoles: ['ugyvezeto'],
+      },
+      {
+        path: '/settings/permission-matrix',
+        label: 'Jogosultság mátrix',
+        icon: Shield,
+        canonicalRoles: ['ugyvezeto'],
+      },
+      {
+        path: '/scheduler',
+        label: 'Ütemező',
+        icon: FileText,
+        canonicalRoles: ['ugyvezeto', 'irodavezeto'],
+      },
+      {
+        path: '/email-settings',
+        label: 'E-mail beállítások',
+        icon: Settings,
+        canonicalRoles: ['ugyvezeto', 'irodavezeto'],
+      },
+      {
+        path: '/handling-fee-config',
+        label: 'Kezelési költség beállítások',
+        icon: Wallet,
+        canonicalRoles: ['ugyvezeto', 'irodavezeto', 'belso_ellenor'],
+      },
+      {
+        path: '/packaging',
+        label: 'Göngyöleg nyilvántartás',
+        icon: Package,
+        canonicalRoles: ['ugyvezeto', 'irodavezeto'],
+      },
     ],
   },
   {
-    label: "HR / Bérszámfejtés",
-    canonicalRoles: ["berszamfejto", "ugyvezeto"],
-    modes: ["full"],
+    label: 'HR / Bérszámfejtés',
+    canonicalRoles: ['berszamfejto', 'ugyvezeto'],
+    modes: ['full'],
+    items: [{ path: '/employees', label: 'Munkavállalók', icon: Users }],
+  },
+  {
+    label: 'Kamera',
+    canonicalRoles: ['biztonsagi_vezeto', 'ugyvezeto', 'foertektar'],
+    modes: ['full'],
+    featureFlagKey: 'camera',
     items: [
-      { path: "/employees", label: "Munkavállalók", icon: Users },
+      { path: '/camera/live', label: 'Élő kép', icon: Camera },
+      { path: '/camera/playback', label: 'Visszajátszás', icon: Camera },
+      { path: '/camera/export', label: 'Export & Custody', icon: Download },
+      { path: '/camera/status', label: 'Állapot', icon: Camera },
     ],
   },
   {
-    label: "Kamera",
-    canonicalRoles: ["biztonsagi_vezeto", "ugyvezeto", "foertektar"],
-    modes: ["full"],
-    featureFlagKey: "camera",
-    items: [
-      { path: "/camera/live", label: "Élő kép", icon: Camera },
-      { path: "/camera/playback", label: "Visszajátszás", icon: Camera },
-      { path: "/camera/export", label: "Export & Custody", icon: Download },
-      { path: "/camera/status", label: "Állapot", icon: Camera },
-    ],
-  },
-  {
-    label: "Főoldal",
-    modes: ["full"],
-    items: [
-      { path: "/dashboard", label: "Irányítópult", icon: Home },
-    ],
+    label: 'Főoldal',
+    modes: ['full'],
+    items: [{ path: '/dashboard', label: 'Irányítópult', icon: Home }],
   },
 ]
 
-export function getDefaultRouteForRoles(roles: readonly string[] | undefined, activeRole: string | null | undefined): string {
+export function getDefaultRouteForRoles(
+  roles: readonly string[] | undefined,
+  activeRole: string | null | undefined,
+): string {
   const all = new Set(
-    [activeRole, ...(roles ?? [])]
-      .map((role) => canonicalizeRoleForAppMode(role))
-      .filter(Boolean),
+    [activeRole, ...(roles ?? [])].map((role) => canonicalizeRoleForAppMode(role)).filter(Boolean),
   )
-  if (all.has("penztar")) return "/cashier"
+  if (all.has('penztar')) return '/cashier'
   // ertekszallito role: az atadas-atveteli bizonylat alairasanak UI-ja
-  if (all.has("ertekszallito")) return "/transfers"
-  if (all.has("ertektar")) return "/treasury"
-  return "/dashboard"
+  if (all.has('ertekszallito')) return '/transfers'
+  if (all.has('ertektar')) return '/treasury'
+  return '/dashboard'
 }

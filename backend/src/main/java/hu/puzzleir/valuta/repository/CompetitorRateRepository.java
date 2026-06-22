@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -90,4 +91,25 @@ public interface CompetitorRateRepository extends JpaRepository<CompetitorRate, 
     List<CompetitorRate> findLatestRatesByCurrencyIdAndCompanyId(
             @Param("currencyId") Long currencyId,
             @Param("companyId") UUID companyId);
+
+    /**
+     * FK-041/II upsert-kulcs: egy versenyhely adott valutára MAI (rateDate) legutóbb rögzített sora.
+     * A táblán nincs unique constraint (competitor, currency, date) szinten, ezért a service-szintű
+     * upsert a legutóbbit (createdAt DESC) frissíti, hogy ne keletkezzen duplikált mai sor.
+     * A hívó hatókör-ellenőrzése (régió + companyId) a service-ben történik, mielőtt ide hív.
+     */
+    Optional<CompetitorRate> findFirstByCompetitorIdAndCurrencyIdAndRateDateOrderByCreatedAtDesc(
+            UUID competitorId, Long currencyId, LocalDate rateDate);
+
+    /**
+     * FK-041/II: egy versenyhely MAI bevitt versenytárs-árfolyamai (előtöltéshez). A currency JOIN FETCH
+     * az OSIV-off miatt; valutánként a legfrissebb (createdAt DESC) a mérvadó (a service dedup-ol).
+     */
+    @Query("SELECT cr FROM CompetitorRate cr " +
+           "JOIN FETCH cr.currency " +
+           "WHERE cr.competitor.id = :competitorId AND cr.rateDate = :rateDate " +
+           "ORDER BY cr.currency.displayOrder, cr.createdAt DESC")
+    List<CompetitorRate> findTodayByCompetitor(
+            @Param("competitorId") UUID competitorId,
+            @Param("rateDate") LocalDate rateDate);
 }

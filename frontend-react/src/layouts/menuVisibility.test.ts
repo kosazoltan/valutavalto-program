@@ -14,8 +14,7 @@ import {
 
 const groupByLabel = (label: string): MenuGroup =>
   menuGroups.find((g) => g.label === label) as MenuGroup
-const itemByPath = (group: MenuGroup, path: string) =>
-  group.items.find((i) => i.path === path)!
+const itemByPath = (group: MenuGroup, path: string) => group.items.find((i) => i.path === path)!
 
 /** Kontextus-gyár: a megadott kanonikus szerepkörökkel rendelkező user. */
 function ctxFor(roles: string[], appMode: MenuVisibilityContext['appMode']): MenuVisibilityContext {
@@ -34,9 +33,19 @@ describe('menuVisibility — konzisztens szigorítás (full mód)', () => {
     expect(isMenuGroupVisible(aml, ctxFor(['arfolyam_nezo'], 'full'))).toBe(false)
   })
 
-  it('arfolyam_nezo (full): a saját "Árfolyamok (nézet)" csoportját látja', () => {
+  it('FK-041/II: arfolyam_nezo (full): NEM látja a belső "Árfolyamok (nézet)" csoportot', () => {
     const rates = groupByLabel('Árfolyamok (nézet)')
-    expect(isMenuGroupVisible(rates, ctxFor(['arfolyam_nezo'], 'full'))).toBe(true)
+    expect(isMenuGroupVisible(rates, ctxFor(['arfolyam_nezo'], 'full'))).toBe(false)
+  })
+
+  it('FK-041/II: arfolyam_nezo (full): a saját "Versenytárs-árfolyam" beíró csoportját látja', () => {
+    const competitor = groupByLabel('Versenytárs-árfolyam')
+    expect(isMenuGroupVisible(competitor, ctxFor(['arfolyam_nezo'], 'full'))).toBe(true)
+  })
+
+  it('FK-041/II: foertektar (full): a belső "Árfolyamok (nézet)" csoportot továbbra is látja', () => {
+    const rates = groupByLabel('Árfolyamok (nézet)')
+    expect(isMenuGroupVisible(rates, ctxFor(['foertektar'], 'full'))).toBe(true)
   })
 
   it('foertektar (full): látja az Adminisztráció-csoportot a /admin/branches item miatt, de a /workers itemet NEM', () => {
@@ -50,7 +59,9 @@ describe('menuVisibility — konzisztens szigorítás (full mód)', () => {
 
   it('ugyvezeto (full): az Adminisztráció /workers itemét látja (öröklött csoport-roles)', () => {
     const admin = groupByLabel('Adminisztráció')
-    expect(isMenuItemVisible(itemByPath(admin, '/workers'), admin, ctxFor(['ugyvezeto'], 'full'))).toBe(true)
+    expect(
+      isMenuItemVisible(itemByPath(admin, '/workers'), admin, ctxFor(['ugyvezeto'], 'full')),
+    ).toBe(true)
   })
 
   it('penztar (full): semmilyen felügyeleti csoportot nem lát', () => {
@@ -87,7 +98,11 @@ describe('ELLENŐRZÉS — pénztár/értéktár (lokál) modul menüi megfelel�
   // Ez a blokk garantálja, hogy a lokál módban az operatív szerepkör a SAJÁT teljes menüjét látja,
   // és hogy egyetlen lokál operatív route sincs a central RoleGate-tel szűkített admin-route-ok közt.
 
-  const LOCAL_CASES: Array<{ mode: MenuVisibilityContext['appMode']; role: string; groupLabel: string }> = [
+  const LOCAL_CASES: Array<{
+    mode: MenuVisibilityContext['appMode']
+    role: string
+    groupLabel: string
+  }> = [
     { mode: 'penztar', role: 'penztar', groupLabel: 'Pénztár (Valutaváltó)' },
     { mode: 'ertektar', role: 'ertektar', groupLabel: 'Értéktár (lokál)' },
     { mode: 'ertekszallito', role: 'ertekszallito', groupLabel: 'Értékszállító' },
@@ -113,10 +128,21 @@ describe('ELLENŐRZÉS — pénztár/értéktár (lokál) modul menüi megfelel�
     // (effectiveCanonicalRolesForPath) a pénztárost is átengedi (read-only nézet, a PUT
     // szerver-oldalon vezetői jog marad).
     const gatedAdminPaths = new Set([
-      '/employees', '/attendance', '/licenses', '/settings',
-      '/settings/permission-matrix', '/scheduler', '/email-settings',
-      '/audit-log', '/admin/error-monitor', '/admin/audit-diagnostics',
-      '/sanction', '/compliance', '/police-requests', '/seal-tracking', '/admin/branches',
+      '/employees',
+      '/attendance',
+      '/licenses',
+      '/settings',
+      '/settings/permission-matrix',
+      '/scheduler',
+      '/email-settings',
+      '/audit-log',
+      '/admin/error-monitor',
+      '/admin/audit-diagnostics',
+      '/sanction',
+      '/compliance',
+      '/police-requests',
+      '/seal-tracking',
+      '/admin/branches',
     ])
     const localModes = new Set(['penztar', 'ertektar', 'ertekszallito', 'rate-maker'])
     const localItemPaths = new Set<string>()
@@ -132,13 +158,17 @@ describe('ELLENŐRZÉS — pénztár/értéktár (lokál) modul menüi megfelel�
 
 describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-hez', () => {
   it('/admin/branches → item-szintű [foertektar, belso_ellenor, ugyvezeto]', () => {
-    expect([...(effectiveCanonicalRolesForPath(menuGroups, '/admin/branches') ?? [])].sort())
-      .toEqual(['belso_ellenor', 'foertektar', 'ugyvezeto'])
+    expect(
+      [...(effectiveCanonicalRolesForPath(menuGroups, '/admin/branches') ?? [])].sort(),
+    ).toEqual(['belso_ellenor', 'foertektar', 'ugyvezeto'])
   })
 
   it('/workers → örökölt Adminisztráció-csoport [ugyvezeto, irodavezeto, irodai_dolgozo]', () => {
-    expect([...(effectiveCanonicalRolesForPath(menuGroups, '/workers') ?? [])].sort())
-      .toEqual(['irodai_dolgozo', 'irodavezeto', 'ugyvezeto'])
+    expect([...(effectiveCanonicalRolesForPath(menuGroups, '/workers') ?? [])].sort()).toEqual([
+      'irodai_dolgozo',
+      'irodavezeto',
+      'ugyvezeto',
+    ])
   })
 
   it('/settings → item-szintű [ugyvezeto]', () => {
@@ -154,10 +184,22 @@ describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-h
   // (nem undefined, nem üres) szerepkör-megszorítása — különben a route csendben védtelen lenne.
   it('minden MenuRoleGate-tel védett admin-route-nak van nem-üres menü-szerepköre', () => {
     const gatedPaths = [
-      '/employees', '/attendance', '/licenses', '/settings',
-      '/settings/permission-matrix', '/scheduler', '/email-settings', '/handling-fee-config',
-      '/audit-log', '/admin/error-monitor', '/admin/audit-diagnostics',
-      '/sanction', '/compliance', '/police-requests', '/seal-tracking', '/admin/branches',
+      '/employees',
+      '/attendance',
+      '/licenses',
+      '/settings',
+      '/settings/permission-matrix',
+      '/scheduler',
+      '/email-settings',
+      '/handling-fee-config',
+      '/audit-log',
+      '/admin/error-monitor',
+      '/admin/audit-diagnostics',
+      '/sanction',
+      '/compliance',
+      '/police-requests',
+      '/seal-tracking',
+      '/admin/branches',
     ]
     for (const path of gatedPaths) {
       const roles = effectiveCanonicalRolesForPath(menuGroups, path)
