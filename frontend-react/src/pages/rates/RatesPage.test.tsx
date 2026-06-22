@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   pollingUpdateSource: vi.fn(),
   bankRates: vi.fn(),
   competitorRates: vi.fn(),
+  territoryWorkgroupRates: vi.fn(),
   roundingRulesList: vi.fn(),
   roundingRuleGet: vi.fn(),
   roundingRuleRound: vi.fn(),
@@ -64,6 +65,7 @@ vi.mock('../../services/api/index', () => ({
   rateCreationApi: {
     getBankRates: mocks.bankRates,
     getCompetitorRates: mocks.competitorRates,
+    getTerritoryWorkgroupRates: mocks.territoryWorkgroupRates,
   },
   roundingRuleApi: {
     list: mocks.roundingRulesList,
@@ -96,8 +98,8 @@ const mockRates = [
     id: 1,
     currencyCode: 'EUR',
     currencyName: 'Euró',
-    baseBuyRate: 391.50,
-    baseSellRate: 398.50,
+    baseBuyRate: 391.5,
+    baseSellRate: 398.5,
     officialRate: 391.25,
     validTime: '10:30',
     currencyId: 1,
@@ -107,8 +109,8 @@ const mockRates = [
     id: 2,
     currencyCode: 'USD',
     currencyName: 'US Dollár',
-    baseBuyRate: 358.20,
-    baseSellRate: 365.80,
+    baseBuyRate: 358.2,
+    baseSellRate: 365.8,
     officialRate: 358.15,
     validTime: '10:30',
     currencyId: 2,
@@ -189,12 +191,15 @@ describe('RatesPage', () => {
     })
     mocks.pollingTrigger.mockResolvedValue({ message: 'MNB árfolyam polling elindítva' })
     mocks.pollingApplyMargins.mockResolvedValue({ message: 'Margin sikeresen alkalmazva' })
-    mocks.pollingUpdateSource.mockImplementation((id: number, data: { active?: boolean; pollIntervalMinutes?: number }) => Promise.resolve({
-      id,
-      name: id === 1 ? 'MNB' : 'ECB',
-      active: data.active ?? true,
-      pollIntervalMinutes: data.pollIntervalMinutes ?? 60,
-    }))
+    mocks.pollingUpdateSource.mockImplementation(
+      (id: number, data: { active?: boolean; pollIntervalMinutes?: number }) =>
+        Promise.resolve({
+          id,
+          name: id === 1 ? 'MNB' : 'ECB',
+          active: data.active ?? true,
+          pollIntervalMinutes: data.pollIntervalMinutes ?? 60,
+        }),
+    )
     mocks.bankRates.mockResolvedValue([
       {
         id: 'bank-rate-1',
@@ -228,6 +233,9 @@ describe('RatesPage', () => {
         source: 'WEBSITE',
       },
     ])
+    // FK-041: default üres → a read-only nézet a fallback (sima) táblát mutatja, hacsak a teszt nem
+    // ad meg munkacsoport-variánsokat.
+    mocks.territoryWorkgroupRates.mockResolvedValue([])
     mocks.roundingRulesList.mockResolvedValue([
       {
         id: 1,
@@ -301,7 +309,7 @@ describe('RatesPage', () => {
 
   it('betöltés közben loading state mutatódik', () => {
     mocks.exchangeRateApiList.mockImplementation(
-      () => new Promise(resolve => setTimeout(() => resolve(mockRates), 100)),
+      () => new Promise((resolve) => setTimeout(() => resolve(mockRates), 100)),
     )
     render(<RatesPage />)
     // Loading indikátor megjelenhet, de gyorsan eltűnik
@@ -439,8 +447,6 @@ describe('RatesPage', () => {
     })
   })
 
-
-
   it('frissítés gomb újra betölti az árfolyamokat', async () => {
     render(<RatesPage />)
     await waitFor(() => {
@@ -465,8 +471,6 @@ describe('RatesPage', () => {
     })
   })
 
-
-
   it('utolsó frissítés ideje megjelenítésre kerül', async () => {
     render(<RatesPage />)
     await waitFor(() => {
@@ -489,7 +493,14 @@ describe('RatesPage', () => {
     mocks.currencyApiList.mockResolvedValue([
       { id: 10, code: 'HUF', name: 'Magyar forint', decimals: 0, displayOrder: 0, active: true },
       { id: 1, code: 'EUR', name: 'Euró', decimals: 2, displayOrder: 8, active: true },
-      { id: 3, code: 'BAM', name: 'Bosnyák konvertibilis márka', decimals: 2, displayOrder: 2, active: true },
+      {
+        id: 3,
+        code: 'BAM',
+        name: 'Bosnyák konvertibilis márka',
+        decimals: 2,
+        displayOrder: 2,
+        active: true,
+      },
     ])
     // Csak az EUR-nak van árfolyama.
     mocks.exchangeRateApiList.mockResolvedValue([mockRates[0]])
@@ -555,5 +566,123 @@ describe('RatesPage', () => {
       expect(mocks.exchangeRateApiImportRateFile).toHaveBeenCalledWith(file)
       expect(within(panel).getByText('2 árfolyam importálva.')).toBeInTheDocument()
     })
+  })
+
+  it('FK-041: read-only (értéktár) nézet — tiszta árfolyam-tábla, metrika-kártyák/kalkulátor nélkül', async () => {
+    // ertektar mód -> canEdit=false: a szerkesztő-eszközök NEM jelennek meg, csak a tiszta tábla.
+    mocks.useAppMode.mockReturnValue({ mode: 'ertektar' })
+    render(<RatesPage />)
+
+    // A tiszta read-only árfolyam-táblázat megjelenik, az árfolyamokkal.
+    const table = await screen.findByTestId('rates-readonly-table')
+    expect(within(table).getByText('EUR')).toBeInTheDocument()
+    expect(within(table).getByText('USD')).toBeInTheDocument()
+    expect(within(table).getAllByText(/391[.,]50/).length).toBeGreaterThan(0)
+    expect(within(table).getAllByText(/398[.,]50/).length).toBeGreaterThan(0)
+    expect(within(table).getAllByText(/358[.,]20/).length).toBeGreaterThan(0)
+
+    // Az editor-only metrika-kártyák, kalkulátor és vezérlés NEM jelennek meg.
+    expect(screen.queryByText('Polling státusz')).not.toBeInTheDocument()
+    expect(screen.queryByText('ECB snapshot')).not.toBeInTheDocument()
+    expect(screen.queryByText('Piaci összehasonlítás')).not.toBeInTheDocument()
+    expect(screen.queryByText('Árfolyam kalkulátor')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('rate-polling-control-panel')).not.toBeInTheDocument()
+    expect(screen.queryAllByTitle('Szerkesztés')).toHaveLength(0)
+
+    // A read-only nézet a területi munkacsoport-árfolyamokat kéri (itt üres → fallback tábla).
+    expect(mocks.territoryWorkgroupRates).toHaveBeenCalled()
+    // Read-only módban az editor-only háttér-hívások NEM futnak (lean betöltés).
+    expect(mocks.pollingStatus).not.toHaveBeenCalled()
+    expect(mocks.bankRates).not.toHaveBeenCalled()
+    expect(mocks.calculatorMatrix).not.toHaveBeenCalled()
+    expect(mocks.roundingRulesList).not.toHaveBeenCalled()
+  })
+
+  it('FK-041: read-only TERÜLETI nézet — munkacsoportonkénti variánsok a pénztárnevekkel', async () => {
+    mocks.useAppMode.mockReturnValue({ mode: 'ertektar' })
+    mocks.territoryWorkgroupRates.mockResolvedValue([
+      {
+        workgroupId: 'wg-belvaros',
+        workgroupCode: 'WG01',
+        workgroupName: 'Belváros',
+        tileColor: 'blue',
+        branchNames: ['Tisza Sarok', 'Árkád'],
+        limit1Boundary: 50000,
+        limit2Boundary: 300000,
+        limit3Boundary: 1000000,
+        currencies: [
+          {
+            currencyId: 1,
+            currencyCode: 'EUR',
+            currencyName: 'Euró',
+            hasRate: true,
+            baseBuyRate: 343.0,
+            baseSellRate: 362.99,
+            officialRate: 352.68,
+            limit1Amount: 50000,
+            limit1BuyRate: 343.5,
+            limit1SellRate: 362.49,
+            limit2Amount: null,
+            limit2BuyRate: null,
+            limit2SellRate: null,
+            limit3Amount: null,
+            limit3BuyRate: null,
+            limit3SellRate: null,
+            validTime: '15:12',
+          },
+        ],
+      },
+      {
+        workgroupId: 'wg-plazak',
+        workgroupCode: 'WG02',
+        workgroupName: 'Plázák',
+        tileColor: 'amber',
+        branchNames: ['Tesco', 'Móra'],
+        limit1Boundary: 50000,
+        limit2Boundary: 300000,
+        limit3Boundary: 1000000,
+        currencies: [
+          {
+            currencyId: 1,
+            currencyCode: 'EUR',
+            currencyName: 'Euró',
+            hasRate: true,
+            baseBuyRate: 341.5,
+            baseSellRate: 364.5,
+            officialRate: 352.68,
+            limit1Amount: null,
+            limit1BuyRate: null,
+            limit1SellRate: null,
+            limit2Amount: null,
+            limit2BuyRate: null,
+            limit2SellRate: null,
+            limit3Amount: null,
+            limit3BuyRate: null,
+            limit3SellRate: null,
+            validTime: '15:12',
+          },
+        ],
+      },
+    ])
+    render(<RatesPage />)
+
+    const table = await screen.findByTestId('rates-territory-table')
+    expect(mocks.territoryWorkgroupRates).toHaveBeenCalled()
+    // Munkacsoport-variánsok a címsorban + a hozzájuk tartozó pénztárnevek.
+    expect(within(table).getByText('Belváros')).toBeInTheDocument()
+    expect(within(table).getByText('Plázák')).toBeInTheDocument()
+    expect(within(table).getByText(/Tisza Sarok/)).toBeInTheDocument()
+    expect(within(table).getByText(/Tesco/)).toBeInTheDocument()
+    // A két variáns ELTÉRŐ alap árfolyama egy sorban (EUR).
+    expect(within(table).getAllByText(/343[.,]00/).length).toBeGreaterThan(0)
+    expect(within(table).getAllByText(/341[.,]50/).length).toBeGreaterThan(0)
+    // FK-041 review: a kedvezmény-sáv (limit1 vétel 343,50) és a cellánkénti frissítési idő is látszik.
+    expect(within(table).getAllByText(/343[.,]50/).length).toBeGreaterThan(0)
+    expect(within(table).getAllByText(/frissítve 15:12/).length).toBeGreaterThan(0)
+    // Van területi adat → a sima fallback tábla NEM jelenik meg.
+    expect(screen.queryByTestId('rates-readonly-table')).not.toBeInTheDocument()
+    // Szerkesztő-eszközök sincsenek.
+    expect(screen.queryByText('Árfolyam kalkulátor')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('rate-polling-control-panel')).not.toBeInTheDocument()
   })
 })

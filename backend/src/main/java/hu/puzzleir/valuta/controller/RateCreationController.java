@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.dto.ratecreation.CompetitorRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.GroupRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.RateCreationResponseDTO;
 import hu.puzzleir.valuta.dto.ratecreation.RateOverviewDTO;
+import hu.puzzleir.valuta.dto.ratecreation.TerritoryWorkgroupRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.WorkgroupDetailDTO;
 import hu.puzzleir.valuta.service.RateCreationService;
 import jakarta.validation.Valid;
@@ -96,6 +97,20 @@ public class RateCreationController {
     @GetMapping("/overview")
     public ResponseEntity<RateOverviewDTO> getOverview() {
         return ResponseEntity.ok(rateCreationService.getRateOverview());
+    }
+
+    /**
+     * FK-041: a hívó TERÜLETÉNEK (régió) munkacsoportonkénti árfolyam-variánsai.
+     * GET /api/v1/rate-creation/territory-workgroup-rates
+     *
+     * Az értéktáros read-only nézetéhez: valutánként a terület minden eltérő árfolyam-variánsa
+     * (munkacsoportonként: alap vétel/eladás + kedvezmény-sávok) a hozzá tartozó pénztárnevekkel.
+     * ERTEKTAR a saját régióját, a FŐÉRTÉKTÁR országosan kapja (AccessScopeService szűr).
+     */
+    @PreAuthorize(RATE_CREATION_READ_ROLES)
+    @GetMapping("/territory-workgroup-rates")
+    public ResponseEntity<List<TerritoryWorkgroupRateDTO>> getTerritoryWorkgroupRates() {
+        return ResponseEntity.ok(rateCreationService.getTerritoryWorkgroupRates());
     }
 
     /**
