@@ -256,3 +256,23 @@ kézzel; csak markerelt blokkban frissíthető.
 - Záró válaszban sorold fel: módosított fájlok, futtatott ellenőrzések
   PASS/FAIL eredménnyel, nem futtatott ellenőrzések oka és maradó kockázat.
 <!-- CODEX_SHARED_QUALITY_RULES_END v1 -->
+
+## Globális működési alapelv — minden programozási feladat
+
+> A `~/.claude/CLAUDE.md` globális szabály repó-szintű megerősítése. Biztonság,
+> verifikáció és git kérdésben a repó saját szabályai (pl. `AGENTS.md`) az irányadók.
+
+Kötelező munkafolyamat (a többi szabálytól függetlenül, azokon felül):
+
+1. **Utasítás** megértése: cél, nem-célok, edge case, mérhető elfogadás.
+2. **Terv** készítése az utasításból: lépések, érintett fájlok, kockázat,
+   verifikáció (nagyobb munkánál spec-first).
+3. **Implementáció a terv szerint**, a saját Dynamic Workflow orkesztrálásával:
+   a rutin/mechanikus/párhuzamos részeket olcsóbb subagentre delegálva
+   (Haiku 4.5 mechanikus munkára, Sonnet 4.6 közepes implementációra), a
+   kiemelten bonyolult, magas-effortú gondolkodást Opus 4.8-on tartva.
+4. **Verifikáció + önreview**: teszt/build/lint, majd a diffet a tervhez/spechez
+   mérd vissza.
+
+A főhurok **Opus 4.8** marad (nincs `opusplan`/Sonnet-váltás); token-takarékosan
+delegálj, és csak a valóban nehéz részeket csináld magad.
