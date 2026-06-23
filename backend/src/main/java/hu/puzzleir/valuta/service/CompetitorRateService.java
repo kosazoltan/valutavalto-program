@@ -162,9 +162,9 @@ public class CompetitorRateService {
         Map<Long, Currency> basket = watchCurrencies().stream()
                 .collect(Collectors.toMap(Currency::getId, c -> c, (a, b) -> a));
 
-        // Egy payloadon belül valutánként az UTOLSÓ sor érvényes (last-wins) — a tábla nem ad unique
-        // constraintet (competitor, currency, date)-re, ezért egyetlen beküldés se hozzon létre két sort
-        // ugyanarra a valutára.
+        // Egy payloadon belül valutánként az UTOLSÓ sor érvényes (last-wins) — egyetlen beküldés se
+        // próbáljon két sort írni ugyanarra a valutára (a DB-szintű egyediséget a V335 UNIQUE index +
+        // ON CONFLICT upsert garantálja párhuzamos beküldésnél is).
         Map<Long, CompetitorRateEntryDto.CurrencyRateLine> byCurrency = new LinkedHashMap<>();
         for (CompetitorRateEntryDto.CurrencyRateLine line : dto.getRates()) {
             byCurrency.put(line.getCurrencyId(), line);
@@ -188,23 +188,13 @@ public class CompetitorRateService {
                                 + ") — kérjük, ellenőrizze az értéket.");
             }
 
-            CompetitorRate rate = competitorRateRepository
-                    .findFirstByCompetitorIdAndCurrencyIdAndRateDateOrderByCreatedAtDesc(
-                            competitor.getId(), currency.getId(), today)
-                    .orElse(null);
-            if (rate == null) {
-                // Insert: az eredeti rögzítő worker. (createdBy CSAK insertkor — update-nél megmarad.)
-                rate = CompetitorRate.builder()
-                        .competitor(competitor)
-                        .currency(currency)
-                        .rateDate(today)
-                        .createdBy(workerId)
-                        .build();
-            }
-            rate.setBuyRate(line.getBuyRate());
-            rate.setSellRate(line.getSellRate());
-            rate.setSource(SOURCE);
-            competitorRateRepository.save(rate);
+            // Atomi upsert (versenyhely + valuta + ma) kulcson. A V335 UNIQUE index +
+            // PostgreSQL ON CONFLICT DO UPDATE race-free: párhuzamos beküldés se hoz létre
+            // duplikált sort, és nem dob DataIntegrityViolationException-t. INSERT-nél a hívó
+            // worker a createdBy; UPDATE-nél a createdBy/createdAt megmarad (eredeti rögzítő).
+            competitorRateRepository.upsertCompetitorRate(
+                    competitor.getId(), currency.getId(), today,
+                    line.getBuyRate(), line.getSellRate(), SOURCE, workerId);
         }
 
         log.info("Versenytárs-árfolyam beküldve: competitorId={}, {} valuta, worker={}",

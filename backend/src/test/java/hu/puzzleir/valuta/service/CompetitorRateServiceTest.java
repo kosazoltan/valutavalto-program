@@ -18,7 +18,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -41,6 +40,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -123,54 +123,43 @@ class CompetitorRateServiceTest {
     }
 
     @Test
-    @DisplayName("FK-041/II: submit egy ÚJ versenytárs-árfolyamot upsert-tel ment (source + worker + ma)")
+    @DisplayName("FK-041/II: submit egy ÚJ versenytárs-árfolyamot atomi upsert-tel rögzít (source + worker + ma)")
     void submit_insertsNewRate() {
         Competitor competitor = competitorInRegion(BRANCH_ID);
         when(competitorRepository.findById(competitor.getId())).thenReturn(Optional.of(competitor));
-        when(competitorRateRepository.findFirstByCompetitorIdAndCurrencyIdAndRateDateOrderByCreatedAtDesc(
-                eq(competitor.getId()), eq(1L), any(LocalDate.class))).thenReturn(Optional.empty());
 
         CompetitorRateEntryDto dto = new CompetitorRateEntryDto(competitor.getId(), List.of(
                 new CompetitorRateEntryDto.CurrencyRateLine(1L, new BigDecimal("390.00"), new BigDecimal("400.00"))));
 
         service.submit(dto);
 
-        ArgumentCaptor<CompetitorRate> captor = ArgumentCaptor.forClass(CompetitorRate.class);
-        verify(competitorRateRepository).save(captor.capture());
-        CompetitorRate saved = captor.getValue();
-        assertThat(saved.getCurrency().getCode()).isEqualTo("EUR");
-        assertThat(saved.getBuyRate()).isEqualByComparingTo("390.00");
-        assertThat(saved.getSellRate()).isEqualByComparingTo("400.00");
-        assertThat(saved.getSource()).isEqualTo(CompetitorRateService.SOURCE);
-        assertThat(saved.getCreatedBy()).isEqualTo(WORKER_ID);
-        assertThat(saved.getRateDate()).isEqualTo(LocalDate.now());
+        // Az upsert kulcs-paramétereit (versenyhely + valuta + ma) és értékeit ellenőrizzük,
+        // a hívó workerId-jával (insert-időbeli rögzítő) és a watcher SOURCE-szal.
+        verify(competitorRateRepository).upsertCompetitorRate(
+                eq(competitor.getId()), eq(1L), eq(LocalDate.now()),
+                eq(new BigDecimal("390.00")), eq(new BigDecimal("400.00")),
+                eq(CompetitorRateService.SOURCE), eq(WORKER_ID));
     }
 
     @Test
-    @DisplayName("FK-041/II: submit a MAI meglévő sort FRISSÍTI (upsert, nem új beszúrás)")
-    void submit_updatesExistingRate() {
+    @DisplayName("FK-041/II: submit atomi upsert-et hív (nincs read-modify-write race-ablak); a DB-szintű "
+            + "update + created_by/created_at megőrzés a Testcontainers IT-ben")
+    void submit_usesAtomicUpsert_noReadModifyWrite() {
         Competitor competitor = competitorInRegion(BRANCH_ID);
         when(competitorRepository.findById(competitor.getId())).thenReturn(Optional.of(competitor));
-        CompetitorRate existing = CompetitorRate.builder()
-                .id(UUID.randomUUID()).competitor(competitor).currency(eur)
-                .rateDate(LocalDate.now()).buyRate(new BigDecimal("388.00")).sellRate(new BigDecimal("402.00"))
-                .createdBy(99L) // egy MÁSIK árfolyam néző hozta létre eredetileg
-                .build();
-        when(competitorRateRepository.findFirstByCompetitorIdAndCurrencyIdAndRateDateOrderByCreatedAtDesc(
-                eq(competitor.getId()), eq(1L), any(LocalDate.class))).thenReturn(Optional.of(existing));
 
         service.submit(new CompetitorRateEntryDto(competitor.getId(), List.of(
                 new CompetitorRateEntryDto.CurrencyRateLine(1L, new BigDecimal("391.00"), new BigDecimal("399.00")))));
 
-        ArgumentCaptor<CompetitorRate> captor = ArgumentCaptor.forClass(CompetitorRate.class);
-        verify(competitorRateRepository).save(captor.capture());
-        CompetitorRate saved = captor.getValue();
-        assertThat(saved.getId()).as("a meglévő sort frissíti (id megmarad)").isEqualTo(existing.getId());
-        assertThat(saved.getBuyRate()).isEqualByComparingTo("391.00");
-        assertThat(saved.getSellRate()).isEqualByComparingTo("399.00");
-        assertThat(saved.getCreatedBy())
-                .as("update-nél az EREDETI rögzítő createdBy-ja megmarad (nem a frissítő worker)")
-                .isEqualTo(99L);
+        // Pontosan EGY atomi upsert hívás, a hívó workerId-jával.
+        verify(competitorRateRepository, times(1)).upsertCompetitorRate(
+                eq(competitor.getId()), eq(1L), eq(LocalDate.now()),
+                eq(new BigDecimal("391.00")), eq(new BigDecimal("399.00")),
+                eq(CompetitorRateService.SOURCE), eq(WORKER_ID));
+        // A duplikáció-rést az zárja be, hogy a service NEM olvas-majd-ír (find-or-insert) a
+        // competitor_rates táblán: az egyetlen interakció az atomi upsert. A DB-szintű egyediséget
+        // és az UPDATE-ági created_by/created_at megőrzést a CompetitorRateConcurrencyIT bizonyítja.
+        verifyNoMoreInteractions(competitorRateRepository);
     }
 
     @Test
@@ -185,7 +174,8 @@ class CompetitorRateServiceTest {
 
         assertThatThrownBy(() -> service.submit(dto))
                 .isInstanceOf(ResourceNotFoundException.class);
-        verify(competitorRateRepository, never()).save(any());
+        verify(competitorRateRepository, never()).upsertCompetitorRate(
+                any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -200,7 +190,8 @@ class CompetitorRateServiceTest {
         assertThatThrownBy(() -> service.submit(dto))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("eladási");
-        verify(competitorRateRepository, never()).save(any());
+        verify(competitorRateRepository, never()).upsertCompetitorRate(
+                any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -216,7 +207,8 @@ class CompetitorRateServiceTest {
         assertThatThrownBy(() -> service.submit(dto))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("kosár");
-        verify(competitorRateRepository, never()).save(any());
+        verify(competitorRateRepository, never()).upsertCompetitorRate(
+                any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -232,7 +224,8 @@ class CompetitorRateServiceTest {
         assertThatThrownBy(() -> service.submit(dto))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("irreális");
-        verify(competitorRateRepository, never()).save(any());
+        verify(competitorRateRepository, never()).upsertCompetitorRate(
+                any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -240,8 +233,6 @@ class CompetitorRateServiceTest {
     void submit_duplicateCurrencyInPayload_lastWins() {
         Competitor competitor = competitorInRegion(BRANCH_ID);
         when(competitorRepository.findById(competitor.getId())).thenReturn(Optional.of(competitor));
-        when(competitorRateRepository.findFirstByCompetitorIdAndCurrencyIdAndRateDateOrderByCreatedAtDesc(
-                any(), any(), any())).thenReturn(Optional.empty());
 
         CompetitorRateEntryDto dto = new CompetitorRateEntryDto(competitor.getId(), List.of(
                 new CompetitorRateEntryDto.CurrencyRateLine(1L, new BigDecimal("390"), new BigDecimal("400")),
@@ -249,11 +240,11 @@ class CompetitorRateServiceTest {
 
         service.submit(dto);
 
-        ArgumentCaptor<CompetitorRate> captor = ArgumentCaptor.forClass(CompetitorRate.class);
-        verify(competitorRateRepository, times(1)).save(captor.capture());
-        assertThat(captor.getValue().getBuyRate())
-                .as("egy valutából csak egy sor, az UTOLSÓ értékkel (last-wins)")
-                .isEqualByComparingTo("392");
+        // Egy valutából csak egy upsert, az UTOLSÓ értékkel (last-wins a payloadon belüli dedup miatt).
+        verify(competitorRateRepository, times(1)).upsertCompetitorRate(
+                eq(competitor.getId()), eq(1L), eq(LocalDate.now()),
+                eq(new BigDecimal("392")), eq(new BigDecimal("398")),
+                eq(CompetitorRateService.SOURCE), eq(WORKER_ID));
     }
 
     @Test
@@ -273,7 +264,8 @@ class CompetitorRateServiceTest {
         CompetitorRateEntryDto dto = new CompetitorRateEntryDto(any.getId(), List.of(
                 new CompetitorRateEntryDto.CurrencyRateLine(1L, new BigDecimal("390"), new BigDecimal("400"))));
         assertThatThrownBy(() -> service.submit(dto)).isInstanceOf(ResourceNotFoundException.class);
-        verify(competitorRateRepository, never()).save(any());
+        verify(competitorRateRepository, never()).upsertCompetitorRate(
+                any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -281,15 +273,14 @@ class CompetitorRateServiceTest {
     void noRegion_fallbackToOwnBranch() {
         Branch ownNoRegion = Branch.builder().id(BRANCH_ID).name("Tisza Sarok").region(null).build();
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(ownNoRegion));
-        when(competitorRateRepository.findFirstByCompetitorIdAndCurrencyIdAndRateDateOrderByCreatedAtDesc(
-                any(), any(), any())).thenReturn(Optional.empty());
 
         // A saját iroda versenyhelye bevihető (a fallback scope = {saját iroda}).
         Competitor ownComp = competitorInRegion(BRANCH_ID);
         when(competitorRepository.findById(ownComp.getId())).thenReturn(Optional.of(ownComp));
         service.submit(new CompetitorRateEntryDto(ownComp.getId(), List.of(
                 new CompetitorRateEntryDto.CurrencyRateLine(1L, new BigDecimal("390"), new BigDecimal("400")))));
-        verify(competitorRateRepository, times(1)).save(any());
+        verify(competitorRateRepository, times(1)).upsertCompetitorRate(
+                any(), any(), any(), any(), any(), any(), any());
 
         // Egy MÁSIK iroda versenyhelye NINCS a fallback scope-ban → 404 (terület-szivárgás ellen).
         Competitor foreign = competitorInRegion(UUID.randomUUID());
