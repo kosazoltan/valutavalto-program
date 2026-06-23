@@ -350,3 +350,18 @@ kézzel; csak markerelt blokkban frissíthető.
 - Záró válaszban sorold fel: módosított fájlok, futtatott ellenőrzések
   PASS/FAIL eredménnyel, nem futtatott ellenőrzések oka és maradó kockázat.
 <!-- CODEX_SHARED_QUALITY_RULES_END v1 -->
+
+## Kötelező munkafolyamat — minden programozási feladat
+
+A fenti szabályoktól függetlenül, azokon felül, MINDEN megkezdett programozási
+feladatra kötelező:
+
+1. **Utasítás** megértése: cél, nem-célok, edge case, mérhető elfogadás.
+2. **Tervkészítés**: az utasításból terv/spec (lépések, érintett fájlok,
+   kockázat, verifikáció); nagyobb munkánál spec-first.
+3. **Implementáció a terv szerint**, a részfeladatokat megfelelően orkesztrálva:
+   a mechanikus és párhuzamosítható részeket olcsóbb, a feladathoz illő subagent
+   modellre delegálva (ha elérhető), a magas gondolkodási effortot igénylő
+   részeket a fő modellen tartva.
+4. **Verifikáció + önreview**: teszt/build/lint vagy dokumentált ellenőrzés,
+   majd a diffet a tervhez/spechez mérd vissza.
