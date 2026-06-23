@@ -17,10 +17,14 @@ import java.util.UUID;
  * rögzítették az árfolyam-készítő modulban összehasonlítás céljából.
  */
 @Entity
-@Table(name = "competitor_rates", indexes = {
-    @Index(name = "idx_competitor_rate_date", columnList = "rate_date"),
-    @Index(name = "idx_competitor_rate_comp", columnList = "competitor_id")
-})
+@Table(name = "competitor_rates",
+    uniqueConstraints = @UniqueConstraint(
+        name = "uq_competitor_rate_comp_curr_date",
+        columnNames = {"competitor_id", "currency_id", "rate_date"}),
+    indexes = {
+        @Index(name = "idx_competitor_rate_date", columnList = "rate_date"),
+        @Index(name = "idx_competitor_rate_comp", columnList = "competitor_id")
+    })
 @EntityListeners(AuditingEntityListener.class)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class CompetitorRate {
