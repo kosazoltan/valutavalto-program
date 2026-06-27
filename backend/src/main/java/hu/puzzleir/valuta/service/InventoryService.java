@@ -45,6 +45,7 @@ public class InventoryService {
     private final WorkerRepository workerRepository;
     private final CashBalanceRepository cashBalanceRepository;
     private final AuditLogRepository auditLogRepository;
+    private final AuditLogService auditLogService;
     private final ExchangeRateRepository exchangeRateRepository;
     private final hu.puzzleir.valuta.repository.CurrencyStockRepository currencyStockRepository;
 
@@ -832,17 +833,18 @@ public class InventoryService {
         if (worker == null) {
             return;
         }
-        AuditLog auditLog = AuditLog.builder()
-                .action("ACCESS_DENIED")
-                .entityType("InventoryMovement")
-                .entityId(null)
-                .userId(worker.getId() != null ? worker.getId().toString() : null)
-                .userName(worker.getName())
-                .branchId(branch != null && branch.getId() != null ? branch.getId().toString() : null)
-                .branchName(branch != null ? branch.getName() : null)
-                .changes("error_code=VV-AUTH-001, attemptedAction=" + attemptedAction)
-                .build();
-        auditLogRepository.save(auditLog);
+        // Codex #1227 P2: a megtagadás-audit a hívó @Transactional(rollbackFor=Exception) metódusából
+        // dobott AccessDeniedException-nel visszagörögne. REQUIRES_NEW-val önálló tranzakcióban
+        // commitoljuk, így a 403-as megtagadás naplója a rollback ELLENÉRE megmarad.
+        auditLogService.logInNewTransaction(
+                "ACCESS_DENIED",
+                "InventoryMovement",
+                null,
+                worker.getId() != null ? worker.getId().toString() : null,
+                worker.getName(),
+                branch != null && branch.getId() != null ? branch.getId().toString() : null,
+                branch != null ? branch.getName() : null,
+                "error_code=VV-AUTH-001, attemptedAction=" + attemptedAction);
     }
 
     /**

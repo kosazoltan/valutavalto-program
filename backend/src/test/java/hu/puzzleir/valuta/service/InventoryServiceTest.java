@@ -52,6 +52,7 @@ class InventoryServiceTest {
     @Mock private WorkerRepository workerRepository;
     @Mock private CashBalanceRepository cashBalanceRepository;
     @Mock private AuditLogRepository auditLogRepository;
+    @Mock private AuditLogService auditLogService;
     @Mock private ExchangeRateRepository exchangeRateRepository;
     @Mock private CurrencyStockRepository currencyStockRepository;
 
@@ -575,10 +576,11 @@ class InventoryServiceTest {
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
                 .hasMessageContaining("VV-AUTH-001");
 
-        ArgumentCaptor<AuditLog> auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
-        verify(auditLogRepository).save(auditCaptor.capture());
-        assertThat(auditCaptor.getValue().getAction()).isEqualTo("ACCESS_DENIED");
-        assertThat(auditCaptor.getValue().getChanges()).contains("error_code=VV-AUTH-001");
+        // Codex #1227 P2: a megtagadás-audit REQUIRES_NEW tranzakcióban megy (AuditLogService),
+        // hogy a hívó rollbackje ELLENÉRE megmaradjon.
+        verify(auditLogService).logInNewTransaction(
+                eq("ACCESS_DENIED"), eq("InventoryMovement"), isNull(),
+                any(), any(), any(), any(), contains("error_code=VV-AUTH-001"));
         verify(movementRepository, never()).save(any(InventoryMovement.class));
     }
 

@@ -34,7 +34,9 @@ public final class TerritoryScopeResolver {
      */
     public static final Set<String> TERRITORY_SCOPED_ROLES = Set.of(
             "ertektar", "ERTEKTAR", "ertektaros", "VAULT_KEEPER", "vault_keeper",
-            "irodavezeto", "IRODAVEZETO"
+            // Codex #1227 P1: az IRODAVEZETO angol enum-formáját (OFFICE_MGR) is fel kell ismerni,
+            // különben egy OFFICE_MGR activeRole-lal belépő irodavezető kicsúszna a territory-scope alól.
+            "irodavezeto", "IRODAVEZETO", "OFFICE_MGR", "office_mgr"
     );
 
     /**
