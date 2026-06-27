@@ -12,7 +12,9 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,8 +58,9 @@ public class InventoryService {
     @Transactional(rollbackFor = Exception.class)
     public InventoryMovementDto requestBankWithdraw(BankWithdrawRequestDto dto, Long workerId) {
         Branch branch = findBranch(dto.getBranchId());
-        Currency currency = findCurrency(dto.getCurrencyId());
         Worker worker = findWorker(workerId);
+        assertBranchAllowedForCurrentTerritory(branch, worker, "BANK_WITHDRAW");
+        Currency currency = findCurrency(dto.getCurrencyId());
 
         InventoryMovement movement = InventoryMovement.builder()
                 .fromBranch(null) // bank = null
@@ -85,8 +88,9 @@ public class InventoryService {
     @Transactional(rollbackFor = Exception.class)
     public InventoryMovementDto depositToBank(BankDepositRequestDto dto, Long workerId) {
         Branch branch = findBranch(dto.getBranchId());
-        Currency currency = findCurrency(dto.getCurrencyId());
         Worker worker = findWorker(workerId);
+        assertBranchAllowedForCurrentTerritory(branch, worker, "BANK_DEPOSIT");
+        Currency currency = findCurrency(dto.getCurrencyId());
 
         // Ellenőrzés: van-e elegendő készlet
         CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(
@@ -128,9 +132,10 @@ public class InventoryService {
     @Transactional(rollbackFor = Exception.class)
     public InventoryMovementDto transferBetweenBranches(BranchTransferRequestDto dto, Long workerId) {
         Branch fromBranch = findBranch(dto.getFromBranchId());
+        Worker worker = findWorker(workerId);
+        assertBranchAllowedForCurrentTerritory(fromBranch, worker, "INVENTORY_TRANSFER");
         Branch toBranch = findBranch(dto.getToBranchId());
         Currency currency = findCurrency(dto.getCurrencyId());
-        Worker worker = findWorker(workerId);
 
         if (fromBranch.getId().equals(toBranch.getId())) {
             throw new ValidationException("A forrás és cél iroda nem lehet azonos!");
@@ -328,8 +333,9 @@ public class InventoryService {
     @Transactional(rollbackFor = Exception.class)
     public InventoryMovementDto correctInventory(CorrectionRequestDto dto, Long workerId) {
         Branch branch = findBranch(dto.getBranchId());
-        Currency currency = findCurrency(dto.getCurrencyId());
         Worker worker = findWorker(workerId);
+        assertBranchAllowedForCurrentTerritory(branch, worker, "INVENTORY_CORRECTION");
+        Currency currency = findCurrency(dto.getCurrencyId());
 
         CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(
                 branch.getId(), currency.getId())
@@ -556,6 +562,8 @@ public class InventoryService {
      */
     @Transactional(readOnly = true)
     public List<CashBalance> getCurrentStock(UUID branchId) {
+        Branch branch = findBranch(branchId.toString());
+        assertBranchAllowedForCurrentTerritory(branch, null, "INVENTORY_STOCK_READ");
         return cashBalanceRepository.findByBranchId(branchId);
     }
 
@@ -674,7 +682,12 @@ public class InventoryService {
     @Transactional(readOnly = true)
     public StockMatrixDto getStockMatrix() {
         UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        boolean territoryScoped = isCurrentRoleTerritoryScoped();
         Integer territoryFilter = getCurrentTerritoryFilterOrNull();
+        if (territoryScoped && territoryFilter == null) {
+            log.warn("getStockMatrix: territory-scoped role vault_territory NÉLKÜL → fail-closed (üres mátrix)");
+            return StockMatrixDto.builder().matrix(java.util.Map.of()).build();
+        }
         List<CashBalance> allBalances = cashBalanceRepository.findByCompanyId(companyId);
 
         java.util.Set<UUID> allowedBranchIds = null;
@@ -721,6 +734,24 @@ public class InventoryService {
             Branch branch = branchRepository.findById(branchId)
                     .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
             assertBranchInCompany(branch);
+            assertBranchAllowedForCurrentTerritory(branch, null, "INVENTORY_MOVEMENTS_READ");
+        }
+        if (isCurrentRoleTerritoryScoped()) {
+            Integer territoryFilter = getCurrentTerritoryFilterOrNull();
+            if (territoryFilter == null) {
+                log.warn("searchMovements: territory-scoped role vault_territory NÉLKÜL → fail-closed (üres oldal)");
+                return new PageImpl<>(List.of(), pageable, 0);
+            }
+            Set<UUID> allowedBranchIds = branchRepository.findByCompanyIdAndVaultTerritoryId(companyId, territoryFilter)
+                    .stream()
+                    .map(Branch::getId)
+                    .collect(Collectors.toSet());
+            if (allowedBranchIds.isEmpty()) {
+                return new PageImpl<>(List.of(), pageable, 0);
+            }
+            return movementRepository.searchWithinBranches(
+                            companyId, allowedBranchIds, branchId, startDate, endDate, status, type, pageable)
+                    .map(this::toDto);
         }
         return movementRepository.search(companyId, branchId, startDate, endDate, status, type, pageable)
                 .map(this::toDto);
@@ -772,6 +803,35 @@ public class InventoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
         assertBranchInCompany(branch);
         return branch;
+    }
+
+    private void assertBranchAllowedForCurrentTerritory(Branch branch, Worker worker, String action) {
+        if (!isCurrentRoleTerritoryScoped()) {
+            return;
+        }
+        Integer ownTerritory = getCurrentTerritoryFilterOrNull();
+        Integer branchTerritory = branch != null ? branch.getVaultTerritoryId() : null;
+        if (ownTerritory == null || !ownTerritory.equals(branchTerritory)) {
+            writeAccessDeniedAuditLog(worker, branch, action);
+            throw new AccessDeniedException("VV-AUTH-001: branch is outside current vault territory");
+        }
+    }
+
+    private void writeAccessDeniedAuditLog(Worker worker, Branch branch, String attemptedAction) {
+        if (worker == null) {
+            return;
+        }
+        AuditLog auditLog = AuditLog.builder()
+                .action("ACCESS_DENIED")
+                .entityType("InventoryMovement")
+                .entityId(null)
+                .userId(worker.getId() != null ? worker.getId().toString() : null)
+                .userName(worker.getName())
+                .branchId(branch != null && branch.getId() != null ? branch.getId().toString() : null)
+                .branchName(branch != null ? branch.getName() : null)
+                .changes("error_code=VV-AUTH-001, attemptedAction=" + attemptedAction)
+                .build();
+        auditLogRepository.save(auditLog);
     }
 
     /**

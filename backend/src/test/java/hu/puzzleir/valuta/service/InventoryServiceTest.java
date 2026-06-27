@@ -553,6 +553,36 @@ class InventoryServiceTest {
     }
 
     @Test
+    @DisplayName("ERTEKTAR: idegen territory branch-re bank-kivét → 403 VV-AUTH-001 + ACCESS_DENIED audit")
+    void requestBankWithdraw_ertektarOtherTerritory_throwsAccessDeniedAndAudits() {
+        branch.setVaultTerritoryId(2);
+        branch2.setVaultTerritoryId(1);
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(BRANCH_ID_2);
+
+        hu.puzzleir.valuta.dto.inventory.BankWithdrawRequestDto dto =
+                hu.puzzleir.valuta.dto.inventory.BankWithdrawRequestDto.builder()
+                        .branchId(BRANCH_ID.toString())
+                        .currencyId(CURRENCY_ID)
+                        .amount(new BigDecimal("1000"))
+                        .build();
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(branchRepository.findById(BRANCH_ID_2)).thenReturn(Optional.of(branch2));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+        assertThatThrownBy(() -> inventoryService.requestBankWithdraw(dto, WORKER_ID))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("VV-AUTH-001");
+
+        ArgumentCaptor<AuditLog> auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(auditCaptor.capture());
+        assertThat(auditCaptor.getValue().getAction()).isEqualTo("ACCESS_DENIED");
+        assertThat(auditCaptor.getValue().getChanges()).contains("error_code=VV-AUTH-001");
+        verify(movementRepository, never()).save(any(InventoryMovement.class));
+    }
+
+    @Test
     @DisplayName("IDOR: idegen cég irodái közti transzfer → 404, nincs mozgás-mentés")
     void transferBetweenBranches_foreignBranch_throwsNotFound() {
         Branch foreign = foreignBranch();

@@ -47,7 +47,7 @@ public class InventoryMovementController {
      * Napi kĂ©szlet egyenleg
      */
     @GetMapping("/daily-balance")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'IRODAVEZETO', 'ERTEKTAR')")
     public ResponseEntity<InventoryBalanceDto> getDailyBalance(
             @RequestParam UUID branchId,
             @RequestParam(required = false) String currency,

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Vault, RefreshCw, AlertTriangle, Info, Printer } from 'lucide-react'
-import { api } from '../../services/api/index'
+import { api, currencyApi, type Currency } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
@@ -90,6 +90,12 @@ interface RegenerationResultDto {
 
 type InventoryOperationType = 'bankWithdraw' | 'bankDeposit' | 'transfer' | 'correction'
 
+interface InventoryCurrencyOption {
+  id: number
+  code: string
+  name: string
+}
+
 function formatCurrency(value: number | null | undefined, code?: string): string {
   if (value == null) return '—'
   const opts: Intl.NumberFormatOptions = code === 'HUF'
@@ -149,6 +155,9 @@ export default function InventoryPage() {
   const [movementDetailLoadingId, setMovementDetailLoadingId] = useState<number | null>(null)
   const [inventoryOperationType, setInventoryOperationType] = useState<InventoryOperationType>('bankWithdraw')
   const [inventoryCurrencyId, setInventoryCurrencyId] = useState('')
+  const [inventoryCurrencies, setInventoryCurrencies] = useState<InventoryCurrencyOption[]>([])
+  const [inventoryCurrenciesLoading, setInventoryCurrenciesLoading] = useState(false)
+  const [inventoryCurrenciesError, setInventoryCurrenciesError] = useState<string | null>(null)
   const [inventoryAmount, setInventoryAmount] = useState('')
   const [inventoryTargetBranchId, setInventoryTargetBranchId] = useState('')
   const [inventoryNotes, setInventoryNotes] = useState('')
@@ -214,6 +223,31 @@ export default function InventoryPage() {
       setOverStockRows([])
     }
   }, [worker?.branchId])
+
+  const loadInventoryCurrencies = useCallback(async () => {
+    setInventoryCurrenciesLoading(true)
+    setInventoryCurrenciesError(null)
+    try {
+      const data = await currencyApi.list()
+      const options = safeArray<Currency>(data)
+        .filter((currency) => currency.active !== false && currency.id != null)
+        .map((currency) => ({
+          id: Number(currency.id),
+          code: currency.code,
+          name: currency.name,
+        }))
+        .filter((currency) => Number.isInteger(currency.id) && currency.id > 0 && Boolean(currency.code))
+      setInventoryCurrencies(options)
+      setInventoryCurrencyId((current) => current || (options[0] ? String(options[0].id) : ''))
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('InventoryPage', 'Devizalista betöltési hiba:', err)
+      setInventoryCurrencies([])
+      setInventoryCurrenciesError(msg)
+    } finally {
+      setInventoryCurrenciesLoading(false)
+    }
+  }, [])
 
   const loadOperationalInventory = useCallback(async () => {
     if (!worker?.branchId) {
@@ -341,7 +375,8 @@ export default function InventoryPage() {
     void loadData()
     void loadBanknoteInventory()
     void loadOperationalInventory()
-  }, [loadData, loadBanknoteInventory, loadOperationalInventory])
+    void loadInventoryCurrencies()
+  }, [loadData, loadBanknoteInventory, loadOperationalInventory, loadInventoryCurrencies])
 
   useVaultStockUpdates(refreshIfChanged)
 
@@ -449,7 +484,7 @@ export default function InventoryPage() {
       return
     }
     if (currencyId == null) {
-      setInventoryOperationMessage('Adj meg érvényes valuta azonosítót.')
+      setInventoryOperationMessage('Válassz devizát a listából.')
       return
     }
     if (amount == null || (inventoryOperationType !== 'correction' && amount <= 0)) {
@@ -666,14 +701,23 @@ export default function InventoryPage() {
               </select>
             </label>
             <label className="block">
-              <span className="form-label">Valuta ID</span>
-              <input
-                className="form-input w-full font-mono"
-                inputMode="numeric"
+              <span className="form-label">Deviza</span>
+              <select
+                className="form-input w-full"
                 value={inventoryCurrencyId}
                 onChange={(event) => setInventoryCurrencyId(event.target.value)}
-                placeholder="Valuta ID"
-              />
+                aria-label="Deviza kiválasztása"
+                disabled={inventoryCurrenciesLoading || inventoryCurrencies.length === 0}
+              >
+                <option value="">
+                  {inventoryCurrenciesLoading ? 'Devizák betöltése...' : 'Válassz devizát'}
+                </option>
+                {inventoryCurrencies.map((currency) => (
+                  <option key={currency.id} value={currency.id}>
+                    {currency.code} – {currency.name}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="block">
               <span className="form-label">{inventoryOperationType === 'correction' ? 'Új egyenleg' : 'Összeg'}</span>
@@ -707,7 +751,7 @@ export default function InventoryPage() {
             <button
               type="button"
               onClick={() => void submitInventoryOperation()}
-              disabled={inventoryOperationLoading}
+              disabled={inventoryOperationLoading || inventoryCurrenciesLoading || inventoryCurrencies.length === 0}
               className="form-button-primary h-9 text-xs"
             >
               {inventoryOperationLoading ? 'Mentés...' : 'Művelet rögzítése'}
@@ -715,6 +759,9 @@ export default function InventoryPage() {
           </div>
           {inventoryOperationMessage && (
             <p className="mt-2 text-xs text-gray-600">{inventoryOperationMessage}</p>
+          )}
+          {inventoryCurrenciesError && (
+            <p className="mt-2 text-xs text-red-700">Devizalista betöltési hiba: {inventoryCurrenciesError}</p>
           )}
         </div>
         <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-4">
