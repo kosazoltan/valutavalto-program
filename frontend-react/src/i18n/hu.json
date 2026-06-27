@@ -2015,7 +2015,13 @@
     "ujSzallitmanyigeny": "Új szállítmányigény",
     "uton": "Úton",
     "vazlat": "Vázlat",
-    "visszaAListahoz": "Vissza a listához"
+    "visszaAListahoz": "Vissza a listához",
+    "elutasitva": "Elutasítva",
+    "ma": "Ma",
+    "korabbi": "Korábbi",
+    "sztorno": "Sztornó",
+    "ujranyomtatas": "Újranyomtatás",
+    "valasszonNapotANaptarbol": "Válasszon napot a naptárból"
   },
   "stamps": {
     "belyegSzam": "Belyeg szam",

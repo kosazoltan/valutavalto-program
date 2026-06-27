@@ -44,7 +44,22 @@ vi.mock('../../utils/logger', () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }))
 
-const approvedShipment = {
+// A FK-11 újranyomtatás a meglévő (változatlan) ReceiptPreviewModal-t használja; itt stubbal
+// helyettesítjük, hogy a ShipmentListPage logikáját (lekérés + modal nyitás) izoláltan teszteljük.
+vi.mock('../../components/electron', () => ({
+  ReceiptPreviewModal: ({ isOpen, receiptData }: { isOpen: boolean; receiptData: { receiptNumber?: string } | null }) =>
+    isOpen ? <div data-testid="receipt-modal">{receiptData?.receiptNumber}</div> : null,
+}))
+vi.mock('../../utils/electron', () => ({ isElectron: () => false }))
+vi.mock('../../components/ui/toaster', () => ({
+  toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn(), info: vi.fn() },
+}))
+vi.mock('../../utils/localQueue', () => ({ getCompanyType: () => 'BEST_CHANGE' }))
+
+const TODAY = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Budapest' }).format(new Date())
+const OTHER_DAY = '2020-01-15'
+
+const baseShipment = {
   id: 'shipment-1',
   requestNumber: 'SH-001',
   requestingBranchId: 'branch-1',
@@ -52,26 +67,24 @@ const approvedShipment = {
   targetBranchId: 'branch-2',
   targetBranchName: 'Belváros',
   shipmentType: 'TRANSFER',
-  requestedDeliveryDate: '2026-06-18',
+  requestedDeliveryDate: TODAY,
   requestStatus: 'APPROVED',
   requestedByWorkerId: '77',
   requestedByWorkerName: 'Teszt Dolgozó',
-  requestedAt: '2026-06-18T10:00:00',
+  requestedAt: `${TODAY}T10:00:00`,
   carrierName: 'Teszt Szállító',
   sealNumber: 'PL-123',
-  items: [
-    { id: 'item-1', currencyId: 1, currencyCode: 'EUR', requestedAmount: 1000 },
-  ],
+  items: [{ id: 'item-1', currencyId: 1, currencyCode: 'EUR', requestedAmount: 1000 }],
 }
 
+const approvedShipment = { ...baseShipment }
 const draftShipment = {
-  ...approvedShipment,
+  ...baseShipment,
   requestStatus: 'DRAFT',
-  requestedDeliveryDate: '2026-06-20',
   notes: 'Eredeti megjegyzés',
 }
 
-describe('ShipmentListPage backend contract', () => {
+describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.findByStatus.mockResolvedValue([approvedShipment])
@@ -105,13 +118,14 @@ describe('ShipmentListPage backend contract', () => {
     })
   })
 
-  it('kézbesítés és visszavonás a backend workflow endpointokra van kötve', async () => {
+  it('kézbesítés és sztornó a backend workflow endpointokra van kötve (FR-13 átnevezés)', async () => {
     const user = userEvent.setup()
     render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
 
     await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
+    expect(screen.queryByTitle('Visszavonás')).toBeNull()
     await user.click(screen.getByTitle('Kézbesítés'))
-    await user.click(screen.getByTitle('Visszavonás'))
+    await user.click(screen.getByTitle('shipments.sztorno'))
 
     await waitFor(() => {
       expect(mocks.deliver).toHaveBeenCalledWith('shipment-1')
@@ -140,11 +154,84 @@ describe('ShipmentListPage backend contract', () => {
       expect(mocks.update).toHaveBeenCalledWith('shipment-1', {
         fromBranchId: 'branch-1',
         toBranchId: 'branch-2',
-        deliveryDate: '2026-06-20',
+        deliveryDate: TODAY,
         carrierName: 'Új Szállító',
         sealNumber: 'PL-999',
         notes: 'Módosított megjegyzés',
       })
+    })
+  })
+
+  it('FR-1: két fül látható, alapból a "Ma" aktív', async () => {
+    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+    await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
+
+    expect(screen.getByTestId('shipment-tab-today')).toBeInTheDocument()
+    expect(screen.getByTestId('shipment-tab-past')).toBeInTheDocument()
+    // "Ma" fülön van státuszszűrő (combobox), és látszik a mai bizonylat
+    expect(screen.getByRole('combobox')).toBeInTheDocument()
+  })
+
+  it('FR-2: a "Ma" fülön csak az aznapi bizonylat látszik, a másik napi nem', async () => {
+    mocks.findByStatus.mockResolvedValue([
+      approvedShipment,
+      { ...approvedShipment, id: 'shipment-2', requestNumber: 'SH-OLD', requestedDeliveryDate: OTHER_DAY },
+    ])
+    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+
+    await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
+    expect(screen.queryByText('SH-OLD')).toBeNull()
+  })
+
+  it('FR-12: a REJECTED státusz szűrhető és "Elutasítva" badge-dzsel jelenik meg', async () => {
+    const user = userEvent.setup()
+    mocks.findByStatus.mockResolvedValue([{ ...approvedShipment, requestStatus: 'REJECTED' }])
+    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+
+    await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
+    await user.selectOptions(screen.getByRole('combobox'), 'REJECTED')
+
+    await waitFor(() => expect(mocks.findByStatus).toHaveBeenCalledWith('REJECTED'))
+    expect(screen.getByText('Elutasítva')).toBeInTheDocument()
+  })
+
+  it('FR-10: a "Korábbi" fülön nincs státuszszűrő, naptár + üres állapot jelenik meg', async () => {
+    const user = userEvent.setup()
+    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+    await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
+
+    await user.click(screen.getByTestId('shipment-tab-past'))
+
+    await waitFor(() => expect(mocks.findByBranch).toHaveBeenCalledWith('branch-1'))
+    expect(screen.queryByRole('combobox')).toBeNull()
+    expect(screen.getByTestId('shipment-calendar')).toBeInTheDocument()
+    expect(screen.getByTestId('past-empty-state')).toBeInTheDocument()
+  })
+
+  it('FR-8/FR-9/FR-11: "Korábbi" fülön napra kattintva a lista csak megtekintés + újranyomtatás gombot ad, és az újranyomtatás GET /shipments/{id}-t hív', async () => {
+    const user = userEvent.setup()
+    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+    await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
+
+    await user.click(screen.getByTestId('shipment-tab-past'))
+    await waitFor(() => expect(screen.getByTestId('shipment-calendar')).toBeInTheDocument())
+
+    await user.click(screen.getByTestId(`calendar-day-${TODAY}-active`))
+
+    // Napi lista megjelenik, csak megtekintés + újranyomtatás — nincs operatív gomb
+    await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
+    expect(screen.getByTitle('Részletek')).toBeInTheDocument()
+    expect(screen.getByTitle('shipments.ujranyomtatas')).toBeInTheDocument()
+    expect(screen.queryByTitle('shipments.sztorno')).toBeNull()
+    expect(screen.queryByTitle('Jóváhagyás')).toBeNull()
+    expect(screen.queryByTitle('Kézbesítés')).toBeNull()
+
+    mocks.get.mockClear()
+    await user.click(screen.getByTitle('shipments.ujranyomtatas'))
+
+    await waitFor(() => {
+      expect(mocks.get).toHaveBeenCalledWith('shipment-1')
+      expect(screen.getByTestId('receipt-modal')).toHaveTextContent('SH-001')
     })
   })
 })

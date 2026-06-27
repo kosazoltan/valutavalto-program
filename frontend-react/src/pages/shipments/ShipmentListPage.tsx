@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Package, Eye, CheckCircle, XCircle, AlertCircle, ArrowUpFromLine, ArrowDownToLine, Printer, Pencil, Save } from 'lucide-react'
 import { shipmentRequestApi, ShipmentRequest, ShipmentUpdateRequest } from '../../services/api/index'
@@ -6,6 +6,12 @@ import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger';
 import { useTranslation } from 'react-i18next'
+import { ReceiptPreviewModal } from '../../components/electron'
+import { isElectron } from '../../utils/electron'
+import { toast } from '../../components/ui/toaster'
+import { getCompanyType } from '../../utils/localQueue'
+import type { PrintReceiptData } from '../../types/receipt'
+import ShipmentCalendarPanel from './ShipmentCalendarPanel'
 
 interface ShipmentEditDraft {
   deliveryDate: string
@@ -14,11 +20,25 @@ interface ShipmentEditDraft {
   notes: string
 }
 
+type ShipmentTab = 'today' | 'past'
+
+/** A `requestedDeliveryDate` (LocalDate vagy ISO datetime) → 'YYYY-MM-DD'. */
+function dateOnly(value: string | undefined): string {
+  return value ? value.slice(0, 10) : ''
+}
+
+/** A mai nap 'YYYY-MM-DD' Europe/Budapest időzóna szerint (NFR-4). */
+function budapestToday(): string {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Budapest' }).format(new Date())
+}
+
 export default function ShipmentListPage() {
   const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
   const branchId = worker?.branchId || ''
+  const today = useMemo(() => budapestToday(), [])
 
+  const [activeTab, setActiveTab] = useState<ShipmentTab>('today')
   const [shipments, setShipments] = useState<ShipmentRequest[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -26,6 +46,15 @@ export default function ShipmentListPage() {
   const [selectedShipment, setSelectedShipment] = useState<ShipmentRequest | null>(null)
   const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState<ShipmentEditDraft | null>(null)
+
+  // "Korábbi" fül (FR-5..FR-11): teljes (összes státuszú) lista a naptárhoz + napi listához.
+  const [allShipments, setAllShipments] = useState<ShipmentRequest[]>([])
+  const [pastLoading, setPastLoading] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+
+  // Újranyomtatás (FR-11): a meglévő ReceiptPreviewModal újrafelhasználása.
+  const [reprintReceipt, setReprintReceipt] = useState<PrintReceiptData | null>(null)
+  const [reprintLoadingId, setReprintLoadingId] = useState<string | null>(null)
 
   const loadShipments = useCallback(async (): Promise<void> => {
     try {
@@ -48,9 +77,38 @@ export default function ShipmentListPage() {
     }
   }, [statusFilter, branchId])
 
+  // "Korábbi" fül adatforrása: a saját telephely ÖSSZES (státusztól független) bizonylata,
+  // lapozva (findByBranch nem 100-cap-elt), hogy a naptár aktív napjai teljesek legyenek.
+  const loadAllShipments = useCallback(async (): Promise<void> => {
+    try {
+      setPastLoading(true)
+      const data = branchId
+        ? await shipmentRequestApi.findByBranch(branchId)
+        : await shipmentRequestApi.findByStatus('')
+      setAllShipments(data)
+    } catch (err) {
+      const errorMessage = getErrorMessage(err)
+      setError(errorMessage)
+      logger.error('ShipmentListPage', 'Failed to load past shipments:', err)
+    } finally {
+      setPastLoading(false)
+    }
+  }, [branchId])
+
   useEffect(() => {
     void loadShipments()
   }, [loadShipments])
+
+  useEffect(() => {
+    if (activeTab === 'past') void loadAllShipments()
+  }, [activeTab, loadAllShipments])
+
+  const handleTabChange = (tab: ShipmentTab): void => {
+    setActiveTab(tab)
+    setSelectedShipment(null)
+    setEditDraft(null)
+    setSelectedDate(null)
+  }
 
   const handleApprove = async (shipmentId: string): Promise<void> => {
     if (!worker?.id) return
@@ -119,7 +177,8 @@ export default function ShipmentListPage() {
   }
 
   const handleCancel = async (shipmentId: string): Promise<void> => {
-    if (!confirm('Biztosan visszavonja ezt a szállítmány igényt?')) return
+    // FR-13: a gomb felirata "Sztornó"; a handler logikája változatlan (cancel endpoint).
+    if (!confirm('Biztosan sztornózza ezt a szállítmány igényt?')) return
 
     try {
       setLoading(true)
@@ -174,11 +233,46 @@ export default function ShipmentListPage() {
     }
   }
 
+  // FR-11: elveszett bizonylat újranyomtatása — friss GET /shipments/{id} (cross-tenant: idegen
+  // tenant id-re a backend 404-et ad, ezt hibaként kezeljük), majd a meglévő ReceiptPreviewModal.
+  const handleReprint = async (shipmentId: string): Promise<void> => {
+    try {
+      setReprintLoadingId(shipmentId)
+      setError(null)
+      const shipment = await shipmentRequestApi.get(shipmentId)
+      setReprintReceipt(buildReprintReceiptData(shipment, worker))
+    } catch (err) {
+      const errorMessage = getErrorMessage(err)
+      setError(errorMessage)
+      toast.error('Bizonylat betöltése sikertelen', errorMessage)
+      logger.error('ShipmentListPage', 'Failed to load shipment for reprint:', err)
+    } finally {
+      setReprintLoadingId(null)
+    }
+  }
+
+  const handleReprintPrint = async (): Promise<void> => {
+    if (!reprintReceipt) return
+    if (!window.electronAPI?.printReceipt) {
+      toast.warning('Nyomtatás nem elérhető', isElectron()
+        ? 'Electron preload/electronAPI hiba — indítsa újra a klienst.'
+        : 'A nyomtatás csak az asztali (Electron) kliensben érhető el.')
+      return
+    }
+    try {
+      const ok = await window.electronAPI.printReceipt(JSON.stringify(reprintReceipt))
+      if (ok) toast.success('Nyomtatás elindítva', `Bizonylat: ${reprintReceipt.receiptNumber ?? '—'}`)
+      else toast.error('Nyomtatás sikertelen', 'A nyomtató nem válaszolt.')
+    } catch (e) {
+      toast.error('Nyomtatás hiba', getErrorMessage(e))
+    }
+  }
+
   const canCancel = (status: string): boolean => status !== 'DELIVERED' && status !== 'CANCELLED'
   const canDeliver = (status: string): boolean => status === 'APPROVED' || status === 'IN_TRANSIT'
   const canEdit = (status: string): boolean => status === 'DRAFT'
 
-  // Backend enum: DRAFT, SUBMITTED, APPROVED, IN_TRANSIT, DELIVERED, CANCELLED (ShipmentRequestStatus.java)
+  // Backend enum: DRAFT, SUBMITTED, APPROVED, IN_TRANSIT, DELIVERED, CANCELLED, REJECTED (ShipmentRequestStatus.java)
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { label: string; className: string }> = {
       DRAFT: { label: 'Vázlat', className: 'bg-gray-100 text-gray-700' },
@@ -186,7 +280,8 @@ export default function ShipmentListPage() {
       APPROVED: { label: 'Jóváhagyva', className: 'bg-green-100 text-green-700' },
       IN_TRANSIT: { label: 'Úton', className: 'bg-indigo-100 text-indigo-700' },
       DELIVERED: { label: 'Kézbesítve', className: 'bg-green-100 text-green-700' },
-      CANCELLED: { label: 'Megszakítva', className: 'bg-red-100 text-red-700' }
+      CANCELLED: { label: 'Megszakítva', className: 'bg-red-100 text-red-700' },
+      REJECTED: { label: 'Elutasítva', className: 'bg-red-100 text-red-700' },
     }
     const statusInfo = statusMap[status] || { label: status, className: 'bg-gray-100 text-gray-700' }
     return (
@@ -195,6 +290,126 @@ export default function ShipmentListPage() {
       </span>
     )
   }
+
+  // "Ma" fül: csak a mai (Europe/Budapest) requestedDeliveryDate-ű bizonylatok (FR-2).
+  const todaysShipments = useMemo(
+    () => shipments.filter((s) => dateOnly(s.requestedDeliveryDate) === today),
+    [shipments, today],
+  )
+
+  // Bizonylatos napok a naptárhoz (FR-7): az összes bizonylat requestedDeliveryDate-jéből.
+  const activeDates = useMemo(() => {
+    const set = new Set<string>()
+    for (const s of allShipments) {
+      const d = dateOnly(s.requestedDeliveryDate)
+      if (d) set.add(d)
+    }
+    return set
+  }, [allShipments])
+
+  // "Korábbi" fül: a kiválasztott nap összes bizonylata, státusztól függetlenül (FR-8).
+  const pastDayShipments = useMemo(
+    () => (selectedDate ? allShipments.filter((s) => dateOnly(s.requestedDeliveryDate) === selectedDate) : []),
+    [allShipments, selectedDate],
+  )
+
+  const renderRow = (shipment: ShipmentRequest, mode: ShipmentTab) => (
+    <tr key={shipment.id}>
+      <td className="font-mono font-semibold">{shipment.requestNumber}</td>
+      <td>{shipment.requestingBranchName}</td>
+      <td>{shipment.targetBranchName}</td>
+      <td>{new Date(shipment.requestedDeliveryDate).toLocaleDateString('hu-HU')}</td>
+      <td>{getStatusBadge(shipment.requestStatus)}</td>
+      <td className="text-sm text-gray-600">
+        <div>{shipment.requestedByWorkerName}</div>
+        <div className="text-xs">{new Date(shipment.requestedAt).toLocaleString('hu-HU')}</div>
+      </td>
+      <td className="no-print">
+        <div className="flex gap-1">
+          <button
+            onClick={() => void handleOpenDetails(shipment.id)}
+            className="toolbar-button"
+            title="Részletek"
+            disabled={detailLoadingId === shipment.id}
+          >
+            <Eye size={14} />
+          </button>
+          {mode === 'today' ? (
+            <>
+              {shipment.requestStatus === 'SUBMITTED' && (
+                <>
+                  <button
+                    onClick={() => handleApprove(shipment.id)}
+                    className="toolbar-button text-green-600"
+                    title="Jóváhagyás"
+                    disabled={loading}
+                  >
+                    <CheckCircle size={14} />
+                  </button>
+                  <button
+                    onClick={() => handleReject(shipment.id)}
+                    className="toolbar-button text-red-600"
+                    title="Elutasítás"
+                    disabled={loading}
+                  >
+                    <XCircle size={14} />
+                  </button>
+                </>
+              )}
+              {canDeliver(shipment.requestStatus) && (
+                <button
+                  onClick={() => void handleDeliver(shipment.id)}
+                  className="toolbar-button text-blue-600"
+                  title="Kézbesítés"
+                  disabled={loading}
+                >
+                  <Package size={14} />
+                </button>
+              )}
+              {canCancel(shipment.requestStatus) && (
+                <button
+                  onClick={() => void handleCancel(shipment.id)}
+                  className="toolbar-button text-red-700"
+                  title={t('shipments.sztorno')}
+                  disabled={loading}
+                >
+                  <XCircle size={14} />
+                </button>
+              )}
+            </>
+          ) : (
+            <button
+              onClick={() => void handleReprint(shipment.id)}
+              className="toolbar-button text-blue-700"
+              title={t('shipments.ujranyomtatas')}
+              disabled={reprintLoadingId === shipment.id}
+            >
+              <Printer size={14} />
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
+  )
+
+  const renderTable = (rows: ShipmentRequest[], mode: ShipmentTab) => (
+    <div className="form-panel p-0">
+      <table className="data-grid w-full">
+        <thead>
+          <tr>
+            <th>{t('shipments.igenySzam')}</th>
+            <th>{t('shipments.keroFiok')}</th>
+            <th>{t('shipments.celFiok')}</th>
+            <th>{t('shipments.kezbesitesiDatum')}</th>
+            <th>{t('common.status')}</th>
+            <th>{t('shipments.kerve')}</th>
+            <th className="no-print w-32">{t('common.actions')}</th>
+          </tr>
+        </thead>
+        <tbody>{rows.map((shipment) => renderRow(shipment, mode))}</tbody>
+      </table>
+    </div>
+  )
 
   return (
     <div className="space-y-4">
@@ -235,34 +450,57 @@ export default function ShipmentListPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="no-print form-panel">
-        <div className="flex gap-3 items-end">
-          <div>
-            <label className="form-label">{t('common.status')}</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="form-input"
-            >
-              <option value="">{t('common.all')}</option>
-              <option value="DRAFT">{t('shipments.vazlat')}</option>
-              <option value="SUBMITTED">{t('shipments.kerve')}</option>
-              <option value="APPROVED">{t('shipments.jovahagyva')}</option>
-              <option value="IN_TRANSIT">{t('shipments.uton')}</option>
-              <option value="DELIVERED">{t('shipments.kezbesitve')}</option>
-              <option value="CANCELLED">{t('shipments.megszakitva')}</option>
-            </select>
-          </div>
-          <button
-            onClick={loadShipments}
-            className="form-button"
-            disabled={loading}
-          >
-            {t('common.refresh')}
-          </button>
-        </div>
+      {/* FR-1: kétfüles navigáció — alapból "Ma". */}
+      <div className="no-print flex gap-1 border-b border-gray-200">
+        <button
+          type="button"
+          onClick={() => handleTabChange('today')}
+          data-testid="shipment-tab-today"
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+            activeTab === 'today' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          {t('shipments.ma')}
+        </button>
+        <button
+          type="button"
+          onClick={() => handleTabChange('past')}
+          data-testid="shipment-tab-past"
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+            activeTab === 'past' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          {t('shipments.korabbi')}
+        </button>
       </div>
+
+      {/* FR-3: státuszszűrő CSAK a "Ma" fülön (FR-10: a "Korábbi" fülön nincs). */}
+      {activeTab === 'today' && (
+        <div className="no-print form-panel">
+          <div className="flex gap-3 items-end">
+            <div>
+              <label className="form-label">{t('common.status')}</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="form-input"
+              >
+                <option value="">{t('common.all')}</option>
+                <option value="DRAFT">{t('shipments.vazlat')}</option>
+                <option value="SUBMITTED">{t('shipments.kerve')}</option>
+                <option value="APPROVED">{t('shipments.jovahagyva')}</option>
+                <option value="IN_TRANSIT">{t('shipments.uton')}</option>
+                <option value="DELIVERED">{t('shipments.kezbesitve')}</option>
+                <option value="REJECTED">{t('shipments.elutasitva')}</option>
+                <option value="CANCELLED">{t('shipments.megszakitva')}</option>
+              </select>
+            </div>
+            <button onClick={loadShipments} className="form-button" disabled={loading}>
+              {t('common.refresh')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="form-panel bg-red-50 border-red-200">
@@ -303,7 +541,8 @@ export default function ShipmentListPage() {
               {selectedShipment.notes}
             </div>
           )}
-          {canEdit(selectedShipment.requestStatus) && (
+          {/* A szerkesztés csak a "Ma" fül operatív munkafolyamatához tartozik (DRAFT). */}
+          {activeTab === 'today' && canEdit(selectedShipment.requestStatus) && (
             <div className="mt-3 border-t border-blue-100 pt-3">
               {editDraft ? (
                 <div className="space-y-3 rounded border border-blue-100 bg-white p-3">
@@ -406,104 +645,91 @@ export default function ShipmentListPage() {
         </div>
       )}
 
-      {loading ? (
-        <div className="form-panel text-center py-8 text-gray-500">
-          Betöltés...
-        </div>
-      ) : shipments.length === 0 ? (
-        <div className="form-panel text-center py-8 text-gray-500">
-          {t('shipments.nincsenekSzallitmanyigenyek')}
-        </div>
-      ) : (
-        <div className="form-panel p-0">
-          <table className="data-grid w-full">
-            <thead>
-              <tr>
-                <th>{t('shipments.igenySzam')}</th>
-                <th>{t('shipments.keroFiok')}</th>
-                <th>{t('shipments.celFiok')}</th>
-                <th>{t('shipments.kezbesitesiDatum')}</th>
-                <th>{t('common.status')}</th>
-                <th>{t('shipments.kerve')}</th>
-                <th className="no-print w-32">{t('common.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shipments.map((shipment) => (
-                <tr key={shipment.id}>
-                  <td className="font-mono font-semibold">{shipment.requestNumber}</td>
-                  <td>{shipment.requestingBranchName}</td>
-                  <td>{shipment.targetBranchName}</td>
-                  <td>
-                    {new Date(shipment.requestedDeliveryDate).toLocaleDateString('hu-HU')}
-                  </td>
-                  <td>{getStatusBadge(shipment.requestStatus)}</td>
-                  <td className="text-sm text-gray-600">
-                    <div>{shipment.requestedByWorkerName}</div>
-                    <div className="text-xs">
-                      {new Date(shipment.requestedAt).toLocaleString('hu-HU')}
-                    </div>
-                  </td>
-                  <td className="no-print">
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => void handleOpenDetails(shipment.id)}
-                        className="toolbar-button"
-                        title="Részletek"
-                        disabled={detailLoadingId === shipment.id}
-                      >
-                        <Eye size={14} />
-                      </button>
-                      {shipment.requestStatus === 'SUBMITTED' && (
-                        <>
-                          <button
-                            onClick={() => handleApprove(shipment.id)}
-                            className="toolbar-button text-green-600"
-                            title="Jóváhagyás"
-                            disabled={loading}
-                          >
-                            <CheckCircle size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleReject(shipment.id)}
-                            className="toolbar-button text-red-600"
-                            title="Elutasítás"
-                            disabled={loading}
-                          >
-                            <XCircle size={14} />
-                          </button>
-                        </>
-                      )}
-                      {canDeliver(shipment.requestStatus) && (
-                        <button
-                          onClick={() => void handleDeliver(shipment.id)}
-                          className="toolbar-button text-blue-600"
-                          title="Kézbesítés"
-                          disabled={loading}
-                        >
-                          <Package size={14} />
-                        </button>
-                      )}
-                      {canCancel(shipment.requestStatus) && (
-                        <button
-                          onClick={() => void handleCancel(shipment.id)}
-                          className="toolbar-button text-red-700"
-                          title="Visszavonás"
-                          disabled={loading}
-                        >
-                          <XCircle size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* FR-2..FR-4: "Ma" fül — csak aznapi bizonylatok, teljes műveleti paletta. */}
+      {activeTab === 'today' && (
+        loading ? (
+          <div className="form-panel text-center py-8 text-gray-500">Betöltés...</div>
+        ) : todaysShipments.length === 0 ? (
+          <div className="form-panel text-center py-8 text-gray-500">
+            {t('shipments.nincsenekSzallitmanyigenyek')}
+          </div>
+        ) : (
+          renderTable(todaysShipments, 'today')
+        )
+      )}
+
+      {/* FR-5..FR-11: "Korábbi" fül — bal naptár, jobb napi lista (csak megtekintés + újranyomtatás). */}
+      {activeTab === 'past' && (
+        <div className="grid gap-4 md:grid-cols-5">
+          <div className="md:col-span-2">
+            <ShipmentCalendarPanel
+              activeDates={activeDates}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              today={today}
+            />
+          </div>
+          <div className="md:col-span-3">
+            {pastLoading ? (
+              <div className="form-panel text-center py-8 text-gray-500">Betöltés...</div>
+            ) : !selectedDate ? (
+              <div className="form-panel text-center py-8 text-gray-500" data-testid="past-empty-state">
+                {t('shipments.valasszonNapotANaptarbol')}
+              </div>
+            ) : pastDayShipments.length === 0 ? (
+              <div className="form-panel text-center py-8 text-gray-500">
+                {t('shipments.nincsenekSzallitmanyigenyek')}
+              </div>
+            ) : (
+              renderTable(pastDayShipments, 'past')
+            )}
+          </div>
         </div>
       )}
+
+      <ReceiptPreviewModal
+        isOpen={reprintReceipt !== null}
+        onClose={() => setReprintReceipt(null)}
+        receiptData={reprintReceipt}
+        qrCodeDataUrl={null}
+        allowPrint={isElectron()}
+        printLabel={t('shipments.ujranyomtatas')}
+        onPrint={handleReprintPrint}
+        variant="official"
+      />
     </div>
   )
+}
+
+/** Egy ShipmentRequest → PrintReceiptData az újranyomtatáshoz (FR-11). A szállítmány-IGÉNY
+ *  nem perzisztál HUF-ot/árfolyamot, ezért a bizonylat best-effort: tételsorok + fejléc-adatok. */
+function buildReprintReceiptData(
+  s: ShipmentRequest,
+  worker: Parameters<typeof getCompanyType>[0],
+): PrintReceiptData {
+  const requestedAt = s.requestedAt || ''
+  const lines = (s.items ?? []).map((i) => ({
+    currencyCode: i.currencyCode ?? String(i.currencyId ?? ''),
+    amount: Number(i.requestedAmount ?? i.amount ?? 0),
+  }))
+  return {
+    type: 'transfer',
+    companyType: getCompanyType(worker),
+    receiptNumber: s.requestNumber || s.id,
+    branchCode: s.requestingBranchName || s.sourceBranchName || s.requestingBranchId || '',
+    cashierName: s.requestedByWorkerName || '',
+    date: requestedAt.slice(0, 10) || dateOnly(s.requestedDeliveryDate),
+    time: requestedAt.length >= 19 ? requestedAt.slice(11, 19) : '',
+    deliveryDate: dateOnly(s.requestedDeliveryDate) || undefined,
+    transferTarget: s.targetBranchName || s.targetBranchId || '',
+    transferNote: s.notes || undefined,
+    carrierName: s.carrierName || undefined,
+    sealNumber: s.sealNumber || undefined,
+    transferDocType: 'handover',
+    transferLines: lines.length > 0 ? lines : undefined,
+    currencyCode: lines[0]?.currencyCode,
+    foreignAmount: lines[0]?.amount,
+  }
 }
 
 function dateInputValue(value: string | undefined): string {
@@ -531,4 +757,3 @@ function formatDate(value: string | undefined): string {
 function formatAmount(value: number | undefined): string {
   return (value ?? 0).toLocaleString('hu-HU')
 }
-

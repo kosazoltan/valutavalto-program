@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 
+// FK (átadás-átvétel kétfüles nézet): a "Ma" fül csak az aznapi (Europe/Budapest)
+// requestedDeliveryDate-ű bizonylatokat mutatja, ezért a mock bizonylat dátuma MA.
+const TODAY = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Budapest' }).format(new Date())
+
 function createJwt(payload: Record<string, unknown>) {
   const encode = (value: Record<string, unknown>) =>
     Buffer.from(JSON.stringify(value)).toString('base64url')
@@ -14,7 +18,7 @@ const shipment = {
   toBranchId: 'branch-2',
   toBranchName: 'Belváros',
   status: 'APPROVED',
-  deliveryDate: '2026-06-18',
+  deliveryDate: TODAY,
   requestedById: 77,
   requestedBy: 'Teszt Dolgozó',
   createdAt: '2026-06-18T10:00:00',
@@ -26,7 +30,7 @@ const shipment = {
 const draftShipment = {
   ...shipment,
   status: 'DRAFT',
-  deliveryDate: '2026-06-20',
+  deliveryDate: TODAY,
   notes: 'Eredeti megjegyzés',
 }
 
@@ -155,7 +159,7 @@ test('szállítmány lista detail, deliver és cancel backend workflow-t hív', 
   const cancelRequest = page.waitForRequest(request =>
     request.method() === 'POST' && request.url().includes('/shipments/shipment-1/cancel')
   )
-  await page.getByTitle('Visszavonás').click()
+  await page.getByTitle('Sztornó').click()
   await cancelRequest
 
   const horizontalOverflow = await page.evaluate(() =>
@@ -187,7 +191,7 @@ test('szállítmány DRAFT szerkesztés mobilnézetben PUT /shipments/{id} backe
   expect(request.postDataJSON()).toMatchObject({
     fromBranchId: 'branch-1',
     toBranchId: 'branch-2',
-    deliveryDate: '2026-06-20',
+    deliveryDate: TODAY,
     carrierName: 'Új Szállító',
     sealNumber: 'PL-999',
     notes: 'Módosított megjegyzés',
