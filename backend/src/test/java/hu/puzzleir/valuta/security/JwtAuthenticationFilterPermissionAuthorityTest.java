@@ -160,4 +160,79 @@ class JwtAuthenticationFilterPermissionAuthorityTest {
             .as("Csak nem-blank permission-ok kerulnek be authority-kent")
             .containsExactlyInAnyOrder("ROLE_CASHIER", "VALID_PERM", "ANOTHER_PERM");
     }
+
+    /**
+     * FK-042 regressziovedelem: bizonyitja, hogy ha az `activeRole` claim a kanonikus
+     * `foertektar` (lowercase), a filter `ROLE_FOERTEKTAR` authority-t ad — pontosan amit a
+     * `PUT /api/v1/branches/{id}` `@PreAuthorize("hasAnyRole('ADMIN','FOERTEKTAR','UGYVEZETO')")`
+     * megkovetel. Ez igazolja, hogy a token→authority kod-lanc HELYES; a gyakorlati 403 NEM
+     * kod-hiba, hanem adat (hianyzo `worker_role_assignment`) vagy elavult session.
+     */
+    @Test
+    @DisplayName("FK-042: foertektar activeRole (kanonikus lowercase) → ROLE_FOERTEKTAR authority")
+    void foertektarActiveRoleBecomesRoleFoertektar() throws Exception {
+        String fakeJwt = "fake-jwt-foertektar";
+        when(jwtTokenProvider.validateToken(fakeJwt)).thenReturn(true);
+        when(jwtTokenProvider.getTokenIdFromToken(fakeJwt)).thenReturn("token-id-fk042");
+        when(tokenBlacklistService.isBlacklisted(anyString())).thenReturn(false);
+        when(jwtTokenProvider.getWorkerIdFromToken(fakeJwt)).thenReturn(99L);
+        when(jwtTokenProvider.getWorkerCodeFromToken(fakeJwt)).thenReturn("P099");
+        when(jwtTokenProvider.getRoleFromToken(fakeJwt)).thenReturn("MANAGER");
+        when(jwtTokenProvider.getCompanyIdFromToken(fakeJwt)).thenReturn(UUID.randomUUID());
+        when(jwtTokenProvider.getBranchIdFromToken(fakeJwt)).thenReturn(UUID.randomUUID());
+        when(jwtTokenProvider.getActiveRoleFromToken(fakeJwt)).thenReturn("foertektar");
+        when(jwtTokenProvider.getPermissionsFromToken(fakeJwt)).thenReturn(List.of());
+
+        MockHttpServletRequest request = new MockHttpServletRequest("PUT", "/api/v1/branches/" + UUID.randomUUID());
+        request.addHeader("Authorization", "Bearer " + fakeJwt);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request, response, chain);
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        assertThat(auth).isNotNull();
+        List<String> authorityNames = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList();
+        assertThat(authorityNames)
+            .as("foertektar activeRole → ROLE_FOERTEKTAR a legacy ROLE_MANAGER mellett")
+            .containsExactlyInAnyOrder("ROLE_MANAGER", "ROLE_FOERTEKTAR");
+    }
+
+    /**
+     * FK-042: a regi angol enum forma (`CHIEF_VAULT`) is `ROLE_FOERTEKTAR`-ra normalizalodik
+     * (a `normalizeOperationalRoleForAuthority` explicit case-e) — backward-compat regio tokenekre.
+     */
+    @Test
+    @DisplayName("FK-042: CHIEF_VAULT activeRole (angol enum) → ROLE_FOERTEKTAR authority")
+    void chiefVaultActiveRoleBecomesRoleFoertektar() throws Exception {
+        String fakeJwt = "fake-jwt-chief-vault";
+        when(jwtTokenProvider.validateToken(fakeJwt)).thenReturn(true);
+        when(jwtTokenProvider.getTokenIdFromToken(fakeJwt)).thenReturn("token-id-fk042b");
+        when(tokenBlacklistService.isBlacklisted(anyString())).thenReturn(false);
+        when(jwtTokenProvider.getWorkerIdFromToken(fakeJwt)).thenReturn(100L);
+        when(jwtTokenProvider.getWorkerCodeFromToken(fakeJwt)).thenReturn("P100");
+        when(jwtTokenProvider.getRoleFromToken(fakeJwt)).thenReturn("MANAGER");
+        when(jwtTokenProvider.getCompanyIdFromToken(fakeJwt)).thenReturn(UUID.randomUUID());
+        when(jwtTokenProvider.getBranchIdFromToken(fakeJwt)).thenReturn(UUID.randomUUID());
+        when(jwtTokenProvider.getActiveRoleFromToken(fakeJwt)).thenReturn("CHIEF_VAULT");
+        when(jwtTokenProvider.getPermissionsFromToken(fakeJwt)).thenReturn(List.of());
+
+        MockHttpServletRequest request = new MockHttpServletRequest("PUT", "/api/v1/branches/" + UUID.randomUUID());
+        request.addHeader("Authorization", "Bearer " + fakeJwt);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request, response, chain);
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        assertThat(auth).isNotNull();
+        List<String> authorityNames = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList();
+        assertThat(authorityNames)
+            .as("CHIEF_VAULT activeRole → ROLE_FOERTEKTAR a legacy ROLE_MANAGER mellett")
+            .containsExactlyInAnyOrder("ROLE_MANAGER", "ROLE_FOERTEKTAR");
+    }
 }
