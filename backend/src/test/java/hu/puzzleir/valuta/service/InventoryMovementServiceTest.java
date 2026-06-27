@@ -146,9 +146,9 @@ class InventoryMovementServiceTest {
         when(branchRepository.existsByIdAndCompanyId(OWN_BRANCH, COMPANY_ID)).thenReturn(true);
         securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ertektar");
         securityUtilsMock.when(SecurityUtils::getCurrentRole).thenReturn("ertektar");
-        securityUtilsMock.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(USER_BRANCH);
-        when(branchRepository.findById(USER_BRANCH)).thenReturn(Optional.of(branchWithTerritory(1)));
-        when(branchRepository.findById(OWN_BRANCH)).thenReturn(Optional.of(branchWithTerritory(2)));
+        // FK-039 szándék az AccessScopeService-en át: az idegen-territory pénztár NEM látható
+        // a hívó vault/region scope-jában → 404 (cross-territory szivárgás ellen).
+        when(accessScopeService.isBranchVisible(any(), eq(OWN_BRANCH.toString()))).thenReturn(false);
 
         assertThatThrownBy(() -> service.getMovements(OWN_BRANCH, null, LocalDate.now()))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -162,8 +162,9 @@ class InventoryMovementServiceTest {
         when(branchRepository.existsByIdAndCompanyId(OWN_BRANCH, COMPANY_ID)).thenReturn(true);
         securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ertektar");
         securityUtilsMock.when(SecurityUtils::getCurrentRole).thenReturn("ertektar");
-        securityUtilsMock.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(USER_BRANCH);
-        when(branchRepository.findById(USER_BRANCH)).thenReturn(Optional.of(branchWithTerritory(null)));
+        // AccessScopeService fail-closed: ha a territory-scoped role-nak nincs meghatározható
+        // scope-ja, a pénztár nem látható → 404 (nincs cross-territory szivárgás).
+        when(accessScopeService.isBranchVisible(any(), eq(OWN_BRANCH.toString()))).thenReturn(false);
 
         assertThatThrownBy(() -> service.getMovements(OWN_BRANCH, null, LocalDate.now()))
                 .isInstanceOf(ResourceNotFoundException.class)
