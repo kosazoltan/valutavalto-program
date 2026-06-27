@@ -507,6 +507,25 @@
     "szamlaszam": "Számlaszám",
     "ujCeg": "Új cég"
   },
+  "competitorRates": {
+    "betoltes": "Betöltés…",
+    "betoltesiHiba": "A versenytárs-bevitel nem tölthető be",
+    "cim": "Versenytárs-árfolyam bevitel",
+    "eladas": "Eladás",
+    "ervenytelenSzam": "Érvénytelen árfolyam-érték",
+    "felKitoltottSor": "Egy vagy több valutánál csak a vétel vagy csak az eladás van kitöltve — kérjük, töltse ki mindkettőt vagy hagyja üresen.",
+    "hiba": "Hiba",
+    "leiras": "A területén lévő versenyhely vételi/eladási árfolyamait rögzítheti.",
+    "mentes": "Mentés…",
+    "mentve": "Versenytárs-árfolyam rögzítve",
+    "nincsVersenyhely": "Nincs versenyhely a területén. Kérjen felvételt a vezetőtől.",
+    "rogzites": "Árfolyamok rögzítése",
+    "toltsKiLegalabbEgyet": "Töltsön ki legalább egy valuta vételi/eladási árfolyamot",
+    "valasszVersenyhelyet": "Válasszon versenyhelyet…",
+    "valasszVersenyhelyetFigyelmeztetes": "Válasszon versenyhelyet",
+    "versenyhely": "Versenyhely",
+    "vetel": "Vétel"
+  },
   "competitors": {
     "aktiv": "Aktiv",
     "cim": "Cim",
@@ -1172,6 +1191,16 @@
     "koltsegek": "Költségek",
     "nettoHaszon": "Nettó haszon",
     "vetelHuf": "Vétel HUF"
+  },
+  "pwaInstall": {
+    "android": "A böngésző menüjében (⋮) válassza az „Alkalmazás telepítése\" / „Hozzáadás a kezdőképernyőhöz\" lehetőséget.",
+    "cim": "Telepítés a telefonra",
+    "cimErtektar": "Árfolyam-néző telefonjának összekötése (QR)",
+    "ios": "A Megosztás ikonra koppintva válassza a „Főképernyőhöz adás\" lehetőséget.",
+    "leiras": "A telefonra nem kell külön programot telepíteni: nyissa meg az alábbi címet a telefon böngészőjében (vagy olvassa be a QR-kódot egy másik eszközről), majd tegye ki a kezdőképernyőre — onnantól egy gombbal indítható alkalmazásként.",
+    "lepes1": "Nyissa meg a címet a telefon böngészőjében, vagy olvassa be a QR-kódot.",
+    "lepes2": "Jelentkezzen be a saját kódjával és jelszavával.",
+    "qrAlt": "QR-kód a megnyitáshoz"
   },
   "rate-management": {
     "arfolyamPublikalas": "Árfolyam publikálás",
@@ -2406,7 +2435,7 @@
     "mozgasReszletei": "Mozgás részletei — #",
     "mozgasTipusa": "Mozgás típusa",
     "mozgasTortenet": "Mozgás történet",
-    "napiJelentesampKorlevel": "Napi Jelentés &amp; Körlevél",
+    "napiJelentesampKorlevel": "Napi Jelentés & Körlevél",
     "napiJelentesek": "Napi jelentések",
     "navigacio": "Navigáció",
     "netto": "Netto",

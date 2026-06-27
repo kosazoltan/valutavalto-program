@@ -224,7 +224,7 @@ export default function ReceiptPreviewModal({
               <p className="text-xs font-bold">{company.fullName}</p>
               {/* Batch2-E (Fabulya-teszt 2026-06-12): a kiállító értéktár azonosítója + neve a
                   fejlécben — eddig sosem volt a template része, az értéktár neve csak a
-                  Kérő/Cél sorokban jelent meg. */}
+                  Átadó/Átvevő sorokban jelent meg. */}
               {isTransfer && receiptData.vaultBranchLabel && (
                 <p className="text-xs font-bold">{receiptData.vaultBranchLabel}</p>
               )}
@@ -376,9 +376,9 @@ export default function ReceiptPreviewModal({
             {receiptData.type === 'transfer' && (
               <div className="space-y-1">
                 <p className="font-semibold">Átadás-átvétel</p>
-                {/* FR-2: a Kérő iroda és Cél iroda kötelező mezők — mindig megjelennek (hiány esetén „—"). */}
-                <p><span className="font-semibold">Kérő iroda:</span> {receiptData.branchCode || '—'}</p>
-                <p><span className="font-semibold">Cél iroda:</span> {receiptData.transferTarget || '—'}</p>
+                {/* FR-2: az Átadó és Átvevő kötelező mezők — mindig megjelennek (hiány esetén „—"). */}
+                <p><span className="font-semibold">Átadó:</span> {receiptData.branchCode || '—'}</p>
+                <p><span className="font-semibold">Átvevő:</span> {receiptData.transferTarget || '—'}</p>
                 {receiptData.carrierName && (
                   <p><span className="font-semibold">Szállító:</span> {receiptData.carrierName}</p>
                 )}

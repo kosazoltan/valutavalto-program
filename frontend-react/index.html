@@ -1,30 +1,33 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="hu">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/pwa-icon-256.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1e40af" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Valuta Pénztár" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <!-- apple-touch-icon: PNG generálás külön sprintben (180x180 ajánlott).
-         Most NEM hivatkozunk SVG apple-touch-icon-ra, mert iOS Safari nem fogadja el az SVG-t. -->
+    <!-- iOS „Kezdőképernyőre" ikon (apple-touch-icon, PNG — iOS Safari nem fogad el SVG-t). -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Valuta Pénztári Rendszer - Best Change</title>
   </head>
   <body>
     <div id="root"></div>
     <!-- sockjs-client (STOMP/WebSocket, pl. árfolyam- és értéktári-készlet frissítés) a Node-féle
          `global`-ra hivatkozik; böngészőben ezt a `window`-ra kell képezni, MIELŐTT bármely modul betölt. -->
-    <script>window.global = window.global || window;</script>
+    <script>
+      window.global = window.global || window
+    </script>
     <script type="module" src="/src/main.tsx"></script>
     <script>
       // PWA Service Worker regisztráció (Sprint 5 v2.5.50+)
       // CSAK production build-en aktív (NEM dev mode-ban, ahogy a vite ajánlja)
       if ('serviceWorker' in navigator && location.protocol === 'https:') {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js')
+          navigator.serviceWorker
+            .register('/service-worker.js')
             .catch((err) => console.warn('SW regisztráció sikertelen:', err))
         })
       }

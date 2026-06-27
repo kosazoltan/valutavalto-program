@@ -8,13 +8,6 @@ const mocks = vi.hoisted(() => ({
   monthlyGetAllClosedMonths: vi.fn(),
   monthlyGetReport: vi.fn(),
   monthlyPerformClosing: vi.fn(),
-  hrkGetSummary: vi.fn(),
-  hrkClose: vi.fn(),
-  hrkHandover: vi.fn(),
-  hrkReceive: vi.fn(),
-  hrkGetJournal: vi.fn(),
-  hrkCloseDaily: vi.fn(),
-  hrkCancel: vi.fn(),
 }))
 
 vi.mock('../../services/api/index', () => ({
@@ -25,17 +18,6 @@ vi.mock('../../services/api/index', () => ({
     getAllClosedMonths: mocks.monthlyGetAllClosedMonths,
     getReport: mocks.monthlyGetReport,
     performClosing: mocks.monthlyPerformClosing,
-  },
-  hrkMonthlyApi: {
-    getSummary: mocks.hrkGetSummary,
-    close: mocks.hrkClose,
-  },
-  hrkDailyApi: {
-    handover: mocks.hrkHandover,
-    receive: mocks.hrkReceive,
-    getJournal: mocks.hrkGetJournal,
-    closeDaily: mocks.hrkCloseDaily,
-    cancel: mocks.hrkCancel,
   },
 }))
 
@@ -48,74 +30,10 @@ vi.mock('../../utils/logger', () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }))
 
-const hrkSummary = {
-  branchId: 'branch-1',
-  yearMonth: '2026-06',
-  totalTransactions: 2,
-  totalHandoverHuf: 100000,
-  totalReceiveHuf: 250000,
-  netHuf: 150000,
-  currencyBreakdown: [
-    {
-      currencyCode: 'EUR',
-      handoverCount: 1,
-      handoverAmount: 250,
-      handoverHuf: 100000,
-      receiveCount: 1,
-      receiveAmount: 500,
-      receiveHuf: 250000,
-      netAmount: 250,
-      netHuf: 150000,
-    },
-  ],
-}
-
-const hrkJournal = [
-  {
-    id: 'hrk-tx-1',
-    branchId: 'branch-1',
-    type: 'HANDOVER',
-    currencyCode: 'EUR',
-    amount: 250,
-    hufAmount: 100000,
-    bankAccountNumber: '11700000-00000000',
-    reference: 'HRK-2026-001',
-    note: 'Teszt átadás',
-    status: 'COMPLETED',
-    workerId: 77,
-    createdAt: '2026-06-18T10:00:00',
-    completedAt: '2026-06-18T10:05:00',
-  },
-  {
-    id: 'hrk-tx-2',
-    branchId: 'branch-1',
-    type: 'RECEIVE',
-    currencyCode: 'USD',
-    amount: 100,
-    hufAmount: 35000,
-    bankAccountNumber: null,
-    reference: 'HRK-2026-002',
-    note: 'Függő átvétel',
-    status: 'PENDING',
-    workerId: 77,
-    createdAt: '2026-06-18T11:00:00',
-    completedAt: null,
-  },
-]
-
-describe('MonthlyClosingPage HRK backend contract', () => {
+describe('MonthlyClosingPage — havi zárás (értéktár)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.apiGet.mockResolvedValue({
-      data: [
-        {
-          id: 'closing-1',
-          yearMonth: '2026-06',
-          branchName: 'Budapest 01',
-          status: 'OPEN',
-        },
-      ],
-    })
+    mocks.apiGet.mockResolvedValue({ data: [] })
     mocks.monthlyGetAllClosedMonths.mockResolvedValue([
       {
         id: 'closing-1',
@@ -154,31 +72,31 @@ describe('MonthlyClosingPage HRK backend contract', () => {
       currencyBreakdown: '{"EUR":{"buy":1200}}',
       createdAt: '2026-07-31T18:01:00',
     })
-    mocks.hrkGetSummary.mockResolvedValue(hrkSummary)
-    mocks.hrkClose.mockResolvedValue({ ...hrkSummary, totalTransactions: 3 })
-    mocks.hrkHandover.mockResolvedValue({ ...hrkJournal[0], id: 'hrk-tx-new', type: 'HANDOVER' })
-    mocks.hrkReceive.mockResolvedValue({ ...hrkJournal[1], id: 'hrk-tx-new-receive', type: 'RECEIVE' })
-    mocks.hrkGetJournal.mockResolvedValue(hrkJournal)
-    mocks.hrkCloseDaily.mockResolvedValue(hrkJournal)
-    mocks.hrkCancel.mockResolvedValue(undefined)
     vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
-  it('betölti a havi zárás listát, a HRK havi összesítőt és a napi naplót', async () => {
+  it('betölti a havi zárás listát a saját iroda branchId-jával', async () => {
     render(<MonthlyClosingPage />)
 
     await waitFor(() => {
       expect(mocks.monthlyGetAllClosedMonths).toHaveBeenCalledWith('branch-1')
-      expect(mocks.hrkGetSummary).toHaveBeenCalledWith(expect.stringMatching(/^\d{4}-\d{2}$/))
-      expect(mocks.hrkGetJournal).toHaveBeenCalledWith('branch-1')
     })
 
-    expect(await screen.findByText('HRK havi készletmozgás')).toBeInTheDocument()
-    expect(await screen.findByText('HRK napi napló')).toBeInTheDocument()
-    expect(screen.getAllByText('EUR').length).toBeGreaterThan(0)
-    expect(screen.getByText('HRK-2026-001')).toBeInTheDocument()
-    expect(screen.getByText('HRK-2026-002')).toBeInTheDocument()
-    expect(screen.getAllByText('150 000 Ft').length).toBeGreaterThan(0)
+    expect(await screen.findByTestId('monthly-closing-action-panel')).toBeInTheDocument()
+    expect(await screen.findByText('Budapest 01')).toBeInTheDocument()
+  })
+
+  // FK-040 regressziós őr: a 2025-01-01 óta nem forgalmazott HRK pénztár-bank készletmozgás
+  // elavult szekciói NEM jelenhetnek meg az aktív értéktári havi zárásban.
+  it('NEM rendereli az elavult HRK szekciókat', async () => {
+    render(<MonthlyClosingPage />)
+
+    await screen.findByTestId('monthly-closing-action-panel')
+
+    expect(screen.queryByText('HRK havi készletmozgás')).not.toBeInTheDocument()
+    expect(screen.queryByText('HRK napi napló')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('hrk-monthly-panel')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('hrk-daily-movement-form')).not.toBeInTheDocument()
   })
 
   it('havi zárás részletezéskor a backend havi report reprezentációját jeleníti meg', async () => {
@@ -209,7 +127,9 @@ describe('MonthlyClosingPage HRK backend contract', () => {
     await user.click(screen.getByRole('button', { name: /Havi zárás végrehajtása/i }))
 
     await waitFor(() => {
-      expect(window.confirm).toHaveBeenCalledWith('Biztosan végrehajtja a havi zárást erre a hónapra: 2026-07?')
+      expect(window.confirm).toHaveBeenCalledWith(
+        'Biztosan végrehajtja a havi zárást erre a hónapra: 2026-07?',
+      )
       expect(mocks.monthlyPerformClosing).toHaveBeenCalledWith('branch-1', '2026-07')
       expect(mocks.monthlyGetAllClosedMonths.mock.calls.length).toBeGreaterThanOrEqual(2)
       expect(screen.getByTestId('monthly-closing-report-panel')).toBeInTheDocument()
@@ -230,91 +150,5 @@ describe('MonthlyClosingPage HRK backend contract', () => {
       expect(window.confirm).toHaveBeenCalled()
     })
     expect(mocks.monthlyPerformClosing).not.toHaveBeenCalled()
-  })
-
-  it('HRK pénztár-bank átadást a handover backend wrapperre köt', async () => {
-    const user = userEvent.setup()
-    render(<MonthlyClosingPage />)
-
-    await screen.findByTestId('hrk-daily-movement-form')
-    await user.type(screen.getByLabelText('Valuta'), 'eur')
-    await user.type(screen.getByLabelText('Összeg'), '250')
-    await user.type(screen.getByLabelText('HUF összeg'), '100000')
-    await user.type(screen.getByLabelText('Bankszámla'), '11700000-00000000')
-    await user.type(screen.getByLabelText('Megjegyzés'), 'Teszt átadás')
-    await user.click(screen.getByRole('button', { name: /HRK rögzítés/i }))
-
-    await waitFor(() => {
-      expect(mocks.hrkHandover).toHaveBeenCalledWith('branch-1', {
-        currencyCode: 'EUR',
-        amount: 250,
-        hufAmount: 100000,
-        bankAccountNumber: '11700000-00000000',
-        note: 'Teszt átadás',
-      })
-    })
-  })
-
-  it('HRK bank-pénztár átvételt a receive backend wrapperre köt', async () => {
-    const user = userEvent.setup()
-    render(<MonthlyClosingPage />)
-
-    await screen.findByTestId('hrk-daily-movement-form')
-    await user.selectOptions(screen.getByLabelText('Művelet'), 'RECEIVE')
-    await user.type(screen.getByLabelText('Valuta'), 'usd')
-    await user.type(screen.getByLabelText('Összeg'), '100')
-    await user.type(screen.getByLabelText('HUF összeg'), '35000')
-    await user.click(screen.getByRole('button', { name: /HRK rögzítés/i }))
-
-    await waitFor(() => {
-      expect(mocks.hrkReceive).toHaveBeenCalledWith('branch-1', {
-        currencyCode: 'USD',
-        amount: 100,
-        hufAmount: 35000,
-        bankAccountNumber: undefined,
-        note: undefined,
-      })
-    })
-  })
-
-  it('HRK PENDING tétel törlését a cancel backend wrapperre köti', async () => {
-    const user = userEvent.setup()
-    render(<MonthlyClosingPage />)
-
-    await screen.findByText('HRK-2026-002')
-    const deleteButton = screen.getAllByRole('button', { name: /Törlés/i })
-      .find((button) => !(button as HTMLButtonElement).disabled)
-    if (!deleteButton) throw new Error('Hiányzik az aktív HRK törlés gomb')
-    await user.click(deleteButton)
-
-    await waitFor(() => {
-      expect(mocks.hrkCancel).toHaveBeenCalledWith('hrk-tx-2')
-    })
-  })
-
-  it('HRK havi zárás gomb megerősítés után a close backend wrapperét hívja', async () => {
-    const user = userEvent.setup()
-    render(<MonthlyClosingPage />)
-
-    await screen.findByText('HRK havi készletmozgás')
-    await user.click(screen.getByRole('button', { name: /HRK havi zárás/i }))
-
-    await waitFor(() => {
-      expect(window.confirm).toHaveBeenCalled()
-      expect(mocks.hrkClose).toHaveBeenCalledWith(expect.stringMatching(/^\d{4}-\d{2}$/))
-    })
-  })
-
-  it('HRK napi zárás gomb megerősítés után a close-daily backend wrapperét hívja', async () => {
-    const user = userEvent.setup()
-    render(<MonthlyClosingPage />)
-
-    await screen.findByText('HRK napi napló')
-    await user.click(screen.getByRole('button', { name: /HRK napi zárás/i }))
-
-    await waitFor(() => {
-      expect(window.confirm).toHaveBeenCalled()
-      expect(mocks.hrkCloseDaily).toHaveBeenCalledWith('branch-1', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/))
-    })
   })
 })

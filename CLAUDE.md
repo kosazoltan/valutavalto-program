@@ -113,6 +113,15 @@ powershell -ExecutionPolicy Bypass -File scripts/security/run-security-gate.ps1
 A security gate parancs deploy/release vagy security-sensitive valtozas elott
 kell, nem minden apro kod- vagy dokumentacios szerkeszteshez.
 
+## Kod-stilus (Prettier)
+
+Gepfuggetlen formazas: a gyoker `.prettierrc.json` rogziti a stilust (Prettier 3.x,
+pinned verzio). Ellenorzes `npm run format:check`, teljes formazas `npm run format`,
+egy fajl `npx prettier --write <fajl>`. Modul-elteres: `penztar-client` pontosvesszos
+(`semi: true`), a tobbi modul (frontend-react, kozponti-client, arfolyam-keszito-client)
+pontosvesszo nelkuli. Az ESLint NEM formaz, igy nincs utkozes. Reszletes leiras es a
+masik-gep / masik-ugynok munkafolyamat: `docs/code-style.md`.
+
 ## Defenziv biztonsagi audit (on-demand)
 
 Biztonsagi auditnal / sebezhetoseg-keresesnel tobbkoros, taint-flow alapu munkamod
@@ -247,3 +256,23 @@ kézzel; csak markerelt blokkban frissíthető.
 - Záró válaszban sorold fel: módosított fájlok, futtatott ellenőrzések
   PASS/FAIL eredménnyel, nem futtatott ellenőrzések oka és maradó kockázat.
 <!-- CODEX_SHARED_QUALITY_RULES_END v1 -->
+
+## Globális működési alapelv — minden programozási feladat
+
+> A `~/.claude/CLAUDE.md` globális szabály repó-szintű megerősítése. Biztonság,
+> verifikáció és git kérdésben a repó saját szabályai (pl. `AGENTS.md`) az irányadók.
+
+Kötelező munkafolyamat (a többi szabálytól függetlenül, azokon felül):
+
+1. **Utasítás** megértése: cél, nem-célok, edge case, mérhető elfogadás.
+2. **Terv** készítése az utasításból: lépések, érintett fájlok, kockázat,
+   verifikáció (nagyobb munkánál spec-first).
+3. **Implementáció a terv szerint**, a saját Dynamic Workflow orkesztrálásával:
+   a rutin/mechanikus/párhuzamos részeket olcsóbb subagentre delegálva
+   (Haiku 4.5 mechanikus munkára, Sonnet 4.6 közepes implementációra), a
+   kiemelten bonyolult, magas-effortú gondolkodást Opus 4.8-on tartva.
+4. **Verifikáció + önreview**: teszt/build/lint, majd a diffet a tervhez/spechez
+   mérd vissza.
+
+A főhurok **Opus 4.8** marad (nincs `opusplan`/Sonnet-váltás); token-takarékosan
+delegálj, és csak a valóban nehéz részeket csináld magad.

@@ -51,6 +51,7 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('../../services/api/index', () => ({
+  getPublicWebUrl: () => 'https://excvaluta.com',
   transactionApi: {
     getDailyTurnover: mocks.getDailyTurnover,
   },
@@ -173,8 +174,20 @@ describe('TreasuryDashboard', () => {
       grandTotalHuf: 1235000,
     })
     mocks.getCompanyTotals.mockResolvedValue([
-      { currencyId: 1, currencyCode: 'EUR', currencyName: 'Euró', totalBalance: 1000, branchCount: 2 },
-      { currencyId: 2, currencyCode: 'USD', currencyName: 'Dollár', totalBalance: 500, branchCount: 1 },
+      {
+        currencyId: 1,
+        currencyCode: 'EUR',
+        currencyName: 'Euró',
+        totalBalance: 1000,
+        branchCount: 2,
+      },
+      {
+        currencyId: 2,
+        currencyCode: 'USD',
+        currencyName: 'Dollár',
+        totalBalance: 500,
+        branchCount: 1,
+      },
     ])
     mocks.getLowAlerts.mockResolvedValue([
       {
@@ -313,7 +326,9 @@ describe('TreasuryDashboard', () => {
       {
         id: 12,
         status: 'IN_PROGRESS',
-        lines: [{ targetBranchCode: 'PECS', targetBranchName: 'Pécs', currencyCode: 'USD', amount: 500 }],
+        lines: [
+          { targetBranchCode: 'PECS', targetBranchName: 'Pécs', currencyCode: 'USD', amount: 500 },
+        ],
       },
     ])
     mocks.getBankTransactions.mockResolvedValue([
@@ -370,18 +385,22 @@ describe('TreasuryDashboard', () => {
         lines: [{ currencyCode: 'EUR', amount: 100 }],
       },
     ])
-    mocks.getReceiptsByType.mockImplementation((type: string) => Promise.resolve(type === 'B'
-      ? [
-          {
-            id: 31,
-            receiptNumber: 'BIZ-2026-0001',
-            receiptType: 'B',
-            status: 'DRAFT',
-            createdAt: '2026-06-18T08:00:00',
-            lines: [{ currencyCode: 'EUR', amount: 100 }],
-          },
-        ]
-      : []))
+    mocks.getReceiptsByType.mockImplementation((type: string) =>
+      Promise.resolve(
+        type === 'B'
+          ? [
+              {
+                id: 31,
+                receiptNumber: 'BIZ-2026-0001',
+                receiptType: 'B',
+                status: 'DRAFT',
+                createdAt: '2026-06-18T08:00:00',
+                lines: [{ currencyCode: 'EUR', amount: 100 }],
+              },
+            ]
+          : [],
+      ),
+    )
     mocks.getCorrections.mockResolvedValue([
       {
         id: 41,
@@ -555,8 +574,12 @@ describe('TreasuryDashboard', () => {
     expect(screen.getByText('EUR')).toBeInTheDocument()
     expect(screen.getByText('Dél')).toBeInTheDocument()
     expect(screen.getByText('50k Ft profit')).toBeInTheDocument()
-    expect(screen.getByTestId('ertektar-status-control')).toHaveTextContent('Értéktári státusz kontroll')
-    expect(screen.getByTestId('ertektar-readonly-ledger')).toHaveTextContent('Értéktári bizonylat és korrekció áttekintés')
+    expect(screen.getByTestId('ertektar-status-control')).toHaveTextContent(
+      'Értéktári státusz kontroll',
+    )
+    expect(screen.getByTestId('ertektar-readonly-ledger')).toHaveTextContent(
+      'Értéktári bizonylat és korrekció áttekintés',
+    )
     expect(screen.getByTestId('ertektar-readonly-ledger')).toHaveTextContent('ATT-2026-0001')
     expect(screen.getByTestId('ertektar-readonly-ledger')).toHaveTextContent('BIZ-2026-0001')
     expect(screen.getByTestId('ertektar-readonly-ledger')).toHaveTextContent('VAULT SZEGED')
@@ -583,7 +606,9 @@ describe('TreasuryDashboard', () => {
       expect(mocks.updateDistributionStatus).toHaveBeenCalledWith(12, 'REJECTED')
     })
 
-    await user.click(screen.getByRole('button', { name: 'Banki tranzakció #13 státusz IN_PROGRESS' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Banki tranzakció #13 státusz IN_PROGRESS' }),
+    )
     await waitFor(() => {
       expect(mocks.updateBankTransactionStatus).toHaveBeenCalledWith(13, 'IN_PROGRESS')
     })

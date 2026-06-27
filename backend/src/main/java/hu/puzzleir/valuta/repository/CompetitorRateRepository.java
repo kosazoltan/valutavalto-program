@@ -2,10 +2,12 @@ package hu.puzzleir.valuta.repository;
 
 import hu.puzzleir.valuta.entity.CompetitorRate;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -90,4 +92,47 @@ public interface CompetitorRateRepository extends JpaRepository<CompetitorRate, 
     List<CompetitorRate> findLatestRatesByCurrencyIdAndCompanyId(
             @Param("currencyId") Long currencyId,
             @Param("companyId") UUID companyId);
+
+    /**
+     * FK-041/II atomi upsert (versenyhely + valuta + nap kulcson). A korábbi find-or-insert
+     * mintát váltja ki: a {@code V335} UNIQUE index (competitor_id, currency_id, rate_date) +
+     * PostgreSQL {@code ON CONFLICT DO UPDATE} garantálja, hogy párhuzamos beküldés se hozzon
+     * létre duplikált sort, és ne dobjon {@code DataIntegrityViolationException}-t.
+     *
+     * <p>Konfliktusnál (UPDATE ág) a {@code created_by} és {@code created_at} szándékosan NEM
+     * frissül → az eredeti rögzítő és időbélyeg megmarad (a korábbi szemantikával egyezően).
+     * A hívó hatókör-ellenőrzése (régió + companyId) a service-ben történik, mielőtt ide hív.</p>
+     */
+    @Modifying
+    @Query(value = """
+            INSERT INTO competitor_rates
+                (id, competitor_id, currency_id, buy_rate, sell_rate, rate_date, source, created_by, created_at)
+            VALUES
+                (gen_random_uuid(), :competitorId, :currencyId, :buyRate, :sellRate, :rateDate, :source, :createdBy, NOW())
+            ON CONFLICT (competitor_id, currency_id, rate_date)
+            DO UPDATE SET
+                buy_rate = EXCLUDED.buy_rate,
+                sell_rate = EXCLUDED.sell_rate,
+                source = EXCLUDED.source
+            """, nativeQuery = true)
+    void upsertCompetitorRate(
+            @Param("competitorId") UUID competitorId,
+            @Param("currencyId") Long currencyId,
+            @Param("rateDate") LocalDate rateDate,
+            @Param("buyRate") BigDecimal buyRate,
+            @Param("sellRate") BigDecimal sellRate,
+            @Param("source") String source,
+            @Param("createdBy") Long createdBy);
+
+    /**
+     * FK-041/II: egy versenyhely MAI bevitt versenytárs-árfolyamai (előtöltéshez). A currency JOIN FETCH
+     * az OSIV-off miatt; valutánként a legfrissebb (createdAt DESC) a mérvadó (a service dedup-ol).
+     */
+    @Query("SELECT cr FROM CompetitorRate cr " +
+           "JOIN FETCH cr.currency " +
+           "WHERE cr.competitor.id = :competitorId AND cr.rateDate = :rateDate " +
+           "ORDER BY cr.currency.displayOrder, cr.createdAt DESC")
+    List<CompetitorRate> findTodayByCompetitor(
+            @Param("competitorId") UUID competitorId,
+            @Param("rateDate") LocalDate rateDate);
 }

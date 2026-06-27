@@ -64,6 +64,7 @@ class DailyClosingServiceExtendedTest {
     @Mock private DecadeReportService decadeReportService;
     @Mock private AmlService amlService;
     @Mock private ReceiptSequenceService receiptSequenceService;
+    @Mock private ClosingControlService closingControlService;
 
     private static final UUID BRANCH_ID  = UUID.randomUUID();
     private static final UUID COMPANY_ID = UUID.randomUUID();

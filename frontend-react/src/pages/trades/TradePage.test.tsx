@@ -10,6 +10,13 @@ const mocks = vi.hoisted(() => ({
   reject: vi.fn(),
   complete: vi.fn(),
   cancel: vi.fn(),
+  listVaultCounterparties: vi.fn(),
+}))
+
+vi.mock('../../services/api', () => ({
+  branchApi: {
+    listVaultCounterparties: mocks.listVaultCounterparties,
+  },
 }))
 
 vi.mock('../../stores/authStore', () => ({
@@ -78,6 +85,11 @@ describe('TradePage backend contract', () => {
     mocks.reject.mockResolvedValue({ ...proposedTrade, status: 'REJECTED' })
     mocks.complete.mockResolvedValue({ ...acceptedTrade, status: 'COMPLETED' })
     mocks.cancel.mockResolvedValue({ ...proposedTrade, status: 'CANCELLED' })
+    mocks.listVaultCounterparties.mockResolvedValue({
+      territorialCashiers: [{ id: '22222222-2222-2222-2222-222222222222', code: 'SZG01', name: 'Szeged 01' }],
+      peerVaults: [],
+      fixedCounterparties: [],
+    })
   })
 
   it('pending és history trade-eket a backend szerződésből tölt', async () => {
@@ -98,7 +110,9 @@ describe('TradePage backend contract', () => {
     render(<TradePage />)
 
     await screen.findByText('Irodaközi trade')
-    fireEvent.change(screen.getByLabelText('Cél iroda UUID'), { target: { value: '22222222-2222-2222-2222-222222222222' } })
+    await waitFor(() => expect(mocks.listVaultCounterparties).toHaveBeenCalled())
+    expect(screen.getByDisplayValue('Budapest 01')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Cél iroda'), { target: { value: '22222222-2222-2222-2222-222222222222' } })
     fireEvent.change(screen.getByLabelText('Valuta'), { target: { value: 'usd' } })
     fireEvent.change(screen.getByLabelText('Összeg'), { target: { value: '2500' } })
     fireEvent.change(screen.getByLabelText('Árfolyam'), { target: { value: '351.25' } })

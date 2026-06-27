@@ -206,6 +206,15 @@ Ha egy platformfajl teljes gate-et vagy minden taskban security auditot kovetel,
 azt ezzel a fajllal osszhangban kell ertelmezni: teljes gate csak magas
 kockazatnal, push/merge/deploy/release elott kotelezo.
 
+## 9. Kod-stilus (Prettier)
+
+A kod gepfuggetlen formazasat a gyoker `.prettierrc.json` rogziti (Prettier 3.x,
+pinned verzio). Uj vagy szerkesztett kodot eszerint formazz: `npx prettier --write <fajl>`,
+ellenorzes `npm run format:check`. Modul-elteres: `penztar-client` pontosvesszos
+(`semi: true`), a tobbi modul (frontend-react, kozponti-client, arfolyam-keszito-client)
+pontosvesszo nelkuli. Az ESLint NEM formaz, igy nincs utkozes a Prettierrel. Reszletes
+leiras es a masik-gep / masik-ugynok munkafolyamat: `docs/code-style.md`.
+
 <!-- agentic-qa-kit:begin v1.2 — NE szerkeszd kézzel a blokkon belül; frissítés: update-all.mjs -->
 ## Agentic QA szabályok (agentic-qa-kit v1.2)
 
@@ -341,3 +350,18 @@ kézzel; csak markerelt blokkban frissíthető.
 - Záró válaszban sorold fel: módosított fájlok, futtatott ellenőrzések
   PASS/FAIL eredménnyel, nem futtatott ellenőrzések oka és maradó kockázat.
 <!-- CODEX_SHARED_QUALITY_RULES_END v1 -->
+
+## Kötelező munkafolyamat — minden programozási feladat
+
+A fenti szabályoktól függetlenül, azokon felül, MINDEN megkezdett programozási
+feladatra kötelező:
+
+1. **Utasítás** megértése: cél, nem-célok, edge case, mérhető elfogadás.
+2. **Tervkészítés**: az utasításból terv/spec (lépések, érintett fájlok,
+   kockázat, verifikáció); nagyobb munkánál spec-first.
+3. **Implementáció a terv szerint**, a részfeladatokat megfelelően orkesztrálva:
+   a mechanikus és párhuzamosítható részeket olcsóbb, a feladathoz illő subagent
+   modellre delegálva (ha elérhető), a magas gondolkodási effortot igénylő
+   részeket a fő modellen tartva.
+4. **Verifikáció + önreview**: teszt/build/lint vagy dokumentált ellenőrzés,
+   majd a diffet a tervhez/spechez mérd vissza.

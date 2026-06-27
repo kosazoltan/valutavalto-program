@@ -110,13 +110,13 @@ export const exchangeRateApi = {
   },
   getBuyRateForAmount: async (currencyId: number, hufAmount: number): Promise<number> => {
     const response = await api.get<number>('/exchange-rates/buy-rate', {
-      params: { currencyId, hufAmount }
+      params: { currencyId, hufAmount },
     })
     return response.data
   },
   getSellRateForAmount: async (currencyId: number, hufAmount: number): Promise<number> => {
     const response = await api.get<number>('/exchange-rates/sell-rate', {
-      params: { currencyId, hufAmount }
+      params: { currencyId, hufAmount },
     })
     return response.data
   },
@@ -124,24 +124,36 @@ export const exchangeRateApi = {
     const response = await api.post<ExchangeRate>('/exchange-rates', data)
     return response.data
   },
-  getHistoryByCode: async (currencyCode: string, startDate: string, endDate: string): Promise<ExchangeRate[]> => {
+  getHistoryByCode: async (
+    currencyCode: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<ExchangeRate[]> => {
     const response = await api.get<ExchangeRate[]>('/exchange-rates/history', {
-      params: { currencyCode, startDate, endDate }
+      params: { currencyCode, startDate, endDate },
     })
     return response.data
   },
   uploadRateFile: async (file: File): Promise<ParsedRateFile> => {
-    const response = await api.post<ParsedRateFile>('/exchange-rates/upload-rate-file', createRateFileFormData(file), {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const response = await api.post<ParsedRateFile>(
+      '/exchange-rates/upload-rate-file',
+      createRateFileFormData(file),
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      },
+    )
     return response.data
   },
   importRateFile: async (file: File): Promise<ExchangeRate[]> => {
-    const response = await api.post<ExchangeRate[]>('/exchange-rates/import-rate-file', createRateFileFormData(file), {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const response = await api.post<ExchangeRate[]>(
+      '/exchange-rates/import-rate-file',
+      createRateFileFormData(file),
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      },
+    )
     return response.data
-  }
+  },
 }
 
 export const rateApprovalApi = {
@@ -210,7 +222,13 @@ export const currencyApi = {
     return response.data
   },
   // V238 (2026-05-19): admin endpoints — uj valuta + aktivalas/deaktivalas auditalva
-  create: async (data: { code: string; name: string; symbol?: string; decimalPlaces?: number; displayOrder?: number }): Promise<Currency> => {
+  create: async (data: {
+    code: string
+    name: string
+    symbol?: string
+    decimalPlaces?: number
+    displayOrder?: number
+  }): Promise<Currency> => {
     const response = await api.post<Currency>('/currencies', data)
     return response.data
   },
@@ -221,7 +239,7 @@ export const currencyApi = {
   search: async (query: string): Promise<Currency[]> => {
     const response = await api.get<Currency[]>('/currencies/search', { params: { q: query } })
     return response.data
-  }
+  },
 }
 
 // ================== RATE CREATION API ==================
@@ -258,6 +276,39 @@ export interface CompetitorRateDTO {
   source?: string
   recordedById?: string
   recordedByName?: string
+}
+
+// FK-041: a terület munkacsoportonkénti árfolyam-variánsa (értéktáros read-only nézet).
+export interface TerritoryWorkgroupCurrencyRate {
+  currencyId: number
+  currencyCode: string
+  currencyName: string
+  hasRate: boolean
+  baseBuyRate?: number | null
+  baseSellRate?: number | null
+  officialRate?: number | null
+  limit1Amount?: number | null
+  limit1BuyRate?: number | null
+  limit1SellRate?: number | null
+  limit2Amount?: number | null
+  limit2BuyRate?: number | null
+  limit2SellRate?: number | null
+  limit3Amount?: number | null
+  limit3BuyRate?: number | null
+  limit3SellRate?: number | null
+  validTime?: string | null
+}
+
+export interface TerritoryWorkgroupRateDTO {
+  workgroupId: string
+  workgroupCode: string
+  workgroupName: string
+  tileColor?: string | null
+  branchNames: string[]
+  limit1Boundary?: number | null
+  limit2Boundary?: number | null
+  limit3Boundary?: number | null
+  currencies: TerritoryWorkgroupCurrencyRate[]
 }
 
 export interface RateCreationDTO {
@@ -443,9 +494,10 @@ async function sha256Hex(text: string): Promise<string> {
 async function buildLocalRatePackage(data: PublishGroupRateRequest) {
   const clientPackageId = crypto.randomUUID()
   const createdAt = new Date().toISOString()
-  const clientVersion = typeof window !== 'undefined' && window.electronAPI?.getAppVersion
-    ? await window.electronAPI.getAppVersion()
-    : (import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__)
+  const clientVersion =
+    typeof window !== 'undefined' && window.electronAPI?.getAppVersion
+      ? await window.electronAPI.getAppVersion()
+      : (import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__)
 
   const packageWithoutHash = {
     clientPackageId,
@@ -475,11 +527,16 @@ export const rateCreationApi = {
     if (response.status === 204 || !response.data) return null
     return response.data as RateMakerSheetDTO
   },
-  putLocalRateMakerSheet: async (sheetJson: string, request: Omit<RateMakerSheetUpdateRequest, 'sheetJson'> = {}): Promise<RateMakerSheetDTO> => {
+  putLocalRateMakerSheet: async (
+    sheetJson: string,
+    request: Omit<RateMakerSheetUpdateRequest, 'sheetJson'> = {},
+  ): Promise<RateMakerSheetDTO> => {
     const payload: RateMakerSheetUpdateRequest = {
       sheetJson,
-      source: request.source ?? (import.meta.env.VITE_APP_FLAVOR === 'rate-maker' ? 'rate-maker' : 'central'),
-      deviceId: request.deviceId ?? await getRateMakerDeviceId(),
+      source:
+        request.source ??
+        (import.meta.env.VITE_APP_FLAVOR === 'rate-maker' ? 'rate-maker' : 'central'),
+      deviceId: request.deviceId ?? (await getRateMakerDeviceId()),
       ...(request.baseVersion != null ? { baseVersion: request.baseVersion } : {}),
     }
     const response = await api.put<RateMakerSheetDTO>('/local-rate-maker/sheet', payload)
@@ -501,6 +558,13 @@ export const rateCreationApi = {
     const response = await api.get<CompetitorRateDTO[]>('/rate-creation/competitor-rates')
     return response.data
   },
+  // FK-041: a hívó területének (régió) munkacsoportonkénti árfolyam-variánsai az értéktáros nézetéhez.
+  getTerritoryWorkgroupRates: async (): Promise<TerritoryWorkgroupRateDTO[]> => {
+    const response = await api.get<TerritoryWorkgroupRateDTO[]>(
+      '/rate-creation/territory-workgroup-rates',
+    )
+    return response.data
+  },
   prepareRateCreation: async (currencyId: string): Promise<RateCreationDTO> => {
     const response = await api.get<RateCreationDTO>(`/rate-creation/prepare/${currencyId}`)
     return response.data
@@ -509,7 +573,9 @@ export const rateCreationApi = {
     const response = await api.post<PrepareAllRatesResult>('/rate-creation/prepare/all')
     return response.data
   },
-  publishGroupRate: async (data: PublishGroupRateRequest): Promise<void | LocalRatePublishResponse> => {
+  publishGroupRate: async (
+    data: PublishGroupRateRequest,
+  ): Promise<void | LocalRatePublishResponse> => {
     if (import.meta.env.VITE_APP_FLAVOR === 'rate-maker') {
       const ratePackage = await buildLocalRatePackage(data)
       const response = await api.post<LocalRatePublishResponse>(
@@ -522,15 +588,26 @@ export const rateCreationApi = {
     await api.post('/rate-creation/publish-group-rate', data)
   },
   getBranches: async (workgroupId: string): Promise<BranchListItem[]> => {
-    const response = await api.get<BranchListItem[]>(`/rate-creation/branches?workgroupId=${workgroupId}`)
+    const response = await api.get<BranchListItem[]>(
+      `/rate-creation/branches?workgroupId=${workgroupId}`,
+    )
     return response.data
   },
   updateWorkgroupBranches: async (workgroupId: string, branchIds: string[]): Promise<void> => {
-    await api.post(`/rate-creation/workgroups/${workgroupId}/branches`, { branchIds }, { _skipGlobal403Toast: true })
+    await api.post(
+      `/rate-creation/workgroups/${workgroupId}/branches`,
+      { branchIds },
+      { _skipGlobal403Toast: true },
+    )
   },
-  updateWorkgroupLimits: async (workgroupId: string, limits: { limit1Boundary: number; limit2Boundary: number; limit3Boundary: number }): Promise<void> => {
-    await api.put(`/rate-creation/workgroups/${workgroupId}/limits`, limits, { _skipGlobal403Toast: true })
-  }
+  updateWorkgroupLimits: async (
+    workgroupId: string,
+    limits: { limit1Boundary: number; limit2Boundary: number; limit3Boundary: number },
+  ): Promise<void> => {
+    await api.put(`/rate-creation/workgroups/${workgroupId}/limits`, limits, {
+      _skipGlobal403Toast: true,
+    })
+  },
 }
 
 // ================== CURRENCY GROUPS API ==================
@@ -734,10 +811,16 @@ export const exchangeRatePollingApi = {
     return response.data
   },
   applyMargins: async (data: ApplyMarginsRequest): Promise<ExchangeRatePollingMessage> => {
-    const response = await api.post<ExchangeRatePollingMessage>('/rates/polling/apply-margins', data)
+    const response = await api.post<ExchangeRatePollingMessage>(
+      '/rates/polling/apply-margins',
+      data,
+    )
     return response.data
   },
-  updateSource: async (id: number, data: UpdateExchangeRateSourceRequest): Promise<ExchangeRatePollingSource> => {
+  updateSource: async (
+    id: number,
+    data: UpdateExchangeRateSourceRequest,
+  ): Promise<ExchangeRatePollingSource> => {
     const response = await api.put<ExchangeRatePollingSource>(`/rates/polling/sources/${id}`, data)
     return response.data
   },
@@ -773,7 +856,11 @@ export const roundingRuleApi = {
     })
     return response.data
   },
-  round: async (currencyCode: string, amount: number, direction: RoundingDirection): Promise<RoundingResult> => {
+  round: async (
+    currencyCode: string,
+    amount: number,
+    direction: RoundingDirection,
+  ): Promise<RoundingResult> => {
     const response = await api.post<RoundingResult>('/rounding-rules/round', null, {
       params: { currencyCode, amount, direction },
     })
@@ -839,7 +926,9 @@ export const exchangeRateDisplayApi = {
     return response.data
   },
   getCurrentRates: async (displayId: string): Promise<ExchangeRateDisplayPreviewRow[]> => {
-    const response = await api.get<ExchangeRateDisplayCurrentRatesResponse>(`/exchange-rate-display/${displayId}/current-rates`)
+    const response = await api.get<ExchangeRateDisplayCurrentRatesResponse>(
+      `/exchange-rate-display/${displayId}/current-rates`,
+    )
     return (response.data.rates ?? []).map((rate) => ({
       currency: rate.currencyCode ?? rate.currencyName ?? String(rate.currencyId ?? '-'),
       buyRate: formatDisplayRate(rate.baseBuyRate ?? rate.buyRate),
@@ -848,5 +937,5 @@ export const exchangeRateDisplayApi = {
   },
   updateDisplay: async (displayId: string, data: Partial<ExchangeRateDisplay>): Promise<void> => {
     await api.post(`/exchange-rate-display/${displayId}/update`, data)
-  }
+  },
 }

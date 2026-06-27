@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 /**
  * Értéktár (VAULT) készlet egy valutára: nyitó / átvett / átadott / záró.
@@ -22,6 +23,8 @@ import java.math.BigDecimal;
 public class VaultStockRowDto {
     private String currencyCode;
     private String currencyName;
+    private String vaultTerritoryId;
+    private UUID branchId;
     private BigDecimal opening;
     private BigDecimal received;
     private BigDecimal issued;

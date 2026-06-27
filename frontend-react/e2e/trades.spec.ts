@@ -36,6 +36,12 @@ const trade = {
   notes: 'Mobil trade',
 }
 
+const targetBranch = {
+  id: '22222222-2222-2222-2222-222222222222',
+  code: 'SZG01',
+  name: 'Szeged 01',
+}
+
 async function mockTradeApis(page: Page) {
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
@@ -86,6 +92,18 @@ async function mockTradeApis(page: Page) {
       })
     }
 
+    if (path === '/api/v1/branches/vault-counterparties' && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          territorialCashiers: [targetBranch],
+          peerVaults: [],
+          fixedCounterparties: [],
+        }),
+      })
+    }
+
     if (path === '/api/v1/trades/propose' && method === 'POST') {
       return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(trade) })
     }
@@ -117,7 +135,7 @@ test('irodaközi trade mobil nézet beköti a trades backend szerződést', asyn
   await expect(page.getByRole('heading', { name: 'Irodaközi trade' })).toBeVisible()
   await expect(page.getByText('Mobil trade').first()).toBeVisible()
 
-  await page.getByLabel('Cél iroda UUID').fill('22222222-2222-2222-2222-222222222222')
+  await page.getByLabel('Cél iroda').selectOption(targetBranch.id)
   await page.getByLabel('Valuta').fill('USD')
   await page.getByLabel('Összeg').fill('2500')
   await page.getByLabel('Árfolyam').fill('351.25')
@@ -126,7 +144,15 @@ test('irodaközi trade mobil nézet beköti a trades backend szerződést', asyn
     request.method() === 'POST' && request.url().endsWith('/api/v1/trades/propose')
   )
   await page.getByRole('button', { name: /Ajánlat létrehozása/i }).click()
-  await proposeRequest
+  const request = await proposeRequest
+  expect(request.postDataJSON()).toEqual({
+    fromBranchId: worker.branchId,
+    toBranchId: targetBranch.id,
+    currencyCode: 'USD',
+    amount: 2500,
+    rate: 351.25,
+    notes: 'Mobil ajánlat',
+  })
 
   const acceptRequest = page.waitForRequest(request =>
     request.method() === 'POST' && request.url().endsWith(`/api/v1/trades/${trade.id}/accept`)

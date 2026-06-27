@@ -1,15 +1,20 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.dto.shipment.ShipmentRequestItemResponseDto;
+import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
 import hu.puzzleir.valuta.entity.ShipmentRequestItem;
 import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
+import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
+import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -35,6 +43,7 @@ public class ShipmentService {
     private final ShipmentRequestRepository shipmentRequestRepository;
     private final BranchRepository branchRepository;
     private final CurrencyRepository currencyRepository;
+    private final WorkerRepository workerRepository;
     private final ExchangeRateService exchangeRateService;
     private final TransferSerialSequenceService transferSerialSequenceService;
 
@@ -67,6 +76,16 @@ public class ShipmentService {
     }
 
     @Transactional(readOnly = true)
+    public Page<ShipmentRequestResponseDto> findAllResponse(
+            ShipmentRequestStatus status, UUID branchId, Pageable pageable) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Map<UUID, Branch> branchCache = new HashMap<>();
+        Map<Long, Worker> workerCache = new HashMap<>();
+        return findAll(status, branchId, pageable)
+                .map(request -> toResponseDto(request, companyId, branchCache, workerCache));
+    }
+
+    @Transactional(readOnly = true)
     public ShipmentRequest findById(UUID id) {
         ShipmentRequest sr = shipmentRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Szállítmánykérés nem található: " + id));
@@ -81,6 +100,11 @@ public class ShipmentService {
         // P0 LazyInit hotfix: a controller direkt entity-t serializál, items lazy.
         initLazyForSerialization(sr);
         return sr;
+    }
+
+    @Transactional(readOnly = true)
+    public ShipmentRequestResponseDto findByIdResponse(UUID id) {
+        return toResponseDto(findById(id));
     }
 
     /**
@@ -132,6 +156,10 @@ public class ShipmentService {
         // init-et, hogy a Jackson OSIV=false-lal NE fusson LazyInit-be.
         initLazyForSerialization(saved);
         return saved;
+    }
+
+    public ShipmentRequestResponseDto createResponse(ShipmentRequest request) {
+        return toResponseDto(create(request));
     }
 
     /**
@@ -225,6 +253,10 @@ public class ShipmentService {
         return saved;
     }
 
+    public ShipmentRequestResponseDto updateResponse(UUID id, ShipmentRequest updated) {
+        return toResponseDto(update(id, updated));
+    }
+
     public ShipmentRequest submit(UUID id) {
         ShipmentRequest request = findById(id);
         validateStatusTransition(request, ShipmentRequestStatus.DRAFT, ShipmentRequestStatus.SUBMITTED);
@@ -235,6 +267,10 @@ public class ShipmentService {
         return saved;
     }
 
+    public ShipmentRequestResponseDto submitResponse(UUID id) {
+        return toResponseDto(submit(id));
+    }
+
     public ShipmentRequest approve(UUID id) {
         ShipmentRequest request = findById(id);
         validateStatusTransition(request, ShipmentRequestStatus.SUBMITTED, ShipmentRequestStatus.APPROVED);
@@ -243,6 +279,10 @@ public class ShipmentService {
         ShipmentRequest saved = shipmentRequestRepository.save(request);
         initLazyForSerialization(saved);
         return saved;
+    }
+
+    public ShipmentRequestResponseDto approveResponse(UUID id) {
+        return toResponseDto(approve(id));
     }
 
     public ShipmentRequest deliver(UUID id) {
@@ -259,6 +299,10 @@ public class ShipmentService {
         return saved;
     }
 
+    public ShipmentRequestResponseDto deliverResponse(UUID id) {
+        return toResponseDto(deliver(id));
+    }
+
     public ShipmentRequest cancel(UUID id) {
         ShipmentRequest request = findById(id);
         if (request.getStatus() == ShipmentRequestStatus.DELIVERED
@@ -270,6 +314,10 @@ public class ShipmentService {
         ShipmentRequest saved = shipmentRequestRepository.save(request);
         initLazyForSerialization(saved);
         return saved;
+    }
+
+    public ShipmentRequestResponseDto cancelResponse(UUID id) {
+        return toResponseDto(cancel(id));
     }
 
     /**
@@ -293,6 +341,106 @@ public class ShipmentService {
         ShipmentRequest saved = shipmentRequestRepository.save(request);
         initLazyForSerialization(saved);
         return saved;
+    }
+
+    public ShipmentRequestResponseDto rejectResponse(UUID id, String reason) {
+        return toResponseDto(reject(id, reason));
+    }
+
+    public ShipmentRequestResponseDto toResponseDto(ShipmentRequest request) {
+        if (request == null) {
+            return null;
+        }
+        UUID companyId = request.getCompanyId() != null
+                ? request.getCompanyId()
+                : SecurityUtils.getCurrentCompanyId();
+        return toResponseDto(request, companyId, new HashMap<>(), new HashMap<>());
+    }
+
+    private ShipmentRequestResponseDto toResponseDto(
+            ShipmentRequest request,
+            UUID companyId,
+            Map<UUID, Branch> branchCache,
+            Map<Long, Worker> workerCache) {
+        Branch fromBranch = findBranchInCompany(request.getFromBranchId(), companyId, branchCache);
+        Branch toBranch = findBranchInCompany(request.getToBranchId(), companyId, branchCache);
+        Worker requestedBy = findWorkerInCompany(request.getRequestedById(), companyId, workerCache);
+        Worker rejectedBy = findWorkerInCompany(request.getRejectedByWorkerId(), companyId, workerCache);
+
+        String fromName = fromBranch != null ? fromBranch.getName() : null;
+        String toName = toBranch != null ? toBranch.getName() : null;
+
+        return ShipmentRequestResponseDto.builder()
+                .id(request.getId())
+                .requestNumber(request.getRequestNumber())
+                .companyId(request.getCompanyId())
+                .serialPrefix(request.getSerialPrefix())
+                .serialNumber(request.getSerialNumber())
+                .fromBranchId(request.getFromBranchId())
+                .fromBranchCode(fromBranch != null ? fromBranch.getCode() : null)
+                .fromBranchName(fromName)
+                .toBranchId(request.getToBranchId())
+                .toBranchCode(toBranch != null ? toBranch.getCode() : null)
+                .toBranchName(toName)
+                .requestedById(request.getRequestedById())
+                .requestedByWorkerName(requestedBy != null ? requestedBy.getName() : null)
+                .status(request.getStatus())
+                .requestDate(request.getRequestDate())
+                .deliveryDate(request.getDeliveryDate())
+                .notes(request.getNotes())
+                .carrierName(request.getCarrierName())
+                .sealNumber(request.getSealNumber())
+                .rejectionReason(request.getRejectionReason())
+                .rejectedByWorkerId(request.getRejectedByWorkerId())
+                .rejectedByWorkerName(rejectedBy != null ? rejectedBy.getName() : null)
+                .createdAt(request.getCreatedAt())
+                .items(toItemDtos(request.getItems()))
+                .requestingBranchId(request.getFromBranchId())
+                .requestingBranchName(fromName)
+                .targetBranchId(request.getToBranchId())
+                .targetBranchName(toName)
+                .requestStatus(request.getStatus())
+                .requestedDeliveryDate(request.getDeliveryDate())
+                .requestedByWorkerId(request.getRequestedById())
+                .requestedAt(request.getCreatedAt())
+                .build();
+    }
+
+    private Branch findBranchInCompany(UUID branchId, UUID companyId, Map<UUID, Branch> cache) {
+        if (branchId == null || companyId == null) {
+            return null;
+        }
+        if (!cache.containsKey(branchId)) {
+            cache.put(branchId, branchRepository.findByIdAndCompanyId(branchId, companyId).orElse(null));
+        }
+        return cache.get(branchId);
+    }
+
+    private Worker findWorkerInCompany(Long workerId, UUID companyId, Map<Long, Worker> cache) {
+        if (workerId == null || companyId == null) {
+            return null;
+        }
+        if (!cache.containsKey(workerId)) {
+            cache.put(workerId, workerRepository.findByIdAndCompanyId(workerId, companyId).orElse(null));
+        }
+        return cache.get(workerId);
+    }
+
+    private static List<ShipmentRequestItemResponseDto> toItemDtos(List<ShipmentRequestItem> items) {
+        if (items == null) {
+            return List.of();
+        }
+        return items.stream()
+                .map(item -> ShipmentRequestItemResponseDto.builder()
+                        .id(item.getId())
+                        .currencyId(item.getCurrencyId())
+                        .requestedAmount(item.getRequestedAmount())
+                        .approvedAmount(item.getApprovedAmount())
+                        .deliveredAmount(item.getDeliveredAmount())
+                        .appliedRate(item.getAppliedRate())
+                        .hufValue(item.getHufValue())
+                        .build())
+                .toList();
     }
 
     private void validateStatusTransition(ShipmentRequest request,

@@ -538,9 +538,14 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
         id: 'shipment-1',
         status: 'DRAFT',
         fromBranchId: 'BR-A',
+        fromBranchCode: 'BR075',
+        fromBranchName: 'Szeged Értéktár',
         toBranchId: 'BR-B',
+        toBranchCode: 'BR027',
+        toBranchName: 'Szeged Tesco',
         deliveryDate: '2026-05-08',
         requestedById: 7,
+        requestedByWorkerName: 'Bali Henriett',
         createdAt: '2026-05-07T08:00:00Z',
       },
     })
@@ -567,6 +572,13 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
     expect(result.requestStatus).toBe('DRAFT')
     expect(result.requestingBranchId).toBe('BR-A')
     expect(result.targetBranchId).toBe('BR-B')
+    expect(result.fromBranchCode).toBe('BR075')
+    expect(result.fromBranchName).toBe('Szeged Értéktár')
+    expect(result.toBranchCode).toBe('BR027')
+    expect(result.toBranchName).toBe('Szeged Tesco')
+    expect(result.requestingBranchName).toBe('Szeged Értéktár')
+    expect(result.targetBranchName).toBe('Szeged Tesco')
+    expect(result.requestedByWorkerName).toBe('Bali Henriett')
     expect(result.requestedAt).toBe('2026-05-07T08:00:00Z')
   })
 

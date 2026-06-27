@@ -4,19 +4,25 @@ import CashierStocksPage from './CashierStocksPage'
 
 // FK-007/008: az Országos készlet kártyák a valutanem-TÖRZSBŐL épülnek (aktív + display_order),
 // a branch-egyenlegekkel merge-elve. Így az értéktár-kártyák is a teljes listát mutatják (0-val is),
-// és az inaktív/ismeretlen valuták (TST, DKK/NOK/SEK) NEM jelennek meg.
+// az ismeretlen 0-s sorok nem jelennek meg, de a nem-nulla árva készlet nem veszhet el.
 const mocks = vi.hoisted(() => ({
   apiGet: vi.fn(),
   branchListActive: vi.fn(),
+  branchListMyTerritory: vi.fn(),
   currencyList: vi.fn(),
+  exchangeRateList: vi.fn(),
+  appMode: vi.fn(),
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }))
 
 vi.mock('../../services/api/index', () => ({
   api: { get: mocks.apiGet },
-  branchApi: { listActive: mocks.branchListActive },
+  branchApi: { listActive: mocks.branchListActive, listMyTerritory: mocks.branchListMyTerritory },
   currencyApi: { list: mocks.currencyList },
+  exchangeRateApi: { list: mocks.exchangeRateList },
 }))
+
+vi.mock('../../hooks/useAppMode', () => ({ useAppMode: () => ({ mode: mocks.appMode() }) }))
 
 vi.mock('../../utils/logger', () => ({ logger: mocks.logger }))
 
@@ -31,25 +37,65 @@ const MASTER_CURRENCIES = [
 // sora van (HUF) — a scope-szűrt /inventory/stock-ban szerepel, így megjelenik; a többi aktív valutát
 // a törzsből kapja meg 0-val (FK-008). A branch-univerzum KIZÁRÓLAG a stock soraiból jön (scope-helyes).
 const STOCK = [
-  { id: 's1', branchName: 'Baja Tesco', currencyCode: 'EUR', currentBalance: 1910 },
-  { id: 's2', branchName: 'Baja Tesco', currencyCode: 'TST', currentBalance: 0 },
+  {
+    id: 's1',
+    branchId: 'branch-baja',
+    branchName: 'Baja Tesco',
+    currencyCode: 'EUR',
+    currentBalance: 1910,
+  },
+  {
+    id: 's2',
+    branchId: 'branch-baja',
+    branchName: 'Baja Tesco',
+    currencyCode: 'TST',
+    currentBalance: 0,
+  },
   // Árva, NEM-nulla egyenleg egy inaktív valutában (pl. korábbi DKK-készlet a deaktiválás előtt).
-  { id: 's3', branchName: 'Baja Tesco', currencyCode: 'DKK', currentBalance: 4200 },
+  {
+    id: 's3',
+    branchId: 'branch-baja',
+    branchName: 'Baja Tesco',
+    currencyCode: 'DKK',
+    currentBalance: 4200,
+  },
   // Értéktár: csak HUF sora van — a többi aktív valutát (AUD/EUR) a törzsből kapja 0-val.
-  { id: 's4', branchName: 'Szekszard Ertektar', currencyCode: 'HUF', currentBalance: 0 },
+  {
+    id: 's4',
+    branchId: 'branch-vault',
+    branchName: 'Szekszard Ertektar',
+    currencyCode: 'HUF',
+    currentBalance: 0,
+  },
 ]
 
 const BRANCHES = [
-  { name: 'Baja Tesco', region: 'SZEKSZARD', isVault: false },
-  { name: 'Szekszard Ertektar', region: 'SZEKSZARD', isVault: true },
+  { id: 'branch-baja', name: 'Baja Tesco', region: 'SZEKSZARD', isVault: false },
+  {
+    id: 'branch-vault',
+    name: 'Szekszard Ertektar',
+    region: 'SZEKSZARD',
+    isVault: true,
+    vaultTerritoryId: 1,
+  },
 ]
 
 describe('CashierStocksPage (FK-007/008)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.apiGet.mockResolvedValue({ data: STOCK })
+    mocks.apiGet.mockImplementation((path: string) => {
+      if (path === '/inventory/stock') return Promise.resolve({ data: STOCK })
+      if (path === '/inventory/vault-stock') return Promise.resolve({ data: [] })
+      if (path === '/inventory-movements/movement-log') return Promise.resolve({ data: [] })
+      return Promise.resolve({ data: [] })
+    })
     mocks.currencyList.mockResolvedValue(MASTER_CURRENCIES)
     mocks.branchListActive.mockResolvedValue(BRANCHES)
+    mocks.exchangeRateList.mockResolvedValue([])
+    // FK-1: a legördülő forrása a my-territory lista (a pénztárak + az értéktár — utóbbi kiszűrve).
+    mocks.branchListMyTerritory.mockResolvedValue(BRANCHES)
+    // FK-040: alapértelmezésben értéktáros (ertektar) mód — a teljes nézet (felső táblázat + kártyák).
+    mocks.appMode.mockReturnValue('ertektar')
   })
 
   it('FK-007: az ismeretlen TST valutanem NEM jelenik meg egyetlen kártyán sem', async () => {
@@ -77,19 +123,22 @@ describe('CashierStocksPage (FK-007/008)', () => {
   it('P1: árva, NEM-nulla egyenleg inaktív valutában NEM tűnik el (néma adatvesztés ellen)', async () => {
     render(<CashierStocksPage />)
     await waitFor(() => {
-      expect(screen.getByText('Baja Tesco')).toBeInTheDocument()
+      expect(screen.getAllByText('Baja Tesco').length).toBeGreaterThan(0)
     })
     // A DKK nincs az aktív törzsben, de van nem-nulla egyenlege → megjelenik.
-    expect(screen.getByText('DKK')).toBeInTheDocument()
-    expect(screen.getByText(/4[\s ]?200/)).toBeInTheDocument()
+    expect(screen.getAllByText('DKK').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/4[\s ]?200/).length).toBeGreaterThan(0)
   })
 
   it('FK-008: a pénztárkártya a teljes aktív listát mutatja, az egyenleg a megfelelő valutasorban', async () => {
     render(<CashierStocksPage />)
     await waitFor(() => {
-      expect(screen.getByText('Baja Tesco')).toBeInTheDocument()
+      expect(screen.getAllByText('Baja Tesco').length).toBeGreaterThan(0)
     })
-    const card = screen.getByText('Baja Tesco').closest('[data-testid="branch-card"]') as HTMLElement
+    const card = screen
+      .getAllByText('Baja Tesco')
+      .map((element) => element.closest('[data-testid="branch-card"]'))
+      .find(Boolean) as HTMLElement
     const scope = within(card)
     // A pénztárkártya is a master-mátrixból épül: HUF és AUD (nincs stock-soruk) 0-val megjelenik,
     // az EUR-soron a tényleges egyenleg (1910 → hu-HU "1 910").
@@ -102,12 +151,26 @@ describe('CashierStocksPage (FK-007/008)', () => {
   it('FK-007: a KÉSZLETSOR NÉLKÜLI értéktár-kártya is a teljes aktív valutalistát mutatja (nem "0 valuta")', async () => {
     // Az értéktárnak EGYETLEN /inventory/stock sora SINCS — csak a BRANCHES-ben szerepel isVault:true-val.
     // Korábban üres ("0 valuta") kártyaként jelent meg; mostantól a központi törzsből kapja a 0-soros listát.
-    mocks.apiGet.mockResolvedValue({
-      data: [{ id: 's1', branchName: 'Baja Tesco', currencyCode: 'EUR', currentBalance: 1910 }],
+    mocks.apiGet.mockImplementation((path: string) => {
+      if (path === '/inventory/stock')
+        return Promise.resolve({
+          data: [
+            {
+              id: 's1',
+              branchId: 'branch-baja',
+              branchName: 'Baja Tesco',
+              currencyCode: 'EUR',
+              currentBalance: 1910,
+            },
+          ],
+        })
+      if (path === '/inventory/vault-stock') return Promise.resolve({ data: [] })
+      if (path === '/inventory-movements/movement-log') return Promise.resolve({ data: [] })
+      return Promise.resolve({ data: [] })
     })
     mocks.branchListActive.mockResolvedValue([
-      { name: 'Baja Tesco', region: 'SZEKSZARD', isVault: false },
-      { name: 'Szekszard Ertektar', region: 'SZEKSZARD', isVault: true },
+      { id: 'branch-baja', name: 'Baja Tesco', region: 'SZEKSZARD', isVault: false },
+      { id: 'branch-vault', name: 'Szekszard Ertektar', region: 'SZEKSZARD', isVault: true },
     ])
 
     render(<CashierStocksPage />)
@@ -118,12 +181,73 @@ describe('CashierStocksPage (FK-007/008)', () => {
       expect(screen.getByText('Szekszard Ertektar')).toBeInTheDocument()
     })
 
-    const card = screen.getByText('Szekszard Ertektar').closest('[data-testid="branch-card"]') as HTMLElement
+    const card = screen
+      .getByText('Szekszard Ertektar')
+      .closest('[data-testid="branch-card"]') as HTMLElement
     const scope = within(card)
     // Mind a 3 aktív valuta megjelenik a kártyán 0-val, és a fejléc a darabszámot (3) mutatja, nem 0-t.
     expect(scope.getByText('HUF')).toBeInTheDocument()
     expect(scope.getByText('AUD')).toBeInTheDocument()
     expect(scope.getByText('EUR')).toBeInTheDocument()
     expect(scope.getByText(`${MASTER_CURRENCIES.length} valuta`)).toBeInTheDocument()
+  })
+
+  it('FK-1: a pénztárválasztó legördülő a my-territory listából épül (értéktár kiszűrve, scope-helyes)', async () => {
+    render(<CashierStocksPage />)
+    await waitFor(() => expect(mocks.branchListMyTerritory).toHaveBeenCalled())
+    const select = screen.getByRole('combobox')
+    const options = within(select)
+      .getAllByRole('option')
+      .map((o) => o.textContent)
+    expect(options).toContain('Körzet összesen')
+    expect(options).toContain('Baja Tesco')
+    // Az értéktár (isVault) NEM pénztár → nem szerepel a legördülőben (és más territory sem szivároghat be).
+    expect(options).not.toContain('Szekszard Ertektar')
+  })
+
+  it('FK-040: full (főértéktár) módban a felső táblázat NEM renderelődik, az összesítő sáv és a kártyák IGEN', async () => {
+    mocks.appMode.mockReturnValue('full')
+    render(<CashierStocksPage />)
+    await waitFor(() => expect(screen.getAllByText('Baja Tesco').length).toBeGreaterThan(0))
+    // FR-1: a felső táblázatos rész (fejléc + legördülő) rejtve
+    expect(screen.queryByText('Részletes pénztári készlet')).not.toBeInTheDocument()
+    expect(screen.queryByText('Körzet összesen')).not.toBeInTheDocument()
+    // FR-2 + FR-3: az összesítő sáv és a kártyás nézet látható
+    expect(screen.getByTestId('inventory-summary-bar')).toBeInTheDocument()
+    expect(screen.getAllByTestId('branch-card').length).toBeGreaterThan(0)
+  })
+
+  it('FK-040: full módban a /exchange-rates, /movement-log és /branches/my-territory NEM hívódik (NFR-1)', async () => {
+    mocks.appMode.mockReturnValue('full')
+    render(<CashierStocksPage />)
+    await waitFor(() => expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/stock'))
+    expect(mocks.exchangeRateList).not.toHaveBeenCalled()
+    expect(mocks.branchListMyTerritory).not.toHaveBeenCalled()
+    expect(mocks.apiGet).not.toHaveBeenCalledWith(
+      '/inventory-movements/movement-log',
+      expect.anything(),
+    )
+    // A szükséges hívások viszont lefutnak (FR-4)
+    expect(mocks.currencyList).toHaveBeenCalled()
+    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/vault-stock')
+  })
+
+  it('FK-040: ertektar módban a felső táblázat renderelődik és minden API hívás lefut (regresszió, FR-5)', async () => {
+    render(<CashierStocksPage />) // default: ertektar
+    await waitFor(() => expect(screen.getByText('Részletes pénztári készlet')).toBeInTheDocument())
+    expect(screen.getByText('Körzet összesen')).toBeInTheDocument()
+    expect(mocks.exchangeRateList).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(mocks.apiGet).toHaveBeenCalledWith(
+        '/inventory-movements/movement-log',
+        expect.anything(),
+      ),
+    )
+  })
+
+  it('FK-040 edge: ismeretlen appMode → értéktáros-viselkedés (felső táblázat látszik), nem dob hibát', async () => {
+    mocks.appMode.mockReturnValue(undefined as unknown as string)
+    render(<CashierStocksPage />)
+    await waitFor(() => expect(screen.getByText('Részletes pénztári készlet')).toBeInTheDocument())
   })
 })

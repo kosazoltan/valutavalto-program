@@ -143,7 +143,9 @@ describe('BranchEditPage — FK-022 Iroda adatainak szerkesztése', () => {
     renderPage()
     await waitLoaded()
 
-    expect(mockApiGet).toHaveBeenCalledWith('/admin/branches/b-1')
+    // FK-038: a betöltéskori /admin/branches hívás `_skipGlobal403Toast: true`-val megy
+    // (ADMIN-only végpont → foertektar 403-at kap, a globális toastot elnyomjuk).
+    expect(mockApiGet).toHaveBeenCalledWith('/admin/branches/b-1', { _skipGlobal403Toast: true })
     expect(screen.getByText('Admin statisztika')).toBeInTheDocument()
     expect(screen.getByText('Exclusive Best Change')).toBeInTheDocument()
     expect(screen.getByText('7 fő')).toBeInTheDocument()

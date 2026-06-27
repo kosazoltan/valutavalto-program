@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.ratecreation.BranchListDTO;
+import hu.puzzleir.valuta.dto.ratecreation.TerritoryWorkgroupRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.WorkgroupDetailDTO;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.dto.ratecreation.RateOverviewDTO;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,6 +28,7 @@ import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -64,6 +67,7 @@ class RateCreationServiceTest {
     @Mock private RatePublishService ratePublishService;
     @Mock private ObjectMapper objectMapper;
     @Mock private SystemParameterService systemParameterService;
+    @Mock private AccessScopeService accessScopeService;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
 
@@ -268,5 +272,214 @@ class RateCreationServiceTest {
         service.updateWorkgroupBranches(wgId, List.of(cashierId));
 
         assertThat(wg.getBranches()).extracting(Branch::getCode).containsExactly("BR020");
+    }
+
+    // ===================== FK-041: területi (régió) munkacsoport-árfolyam variánsok =====================
+
+    private static ExchangeRate eurRate(Currency eur) {
+        return ExchangeRate.builder()
+                .currency(eur)
+                .baseBuyRate(new BigDecimal("343.00"))
+                .baseSellRate(new BigDecimal("362.99"))
+                .officialRate(new BigDecimal("352.68"))
+                .limit1Amount(new BigDecimal("50000"))
+                .limit1BuyRate(new BigDecimal("343.50"))
+                .limit1SellRate(new BigDecimal("362.49"))
+                .validTime(LocalTime.of(15, 12))
+                .build();
+    }
+
+    @Test
+    @DisplayName("FK-041: national scope (scope==null) — minden munkacsoport, pénztárnevek név-szerint rendezve + ráta")
+    void getTerritoryWorkgroupRates_nationalScope_allWorkgroups() {
+        Company company = Company.builder().id(COMPANY_ID).code("EBC").name("Test").build();
+        Currency eur = Currency.builder().id(1L).code("EUR").name("Euró").active(true).displayOrder(8).build();
+        Branch br1 = Branch.builder().id(UUID.randomUUID()).code("BR01").name("Árkád").build();
+        Branch br2 = Branch.builder().id(UUID.randomUUID()).code("BR02").name("Tisza Sarok").build();
+        RateWorkgroup wg = RateWorkgroup.builder()
+                .id(UUID.randomUUID()).company(company).code("WG01").name("Belváros").active(true)
+                .tileColor("blue")
+                .limit1Boundary(new BigDecimal("50000"))
+                .limit2Boundary(new BigDecimal("300000"))
+                .limit3Boundary(new BigDecimal("1000000"))
+                .branches(Set.of(br1, br2))
+                .build();
+
+        when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+        when(rateWorkgroupRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of(wg));
+        when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(eur));
+        when(exchangeRateRepository.findAllActiveRates(any(), any())).thenReturn(List.of(eurRate(eur)));
+
+        List<TerritoryWorkgroupRateDTO> result = service.getTerritoryWorkgroupRates();
+
+        assertThat(result).hasSize(1);
+        TerritoryWorkgroupRateDTO g = result.get(0);
+        assertThat(g.getWorkgroupName()).isEqualTo("Belváros");
+        assertThat(g.getTileColor()).isEqualTo("blue");
+        assertThat(g.getBranchNames())
+                .as("a pénztárnevek név szerint rendezve jönnek a címsorba")
+                .containsExactly("Árkád", "Tisza Sarok");
+        assertThat(g.getCurrencies()).hasSize(1);
+        TerritoryWorkgroupRateDTO.CurrencyRate cr = g.getCurrencies().get(0);
+        assertThat(cr.getCurrencyCode()).isEqualTo("EUR");
+        assertThat(cr.isHasRate()).isTrue();
+        assertThat(cr.getBaseBuyRate()).isEqualByComparingTo("343.00");
+        assertThat(cr.getBaseSellRate()).isEqualByComparingTo("362.99");
+        assertThat(cr.getOfficialRate()).isEqualByComparingTo("352.68");
+        assertThat(cr.getLimit1BuyRate()).isEqualByComparingTo("343.50");
+        assertThat(cr.getValidTime()).isEqualTo("15:12");
+    }
+
+    @Test
+    @DisplayName("FK-041: régió-scope (ERTEKTAR) — a régión kívüli pénztár nem kerül a címsorba")
+    void getTerritoryWorkgroupRates_regionScope_filtersOutOfRegionBranches() {
+        Company company = Company.builder().id(COMPANY_ID).code("EBC").name("Test").build();
+        Currency eur = Currency.builder().id(1L).code("EUR").name("Euró").active(true).displayOrder(8).build();
+        Branch inRegion = Branch.builder().id(UUID.randomUUID()).code("BR01").name("Tisza Sarok").build();
+        Branch outRegion = Branch.builder().id(UUID.randomUUID()).code("BR99").name("Debrecen Fő").build();
+        RateWorkgroup wg = RateWorkgroup.builder()
+                .id(UUID.randomUUID()).company(company).code("WG01").name("Vegyes").active(true)
+                .branches(Set.of(inRegion, outRegion))
+                .build();
+
+        when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(Set.of(inRegion.getId()));
+        when(rateWorkgroupRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of(wg));
+        when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(eur));
+        when(exchangeRateRepository.findAllActiveRates(any(), any())).thenReturn(List.of(eurRate(eur)));
+
+        List<TerritoryWorkgroupRateDTO> result = service.getTerritoryWorkgroupRates();
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getBranchNames())
+                .as("a régión kívüli pénztárat (más companyId-scope) ki kell szűrni")
+                .containsExactly("Tisza Sarok");
+    }
+
+    @Test
+    @DisplayName("FK-041: a hívó területén pénztár nélküli munkacsoport kimarad az eredményből")
+    void getTerritoryWorkgroupRates_workgroupWithNoBranchInScope_excluded() {
+        Company company = Company.builder().id(COMPANY_ID).code("EBC").name("Test").build();
+        Currency eur = Currency.builder().id(1L).code("EUR").name("Euró").active(true).displayOrder(8).build();
+        Branch otherRegion = Branch.builder().id(UUID.randomUUID()).code("BR99").name("Pécs").build();
+        RateWorkgroup wg = RateWorkgroup.builder()
+                .id(UUID.randomUUID()).company(company).code("WG09").name("Másik terület").active(true)
+                .branches(Set.of(otherRegion))
+                .build();
+
+        // A scope egy MÁSIK pénztárat tartalmaz → a wg egyetlen pénztára sem látható.
+        when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(Set.of(UUID.randomUUID()));
+        when(rateWorkgroupRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of(wg));
+        when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(eur));
+
+        List<TerritoryWorkgroupRateDTO> result = service.getTerritoryWorkgroupRates();
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("FK-041: a service valutánként az ELSŐ rátát tartja (putIfAbsent first-wins a repo branch-first sorrendjére)")
+    void getTerritoryWorkgroupRates_keepsFirstRatePerCurrency() {
+        // A branch-specifikus precedencia a repo findAllActiveRates ORDER BY-jában él
+        // (CASE WHEN er.branch.id = :branchId THEN 0 ELSE 1) — ezt a TÉNYLEGES sorrendet valós PG-n a
+        // ExchangeRateRepositoryFindAllActiveRatesPostgresIT fedi. Ez a UNIT teszt a SERVICE szerződését
+        // rögzíti: putIfAbsent-tel az ELSŐ (= repo szerint branch-specifikus) rekordot tartja, NEM put-tal
+        // (last-wins) — egy putIfAbsent→put regressziót elkapna. A repo a mockolt, ezért a sorrendet itt
+        // a mock szimulálja (branch-specifikus elöl, globális fallback hátul), nem ez a teszt bizonyítja.
+        Company company = Company.builder().id(COMPANY_ID).code("EBC").name("Test").build();
+        Currency eur = Currency.builder().id(1L).code("EUR").name("Euró").active(true).displayOrder(8).build();
+        Branch br1 = Branch.builder().id(UUID.randomUUID()).code("BR01").name("Tisza Sarok").build();
+        RateWorkgroup wg = RateWorkgroup.builder()
+                .id(UUID.randomUUID()).company(company).code("WG01").name("Belváros").active(true)
+                .branches(Set.of(br1))
+                .build();
+
+        ExchangeRate branchSpecific = eurRate(eur); // 343.00 — a repo branch-first sorrendjében elöl
+        ExchangeRate global = ExchangeRate.builder()
+                .currency(eur)
+                .baseBuyRate(new BigDecimal("340.00"))
+                .baseSellRate(new BigDecimal("366.00"))
+                .officialRate(new BigDecimal("352.68"))
+                .build();
+
+        when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+        when(rateWorkgroupRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of(wg));
+        when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(eur));
+        when(exchangeRateRepository.findAllActiveRates(any(), any()))
+                .thenReturn(List.of(branchSpecific, global)); // branch-specifikus elöl, globális fallback hátul
+
+        List<TerritoryWorkgroupRateDTO> result = service.getTerritoryWorkgroupRates();
+
+        assertThat(result.get(0).getCurrencies().get(0).getBaseBuyRate())
+                .as("a service az első (repo szerint branch-specifikus) rátát tartja, nem a globálisat")
+                .isEqualByComparingTo("343.00");
+    }
+
+    @Test
+    @DisplayName("FK-041: publikált ráta nélküli aktív valuta -> hasRate=false, ráták null-ok")
+    void getTerritoryWorkgroupRates_currencyWithoutRate_hasRateFalse() {
+        Company company = Company.builder().id(COMPANY_ID).code("EBC").name("Test").build();
+        Currency eur = Currency.builder().id(1L).code("EUR").name("Euró").active(true).displayOrder(8).build();
+        Currency usd = Currency.builder().id(2L).code("USD").name("US dollár").active(true).displayOrder(21).build();
+        Branch br1 = Branch.builder().id(UUID.randomUUID()).code("BR01").name("Tisza Sarok").build();
+        RateWorkgroup wg = RateWorkgroup.builder()
+                .id(UUID.randomUUID()).company(company).code("WG01").name("Belváros").active(true)
+                .branches(Set.of(br1))
+                .build();
+
+        when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+        when(rateWorkgroupRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of(wg));
+        when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(eur, usd));
+        // Csak EUR-ra van publikált ráta; USD-re nincs (aktív valuta árfolyam nélkül).
+        when(exchangeRateRepository.findAllActiveRates(any(), any())).thenReturn(List.of(eurRate(eur)));
+
+        List<TerritoryWorkgroupRateDTO> result = service.getTerritoryWorkgroupRates();
+
+        List<TerritoryWorkgroupRateDTO.CurrencyRate> rates = result.get(0).getCurrencies();
+        TerritoryWorkgroupRateDTO.CurrencyRate eurRate = rates.stream()
+                .filter(c -> "EUR".equals(c.getCurrencyCode())).findFirst().orElseThrow();
+        TerritoryWorkgroupRateDTO.CurrencyRate usdRate = rates.stream()
+                .filter(c -> "USD".equals(c.getCurrencyCode())).findFirst().orElseThrow();
+
+        assertThat(eurRate.isHasRate()).isTrue();
+        assertThat(eurRate.getBaseBuyRate()).isEqualByComparingTo("343.00");
+        assertThat(usdRate.isHasRate())
+                .as("az aktív valutának publikált ráta nélkül hasRate=false-szal kell jönnie (frontend em-dash)")
+                .isFalse();
+        assertThat(usdRate.getBaseBuyRate()).isNull();
+        assertThat(usdRate.getBaseSellRate()).isNull();
+    }
+
+    @Test
+    @DisplayName("FK-041: a HUF valutát kiszűri, és a companyId a hívó cégéé (multi-tenant, ArgumentCaptor)")
+    void getTerritoryWorkgroupRates_filtersHufAndScopesByCompanyId() {
+        Company company = Company.builder().id(COMPANY_ID).code("EBC").name("Test").build();
+        Currency huf = Currency.builder().id(9L).code("HUF").name("Forint").active(true).displayOrder(1).build();
+        Currency eur = Currency.builder().id(1L).code("EUR").name("Euró").active(true).displayOrder(8).build();
+        Branch br1 = Branch.builder().id(UUID.randomUUID()).code("BR01").name("Tisza Sarok").build();
+        RateWorkgroup wg = RateWorkgroup.builder()
+                .id(UUID.randomUUID()).company(company).code("WG01").name("Belváros").active(true)
+                .branches(Set.of(br1))
+                .build();
+
+        when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+        when(rateWorkgroupRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of(wg));
+        when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(huf, eur));
+        when(exchangeRateRepository.findAllActiveRates(any(), any())).thenReturn(List.of(eurRate(eur)));
+
+        List<TerritoryWorkgroupRateDTO> result = service.getTerritoryWorkgroupRates();
+
+        assertThat(result.get(0).getCurrencies())
+                .extracting(TerritoryWorkgroupRateDTO.CurrencyRate::getCurrencyCode)
+                .as("a HUF nem jelenhet meg a területi valuta-árfolyam nézetben")
+                .containsExactly("EUR");
+
+        // Multi-tenant: a companyId ténylegesen a hívó cégéé (nem any()) — workgroup ÉS ráta lekérdezésen is.
+        ArgumentCaptor<UUID> wgCompany = ArgumentCaptor.forClass(UUID.class);
+        verify(rateWorkgroupRepository).findByCompanyIdAndActiveTrue(wgCompany.capture());
+        assertThat(wgCompany.getValue()).isEqualTo(COMPANY_ID);
+
+        ArgumentCaptor<UUID> rateCompany = ArgumentCaptor.forClass(UUID.class);
+        verify(exchangeRateRepository).findAllActiveRates(rateCompany.capture(), any());
+        assertThat(rateCompany.getValue()).isEqualTo(COMPANY_ID);
     }
 }

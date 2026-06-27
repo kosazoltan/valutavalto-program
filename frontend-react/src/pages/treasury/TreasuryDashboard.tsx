@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback, useMemo, type FormEvent, type ReactNode } from 'react'
-import {
-  Trophy,
-  CheckCircle,
-  Clock,
-  XCircle,
-  RefreshCw,
-  Lock,
-} from 'lucide-react'
+import { Trophy, CheckCircle, Clock, XCircle, RefreshCw, Lock } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { AxiosError } from 'axios'
-import { transactionApi, cashBalanceApi, dailySessionApi, treasuryApi, ertektarApi } from '../../services/api/index'
+import {
+  transactionApi,
+  cashBalanceApi,
+  dailySessionApi,
+  treasuryApi,
+  ertektarApi,
+  getPublicWebUrl,
+} from '../../services/api/index'
+import PwaInstallHelp from '../competitors/PwaInstallHelp'
 import type {
   DailyTurnoverSummary,
   CashBalance,
@@ -135,7 +136,8 @@ export default function TreasuryDashboard() {
   const isManagerOrAbove = useAuthStore((state) => state.isManagerOrAbove)
   const hasCanonicalRole = useAuthStore((state) => state.hasCanonicalRole)
   const canViewCentralTreasury = useMemo(
-    () => appMode !== 'ertektar' && (isManagerOrAbove() || hasCanonicalRole([...CENTRAL_VAULT_ROLES])),
+    () =>
+      appMode !== 'ertektar' && (isManagerOrAbove() || hasCanonicalRole([...CENTRAL_VAULT_ROLES])),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- roles/activeRole/workerRole szandekos extra trigger (login/role-change)
     [appMode, isManagerOrAbove, hasCanonicalRole, roles, activeRole, workerRole],
   )
@@ -154,7 +156,8 @@ export default function TreasuryDashboard() {
   const [branchGroupSummary, setBranchGroupSummary] = useState<TreasuryAggregate[]>([])
   const [companySummary, setCompanySummary] = useState<TreasuryAggregate[]>([])
   const [ertektarBranches, setErtektarBranches] = useState<BranchStatusResponse[]>([])
-  const [ertektarConsolidatedReport, setErtektarConsolidatedReport] = useState<ErtektarConsolidatedReport | null>(null)
+  const [ertektarConsolidatedReport, setErtektarConsolidatedReport] =
+    useState<ErtektarConsolidatedReport | null>(null)
   const [ertektarCollections, setErtektarCollections] = useState<ErtektarCollection[]>([])
   const [ertektarDistributions, setErtektarDistributions] = useState<ErtektarDistribution[]>([])
   const [ertektarBankTransactions, setErtektarBankTransactions] = useState<BankTransaction[]>([])
@@ -170,11 +173,14 @@ export default function TreasuryDashboard() {
   const [receiptAction, setReceiptAction] = useState<string | null>(null)
   const [correctionAction, setCorrectionAction] = useState<string | null>(null)
   const [createCorrectionSubmitting, setCreateCorrectionSubmitting] = useState(false)
-  const [newCorrection, setNewCorrection] = useState<StockCorrectionDraftForm>(EMPTY_CORRECTION_FORM)
+  const [newCorrection, setNewCorrection] =
+    useState<StockCorrectionDraftForm>(EMPTY_CORRECTION_FORM)
   const [createCollectionSubmitting, setCreateCollectionSubmitting] = useState(false)
-  const [newCollection, setNewCollection] = useState<SingleLineVaultRequestForm>(EMPTY_VAULT_REQUEST_FORM)
+  const [newCollection, setNewCollection] =
+    useState<SingleLineVaultRequestForm>(EMPTY_VAULT_REQUEST_FORM)
   const [createDistributionSubmitting, setCreateDistributionSubmitting] = useState(false)
-  const [newDistribution, setNewDistribution] = useState<SingleLineVaultRequestForm>(EMPTY_VAULT_REQUEST_FORM)
+  const [newDistribution, setNewDistribution] =
+    useState<SingleLineVaultRequestForm>(EMPTY_VAULT_REQUEST_FORM)
   const [createTransferSubmitting, setCreateTransferSubmitting] = useState(false)
   const [newTransfer, setNewTransfer] = useState<VaultTransferDraftForm>(EMPTY_TRANSFER_FORM)
   const [createReceiptSubmitting, setCreateReceiptSubmitting] = useState(false)
@@ -266,7 +272,10 @@ export default function TreasuryDashboard() {
               return {}
             })
           : Promise.resolve({}),
-        treasuryGet<ErtektarConsolidatedReport | null>(() => treasuryApi.ertektarConsolidatedReport(), null),
+        treasuryGet<ErtektarConsolidatedReport | null>(
+          () => treasuryApi.ertektarConsolidatedReport(),
+          null,
+        ),
         treasuryGet<ErtektarCollection[]>(() => ertektarApi.getCollections(), []),
         treasuryGet<ErtektarDistribution[]>(() => ertektarApi.getDistributions(), []),
         treasuryGet<BankTransaction[]>(() => ertektarApi.getBankTransactions(), []),
@@ -325,13 +334,11 @@ export default function TreasuryDashboard() {
           name: b.name,
           revenue: b.total,
           percentage: grandTotal > 0 ? Math.round((b.total / grandTotal) * 100) : 0,
-        }))
+        })),
       )
 
       const today = localIsoDate()
-      const sessionsRaw = await dailySessionApi
-        .getHistory(today, today)
-        .catch(() => [])
+      const sessionsRaw = await dailySessionApi.getHistory(today, today).catch(() => [])
       const sessions = safeArray<DailySession>(sessionsRaw)
 
       const closingMap = new Map<string, BranchClosing>()
@@ -422,7 +429,8 @@ export default function TreasuryDashboard() {
       setNewCollection(EMPTY_VAULT_REQUEST_FORM)
       await fetchData()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Begyűjtési kérelem létrehozás sikertelen.'
+      const message =
+        err instanceof Error ? err.message : 'Begyűjtési kérelem létrehozás sikertelen.'
       setStatusActionError(message)
       logger.error('TreasuryDashboard', 'Vault collection create error:', err)
     } finally {
@@ -453,7 +461,8 @@ export default function TreasuryDashboard() {
       setNewDistribution(EMPTY_VAULT_REQUEST_FORM)
       await fetchData()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Szétosztási kérelem létrehozás sikertelen.'
+      const message =
+        err instanceof Error ? err.message : 'Szétosztási kérelem létrehozás sikertelen.'
       setStatusActionError(message)
       logger.error('TreasuryDashboard', 'Vault distribution create error:', err)
     } finally {
@@ -469,8 +478,16 @@ export default function TreasuryDashboard() {
     const amount = Number(newTransfer.amount)
     const note = newTransfer.note.trim()
 
-    if (!sourceBranchCode || !targetBranchCode || !currencyCode || !Number.isFinite(amount) || amount <= 0) {
-      setStatusActionError('Áttételhez forrás iroda, cél iroda, valuta és pozitív összeg szükséges.')
+    if (
+      !sourceBranchCode ||
+      !targetBranchCode ||
+      !currencyCode ||
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
+      setStatusActionError(
+        'Áttételhez forrás iroda, cél iroda, valuta és pozitív összeg szükséges.',
+      )
       return
     }
     if (!window.confirm(`Biztosan létrehozza a ${currencyCode} áttételi kérelmet?`)) return
@@ -563,7 +580,9 @@ export default function TreasuryDashboard() {
     const newQuantity = Number(newCorrection.newQuantity)
 
     if (!entityId || !currencyCode || !reason || !Number.isFinite(newQuantity) || newQuantity < 0) {
-      setStatusActionError('Készletkorrekcióhoz típus, azonosító, valuta, nem negatív mennyiség és indok szükséges.')
+      setStatusActionError(
+        'Készletkorrekcióhoz típus, azonosító, valuta, nem negatív mennyiség és indok szükséges.',
+      )
       return
     }
     if (!window.confirm(`Biztosan létrehozza a ${currencyCode} készletkorrekciós kérelmet?`)) return
@@ -593,11 +612,12 @@ export default function TreasuryDashboard() {
     id: number,
     decision: 'supervisorApprove' | 'complete' | 'reject',
   ) => {
-    const label = decision === 'supervisorApprove'
-      ? 'supervisori jóváhagyja'
-      : decision === 'complete'
-        ? 'végrehajtja'
-        : 'elutasítja'
+    const label =
+      decision === 'supervisorApprove'
+        ? 'supervisori jóváhagyja'
+        : decision === 'complete'
+          ? 'végrehajtja'
+          : 'elutasítja'
     if (!window.confirm(`Biztosan ${label} a #${id} áttételt?`)) return
 
     const actionKey = `transfer:${id}:${decision}`
@@ -667,17 +687,24 @@ export default function TreasuryDashboard() {
   const topBankFlow = bankFlow[0]
   const topBranchGroup = branchGroupSummary[0]
   const topCompanySummary = companySummary[0]
-  const topCompanyTotal = [...companyTotals]
-    .sort((a, b) => Number(b.totalBalance ?? 0) - Number(a.totalBalance ?? 0))[0]
+  const topCompanyTotal = [...companyTotals].sort(
+    (a, b) => Number(b.totalBalance ?? 0) - Number(a.totalBalance ?? 0),
+  )[0]
   const stockAlertCount = lowBalanceAlerts.length + highBalanceAlerts.length
   const ertektarOnlineCount = ertektarBranches.filter((b) => b.isOnline ?? b.online).length
   const ertektarOfflineCount = ertektarBranches.filter((b) => !(b.isOnline ?? b.online)).length
   const ertektarOpenAlerts = ertektarBranches.reduce((sum, b) => sum + (b.openAlerts ?? 0), 0)
   const consolidatedTotals = ertektarConsolidatedReport?.totals
   const consolidatedBranchCount = ertektarConsolidatedReport?.branches?.length ?? 0
-  const openCollections = ertektarCollections.filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED').slice(0, 3)
-  const openDistributions = ertektarDistributions.filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED').slice(0, 3)
-  const openBankTransactions = ertektarBankTransactions.filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED').slice(0, 3)
+  const openCollections = ertektarCollections
+    .filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED')
+    .slice(0, 3)
+  const openDistributions = ertektarDistributions
+    .filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED')
+    .slice(0, 3)
+  const openBankTransactions = ertektarBankTransactions
+    .filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED')
+    .slice(0, 3)
   const recentTransfers = ertektarTransfers.slice(0, 3)
   const recentReceipts = materialReceipts.slice(0, 3)
   const recentCorrections = stockCorrections.slice(0, 3)
@@ -687,7 +714,9 @@ export default function TreasuryDashboard() {
       {/* Page header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-lg font-bold text-secondary-900">{t('treasury.ertektariDashboard')}</h1>
+          <h1 className="text-lg font-bold text-secondary-900">
+            {t('treasury.ertektariDashboard')}
+          </h1>
           <p className="text-sm text-secondary-500 mt-1">
             {t('treasury.osszesitettKeszletForgalomIrodaiRangsor')}
           </p>
@@ -724,8 +753,12 @@ export default function TreasuryDashboard() {
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-start gap-2">
           <Lock size={18} className="text-amber-600 shrink-0 mt-0.5" />
           <div className="text-sm">
-            <p className="font-semibold text-amber-900">{t('treasury.dedikaltTreasuryApiKorlatozott')}</p>
-            <p className="text-xs text-amber-800">{t('treasury.treasuryOsszesitokManagerVagyAdmin')}</p>
+            <p className="font-semibold text-amber-900">
+              {t('treasury.dedikaltTreasuryApiKorlatozott')}
+            </p>
+            <p className="text-xs text-amber-800">
+              {t('treasury.treasuryOsszesitokManagerVagyAdmin')}
+            </p>
           </div>
         </div>
       )}
@@ -735,535 +768,663 @@ export default function TreasuryDashboard() {
           mogottes vegpontokat sem hivjuk (lasd canViewCentralTreasury + treasuryGet/companyGet). */}
       {canViewCentralTreasury && (
         <>
-      <div className="form-panel">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <SummaryCard
-            label="Backend treasury összesítő"
-            value={`${formatInteger(treasurySummary?.totalTransactionCount ?? 0)} db`}
-            detail={`${formatMillions(Number(treasurySummary?.totalProfit ?? 0))} profit`}
-          />
-          <SummaryCard
-            label="Fiók összehasonlítás"
-            value={`${formatInteger(branchComparison.length)} iroda`}
-            detail={topBackendBranches[0]?.branchName ?? topBackendBranches[0]?.branchCode ?? 'Nincs adat'}
-          />
-          <SummaryCard
-            label="Beküldési státusz"
-            value={`${submittedCount}/${submissionStatus.length}`}
-            detail={missingSubmissionCount > 0 ? `${missingSubmissionCount} hiányzó jelentés` : 'Minden jelentés beérkezett'}
-          />
-          <SummaryCard
-            label="Értéktári pénztár monitoring"
-            value={`${ertektarOnlineCount}/${ertektarBranches.length} online`}
-            detail={ertektarOfflineCount > 0 ? `${ertektarOfflineCount} offline, ${ertektarOpenAlerts} riasztás` : `${ertektarOpenAlerts} nyitott riasztás`}
-          />
-          <SummaryCard
-            label="Értéktári konszolidált riport"
-            value={`${formatInteger(consolidatedTotals?.totalTransactions ?? 0)} db`}
-            detail={`${formatMillions(Number(consolidatedTotals?.totalHufTurnover ?? 0))} / ${consolidatedBranchCount} iroda`}
-          />
-          <SummaryCard
-            label="Készlet riasztások"
-            value={`${formatInteger(stockAlertCount)} jelzés`}
-            detail={`${formatInteger(lowBalanceAlerts.length)} alacsony, ${formatInteger(highBalanceAlerts.length)} magas`}
-          />
-        </div>
-      </div>
-
-      <div className="form-panel">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          <SummaryCard
-            label="Bankflow összesítő"
-            value={topBankFlow?.currencyCode ?? 'Nincs adat'}
-            detail={topBankFlow ? `${formatMillions(Number(topBankFlow.netFlow ?? 0))} nettó` : 'Nincs bankflow adat'}
-          />
-          <SummaryCard
-            label="Fiókcsoport összesítő"
-            value={`${formatInteger(branchGroupSummary.length)} csoport`}
-            detail={topBranchGroup?.name ?? topBranchGroup?.code ?? 'Nincs adat'}
-          />
-          <SummaryCard
-            label="Cégösszesítő"
-            value={`${formatInteger(companySummary.length)} egység`}
-            detail={topCompanySummary ? `${formatMillions(Number(topCompanySummary.totalProfit ?? 0))} profit` : 'Nincs adat'}
-          />
-          <SummaryCard
-            label="Valutánkénti készlet"
-            value={`${formatInteger(companyTotals.length)} valuta`}
-            detail={topCompanyTotal ? `${topCompanyTotal.currencyCode} ${formatInteger(Number(topCompanyTotal.totalBalance ?? 0))}` : 'Nincs adat'}
-          />
-        </div>
-      </div>
-
-      <div className="form-panel" data-testid="ertektar-status-control">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-base font-bold text-secondary-900">Értéktári státusz kontroll</h2>
-          <span className="text-xs text-secondary-500">
-            {openCollections.length + openDistributions.length + openBankTransactions.length} nyitott tétel
-          </span>
-        </div>
-        {statusActionError && (
-          <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {statusActionError}
+          <div className="form-panel">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
+              <SummaryCard
+                label="Backend treasury összesítő"
+                value={`${formatInteger(treasurySummary?.totalTransactionCount ?? 0)} db`}
+                detail={`${formatMillions(Number(treasurySummary?.totalProfit ?? 0))} profit`}
+              />
+              <SummaryCard
+                label="Fiók összehasonlítás"
+                value={`${formatInteger(branchComparison.length)} iroda`}
+                detail={
+                  topBackendBranches[0]?.branchName ??
+                  topBackendBranches[0]?.branchCode ??
+                  'Nincs adat'
+                }
+              />
+              <SummaryCard
+                label="Beküldési státusz"
+                value={`${submittedCount}/${submissionStatus.length}`}
+                detail={
+                  missingSubmissionCount > 0
+                    ? `${missingSubmissionCount} hiányzó jelentés`
+                    : 'Minden jelentés beérkezett'
+                }
+              />
+              <SummaryCard
+                label="Értéktári pénztár monitoring"
+                value={`${ertektarOnlineCount}/${ertektarBranches.length} online`}
+                detail={
+                  ertektarOfflineCount > 0
+                    ? `${ertektarOfflineCount} offline, ${ertektarOpenAlerts} riasztás`
+                    : `${ertektarOpenAlerts} nyitott riasztás`
+                }
+              />
+              <SummaryCard
+                label="Értéktári konszolidált riport"
+                value={`${formatInteger(consolidatedTotals?.totalTransactions ?? 0)} db`}
+                detail={`${formatMillions(Number(consolidatedTotals?.totalHufTurnover ?? 0))} / ${consolidatedBranchCount} iroda`}
+              />
+              <SummaryCard
+                label="Készlet riasztások"
+                value={`${formatInteger(stockAlertCount)} jelzés`}
+                detail={`${formatInteger(lowBalanceAlerts.length)} alacsony, ${formatInteger(highBalanceAlerts.length)} magas`}
+              />
+            </div>
           </div>
-        )}
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-          <StatusQueue
-            title="Begyűjtés"
-            rows={openCollections.map((row) => ({
-              id: row.id,
-              status: row.status,
-              primary: row.sourceBranchName ?? row.sourceBranchCode ?? `#${row.id}`,
-              secondary: `${row.currencyCode ?? '-'} ${formatInteger(Number(row.amount ?? 0))}`,
-            }))}
-            kind="collection"
-            busyKey={statusAction}
-            onUpdate={updateErtektarStatus}
-          >
-            <form onSubmit={(event) => void createVaultCollection(event)} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <label className="text-xs font-medium text-secondary-700">
-                Forrás iroda
-                <input
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
-                  value={newCollection.branchCode}
-                  onChange={(event) => setNewCollection((value) => ({ ...value, branchCode: event.target.value }))}
-                  disabled={createCollectionSubmitting}
-                  placeholder="BUD01"
-                />
-              </label>
-              <label className="text-xs font-medium text-secondary-700">
-                Begyűjtés valuta
-                <input
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
-                  value={newCollection.currencyCode}
-                  onChange={(event) => setNewCollection((value) => ({ ...value, currencyCode: event.target.value }))}
-                  disabled={createCollectionSubmitting}
-                  placeholder="EUR"
-                />
-              </label>
-              <label className="text-xs font-medium text-secondary-700">
-                Begyűjtés összeg
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
-                  value={newCollection.amount}
-                  onChange={(event) => setNewCollection((value) => ({ ...value, amount: event.target.value }))}
-                  disabled={createCollectionSubmitting}
-                  placeholder="0"
-                />
-              </label>
-              <label className="text-xs font-medium text-secondary-700">
-                Begyűjtés megjegyzés
-                <input
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
-                  value={newCollection.note}
-                  onChange={(event) => setNewCollection((value) => ({ ...value, note: event.target.value }))}
-                  disabled={createCollectionSubmitting}
-                  placeholder="Megjegyzés"
-                />
-              </label>
-              <button
-                type="submit"
-                aria-label="Begyűjtés kérése"
-                className="rounded bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-60 sm:col-span-2"
-                disabled={createCollectionSubmitting}
-              >
-                {createCollectionSubmitting ? '...' : 'Begyűjtés kérése'}
-              </button>
-            </form>
-          </StatusQueue>
-          <StatusQueue
-            title="Szétosztás"
-            rows={openDistributions.map((row) => ({
-              id: row.id,
-              status: row.status,
-              primary: row.lines?.[0]?.targetBranchName ?? row.lines?.[0]?.targetBranchCode ?? `#${row.id}`,
-              secondary: `${row.lines?.length ?? 0} sor`,
-            }))}
-            kind="distribution"
-            busyKey={statusAction}
-            onUpdate={updateErtektarStatus}
-          >
-            <form onSubmit={(event) => void createVaultDistribution(event)} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <label className="text-xs font-medium text-secondary-700">
-                Cél iroda
-                <input
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
-                  value={newDistribution.branchCode}
-                  onChange={(event) => setNewDistribution((value) => ({ ...value, branchCode: event.target.value }))}
-                  disabled={createDistributionSubmitting}
-                  placeholder="PECS"
-                />
-              </label>
-              <label className="text-xs font-medium text-secondary-700">
-                Szétosztás valuta
-                <input
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
-                  value={newDistribution.currencyCode}
-                  onChange={(event) => setNewDistribution((value) => ({ ...value, currencyCode: event.target.value }))}
-                  disabled={createDistributionSubmitting}
-                  placeholder="USD"
-                />
-              </label>
-              <label className="text-xs font-medium text-secondary-700">
-                Szétosztás összeg
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
-                  value={newDistribution.amount}
-                  onChange={(event) => setNewDistribution((value) => ({ ...value, amount: event.target.value }))}
-                  disabled={createDistributionSubmitting}
-                  placeholder="0"
-                />
-              </label>
-              <label className="text-xs font-medium text-secondary-700">
-                Szétosztás megjegyzés
-                <input
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
-                  value={newDistribution.note}
-                  onChange={(event) => setNewDistribution((value) => ({ ...value, note: event.target.value }))}
-                  disabled={createDistributionSubmitting}
-                  placeholder="Megjegyzés"
-                />
-              </label>
-              <button
-                type="submit"
-                aria-label="Szétosztás kérése"
-                className="rounded bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-60 sm:col-span-2"
-                disabled={createDistributionSubmitting}
-              >
-                {createDistributionSubmitting ? '...' : 'Szétosztás kérése'}
-              </button>
-            </form>
-          </StatusQueue>
-          <StatusQueue
-            title="Banki tranzakció"
-            rows={openBankTransactions.map((row) => ({
-              id: row.id,
-              status: row.status,
-              primary: `${row.transactionType} ${row.currencyCode}`,
-              secondary: `${formatInteger(Number(row.amount ?? 0))} / ${row.bankName ?? '-'}`,
-            }))}
-            kind="bankTransaction"
-            busyKey={statusAction}
-            onUpdate={updateErtektarStatus}
-          />
-        </div>
-      </div>
 
-      <div className="form-panel" data-testid="ertektar-readonly-ledger">
-        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-base font-bold text-secondary-900">Értéktári bizonylat és korrekció áttekintés</h2>
-          <span className="text-xs text-secondary-500">
-            {formatInteger(ertektarTransfers.length + materialReceipts.length + stockCorrections.length)} listázott tétel
-          </span>
-        </div>
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-          <ReadOnlyQueue
-            title="Áttételek"
-            summary={`${formatInteger(ertektarPendingTransfers.length)} függő / ${formatInteger(ertektarTransfers.length)} összes`}
-            rows={recentTransfers.map((row) => ({
-              id: row.id,
-              primary: row.transferNumber,
-              secondary: `${row.currencyCode} ${formatInteger(Number(row.amount ?? 0))}`,
-              status: row.status,
-              requiresSupervisor: row.requiresSupervisor,
-            }))}
-            busyKey={transferAction}
-            actions={(row) => {
-              if (row.status === 'REQUESTED' && row.requiresSupervisor) {
-                return [
-                  {
-                    key: `transfer:${row.id}:supervisorApprove`,
-                    label: 'Supervisor',
-                    ariaLabel: `Áttétel #${row.id} supervisor jóváhagyás`,
-                    onClick: () => void decideVaultTransfer(row.id, 'supervisorApprove'),
-                  },
-                  {
-                    key: `transfer:${row.id}:reject`,
-                    label: 'Elutasítás',
-                    ariaLabel: `Áttétel #${row.id} elutasítás`,
-                    onClick: () => void decideVaultTransfer(row.id, 'reject'),
-                  },
-                ]
-              }
-              if (row.status === 'REQUESTED' || row.status === 'IN_PROGRESS') {
-                return [
-                  {
-                    key: `transfer:${row.id}:complete`,
-                    label: 'Átvétel',
-                    ariaLabel: `Áttétel #${row.id} végrehajtás`,
-                    onClick: () => void decideVaultTransfer(row.id, 'complete'),
-                  },
-                  {
-                    key: `transfer:${row.id}:reject`,
-                    label: 'Elutasítás',
-                    ariaLabel: `Áttétel #${row.id} elutasítás`,
-                    onClick: () => void decideVaultTransfer(row.id, 'reject'),
-                  },
-                ]
-              }
-              return []
-            }}
-          >
-            <form onSubmit={(event) => void createVaultTransfer(event)} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <label className="text-xs font-medium text-secondary-700">
-                Áttétel forrás iroda
-                <input
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
-                  value={newTransfer.sourceBranchCode}
-                  onChange={(event) => setNewTransfer((value) => ({ ...value, sourceBranchCode: event.target.value }))}
-                  disabled={createTransferSubmitting}
-                  placeholder="BUD01"
-                />
-              </label>
-              <label className="text-xs font-medium text-secondary-700">
-                Áttétel cél iroda
-                <input
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
-                  value={newTransfer.targetBranchCode}
-                  onChange={(event) => setNewTransfer((value) => ({ ...value, targetBranchCode: event.target.value }))}
-                  disabled={createTransferSubmitting}
-                  placeholder="PECS"
-                />
-              </label>
-              <label className="text-xs font-medium text-secondary-700">
-                Áttétel valuta
-                <input
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
-                  value={newTransfer.currencyCode}
-                  onChange={(event) => setNewTransfer((value) => ({ ...value, currencyCode: event.target.value }))}
-                  disabled={createTransferSubmitting}
-                  placeholder="EUR"
-                />
-              </label>
-              <label className="text-xs font-medium text-secondary-700">
-                Áttétel összeg
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
-                  value={newTransfer.amount}
-                  onChange={(event) => setNewTransfer((value) => ({ ...value, amount: event.target.value }))}
-                  disabled={createTransferSubmitting}
-                  placeholder="0"
-                />
-              </label>
-              <label className="text-xs font-medium text-secondary-700 sm:col-span-2">
-                Áttétel megjegyzés
-                <input
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
-                  value={newTransfer.note}
-                  onChange={(event) => setNewTransfer((value) => ({ ...value, note: event.target.value }))}
-                  disabled={createTransferSubmitting}
-                  placeholder="Megjegyzés"
-                />
-              </label>
-              <button
-                type="submit"
-                aria-label="Áttétel kérése"
-                className="rounded bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-60 sm:col-span-2"
-                disabled={createTransferSubmitting}
+          <div className="form-panel">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+              <SummaryCard
+                label="Bankflow összesítő"
+                value={topBankFlow?.currencyCode ?? 'Nincs adat'}
+                detail={
+                  topBankFlow
+                    ? `${formatMillions(Number(topBankFlow.netFlow ?? 0))} nettó`
+                    : 'Nincs bankflow adat'
+                }
+              />
+              <SummaryCard
+                label="Fiókcsoport összesítő"
+                value={`${formatInteger(branchGroupSummary.length)} csoport`}
+                detail={topBranchGroup?.name ?? topBranchGroup?.code ?? 'Nincs adat'}
+              />
+              <SummaryCard
+                label="Cégösszesítő"
+                value={`${formatInteger(companySummary.length)} egység`}
+                detail={
+                  topCompanySummary
+                    ? `${formatMillions(Number(topCompanySummary.totalProfit ?? 0))} profit`
+                    : 'Nincs adat'
+                }
+              />
+              <SummaryCard
+                label="Valutánkénti készlet"
+                value={`${formatInteger(companyTotals.length)} valuta`}
+                detail={
+                  topCompanyTotal
+                    ? `${topCompanyTotal.currencyCode} ${formatInteger(Number(topCompanyTotal.totalBalance ?? 0))}`
+                    : 'Nincs adat'
+                }
+              />
+            </div>
+          </div>
+
+          <div className="form-panel" data-testid="ertektar-status-control">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="text-base font-bold text-secondary-900">Értéktári státusz kontroll</h2>
+              <span className="text-xs text-secondary-500">
+                {openCollections.length + openDistributions.length + openBankTransactions.length}{' '}
+                nyitott tétel
+              </span>
+            </div>
+            {statusActionError && (
+              <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {statusActionError}
+              </div>
+            )}
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+              <StatusQueue
+                title="Begyűjtés"
+                rows={openCollections.map((row) => ({
+                  id: row.id,
+                  status: row.status,
+                  primary: row.sourceBranchName ?? row.sourceBranchCode ?? `#${row.id}`,
+                  secondary: `${row.currencyCode ?? '-'} ${formatInteger(Number(row.amount ?? 0))}`,
+                }))}
+                kind="collection"
+                busyKey={statusAction}
+                onUpdate={updateErtektarStatus}
               >
-                {createTransferSubmitting ? '...' : 'Áttétel kérése'}
-              </button>
-            </form>
-          </ReadOnlyQueue>
-          <ReadOnlyQueue
-            title="Anyagbizonylatok"
-            summary={`${formatInteger(materialReceiptsIn.length)} bevét / ${formatInteger(materialReceiptsOut.length)} kiadás`}
-            rows={recentReceipts.map((row) => ({
-              id: row.id,
-              primary: row.receiptNumber,
-              secondary: `${row.receiptType} ${formatInteger(row.lines?.length ?? 0)} sor`,
-              status: row.status,
-            }))}
-            busyKey={receiptAction}
-            actions={(row) => row.status === 'DRAFT' ? [
-              {
-                key: `receipt:${row.id}:finalize`,
-                label: 'Véglegesítés',
-                ariaLabel: `Anyagbizonylat #${row.id} véglegesítés`,
-                onClick: () => void finalizeMaterialReceipt(row.id),
-              },
-            ] : []}
-          >
-            <form onSubmit={(event) => void createMaterialReceipt(event)} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <label className="text-xs font-medium text-secondary-700">
-                Bizonylat típus
-                <select
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
-                  value={newReceipt.receiptType}
-                  onChange={(event) => setNewReceipt((value) => ({ ...value, receiptType: event.target.value as 'B' | 'K' }))}
-                  disabled={createReceiptSubmitting}
+                <form
+                  onSubmit={(event) => void createVaultCollection(event)}
+                  className="grid grid-cols-1 gap-2 sm:grid-cols-2"
                 >
-                  <option value="B">Bevét</option>
-                  <option value="K">Kiadás</option>
-                </select>
-              </label>
-              <label className="text-xs font-medium text-secondary-700">
-                Bizonylat iroda
-                <input
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
-                  value={newReceipt.branchCode}
-                  onChange={(event) => setNewReceipt((value) => ({ ...value, branchCode: event.target.value }))}
-                  disabled={createReceiptSubmitting}
-                  placeholder="BUD01"
-                />
-              </label>
-              <label className="text-xs font-medium text-secondary-700">
-                Bizonylat valuta
-                <input
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
-                  value={newReceipt.currencyCode}
-                  onChange={(event) => setNewReceipt((value) => ({ ...value, currencyCode: event.target.value }))}
-                  disabled={createReceiptSubmitting}
-                  placeholder="EUR"
-                />
-              </label>
-              <label className="text-xs font-medium text-secondary-700">
-                Bizonylat összeg
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
-                  value={newReceipt.amount}
-                  onChange={(event) => setNewReceipt((value) => ({ ...value, amount: event.target.value }))}
-                  disabled={createReceiptSubmitting}
-                  placeholder="0"
-                />
-              </label>
-              <label className="text-xs font-medium text-secondary-700">
-                Partner
-                <input
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
-                  value={newReceipt.counterpartName}
-                  onChange={(event) => setNewReceipt((value) => ({ ...value, counterpartName: event.target.value }))}
-                  disabled={createReceiptSubmitting}
-                  placeholder="Partner"
-                />
-              </label>
-              <label className="text-xs font-medium text-secondary-700">
-                Bizonylat megjegyzés
-                <input
-                  className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
-                  value={newReceipt.note}
-                  onChange={(event) => setNewReceipt((value) => ({ ...value, note: event.target.value }))}
-                  disabled={createReceiptSubmitting}
-                  placeholder="Megjegyzés"
-                />
-              </label>
-              <button
-                type="submit"
-                aria-label="Anyagbizonylat kérése"
-                className="rounded bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-60 sm:col-span-2"
-                disabled={createReceiptSubmitting}
+                  <label className="text-xs font-medium text-secondary-700">
+                    Forrás iroda
+                    <input
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                      value={newCollection.branchCode}
+                      onChange={(event) =>
+                        setNewCollection((value) => ({ ...value, branchCode: event.target.value }))
+                      }
+                      disabled={createCollectionSubmitting}
+                      placeholder="BUD01"
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-secondary-700">
+                    Begyűjtés valuta
+                    <input
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
+                      value={newCollection.currencyCode}
+                      onChange={(event) =>
+                        setNewCollection((value) => ({
+                          ...value,
+                          currencyCode: event.target.value,
+                        }))
+                      }
+                      disabled={createCollectionSubmitting}
+                      placeholder="EUR"
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-secondary-700">
+                    Begyűjtés összeg
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                      value={newCollection.amount}
+                      onChange={(event) =>
+                        setNewCollection((value) => ({ ...value, amount: event.target.value }))
+                      }
+                      disabled={createCollectionSubmitting}
+                      placeholder="0"
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-secondary-700">
+                    Begyűjtés megjegyzés
+                    <input
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                      value={newCollection.note}
+                      onChange={(event) =>
+                        setNewCollection((value) => ({ ...value, note: event.target.value }))
+                      }
+                      disabled={createCollectionSubmitting}
+                      placeholder="Megjegyzés"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    aria-label="Begyűjtés kérése"
+                    className="rounded bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-60 sm:col-span-2"
+                    disabled={createCollectionSubmitting}
+                  >
+                    {createCollectionSubmitting ? '...' : 'Begyűjtés kérése'}
+                  </button>
+                </form>
+              </StatusQueue>
+              <StatusQueue
+                title="Szétosztás"
+                rows={openDistributions.map((row) => ({
+                  id: row.id,
+                  status: row.status,
+                  primary:
+                    row.lines?.[0]?.targetBranchName ??
+                    row.lines?.[0]?.targetBranchCode ??
+                    `#${row.id}`,
+                  secondary: `${row.lines?.length ?? 0} sor`,
+                }))}
+                kind="distribution"
+                busyKey={statusAction}
+                onUpdate={updateErtektarStatus}
               >
-                {createReceiptSubmitting ? '...' : 'Anyagbizonylat kérése'}
-              </button>
-            </form>
-          </ReadOnlyQueue>
-          <ReadOnlyQueue
-            title="Készletkorrekciók"
-            summary={`${formatInteger(pendingStockCorrections.length)} függő / ${formatInteger(stockCorrections.length)} összes`}
-            rows={recentCorrections.map((row) => ({
-              id: row.id,
-              primary: `${row.entityType} ${row.entityId}`,
-              secondary: `${row.currencyCode} ${formatInteger(Number(row.difference ?? 0))}`,
-              status: row.status,
-            }))}
-            busyKey={correctionAction}
-            actions={(row) => row.status === 'PENDING' ? [
-              {
-                key: `correction:${row.id}:approve`,
-                label: 'Jóváhagyás',
-                ariaLabel: `Készletkorrekció #${row.id} jóváhagyás`,
-                onClick: () => void decideStockCorrection(row.id, 'approve'),
-              },
-              {
-                key: `correction:${row.id}:reject`,
-                label: 'Elutasítás',
-                ariaLabel: `Készletkorrekció #${row.id} elutasítás`,
-                onClick: () => void decideStockCorrection(row.id, 'reject'),
-              },
-            ] : []}
-          >
-            <form onSubmit={(event) => void createStockCorrection(event)} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <label className="text-xs font-semibold text-secondary-600">
-                Típus
-                <select
-                  className="form-input mt-1 h-8 w-full text-xs"
-                  value={newCorrection.entityType}
-                  onChange={(event) => setNewCorrection((value) => ({
-                    ...value,
-                    entityType: event.target.value as StockCorrectionDraftForm['entityType'],
-                  }))}
-                  disabled={createCorrectionSubmitting}
+                <form
+                  onSubmit={(event) => void createVaultDistribution(event)}
+                  className="grid grid-cols-1 gap-2 sm:grid-cols-2"
                 >
-                  <option value="VAULT">VAULT</option>
-                  <option value="CASHIER">CASHIER</option>
-                </select>
-              </label>
-              <label className="text-xs font-semibold text-secondary-600">
-                Azonosító
-                <input
-                  className="form-input mt-1 h-8 w-full text-xs"
-                  value={newCorrection.entityId}
-                  onChange={(event) => setNewCorrection((value) => ({ ...value, entityId: event.target.value }))}
-                  disabled={createCorrectionSubmitting}
-                  placeholder="BUD01"
-                />
-              </label>
-              <label className="text-xs font-semibold text-secondary-600">
-                Valuta
-                <input
-                  className="form-input mt-1 h-8 w-full text-xs font-mono uppercase"
-                  value={newCorrection.currencyCode}
-                  onChange={(event) => setNewCorrection((value) => ({ ...value, currencyCode: event.target.value }))}
-                  disabled={createCorrectionSubmitting}
-                  placeholder="EUR"
-                />
-              </label>
-              <label className="text-xs font-semibold text-secondary-600">
-                Új mennyiség
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="form-input mt-1 h-8 w-full text-xs font-mono"
-                  value={newCorrection.newQuantity}
-                  onChange={(event) => setNewCorrection((value) => ({ ...value, newQuantity: event.target.value }))}
-                  disabled={createCorrectionSubmitting}
-                  placeholder="0"
-                />
-              </label>
-              <label className="text-xs font-semibold text-secondary-600 sm:col-span-2">
-                Indok
-                <input
-                  className="form-input mt-1 h-8 w-full text-xs"
-                  value={newCorrection.reason}
-                  onChange={(event) => setNewCorrection((value) => ({ ...value, reason: event.target.value }))}
-                  disabled={createCorrectionSubmitting}
-                  placeholder="Leltár eltérés"
-                />
-              </label>
-              <button
-                type="submit"
-                className="form-button-primary min-h-9 text-xs sm:col-span-2"
-                disabled={createCorrectionSubmitting}
+                  <label className="text-xs font-medium text-secondary-700">
+                    Cél iroda
+                    <input
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                      value={newDistribution.branchCode}
+                      onChange={(event) =>
+                        setNewDistribution((value) => ({
+                          ...value,
+                          branchCode: event.target.value,
+                        }))
+                      }
+                      disabled={createDistributionSubmitting}
+                      placeholder="PECS"
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-secondary-700">
+                    Szétosztás valuta
+                    <input
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
+                      value={newDistribution.currencyCode}
+                      onChange={(event) =>
+                        setNewDistribution((value) => ({
+                          ...value,
+                          currencyCode: event.target.value,
+                        }))
+                      }
+                      disabled={createDistributionSubmitting}
+                      placeholder="USD"
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-secondary-700">
+                    Szétosztás összeg
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                      value={newDistribution.amount}
+                      onChange={(event) =>
+                        setNewDistribution((value) => ({ ...value, amount: event.target.value }))
+                      }
+                      disabled={createDistributionSubmitting}
+                      placeholder="0"
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-secondary-700">
+                    Szétosztás megjegyzés
+                    <input
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                      value={newDistribution.note}
+                      onChange={(event) =>
+                        setNewDistribution((value) => ({ ...value, note: event.target.value }))
+                      }
+                      disabled={createDistributionSubmitting}
+                      placeholder="Megjegyzés"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    aria-label="Szétosztás kérése"
+                    className="rounded bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-60 sm:col-span-2"
+                    disabled={createDistributionSubmitting}
+                  >
+                    {createDistributionSubmitting ? '...' : 'Szétosztás kérése'}
+                  </button>
+                </form>
+              </StatusQueue>
+              <StatusQueue
+                title="Banki tranzakció"
+                rows={openBankTransactions.map((row) => ({
+                  id: row.id,
+                  status: row.status,
+                  primary: `${row.transactionType} ${row.currencyCode}`,
+                  secondary: `${formatInteger(Number(row.amount ?? 0))} / ${row.bankName ?? '-'}`,
+                }))}
+                kind="bankTransaction"
+                busyKey={statusAction}
+                onUpdate={updateErtektarStatus}
+              />
+            </div>
+          </div>
+
+          <div className="form-panel" data-testid="ertektar-readonly-ledger">
+            <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-base font-bold text-secondary-900">
+                Értéktári bizonylat és korrekció áttekintés
+              </h2>
+              <span className="text-xs text-secondary-500">
+                {formatInteger(
+                  ertektarTransfers.length + materialReceipts.length + stockCorrections.length,
+                )}{' '}
+                listázott tétel
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+              <ReadOnlyQueue
+                title="Áttételek"
+                summary={`${formatInteger(ertektarPendingTransfers.length)} függő / ${formatInteger(ertektarTransfers.length)} összes`}
+                rows={recentTransfers.map((row) => ({
+                  id: row.id,
+                  primary: row.transferNumber,
+                  secondary: `${row.currencyCode} ${formatInteger(Number(row.amount ?? 0))}`,
+                  status: row.status,
+                  requiresSupervisor: row.requiresSupervisor,
+                }))}
+                busyKey={transferAction}
+                actions={(row) => {
+                  if (row.status === 'REQUESTED' && row.requiresSupervisor) {
+                    return [
+                      {
+                        key: `transfer:${row.id}:supervisorApprove`,
+                        label: 'Supervisor',
+                        ariaLabel: `Áttétel #${row.id} supervisor jóváhagyás`,
+                        onClick: () => void decideVaultTransfer(row.id, 'supervisorApprove'),
+                      },
+                      {
+                        key: `transfer:${row.id}:reject`,
+                        label: 'Elutasítás',
+                        ariaLabel: `Áttétel #${row.id} elutasítás`,
+                        onClick: () => void decideVaultTransfer(row.id, 'reject'),
+                      },
+                    ]
+                  }
+                  if (row.status === 'REQUESTED' || row.status === 'IN_PROGRESS') {
+                    return [
+                      {
+                        key: `transfer:${row.id}:complete`,
+                        label: 'Átvétel',
+                        ariaLabel: `Áttétel #${row.id} végrehajtás`,
+                        onClick: () => void decideVaultTransfer(row.id, 'complete'),
+                      },
+                      {
+                        key: `transfer:${row.id}:reject`,
+                        label: 'Elutasítás',
+                        ariaLabel: `Áttétel #${row.id} elutasítás`,
+                        onClick: () => void decideVaultTransfer(row.id, 'reject'),
+                      },
+                    ]
+                  }
+                  return []
+                }}
               >
-                {createCorrectionSubmitting ? '...' : 'Korrekció kérése'}
-              </button>
-            </form>
-          </ReadOnlyQueue>
-        </div>
-      </div>
+                <form
+                  onSubmit={(event) => void createVaultTransfer(event)}
+                  className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                >
+                  <label className="text-xs font-medium text-secondary-700">
+                    Áttétel forrás iroda
+                    <input
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                      value={newTransfer.sourceBranchCode}
+                      onChange={(event) =>
+                        setNewTransfer((value) => ({
+                          ...value,
+                          sourceBranchCode: event.target.value,
+                        }))
+                      }
+                      disabled={createTransferSubmitting}
+                      placeholder="BUD01"
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-secondary-700">
+                    Áttétel cél iroda
+                    <input
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                      value={newTransfer.targetBranchCode}
+                      onChange={(event) =>
+                        setNewTransfer((value) => ({
+                          ...value,
+                          targetBranchCode: event.target.value,
+                        }))
+                      }
+                      disabled={createTransferSubmitting}
+                      placeholder="PECS"
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-secondary-700">
+                    Áttétel valuta
+                    <input
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
+                      value={newTransfer.currencyCode}
+                      onChange={(event) =>
+                        setNewTransfer((value) => ({ ...value, currencyCode: event.target.value }))
+                      }
+                      disabled={createTransferSubmitting}
+                      placeholder="EUR"
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-secondary-700">
+                    Áttétel összeg
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                      value={newTransfer.amount}
+                      onChange={(event) =>
+                        setNewTransfer((value) => ({ ...value, amount: event.target.value }))
+                      }
+                      disabled={createTransferSubmitting}
+                      placeholder="0"
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-secondary-700 sm:col-span-2">
+                    Áttétel megjegyzés
+                    <input
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                      value={newTransfer.note}
+                      onChange={(event) =>
+                        setNewTransfer((value) => ({ ...value, note: event.target.value }))
+                      }
+                      disabled={createTransferSubmitting}
+                      placeholder="Megjegyzés"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    aria-label="Áttétel kérése"
+                    className="rounded bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-60 sm:col-span-2"
+                    disabled={createTransferSubmitting}
+                  >
+                    {createTransferSubmitting ? '...' : 'Áttétel kérése'}
+                  </button>
+                </form>
+              </ReadOnlyQueue>
+              <ReadOnlyQueue
+                title="Anyagbizonylatok"
+                summary={`${formatInteger(materialReceiptsIn.length)} bevét / ${formatInteger(materialReceiptsOut.length)} kiadás`}
+                rows={recentReceipts.map((row) => ({
+                  id: row.id,
+                  primary: row.receiptNumber,
+                  secondary: `${row.receiptType} ${formatInteger(row.lines?.length ?? 0)} sor`,
+                  status: row.status,
+                }))}
+                busyKey={receiptAction}
+                actions={(row) =>
+                  row.status === 'DRAFT'
+                    ? [
+                        {
+                          key: `receipt:${row.id}:finalize`,
+                          label: 'Véglegesítés',
+                          ariaLabel: `Anyagbizonylat #${row.id} véglegesítés`,
+                          onClick: () => void finalizeMaterialReceipt(row.id),
+                        },
+                      ]
+                    : []
+                }
+              >
+                <form
+                  onSubmit={(event) => void createMaterialReceipt(event)}
+                  className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                >
+                  <label className="text-xs font-medium text-secondary-700">
+                    Bizonylat típus
+                    <select
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                      value={newReceipt.receiptType}
+                      onChange={(event) =>
+                        setNewReceipt((value) => ({
+                          ...value,
+                          receiptType: event.target.value as 'B' | 'K',
+                        }))
+                      }
+                      disabled={createReceiptSubmitting}
+                    >
+                      <option value="B">Bevét</option>
+                      <option value="K">Kiadás</option>
+                    </select>
+                  </label>
+                  <label className="text-xs font-medium text-secondary-700">
+                    Bizonylat iroda
+                    <input
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                      value={newReceipt.branchCode}
+                      onChange={(event) =>
+                        setNewReceipt((value) => ({ ...value, branchCode: event.target.value }))
+                      }
+                      disabled={createReceiptSubmitting}
+                      placeholder="BUD01"
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-secondary-700">
+                    Bizonylat valuta
+                    <input
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
+                      value={newReceipt.currencyCode}
+                      onChange={(event) =>
+                        setNewReceipt((value) => ({ ...value, currencyCode: event.target.value }))
+                      }
+                      disabled={createReceiptSubmitting}
+                      placeholder="EUR"
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-secondary-700">
+                    Bizonylat összeg
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                      value={newReceipt.amount}
+                      onChange={(event) =>
+                        setNewReceipt((value) => ({ ...value, amount: event.target.value }))
+                      }
+                      disabled={createReceiptSubmitting}
+                      placeholder="0"
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-secondary-700">
+                    Partner
+                    <input
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                      value={newReceipt.counterpartName}
+                      onChange={(event) =>
+                        setNewReceipt((value) => ({
+                          ...value,
+                          counterpartName: event.target.value,
+                        }))
+                      }
+                      disabled={createReceiptSubmitting}
+                      placeholder="Partner"
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-secondary-700">
+                    Bizonylat megjegyzés
+                    <input
+                      className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
+                      value={newReceipt.note}
+                      onChange={(event) =>
+                        setNewReceipt((value) => ({ ...value, note: event.target.value }))
+                      }
+                      disabled={createReceiptSubmitting}
+                      placeholder="Megjegyzés"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    aria-label="Anyagbizonylat kérése"
+                    className="rounded bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-60 sm:col-span-2"
+                    disabled={createReceiptSubmitting}
+                  >
+                    {createReceiptSubmitting ? '...' : 'Anyagbizonylat kérése'}
+                  </button>
+                </form>
+              </ReadOnlyQueue>
+              <ReadOnlyQueue
+                title="Készletkorrekciók"
+                summary={`${formatInteger(pendingStockCorrections.length)} függő / ${formatInteger(stockCorrections.length)} összes`}
+                rows={recentCorrections.map((row) => ({
+                  id: row.id,
+                  primary: `${row.entityType} ${row.entityId}`,
+                  secondary: `${row.currencyCode} ${formatInteger(Number(row.difference ?? 0))}`,
+                  status: row.status,
+                }))}
+                busyKey={correctionAction}
+                actions={(row) =>
+                  row.status === 'PENDING'
+                    ? [
+                        {
+                          key: `correction:${row.id}:approve`,
+                          label: 'Jóváhagyás',
+                          ariaLabel: `Készletkorrekció #${row.id} jóváhagyás`,
+                          onClick: () => void decideStockCorrection(row.id, 'approve'),
+                        },
+                        {
+                          key: `correction:${row.id}:reject`,
+                          label: 'Elutasítás',
+                          ariaLabel: `Készletkorrekció #${row.id} elutasítás`,
+                          onClick: () => void decideStockCorrection(row.id, 'reject'),
+                        },
+                      ]
+                    : []
+                }
+              >
+                <form
+                  onSubmit={(event) => void createStockCorrection(event)}
+                  className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                >
+                  <label className="text-xs font-semibold text-secondary-600">
+                    Típus
+                    <select
+                      className="form-input mt-1 h-8 w-full text-xs"
+                      value={newCorrection.entityType}
+                      onChange={(event) =>
+                        setNewCorrection((value) => ({
+                          ...value,
+                          entityType: event.target.value as StockCorrectionDraftForm['entityType'],
+                        }))
+                      }
+                      disabled={createCorrectionSubmitting}
+                    >
+                      <option value="VAULT">VAULT</option>
+                      <option value="CASHIER">CASHIER</option>
+                    </select>
+                  </label>
+                  <label className="text-xs font-semibold text-secondary-600">
+                    Azonosító
+                    <input
+                      className="form-input mt-1 h-8 w-full text-xs"
+                      value={newCorrection.entityId}
+                      onChange={(event) =>
+                        setNewCorrection((value) => ({ ...value, entityId: event.target.value }))
+                      }
+                      disabled={createCorrectionSubmitting}
+                      placeholder="BUD01"
+                    />
+                  </label>
+                  <label className="text-xs font-semibold text-secondary-600">
+                    Valuta
+                    <input
+                      className="form-input mt-1 h-8 w-full text-xs font-mono uppercase"
+                      value={newCorrection.currencyCode}
+                      onChange={(event) =>
+                        setNewCorrection((value) => ({
+                          ...value,
+                          currencyCode: event.target.value,
+                        }))
+                      }
+                      disabled={createCorrectionSubmitting}
+                      placeholder="EUR"
+                    />
+                  </label>
+                  <label className="text-xs font-semibold text-secondary-600">
+                    Új mennyiség
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="form-input mt-1 h-8 w-full text-xs font-mono"
+                      value={newCorrection.newQuantity}
+                      onChange={(event) =>
+                        setNewCorrection((value) => ({ ...value, newQuantity: event.target.value }))
+                      }
+                      disabled={createCorrectionSubmitting}
+                      placeholder="0"
+                    />
+                  </label>
+                  <label className="text-xs font-semibold text-secondary-600 sm:col-span-2">
+                    Indok
+                    <input
+                      className="form-input mt-1 h-8 w-full text-xs"
+                      value={newCorrection.reason}
+                      onChange={(event) =>
+                        setNewCorrection((value) => ({ ...value, reason: event.target.value }))
+                      }
+                      disabled={createCorrectionSubmitting}
+                      placeholder="Leltár eltérés"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    className="form-button-primary min-h-9 text-xs sm:col-span-2"
+                    disabled={createCorrectionSubmitting}
+                  >
+                    {createCorrectionSubmitting ? '...' : 'Korrekció kérése'}
+                  </button>
+                </form>
+              </ReadOnlyQueue>
+            </div>
+          </div>
         </>
       )}
 
@@ -1282,7 +1443,10 @@ export default function TreasuryDashboard() {
           <DataRow label="Eladás (db)" value={formatInteger(turnover?.totalSellCount ?? 0)} />
           <DataRow label="Vétel (HUF)" value={formatMillions(turnover?.totalBuyHuf ?? 0)} />
           <DataRow label="Eladás (HUF)" value={formatMillions(turnover?.totalSellHuf ?? 0)} />
-          <DataRow label="Kezelési díjak" value={formatMillions(turnover?.totalHandlingFees ?? 0)} />
+          <DataRow
+            label="Kezelési díjak"
+            value={formatMillions(turnover?.totalHandlingFees ?? 0)}
+          />
         </div>
       </div>
 
@@ -1346,13 +1510,29 @@ export default function TreasuryDashboard() {
           </div>
           {closingStatuses.length > 0 && (
             <div className="text-xs text-secondary-600">
-              <strong>{closedCount}/{closingStatuses.length}</strong>{t('treasury.zarva')}
-              {inProgressCount > 0 && <>, <strong>{inProgressCount}</strong> {t('treasury.folyamatban')}</>}
-              {notClosedCount > 0 && <>, <strong>{notClosedCount}</strong> {t('treasury.hianyzik')}</>}
+              <strong>
+                {closedCount}/{closingStatuses.length}
+              </strong>
+              {t('treasury.zarva')}
+              {inProgressCount > 0 && (
+                <>
+                  , <strong>{inProgressCount}</strong> {t('treasury.folyamatban')}
+                </>
+              )}
+              {notClosedCount > 0 && (
+                <>
+                  , <strong>{notClosedCount}</strong> {t('treasury.hianyzik')}
+                </>
+              )}
             </div>
           )}
         </div>
       </div>
+
+      {/* FK-041/II: az értéktáros innen mutathatja meg a QR-kódot, amivel az árfolyam néző telefonjára
+          telepíthető a versenytárs-árfolyam beíró PWA. Electron kliensben a publikus web-URL kell (a
+          window.location.origin lokális lenne), ezért getPublicWebUrl()-t adunk át. */}
+      <PwaInstallHelp url={getPublicWebUrl()} title={t('pwaInstall.cimErtektar')} />
     </div>
   )
 }
@@ -1376,7 +1556,11 @@ function StatusQueue({
   rows: StatusQueueRow[]
   kind: 'collection' | 'distribution' | 'bankTransaction'
   busyKey: string | null
-  onUpdate: (kind: 'collection' | 'distribution' | 'bankTransaction', id: number, status: VaultOperationStatus) => void
+  onUpdate: (
+    kind: 'collection' | 'distribution' | 'bankTransaction',
+    id: number,
+    status: VaultOperationStatus,
+  ) => void
   children?: ReactNode
 }) {
   const targetStatuses: VaultOperationStatus[] = ['IN_PROGRESS', 'COMPLETED', 'REJECTED']
@@ -1402,7 +1586,9 @@ function StatusQueue({
             <div key={row.id} className="rounded border border-secondary-100 bg-secondary-50 p-2">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="break-words text-sm font-semibold text-secondary-900">{row.primary}</div>
+                  <div className="break-words text-sm font-semibold text-secondary-900">
+                    {row.primary}
+                  </div>
                   <div className="text-xs text-secondary-500">{row.secondary}</div>
                 </div>
                 <span className="shrink-0 rounded bg-white px-2 py-1 text-[11px] font-semibold text-secondary-700">
@@ -1487,7 +1673,9 @@ function ReadOnlyQueue({
               <div key={row.id} className="rounded border border-secondary-100 bg-secondary-50 p-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="break-words text-sm font-semibold text-secondary-900">{row.primary}</div>
+                    <div className="break-words text-sm font-semibold text-secondary-900">
+                      {row.primary}
+                    </div>
                     <div className="text-xs text-secondary-500">{row.secondary}</div>
                   </div>
                   <span className="shrink-0 rounded bg-white px-2 py-1 text-[11px] font-semibold text-secondary-700">
@@ -1523,7 +1711,9 @@ function DataRow({ label, value, accent }: { label: string; value: string; accen
   return (
     <div className="flex justify-between items-baseline border-b border-secondary-100 pb-1.5">
       <span className="text-secondary-600">{label}</span>
-      <span className={`font-mono font-semibold ${accent ? 'text-primary-700' : 'text-secondary-900'}`}>
+      <span
+        className={`font-mono font-semibold ${accent ? 'text-primary-700' : 'text-secondary-900'}`}
+      >
         {value}
       </span>
     </div>

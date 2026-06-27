@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.ClosingControlDto;
+import hu.puzzleir.valuta.dto.ClosingMarkType;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.ClosingControl;
 import hu.puzzleir.valuta.entity.Company;
@@ -42,6 +43,9 @@ class ClosingControlServiceTest {
 
     @Mock
     private NotificationService notificationService;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private ClosingControlService service;
@@ -89,7 +93,7 @@ class ClosingControlServiceTest {
         assertFalse(row.getEveningClosingDone());
         assertFalse(row.getNavClosingDone());
         assertEquals(0, row.getCompletedCount());
-        assertEquals(3, row.getRequiredCount());
+        assertEquals(1, row.getRequiredCount());
         assertTrue(row.getMissingRecord());
         assertEquals("CRITICAL", row.getAlertLevel());
     }
@@ -120,9 +124,85 @@ class ClosingControlServiceTest {
         assertEquals(control.getId(), result.getId());
         assertEquals("PEC1", result.getBranchCode());
         assertEquals("Pécs Diana", result.getBranchName());
-        assertEquals(3, result.getCompletedCount());
+        assertEquals(1, result.getCompletedCount());
         assertEquals("NONE", result.getAlertLevel());
         assertFalse(result.getMissingRecord());
+    }
+
+    @Test
+    @DisplayName("markClosingDone creates daily record and makes cashier branch OK")
+    void markClosingDone_createsDailyRecord() {
+        LocalDate date = LocalDate.now();
+        UUID branchId = UUID.randomUUID();
+        Branch branch = branch(branchId, "BR01", "Pénztár 01");
+        ClosingControl saved = ClosingControl.builder()
+                .id(UUID.randomUUID())
+                .companyId(companyId)
+                .branchId(branchId)
+                .controlDate(date)
+                .dailyClosingDone(false)
+                .eveningClosingDone(false)
+                .navClosingDone(false)
+                .alertLevel("WARNING")
+                .build();
+
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(closingControlRepository.findByCompanyIdAndBranchIdAndControlDate(companyId, branchId, date))
+                .thenReturn(Optional.empty());
+        when(closingControlRepository.save(org.mockito.ArgumentMatchers.any(ClosingControl.class)))
+                .thenAnswer(invocation -> {
+                    ClosingControl control = invocation.getArgument(0);
+                    if (control.getId() == null) {
+                        control.setId(saved.getId());
+                    }
+                    return control;
+                });
+
+        ClosingControlDto result = service.markClosingDone(companyId, branchId, date, ClosingMarkType.DAILY);
+
+        assertTrue(result.getDailyClosingDone());
+        assertFalse(result.getEveningClosingDone());
+        assertEquals("NONE", result.getAlertLevel());
+        assertEquals(1, result.getCompletedCount());
+        verify(auditLogService).log(org.mockito.ArgumentMatchers.eq("CLOSING_RECEIVED_DAILY"),
+                org.mockito.ArgumentMatchers.eq("ClosingControl"),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(branchId.toString()),
+                org.mockito.ArgumentMatchers.eq("Pénztár 01"),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull());
+    }
+
+    @Test
+    @DisplayName("vault branch needs evening closing flag for OK state")
+    void getBranchStatus_vaultNeedsEveningFlag() {
+        LocalDate date = LocalDate.now();
+        UUID branchId = UUID.randomUUID();
+        Branch branch = branch(branchId, "EV01", "Értéktár 01");
+        branch.setIsVault(true);
+        ClosingControl control = ClosingControl.builder()
+                .id(UUID.randomUUID())
+                .companyId(companyId)
+                .branchId(branchId)
+                .controlDate(date)
+                .dailyClosingDone(true)
+                .eveningClosingDone(false)
+                .navClosingDone(true)
+                .alertLevel("NONE")
+                .build();
+
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(closingControlRepository.findByCompanyIdAndBranchIdAndControlDate(companyId, branchId, date))
+                .thenReturn(Optional.of(control));
+
+        ClosingControlDto result = service.getBranchStatus(branchId, date);
+
+        assertEquals("WARNING", result.getAlertLevel());
+        assertEquals(0, result.getCompletedCount());
+        assertEquals(1, result.getRequiredCount());
     }
 
     private Branch branch(UUID id, String code, String name) {
@@ -133,6 +213,7 @@ class ClosingControlServiceTest {
                 .city("Budapest")
                 .company(Company.builder().id(companyId).name("Best Change").build())
                 .isActive(true)
+                .isVault(false)
                 .build();
     }
 }

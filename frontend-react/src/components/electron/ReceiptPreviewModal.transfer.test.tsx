@@ -46,10 +46,10 @@ describe('ReceiptPreviewModal — átadási bizonylat (transfer)', () => {
     expect(txt).toContain('EXCLUSIVE BEST CHANGE ZRT.')
     expect(txt).toContain('32313332-2-02')
     expect(txt).toContain('Átadási bizonylat')
-    // Kérő iroda + Cél iroda + szállító + plomba + valuta + forint érték + megjegyzés
-    expect(txt).toContain('Kérő iroda:')
+    // Átadó + Átvevő + szállító + plomba + valuta + forint érték + megjegyzés
+    expect(txt).toContain('Átadó:')
     expect(txt).toContain('BR050 - Debrecen Értéktár')
-    expect(txt).toContain('Cél iroda:')
+    expect(txt).toContain('Átvevő:')
     expect(txt).toContain('BR060 - Debrecen Tesco')
     expect(txt).toContain('Gyors Futár Kft.')
     expect(txt).toContain('PL-12345')
@@ -63,11 +63,11 @@ describe('ReceiptPreviewModal — átadási bizonylat (transfer)', () => {
     expect(txt).toContain('2026. 06. 05.')
   })
 
-  it('FR-2: a Kérő iroda és Cél iroda kötelező mezők hiányzó érték esetén is megjelennek („—")', () => {
+  it('FR-2: az Átadó és Átvevő kötelező mezők hiányzó érték esetén is megjelennek („—")', () => {
     const { container } = renderModal({ ...base, branchCode: '', transferTarget: '' })
     const txt = container.textContent ?? ''
-    expect(txt).toContain('Kérő iroda:')
-    expect(txt).toContain('Cél iroda:')
+    expect(txt).toContain('Átadó:')
+    expect(txt).toContain('Átvevő:')
     expect(txt).toContain('—')
   })
 

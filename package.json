@@ -1,6 +1,6 @@
 {
   "name": "valutavalto-monorepo",
-  "version": "2.28.14",
+  "version": "2.28.16",
   "private": true,
   "description": "Exclusive Best Change Zrt. - teljes valutavalto ERP okoszisztema (backend + frontend-react + penztar-client)",
   "scripts": {
@@ -102,11 +102,14 @@
     "installer:smoke:clean-vm": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/installer-clean-vm-smoke.ps1",
     "stop:db": "docker stop valuta-postgres",
     "qa:size": "node scripts/qa/pr-size-check.mjs",
-    "qa:audit": "node scripts/qa/pre-push-audit-lite.mjs"
+    "qa:audit": "node scripts/qa/pre-push-audit-lite.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
-    "wait-on": "^8.0.1"
+    "prettier": "3.8.4",
+    "wait-on": "^9.0.10"
   },
   "overrides": {
     "axios": ">=1.15.2",

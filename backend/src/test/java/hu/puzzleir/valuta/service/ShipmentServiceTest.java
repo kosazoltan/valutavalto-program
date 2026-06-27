@@ -1,12 +1,17 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto;
+import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
 import hu.puzzleir.valuta.entity.ShipmentRequestItem;
+import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
+import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +42,9 @@ class ShipmentServiceTest {
 
     @Mock
     private hu.puzzleir.valuta.repository.CurrencyRepository currencyRepository;
+
+    @Mock
+    private WorkerRepository workerRepository;
 
     @Mock
     private ExchangeRateService exchangeRateService;
@@ -70,6 +78,63 @@ class ShipmentServiceTest {
             assertThat(saved.getSerialNumber()).isEqualTo(1L);
             assertThat(saved.getRequestedById()).isEqualTo(42L);
             assertThat(saved.getStatus().name()).isEqualTo("DRAFT");
+        }
+    }
+
+    @Test
+    void createResponseEnrichesBranchAndWorkerNames() {
+        UUID companyId = UUID.randomUUID();
+        UUID fromBranchId = UUID.randomUUID();
+        UUID toBranchId = UUID.randomUUID();
+        Company company = Company.builder().id(companyId).build();
+        Branch fromBranch = Branch.builder()
+                .id(fromBranchId)
+                .company(company)
+                .code("BR075")
+                .name("Szeged Értéktár")
+                .build();
+        Branch toBranch = Branch.builder()
+                .id(toBranchId)
+                .company(company)
+                .code("BR027")
+                .name("Szeged Tesco")
+                .build();
+        Worker worker = Worker.builder()
+                .id(42L)
+                .company(company)
+                .branch(fromBranch)
+                .name("Bali Henriett")
+                .build();
+
+        when(currencyRepository.findById(4L)).thenReturn(java.util.Optional.of(currency("EUR")));
+        when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(exchangeRateService.getCurrentRate(4L)).thenReturn(
+                ExchangeRate.builder().officialRate(new BigDecimal("400")).build());
+        when(branchRepository.findByIdAndCompanyId(fromBranchId, companyId))
+                .thenReturn(java.util.Optional.of(fromBranch));
+        when(branchRepository.findByIdAndCompanyId(toBranchId, companyId))
+                .thenReturn(java.util.Optional.of(toBranch));
+        when(workerRepository.findByIdAndCompanyId(42L, companyId))
+                .thenReturn(java.util.Optional.of(worker));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(UUID.randomUUID());
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
+            ShipmentRequest request = validRequest();
+            request.setFromBranchId(fromBranchId);
+            request.setToBranchId(toBranchId);
+
+            ShipmentRequestResponseDto response = service.createResponse(request);
+
+            assertThat(response.getFromBranchCode()).isEqualTo("BR075");
+            assertThat(response.getFromBranchName()).isEqualTo("Szeged Értéktár");
+            assertThat(response.getToBranchCode()).isEqualTo("BR027");
+            assertThat(response.getToBranchName()).isEqualTo("Szeged Tesco");
+            assertThat(response.getRequestedByWorkerName()).isEqualTo("Bali Henriett");
+            assertThat(response.getRequestingBranchName()).isEqualTo("Szeged Értéktár");
+            assertThat(response.getTargetBranchName()).isEqualTo("Szeged Tesco");
         }
     }
 

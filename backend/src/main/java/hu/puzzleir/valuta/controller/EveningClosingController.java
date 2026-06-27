@@ -1,6 +1,9 @@
 package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.eveningclosing.*;
+import hu.puzzleir.valuta.dto.ClosingMarkType;
+import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.ClosingControlService;
 import hu.puzzleir.valuta.service.EveningClosingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +29,7 @@ import java.util.UUID;
 public class EveningClosingController {
 
     private final EveningClosingService eveningClosingService;
+    private final ClosingControlService closingControlService;
 
     /**
      * Napi adatcsomag előkészítése (preview — nem küld).
@@ -54,6 +58,7 @@ public class EveningClosingController {
         DataSyncResult result = eveningClosingService.sendToHeadquarters(pkg);
 
         if (result.isSuccess()) {
+            closingControlService.markClosingDone(SecurityUtils.getCurrentCompanyId(), branchId, date, ClosingMarkType.EVENING);
             return ResponseEntity.ok(result);
         } else {
             return ResponseEntity.internalServerError().body(result);

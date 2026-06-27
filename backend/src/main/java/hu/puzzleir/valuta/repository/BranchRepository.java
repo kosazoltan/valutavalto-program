@@ -280,8 +280,14 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
             FROM branch b
             INNER JOIN branch_path bp ON bp.parent_branch_id = b.id
         )
-        SELECT * FROM branch WHERE id IN (SELECT id FROM branch_path)
-        ORDER BY level DESC
+        -- FK-038 fix: a 'level' oszlop a branch_path CTE-ben letezik, NEM a branch
+        -- tablaban. A korabbi 'SELECT * FROM branch ... ORDER BY level DESC' ezert
+        -- 'column "level" does not exist' hibat dobott -> 500 a GET /branches/{id}/path
+        -- hivason (a BranchEditPage betoltesekor "Belso szerverhiba"). A path-elemeket
+        -- a CTE-vel JOIN-oljuk, igy az ORDER BY a CTE bp.level oszlopara hivatkozhat.
+        SELECT b.* FROM branch b
+        INNER JOIN branch_path bp ON bp.id = b.id
+        ORDER BY bp.level DESC
         """, nativeQuery = true)
     List<Branch> findPathToRoot(@Param("branchId") UUID branchId);
 

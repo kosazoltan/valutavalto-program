@@ -1,0 +1,35 @@
+# Prettier kizarasok — a formazo csak az aktivan karbantartott forraskodot erinti.
+# Reszletes indoklas: docs/code-style.md
+
+# --- Fuggosegek ---
+**/node_modules/
+
+# --- Build / generalt kimenet ---
+**/dist/
+**/build/
+**/out/
+**/coverage/
+**/.vite/
+backend/target/
+frontend-react/playwright-report/
+frontend-react/test-results/
+frontend_deployment/
+**/*.min.js
+**/*.min.css
+
+# --- Lockfile-ok (a csomagkezelo kezeli, nem a Prettier) ---
+**/package-lock.json
+
+# --- Teszt-snapshotok (a teszt-keretrendszer generalja) ---
+**/*.snap
+
+# --- Markdown: kezi, marker-blokkos magyar dokumentumok (AGENTS.md/CLAUDE.md
+#     CODEX_SHARED_QUALITY_RULES markerek, vault/EXCMD archivumok). A Prettier
+#     markdown-atrendezese eltorhetne a marker-blokkokat es felesleges diff-zajt
+#     okozna — ezert a markdown nem tartozik a formazo hatokorebe.
+**/*.md
+
+# --- Nagy historikus / generalt archivumok ---
+vault/
+EXCMD/
+security-reports/
