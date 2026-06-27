@@ -52,6 +52,7 @@ class InventoryServiceTest {
     @Mock private WorkerRepository workerRepository;
     @Mock private CashBalanceRepository cashBalanceRepository;
     @Mock private AuditLogRepository auditLogRepository;
+    @Mock private AuditLogService auditLogService;
     @Mock private ExchangeRateRepository exchangeRateRepository;
     @Mock private CurrencyStockRepository currencyStockRepository;
 
@@ -549,6 +550,37 @@ class InventoryServiceTest {
         assertThatThrownBy(() -> inventoryService.requestBankWithdraw(dto, WORKER_ID))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Iroda nem található");
+        verify(movementRepository, never()).save(any(InventoryMovement.class));
+    }
+
+    @Test
+    @DisplayName("ERTEKTAR: idegen territory branch-re bank-kivét → 403 VV-AUTH-001 + ACCESS_DENIED audit")
+    void requestBankWithdraw_ertektarOtherTerritory_throwsAccessDeniedAndAudits() {
+        branch.setVaultTerritoryId(2);
+        branch2.setVaultTerritoryId(1);
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(BRANCH_ID_2);
+
+        hu.puzzleir.valuta.dto.inventory.BankWithdrawRequestDto dto =
+                hu.puzzleir.valuta.dto.inventory.BankWithdrawRequestDto.builder()
+                        .branchId(BRANCH_ID.toString())
+                        .currencyId(CURRENCY_ID)
+                        .amount(new BigDecimal("1000"))
+                        .build();
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(branchRepository.findById(BRANCH_ID_2)).thenReturn(Optional.of(branch2));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+        assertThatThrownBy(() -> inventoryService.requestBankWithdraw(dto, WORKER_ID))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("VV-AUTH-001");
+
+        // Codex #1227 P2: a megtagadás-audit REQUIRES_NEW tranzakcióban megy (AuditLogService),
+        // hogy a hívó rollbackje ELLENÉRE megmaradjon.
+        verify(auditLogService).logInNewTransaction(
+                eq("ACCESS_DENIED"), eq("InventoryMovement"), isNull(),
+                any(), any(), any(), any(), contains("error_code=VV-AUTH-001"));
         verify(movementRepository, never()).save(any(InventoryMovement.class));
     }
 

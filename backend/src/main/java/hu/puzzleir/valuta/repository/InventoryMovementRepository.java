@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -53,6 +54,29 @@ public interface InventoryMovementRepository extends JpaRepository<InventoryMove
            "ORDER BY m.movementDate DESC, m.movementTime DESC")
     Page<InventoryMovement> search(
             @Param("companyId") UUID companyId,
+            @Param("branchId") UUID branchId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("status") MovementStatus status,
+            @Param("type") MovementType type,
+            Pageable pageable);
+
+    @Query("SELECT m FROM InventoryMovement m " +
+           "LEFT JOIN m.fromBranch fb " +
+           "LEFT JOIN fb.company fbc " +
+           "LEFT JOIN m.toBranch tb " +
+           "LEFT JOIN tb.company tbc " +
+           "WHERE (fbc.id = :companyId OR tbc.id = :companyId) " +
+           "AND (fb.id IN :branchIds OR tb.id IN :branchIds) " +
+           "AND (:branchId IS NULL OR fb.id = :branchId OR tb.id = :branchId) " +
+           "AND (:startDate IS NULL OR m.movementDate >= :startDate) " +
+           "AND (:endDate IS NULL OR m.movementDate <= :endDate) " +
+           "AND (:status IS NULL OR m.status = :status) " +
+           "AND (:type IS NULL OR m.movementType = :type) " +
+           "ORDER BY m.movementDate DESC, m.movementTime DESC")
+    Page<InventoryMovement> searchWithinBranches(
+            @Param("companyId") UUID companyId,
+            @Param("branchIds") Collection<UUID> branchIds,
             @Param("branchId") UUID branchId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,

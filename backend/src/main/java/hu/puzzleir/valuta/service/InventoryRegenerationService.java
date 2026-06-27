@@ -7,8 +7,10 @@ import hu.puzzleir.valuta.dto.inventory.RegenerationResultDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.security.TerritoryScopeResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -147,6 +149,7 @@ public class InventoryRegenerationService {
      */
     @Transactional(readOnly = true)
     public RegenerationResultDto getLastRegeneration(UUID branchId) {
+        requireReadableBranch(branchId);
         InventoryRegeneration regen = regenerationRepository
                 .findTopByBranchIdOrderByRegeneratedAtDesc(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -160,5 +163,22 @@ public class InventoryRegenerationService {
                 .regeneratedAt(regen.getRegeneratedAt().toString())
                 .regeneratedByName(regen.getRegeneratedBy() != null ? regen.getRegeneratedBy().getName() : null)
                 .build();
+    }
+
+    private void requireReadableBranch(UUID branchId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (!branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
+        if (!TerritoryScopeResolver.isCurrentRoleTerritoryScoped()) {
+            return;
+        }
+        Integer ownTerritory = TerritoryScopeResolver.currentTerritoryFilterOrNull(branchRepository);
+        Integer branchTerritory = branchRepository.findById(branchId)
+                .map(Branch::getVaultTerritoryId)
+                .orElse(null);
+        if (ownTerritory == null || !ownTerritory.equals(branchTerritory)) {
+            throw new AccessDeniedException("VV-AUTH-001: branch is outside current vault territory");
+        }
     }
 }

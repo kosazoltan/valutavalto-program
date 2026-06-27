@@ -12,7 +12,9 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +45,7 @@ public class InventoryService {
     private final WorkerRepository workerRepository;
     private final CashBalanceRepository cashBalanceRepository;
     private final AuditLogRepository auditLogRepository;
+    private final AuditLogService auditLogService;
     private final ExchangeRateRepository exchangeRateRepository;
     private final hu.puzzleir.valuta.repository.CurrencyStockRepository currencyStockRepository;
 
@@ -56,8 +59,9 @@ public class InventoryService {
     @Transactional(rollbackFor = Exception.class)
     public InventoryMovementDto requestBankWithdraw(BankWithdrawRequestDto dto, Long workerId) {
         Branch branch = findBranch(dto.getBranchId());
-        Currency currency = findCurrency(dto.getCurrencyId());
         Worker worker = findWorker(workerId);
+        assertBranchAllowedForCurrentTerritory(branch, worker, "BANK_WITHDRAW");
+        Currency currency = findCurrency(dto.getCurrencyId());
 
         InventoryMovement movement = InventoryMovement.builder()
                 .fromBranch(null) // bank = null
@@ -85,8 +89,9 @@ public class InventoryService {
     @Transactional(rollbackFor = Exception.class)
     public InventoryMovementDto depositToBank(BankDepositRequestDto dto, Long workerId) {
         Branch branch = findBranch(dto.getBranchId());
-        Currency currency = findCurrency(dto.getCurrencyId());
         Worker worker = findWorker(workerId);
+        assertBranchAllowedForCurrentTerritory(branch, worker, "BANK_DEPOSIT");
+        Currency currency = findCurrency(dto.getCurrencyId());
 
         // Ellenőrzés: van-e elegendő készlet
         CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(
@@ -128,9 +133,10 @@ public class InventoryService {
     @Transactional(rollbackFor = Exception.class)
     public InventoryMovementDto transferBetweenBranches(BranchTransferRequestDto dto, Long workerId) {
         Branch fromBranch = findBranch(dto.getFromBranchId());
+        Worker worker = findWorker(workerId);
+        assertBranchAllowedForCurrentTerritory(fromBranch, worker, "INVENTORY_TRANSFER");
         Branch toBranch = findBranch(dto.getToBranchId());
         Currency currency = findCurrency(dto.getCurrencyId());
-        Worker worker = findWorker(workerId);
 
         if (fromBranch.getId().equals(toBranch.getId())) {
             throw new ValidationException("A forrás és cél iroda nem lehet azonos!");
@@ -328,8 +334,9 @@ public class InventoryService {
     @Transactional(rollbackFor = Exception.class)
     public InventoryMovementDto correctInventory(CorrectionRequestDto dto, Long workerId) {
         Branch branch = findBranch(dto.getBranchId());
-        Currency currency = findCurrency(dto.getCurrencyId());
         Worker worker = findWorker(workerId);
+        assertBranchAllowedForCurrentTerritory(branch, worker, "INVENTORY_CORRECTION");
+        Currency currency = findCurrency(dto.getCurrencyId());
 
         CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(
                 branch.getId(), currency.getId())
@@ -390,74 +397,17 @@ public class InventoryService {
 
     // ============ QUERIES ============
 
-    /**
-     * v2.5.1-D B6: a lokál értéktáros (mode='ertektar') worker területi szűrésére használt
-     * roles set — ezek a NEM-központi role-ok, akiknek csak a saját területük látszódhat.
-     *
-     * <p>A foertektar / ugyvezeto / admin "központi" szerepkörök NINCSENEK ebben a halmazban,
-     * ők MINDENT látnak (multi-tenant scope-on belül).</p>
-     */
-    private static final java.util.Set<String> TERRITORY_SCOPED_ROLES = java.util.Set.of(
-            "ertektar", "ERTEKTAR", "ertektaros", "VAULT_KEEPER", "vault_keeper",
-            "irodavezeto", "IRODAVEZETO"
-    );
+    // FK-039: a territory-scoped role-halmaz és a feloldó logika kiszervezve a
+    // hu.puzzleir.valuta.security.TerritoryScopeResolver-be — EGYETLEN forrás, amelyet az
+    // InventoryMovementService (movement-log RBAC, FR-0) is használ. Az alábbi két metódus delegál,
+    // hogy a hívási helyek (getAllStock / getVaultStockFlow / getStockMatrix) változatlanok maradjanak.
 
-    /**
-     * v2.5.1-D B6: a bejelentkezett worker vault_territory_id-je, ha a role-ja territory-scoped.
-     *
-     * <p>Visszaad null-t (= nincs területi szűrés) ha:
-     *  - a worker role-ja "központi" (foertektar/ugyvezeto/admin) — ők mindent látnak,
-     *  - a worker branch-ének nincs vault_territory_id-je,
-     *  - nincs bejelentkezett user (pl. test context, scheduler).</p>
-     *
-     * <p>Defensive: minden exception-t elnyel és null-t ad vissza, hogy ne dobja meg
-     * a meglévő endpoint flow-t. Smoke teszt v2.5.0-nál ezt elmulasztotta — most
-     * try/catch + log.warn helyettesít.</p>
-     */
-    /**
-     * FK-ÉRTÉKTÁR (2026-06-02): az aktuális role territory-scoped-e (ertektar/irodavezeto stb.).
-     * A {@link #getCurrentTerritoryFilterOrNull()} null-t ad vissza KÖZPONTI role-ra ÉS territory-
-     * scoped role-ra is, ha nincs vault_territory — ez a metódus a kettő megkülönböztetésére kell
-     * (fail-closed döntéshez). Defenzív: exception esetén false (nincs téves szűkítés a teszt/
-     * scheduler kontextusban).
-     */
     private boolean isCurrentRoleTerritoryScoped() {
-        try {
-            String activeRole = hu.puzzleir.valuta.security.SecurityUtils.getActiveOperationalRole();
-            String currentRole = hu.puzzleir.valuta.security.SecurityUtils.getCurrentRole();
-            String role = activeRole != null ? activeRole : currentRole;
-            return role != null && TERRITORY_SCOPED_ROLES.contains(role);
-        } catch (Exception e) {
-            return false;
-        }
+        return hu.puzzleir.valuta.security.TerritoryScopeResolver.isCurrentRoleTerritoryScoped();
     }
 
     private Integer getCurrentTerritoryFilterOrNull() {
-        try {
-            String activeRole = hu.puzzleir.valuta.security.SecurityUtils.getActiveOperationalRole();
-            String currentRole = hu.puzzleir.valuta.security.SecurityUtils.getCurrentRole();
-            String role = activeRole != null ? activeRole : currentRole;
-            log.info("FK-005 territoryFilter: activeRole={}, currentRole={}, effectiveRole={}",
-                    activeRole, currentRole, role);
-            if (role == null || !TERRITORY_SCOPED_ROLES.contains(role)) {
-                log.info("FK-005 territoryFilter: role NEM territory-scoped → null (központi role)");
-                return null; // központi role — nincs területi szűrés
-            }
-            UUID branchId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentBranchIdOrNull();
-            log.info("FK-005 territoryFilter: territory-scoped role={}, user branchId={}", role, branchId);
-            if (branchId == null) {
-                log.warn("FK-005 territoryFilter: territory-scoped role-nak NINCS user branchId-je → null (defensive)");
-                return null;
-            }
-            Integer filter = branchRepository.findById(branchId)
-                    .map(Branch::getVaultTerritoryId)
-                    .orElse(null);
-            log.info("FK-005 territoryFilter: branch.vaultTerritoryId={}", filter);
-            return filter;
-        } catch (Exception e) {
-            log.warn("FK-005 territoryFilter: exception (defensive null fallback): {}", e.getMessage());
-            return null;
-        }
+        return hu.puzzleir.valuta.security.TerritoryScopeResolver.currentTerritoryFilterOrNull(branchRepository);
     }
 
     /**
@@ -613,6 +563,8 @@ public class InventoryService {
      */
     @Transactional(readOnly = true)
     public List<CashBalance> getCurrentStock(UUID branchId) {
+        Branch branch = findBranch(branchId.toString());
+        assertBranchAllowedForCurrentTerritory(branch, null, "INVENTORY_STOCK_READ");
         return cashBalanceRepository.findByBranchId(branchId);
     }
 
@@ -742,7 +694,12 @@ public class InventoryService {
     @Transactional(readOnly = true)
     public StockMatrixDto getStockMatrix() {
         UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        boolean territoryScoped = isCurrentRoleTerritoryScoped();
         Integer territoryFilter = getCurrentTerritoryFilterOrNull();
+        if (territoryScoped && territoryFilter == null) {
+            log.warn("getStockMatrix: territory-scoped role vault_territory NÉLKÜL → fail-closed (üres mátrix)");
+            return StockMatrixDto.builder().matrix(java.util.Map.of()).build();
+        }
         List<CashBalance> allBalances = cashBalanceRepository.findByCompanyId(companyId);
 
         java.util.Set<UUID> allowedBranchIds = null;
@@ -789,6 +746,24 @@ public class InventoryService {
             Branch branch = branchRepository.findById(branchId)
                     .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
             assertBranchInCompany(branch);
+            assertBranchAllowedForCurrentTerritory(branch, null, "INVENTORY_MOVEMENTS_READ");
+        }
+        if (isCurrentRoleTerritoryScoped()) {
+            Integer territoryFilter = getCurrentTerritoryFilterOrNull();
+            if (territoryFilter == null) {
+                log.warn("searchMovements: territory-scoped role vault_territory NÉLKÜL → fail-closed (üres oldal)");
+                return new PageImpl<>(List.of(), pageable, 0);
+            }
+            Set<UUID> allowedBranchIds = branchRepository.findByCompanyIdAndVaultTerritoryId(companyId, territoryFilter)
+                    .stream()
+                    .map(Branch::getId)
+                    .collect(Collectors.toSet());
+            if (allowedBranchIds.isEmpty()) {
+                return new PageImpl<>(List.of(), pageable, 0);
+            }
+            return movementRepository.searchWithinBranches(
+                            companyId, allowedBranchIds, branchId, startDate, endDate, status, type, pageable)
+                    .map(this::toDto);
         }
         return movementRepository.search(companyId, branchId, startDate, endDate, status, type, pageable)
                 .map(this::toDto);
@@ -840,6 +815,36 @@ public class InventoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
         assertBranchInCompany(branch);
         return branch;
+    }
+
+    private void assertBranchAllowedForCurrentTerritory(Branch branch, Worker worker, String action) {
+        if (!isCurrentRoleTerritoryScoped()) {
+            return;
+        }
+        Integer ownTerritory = getCurrentTerritoryFilterOrNull();
+        Integer branchTerritory = branch != null ? branch.getVaultTerritoryId() : null;
+        if (ownTerritory == null || !ownTerritory.equals(branchTerritory)) {
+            writeAccessDeniedAuditLog(worker, branch, action);
+            throw new AccessDeniedException("VV-AUTH-001: branch is outside current vault territory");
+        }
+    }
+
+    private void writeAccessDeniedAuditLog(Worker worker, Branch branch, String attemptedAction) {
+        if (worker == null) {
+            return;
+        }
+        // Codex #1227 P2: a megtagadás-audit a hívó @Transactional(rollbackFor=Exception) metódusából
+        // dobott AccessDeniedException-nel visszagörögne. REQUIRES_NEW-val önálló tranzakcióban
+        // commitoljuk, így a 403-as megtagadás naplója a rollback ELLENÉRE megmarad.
+        auditLogService.logInNewTransaction(
+                "ACCESS_DENIED",
+                "InventoryMovement",
+                null,
+                worker.getId() != null ? worker.getId().toString() : null,
+                worker.getName(),
+                branch != null && branch.getId() != null ? branch.getId().toString() : null,
+                branch != null ? branch.getName() : null,
+                "error_code=VV-AUTH-001, attemptedAction=" + attemptedAction);
     }
 
     /**

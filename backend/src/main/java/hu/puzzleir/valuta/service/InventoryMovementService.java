@@ -47,6 +47,9 @@ public class InventoryMovementService {
         if (branchId == null || !branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
             throw new ResourceNotFoundException("Iroda nem található: " + branchId);
         }
+        // Territory/region-scope (FK-039 szándék az AccessScopeService-be központosítva):
+        // territory-scoped szerepkör (pl. ERTEKTAR) csak a saját scope-jába tartozó pénztár
+        // mozgásait láthatja; idegen scope → 404 (cross-territory szivárgás ellen).
         var scope = accessScopeService.vaultRegionBranchScopeOrNull();
         if (!accessScopeService.isBranchVisible(scope, branchId.toString())) {
             throw new ResourceNotFoundException("Iroda nem található: " + branchId);

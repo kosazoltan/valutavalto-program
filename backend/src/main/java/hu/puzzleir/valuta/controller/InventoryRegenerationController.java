@@ -33,7 +33,7 @@ public class InventoryRegenerationController {
     }
 
     @GetMapping("/last")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'IRODAVEZETO', 'ERTEKTAR')")
     public ResponseEntity<RegenerationResultDto> getLastRegeneration(
             @RequestParam UUID branchId) {
         return ResponseEntity.ok(regenerationService.getLastRegeneration(branchId));

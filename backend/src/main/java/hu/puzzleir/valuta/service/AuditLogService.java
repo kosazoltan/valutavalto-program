@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -96,6 +97,32 @@ public class AuditLogService {
                 .changes(changes)
                 .ipAddress(ipAddress)
                 .userAgent(userAgent)
+                .build();
+        applyHashChain(entry);
+        auditLogRepository.save(entry);
+    }
+
+    /**
+     * FK-040 / Codex #1227: FÜGGETLEN (REQUIRES_NEW) audit-bejegyzés. Olyan eseményhez kell,
+     * amelyet a hívó {@code @Transactional} metódusa rögtön egy dobott kivétellel VISSZAGÖRGETNE
+     * (pl. {@code ACCESS_DENIED} a territory-scope megsértésekor → {@code AccessDeniedException}).
+     * A REQUIRES_NEW új, önállóan commitoló tranzakcióban menti a bejegyzést, így a hívó
+     * rollbackje ELLENÉRE megmarad a megtagadás naplója (security audit trail).
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
+    public void logInNewTransaction(String action, String entityType, String entityId,
+                                    String userId, String userName, String branchId, String branchName,
+                                    String changes) {
+        AuditLog entry = AuditLog.builder()
+                .companyId(resolveCompanyId())
+                .action(action)
+                .entityType(entityType)
+                .entityId(entityId)
+                .userId(userId)
+                .userName(userName)
+                .branchId(branchId)
+                .branchName(branchName)
+                .changes(changes)
                 .build();
         applyHashChain(entry);
         auditLogRepository.save(entry);

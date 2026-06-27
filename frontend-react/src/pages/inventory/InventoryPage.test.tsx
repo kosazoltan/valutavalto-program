@@ -9,11 +9,15 @@ const mocks = vi.hoisted(() => ({
   apiGet: vi.fn(),
   apiPost: vi.fn(),
   apiPut: vi.fn(),
+  currencyList: vi.fn(),
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
   wsCallback: { current: null as null | (() => void | Promise<void>) },
 }))
 
-vi.mock('../../services/api/index', () => ({ api: { get: mocks.apiGet, post: mocks.apiPost, put: mocks.apiPut } }))
+vi.mock('../../services/api/index', () => ({
+  api: { get: mocks.apiGet, post: mocks.apiPost, put: mocks.apiPut },
+  currencyApi: { list: mocks.currencyList },
+}))
 vi.mock('../../utils/logger', () => ({ logger: mocks.logger }))
 vi.mock('../../stores/authStore', () => ({
   useAuthStore: (selector: (s: unknown) => unknown) =>
@@ -82,6 +86,11 @@ const BRANCH_STOCK_ROWS = [
   },
 ]
 
+const INVENTORY_CURRENCIES = [
+  { id: 978, code: 'EUR', name: 'Euró', decimals: 2, active: true },
+  { id: 840, code: 'USD', name: 'Amerikai dollár', decimals: 2, active: true },
+]
+
 const MOVEMENT_ROWS = [
   {
     id: 77,
@@ -143,6 +152,7 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     vi.clearAllMocks()
     mocks.wsCallback.current = null
     setupApiGet()
+    mocks.currencyList.mockResolvedValue(INVENTORY_CURRENCIES)
     mocks.apiPost.mockResolvedValue({ data: BANKNOTE_ROWS[0] })
     mocks.apiPut.mockResolvedValue({ data: BANKNOTE_ROWS[0] })
   })
@@ -272,6 +282,7 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     })
     expect(screen.getByText('Készletmátrix')).toBeInTheDocument()
     expect(screen.getByTestId('inventory-operation-panel')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText('Deviza kiválasztása')).toHaveTextContent('EUR – Euró'))
     expect(screen.getByText('telephely / valuta')).toBeInTheDocument()
     expect(screen.getByText('Utolsó regenerálás')).toBeInTheDocument()
     expect(screen.getByText('Napi mozgásnapló')).toBeInTheDocument()
@@ -395,6 +406,47 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
         reason: 'Leltár korrekció',
       })
     })
+  })
+
+  it('inventory műveletek: a deviza legördülőből kiválasztott currencyId Long kerül küldésre', async () => {
+    render(<InventoryPage />)
+
+    await waitFor(() => expect(screen.getByLabelText('Deviza kiválasztása')).toHaveTextContent('USD – Amerikai dollár'))
+    fireEvent.change(screen.getByLabelText('Deviza kiválasztása'), { target: { value: '840' } })
+    fireEvent.change(screen.getByPlaceholderText('Összeg'), { target: { value: '250' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Művelet rögzítése' }))
+
+    await waitFor(() => {
+      expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/bank-withdraw', {
+        branchId: '11111111-1111-1111-1111-111111111111',
+        currencyId: 840,
+        amount: 250,
+        notes: undefined,
+      })
+    })
+  })
+
+  it('inventory műveletek: devizalista betöltése alatt a rögzítés disabled, cél telephely csak transfernél aktív', async () => {
+    let resolveCurrencies: (value: typeof INVENTORY_CURRENCIES) => void = () => {}
+    mocks.currencyList.mockReturnValue(new Promise((resolve) => {
+      resolveCurrencies = resolve
+    }))
+
+    render(<InventoryPage />)
+
+    const submitButton = await screen.findByRole('button', { name: 'Művelet rögzítése' })
+    expect(submitButton).toBeDisabled()
+    expect(screen.getByPlaceholderText('Csak átadásnál')).toBeDisabled()
+
+    await act(async () => {
+      resolveCurrencies(INVENTORY_CURRENCIES)
+    })
+
+    await waitFor(() => expect(submitButton).not.toBeDisabled())
+    expect(screen.getByPlaceholderText('Csak átadásnál')).toBeDisabled()
+
+    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), { target: { value: 'transfer' } })
+    expect(screen.getByPlaceholderText('Csak átadásnál')).not.toBeDisabled()
   })
 
   it('inventory mozgás státuszok: beköti az approve, receive és cancel workflow endpointokat', async () => {

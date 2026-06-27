@@ -62,6 +62,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
         log.warn("Access denied: {}", ex.getMessage());
+        if (ex.getMessage() != null && ex.getMessage().startsWith("VV-AUTH-001")) {
+            return buildResponse(HttpStatus.FORBIDDEN, "VV-AUTH-001", "Nincs jogosultsága a művelet végrehajtásához");
+        }
         return buildResponse(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Nincs jogosultsága a művelet végrehajtásához");
     }
 

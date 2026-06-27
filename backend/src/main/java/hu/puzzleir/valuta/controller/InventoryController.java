@@ -62,7 +62,7 @@ public class InventoryController {
     }
 
     @GetMapping("/stock/{branchId}")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'ERTEKTAR')")
     public ResponseEntity<List<CashBalanceDto>> getStockByBranch(@PathVariable UUID branchId) {
         validateBranchAccess(branchId);
         return ResponseEntity.ok(
@@ -89,7 +89,7 @@ public class InventoryController {
     }
 
     @GetMapping("/matrix")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'ERTEKTAR')")
     public ResponseEntity<StockMatrixDto> getStockMatrix() {
         return ResponseEntity.ok(inventoryService.getStockMatrix());
     }
@@ -113,7 +113,7 @@ public class InventoryController {
     // ============ BANK OPERATIONS ============
 
     @PostMapping("/bank-withdraw")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'ERTEKTAR')")
     public ResponseEntity<InventoryMovementDto> bankWithdraw(
             @Valid @RequestBody BankWithdrawRequestDto dto, Authentication auth) {
         Long workerId = getWorkerId(auth);
@@ -122,7 +122,7 @@ public class InventoryController {
     }
 
     @PostMapping("/bank-deposit")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'ERTEKTAR')")
     public ResponseEntity<InventoryMovementDto> bankDeposit(
             @Valid @RequestBody BankDepositRequestDto dto, Authentication auth) {
         Long workerId = getWorkerId(auth);
@@ -133,7 +133,7 @@ public class InventoryController {
     // ============ BRANCH TRANSFER ============
 
     @PostMapping("/transfer")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'ERTEKTAR')")
     public ResponseEntity<InventoryMovementDto> transfer(
             @Valid @RequestBody BranchTransferRequestDto dto, Authentication auth) {
         Long workerId = getWorkerId(auth);
@@ -144,7 +144,7 @@ public class InventoryController {
     // ============ CORRECTION ============
 
     @PostMapping("/correction")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'ERTEKTAR')")
     public ResponseEntity<InventoryMovementDto> correction(
             @Valid @RequestBody CorrectionRequestDto dto, Authentication auth) {
         Long workerId = getWorkerId(auth);
@@ -181,7 +181,7 @@ public class InventoryController {
     // ============ MOVEMENT HISTORY ============
 
     @GetMapping("/movements")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'ERTEKTAR')")
     public ResponseEntity<Page<InventoryMovementDto>> searchMovements(
             @RequestParam(required = false) UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,

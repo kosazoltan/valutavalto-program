@@ -30,6 +30,10 @@ public class InventoryMovementController {
     /**
      * KĂ©szlet mozgĂˇsok listĂˇzĂˇsa
      */
+    // FR-0 (FK-039): a "Pénztári készletek" nézet forgalmi adataihoz az értéktáros szerepkörök is
+    // hozzáférnek — a sibling "Értéktári készlet" (/inventory/vault-stock) RBAC-jával összhangban.
+    // A territory-scope (értéktáros csak a saját vault_territory pénztárait) a service-rétegben dől el
+    // (InventoryMovementService.requireOwnBranch → TerritoryScopeResolver), NEM itt.
     @GetMapping("/movement-log")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'IRODAVEZETO', 'ERTEKTAR')")
     public ResponseEntity<List<InventoryMovementDto>> getMovements(
