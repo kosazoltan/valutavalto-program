@@ -84,6 +84,12 @@ async function mockInventoryApis(page: Page) {
     }
 
     const bodyByPath: Record<string, unknown> = {
+      // FK-040: a "Mobil készlet-riportok" deviza-legördülő a currencyApi.list()-ből (GET /currencies)
+      // töltődik; e nélkül a lista üres és a "Művelet rögzítése" gomb disabled marad.
+      '/api/v1/currencies': [
+        { id: 978, code: 'EUR', name: 'Euró', decimals: 2, active: true, displayOrder: 1 },
+        { id: 840, code: 'USD', name: 'Amerikai dollár', decimals: 2, active: true, displayOrder: 2 },
+      ],
       '/api/v1/inventory/vault-stock': [
         { currencyCode: 'HUF', currencyName: 'Magyar forint', opening: 800, received: 0, issued: 0, closing: 700 },
         { currencyCode: 'EUR', currencyName: 'Euró', opening: 300, received: 0, issued: 0, closing: 500 },
@@ -188,6 +194,10 @@ test('inventory műveleti panel mobil viewporton valós backend szerződésekre 
   await page.goto('/inventory', { waitUntil: 'domcontentloaded' })
   await expect(page.getByTestId('inventory-operation-panel')).toBeVisible()
   await expect(page.getByText('Mobil készlet-riportok')).toBeVisible()
+
+  // FK-040: a deviza-legördülő betölt (currencyApi.list) és auto-kiválasztja az első devizát;
+  // a "Művelet rögzítése" gomb csak ezután engedélyezett.
+  await expect(page.getByLabel('Deviza kiválasztása')).toContainText('EUR')
 
   await page.getByPlaceholder('Összeg').fill('250')
   await page.getByPlaceholder('Opcionális').fill('Mobil E2E bank kivét')
