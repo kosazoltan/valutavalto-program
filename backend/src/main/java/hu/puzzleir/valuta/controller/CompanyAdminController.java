@@ -67,10 +67,17 @@ public class CompanyAdminController {
     }
 
     /**
-     * Összes fiók statisztikákkal.
+     * Összes fiók statisztikákkal (lista-nézet ADMIN STAT oszlop: dolgozószám + szinkron állapot).
      * GET /api/v1/admin/branches
+     *
+     * FK-043: a szinkron állapot és a dolgozószám felügyeleti adat, amelyet a
+     * főértéktárosnak és az ügyvezetőnek is látnia kell. A metódus-szintű
+     * {@code @PreAuthorize} FELÜLÍRJA az osztály-szintű {@code hasRole('ADMIN')}-t
+     * KIZÁRÓLAG ezen a végponton — a controller többi végpontja ADMIN-only marad.
+     * A tenant-izolációt a service {@code company_id}-szűrése biztosítja (NFR-4).
      */
     @GetMapping("/branches")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<List<BranchWithStatsDto>> getAllBranchesWithStats() {
         return ResponseEntity.ok(companyAdminService.getAllBranchesWithStats());
     }
