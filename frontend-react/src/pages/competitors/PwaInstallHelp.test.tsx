@@ -17,4 +17,13 @@ describe('PwaInstallHelp (FK-041/II)', () => {
     expect(screen.getByText(/Alkalmazás telepítése/)).toBeInTheDocument()
     expect(screen.getByText('https://excvaluta.com')).toBeInTheDocument()
   })
+
+  it('url prop nélkül a window.location.origin-ra esik vissza (a fallback szerződés rögzítése)', () => {
+    // Electronban a window.location.origin = app://localhost (a telefon nem tudja megnyitni), ezért
+    // adnak a hívók getPublicWebUrl()-t. Ez a teszt a komponens dokumentált fallback-viselkedését
+    // rögzíti, hogy a jövőben ne regresszáljon észrevétlenül (jsdom-ban az origin = http://localhost).
+    render(<PwaInstallHelp />)
+    fireEvent.click(screen.getByTestId('pwa-install-toggle'))
+    expect(screen.getByText(window.location.origin)).toBeInTheDocument()
+  })
 })
