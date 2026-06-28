@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   toastWarning: vi.fn(),
+  // Közös konstans: a mock visszaadása és a teszt-assertion is innen olvas (ne duplikáljuk a literált).
+  publicUrl: 'https://excvaluta.com',
 }))
 
 vi.mock('../../services/api/index', () => ({
@@ -17,6 +19,8 @@ vi.mock('../../services/api/index', () => ({
     today: mocks.today,
     submit: mocks.submit,
   },
+  // FK-041/II: a beíró oldal a publikus web-origint adja át a PWA-QR-nek (részletek az impl-kommentben).
+  getPublicWebUrl: () => mocks.publicUrl,
 }))
 vi.mock('../../components/ui/toaster', () => ({
   toast: { success: mocks.toastSuccess, error: mocks.toastError, warning: mocks.toastWarning },
@@ -61,6 +65,18 @@ describe('CompetitorRateEntryPage (FK-041/II)', () => {
       rates: [{ currencyId: 1, buyRate: 390, sellRate: 400 }],
     })
     expect(mocks.toastSuccess).toHaveBeenCalled()
+  })
+
+  it('FK-041/II regresszió: a telefon-PWA QR a PUBLIKUS web-URL-t mutatja (nem a lokális window.location.origin-t)', async () => {
+    render(<CompetitorRateEntryPage />)
+    await screen.findByTestId('competitor-select')
+
+    fireEvent.click(screen.getByTestId('pwa-install-toggle'))
+
+    // A megjelenített megosztandó URL a publikus web-origin…
+    expect(screen.getByText(mocks.publicUrl)).toBeInTheDocument()
+    // …és NEM a lokális origin (jsdom-ban http://localhost, Electronban app://localhost).
+    expect(screen.queryByText(window.location.origin)).not.toBeInTheDocument()
   })
 
   it('üres versenyhely-lista esetén üzenetet mutat, form nélkül', async () => {
