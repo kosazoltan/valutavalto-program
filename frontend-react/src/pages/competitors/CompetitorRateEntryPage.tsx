@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Store } from 'lucide-react'
 import {
   competitorRatesApi,
+  getPublicWebUrl,
   type CompetitorWatchBootstrap,
   type CompetitorRateLine,
 } from '../../services/api/index'
@@ -213,7 +214,9 @@ export default function CompetitorRateEntryPage() {
         </form>
       )}
 
-      <PwaInstallHelp />
+      {/* FK-041/II: Electron kliensben a window.location.origin = app://localhost lokális lenne, amit a
+          telefon nem tud megnyitni — a QR/URL a PUBLIKUS web-origint kell mutassa (mint a TreasuryDashboard). */}
+      <PwaInstallHelp url={getPublicWebUrl()} />
     </div>
   )
 }
