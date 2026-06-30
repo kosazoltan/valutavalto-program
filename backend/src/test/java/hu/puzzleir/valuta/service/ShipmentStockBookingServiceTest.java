@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -518,6 +519,41 @@ class ShipmentStockBookingServiceTest {
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(currency("EUR")));
         when(currencyStockRepository.findForUpdate(companyId, "VAULT", "3", "EUR"))
                 .thenReturn(Optional.empty()); // friss (get-or-create) sor, WAC=0
+        when(currencyStockRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
+            service.bookStockIn(req, companyId);
+        }
+
+        // constraint-safe út: friss sor → saveAndFlush (nem sima save) a UNIQUE-race detektálásához
+        org.mockito.ArgumentCaptor<CurrencyStock> saved =
+                org.mockito.ArgumentCaptor.forClass(CurrencyStock.class);
+        verify(currencyStockRepository).saveAndFlush(saved.capture());
+        assertThat(saved.getValue().getQuantity()).isEqualByComparingTo("400");
+        assertThat(saved.getValue().getWeightedAvgCost()).isEqualByComparingTo("380"); // 152000/400
+    }
+
+    @Test
+    void bookStockIn_concurrentInsertRace_refetchesLockedRowAndBooks() {
+        // GLM-review #9 constraint-safe get-or-create: ha a friss sort egy párhuzamos szál már
+        // beszúrta, a saveAndFlush DataIntegrityViolationException-t dob → a kód ÚJRA, FOR UPDATE
+        // zárral olvassa a most már létező sort, és ARRA vételez (nincs elveszett írás / dupla sor).
+        UUID companyId = UUID.randomUUID();
+        UUID toId = UUID.randomUUID();
+        Branch to = vaultBranch(toId, companyId, 3);
+        ShipmentRequest req = shipment(UUID.randomUUID(), toId, item(4L, "400", "152000"));
+        CurrencyStock raced = vaultStock(companyId, "3", "EUR", "1000", "380"); // a másik szál sora
+
+        when(branchRepository.findByIdAndCompanyId(toId, companyId)).thenReturn(Optional.of(to));
+        when(currencyRepository.findById(4L)).thenReturn(Optional.of(currency("EUR")));
+        // 1. lookup: üres (még nincs sor) → friss buildet próbálunk; 2. lookup (a catch-ágban): a
+        // párhuzamos szál által beszúrt sort kapjuk, lockoltan.
+        when(currencyStockRepository.findForUpdate(companyId, "VAULT", "3", "EUR"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(raced));
+        when(currencyStockRepository.saveAndFlush(any()))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("uk_currency_stock"));
         when(currencyStockRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
@@ -525,11 +561,10 @@ class ShipmentStockBookingServiceTest {
             service.bookStockIn(req, companyId);
         }
 
-        org.mockito.ArgumentCaptor<CurrencyStock> saved =
-                org.mockito.ArgumentCaptor.forClass(CurrencyStock.class);
-        verify(currencyStockRepository).save(saved.capture());
-        assertThat(saved.getValue().getQuantity()).isEqualByComparingTo("400");
-        assertThat(saved.getValue().getWeightedAvgCost()).isEqualByComparingTo("380"); // 152000/400
+        // a meglévő (1000) sorra vételeztünk +400 → 1400, nincs új sor, nincs elveszett írás
+        assertThat(raced.getQuantity()).isEqualByComparingTo("1400");
+        verify(currencyStockRepository, times(2)).findForUpdate(companyId, "VAULT", "3", "EUR");
+        verify(currencyStockRepository).save(raced);
     }
 
     @Test

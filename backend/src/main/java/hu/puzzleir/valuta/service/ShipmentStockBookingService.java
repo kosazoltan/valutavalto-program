@@ -16,6 +16,7 @@ import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -221,10 +222,7 @@ public class ShipmentStockBookingService {
         }
         String entityId = territoryId.toString();
         if (increase) {
-            CurrencyStock stock = getOrCreateVaultStock(companyId, entityId, currencyCode);
-            BigDecimal wac = resolveReceiveWac(stock, item, amount, action);
-            stock.receiveStock(amount, wac);
-            currencyStockRepository.save(stock);
+            receiveVaultStock(companyId, entityId, currencyCode, item, amount, action);
         } else {
             CurrencyStock stock = currencyStockRepository
                     .findForUpdate(companyId, ENTITY_TYPE_VAULT, entityId, currencyCode)
@@ -238,17 +236,44 @@ public class ShipmentStockBookingService {
         writeStockAudit(action, req, branch, item, currencyCode, amount, increase);
     }
 
+    /**
+     * VAULT IN-bevételezés constraint-safe get-or-create-tel (GLM-review #9 — race-mentesítés).
+     * A {@code findForUpdate} csak LÉTEZŐ sort zárol, ezért ha a sor még nincs, két párhuzamos első
+     * bevételezés versenghet. A friss sort {@code saveAndFlush}-sal írjuk: ha közben a másik szál már
+     * beszúrta (UNIQUE constraint a company+entity_type+entity_id+currency_code-on),
+     * {@link DataIntegrityViolationException}-t kapunk, és ekkor ÚJRA, immár {@code FOR UPDATE} zárral
+     * olvassuk a most már létező sort, és azon vételezünk — így sem duplikált sor, sem elveszett írás.
+     */
+    private void receiveVaultStock(UUID companyId, String entityId, String currencyCode,
+                                   ShipmentRequestItem item, BigDecimal amount, String action) {
+        CurrencyStock existing = currencyStockRepository
+                .findForUpdate(companyId, ENTITY_TYPE_VAULT, entityId, currencyCode).orElse(null);
+        if (existing != null) {
+            existing.receiveStock(amount, resolveReceiveWac(existing, item, amount, action));
+            currencyStockRepository.save(existing);
+            return;
+        }
+        CurrencyStock fresh = newVaultStock(companyId, entityId, currencyCode);
+        fresh.receiveStock(amount, resolveReceiveWac(fresh, item, amount, action));
+        try {
+            currencyStockRepository.saveAndFlush(fresh);
+        } catch (DataIntegrityViolationException race) {
+            // párhuzamos szál már beszúrta — most már létezik, lockoltan olvassuk és arra vételezünk
+            CurrencyStock locked = currencyStockRepository
+                    .findForUpdate(companyId, ENTITY_TYPE_VAULT, entityId, currencyCode)
+                    .orElseThrow(() -> race);
+            locked.receiveStock(amount, resolveReceiveWac(locked, item, amount, action));
+            currencyStockRepository.save(locked);
+        }
+    }
+
     /** CASHIER oldal: cash_balance (branch_id + currency_id). */
     private void applyCashBalance(Branch branch, UUID companyId, ShipmentRequestItem item,
                                   String currencyCode, BigDecimal amount, ShipmentRequest req,
                                   boolean increase, String action) {
         Long currencyId = item.getCurrencyId();
         if (increase) {
-            CashBalance balance = cashBalanceRepository
-                    .findByBranchIdAndCurrencyIdForUpdate(branch.getId(), currencyId)
-                    .orElseGet(() -> createCashBalance(branch, companyId, currencyId));
-            balance.addBalance(amount);
-            cashBalanceRepository.save(balance);
+            receiveCashBalance(branch, companyId, currencyId, amount);
         } else {
             CashBalance balance = cashBalanceRepository
                     .findByBranchIdAndCurrencyIdForUpdate(branch.getId(), currencyId)
@@ -265,9 +290,33 @@ public class ShipmentStockBookingService {
         writeStockAudit(action, req, branch, item, currencyCode, amount, increase);
     }
 
-    // ======================================================================
-    // Segédek
-    // ======================================================================
+    /**
+     * CASHIER IN-bevételezés constraint-safe get-or-create-tel (GLM-review #9 — race-mentesítés,
+     * a {@link #receiveVaultStock} cash-oldali párja). A {@code findByBranchIdAndCurrencyIdForUpdate}
+     * csak LÉTEZŐ sort zárol; ha a sor még nincs, a friss balance-t {@code saveAndFlush}-sal írjuk, és
+     * a párhuzamos első bevételezés okozta UNIQUE-ütközést ({@code uk_cash_balance(branch_id,
+     * currency_id)}) elkapva ÚJRA, immár {@code FOR UPDATE} zárral olvassuk a most már létező sort.
+     */
+    private void receiveCashBalance(Branch branch, UUID companyId, Long currencyId, BigDecimal amount) {
+        CashBalance existing = cashBalanceRepository
+                .findByBranchIdAndCurrencyIdForUpdate(branch.getId(), currencyId).orElse(null);
+        if (existing != null) {
+            existing.addBalance(amount);
+            cashBalanceRepository.save(existing);
+            return;
+        }
+        CashBalance fresh = newCashBalance(branch, companyId, currencyId);
+        fresh.addBalance(amount);
+        try {
+            cashBalanceRepository.saveAndFlush(fresh);
+        } catch (DataIntegrityViolationException race) {
+            CashBalance locked = cashBalanceRepository
+                    .findByBranchIdAndCurrencyIdForUpdate(branch.getId(), currencyId)
+                    .orElseThrow(() -> race);
+            locked.addBalance(amount);
+            cashBalanceRepository.save(locked);
+        }
+    }
 
     private Branch loadBranch(UUID branchId, UUID companyId) {
         return branchRepository.findByIdAndCompanyId(branchId, companyId)
@@ -285,20 +334,17 @@ public class ShipmentStockBookingService {
         return currency.getCode();
     }
 
-    private CurrencyStock getOrCreateVaultStock(UUID companyId, String entityId, String currencyCode) {
-        // A frissen létrehozott (transient) készletet ITT NEM mentjük: a hívó applyVaultStock a
-        // receiveStock UTÁN egyetlen save()-vel persist-eli a végső mennyiséggel/WAC-cal (egy INSERT,
-        // nincs redundáns kettős írás — GLM-5.2 review #4).
-        return currencyStockRepository.findForUpdate(companyId, ENTITY_TYPE_VAULT, entityId, currencyCode)
-                .orElseGet(() -> CurrencyStock.builder()
-                        .company(Company.builder().id(companyId).build())
-                        .entityType(ENTITY_TYPE_VAULT)
-                        .entityId(entityId)
-                        .currencyCode(currencyCode)
-                        .quantity(BigDecimal.ZERO)
-                        .weightedAvgCost(BigDecimal.ZERO)
-                        .lastUpdated(LocalDateTime.now())
-                        .build());
+    /** Friss (transient) VAULT készlet-sor builder — a hívó receiveVaultStock perzisztálja. */
+    private CurrencyStock newVaultStock(UUID companyId, String entityId, String currencyCode) {
+        return CurrencyStock.builder()
+                .company(Company.builder().id(companyId).build())
+                .entityType(ENTITY_TYPE_VAULT)
+                .entityId(entityId)
+                .currencyCode(currencyCode)
+                .quantity(BigDecimal.ZERO)
+                .weightedAvgCost(BigDecimal.ZERO)
+                .lastUpdated(LocalDateTime.now())
+                .build();
     }
 
     /**
@@ -356,15 +402,12 @@ public class ShipmentStockBookingService {
                 .toList();
     }
 
-    private CashBalance createCashBalance(Branch branch, UUID companyId, Long currencyId) {
+    /** Friss (transient) cash_balance builder — a hívó receiveCashBalance perzisztálja. */
+    private CashBalance newCashBalance(Branch branch, UUID companyId, Long currencyId) {
         // Copilot review (PR #1243): a currencyId-t a hívó útvonal (resolveCurrencyCode) MÁR
         // validálta/lekérte ennél a tételnél, ezért itt elég egy JPA reference (lazy proxy) — nincs
-        // felesleges második SELECT a "get-or-create" ágon; a nemlétező valuta továbbra is a
-        // resolveCurrencyCode-ban bukik (ValidationException), nem ide jut el.
+        // felesleges második SELECT; a nemlétező valuta a resolveCurrencyCode-ban bukik, nem ide jut el.
         Currency currency = currencyRepository.getReferenceById(currencyId);
-        // A frissen létrehozott (transient) balance-t ITT NEM mentjük: a hívó applyCashBalance az
-        // addBalance UTÁN egyetlen save()-vel persist-eli (egy INSERT, nincs redundáns kettős írás —
-        // GLM-review #7; a vault-oldal getOrCreateVaultStock mintájával konzisztens).
         return CashBalance.builder()
                 .company(Company.builder().id(companyId).build())
                 .branch(branch)
