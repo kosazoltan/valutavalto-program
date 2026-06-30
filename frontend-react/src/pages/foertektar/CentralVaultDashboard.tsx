@@ -82,7 +82,8 @@ interface BranchSummary {
     online: boolean
     lastSeenMinutes: number | null
     stocks: Record<string, number>
-    stockAlert: string[]  // e.g. "EUR < 500"
+    stockAlert: string[]  // e.g. "EUR < 500" — CSAK valódi, küszöb alatti riasztás (FK-048 FR-3)
+    hasStockData: boolean // FK-048 FR-2: van-e cash_balance adat; ha nincs → STOCK UNKNOWN (semleges)
 }
 
 const CRITICAL_THRESHOLDS: Record<string, number> = {
@@ -100,18 +101,28 @@ export default function CentralVaultDashboard() {
     const [rows, setRows] = useState<BranchSummary[]>([])
     const [loading, setLoading] = useState(true)
     const [err, setErr] = useState<string | null>(null)
+    const [stockUnavailable, setStockUnavailable] = useState(false) // FK-048 FR-4: a /stock-snapshot hívás hibája
     const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
 
     const loadData = async () => {
         setLoading(true)
         setErr(null)
         try {
+            // FK-048 FR-4: a /stock-snapshot hibáját NEM nyeljük el csendben "nincs adat"-ként —
+            // külön stockFailed flaggel jelöljük, hogy a felhasználó látható hibaüzenetet kapjon,
+            // megkülönböztethetően a "egyes fiókoknak nincs adata" (STOCK UNKNOWN) esettől.
+            // Az OFFLINE/devices ág (cash-register/devices) VÁLTOZATLAN marad (Scope OUT).
+            let stockFailed = false
             const [branchesRes, devicesRes, stocksRes] = await Promise.all([
                 api.get<Branch[]>('/branches'),
                 api.get<CashRegisterDevice[]>('/cash-register/devices').catch(() => ({ data: [] as CashRegisterDevice[] })),
                 // Fix 2026-04-24: /stock-snapshot (nem /current) + hierarchikus response flatten
-                api.get<StockSnapshotResponse>('/stock-snapshot').catch(() => ({ data: null as StockSnapshotResponse | null })),
+                api.get<StockSnapshotResponse>('/stock-snapshot').catch(() => {
+                    stockFailed = true
+                    return { data: null as StockSnapshotResponse | null }
+                }),
             ])
+            setStockUnavailable(stockFailed)
             const branches = branchesRes.data || []
             const devices = devicesRes.data || []
             const stocks = flattenStockSnapshot(stocksRes.data ?? null)
@@ -125,10 +136,10 @@ export default function CentralVaultDashboard() {
                     stocks.filter((s) => s.branchId === b.id).forEach((s) => {
                         branchStocks[s.currencyCode] = (branchStocks[s.currencyCode] || 0) + (s.amount || 0)
                     })
-                    // AI review (Codex PR #186 P1): ha a branch-nek NINCS stock adat (pl. unmapped
-                    // region vagy /stock-snapshot unavailable), NEM healthy state-et mutatunk -
-                    // expliciten UNKNOWN warning-ot. A threshold-check elmarad, helyette egy
-                    // dedikalt "STOCK UNKNOWN" jelzo, ami a UI-n latthato es NEM false-negative.
+                    // FK-048 FR-1/2: a STOCK UNKNOWN (nincs cash_balance adat) NEM riasztás — külön
+                    // hasStockData flag jelzi, és NEM kerül a stockAlert-be (így nem növeli az alertCount-ot,
+                    // és semleges, nem-piros jelzéssel jelenik meg). A valódi, küszöb alatti riasztás (FR-3)
+                    // változatlanul a stockAlert-be kerül.
                     const hasStockData = Object.keys(branchStocks).length > 0
                     const stockAlert: string[] = []
                     if (hasStockData) {
@@ -136,9 +147,6 @@ export default function CentralVaultDashboard() {
                             const amt = branchStocks[ccy] || 0
                             if (amt < threshold) stockAlert.push(`${ccy} < ${threshold.toLocaleString('hu-HU')}`)
                         }
-                    } else {
-                        // UNKNOWN jelzo: keszlet NEM ERTEKELHETO (unmapped region vagy snapshot hiba)
-                        stockAlert.push('STOCK UNKNOWN - snapshot nem tartalmaz adatot erre a branch-re')
                     }
                     const lastSeenAt = device?.lastSeenAt ? new Date(device.lastSeenAt).getTime() : null
                     const mins = lastSeenAt ? Math.floor((now - lastSeenAt) / 60_000) : null
@@ -150,6 +158,7 @@ export default function CentralVaultDashboard() {
                         lastSeenMinutes: mins,
                         stocks: branchStocks,
                         stockAlert,
+                        hasStockData,
                     }
                 })
                 .sort((a, b) => {
@@ -175,6 +184,8 @@ export default function CentralVaultDashboard() {
     }, [])
 
     const offlineCount = rows.filter((r) => !r.online).length
+    // FK-048 FR-1: a Készlet-riasztás szám CSAK a valódi, küszöb alatti riasztásokat számolja
+    // (a stockAlert mostantól nem tartalmazza a STOCK UNKNOWN esetet).
     const alertCount = rows.filter((r) => r.stockAlert.length > 0).length
 
     // Group by region for display
@@ -208,6 +219,18 @@ export default function CentralVaultDashboard() {
             {err && (
                 <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded">
                     <p className="text-red-800 font-medium">{t('foertektar.hiba')}{err}</p>
+                </div>
+            )}
+
+            {/* FK-048 FR-4/5: a /stock-snapshot lekérdezés hibája — látható, a STOCK UNKNOWN-tól
+                egyértelműen megkülönböztethető hibajelzés (NEM csendes "nincs adat"). */}
+            {stockUnavailable && (
+                <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded">
+                    <p className="text-orange-800 font-medium flex items-center gap-2">
+                        <AlertTriangle className="w-5 h-5" />
+                        A készletadatok betöltése sikertelen — a Készlet-riasztás és a KÉSZLET oszlop
+                        értékei most nem megbízhatóak. Próbáld újra a „Frissítés most” gombbal.
+                    </p>
                 </div>
             )}
 
@@ -255,17 +278,25 @@ export default function CentralVaultDashboard() {
                                     </td>
                                     <td className="px-4 py-2 text-slate-600">{r.lastSeenMinutes === null ? '—' : r.lastSeenMinutes < 60 ? `${r.lastSeenMinutes} perc` : `${Math.floor(r.lastSeenMinutes / 60)} óra`}</td>
                                     <td className="px-4 py-2 text-slate-700">
-                                        <div className="flex gap-3 text-xs">
-                                            <Stock ccy="EUR" amount={r.stocks['EUR'] ?? 0} threshold={CRITICAL_THRESHOLDS['EUR'] ?? 500} />
-                                            <Stock ccy="USD" amount={r.stocks['USD'] ?? 0} threshold={CRITICAL_THRESHOLDS['USD'] ?? 500} />
-                                            <Stock ccy="HUF" amount={r.stocks['HUF'] ?? 0} threshold={CRITICAL_THRESHOLDS['HUF'] ?? 100000} />
-                                        </div>
+                                        {/* FK-048 FR-2: ha nincs készletadat, semleges "nincs adat" a KÉSZLET oszlopban */}
+                                        {r.hasStockData ? (
+                                            <div className="flex gap-3 text-xs">
+                                                <Stock ccy="EUR" amount={r.stocks['EUR'] ?? 0} threshold={CRITICAL_THRESHOLDS['EUR'] ?? 500} />
+                                                <Stock ccy="USD" amount={r.stocks['USD'] ?? 0} threshold={CRITICAL_THRESHOLDS['USD'] ?? 500} />
+                                                <Stock ccy="HUF" amount={r.stocks['HUF'] ?? 0} threshold={CRITICAL_THRESHOLDS['HUF'] ?? 100000} />
+                                            </div>
+                                        ) : (
+                                            <span className="text-slate-400 text-xs italic">nincs adat</span>
+                                        )}
                                     </td>
                                     <td className="px-4 py-2">
+                                        {/* FK-048 FR-2/3/5: valódi riasztás (piros) ↔ STOCK UNKNOWN (semleges) ↔ OK */}
                                         {r.stockAlert.length > 0 ? (
                                             <span className="text-red-700 text-xs font-medium flex items-center gap-1">
                                                 <AlertTriangle className="w-4 h-4" /> {r.stockAlert.join(', ')}
                                             </span>
+                                        ) : !r.hasStockData ? (
+                                            <span className="text-slate-400 text-xs italic">nincs készletadat</span>
                                         ) : (
                                             <span className="text-green-700 text-xs">OK</span>
                                         )}
