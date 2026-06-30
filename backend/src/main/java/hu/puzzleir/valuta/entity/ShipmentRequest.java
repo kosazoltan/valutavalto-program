@@ -53,6 +53,18 @@ public class ShipmentRequest {
     @Column(name = "to_branch_id", nullable = false)
     private UUID toBranchId;
 
+    /**
+     * FR-1 (Értéktár Shipment készletkönyvelés): az átadás iránya — a készletkönyvelés
+     * ebből tudja, melyik készlet-típust mozgassa az átadó/átvevő oldalon.
+     * Értékek: {@code VAULT_TO_BRANCH | BRANCH_TO_VAULT | BRANCH_TO_BRANCH | VAULT_TO_VAULT}.
+     *
+     * <p>A {@code ShipmentService.create()} szerveroldalon DERIVÁLJA a from/to {@link Branch#getIsVault()}
+     * flag-ekből (kliens nem hamisíthatja). Régi (V336 előtti) rekordok NULL-ok lehetnek (az oszlop
+     * nullable a backward-compat miatt); új rögzítésnél a service mindig kitölti.</p>
+     */
+    @Column(name = "transfer_type", length = 20)
+    private String transferType;
+
     @Column(name = "requested_by_id", nullable = false)
     private Long requestedById;
 

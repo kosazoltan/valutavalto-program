@@ -269,7 +269,13 @@ export default function ShipmentListPage() {
   }
 
   const canCancel = (status: string): boolean => status !== 'DELIVERED' && status !== 'CANCELLED'
-  const canDeliver = (status: string): boolean => status === 'APPROVED' || status === 'IN_TRANSIT'
+  // FR-6 (Értéktár Shipment készletkönyvelés): a "Kézbesítés" (DELIVERED visszaigazolás) gombot
+  // KIZÁRÓLAG az ÁTVEVŐ (target) fiók felhasználója láthatja — az átadó nem. A backend FR-4
+  // hard-gate-je (403 VV-AUTH-001 az assertReceiver-ben) ezt amúgy is kikényszeríti; itt a UI-t
+  // igazítjuk hozzá, hogy az átadónak a gomb meg se jelenjen (teljesen elrejtve, nem csak disabled).
+  const canDeliver = (shipment: ShipmentRequest): boolean =>
+    (shipment.requestStatus === 'APPROVED' || shipment.requestStatus === 'IN_TRANSIT') &&
+    shipment.targetBranchId === branchId
   const canEdit = (status: string): boolean => status === 'DRAFT'
 
   // Backend enum: DRAFT, SUBMITTED, APPROVED, IN_TRANSIT, DELIVERED, CANCELLED, REJECTED (ShipmentRequestStatus.java)
@@ -356,7 +362,7 @@ export default function ShipmentListPage() {
                   </button>
                 </>
               )}
-              {canDeliver(shipment.requestStatus) && (
+              {canDeliver(shipment) && (
                 <button
                   onClick={() => void handleDeliver(shipment.id)}
                   className="toolbar-button text-blue-600"

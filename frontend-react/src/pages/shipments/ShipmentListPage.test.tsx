@@ -119,6 +119,10 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
   })
 
   it('kézbesítés és sztornó a backend workflow endpointokra van kötve (FR-13 átnevezés)', async () => {
+    // FR-6: a "Kézbesítés" gomb csak az ÁTVEVŐ (target) fióknak látszik. A bejelentkezett user
+    // branchId='branch-1', így a shipmentet ide (target=branch-1) irányítjuk, hogy a gomb látszódjon.
+    const incoming = { ...approvedShipment, targetBranchId: 'branch-1' }
+    mocks.findByStatus.mockResolvedValue([incoming])
     const user = userEvent.setup()
     render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
 
@@ -131,6 +135,25 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
       expect(mocks.deliver).toHaveBeenCalledWith('shipment-1')
       expect(mocks.cancel).toHaveBeenCalledWith('shipment-1')
     })
+  })
+
+  it('FR-6: a "Kézbesítés" gomb csak az ÁTVEVŐ (target) fiók felhasználójának látszik', async () => {
+    // A bejelentkezett user branchId='branch-1'; a shipment ÁTVEVŐJE is branch-1 → gomb látható.
+    mocks.findByStatus.mockResolvedValue([{ ...approvedShipment, targetBranchId: 'branch-1' }])
+    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+
+    await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
+    expect(screen.getByTitle('Kézbesítés')).toBeInTheDocument()
+  })
+
+  it('FR-6: az ÁTADÓ fiók felhasználójának a "Kézbesítés" gomb NEM látszik (teljesen elrejtve)', async () => {
+    // A bejelentkezett user branchId='branch-1', de a shipment ÁTVEVŐJE branch-2 → ő az átadó
+    // oldalon van, a gombot egyáltalán nem szabad látnia (FR-6: rejtve, nem disabled).
+    mocks.findByStatus.mockResolvedValue([{ ...approvedShipment, targetBranchId: 'branch-2' }])
+    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+
+    await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
+    expect(screen.queryByTitle('Kézbesítés')).toBeNull()
   })
 
   it('DRAFT részletpanelen a szerkesztés a PUT /shipments/{id} szerződést hívja', async () => {

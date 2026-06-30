@@ -46,6 +46,7 @@ public class ShipmentService {
     private final WorkerRepository workerRepository;
     private final ExchangeRateService exchangeRateService;
     private final TransferSerialSequenceService transferSerialSequenceService;
+    private final ShipmentStockBookingService stockBookingService;
 
     /**
      * v2.5.70 P0 multi-tenant fix (companyId audit follow-up): a régi findByStatus /
@@ -148,6 +149,17 @@ public class ShipmentService {
         // D követelmény (Bali Henriett 2026-05-27): minden tételen kötelezően az AKTUÁLIS
         // elszámoló árfolyam (officialRate / J) és a forintosított érték (HUF kerekítve).
         applyExchangeRateAndHufValue(request);
+
+        // FK (készletkönyvelés): a transfer_type-ot a from/to fiók is_vault flagjéből deriváljuk
+        // SZERVEROLDALON (a kliens nem hamisíthatja a könyvelés irányát). Mindkét fióknak a
+        // jelenlegi céghez kell tartoznia (tenant-izoláció).
+        Branch fromBranch = branchRepository.findByIdAndCompanyId(request.getFromBranchId(), companyId)
+                .orElseThrow(() -> new ValidationException(
+                        "Forrás fiók nem található a jelenlegi cégben: " + request.getFromBranchId()));
+        Branch toBranch = branchRepository.findByIdAndCompanyId(request.getToBranchId(), companyId)
+                .orElseThrow(() -> new ValidationException(
+                        "Cél fiók nem található a jelenlegi cégben: " + request.getToBranchId()));
+        request.setTransferType(stockBookingService.deriveTransferType(fromBranch, toBranch));
 
         log.info("Szállítmánykérés létrehozva: {}, from={}, to={}",
                 request.getRequestNumber(), request.getFromBranchId(), request.getToBranchId());
@@ -260,6 +272,10 @@ public class ShipmentService {
     public ShipmentRequest submit(UUID id) {
         ShipmentRequest request = findById(id);
         validateStatusTransition(request, ShipmentRequestStatus.DRAFT, ShipmentRequestStatus.SUBMITTED);
+        // FK (TBD-1 döntés): az ÁTADÓ oldal készlete a beküldéskor AZONNAL csökken (OUT-könyvelés),
+        // pesszimista lockkal + elégség-ellenőrzéssel (FR-2/5/7/8). Ha elégtelen → 422 VV-VALID-003,
+        // a teljes @Transactional rollbackel (a státusz nem vált), az audit REQUIRES_NEW-ban megmarad.
+        stockBookingService.bookStockOut(request, SecurityUtils.getCurrentCompanyId());
         request.setStatus(ShipmentRequestStatus.SUBMITTED);
         log.info("Szállítmánykérés beküldve: {}", request.getRequestNumber());
         ShipmentRequest saved = shipmentRequestRepository.save(request);
@@ -291,6 +307,11 @@ public class ShipmentService {
                 && request.getStatus() != ShipmentRequestStatus.IN_TRANSIT) {
             throw new ValidationException("Csak APPROVED vagy IN_TRANSIT státuszú kérés szállítható le!");
         }
+        // FR-4: a visszaigazolást (DELIVERED) KIZÁRÓLAG az átvevő (to) fiók felhasználója végezheti.
+        // Ha az átadó (vagy más fiók) próbálja → 403 VV-AUTH-001 + ACCESS_DENIED audit.
+        stockBookingService.assertReceiver(request);
+        // FR-3: az ÁTVEVŐ oldal készlete a visszaigazoláskor nő (IN-könyvelés), get-or-create + lock.
+        stockBookingService.bookStockIn(request, SecurityUtils.getCurrentCompanyId());
         request.setStatus(ShipmentRequestStatus.DELIVERED);
         request.setDeliveryDate(LocalDate.now());
         log.info("Szállítmánykérés leszállítva: {}", request.getRequestNumber());
@@ -308,6 +329,12 @@ public class ShipmentService {
         if (request.getStatus() == ShipmentRequestStatus.DELIVERED
                 || request.getStatus() == ShipmentRequestStatus.CANCELLED) {
             throw new ValidationException("DELIVERED vagy CANCELLED státuszú kérés nem vonható vissza!");
+        }
+        // TBD-1: a készlet az átadó oldalon a beküldéskor (SUBMITTED) csökkent. Ha egy már OUT-könyvelt
+        // (SUBMITTED/APPROVED/IN_TRANSIT) kérést visszavonnak, a készletet vissza kell pótolni, különben
+        // elveszne. DRAFT-ból visszavonáskor nem volt OUT-könyvelés → nincs reverzió (dupla-jóváírás elkerülés).
+        if (wasStockBookedOut(request.getStatus())) {
+            stockBookingService.reverseStockOut(request, SecurityUtils.getCurrentCompanyId());
         }
         request.setStatus(ShipmentRequestStatus.CANCELLED);
         log.info("Szállítmánykérés visszavonva: {}", request.getRequestNumber());
@@ -334,6 +361,9 @@ public class ShipmentService {
         validateStatusTransition(request, ShipmentRequestStatus.SUBMITTED, ShipmentRequestStatus.REJECTED);
         // Biztonság: az elutasító dolgozó a HITELESÍTETT user (nem kliens-trusted param) — mint create().
         Long workerId = SecurityUtils.getCurrentWorkerId();
+        // TBD-1: a reject CSAK SUBMITTED-ből megengedett, ami mindig OUT-könyvelt állapot → a készletet
+        // mindig vissza kell pótolni az átadó oldalra (SHIPMENT_STOCK_REVERSAL audit).
+        stockBookingService.reverseStockOut(request, SecurityUtils.getCurrentCompanyId());
         request.setStatus(ShipmentRequestStatus.REJECTED);
         request.setRejectionReason(reason);
         request.setRejectedByWorkerId(workerId);
@@ -441,6 +471,17 @@ public class ShipmentService {
                         .hufValue(item.getHufValue())
                         .build())
                 .toList();
+    }
+
+    /**
+     * TBD-1: igaz, ha a kérés státusza olyan, amiben az ÁTADÓ oldal készlete már OUT-könyvelve van
+     * (a beküldés — SUBMITTED — könyvel OUT-ot, a visszaigazolás — DELIVERED — már IN-t az átvevőn).
+     * Ezekből az állapotokból visszavonáskor a készletet vissza kell pótolni az átadóra; DRAFT-ból nem.
+     */
+    private boolean wasStockBookedOut(ShipmentRequestStatus status) {
+        return status == ShipmentRequestStatus.SUBMITTED
+                || status == ShipmentRequestStatus.APPROVED
+                || status == ShipmentRequestStatus.IN_TRANSIT;
     }
 
     private void validateStatusTransition(ShipmentRequest request,
