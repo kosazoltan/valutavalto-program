@@ -208,9 +208,9 @@ class DailyBalanceServiceTest {
         when(transactionRepository.sumDailySingleLineTurnoverByCurrency(
                 eq(TEST_BRANCH_ID), eq(TEST_DATE), eq(TransactionType.SELL), eq("EUR")))
             .thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumTransfersInExcludingTh(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq("EUR")))
+        when(transferRepository.sumTransfersInExcludingTh(eq(TEST_BRANCH_ID), eq(TEST_COMPANY_ID), eq(TEST_DATE), eq("EUR")))
             .thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumTransfersOutExcludingTh(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq("EUR")))
+        when(transferRepository.sumTransfersOutExcludingTh(eq(TEST_BRANCH_ID), eq(TEST_COMPANY_ID), eq(TEST_DATE), eq("EUR")))
             .thenReturn(BigDecimal.ZERO);
 
         when(dailyBalanceRepository.save(any(DailyBalance.class)))
@@ -309,8 +309,8 @@ class DailyBalanceServiceTest {
             .thenReturn(BigDecimal.ZERO);
         when(transactionLineRepository.sumDailyLineTurnoverByCurrency(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq(TransactionType.SELL), eq("EUR")))
             .thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumTransfersInExcludingTh(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq("EUR"))).thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumTransfersOutExcludingTh(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq("EUR"))).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumTransfersInExcludingTh(eq(TEST_BRANCH_ID), eq(TEST_COMPANY_ID), eq(TEST_DATE), eq("EUR"))).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumTransfersOutExcludingTh(eq(TEST_BRANCH_ID), eq(TEST_COMPANY_ID), eq(TEST_DATE), eq("EUR"))).thenReturn(BigDecimal.ZERO);
         when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
 
         DailyBalance result = dailyBalanceService.calculateDailyBalance(TEST_BRANCH_ID, TEST_DATE, "EUR");
@@ -327,6 +327,9 @@ class DailyBalanceServiceTest {
         Branch b = new Branch();
         b.setId(TEST_BRANCH_ID);
         b.setIsVault(false);
+        Company c = new Company();
+        c.setId(TEST_COMPANY_ID);
+        b.setCompany(c);
         return b;
     }
 
@@ -347,8 +350,8 @@ class DailyBalanceServiceTest {
         DailyBalance eur = balanceRow("EUR");
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
             .thenReturn(List.of(eur));
-        when(transferRepository.sumSurplusFromTh(any(), any(), any())).thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumShortageToTh(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumSurplusFromTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumShortageToTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
         when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
 
         dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
@@ -369,8 +372,8 @@ class DailyBalanceServiceTest {
         DailyBalance usd = balanceRow("USD");
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
             .thenReturn(List.of(eur, usd));
-        when(transferRepository.sumSurplusFromTh(any(), any(), any())).thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumShortageToTh(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumSurplusFromTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumShortageToTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
         when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
 
         dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
@@ -391,8 +394,8 @@ class DailyBalanceServiceTest {
         DailyBalance usd = balanceRow("USD");
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
             .thenReturn(List.of(eur, usd));
-        when(transferRepository.sumSurplusFromTh(any(), any(), any())).thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumShortageToTh(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumSurplusFromTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumShortageToTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
         when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
 
         dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
@@ -424,8 +427,8 @@ class DailyBalanceServiceTest {
         DailyBalance eur = balanceRow("EUR");
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
             .thenReturn(List.of(eur));
-        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_DATE, "EUR")).thenReturn(new BigDecimal("200"));
-        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(new BigDecimal("200"));
+        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
         when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
 
         dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
@@ -443,8 +446,8 @@ class DailyBalanceServiceTest {
         DailyBalance eur = balanceRow("EUR");
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
             .thenReturn(List.of(eur));
-        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_DATE, "EUR")).thenReturn(new BigDecimal("300"));
+        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(new BigDecimal("300"));
         when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
 
         dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
@@ -463,8 +466,8 @@ class DailyBalanceServiceTest {
         eur.setSurplus(new BigDecimal("200")); // korábbi futás értéke
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
             .thenReturn(List.of(eur));
-        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_DATE, "EUR")).thenReturn(new BigDecimal("200"));
-        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(new BigDecimal("200"));
+        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
         when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
 
         dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
@@ -488,8 +491,8 @@ class DailyBalanceServiceTest {
         huf.setClosingBalance(new BigDecimal("100000"));
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
             .thenReturn(List.of(huf));
-        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_DATE, "HUF")).thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_DATE, "HUF")).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "HUF")).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "HUF")).thenReturn(BigDecimal.ZERO);
         when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
 
         dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
@@ -509,8 +512,8 @@ class DailyBalanceServiceTest {
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
             .thenReturn(List.of(eur));
         // EUR többlet 123.47 — HUF-kerekítés 123-ra/125-re rontaná; itt változatlanul kell maradnia
-        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_DATE, "EUR")).thenReturn(new BigDecimal("123.47"));
-        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(new BigDecimal("123.47"));
+        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
         when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
 
         dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
@@ -528,8 +531,8 @@ class DailyBalanceServiceTest {
             .thenReturn(List.<Object[]>of(new Object[]{"CHF", new BigDecimal("777")}));
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
             .thenReturn(Collections.emptyList()); // nincs előzetes sor
-        when(transferRepository.sumSurplusFromTh(any(), any(), any())).thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumShortageToTh(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumSurplusFromTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumShortageToTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
         java.util.List<DailyBalance> saved = new java.util.ArrayList<>();
         when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> {
             saved.add(inv.getArgument(0));
