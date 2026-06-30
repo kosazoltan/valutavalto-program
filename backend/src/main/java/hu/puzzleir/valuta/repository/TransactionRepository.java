@@ -1174,6 +1174,77 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * FK-045 FR-4/FR-9: valuta + típus szerinti bontás egy ÉRTÉKTÁRI TERÜLET (vault_territory)
+     * összes pénztárára. A {@link #groupByCurrencyAndTypeForBranch} territory-szintű párja: a
+     * branch.id helyett a branch.vaultTerritoryId == :territoryId AND branch.company.id == :companyId
+     * szűr (multi-tenant: idegen cég területe nem ad sort). Sztornó (REVERSED/CANCELLED) + nem-
+     * financialEffective kizárva, a top-level total-lal konzisztensen.
+     * Visszaad: [currencyCode, transactionType, SUM(currencyAmount), SUM(hufAmount), SUM(handlingFee), COUNT(id)]
+     */
+    @Query("SELECT t.currency.code, CAST(t.transactionType AS string), " +
+           "SUM(t.currencyAmount), SUM(t.hufAmount), SUM(t.handlingFee), COUNT(t.id) " +
+           "FROM Transaction t " +
+           "WHERE t.branch.vaultTerritoryId = :territoryId " +
+           "AND t.branch.company.id = :companyId " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status NOT IN ('REVERSED', 'CANCELLED') " +
+           "AND t.financialEffective = true " +
+           "GROUP BY t.currency.code, t.transactionType " +
+           "ORDER BY t.currency.code, t.transactionType")
+    List<Object[]> groupByCurrencyAndTypeForTerritory(
+        @Param("companyId") UUID companyId,
+        @Param("territoryId") Integer territoryId,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
+    );
+
+    /**
+     * FK-045 FR-4/FR-9: a területi fő-összegek (BUY/SELL HUF) — a sztornó-kizáró branch-verzió
+     * territory-szintű párja. A territory + company szűr a multi-tenant izolációhoz.
+     */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.branch.vaultTerritoryId = :territoryId " +
+           "AND t.branch.company.id = :companyId " +
+           "AND CAST(t.transactionType AS string) = :txType " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status NOT IN ('REVERSED', 'CANCELLED') " +
+           "AND t.financialEffective = true")
+    BigDecimal sumHufAmountByTerritoryAndTypeAndPeriod(
+        @Param("companyId") UUID companyId,
+        @Param("territoryId") Integer territoryId,
+        @Param("txType") String txType,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
+    );
+
+    /**
+     * FK-045 FR-4/FR-9: a területi díj-összeg — a sztornó-kizáró branch-verzió territory-párja.
+     */
+    @Query("SELECT COALESCE(SUM(t.handlingFee), 0) FROM Transaction t " +
+           "WHERE t.branch.vaultTerritoryId = :territoryId " +
+           "AND t.branch.company.id = :companyId " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status NOT IN ('REVERSED', 'CANCELLED') " +
+           "AND t.financialEffective = true")
+    BigDecimal sumFeeByTerritoryAndPeriod(
+        @Param("companyId") UUID companyId,
+        @Param("territoryId") Integer territoryId,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
+    );
+
+    /**
+     * FK-045 FR-4/FR-9: tenant-guard — hány branch tartozik az adott területhez a hívó cégében.
+     * 0 → a területi lekérdezés idegen tenant / nemlétező terület → a service 404-et dob.
+     */
+    @Query("SELECT COUNT(b) FROM Branch b " +
+           "WHERE b.vaultTerritoryId = :territoryId AND b.company.id = :companyId")
+    long countBranchesInTerritory(
+        @Param("companyId") UUID companyId,
+        @Param("territoryId") Integer territoryId
+    );
+
+    /**
      * Pénztáros szerinti bontás — forgalom riporthoz.
      * Sztornózott (REVERSED, CANCELLED) tranzakciókat kizárja.
      * Visszaad: [workerId, workerName, SUM(hufAmount), SUM(handlingFee), COUNT(id)]

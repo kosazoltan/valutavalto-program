@@ -16,7 +16,7 @@ import java.util.UUID;
 /**
  * Forgalom összesítő REST végpontok.
  */
-@PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('FOERTEKTAR', 'UGYVEZETO', 'BELSO_ELLENOR', 'PENZUGYI_VEZETO')")
 @RestController
 @RequestMapping("/api/v1/turnover")
 @RequiredArgsConstructor
@@ -61,5 +61,20 @@ public class TurnoverController {
         // SOHA nem kliens-küldött @RequestParam-ból
         UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
         return ResponseEntity.ok(turnoverService.getCompanyTurnover(currentCompanyId, from, to));
+    }
+
+    /**
+     * FK-045 FR-9: egy értéktári terület (vault_territory) összes pénztárának összesített forgalma.
+     * A companyId SecurityUtils-ből (NEM kliens-param) — multi-tenant izoláció; a service a
+     * vaultTerritoryId cég-hovatartozását is ellenőrzi (idegen tenant területe → 404).
+     */
+    @GetMapping("/territory")
+    public ResponseEntity<TurnoverReportDto> territory(
+            @RequestParam Integer vaultTerritoryId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        return ResponseEntity.ok(
+            turnoverService.getVaultTerritoryTurnover(currentCompanyId, vaultTerritoryId, from, to));
     }
 }

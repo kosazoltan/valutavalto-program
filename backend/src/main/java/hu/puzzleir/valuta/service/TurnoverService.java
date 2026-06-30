@@ -3,6 +3,9 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.dto.turnover.TurnoverReportDto;
 import hu.puzzleir.valuta.dto.turnover.TurnoverReportDto.CurrencyTurnoverDto;
 import hu.puzzleir.valuta.dto.turnover.TurnoverReportDto.WorkerTurnoverDto;
+import hu.puzzleir.valuta.entity.ExchangeRate;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.repository.ExchangeRateRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +36,7 @@ import java.util.UUID;
 public class TurnoverService {
 
     private final TransactionRepository transactionRepository;
+    private final ExchangeRateRepository exchangeRateRepository;
     // IDOR-fix (audit 2026-06-15, FINDING #3): branch-ownership guard a per-branch
     // riportoknál. A branchService.findById(branchId) ResourceNotFoundException-t dob,
     // ha a branch NEM a hívó cégéhez (SecurityUtils.getCurrentCompanyId()) tartozik —
@@ -110,6 +114,73 @@ public class TurnoverService {
 
     // ============ HELPER ============
 
+    /**
+     * FK-045 FR-4/FR-9: egy értéktári terület (vault_territory) összes pénztárának összesített
+     * forgalma, valutánkénti bontással + MNB elszámolási árfolyammal (FR-7). A getCompanyTurnover
+     * mintáját követi, de territory-szűrt aggregáló query-kkel.
+     *
+     * <p>Multi-tenant guard (§1): a {@code countBranchesInTerritory} 0-t ad, ha a territoryId nem
+     * a hívó cégéhez tartozik (vagy nem létezik) → {@link ResourceNotFoundException} (404), mielőtt
+     * bármilyen aggregáló query lefutna — idegen tenant területe nem szivárog ki.</p>
+     */
+    public TurnoverReportDto getVaultTerritoryTurnover(UUID companyId, Integer vaultTerritoryId,
+                                                       LocalDate from, LocalDate to) {
+        // Tenant + létezés guard: a területhez tartozó, a hívó cégébe eső branch-ek száma > 0 kell.
+        if (transactionRepository.countBranchesInTerritory(companyId, vaultTerritoryId) == 0) {
+            throw new ResourceNotFoundException(
+                "Értéktári terület nem található a jelenlegi cégben: vaultTerritoryId=" + vaultTerritoryId);
+        }
+
+        BigDecimal totalBuy = transactionRepository.sumHufAmountByTerritoryAndTypeAndPeriod(
+            companyId, vaultTerritoryId, "BUY", from, to);
+        BigDecimal totalSell = transactionRepository.sumHufAmountByTerritoryAndTypeAndPeriod(
+            companyId, vaultTerritoryId, "SELL", from, to);
+        BigDecimal fees = transactionRepository.sumFeeByTerritoryAndPeriod(
+            companyId, vaultTerritoryId, from, to);
+
+        totalBuy = totalBuy != null ? totalBuy : BigDecimal.ZERO;
+        totalSell = totalSell != null ? totalSell : BigDecimal.ZERO;
+        fees = fees != null ? fees : BigDecimal.ZERO;
+
+        List<Object[]> rows = transactionRepository.groupByCurrencyAndTypeForTerritory(
+            companyId, vaultTerritoryId, from, to);
+        List<CurrencyTurnoverDto> byCurrency = accumulateByCurrency(rows);
+        applyOfficialRates(byCurrency, companyId, to);
+
+        return TurnoverReportDto.builder()
+            .period(from + " - " + to)
+            .totalBuy(totalBuy)
+            .totalSell(totalSell)
+            .spread(totalSell.subtract(totalBuy))
+            .fees(fees)
+            .netProfit(totalSell.subtract(totalBuy).add(fees))
+            .byCurrency(byCurrency)
+            .byWorker(Collections.emptyList())
+            .build();
+    }
+
+    /**
+     * FK-045 FR-7 + TBD-1: a byCurrency sorokba tölti az MNB elszámolási árfolyamot (official_rate),
+     * az időszak UTOLSÓ napján érvényes aktív árfolyamokból, devizánként. Ha egy valutához nincs
+     * official_rate (vagy nincs aktív árfolyam az adott napra) → a mező null marad (a UI „–"-t mutat).
+     */
+    private void applyOfficialRates(List<CurrencyTurnoverDto> byCurrency, UUID companyId, LocalDate to) {
+        if (byCurrency.isEmpty()) {
+            return;
+        }
+        Map<String, BigDecimal> rateByCode = new LinkedHashMap<>();
+        for (ExchangeRate er : exchangeRateRepository.findActiveRatesByDate(companyId, to)) {
+            if (er.getCurrency() != null && er.getCurrency().getCode() != null
+                    && er.getOfficialRate() != null) {
+                // findActiveRatesByDate displayOrder szerint rendez; az első (legrelevánsabb) marad.
+                rateByCode.putIfAbsent(er.getCurrency().getCode(), er.getOfficialRate());
+            }
+        }
+        for (CurrencyTurnoverDto dto : byCurrency) {
+            dto.setOfficialRate(rateByCode.get(dto.getCurrencyCode()));
+        }
+    }
+
     private TurnoverReportDto buildReport(UUID branchId, String period,
                                            LocalDateTime from, LocalDateTime to) {
         // IDOR guard (FINDING #3): a branchId KÖTELEZŐEN a hívó cégéhez tartozik.
@@ -155,6 +226,14 @@ public class TurnoverService {
 
     private List<CurrencyTurnoverDto> buildByCurrency(UUID branchId, LocalDate dateFrom, LocalDate dateTo) {
         List<Object[]> rows = transactionRepository.groupByCurrencyAndTypeForBranch(branchId, dateFrom, dateTo);
+        return accumulateByCurrency(rows);
+    }
+
+    /**
+     * Közös valuta-akkumuláció a [currencyCode, txType, currencyAmount, hufAmount, handlingFee, count]
+     * sorokból — branch és territory aggregáció is ezt használja (DRY, FK-045).
+     */
+    private List<CurrencyTurnoverDto> accumulateByCurrency(List<Object[]> rows) {
         Map<String, CurrencyAccum> accMap = new LinkedHashMap<>();
         for (Object[] row : rows) {
             String currCode = (String) row[0];
