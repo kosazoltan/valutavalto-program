@@ -109,6 +109,23 @@ public class ShipmentService {
     }
 
     /**
+     * P1 (Codex review, PR #1243): pesszimista sor-zárral betöltött shipment a státuszváltásokhoz.
+     * Ugyanaz a cross-tenant guard + lazy-init mint a {@link #findById}, de a sort {@code FOR UPDATE}
+     * zárral olvassa — így két párhuzamos azonos átmenet (dupla-klikk/retry) szerializálódik, és a
+     * második a friss státuszt látva elbukik a {@code validateStatusTransition}-ön (nincs dupla
+     * készlet-könyvelés). NEM {@code readOnly}: a hívó {@code @Transactional} írási tranzakciójában fut.
+     */
+    private ShipmentRequest findByIdLocked(UUID id) {
+        ShipmentRequest sr = shipmentRequestRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Szállítmánykérés nem található: " + id));
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        assertBranchInCompany(sr.getFromBranchId(), currentCompanyId, id, "fromBranchId");
+        assertBranchInCompany(sr.getToBranchId(), currentCompanyId, id, "toBranchId");
+        initLazyForSerialization(sr);
+        return sr;
+    }
+
+    /**
      * #890 P1-2 self-review fix: branch ownership-check helper. ResourceNotFound-ot dob,
      * ha a branch nem létezik VAGY más céghez tartozik (id-enumeráció ellen 404 a 403 helyett).
      */
@@ -250,6 +267,19 @@ public class ShipmentService {
         existing.setCarrierName(updated.getCarrierName() != null ? updated.getCarrierName().trim() : null);
         existing.setSealNumber(updated.getSealNumber() != null ? updated.getSealNumber().trim() : null);
 
+        // P2 (Codex review, PR #1243): a DRAFT szerkesztés felülírhatja a from/to fiókot, ezért a
+        // transfer_type-ot ÚJRA kell deriválni — különben a könyvelés az új fiókokkal mozog, de a
+        // tárolt/auditált irány a régi maradna (félrevezető audit-nyom). Szerveroldalon, tenant-
+        // ellenőrzött branch-ekből (kliens nem hamisíthatja az irányt).
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        Branch fromBranch = branchRepository.findByIdAndCompanyId(existing.getFromBranchId(), currentCompanyId)
+                .orElseThrow(() -> new ValidationException(
+                        "Forrás fiók nem található a jelenlegi cégben: " + existing.getFromBranchId()));
+        Branch toBranch = branchRepository.findByIdAndCompanyId(existing.getToBranchId(), currentCompanyId)
+                .orElseThrow(() -> new ValidationException(
+                        "Cél fiók nem található a jelenlegi cégben: " + existing.getToBranchId()));
+        existing.setTransferType(stockBookingService.deriveTransferType(fromBranch, toBranch));
+
         // Codex P1 + P2 kompromisszum: csak akkor futtatjuk az autofill-t, ha a kliens
         // ÚJ items listát küldött (= currency/amount változás). Notes/date-only update
         // esetén az `updated.getItems() == null` → az eredeti tételek (és a rögzítéskor
@@ -270,7 +300,7 @@ public class ShipmentService {
     }
 
     public ShipmentRequest submit(UUID id) {
-        ShipmentRequest request = findById(id);
+        ShipmentRequest request = findByIdLocked(id);
         validateStatusTransition(request, ShipmentRequestStatus.DRAFT, ShipmentRequestStatus.SUBMITTED);
         // FK (TBD-1 döntés): az ÁTADÓ oldal készlete a beküldéskor AZONNAL csökken (OUT-könyvelés),
         // pesszimista lockkal + elégség-ellenőrzéssel (FR-2/5/7/8). Ha elégtelen → 422 VV-VALID-003,
@@ -302,7 +332,7 @@ public class ShipmentService {
     }
 
     public ShipmentRequest deliver(UUID id) {
-        ShipmentRequest request = findById(id);
+        ShipmentRequest request = findByIdLocked(id);
         if (request.getStatus() != ShipmentRequestStatus.APPROVED
                 && request.getStatus() != ShipmentRequestStatus.IN_TRANSIT) {
             throw new ValidationException("Csak APPROVED vagy IN_TRANSIT státuszú kérés szállítható le!");
@@ -325,7 +355,7 @@ public class ShipmentService {
     }
 
     public ShipmentRequest cancel(UUID id) {
-        ShipmentRequest request = findById(id);
+        ShipmentRequest request = findByIdLocked(id);
         if (request.getStatus() == ShipmentRequestStatus.DELIVERED
                 || request.getStatus() == ShipmentRequestStatus.CANCELLED) {
             throw new ValidationException("DELIVERED vagy CANCELLED státuszú kérés nem vonható vissza!");
@@ -357,7 +387,7 @@ public class ShipmentService {
      * validál). Így APPROVED/IN_TRANSIT/DRAFT NEM érvényteleníthető közvetlen API-hívással.
      */
     public ShipmentRequest reject(UUID id, String reason) {
-        ShipmentRequest request = findById(id);
+        ShipmentRequest request = findByIdLocked(id);
         validateStatusTransition(request, ShipmentRequestStatus.SUBMITTED, ShipmentRequestStatus.REJECTED);
         // Biztonság: az elutasító dolgozó a HITELESÍTETT user (nem kliens-trusted param) — mint create().
         Long workerId = SecurityUtils.getCurrentWorkerId();

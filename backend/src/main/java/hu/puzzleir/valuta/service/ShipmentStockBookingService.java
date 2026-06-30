@@ -357,8 +357,11 @@ public class ShipmentStockBookingService {
     }
 
     private CashBalance createCashBalance(Branch branch, UUID companyId, Long currencyId) {
-        Currency currency = currencyRepository.findById(currencyId)
-                .orElseThrow(() -> new ValidationException("Ismeretlen valuta: currencyId=" + currencyId));
+        // Copilot review (PR #1243): a currencyId-t a hívó útvonal (resolveCurrencyCode) MÁR
+        // validálta/lekérte ennél a tételnél, ezért itt elég egy JPA reference (lazy proxy) — nincs
+        // felesleges második SELECT a "get-or-create" ágon; a nemlétező valuta továbbra is a
+        // resolveCurrencyCode-ban bukik (ValidationException), nem ide jut el.
+        Currency currency = currencyRepository.getReferenceById(currencyId);
         // A frissen létrehozott (transient) balance-t ITT NEM mentjük: a hívó applyCashBalance az
         // addBalance UTÁN egyetlen save()-vel persist-eli (egy INSERT, nincs redundáns kettős írás —
         // GLM-review #7; a vault-oldal getOrCreateVaultStock mintájával konzisztens).

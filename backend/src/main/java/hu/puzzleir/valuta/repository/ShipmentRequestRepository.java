@@ -2,17 +2,32 @@ package hu.puzzleir.valuta.repository;
 
 import hu.puzzleir.valuta.entity.ShipmentRequest;
 import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest, UUID> {
+
+    /**
+     * P1 (Codex review, PR #1243): pesszimista sor-zár a shipment-re a státuszváltások előtt.
+     * A {@code submit/deliver/cancel/reject} transition-ek ezzel töltik be a kérést — két párhuzamos
+     * azonos átmenet (pl. dupla-klikk vagy retry) közül a második a lock feloldása UTÁN a FRISS
+     * státuszt látja, így a {@code validateStatusTransition} elutasítja, és nincs kétszeres
+     * készlet-könyvelés (a {@code bookStockOut} stock-lockja önmagában csak a stock-sort védi, a
+     * shipment-állapotot nem).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT sr FROM ShipmentRequest sr WHERE sr.id = :id")
+    Optional<ShipmentRequest> findByIdForUpdate(@Param("id") UUID id);
 
     /**
      * @deprecated multi-tenant unsafe — minden cég összes shipment-jét visszaadja.
