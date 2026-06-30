@@ -133,34 +133,31 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
                                          @Param("likePattern") String likePattern,
                                          @Param("startPos") int startPos);
 
-    /** H-3: BejĂ¶vĹ' ĂˇtadĂˇsok Ă¶sszege (DailyBalanceService-hez) */
-    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.toBranch.id = :branchId AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED'")
-    BigDecimal sumTransfersIn(@Param("branchId") UUID branchId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
-
-    /** H-3: KimenĹ' ĂˇtadĂˇsok Ă¶sszege (DailyBalanceService-hez) */
-    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.fromBranch.id = :branchId AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED'")
-    BigDecimal sumTransfersOut(@Param("branchId") UUID branchId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
-
     // ===== FK-046: napi mérleg — Többlet-Hiány (TH) elszámolási pénztár szétválasztása =====
     // Minden lekérdezés tenant-szűrt (companyId) — §6.b cross-tenant követelmény (GLM-review #1).
+    // A korábbi H-3 sumTransfersIn/sumTransfersOut (TH-kizárás és tenant-szűrés nélkül) törölve:
+    // holt kód volt (nincs hívó), és a TH-tételeket tévesen beleszámolta volna (GLM-review #4/TBD#2).
 
     /**
      * FK-046 FR-3: NORMÁL pénztárközi ÁTVÉTEL napi összege, a TH (Többlet-Hiány elszámolási
      * pénztár, kód: 'TH') felőli tételek KIZÁRVA — ezek külön Többlet/Hiány-ként számolódnak.
+     * Kétoldali tenant-szűrés (mindkét branch a hívó cégéhez kötött) — konzisztens a surplus/shortage
+     * lekérdezésekkel, cross-tenant adathiba ellen (GLM-review #7).
      */
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.toBranch.id = :branchId " +
            "AND t.toBranch.company.id = :companyId " +
            "AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED' " +
-           "AND (t.fromBranch.code IS NULL OR t.fromBranch.code <> 'TH')")
+           "AND (t.fromBranch IS NULL OR (t.fromBranch.company.id = :companyId AND t.fromBranch.code <> 'TH'))")
     BigDecimal sumTransfersInExcludingTh(@Param("branchId") UUID branchId, @Param("companyId") UUID companyId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
 
     /**
      * FK-046 FR-3: NORMÁL pénztárközi ÁTADÁS napi összege, a TH felé irányuló tételek KIZÁRVA.
+     * Kétoldali tenant-szűrés (GLM-review #7).
      */
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.fromBranch.id = :branchId " +
            "AND t.fromBranch.company.id = :companyId " +
            "AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED' " +
-           "AND (t.toBranch.code IS NULL OR t.toBranch.code <> 'TH')")
+           "AND (t.toBranch IS NULL OR (t.toBranch.company.id = :companyId AND t.toBranch.code <> 'TH'))")
     BigDecimal sumTransfersOutExcludingTh(@Param("branchId") UUID branchId, @Param("companyId") UUID companyId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
 
     /**
