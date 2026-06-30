@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,7 +17,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -48,6 +51,8 @@ public class DailyBalanceService {
     private final AuditLogService auditLogService;
     private final MonthlyClosingSummaryRepository monthlyClosingSummaryRepository;
     private final CurrencyStockRepository currencyStockRepository;
+    private final BranchRepository branchRepository;
+    private final DenominationBalanceRepository denominationBalanceRepository;
 
     /**
      * Napi mérleg számítása egy iroda + dátum + valuta kombinációhoz.
@@ -292,14 +297,17 @@ public class DailyBalanceService {
      * Átvétel (transfer IN) számítása
      */
     private BigDecimal getTransfersIn(UUID branchId, LocalDate date, String currencyCode) {
-        return transferRepository.sumTransfersIn(branchId, date, currencyCode);
+        // FK-046 FR-3: a TH (Többlet-Hiány) elszámolási pénztár felőli tételek KIZÁRVA — azokat a
+        // surplus/shortage mező hordozza, nem a normál pénztárközi átvétel.
+        return transferRepository.sumTransfersInExcludingTh(branchId, date, currencyCode);
     }
 
     /**
      * Átadás (transfer OUT) számítása
      */
     private BigDecimal getTransfersOut(UUID branchId, LocalDate date, String currencyCode) {
-        return transferRepository.sumTransfersOut(branchId, date, currencyCode);
+        // FK-046 FR-3: a TH elszámolási pénztár felé irányuló tételek KIZÁRVA.
+        return transferRepository.sumTransfersOutExcludingTh(branchId, date, currencyCode);
     }
 
     /**
@@ -358,6 +366,93 @@ public class DailyBalanceService {
 
         log.info("Leltári eltérés rögzítve: branchId={}, date={}, currency={}, actual={}, difference={}",
             branchId, date, currencyCode, actualStock, balance.getDifference());
+    }
+
+    /**
+     * FK-046 — napi zárás SZÁMZÁR + Többlet/Hiány (TH) bekötés.
+     *
+     * <p>A napi zárás véglegesítésekor (a {@code calculateAllCurrenciesForDay} után, a napi mérleg-sorok
+     * már léteznek) automatikusan, kézi beavatkozás nélkül rögzíti pénztári (NEM értéktári) irodákra:
+     * <ul>
+     *   <li>FR-1/2/7: a fizikailag leszámolt záró készletet (SZÁMZÁR = {@code actualStock}) a záráskori
+     *       (EVENING) címlet-snapshotból, valutánként összegezve. Ha egy valutára nincs snapshot-sor,
+     *       a mező üresen marad (nem 0), és a folyamat nem hibázik.</li>
+     *   <li>FR-4/6/10: a TH elszámolási pénztárral szembeni, TELJESÍTETT (COMPLETED) tételeket
+     *       irányhelyesen — TH-tól átvétel → Többlet ({@code surplus}), TH-nak átadás → Hiány
+     *       ({@code shortage}) — valutánként, naponta.</li>
+     *   <li>FR-5/8: az eltérés (számított záró − SZÁMZÁR) a meglévő {@code difference} mezőn marad.</li>
+     *   <li>NFR-3: a HUF összegekre {@code HungarianRounding.roundToFive}.</li>
+     *   <li>NFR-5: idempotens — ismételt zárás-futás felülírja, nem duplázza az értékeket.</li>
+     * </ul>
+     *
+     * <p>FR-9: értéktári (is_vault=true) irodára NEM fut le. Hiba esetén NEM dob (a zárás ne akadjon meg),
+     * a hívó {@code DailyClosingService} amúgy is try/catch-eli ezt a lépést.
+     */
+    public void recordClosingAdjustments(UUID branchId, LocalDate date) {
+        Branch branch = branchRepository.findById(branchId).orElse(null);
+        if (branch == null) {
+            log.warn("FK-046 SZÁMZÁR/TH kihagyva: ismeretlen branch={}", branchId);
+            return;
+        }
+        // FR-9: kizárólag pénztári (nem értéktári) irodákra.
+        if (Boolean.TRUE.equals(branch.getIsVault())) {
+            log.debug("FK-046 SZÁMZÁR/TH kihagyva (értéktári iroda): branch={}", branchId);
+            return;
+        }
+
+        // FR-2: a záráskori (EVENING) címlet-snapshotból valutánként összesített SZÁMZÁR.
+        Map<String, BigDecimal> actualStockByCurrency = new HashMap<>();
+        for (Object[] row : denominationBalanceRepository.sumActualStockByCurrency(
+                branchId, date, DenominationCategory.EVENING)) {
+            if (row[0] == null) {
+                continue;
+            }
+            actualStockByCurrency.put((String) row[0], toBd(row[1]));
+        }
+
+        // A nap napi mérleg-sorai (minden valutára, amire mozgás vagy snapshot van).
+        List<DailyBalance> balances = dailyBalanceRepository.findByBranchIdAndBalanceDate(branchId, date);
+        for (DailyBalance balance : balances) {
+            if (Boolean.TRUE.equals(balance.getIsClosed())) {
+                continue; // lezárt sort nem írunk felül
+            }
+            String currencyCode = balance.getCurrencyCode();
+
+            // FR-4/6/10: TH-alapú Többlet/Hiány (irányhelyesen, csak COMPLETED tételek).
+            BigDecimal surplus = HungarianRounding.roundToFive(
+                toBd(transferRepository.sumSurplusFromTh(branchId, date, currencyCode)));
+            BigDecimal shortage = HungarianRounding.roundToFive(
+                toBd(transferRepository.sumShortageToTh(branchId, date, currencyCode)));
+            // NFR-5: idempotens felülírás (nem additív).
+            balance.setSurplus(surplus);
+            balance.setShortage(shortage);
+
+            // FR-1/2/7: SZÁMZÁR a snapshotból; ha nincs az adott valutára, a mező ÜRES marad (nem 0).
+            BigDecimal actual = actualStockByCurrency.get(currencyCode);
+            if (actual != null) {
+                balance.setActualStock(HungarianRounding.roundToFive(actual));
+            }
+
+            // FR-5/8: a számított záró (MNB-validáció a Többlet/Hiány-nyal) + eltérés a SZÁMZÁR-hoz.
+            balance.calculateMnbValidation();
+            balance.calculateDifference();
+            dailyBalanceRepository.save(balance);
+        }
+
+        // §6.b audit (KAT=TX): a Többlet/Hiány a napi mérlegre íródott (pénzügyi adat-módosítás).
+        auditLogService.log(
+            "DAILY_BALANCE_TH_ADJUSTMENT",
+            String.format("{\"KAT\":\"TX\",\"date\":\"%s\",\"branch_id\":\"%s\",\"currencies\":%d}",
+                date, branchId, balances.size()),
+            branchId.toString()
+        );
+        log.info("FK-046 SZÁMZÁR + Többlet/Hiány rögzítve: branchId={}, date={}, valuták={}",
+            branchId, date, balances.size());
+    }
+
+    /** Object[]-ből biztonságos BigDecimal (COALESCE 0 + null-véd). */
+    private static BigDecimal toBd(Object value) {
+        return value == null ? BigDecimal.ZERO : (BigDecimal) value;
     }
 
     /**
