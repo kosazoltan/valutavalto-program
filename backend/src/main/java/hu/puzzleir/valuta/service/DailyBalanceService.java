@@ -18,9 +18,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -401,28 +403,54 @@ public class DailyBalanceService {
         }
 
         // FR-2: a záráskori (EVENING) címlet-snapshotból valutánként összesített SZÁMZÁR.
+        // GLM #1 fix: [date, date+1) félzárt tartomány — a következő napi snapshot nem szivárog be.
         Map<String, BigDecimal> actualStockByCurrency = new HashMap<>();
         for (Object[] row : denominationBalanceRepository.sumActualStockByCurrency(
-                branchId, date, DenominationCategory.EVENING)) {
+                branchId, date, date.plusDays(1), DenominationCategory.EVENING)) {
             if (row[0] == null) {
                 continue;
             }
             actualStockByCurrency.put((String) row[0], toBd(row[1]));
         }
 
-        // A nap napi mérleg-sorai (minden valutára, amire mozgás vagy snapshot van).
-        List<DailyBalance> balances = dailyBalanceRepository.findByBranchIdAndBalanceDate(branchId, date);
-        for (DailyBalance balance : balances) {
-            if (Boolean.TRUE.equals(balance.getIsClosed())) {
+        // A nap napi mérleg-sorai valutakód szerint indexelve (idempotens felülíráshoz).
+        Map<String, DailyBalance> balanceByCurrency = new HashMap<>();
+        for (DailyBalance b : dailyBalanceRepository.findByBranchIdAndBalanceDate(branchId, date)) {
+            balanceByCurrency.put(b.getCurrencyCode(), b);
+        }
+
+        // GLM #3 fix (FR-1/9.2 Fázis 2.a): a feldolgozandó valuták halmaza = a meglévő mérleg-sorok
+        // ∪ a snapshot-tal rendelkező valuták. Így annak a valutának is rögzül a SZÁMZÁR, amelyre
+        // aznap nem volt mozgás (és így nincs előzetes mérleg-sor), de van záráskori címletezés.
+        Set<String> currencies = new LinkedHashSet<>(balanceByCurrency.keySet());
+        currencies.addAll(actualStockByCurrency.keySet());
+
+        Company company = null; // lazy — csak ha új sort kell létrehozni
+        int processed = 0;
+        for (String currencyCode : currencies) {
+            DailyBalance balance = balanceByCurrency.get(currencyCode);
+            if (balance == null) {
+                // Csak snapshot-tal rendelkező valuta: hozzunk létre mérleg-sort (nyitó/forgalom 0).
+                if (company == null) {
+                    UUID companyId = SecurityUtils.getCurrentCompanyId();
+                    company = companyRepository.findById(companyId).orElse(null);
+                    if (company == null) {
+                        log.warn("FK-046: cég nem található ({}), a csak-snapshot valuta kihagyva: {}",
+                            companyId, currencyCode);
+                        continue;
+                    }
+                }
+                balance = DailyBalance.builder()
+                    .branchId(branchId).balanceDate(date).currencyCode(currencyCode)
+                    .company(company).isClosed(false).build();
+            } else if (Boolean.TRUE.equals(balance.getIsClosed())) {
                 continue; // lezárt sort nem írunk felül
             }
-            String currencyCode = balance.getCurrencyCode();
 
             // FR-4/6/10: TH-alapú Többlet/Hiány (irányhelyesen, csak COMPLETED tételek).
-            BigDecimal surplus = HungarianRounding.roundToFive(
-                toBd(transferRepository.sumSurplusFromTh(branchId, date, currencyCode)));
-            BigDecimal shortage = HungarianRounding.roundToFive(
-                toBd(transferRepository.sumShortageToTh(branchId, date, currencyCode)));
+            // GLM #2 fix (NFR-3): a roundToFive (5 Ft-os szabály) CSAK HUF-ra; más valuta változatlan.
+            BigDecimal surplus = roundIfHuf(currencyCode, toBd(transferRepository.sumSurplusFromTh(branchId, date, currencyCode)));
+            BigDecimal shortage = roundIfHuf(currencyCode, toBd(transferRepository.sumShortageToTh(branchId, date, currencyCode)));
             // NFR-5: idempotens felülírás (nem additív).
             balance.setSurplus(surplus);
             balance.setShortage(shortage);
@@ -430,29 +458,42 @@ public class DailyBalanceService {
             // FR-1/2/7: SZÁMZÁR a snapshotból; ha nincs az adott valutára, a mező ÜRES marad (nem 0).
             BigDecimal actual = actualStockByCurrency.get(currencyCode);
             if (actual != null) {
-                balance.setActualStock(HungarianRounding.roundToFive(actual));
+                balance.setActualStock(roundIfHuf(currencyCode, actual));
             }
 
             // FR-5/8: a számított záró (MNB-validáció a Többlet/Hiány-nyal) + eltérés a SZÁMZÁR-hoz.
             balance.calculateMnbValidation();
             balance.calculateDifference();
             dailyBalanceRepository.save(balance);
+            processed++;
         }
 
         // §6.b audit (KAT=TX): a Többlet/Hiány a napi mérlegre íródott (pénzügyi adat-módosítás).
         auditLogService.log(
             "DAILY_BALANCE_TH_ADJUSTMENT",
             String.format("{\"KAT\":\"TX\",\"date\":\"%s\",\"branch_id\":\"%s\",\"currencies\":%d}",
-                date, branchId, balances.size()),
+                date, branchId, processed),
             branchId.toString()
         );
         log.info("FK-046 SZÁMZÁR + Többlet/Hiány rögzítve: branchId={}, date={}, valuták={}",
-            branchId, date, balances.size());
+            branchId, date, processed);
     }
 
     /** Object[]-ből biztonságos BigDecimal (COALESCE 0 + null-véd). */
     private static BigDecimal toBd(Object value) {
         return value == null ? BigDecimal.ZERO : (BigDecimal) value;
+    }
+
+    /**
+     * FK-046 NFR-3 (GLM #2 fix): az 5 Ft-os magyar kerekítést KIZÁRÓLAG HUF összegre alkalmazzuk.
+     * Más valuta (EUR/USD/…) értékét változatlanul adjuk vissza — egy EUR összeget 5-ös léptékre
+     * kerekíteni hibás pénzügyi érték lenne.
+     */
+    private static BigDecimal roundIfHuf(String currencyCode, BigDecimal value) {
+        if (value == null) {
+            return null;
+        }
+        return "HUF".equals(currencyCode) ? HungarianRounding.roundToFive(value) : value;
     }
 
     /**

@@ -148,16 +148,19 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
      * FK-046 FR-2: a záráskori (EVENING) fizikailag leszámolt készlet (SZÁMZÁR) valutakódonként
      * összesítve — egy branch + egy nap. A címletenkénti {@code totalValue} sorokat a valuta kódja
      * szerint csoportosítja, így a kliens metódus valutánként megkapja a leszámolt záró készletet.
-     * Visszaad: [currencyCode, SUM(totalValue)] sorok.
+     * A dátumszűrés [date, date+1) FÉLZÁRT tartomány — a következő napi (vagy retry utáni más napi)
+     * snapshot NEM szivárog be (GLM #1 fix). Visszaad: [currencyCode, SUM(totalValue)] sorok.
      */
     @Query("SELECT db.denomination.currency.code, COALESCE(SUM(db.totalValue), 0) FROM DenominationBalance db " +
            "WHERE db.cashDeskId = :branchId " +
            "AND db.updatedAt >= CAST(:date AS timestamp) " +
+           "AND db.updatedAt < CAST(:nextDate AS timestamp) " +
            "AND db.denominationCategory = :category " +
            "GROUP BY db.denomination.currency.code")
     List<Object[]> sumActualStockByCurrency(
         @Param("branchId") UUID branchId,
         @Param("date") java.time.LocalDate date,
+        @Param("nextDate") java.time.LocalDate nextDate,
         @Param("category") DenominationCategory category
     );
 }
