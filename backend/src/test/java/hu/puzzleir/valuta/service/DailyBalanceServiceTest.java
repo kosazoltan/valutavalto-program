@@ -477,29 +477,56 @@ class DailyBalanceServiceTest {
     }
 
     @Test
-    @DisplayName("FK-046 FR-5: a számított záró (Többlet/Hiány-nyal) egyezik a SZÁMZÁR-ral, ha minden tétel rögzítve van")
+    @DisplayName("FK-046 FR-5: a számított záró (calculatedClosing) a Többlet/Hiány tételeket IS tartalmazza")
     void closingBalance_withSurplusShortage_matchesActualStock() {
         when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
-        // SZÁMZÁR (HUF) = 100000; nyitó 0, vétel 100000, eladás 0, TH-tól többlet 0, hiány 0 → záró 100000 = SZÁMZÁR
+        // FR-5 lényege (GLM R3 #1): a calculateMnbValidation() a surplus-t IS beleszámítja a
+        // calculatedClosing-ba. Nyitó 0, vétel 100000, TH-tól TÖBBLET 5000 → calculatedClosing =
+        // (0+100000+5000) − 0 = 105000. Ha a metódus NEM számítaná be a surplus-t, 100000 lenne (a teszt bukna).
         when(denominationBalanceRepository.sumActualStockByCurrency(
                 TEST_BRANCH_ID, TEST_DATE, TEST_DATE.plusDays(1), DenominationCategory.EVENING))
-            .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("100000")}));
+            .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("105000")}));
         DailyBalance huf = balanceRow("HUF");
         huf.setOpeningBalance(BigDecimal.ZERO);
         huf.setPurchases(new BigDecimal("100000"));
         huf.setSales(BigDecimal.ZERO);
-        huf.setClosingBalance(new BigDecimal("100000"));
+        huf.setClosingBalance(new BigDecimal("105000")); // a teljes (TH-t is tartalmazó) tényleges záró
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
             .thenReturn(List.of(huf));
-        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "HUF")).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "HUF")).thenReturn(new BigDecimal("5000"));
         when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "HUF")).thenReturn(BigDecimal.ZERO);
         when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
 
         dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
 
-        // a számított záró (MNB-validáció) == SZÁMZÁR → difference 0
-        assertThat(huf.getActualStock()).isEqualByComparingTo("100000");
-        assertThat(huf.getDifference()).as("záró − SZÁMZÁR = 0").isEqualByComparingTo("0");
+        // a surplus beépült: calculatedClosing = 100000 + 5000 = 105000 (BIZONYÍTÉK, hogy a TH beleszámít)
+        assertThat(huf.getSurplus()).isEqualByComparingTo("5000");
+        assertThat(huf.getCalculatedClosing()).as("calculatedClosing tartalmazza a TH-többletet").isEqualByComparingTo("105000");
+        // a számított záró == SZÁMZÁR (105000) → validáció OK, difference 0
+        assertThat(huf.getValidationStatus()).as("calculatedClosing == closingBalance → OK").isEqualTo("OK");
+        assertThat(huf.getDifference()).as("closingBalance − SZÁMZÁR = 0").isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("FK-046 FR-6: a függőben lévő (nem COMPLETED) TH-tétel nem számít bele a Többlet/Hiány-ba")
+    void thTransfer_pendingStatus_excludedFromCalculation() {
+        // A query 'COMPLETED'-szűrése miatt egy PENDING tétel nem szerepel az összegben → a repo 0-t ad.
+        // Ezt service-szinten azzal igazoljuk, hogy a (COMPLETED-only) repo-összeg 0, így surplus/shortage 0.
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
+        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any(), any()))
+            .thenReturn(Collections.emptyList());
+        DailyBalance eur = balanceRow("EUR");
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
+            .thenReturn(List.of(eur));
+        // a COMPLETED-only query 0-t ad, mert a tétel PENDING (a JPQL status='COMPLETED' kizárja)
+        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
+        when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        assertThat(eur.getSurplus()).isEqualByComparingTo("0");
+        assertThat(eur.getShortage()).isEqualByComparingTo("0");
     }
 
     @Test
