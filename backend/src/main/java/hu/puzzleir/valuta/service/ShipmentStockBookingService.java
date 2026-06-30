@@ -8,7 +8,6 @@ import hu.puzzleir.valuta.entity.CurrencyStock;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
 import hu.puzzleir.valuta.entity.ShipmentRequestItem;
 import hu.puzzleir.valuta.exception.BusinessException;
-import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
@@ -72,6 +71,8 @@ public class ShipmentStockBookingService {
     public static final String ERR_INSUFFICIENT = "VV-VALID-003";
     /** FR-4 hibakód: nem az átvevő branch próbál visszaigazolni. */
     public static final String ERR_NOT_RECEIVER = "VV-AUTH-001";
+    /** §6/§6b hibakód: idegen tenant branch-ére irányuló könyvelési kísérlet (404). */
+    public static final String ERR_CROSS_TENANT = "VV-TENANT-001";
 
     private static final String ENTITY_TYPE_VAULT = "VAULT";
     private static final String AUDIT_ENTITY_TYPE = "ShipmentRequest";
@@ -270,8 +271,9 @@ public class ShipmentStockBookingService {
 
     private Branch loadBranch(UUID branchId, UUID companyId) {
         return branchRepository.findByIdAndCompanyId(branchId, companyId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "A szállítmány branch-e nem található a jelenlegi cégben: " + branchId));
+                .orElseThrow(() -> new BusinessException(
+                        "A szállítmány branch-e nem található a jelenlegi cégben: " + branchId,
+                        ERR_CROSS_TENANT, org.springframework.http.HttpStatus.NOT_FOUND));
     }
 
     private String resolveCurrencyCode(Long currencyId) {

@@ -365,7 +365,9 @@ class ShipmentStockBookingServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.bookStockOut(req, companyId))
-                .isInstanceOf(hu.puzzleir.valuta.exception.ResourceNotFoundException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(ShipmentStockBookingService.ERR_CROSS_TENANT); // VV-TENANT-001
         // tenant-szivárgás elleni bizonyíték: idegen tenant készletét meg sem érintettük
         verify(currencyStockRepository, never()).findForUpdate(any(), any(), any(), any());
         verify(currencyStockRepository, never()).save(any());
