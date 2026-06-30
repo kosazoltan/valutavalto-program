@@ -42,6 +42,13 @@ export default function DailyTurnoverPage() {
   const lastDayOfMonth = useMemo(() => new Date(year, month, 0).getDate(), [year, month])
   const [dayTo, setDayTo] = useState<number>(lastDayOfMonth)
 
+  // FK-045 #5 (GLM-review): hónap/év váltáskor a dayFrom/dayTo a hónap hosszára korlátozódik, hogy a
+  // beviteli mező ne mutasson érvénytelen napot (pl. 31 egy 30 napos hónapnál).
+  useEffect(() => {
+    setDayTo((d) => Math.min(d, lastDayOfMonth))
+    setDayFrom((d) => Math.min(d, lastDayOfMonth))
+  }, [lastDayOfMonth])
+
   const [unitMode, setUnitMode] = useState<UnitMode>('company')
   const [territoryId, setTerritoryId] = useState<number | ''>('')
   const [branchId, setBranchId] = useState<string>('')
@@ -95,7 +102,7 @@ export default function DailyTurnoverPage() {
   const loadTurnover = useCallback(async () => {
     const { from, to } = buildRange()
     if (from > to) {
-      toast.warning(t('reports.nincsForgalmiAdat'))
+      toast.warning('A kezdő nap nem lehet nagyobb a záró napnál!')
       return
     }
     if (unitMode === 'territory' && territoryId === '') {
@@ -115,9 +122,9 @@ export default function DailyTurnoverPage() {
       } else if (unitMode === 'territory') {
         res = (await turnoverApi.territory(Number(territoryId), from, to)) as TurnoverReport
       } else {
-        // FR-3 pénztár nézet: a meglévő /daily branch-szintű végpont a tól–ig első napjára;
-        // a teljes intervallumot a backend buildReport branch-aggregációja fedi (period a fejlécben).
-        res = (await turnoverApi.byPeriod('daily', branchId, from)) as TurnoverReport
+        // FR-3 pénztár nézet: a teljes [from, to] tartomány a branch-range végponton (a régi /daily
+        // csak egyetlen napot adott vissza — a kiválasztott intervallum elveszett).
+        res = (await turnoverApi.branchRange(branchId, from, to)) as TurnoverReport
       }
       setData(res)
     } catch (err) {

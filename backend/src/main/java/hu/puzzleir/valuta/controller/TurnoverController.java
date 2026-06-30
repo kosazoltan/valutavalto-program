@@ -80,4 +80,17 @@ public class TurnoverController {
         return ResponseEntity.ok(
             turnoverService.getVaultTerritoryTurnover(currentCompanyId, vaultTerritoryId, from, to));
     }
+
+    /**
+     * FK-045 FR-2/FR-3: pénztár (branch) forgalma tetszőleges dátumtartományra (nap-tól nap-ig).
+     * A korábbi /daily csak egyetlen napot adott — ez a teljes kiválasztott intervallumot aggregálja.
+     * A branch cég-hovatartozását a service (buildReport → branchService.findById) ellenőrzi.
+     */
+    @GetMapping("/branch-range")
+    public ResponseEntity<TurnoverReportDto> branchRange(
+            @RequestParam @NotNull UUID branchId,
+            @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(turnoverService.getBranchTurnoverRange(branchId, from, to));
+    }
 }

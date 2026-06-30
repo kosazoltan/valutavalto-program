@@ -87,6 +87,20 @@ public class TurnoverService {
         );
     }
 
+    /**
+     * FK-045 FR-2/FR-3: egy pénztár (branch) forgalma TETSZŐLEGES dátumtartományra (nap-tól nap-ig).
+     * A korábbi frontend a /daily-t hívta, ami csak egyetlen napot adott — a kiválasztott intervallum
+     * elveszett. Ez a metódus a teljes [from, to] tartományt aggregálja a buildReport-on át.
+     */
+    public TurnoverReportDto getBranchTurnoverRange(UUID branchId, LocalDate from, LocalDate to) {
+        return buildReport(
+            branchId,
+            from + " - " + to,
+            from.atStartOfDay(),
+            to.atTime(LocalTime.MAX)
+        );
+    }
+
     public TurnoverReportDto getCompanyTurnover(UUID companyId, LocalDate from, LocalDate to) {
         LocalDateTime fromDt = from.atStartOfDay();
         LocalDateTime toDt = to.atTime(LocalTime.MAX);
@@ -101,6 +115,15 @@ public class TurnoverService {
         totalSell = totalSell != null ? totalSell : BigDecimal.ZERO;
         fees = fees != null ? fees : BigDecimal.ZERO;
 
+        // NFR-3: 5 Ft-os kerekítés a VETT/ELADOTT összesítőkön (a területi nézettel konzisztensen).
+        totalBuy = HungarianRounding.roundToFive(totalBuy);
+        totalSell = HungarianRounding.roundToFive(totalSell);
+
+        // FR-7: a „Teljes cég" nézet valutánkénti bontása + MNB official_rate (minden nézetre kötelező).
+        List<CurrencyTurnoverDto> byCurrency = accumulateByCurrency(
+            transactionRepository.groupByCurrencyAndTypeForCompany(companyId, from, to));
+        applyOfficialRates(byCurrency, companyId, to);
+
         return TurnoverReportDto.builder()
             .period(from + " - " + to)
             .totalBuy(totalBuy)
@@ -108,7 +131,7 @@ public class TurnoverService {
             .spread(totalSell.subtract(totalBuy))
             .fees(fees)
             .netProfit(totalSell.subtract(totalBuy).add(fees))
-            .byCurrency(Collections.emptyList())
+            .byCurrency(byCurrency)
             .byWorker(Collections.emptyList())
             .build();
     }
@@ -193,7 +216,7 @@ public class TurnoverService {
         // findById ResourceNotFoundException-t dob cross-tenant branchId-nél, mielőtt
         // bármilyen branch-szűrt aggregáló query lefutna. Minden per-branch publikus
         // metódus (daily/weekly/monthly/yearly) ide fut be, ezért egy helyen elég.
-        branchService.findById(branchId);
+        var branch = branchService.findById(branchId);
 
         LocalDate dateFrom = from.toLocalDate();
         LocalDate dateTo = to.toLocalDate();
@@ -214,6 +237,10 @@ public class TurnoverService {
 
         // Valuta szerinti bontás
         List<CurrencyTurnoverDto> byCurrency = buildByCurrency(branchId, dateFrom, dateTo);
+        // FR-7: az MNB elszámolási árfolyam a pénztár/napi nézetben is megjelenik (minden nézetre kötelező).
+        if (branch != null && branch.getCompanyId() != null) {
+            applyOfficialRates(byCurrency, branch.getCompanyId(), dateTo);
+        }
 
         // Pénztáros szerinti bontás
         List<WorkerTurnoverDto> byWorker = buildByWorker(branchId, dateFrom, dateTo);

@@ -1234,6 +1234,27 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * FK-045 FR-5/FR-7: valuta + típus szerinti bontás a TELJES CÉG-re (minden branch). A
+     * {@link #groupByCurrencyAndTypeForBranch} cég-szintű párja — a „Teljes cég" nézet valutánkénti
+     * sorai (és az official_rate megjelenítés) ehhez kellenek. Sztornó + nem-financialEffective kizárva.
+     * Visszaad: [currencyCode, transactionType, SUM(currencyAmount), SUM(hufAmount), SUM(handlingFee), COUNT(id)]
+     */
+    @Query("SELECT t.currency.code, CAST(t.transactionType AS string), " +
+           "SUM(t.currencyAmount), SUM(t.hufAmount), SUM(t.handlingFee), COUNT(t.id) " +
+           "FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status NOT IN ('REVERSED', 'CANCELLED') " +
+           "AND t.financialEffective = true " +
+           "GROUP BY t.currency.code, t.transactionType " +
+           "ORDER BY t.currency.code, t.transactionType")
+    List<Object[]> groupByCurrencyAndTypeForCompany(
+        @Param("companyId") UUID companyId,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
+    );
+
+    /**
      * FK-045 FR-4/FR-9: tenant-guard — hány branch tartozik az adott területhez a hívó cégében.
      * 0 → a területi lekérdezés idegen tenant / nemlétező terület → a service 404-et dob.
      */
