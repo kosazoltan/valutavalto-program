@@ -269,7 +269,7 @@ export default function ShipmentListPage() {
   }
 
   const canCancel = (status: string): boolean => status !== 'DELIVERED' && status !== 'CANCELLED'
-  // FR-6 (Értéktár Shipment készletkönyvelés): a "Kézbesítés" (DELIVERED visszaigazolás) gombot
+  // FR-6 (Értéktár Shipment készletkönyvelés): a "Megérkezett" (DELIVERED visszaigazolás) gombot
   // KIZÁRÓLAG az ÁTVEVŐ (target) fiók felhasználója láthatja — az átadó nem. A backend FR-4
   // hard-gate-je (403 VV-AUTH-001 az assertReceiver-ben) ezt amúgy is kikényszeríti; itt a UI-t
   // igazítjuk hozzá, hogy az átadónak a gomb meg se jelenjen (teljesen elrejtve, nem csak disabled).
@@ -366,7 +366,7 @@ export default function ShipmentListPage() {
                 <button
                   onClick={() => void handleDeliver(shipment.id)}
                   className="toolbar-button text-blue-600"
-                  title="Kézbesítés"
+                  title="Megérkezett"
                   disabled={loading}
                 >
                   <Package size={14} />
