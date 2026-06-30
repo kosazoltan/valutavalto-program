@@ -96,13 +96,13 @@ public class DailyBalanceService {
         BigDecimal sales = dailyCurrencyTurnover(branchId, date, TransactionType.SELL, currencyCode);
 
         // 4. Átvétel más irodától (transfer IN)
-        BigDecimal transfersIn = getTransfersIn(branchId, date, currencyCode);
+        BigDecimal transfersIn = getTransfersIn(branchId, companyId, date, currencyCode);
         if (transfersIn == null) {
             transfersIn = BigDecimal.ZERO;
         }
 
         // 5. Átadás más irodába (transfer OUT)
-        BigDecimal transfersOut = getTransfersOut(branchId, date, currencyCode);
+        BigDecimal transfersOut = getTransfersOut(branchId, companyId, date, currencyCode);
         if (transfersOut == null) {
             transfersOut = BigDecimal.ZERO;
         }
@@ -298,18 +298,19 @@ public class DailyBalanceService {
     /**
      * Átvétel (transfer IN) számítása
      */
-    private BigDecimal getTransfersIn(UUID branchId, LocalDate date, String currencyCode) {
+    private BigDecimal getTransfersIn(UUID branchId, UUID companyId, LocalDate date, String currencyCode) {
         // FK-046 FR-3: a TH (Többlet-Hiány) elszámolási pénztár felőli tételek KIZÁRVA — azokat a
-        // surplus/shortage mező hordozza, nem a normál pénztárközi átvétel. Tenant-szűrt (companyId).
-        return transferRepository.sumTransfersInExcludingTh(branchId, SecurityUtils.getCurrentCompanyId(), date, currencyCode);
+        // surplus/shortage mező hordozza, nem a normál pénztárközi átvétel. Tenant-szűrt (companyId
+        // a hívótól — NEM SecurityUtils, hogy rendszerszintű/ütemezett záráskor se legyen null-scope).
+        return transferRepository.sumTransfersInExcludingTh(branchId, companyId, date, currencyCode);
     }
 
     /**
      * Átadás (transfer OUT) számítása
      */
-    private BigDecimal getTransfersOut(UUID branchId, LocalDate date, String currencyCode) {
+    private BigDecimal getTransfersOut(UUID branchId, UUID companyId, LocalDate date, String currencyCode) {
         // FK-046 FR-3: a TH elszámolási pénztár felé irányuló tételek KIZÁRVA.
-        return transferRepository.sumTransfersOutExcludingTh(branchId, SecurityUtils.getCurrentCompanyId(), date, currencyCode);
+        return transferRepository.sumTransfersOutExcludingTh(branchId, companyId, date, currencyCode);
     }
 
     /**
@@ -439,9 +440,18 @@ public class DailyBalanceService {
                 DailyBalance balance = balanceByCurrency.get(currencyCode);
                 if (balance == null) {
                     // Csak snapshot-tal rendelkező valuta: hozzunk létre mérleg-sort (nyitó/forgalom 0).
+                    // GLM-review R4 #7: a numerikus mezőket explicit 0-ra állítjuk, különben a
+                    // calculateMnbValidation() openingBalance.add(...) hívása NPE-t dobna (a builder
+                    // nem feltétlen ad 0 defaultot a forgalmi mezőkre).
                     balance = DailyBalance.builder()
                         .branchId(branchId).balanceDate(date).currencyCode(currencyCode)
                         .company(company).isClosed(false).build();
+                    balance.setOpeningBalance(BigDecimal.ZERO);
+                    balance.setPurchases(BigDecimal.ZERO);
+                    balance.setSales(BigDecimal.ZERO);
+                    balance.setTransfersIn(BigDecimal.ZERO);
+                    balance.setTransfersOut(BigDecimal.ZERO);
+                    balance.setClosingBalance(BigDecimal.ZERO);
                 }
                 // NFR-5 megjegyzés: a closing flow NEM hívja a closeDailyBalance-t, így a sorok
                 // isClosed=false maradnak → a retry felülír. Ha mégis lezárt sort találunk (kézi
