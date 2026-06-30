@@ -10,16 +10,22 @@ import DailyTurnoverPage from './DailyTurnoverPage'
 const mockCompany = vi.fn()
 const mockTerritory = vi.fn()
 const mockByPeriod = vi.fn()
+const mockBranchRange = vi.fn()
 const mockListActive = vi.fn()
+const mockCurrencyGetActive = vi.fn()
 
 vi.mock('../../services/api/index', () => ({
   turnoverApi: {
     company: (...args: unknown[]) => mockCompany(...args),
     territory: (...args: unknown[]) => mockTerritory(...args),
     byPeriod: (...args: unknown[]) => mockByPeriod(...args),
+    branchRange: (...args: unknown[]) => mockBranchRange(...args),
   },
   branchApi: {
     listActive: (...args: unknown[]) => mockListActive(...args),
+  },
+  currencyApi: {
+    getActive: (...args: unknown[]) => mockCurrencyGetActive(...args),
   },
 }))
 
@@ -39,8 +45,11 @@ describe('DailyTurnoverPage — FK-045', () => {
     mockCompany.mockReset()
     mockTerritory.mockReset()
     mockByPeriod.mockReset()
+    mockBranchRange.mockReset()
     mockListActive.mockReset()
+    mockCurrencyGetActive.mockReset()
     mockListActive.mockResolvedValue([])
+    mockCurrencyGetActive.mockResolvedValue([])
   })
 
   it('FR-1: az oldal hibamentesen betöltődik (nem omlik össze a régi struktúra hiányától)', () => {
@@ -75,5 +84,31 @@ describe('DailyTurnoverPage — FK-045', () => {
     await waitFor(() =>
       expect(screen.getByText('Nincs forgalmi adat a megadott időszakra')).toBeInTheDocument(),
     )
+  })
+
+  it('FR-6: a forgalom nélküli aktív valuta is megjelenik (üres sorként, nem rejtve)', async () => {
+    mockCurrencyGetActive.mockResolvedValue([
+      { id: 1, code: 'EUR', name: 'Euró', decimals: 2, displayOrder: 1, active: true },
+      { id: 2, code: 'USD', name: 'Dollár', decimals: 2, displayOrder: 2, active: true },
+      { id: 3, code: 'GBP', name: 'Font', decimals: 2, displayOrder: 3, active: true },
+    ])
+    // a backend csak EUR-ra ad forgalmat; USD/GBP aktív, de forgalmatlan → üres sorként kell látszania
+    mockCompany.mockResolvedValue({
+      period: '2026-06-01 - 2026-06-30',
+      totalBuy: 800000,
+      totalSell: 0,
+      byCurrency: [
+        { currencyCode: 'EUR', officialRate: 405.12, buyVolume: 2000, buyHuf: 800000, sellVolume: 0, sellHuf: 0 },
+      ],
+    })
+    render(<DailyTurnoverPage />)
+    // megvárjuk, hogy az aktív-valuta lista betöltődjön
+    await waitFor(() => expect(mockCurrencyGetActive).toHaveBeenCalled())
+    fireEvent.click(screen.getByText('Időszak rendben'))
+
+    await waitFor(() => expect(screen.getByText('EUR')).toBeInTheDocument())
+    // FR-6: a forgalmatlan USD és GBP is sorként jelenik meg
+    expect(screen.getByText('USD')).toBeInTheDocument()
+    expect(screen.getByText('GBP')).toBeInTheDocument()
   })
 })

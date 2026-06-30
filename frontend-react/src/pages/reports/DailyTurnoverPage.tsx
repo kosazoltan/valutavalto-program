@@ -4,7 +4,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
-import { turnoverApi, branchApi, type BranchInfo } from '../../services/api/index'
+import { turnoverApi, branchApi, currencyApi, type BranchInfo } from '../../services/api/index'
 import { useTranslation } from 'react-i18next'
 
 // FK-045 FR-11: a backend TurnoverReportDto TÉNYLEGES struktúrája (nem a régi, soha össze nem
@@ -54,6 +54,7 @@ export default function DailyTurnoverPage() {
   const [branchId, setBranchId] = useState<string>('')
 
   const [branches, setBranches] = useState<BranchInfo[]>([])
+  const [activeCurrencies, setActiveCurrencies] = useState<string[]>([])
   const [data, setData] = useState<TurnoverReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -64,6 +65,22 @@ export default function DailyTurnoverPage() {
       .listActive()
       .then((list) => setBranches(list || []))
       .catch((err) => logger.error('DailyTurnoverPage', 'Fiók-lista hiba:', err))
+  }, [])
+
+  // FR-6: az ÖSSZES aktív valuta (displayOrder szerint) — a táblázat ezeket mind mutatja,
+  // a forgalom nélkülieket is üres sorként (nem rejtve).
+  useEffect(() => {
+    currencyApi
+      .getActive()
+      .then((list) =>
+        setActiveCurrencies(
+          (list || [])
+            .slice()
+            .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+            .map((c) => c.code),
+        ),
+      )
+      .catch((err) => logger.error('DailyTurnoverPage', 'Valuta-lista hiba:', err))
   }, [])
 
   // FR-3: pénztárak pénztárszám (code) szerint rendezve, az értéktárak kizárva.
@@ -143,7 +160,26 @@ export default function DailyTurnoverPage() {
   const fmtRate = (r: number | null) =>
     r == null ? '–' : r.toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
 
-  const rows = data?.byCurrency ?? []
+  // FR-6: a táblázat MINDEN aktív valutát mutat. A backend csak a forgalmazott valutákat adja vissza
+  // (GROUP BY currency), ezért a hiányzó aktív valutákat üres (0/„–") sorként pótoljuk — nem rejtjük.
+  const rows = useMemo<CurrencyTurnoverRow[]>(() => {
+    if (!data) return []
+    const byCode = new Map(data.byCurrency.map((r) => [r.currencyCode, r]))
+    const order = activeCurrencies.length > 0 ? activeCurrencies : data.byCurrency.map((r) => r.currencyCode)
+    // a backend-ben szereplő, de a katalógusban (még) nem listázott kódokat is megtartjuk a végén
+    const extra = data.byCurrency.map((r) => r.currencyCode).filter((c) => !order.includes(c))
+    return [...order, ...extra].map(
+      (code) =>
+        byCode.get(code) ?? {
+          currencyCode: code,
+          officialRate: null,
+          buyVolume: 0,
+          buyHuf: 0,
+          sellVolume: 0,
+          sellHuf: 0,
+        },
+    )
+  }, [data, activeCurrencies])
 
   const years = useMemo(() => {
     const cur = Number(yearStr)
@@ -253,7 +289,7 @@ export default function DailyTurnoverPage() {
             <h2 className="font-semibold mb-2">
               {t('reports.devizankentiForgalom')} — {data.period}
             </h2>
-            {rows.length === 0 ? (
+            {(data?.byCurrency.length ?? 0) === 0 ? (
               <div className="text-center text-gray-500 py-4">Nincs forgalmi adat a megadott időszakra</div>
             ) : (
               <table className="data-grid w-full text-sm">

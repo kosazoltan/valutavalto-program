@@ -93,12 +93,18 @@ public class TurnoverService {
      * elveszett. Ez a metódus a teljes [from, to] tartományt aggregálja a buildReport-on át.
      */
     public TurnoverReportDto getBranchTurnoverRange(UUID branchId, LocalDate from, LocalDate to) {
-        return buildReport(
+        TurnoverReportDto report = buildReport(
             branchId,
             from + " - " + to,
             from.atStartOfDay(),
             to.atTime(LocalTime.MAX)
         );
+        // FK-045 NFR-3: a Napi forgalom pénztár-nézet VETT/ELADOTT összesítői 5 Ft-ra kerekítve
+        // (a company/territory nézettel konzisztensen). A közös buildReport-ot NEM módosítjuk, hogy a
+        // meglévő daily/weekly/havi/éves riportok viselkedése változatlan maradjon.
+        report.setTotalBuy(HungarianRounding.roundToFive(report.getTotalBuy()));
+        report.setTotalSell(HungarianRounding.roundToFive(report.getTotalSell()));
+        return report;
     }
 
     public TurnoverReportDto getCompanyTurnover(UUID companyId, LocalDate from, LocalDate to) {
