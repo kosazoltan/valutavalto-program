@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.ExchangeRateRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -141,6 +142,11 @@ public class TurnoverService {
         totalBuy = totalBuy != null ? totalBuy : BigDecimal.ZERO;
         totalSell = totalSell != null ? totalSell : BigDecimal.ZERO;
         fees = fees != null ? fees : BigDecimal.ZERO;
+
+        // FK-045 NFR-3: a VETT/ELADOTT összesítők 5 Ft-ra kerekítve (HungarianRounding, HALF_UP) —
+        // a domain-szótár és a frontend megjelenítés ezt írja elő a területi összesítőkre is.
+        totalBuy = HungarianRounding.roundToFive(totalBuy);
+        totalSell = HungarianRounding.roundToFive(totalSell);
 
         List<Object[]> rows = transactionRepository.groupByCurrencyAndTypeForTerritory(
             companyId, vaultTerritoryId, from, to);

@@ -3,10 +3,12 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.turnover.TurnoverReportDto;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.TurnoverService;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -20,6 +22,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/turnover")
 @RequiredArgsConstructor
+@Validated
 public class TurnoverController {
 
     private final TurnoverService turnoverService;
@@ -70,9 +73,9 @@ public class TurnoverController {
      */
     @GetMapping("/territory")
     public ResponseEntity<TurnoverReportDto> territory(
-            @RequestParam Integer vaultTerritoryId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+            @RequestParam @NotNull Integer vaultTerritoryId,
+            @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
         return ResponseEntity.ok(
             turnoverService.getVaultTerritoryTurnover(currentCompanyId, vaultTerritoryId, from, to));

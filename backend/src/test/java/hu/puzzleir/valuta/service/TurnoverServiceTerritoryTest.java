@@ -112,6 +112,31 @@ class TurnoverServiceTerritoryTest {
             .hasMessageContaining("Értéktári terület nem található");
     }
 
+    @Test
+    @DisplayName("NFR-3: a VETT/ELADOTT összesítők 5 Ft-ra kerekítve (HungarianRounding)")
+    void totals_rounded_to_five_huf() {
+        when(transactionRepository.countBranchesInTerritory(COMPANY_ID, TERRITORY_ID)).thenReturn(1L);
+        // nyers összegek, amik NEM 5 többszörösei → kerekítés után 5-re kell esniük
+        when(transactionRepository.sumHufAmountByTerritoryAndTypeAndPeriod(
+                eq(COMPANY_ID), eq(TERRITORY_ID), eq("BUY"), any(), any()))
+            .thenReturn(new BigDecimal("1002347")); // → 1002345
+        when(transactionRepository.sumHufAmountByTerritoryAndTypeAndPeriod(
+                eq(COMPANY_ID), eq(TERRITORY_ID), eq("SELL"), any(), any()))
+            .thenReturn(new BigDecimal("2008923")); // → 2008925
+        lenient().when(transactionRepository.sumFeeByTerritoryAndPeriod(
+                eq(COMPANY_ID), eq(TERRITORY_ID), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transactionRepository.groupByCurrencyAndTypeForTerritory(
+                eq(COMPANY_ID), eq(TERRITORY_ID), any(), any())).thenReturn(new ArrayList<>());
+
+        TurnoverReportDto report = service.getVaultTerritoryTurnover(COMPANY_ID, TERRITORY_ID, FROM, TO);
+
+        // 5 Ft-os kerekítés (HALF_UP): az utolsó számjegy 5 többszöröse
+        assertThat(report.getTotalBuy().remainder(new BigDecimal("5"))).isEqualByComparingTo("0");
+        assertThat(report.getTotalSell().remainder(new BigDecimal("5"))).isEqualByComparingTo("0");
+        assertThat(report.getTotalBuy()).isEqualByComparingTo("1002345");
+        assertThat(report.getTotalSell()).isEqualByComparingTo("2008925");
+    }
+
     private static ExchangeRate rate(String code, BigDecimal officialRate) {
         Currency c = new Currency();
         c.setCode(code);
