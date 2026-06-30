@@ -478,6 +478,19 @@ public class DailyClosingService {
             // NEM dobunk kivételt — ne akadjon meg a zárás, csak logoljuk
         }
 
+        // 3.b FK-046: pénztári SZÁMZÁR (fizikailag leszámolt záró készlet) + Többlet/Hiány (TH
+        //     elszámolási pénztár) bekötése a napi mérlegbe. A napi mérleg-sorok (3. lépés) már
+        //     léteznek; ez a lépés tölti az actualStock/surplus/shortage mezőket pénztári irodákra.
+        try {
+            dailyBalanceService.recordClosingAdjustments(branchId, closingDate);
+        } catch (Exception e) {
+            VV_LOG.error("VV-BIZ-006", "daily_closing.szamzar_th_failed", e,
+                    java.util.Map.of("closing_date", closingDate,
+                            "branch_id", branchId,
+                            "step", "szamzar_th_adjustment"));
+            // NEM dobunk kivételt — ne akadjon meg a zárás (FR-7/FR-9 szellemében)
+        }
+
         // 4. POS terminál napi zárás — ha van aktív terminál az irodán
         executePosTerminalClosing(branchId, closingDate);
 

@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,8 +17,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -48,6 +53,8 @@ public class DailyBalanceService {
     private final AuditLogService auditLogService;
     private final MonthlyClosingSummaryRepository monthlyClosingSummaryRepository;
     private final CurrencyStockRepository currencyStockRepository;
+    private final BranchRepository branchRepository;
+    private final DenominationBalanceRepository denominationBalanceRepository;
 
     /**
      * Napi mérleg számítása egy iroda + dátum + valuta kombinációhoz.
@@ -89,13 +96,13 @@ public class DailyBalanceService {
         BigDecimal sales = dailyCurrencyTurnover(branchId, date, TransactionType.SELL, currencyCode);
 
         // 4. Átvétel más irodától (transfer IN)
-        BigDecimal transfersIn = getTransfersIn(branchId, date, currencyCode);
+        BigDecimal transfersIn = getTransfersIn(branchId, companyId, date, currencyCode);
         if (transfersIn == null) {
             transfersIn = BigDecimal.ZERO;
         }
 
         // 5. Átadás más irodába (transfer OUT)
-        BigDecimal transfersOut = getTransfersOut(branchId, date, currencyCode);
+        BigDecimal transfersOut = getTransfersOut(branchId, companyId, date, currencyCode);
         if (transfersOut == null) {
             transfersOut = BigDecimal.ZERO;
         }
@@ -291,15 +298,19 @@ public class DailyBalanceService {
     /**
      * Átvétel (transfer IN) számítása
      */
-    private BigDecimal getTransfersIn(UUID branchId, LocalDate date, String currencyCode) {
-        return transferRepository.sumTransfersIn(branchId, date, currencyCode);
+    private BigDecimal getTransfersIn(UUID branchId, UUID companyId, LocalDate date, String currencyCode) {
+        // FK-046 FR-3: a TH (Többlet-Hiány) elszámolási pénztár felőli tételek KIZÁRVA — azokat a
+        // surplus/shortage mező hordozza, nem a normál pénztárközi átvétel. Tenant-szűrt (companyId
+        // a hívótól — NEM SecurityUtils, hogy rendszerszintű/ütemezett záráskor se legyen null-scope).
+        return transferRepository.sumTransfersInExcludingTh(branchId, companyId, date, currencyCode);
     }
 
     /**
      * Átadás (transfer OUT) számítása
      */
-    private BigDecimal getTransfersOut(UUID branchId, LocalDate date, String currencyCode) {
-        return transferRepository.sumTransfersOut(branchId, date, currencyCode);
+    private BigDecimal getTransfersOut(UUID branchId, UUID companyId, LocalDate date, String currencyCode) {
+        // FK-046 FR-3: a TH elszámolási pénztár felé irányuló tételek KIZÁRVA.
+        return transferRepository.sumTransfersOutExcludingTh(branchId, companyId, date, currencyCode);
     }
 
     /**
@@ -358,6 +369,158 @@ public class DailyBalanceService {
 
         log.info("Leltári eltérés rögzítve: branchId={}, date={}, currency={}, actual={}, difference={}",
             branchId, date, currencyCode, actualStock, balance.getDifference());
+    }
+
+    /**
+     * FK-046 — napi zárás SZÁMZÁR + Többlet/Hiány (TH) bekötés.
+     *
+     * <p>A napi zárás véglegesítésekor (a {@code calculateAllCurrenciesForDay} után, a napi mérleg-sorok
+     * már léteznek) automatikusan, kézi beavatkozás nélkül rögzíti pénztári (NEM értéktári) irodákra:
+     * <ul>
+     *   <li>FR-1/2/7: a fizikailag leszámolt záró készletet (SZÁMZÁR = {@code actualStock}) a záráskori
+     *       (EVENING) címlet-snapshotból, valutánként összegezve. Ha egy valutára nincs snapshot-sor,
+     *       a mező üresen marad (nem 0), és a folyamat nem hibázik.</li>
+     *   <li>FR-4/6/10: a TH elszámolási pénztárral szembeni, TELJESÍTETT (COMPLETED) tételeket
+     *       irányhelyesen — TH-tól átvétel → Többlet ({@code surplus}), TH-nak átadás → Hiány
+     *       ({@code shortage}) — valutánként, naponta.</li>
+     *   <li>FR-5/8: az eltérés (számított záró − SZÁMZÁR) a meglévő {@code difference} mezőn marad.</li>
+     *   <li>NFR-3: a HUF összegekre {@code HungarianRounding.roundToFive}.</li>
+     *   <li>NFR-5: idempotens — ismételt zárás-futás felülírja, nem duplázza az értékeket.</li>
+     * </ul>
+     *
+     * <p>FR-9: értéktári (is_vault=true) irodára NEM fut le. Hiba esetén NEM dob (a zárás ne akadjon meg),
+     * a hívó {@code DailyClosingService} amúgy is try/catch-eli ezt a lépést.
+     */
+    public void recordClosingAdjustments(UUID branchId, LocalDate date) {
+        Branch branch = branchRepository.findById(branchId).orElse(null);
+        if (branch == null) {
+            log.warn("FK-046 SZÁMZÁR/TH kihagyva: ismeretlen branch={}", branchId);
+            return;
+        }
+        // FR-9: kizárólag pénztári (nem értéktári) irodákra.
+        if (Boolean.TRUE.equals(branch.getIsVault())) {
+            log.debug("FK-046 SZÁMZÁR/TH kihagyva (értéktári iroda): branch={}", branchId);
+            return;
+        }
+        // GLM-review #5 fix: a tenant a BRANCH-ből (nem SecurityUtils) — így rendszerszintű/ütemezett
+        // záráskor (FR-1: "hívás nélküli, automatikus") is helyes cég-scope, NPE/null nélkül.
+        Company company = branch.getCompany();
+        if (company == null || company.getId() == null) {
+            log.warn("FK-046 SZÁMZÁR/TH kihagyva: a branch cég-kapcsolata hiányzik, branch={}", branchId);
+            return;
+        }
+        UUID companyId = company.getId();
+
+        try {
+            // FR-2: a záráskori (EVENING) címlet-snapshotból valutánként összesített SZÁMZÁR.
+            // GLM #1 fix: [date, date+1) félzárt tartomány — a következő napi snapshot nem szivárog be.
+            Map<String, BigDecimal> actualStockByCurrency = new HashMap<>();
+            for (Object[] row : denominationBalanceRepository.sumActualStockByCurrency(
+                    branchId, date, date.plusDays(1), DenominationCategory.EVENING)) {
+                if (row[0] == null) {
+                    continue;
+                }
+                actualStockByCurrency.put((String) row[0], toBd(row[1]));
+            }
+
+            // A nap napi mérleg-sorai valutakód szerint indexelve (idempotens felülíráshoz).
+            Map<String, DailyBalance> balanceByCurrency = new HashMap<>();
+            for (DailyBalance b : dailyBalanceRepository.findByBranchIdAndBalanceDate(branchId, date)) {
+                balanceByCurrency.put(b.getCurrencyCode(), b);
+            }
+
+            // GLM #3 fix (FR-1/9.2 Fázis 2.a): a feldolgozandó valuták halmaza = a meglévő mérleg-sorok
+            // ∪ a snapshot-tal rendelkező valuták. Így annak a valutának is rögzül a SZÁMZÁR, amelyre
+            // aznap nem volt mozgás (és így nincs előzetes mérleg-sor), de van záráskori címletezés.
+            Set<String> currencies = new LinkedHashSet<>(balanceByCurrency.keySet());
+            currencies.addAll(actualStockByCurrency.keySet());
+
+            int processed = 0;
+            for (String currencyCode : currencies) {
+                DailyBalance balance = balanceByCurrency.get(currencyCode);
+                if (balance == null) {
+                    // Csak snapshot-tal rendelkező valuta: hozzunk létre mérleg-sort (nyitó/forgalom 0).
+                    // GLM-review R4 #7: a numerikus mezőket explicit 0-ra állítjuk, különben a
+                    // calculateMnbValidation() openingBalance.add(...) hívása NPE-t dobna (a builder
+                    // nem feltétlen ad 0 defaultot a forgalmi mezőkre).
+                    balance = DailyBalance.builder()
+                        .branchId(branchId).balanceDate(date).currencyCode(currencyCode)
+                        .company(company).isClosed(false).build();
+                    balance.setOpeningBalance(BigDecimal.ZERO);
+                    balance.setPurchases(BigDecimal.ZERO);
+                    balance.setSales(BigDecimal.ZERO);
+                    balance.setTransfersIn(BigDecimal.ZERO);
+                    balance.setTransfersOut(BigDecimal.ZERO);
+                    balance.setClosingBalance(BigDecimal.ZERO);
+                }
+                // NFR-5 megjegyzés: a closing flow NEM hívja a closeDailyBalance-t, így a sorok
+                // isClosed=false maradnak → a retry felülír. Ha mégis lezárt sort találunk (kézi
+                // closeDailyBalance), azt tiszteletben tartjuk és nem írjuk felül.
+                if (Boolean.TRUE.equals(balance.getIsClosed())) {
+                    continue;
+                }
+
+                // FR-4/6/10: TH-alapú Többlet/Hiány (irányhelyesen, csak COMPLETED tételek, tenant-szűrt).
+                // GLM #2 fix (NFR-3): a roundToFive (5 Ft-os szabály) CSAK HUF-ra; más valuta változatlan.
+                BigDecimal surplus = roundIfHuf(currencyCode, toBd(transferRepository.sumSurplusFromTh(branchId, companyId, date, currencyCode)));
+                BigDecimal shortage = roundIfHuf(currencyCode, toBd(transferRepository.sumShortageToTh(branchId, companyId, date, currencyCode)));
+                // NFR-5: idempotens felülírás (nem additív).
+                balance.setSurplus(surplus);
+                balance.setShortage(shortage);
+
+                // FR-1/2/7: SZÁMZÁR a snapshotból; ha nincs az adott valutára, a mező ÜRES marad (nem 0).
+                BigDecimal actual = actualStockByCurrency.get(currencyCode);
+                if (actual != null) {
+                    balance.setActualStock(roundIfHuf(currencyCode, actual));
+                }
+
+                // FR-5/8: a calculateMnbValidation() a surplus/shortage-et IS beleszámolja a
+                // calculatedClosing-ba (DailyBalance.java) → a számított záró tartalmazza a TH-t;
+                // a calculateDifference() a closingBalance−actualStock eltérést rögzíti.
+                balance.calculateMnbValidation();
+                balance.calculateDifference();
+                dailyBalanceRepository.save(balance);
+                processed++;
+            }
+
+            // §6.b audit (KAT=TX): a Többlet/Hiány a napi mérlegre íródott (pénzügyi adat-módosítás).
+            auditLogService.log(
+                "DAILY_BALANCE_TH_ADJUSTMENT",
+                String.format("{\"KAT\":\"TX\",\"date\":\"%s\",\"branch_id\":\"%s\",\"currencies\":%d}",
+                    date, branchId, processed),
+                branchId.toString()
+            );
+            log.info("FK-046 SZÁMZÁR + Többlet/Hiány rögzítve: branchId={}, date={}, valuták={}",
+                branchId, date, processed);
+        } catch (RuntimeException e) {
+            // GLM-review #3 fix: pénzügyi adat-módosítás hibája NEM tűnhet el némán (a hívó
+            // DailyClosingService try/catch-eli) — hiba-audit (KAT=TX) készül, majd újradobjuk,
+            // hogy a hívó VV-BIZ-006 ága is jelezze.
+            auditLogService.log(
+                "DAILY_BALANCE_TH_ADJUSTMENT_FAILED",
+                String.format("{\"KAT\":\"TX\",\"date\":\"%s\",\"branch_id\":\"%s\",\"error\":\"%s\"}",
+                    date, branchId, e.getClass().getSimpleName()),
+                branchId.toString()
+            );
+            throw e;
+        }
+    }
+
+    /** Object[]-ből biztonságos BigDecimal (COALESCE 0 + null-véd). */
+    private static BigDecimal toBd(Object value) {
+        return value == null ? BigDecimal.ZERO : (BigDecimal) value;
+    }
+
+    /**
+     * FK-046 NFR-3 (GLM #2 fix): az 5 Ft-os magyar kerekítést KIZÁRÓLAG HUF összegre alkalmazzuk.
+     * Más valuta (EUR/USD/…) értékét változatlanul adjuk vissza — egy EUR összeget 5-ös léptékre
+     * kerekíteni hibás pénzügyi érték lenne.
+     */
+    private static BigDecimal roundIfHuf(String currencyCode, BigDecimal value) {
+        if (value == null) {
+            return null;
+        }
+        return "HUF".equals(currencyCode) ? HungarianRounding.roundToFive(value) : value;
     }
 
     /**

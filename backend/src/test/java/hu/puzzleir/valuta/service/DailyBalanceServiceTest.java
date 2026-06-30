@@ -62,6 +62,12 @@ class DailyBalanceServiceTest {
     @Mock
     private CurrencyStockRepository currencyStockRepository;
 
+    @Mock
+    private BranchRepository branchRepository;
+
+    @Mock
+    private DenominationBalanceRepository denominationBalanceRepository;
+
     private static final UUID TEST_COMPANY_ID = UUID.randomUUID();
     private static final UUID TEST_BRANCH_ID = UUID.randomUUID();
     private static final LocalDate TEST_DATE = LocalDate.of(2026, 3, 16);
@@ -202,9 +208,9 @@ class DailyBalanceServiceTest {
         when(transactionRepository.sumDailySingleLineTurnoverByCurrency(
                 eq(TEST_BRANCH_ID), eq(TEST_DATE), eq(TransactionType.SELL), eq("EUR")))
             .thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumTransfersIn(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq("EUR")))
+        when(transferRepository.sumTransfersInExcludingTh(eq(TEST_BRANCH_ID), eq(TEST_COMPANY_ID), eq(TEST_DATE), eq("EUR")))
             .thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumTransfersOut(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq("EUR")))
+        when(transferRepository.sumTransfersOutExcludingTh(eq(TEST_BRANCH_ID), eq(TEST_COMPANY_ID), eq(TEST_DATE), eq("EUR")))
             .thenReturn(BigDecimal.ZERO);
 
         when(dailyBalanceRepository.save(any(DailyBalance.class)))
@@ -303,13 +309,269 @@ class DailyBalanceServiceTest {
             .thenReturn(BigDecimal.ZERO);
         when(transactionLineRepository.sumDailyLineTurnoverByCurrency(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq(TransactionType.SELL), eq("EUR")))
             .thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumTransfersIn(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq("EUR"))).thenReturn(BigDecimal.ZERO);
-        when(transferRepository.sumTransfersOut(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq("EUR"))).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumTransfersInExcludingTh(eq(TEST_BRANCH_ID), eq(TEST_COMPANY_ID), eq(TEST_DATE), eq("EUR"))).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumTransfersOutExcludingTh(eq(TEST_BRANCH_ID), eq(TEST_COMPANY_ID), eq(TEST_DATE), eq("EUR"))).thenReturn(BigDecimal.ZERO);
         when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
 
         DailyBalance result = dailyBalanceService.calculateDailyBalance(TEST_BRANCH_ID, TEST_DATE, "EUR");
 
         assertThat(result.getPurchases()).as("purchases = single-line 100 + line 50").isEqualByComparingTo(new BigDecimal("150"));
         assertThat(result.getClosingBalance()).as("closing = 0 + 150 - 0").isEqualByComparingTo(new BigDecimal("150"));
+    }
+
+    // ============================================================
+    // FK-046: SZÁMZÁR (recordClosingAdjustments) + Többlet/Hiány (TH)
+    // ============================================================
+
+    private Branch cashierBranch() {
+        Branch b = new Branch();
+        b.setId(TEST_BRANCH_ID);
+        b.setIsVault(false);
+        Company c = new Company();
+        c.setId(TEST_COMPANY_ID);
+        b.setCompany(c);
+        return b;
+    }
+
+    private DailyBalance balanceRow(String currency) {
+        DailyBalance db = DailyBalance.builder()
+            .branchId(TEST_BRANCH_ID).balanceDate(TEST_DATE).currencyCode(currency)
+            .isClosed(false).build();
+        return db;
+    }
+
+    @Test
+    @DisplayName("FK-046 FR-1/2: a SZÁMZÁR a záráskori snapshotból egy valutára kitöltődik")
+    void recordActualStock_invokedOnDailyClosing_singleCurrency() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
+        when(denominationBalanceRepository.sumActualStockByCurrency(
+                TEST_BRANCH_ID, TEST_DATE, TEST_DATE.plusDays(1), DenominationCategory.EVENING))
+            .thenReturn(List.<Object[]>of(new Object[]{"EUR", new BigDecimal("1000")}));
+        DailyBalance eur = balanceRow("EUR");
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
+            .thenReturn(List.of(eur));
+        when(transferRepository.sumSurplusFromTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumShortageToTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        assertThat(eur.getActualStock()).isEqualByComparingTo("1000");
+    }
+
+    @Test
+    @DisplayName("FK-046 FR-2: több valutára helyesen rögzít a SZÁMZÁR")
+    void recordActualStock_invokedOnDailyClosing_multipleCurrencies() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
+        when(denominationBalanceRepository.sumActualStockByCurrency(
+                TEST_BRANCH_ID, TEST_DATE, TEST_DATE.plusDays(1), DenominationCategory.EVENING))
+            .thenReturn(List.<Object[]>of(
+                new Object[]{"EUR", new BigDecimal("1000")},
+                new Object[]{"USD", new BigDecimal("500")}));
+        DailyBalance eur = balanceRow("EUR");
+        DailyBalance usd = balanceRow("USD");
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
+            .thenReturn(List.of(eur, usd));
+        when(transferRepository.sumSurplusFromTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumShortageToTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        assertThat(eur.getActualStock()).isEqualByComparingTo("1000");
+        assertThat(usd.getActualStock()).isEqualByComparingTo("500");
+    }
+
+    @Test
+    @DisplayName("FK-046 FR-7: ha egy valutára nincs snapshot, a SZÁMZÁR mező üres marad (nem 0)")
+    void recordActualStock_missingSnapshot_leavesFieldEmpty() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
+        // EUR-ra van snapshot, USD-re nincs
+        when(denominationBalanceRepository.sumActualStockByCurrency(
+                TEST_BRANCH_ID, TEST_DATE, TEST_DATE.plusDays(1), DenominationCategory.EVENING))
+            .thenReturn(List.<Object[]>of(new Object[]{"EUR", new BigDecimal("1000")}));
+        DailyBalance eur = balanceRow("EUR");
+        DailyBalance usd = balanceRow("USD");
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
+            .thenReturn(List.of(eur, usd));
+        when(transferRepository.sumSurplusFromTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumShortageToTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        assertThat(eur.getActualStock()).isEqualByComparingTo("1000");
+        assertThat(usd.getActualStock()).as("nincs snapshot → üres, nem 0").isNull();
+    }
+
+    @Test
+    @DisplayName("FK-046 FR-9: értéktári irodára a SZÁMZÁR/TH rögzítés NEM fut le")
+    void recordActualStock_vaultBranch_notInvoked() {
+        Branch vault = new Branch();
+        vault.setId(TEST_BRANCH_ID);
+        vault.setIsVault(true);
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(vault));
+
+        dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        verify(dailyBalanceRepository, never()).findByBranchIdAndBalanceDate(any(), any());
+        verify(denominationBalanceRepository, never()).sumActualStockByCurrency(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("FK-046 FR-4: a TH-tól átvett tétel a Többlet (surplus) mezőbe kerül")
+    void surplus_calculatedFromThTransfer_incoming() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
+        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any(), any()))
+            .thenReturn(Collections.emptyList());
+        DailyBalance eur = balanceRow("EUR");
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
+            .thenReturn(List.of(eur));
+        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(new BigDecimal("200"));
+        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
+        when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        assertThat(eur.getSurplus()).isEqualByComparingTo("200");
+        assertThat(eur.getShortage()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("FK-046 FR-4: a TH-nak átadott tétel a Hiány (shortage) mezőbe kerül")
+    void shortage_calculatedFromThTransfer_outgoing() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
+        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any(), any()))
+            .thenReturn(Collections.emptyList());
+        DailyBalance eur = balanceRow("EUR");
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
+            .thenReturn(List.of(eur));
+        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(new BigDecimal("300"));
+        when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        assertThat(eur.getShortage()).isEqualByComparingTo("300");
+        assertThat(eur.getSurplus()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("FK-046 NFR-5: ismételt zárás-futás felülírja a Többlet/Hiány-t, nem duplázza (idempotens)")
+    void thTransfer_idempotent_rerunDoesNotDuplicate() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
+        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any(), any()))
+            .thenReturn(Collections.emptyList());
+        DailyBalance eur = balanceRow("EUR");
+        eur.setSurplus(new BigDecimal("200")); // korábbi futás értéke
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
+            .thenReturn(List.of(eur));
+        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(new BigDecimal("200"));
+        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
+        when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        // felülírás, NEM 400 (200+200)
+        assertThat(eur.getSurplus()).as("idempotens: felülír, nem additív").isEqualByComparingTo("200");
+    }
+
+    @Test
+    @DisplayName("FK-046 FR-5: a számított záró (calculatedClosing) a Többlet/Hiány tételeket IS tartalmazza")
+    void closingBalance_withSurplusShortage_matchesActualStock() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
+        // FR-5 lényege (GLM R3 #1): a calculateMnbValidation() a surplus-t IS beleszámítja a
+        // calculatedClosing-ba. Nyitó 0, vétel 100000, TH-tól TÖBBLET 5000 → calculatedClosing =
+        // (0+100000+5000) − 0 = 105000. Ha a metódus NEM számítaná be a surplus-t, 100000 lenne (a teszt bukna).
+        when(denominationBalanceRepository.sumActualStockByCurrency(
+                TEST_BRANCH_ID, TEST_DATE, TEST_DATE.plusDays(1), DenominationCategory.EVENING))
+            .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("105000")}));
+        DailyBalance huf = balanceRow("HUF");
+        huf.setOpeningBalance(BigDecimal.ZERO);
+        huf.setPurchases(new BigDecimal("100000"));
+        huf.setSales(BigDecimal.ZERO);
+        huf.setClosingBalance(new BigDecimal("105000")); // a teljes (TH-t is tartalmazó) tényleges záró
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
+            .thenReturn(List.of(huf));
+        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "HUF")).thenReturn(new BigDecimal("5000"));
+        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "HUF")).thenReturn(BigDecimal.ZERO);
+        when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        // a surplus beépült: calculatedClosing = 100000 + 5000 = 105000 (BIZONYÍTÉK, hogy a TH beleszámít)
+        assertThat(huf.getSurplus()).isEqualByComparingTo("5000");
+        assertThat(huf.getCalculatedClosing()).as("calculatedClosing tartalmazza a TH-többletet").isEqualByComparingTo("105000");
+        // a számított záró == SZÁMZÁR (105000) → validáció OK, difference 0
+        assertThat(huf.getValidationStatus()).as("calculatedClosing == closingBalance → OK").isEqualTo("OK");
+        assertThat(huf.getDifference()).as("closingBalance − SZÁMZÁR = 0").isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("FK-046 FR-6: a függőben lévő (nem COMPLETED) TH-tétel nem számít bele a Többlet/Hiány-ba")
+    void thTransfer_pendingStatus_excludedFromCalculation() {
+        // A query 'COMPLETED'-szűrése miatt egy PENDING tétel nem szerepel az összegben → a repo 0-t ad.
+        // Ezt service-szinten azzal igazoljuk, hogy a (COMPLETED-only) repo-összeg 0, így surplus/shortage 0.
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
+        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any(), any()))
+            .thenReturn(Collections.emptyList());
+        DailyBalance eur = balanceRow("EUR");
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
+            .thenReturn(List.of(eur));
+        // a COMPLETED-only query 0-t ad, mert a tétel PENDING (a JPQL status='COMPLETED' kizárja)
+        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
+        when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        assertThat(eur.getSurplus()).isEqualByComparingTo("0");
+        assertThat(eur.getShortage()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("FK-046 GLM #2 (NFR-3): nem-HUF (EUR) Többlet/Hiány NEM kerül 5 Ft-os kerekítésre")
+    void surplus_nonHuf_notRoundedToFive() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
+        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any(), any()))
+            .thenReturn(Collections.emptyList());
+        DailyBalance eur = balanceRow("EUR");
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
+            .thenReturn(List.of(eur));
+        // EUR többlet 123.47 — HUF-kerekítés 123-ra/125-re rontaná; itt változatlanul kell maradnia
+        when(transferRepository.sumSurplusFromTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(new BigDecimal("123.47"));
+        when(transferRepository.sumShortageToTh(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE, "EUR")).thenReturn(BigDecimal.ZERO);
+        when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        assertThat(eur.getSurplus()).as("EUR nem kerekül 5 Ft-ra").isEqualByComparingTo("123.47");
+    }
+
+    @Test
+    @DisplayName("FK-046 GLM #3 (FR-1): csak snapshot-tal rendelkező valutára is rögzül a SZÁMZÁR (új mérleg-sor)")
+    void recordActualStock_snapshotOnlyCurrency_createsRow() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
+        // CHF-re van snapshot, de NINCS aznapi mérleg-sor (nem volt mozgás)
+        when(denominationBalanceRepository.sumActualStockByCurrency(
+                TEST_BRANCH_ID, TEST_DATE, TEST_DATE.plusDays(1), DenominationCategory.EVENING))
+            .thenReturn(List.<Object[]>of(new Object[]{"CHF", new BigDecimal("777")}));
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_BRANCH_ID, TEST_DATE))
+            .thenReturn(Collections.emptyList()); // nincs előzetes sor
+        when(transferRepository.sumSurplusFromTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transferRepository.sumShortageToTh(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        java.util.List<DailyBalance> saved = new java.util.ArrayList<>();
+        when(dailyBalanceRepository.save(any(DailyBalance.class))).thenAnswer(inv -> {
+            saved.add(inv.getArgument(0));
+            return inv.getArgument(0);
+        });
+
+        dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        // a CHF-re létrejött egy mérleg-sor a SZÁMZÁR-ral
+        assertThat(saved).anySatisfy(b -> {
+            assertThat(b.getCurrencyCode()).isEqualTo("CHF");
+            assertThat(b.getActualStock()).isEqualByComparingTo("777");
+        });
     }
 }

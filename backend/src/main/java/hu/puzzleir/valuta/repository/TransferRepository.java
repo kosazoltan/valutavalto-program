@@ -141,6 +141,46 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.fromBranch.id = :branchId AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED'")
     BigDecimal sumTransfersOut(@Param("branchId") UUID branchId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
 
+    // ===== FK-046: napi mérleg — Többlet-Hiány (TH) elszámolási pénztár szétválasztása =====
+    // Minden lekérdezés tenant-szűrt (companyId) — §6.b cross-tenant követelmény (GLM-review #1).
+
+    /**
+     * FK-046 FR-3: NORMÁL pénztárközi ÁTVÉTEL napi összege, a TH (Többlet-Hiány elszámolási
+     * pénztár, kód: 'TH') felőli tételek KIZÁRVA — ezek külön Többlet/Hiány-ként számolódnak.
+     */
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.toBranch.id = :branchId " +
+           "AND t.toBranch.company.id = :companyId " +
+           "AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED' " +
+           "AND (t.fromBranch.code IS NULL OR t.fromBranch.code <> 'TH')")
+    BigDecimal sumTransfersInExcludingTh(@Param("branchId") UUID branchId, @Param("companyId") UUID companyId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
+
+    /**
+     * FK-046 FR-3: NORMÁL pénztárközi ÁTADÁS napi összege, a TH felé irányuló tételek KIZÁRVA.
+     */
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.fromBranch.id = :branchId " +
+           "AND t.fromBranch.company.id = :companyId " +
+           "AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED' " +
+           "AND (t.toBranch.code IS NULL OR t.toBranch.code <> 'TH')")
+    BigDecimal sumTransfersOutExcludingTh(@Param("branchId") UUID branchId, @Param("companyId") UUID companyId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
+
+    /**
+     * FK-046 FR-4/FR-6: TÖBBLET — a pénztár a TH elszámolási pénztártól ÁTVETT (TH a forrás),
+     * teljesített (COMPLETED) tételek napi összege valutánként. Mindkét oldal a hívó cégéhez kötött.
+     */
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.toBranch.id = :branchId " +
+           "AND t.toBranch.company.id = :companyId AND t.fromBranch.company.id = :companyId " +
+           "AND t.fromBranch.code = 'TH' AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED'")
+    BigDecimal sumSurplusFromTh(@Param("branchId") UUID branchId, @Param("companyId") UUID companyId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
+
+    /**
+     * FK-046 FR-4/FR-6: HIÁNY — a pénztár a TH elszámolási pénztárnak ÁTADOTT (TH a célpont),
+     * teljesített (COMPLETED) tételek napi összege valutánként. Mindkét oldal a hívó cégéhez kötött.
+     */
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.fromBranch.id = :branchId " +
+           "AND t.fromBranch.company.id = :companyId AND t.toBranch.company.id = :companyId " +
+           "AND t.toBranch.code = 'TH' AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED'")
+    BigDecimal sumShortageToTh(@Param("branchId") UUID branchId, @Param("companyId") UUID companyId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
+
     /** Havi aggregalt bejovo transfer osszegek devizanementkent */
     @Query("SELECT t.currency.code, COALESCE(SUM(t.amount), 0) FROM Transfer t " +
            "WHERE t.toBranch.id = :branchId AND t.transferDate BETWEEN :startDate AND :endDate " +
