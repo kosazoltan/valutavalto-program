@@ -28,6 +28,9 @@ public class TurnoverReportDto {
         private BigDecimal sellHuf;
         private BigDecimal fee;
         private Integer transactionCount;
+        // FK-045 FR-7: MNB elszámolási árfolyam (official_rate, 100/Ft), az időszak utolsó napi
+        // értéke devizánként. null, ha az adott valutához nincs MNB-árfolyam (a UI „–"-t mutat).
+        private BigDecimal officialRate;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor

@@ -1469,6 +1469,15 @@ export const turnoverApi = {
   company: async (from: string, to: string) => (
     await api.get('/turnover/company', { params: { from, to } })
   ).data,
+  // FK-045 FR-9: területi (vault_territory) összesített forgalom. A vaultTerritoryId Integer
+  // (a backend Branch.vaultTerritoryId típusa), a companyId szerveroldalon a JWT-ből.
+  territory: async (vaultTerritoryId: number, from: string, to: string) => (
+    await api.get('/turnover/territory', { params: { vaultTerritoryId, from, to } })
+  ).data,
+  // FK-045 FR-2/FR-3: pénztár forgalma tetszőleges dátumtartományra (a /daily csak 1 napot adott).
+  branchRange: async (branchId: string, from: string, to: string) => (
+    await api.get('/turnover/branch-range', { params: { branchId, from, to } })
+  ).data,
 }
 
 function parseYearParam(date: string): number {

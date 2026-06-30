@@ -3,10 +3,12 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.turnover.TurnoverReportDto;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.TurnoverService;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -16,10 +18,11 @@ import java.util.UUID;
 /**
  * Forgalom összesítő REST végpontok.
  */
-@PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('FOERTEKTAR', 'UGYVEZETO', 'BELSO_ELLENOR', 'PENZUGYI_VEZETO')")
 @RestController
 @RequestMapping("/api/v1/turnover")
 @RequiredArgsConstructor
+@Validated
 public class TurnoverController {
 
     private final TurnoverService turnoverService;
@@ -61,5 +64,33 @@ public class TurnoverController {
         // SOHA nem kliens-küldött @RequestParam-ból
         UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
         return ResponseEntity.ok(turnoverService.getCompanyTurnover(currentCompanyId, from, to));
+    }
+
+    /**
+     * FK-045 FR-9: egy értéktári terület (vault_territory) összes pénztárának összesített forgalma.
+     * A companyId SecurityUtils-ből (NEM kliens-param) — multi-tenant izoláció; a service a
+     * vaultTerritoryId cég-hovatartozását is ellenőrzi (idegen tenant területe → 404).
+     */
+    @GetMapping("/territory")
+    public ResponseEntity<TurnoverReportDto> territory(
+            @RequestParam @NotNull Integer vaultTerritoryId,
+            @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        return ResponseEntity.ok(
+            turnoverService.getVaultTerritoryTurnover(currentCompanyId, vaultTerritoryId, from, to));
+    }
+
+    /**
+     * FK-045 FR-2/FR-3: pénztár (branch) forgalma tetszőleges dátumtartományra (nap-tól nap-ig).
+     * A korábbi /daily csak egyetlen napot adott — ez a teljes kiválasztott intervallumot aggregálja.
+     * A branch cég-hovatartozását a service (buildReport → branchService.findById) ellenőrzi.
+     */
+    @GetMapping("/branch-range")
+    public ResponseEntity<TurnoverReportDto> branchRange(
+            @RequestParam @NotNull UUID branchId,
+            @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(turnoverService.getBranchTurnoverRange(branchId, from, to));
     }
 }
