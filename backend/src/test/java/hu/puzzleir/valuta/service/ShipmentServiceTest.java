@@ -52,11 +52,28 @@ class ShipmentServiceTest {
     @Mock
     private TransferSerialSequenceService transferSerialSequenceService;
 
+    @Mock
+    private ShipmentStockBookingService stockBookingService;
+
     @InjectMocks
     private ShipmentService service;
 
+    /**
+     * A create() happy-path (FR-1) most már a from/to fiókot betölti a könyvelési irány
+     * (transfer_type) szerveroldali derivációjához. A validRequest() random branch-eit
+     * lenient stubbal elégítjük ki — pénztár-pénztár (BRANCH_TO_BRANCH) az alapeset.
+     */
+    private void stubBranchLookupsForCreate() {
+        lenient().when(branchRepository.findByIdAndCompanyId(any(UUID.class), any(UUID.class)))
+                .thenAnswer(inv -> java.util.Optional.of(
+                        Branch.builder().id(inv.getArgument(0)).isVault(false).build()));
+        lenient().when(stockBookingService.deriveTransferType(any(), any()))
+                .thenReturn(ShipmentStockBookingService.TRANSFER_BRANCH_TO_BRANCH);
+    }
+
     @Test
     void createSetsDraftMetadataForValidRequest() {
+        stubBranchLookupsForCreate();
         when(currencyRepository.findById(4L)).thenReturn(java.util.Optional.of(currency("EUR")));
         when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -164,6 +181,7 @@ class ShipmentServiceTest {
     void createAutoFillsAppliedRateAndHufValueFromCurrentRate() {
         // D self-review P1-4: happy-path — ha van aktuális officialRate, az appliedRate
         // + hufValue automatikusan kitöltődik a service-ben (1250 EUR × 400 = 500 000 Ft).
+        stubBranchLookupsForCreate();
         when(currencyRepository.findById(4L)).thenReturn(java.util.Optional.of(currency("EUR")));
         when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -212,6 +230,7 @@ class ShipmentServiceTest {
         // a rendszerben lévő aktuális elszámoló árból" — a kliens által küldött appliedRate
         // / hufValue mezőket figyelmen kívül hagyjuk, MINDIG a server-side rate az
         // authoritative. A kliens 999-et próbál küldeni, de a 400 official rate győz.
+        stubBranchLookupsForCreate();
         when(currencyRepository.findById(4L)).thenReturn(java.util.Optional.of(currency("EUR")));
         when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -261,6 +280,11 @@ class ShipmentServiceTest {
         when(currencyRepository.findById(6L)).thenReturn(java.util.Optional.of(currency("HUF")));
         when(transferSerialSequenceService.next(any(), eq("UF"))).thenReturn(23L);
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(branchRepository.findByIdAndCompanyId(any(UUID.class), any(UUID.class)))
+                .thenAnswer(inv -> java.util.Optional.of(
+                        Branch.builder().id(inv.getArgument(0)).isVault(false).build()));
+        lenient().when(stockBookingService.deriveTransferType(any(), any()))
+                .thenReturn(ShipmentStockBookingService.TRANSFER_BRANCH_TO_BRANCH);
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(UUID.randomUUID());
@@ -284,7 +308,7 @@ class ShipmentServiceTest {
         UUID companyId = UUID.randomUUID();
         UUID shipmentId = UUID.randomUUID();
         ShipmentRequest sr = rejectableShipment(shipmentId, companyId);
-        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
@@ -306,7 +330,7 @@ class ShipmentServiceTest {
         UUID shipmentId = UUID.randomUUID();
         ShipmentRequest sr = rejectableShipment(shipmentId, companyId);
         sr.setStatus(hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
-        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
@@ -377,6 +401,232 @@ class ShipmentServiceTest {
 
         verify(repository).findAllOrderedByCompanyId(org.mockito.ArgumentMatchers.eq(companyId), any());
         verify(repository, never()).findByBranchAndCompanyId(any(), any(), any(), any());
+    }
+
+    // ===================== FK orkesztráció: a ShipmentService a könyvelő-motort delegálja =====================
+
+    @Test
+    void submit_delegatesStockOutThenSetsSubmitted() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.DRAFT);
+        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            ShipmentRequest result = service.submit(shipmentId);
+
+            assertThat(result.getStatus())
+                    .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        }
+        // FR-2: a beküldés OUT-könyvel az átadón, a státuszváltás ELŐTT (elégtelen → 422 rollback).
+        verify(stockBookingService).bookStockOut(eq(sr), eq(companyId));
+        verify(stockBookingService, never()).bookStockIn(any(), any());
+    }
+
+    @Test
+    void deliver_enforcesReceiverGateThenBooksStockIn() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
+        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            ShipmentRequest result = service.deliver(shipmentId);
+
+            assertThat(result.getStatus())
+                    .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.DELIVERED);
+        }
+        // FR-4: az átvevő-gate a könyvelés ELŐTT fut; FR-3: utána IN-könyvel az átvevőn.
+        org.mockito.InOrder order = inOrder(stockBookingService);
+        order.verify(stockBookingService).assertReceiver(sr);
+        order.verify(stockBookingService).bookStockIn(eq(sr), eq(companyId));
+    }
+
+    @Test
+    void deliver_whenReceiverGateDenies_propagates403AndSkipsStockIn() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
+        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        doThrow(new org.springframework.security.access.AccessDeniedException("VV-AUTH-001"))
+                .when(stockBookingService).assertReceiver(sr);
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            assertThatThrownBy(() -> service.deliver(shipmentId))
+                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                    .hasMessageContaining("VV-AUTH-001");
+        }
+        // a gate bukása után NINCS IN-könyvelés és NINCS státuszváltás (save).
+        verify(stockBookingService, never()).bookStockIn(any(), any());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void cancel_fromSubmitted_reversesStockOut() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            ShipmentRequest result = service.cancel(shipmentId);
+
+            assertThat(result.getStatus())
+                    .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.CANCELLED);
+        }
+        // TBD-1: OUT-könyvelt (SUBMITTED) állapotból visszavonva a készletet vissza kell pótolni.
+        verify(stockBookingService).reverseStockOut(eq(sr), eq(companyId));
+    }
+
+    @Test
+    void cancel_fromDraft_doesNotReverseStock() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.DRAFT);
+        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            ShipmentRequest result = service.cancel(shipmentId);
+
+            assertThat(result.getStatus())
+                    .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.CANCELLED);
+        }
+        // DRAFT-ból NEM volt OUT-könyvelés → NINCS reverzió (dupla-jóváírás elkerülése).
+        verify(stockBookingService, never()).reverseStockOut(any(), any());
+    }
+
+    @Test
+    void reject_reversesStockOutFromSubmitted() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(77L);
+            service.reject(shipmentId, "Hibás összeg");
+        }
+        // TBD-1: a reject CSAK SUBMITTED-ből → mindig OUT-könyvelt → mindig reverzió.
+        verify(stockBookingService).reverseStockOut(eq(sr), eq(companyId));
+    }
+
+    // ===================== P1 (Codex): transition-ek pesszimista sor-lockkal töltenek =====================
+
+    @Test
+    void submit_loadsShipmentWithPessimisticLock_notPlainFindById() {
+        // P1: a státuszváltás a @Lock(PESSIMISTIC_WRITE) findByIdForUpdate-et használja (nem a sima
+        // findById-t) — így két párhuzamos /submit szerializálódik és nincs kétszeres készlet-levonás.
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.DRAFT);
+        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            service.submit(shipmentId);
+        }
+        verify(repository).findByIdForUpdate(shipmentId);
+        verify(repository, never()).findById(shipmentId);
+    }
+
+    // ===================== P2 (Codex): update újra-derivál transfer_type-ot =====================
+
+    @Test
+    void update_recomputesTransferTypeAfterBranchEdit() {
+        // P2: a DRAFT szerkesztés felülírja a from/to fiókot → a transfer_type-ot ÚJRA kell deriválni,
+        // különben a tárolt/auditált irány a régi maradna. A from most VAULT, to CASHIER → VAULT_TO_BRANCH.
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        UUID fromBranch = UUID.randomUUID();
+        UUID toBranch = UUID.randomUUID();
+        Company company = Company.builder().id(companyId).build();
+        Branch fromVault = Branch.builder().id(fromBranch).company(company).isVault(true).build();
+        Branch toCashier = Branch.builder().id(toBranch).company(company).isVault(false).build();
+        ShipmentRequest existing = ShipmentRequest.builder()
+                .id(shipmentId).requestNumber("AT-000200")
+                .fromBranchId(fromBranch).toBranchId(toBranch)
+                .status(hu.puzzleir.valuta.entity.ShipmentRequestStatus.DRAFT)
+                .transferType("BRANCH_TO_BRANCH") // régi, elavult irány
+                .items(new ArrayList<>(List.of(ShipmentRequestItem.builder()
+                        .currencyId(4L)
+                        .requestedAmount(new BigDecimal("100"))
+                        .build())))
+                .build();
+        // branch-edit update valid (HUF) tétellel: a HUF-ág appliedRate=ONE-t állít, nincs
+        // exchangeRateService-hívás → a teszt a P2-derivációra fókuszál, törékeny rate-stub nélkül.
+        ShipmentRequest updated = ShipmentRequest.builder()
+                .fromBranchId(fromBranch).toBranchId(toBranch)
+                .items(new ArrayList<>(List.of(ShipmentRequestItem.builder()
+                        .currencyId(6L)
+                        .requestedAmount(new BigDecimal("100"))
+                        .build())))
+                .build();
+
+        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(existing));
+        when(currencyRepository.findById(6L)).thenReturn(java.util.Optional.of(currency("HUF")));
+        // findById guard: branchRepository.findById a tenant-ellenőrzéshez
+        when(branchRepository.findById(fromBranch)).thenReturn(java.util.Optional.of(fromVault));
+        when(branchRepository.findById(toBranch)).thenReturn(java.util.Optional.of(toCashier));
+        // P2 deriváció: tenant-ellenőrzött findByIdAndCompanyId + deriveTransferType
+        when(branchRepository.findByIdAndCompanyId(fromBranch, companyId)).thenReturn(java.util.Optional.of(fromVault));
+        when(branchRepository.findByIdAndCompanyId(toBranch, companyId)).thenReturn(java.util.Optional.of(toCashier));
+        when(stockBookingService.deriveTransferType(fromVault, toCashier))
+                .thenReturn(ShipmentStockBookingService.TRANSFER_VAULT_TO_BRANCH);
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            ShipmentRequest result = service.update(shipmentId, updated);
+            assertThat(result.getTransferType())
+                    .isEqualTo(ShipmentStockBookingService.TRANSFER_VAULT_TO_BRANCH);
+        }
+        verify(stockBookingService).deriveTransferType(fromVault, toCashier);
+    }
+
+    /**
+     * Tenant-konzisztens (from+to branch a companyId-hez) shipment adott státuszban, az
+     * orkesztráció-tesztekhez. A {@link ShipmentService#findById} guard-ja a branchRepository.findById-t
+     * használja a cross-tenant ellenőrzéshez — itt mindkét branch a companyId-hez tartozik.
+     */
+    private ShipmentRequest bookedShipment(UUID shipmentId, UUID companyId,
+                                           hu.puzzleir.valuta.entity.ShipmentRequestStatus status) {
+        UUID fromBranch = UUID.randomUUID();
+        UUID toBranch = UUID.randomUUID();
+        Company company = Company.builder().id(companyId).build();
+        Branch from = Branch.builder().id(fromBranch).company(company).build();
+        Branch to = Branch.builder().id(toBranch).company(company).build();
+        when(branchRepository.findById(fromBranch)).thenReturn(java.util.Optional.of(from));
+        when(branchRepository.findById(toBranch)).thenReturn(java.util.Optional.of(to));
+        return ShipmentRequest.builder()
+                .id(shipmentId)
+                .requestNumber("AT-000123")
+                .fromBranchId(fromBranch)
+                .toBranchId(toBranch)
+                .status(status)
+                .items(new ArrayList<>(List.of(ShipmentRequestItem.builder()
+                        .currencyId(4L)
+                        .requestedAmount(new BigDecimal("300"))
+                        .build())))
+                .build();
     }
 
     private static ShipmentRequest validRequest() {

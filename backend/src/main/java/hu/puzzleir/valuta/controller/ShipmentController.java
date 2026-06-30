@@ -99,10 +99,16 @@ public class ShipmentController {
     }
 
     /**
-     * Szállítmánykérés leszállítása.
+     * Szállítmánykérés leszállítása (átvevői visszaigazolás).
      * POST /api/v1/shipments/{id}/deliver
+     *
+     * <p>FR-4 defense-in-depth: a controller-szintű {@code @PreAuthorize} a szerepkör-réteget zárja
+     * (csak készlet-kezelő szerepek), a service-szintű {@code assertReceiver} pedig a branch-réteget
+     * (kizárólag az átvevő fiók). A kettő együtt adja a spec által kért kettős védelmet.</p>
      */
     @PostMapping("/{id}/deliver")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', "
+            + "'PENZTAR', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<ShipmentRequestResponseDto> deliver(@PathVariable UUID id) {
         return ResponseEntity.ok(shipmentService.deliverResponse(id));
     }
