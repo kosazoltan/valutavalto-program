@@ -238,7 +238,10 @@ export default function CentralVaultDashboard() {
             <div className="grid grid-cols-3 gap-4">
                 <SummaryCard icon={<Activity className="w-8 h-8" />} label="Összes pénztár" value={rows.length} color="blue" />
                 <SummaryCard icon={<XCircle className="w-8 h-8" />} label="Offline (>10 perc)" value={offlineCount} color={offlineCount > 0 ? 'red' : 'green'} />
-                <SummaryCard icon={<AlertTriangle className="w-8 h-8" />} label="Készlet-riasztás" value={alertCount} color={alertCount > 0 ? 'amber' : 'green'} />
+                <SummaryCard icon={<AlertTriangle className="w-8 h-8" />} label="Készlet-riasztás"
+                    value={stockUnavailable ? '—' : alertCount}
+                    color={stockUnavailable ? 'slate' : alertCount > 0 ? 'amber' : 'green'}
+                    testId="stock-alert-count" />
             </div>
 
             {/* Regions */}
@@ -311,19 +314,20 @@ export default function CentralVaultDashboard() {
     )
 }
 
-function SummaryCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number; color: 'blue' | 'red' | 'green' | 'amber' }) {
+function SummaryCard({ icon, label, value, color, testId }: { icon: React.ReactNode; label: string; value: number | string; color: 'blue' | 'red' | 'green' | 'amber' | 'slate'; testId?: string }) {
     const colors = {
         blue: 'bg-blue-50 text-blue-800 border-blue-200',
         red: 'bg-red-50 text-red-800 border-red-200',
         green: 'bg-green-50 text-green-800 border-green-200',
         amber: 'bg-amber-50 text-amber-800 border-amber-200',
+        slate: 'bg-slate-100 text-slate-600 border-slate-300',
     }
     return (
         <div className={`border rounded-lg p-4 flex items-center gap-3 ${colors[color]}`}>
             <div className="opacity-70">{icon}</div>
             <div>
                 <div className="text-xs uppercase font-medium opacity-80">{label}</div>
-                <div className="text-3xl font-bold">{value}</div>
+                <div className="text-3xl font-bold" data-testid={testId}>{value}</div>
             </div>
         </div>
     )

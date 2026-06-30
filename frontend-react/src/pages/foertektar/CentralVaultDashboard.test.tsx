@@ -65,9 +65,8 @@ describe('CentralVaultDashboard — FK-048 készlet-riasztás', () => {
     await waitFor(() => expect(screen.getByText('P02')).toBeInTheDocument())
     // semleges "nincs készletadat" jelzés a riasztás-oszlopban, NEM piros riasztás
     expect(screen.getByText('nincs készletadat')).toBeInTheDocument()
-    // a Készlet-riasztás összesítő 0 (a STOCK UNKNOWN nem riasztás)
-    const alertCard = screen.getByText('Készlet-riasztás').closest('div')?.parentElement
-    expect(alertCard?.textContent).toContain('0')
+    // a Készlet-riasztás összesítő 0 (a STOCK UNKNOWN nem riasztás) — célzott data-testid assert
+    expect(screen.getByTestId('stock-alert-count').textContent).toBe('0')
   })
 
   it('FR-1: vegyes eset — a Készlet-riasztás szám CSAK a valódit számolja (STOCK UNKNOWN-t nem)', async () => {
@@ -84,6 +83,15 @@ describe('CentralVaultDashboard — FK-048 készlet-riasztás', () => {
     setupApi({ branches: [BRANCH_A], stockFail: true })
     render(<CentralVaultDashboard />)
     await waitFor(() => expect(screen.getByText(/A készletadatok betöltése sikertelen/)).toBeInTheDocument())
+  })
+
+  it('FR-4 (edge): /stock-snapshot hiba esetén a Készlet-riasztás kártya NEM félrevezető 0-t, hanem „—”-t mutat', async () => {
+    setupApi({ branches: [BRANCH_A], stockFail: true })
+    render(<CentralVaultDashboard />)
+    await waitFor(() => expect(screen.getByText(/A készletadatok betöltése sikertelen/)).toBeInTheDocument())
+    // a spec edge case: hiba esetén a táblázat/összesítő NE mutasson félrevezető adatot →
+    // a kártya „—” (nem tudjuk), nem magabiztos 0
+    expect(screen.getByTestId('stock-alert-count').textContent).toBe('—')
   })
 
   it('FR-4: sikeres snapshot esetén NINCS hibabanner', async () => {
