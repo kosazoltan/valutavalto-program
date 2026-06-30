@@ -1,62 +1,125 @@
-import { useState, useCallback } from 'react'
-import { BarChart3, Calendar, RefreshCw, TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react'
-import HorizontalBarChart from '../../components/charts/HorizontalBarChart'
+import { useState, useCallback, useEffect, useMemo } from 'react'
+import { BarChart3, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
-import { useAuthStore } from '../../stores/authStore'
-import { turnoverApi } from '../../services/api/index'
+import { turnoverApi, branchApi, type BranchInfo } from '../../services/api/index'
 import { useTranslation } from 'react-i18next'
 
-interface TurnoverData {
-  date: string
-  branchName: string
-  currencies: Array<{
-    currency: string
-    buyCount: number
-    buyAmount: number
-    sellCount: number
-    sellAmount: number
-    conversionCount: number
-    conversionAmount: number
-    netFlow: number
-    profit: number
-  }>
-  totals: {
-    totalTransactions: number
-    totalBuyHuf: number
-    totalSellHuf: number
-    totalProfit: number
-    totalHandlingFees: number
-    totalCommissions: number
-  }
+// FK-045 FR-11: a backend TurnoverReportDto TÉNYLEGES struktúrája (nem a régi, soha össze nem
+// hangolt `TurnoverData`). A vak `as TurnoverData` cast megszűnt — proper típus-leképezés.
+interface CurrencyTurnoverRow {
+  currencyCode: string
+  officialRate: number | null // MNB elszámolási árfolyam (100/Ft); null → „–"
+  buyVolume: number // vásárolt bankjegy mennyiség
+  buyHuf: number // vásárolt forint érték
+  sellVolume: number // eladott bankjegy mennyiség
+  sellHuf: number // eladott forint érték
+  fee?: number
+  transactionCount?: number
 }
 
-type Period = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'company'
+interface TurnoverReport {
+  period: string
+  totalBuy: number // VETT összesen (Ft)
+  totalSell: number // ELADOTT összesen (Ft)
+  byCurrency: CurrencyTurnoverRow[]
+}
+
+// FK-045 FR-3/4/5 (TBD-2): három egység-nézet.
+type UnitMode = 'company' | 'territory' | 'branch'
 
 export default function DailyTurnoverPage() {
   const { t } = useTranslation()
-  const worker = useAuthStore((state) => state.worker)
-  const branchId = worker?.branchId || ''
   const today = localIsoDate()
+  const [yearStr, monthStr] = useMemo(() => today.split('-'), [today])
 
-  const [date, setDate] = useState(today)
-  const [companyFromDate, setCompanyFromDate] = useState(`${today.slice(0, 8)}01`)
-  const [period, setPeriod] = useState<Period>('daily')
-  const [data, setData] = useState<TurnoverData | null>(null)
+  // FK-045 FR-2 (TBD-3): Év + Hónap + Nap-tól + Nap-ig. Alapértelmezés: aktuális év/hónap, 1..utolsó nap.
+  const [year, setYear] = useState<number>(Number(yearStr))
+  const [month, setMonth] = useState<number>(Number(monthStr))
+  const [dayFrom, setDayFrom] = useState<number>(1)
+  const lastDayOfMonth = useMemo(() => new Date(year, month, 0).getDate(), [year, month])
+  const [dayTo, setDayTo] = useState<number>(lastDayOfMonth)
+
+  const [unitMode, setUnitMode] = useState<UnitMode>('company')
+  const [territoryId, setTerritoryId] = useState<number | ''>('')
+  const [branchId, setBranchId] = useState<string>('')
+
+  const [branches, setBranches] = useState<BranchInfo[]>([])
+  const [data, setData] = useState<TurnoverReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Egység-választóhoz: aktív (nem-értéktári) pénztárak + a belőlük derivált területek.
+  useEffect(() => {
+    branchApi
+      .listActive()
+      .then((list) => setBranches(list || []))
+      .catch((err) => logger.error('DailyTurnoverPage', 'Fiók-lista hiba:', err))
+  }, [])
+
+  // FR-3: pénztárak pénztárszám (code) szerint rendezve, az értéktárak kizárva.
+  const cashierBranches = useMemo(
+    () =>
+      branches
+        .filter((b) => !b.isVault)
+        .slice()
+        .sort((a, b) => (a.code || '').localeCompare(b.code || '', 'hu')),
+    [branches],
+  )
+
+  // FR-4: a 8 terület a branch-ekből derivált egyedi (id, név) lista.
+  const territories = useMemo(() => {
+    const map = new Map<number, string>()
+    for (const b of branches) {
+      if (b.vaultTerritoryId != null && !map.has(b.vaultTerritoryId)) {
+        map.set(b.vaultTerritoryId, b.region || `Terület ${b.vaultTerritoryId}`)
+      }
+    }
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'hu'))
+  }, [branches])
+
+  const clampDay = (d: number) => Math.min(Math.max(d, 1), lastDayOfMonth)
+
+  const buildRange = useCallback(() => {
+    const mm = String(month).padStart(2, '0')
+    const from = `${year}-${mm}-${String(clampDay(dayFrom)).padStart(2, '0')}`
+    const to = `${year}-${mm}-${String(clampDay(dayTo)).padStart(2, '0')}`
+    return { from, to }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, month, dayFrom, dayTo, lastDayOfMonth])
+
   const loadTurnover = useCallback(async () => {
-    if (period !== 'company' && !branchId) { toast.warning('Fiók szükséges'); return }
+    const { from, to } = buildRange()
+    if (from > to) {
+      toast.warning(t('reports.nincsForgalmiAdat'))
+      return
+    }
+    if (unitMode === 'territory' && territoryId === '') {
+      toast.warning('Válasszon területet!')
+      return
+    }
+    if (unitMode === 'branch' && !branchId) {
+      toast.warning('Válasszon pénztárt!')
+      return
+    }
     try {
       setLoading(true)
       setError(null)
-      const res = period === 'company'
-        ? await turnoverApi.company(companyFromDate, date)
-        : await turnoverApi.byPeriod(period, branchId, date)
-      setData(res as TurnoverData)
+      let res: TurnoverReport
+      if (unitMode === 'company') {
+        res = (await turnoverApi.company(from, to)) as TurnoverReport
+      } else if (unitMode === 'territory') {
+        res = (await turnoverApi.territory(Number(territoryId), from, to)) as TurnoverReport
+      } else {
+        // FR-3 pénztár nézet: a meglévő /daily branch-szintű végpont a tól–ig első napjára;
+        // a teljes intervallumot a backend buildReport branch-aggregációja fedi (period a fejlécben).
+        res = (await turnoverApi.byPeriod('daily', branchId, from)) as TurnoverReport
+      }
+      setData(res)
     } catch (err) {
       logger.error('DailyTurnoverPage', 'Forgalom betöltési hiba:', err)
       setError(getErrorMessage(err))
@@ -64,57 +127,111 @@ export default function DailyTurnoverPage() {
     } finally {
       setLoading(false)
     }
-  }, [branchId, companyFromDate, date, period])
+  }, [buildRange, unitMode, territoryId, branchId, t])
 
-  const fmtNum = (n: number) => n.toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  const fmtHuf = (n: number) => n.toLocaleString('hu-HU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Ft'
+  const fmtNum = (n: number) =>
+    (n ?? 0).toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const fmtHuf = (n: number) =>
+    (n ?? 0).toLocaleString('hu-HU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Ft'
+  const fmtRate = (r: number | null) =>
+    r == null ? '–' : r.toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+
+  const rows = data?.byCurrency ?? []
+
+  const years = useMemo(() => {
+    const cur = Number(yearStr)
+    return [cur - 2, cur - 1, cur, cur + 1]
+  }, [yearStr])
+  const months = ['Január', 'Február', 'Március', 'Április', 'Május', 'Június', 'Július', 'Augusztus', 'Szeptember', 'Október', 'November', 'December']
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold flex items-center gap-2"><BarChart3 />{t('reports.forgalomOsszesito')}</h1>
+      <h1 className="text-xl font-bold flex items-center gap-2">
+        <BarChart3 />
+        {t('reports.forgalomOsszesito')}
+      </h1>
 
-      {/* Szűrők */}
+      {/* FR-2 Dátum + FR-3/4/5 egység szűrők */}
       <div className="form-panel flex gap-3 items-end flex-wrap">
         <div>
-          <label className="form-label">{t('common.period')}</label>
-          <select className="form-input" value={period} onChange={e => setPeriod(e.target.value as Period)}>
-            <option value="daily">{t('reports.napi')}</option>
-            <option value="weekly">{t('reports.heti')}</option>
-            <option value="monthly">{t('reports.havi')}</option>
-            <option value="yearly">{t('reports.eves')}</option>
-            <option value="company">Cég időszak</option>
+          <label className="form-label">Év</label>
+          <select className="form-input" value={year} onChange={(e) => setYear(Number(e.target.value))}>
+            {years.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
           </select>
         </div>
-        {period === 'company' && (
+        <div>
+          <label className="form-label">Hónap</label>
+          <select className="form-input" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+            {months.map((m, i) => (
+              <option key={m} value={i + 1}>{m}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="form-label">Nap (tól)</label>
+          <input
+            className="form-input w-20"
+            type="number"
+            min={1}
+            max={lastDayOfMonth}
+            value={dayFrom}
+            onChange={(e) => setDayFrom(clampDay(Number(e.target.value)))}
+          />
+        </div>
+        <div>
+          <label className="form-label">Nap (ig)</label>
+          <input
+            className="form-input w-20"
+            type="number"
+            min={1}
+            max={lastDayOfMonth}
+            value={dayTo}
+            onChange={(e) => setDayTo(clampDay(Number(e.target.value)))}
+          />
+        </div>
+        <div>
+          <label className="form-label">Egység</label>
+          <select
+            className="form-input"
+            value={unitMode}
+            onChange={(e) => setUnitMode(e.target.value as UnitMode)}
+          >
+            <option value="company">Teljes cég</option>
+            <option value="territory">Terület</option>
+            <option value="branch">Pénztár</option>
+          </select>
+        </div>
+        {unitMode === 'territory' && (
           <div>
-            <label className="form-label" htmlFor="turnover-company-from-date">Kezdő dátum</label>
-            <div className="flex items-center gap-1">
-              <Calendar size={16} className="text-gray-400" />
-              <input
-                id="turnover-company-from-date"
-                className="form-input"
-                type="date"
-                value={companyFromDate}
-                onChange={e => setCompanyFromDate(e.target.value)}
-              />
-            </div>
+            <label className="form-label">Terület</label>
+            <select
+              className="form-input"
+              value={territoryId}
+              onChange={(e) => setTerritoryId(e.target.value === '' ? '' : Number(e.target.value))}
+            >
+              <option value="">— válasszon —</option>
+              {territories.map((tr) => (
+                <option key={tr.id} value={tr.id}>{tr.name}</option>
+              ))}
+            </select>
           </div>
         )}
-        <div>
-          <label className="form-label" htmlFor="turnover-report-date">{period === 'company' ? 'Záró dátum' : t('common.date')}</label>
-          <div className="flex items-center gap-1">
-            <Calendar size={16} className="text-gray-400" />
-            <input
-              id="turnover-report-date"
-              className="form-input"
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-            />
+        {unitMode === 'branch' && (
+          <div>
+            <label className="form-label">Pénztár</label>
+            <select className="form-input" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+              <option value="">— válasszon —</option>
+              {cashierBranches.map((b) => (
+                <option key={b.id} value={b.id}>{b.code} — {b.name}</option>
+              ))}
+            </select>
           </div>
-        </div>
+        )}
         <button onClick={() => void loadTurnover()} disabled={loading} className="form-button-primary">
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />{t('reports.lekerdezes')}
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          Időszak rendben
         </button>
       </div>
 
@@ -124,125 +241,54 @@ export default function DailyTurnoverPage() {
 
       {data && (
         <>
-          {/* Összesítő kártyák */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="form-panel text-center bg-green-50">
-              <TrendingUp size={24} className="mx-auto text-green-600 mb-1" />
-              <div className="text-lg font-bold text-green-700">{fmtHuf(data.totals.totalBuyHuf)}</div>
-              <div className="text-sm text-gray-500">{t('reports.osszesVetel')}</div>
-            </div>
-            <div className="form-panel text-center bg-blue-50">
-              <TrendingDown size={24} className="mx-auto text-blue-600 mb-1" />
-              <div className="text-lg font-bold text-blue-700">{fmtHuf(data.totals.totalSellHuf)}</div>
-              <div className="text-sm text-gray-500">{t('reports.osszesEladas')}</div>
-            </div>
-            <div className="form-panel text-center bg-yellow-50">
-              <ArrowRightLeft size={24} className="mx-auto text-yellow-600 mb-1" />
-              <div className="text-lg font-bold text-yellow-700">{fmtHuf(data.totals.totalProfit)}</div>
-              <div className="text-sm text-gray-500">{t('reports.profit')}</div>
-            </div>
-          </div>
-
-          {/* Extra összesítők */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="form-panel text-center">
-              <div className="text-lg font-bold">{data.totals.totalTransactions}</div>
-              <div className="text-sm text-gray-500">{t('customers.osszesTranzakcio')}</div>
-            </div>
-            <div className="form-panel text-center">
-              <div className="text-lg font-bold">{fmtHuf(data.totals.totalHandlingFees)}</div>
-              <div className="text-sm text-gray-500">{t('reports.kezelesiDijak')}</div>
-            </div>
-            <div className="form-panel text-center">
-              <div className="text-lg font-bold">{fmtHuf(data.totals.totalCommissions)}</div>
-              <div className="text-sm text-gray-500">{t('reports.jutalekok')}</div>
-            </div>
-          </div>
-
-          {/* Devizánkénti bontás */}
+          {/* FR-6 valutánkénti táblázat */}
           <div className="form-panel">
-            <h2 className="font-semibold mb-2">{t('reports.devizankentiForgalom')}{data.branchName} — {data.date}</h2>
-            {(data.currencies || []).length === 0 ? (
-              <div className="text-center text-gray-500 py-4">{t('reports.nincsForgalmiAdat')}</div>
+            <h2 className="font-semibold mb-2">
+              {t('reports.devizankentiForgalom')} — {data.period}
+            </h2>
+            {rows.length === 0 ? (
+              <div className="text-center text-gray-500 py-4">Nincs forgalmi adat a megadott időszakra</div>
             ) : (
               <table className="data-grid w-full text-sm">
                 <thead>
                   <tr>
                     <th>{t('common.deviza')}</th>
-                    <th className="text-right">{t('darius.vetelDb')}</th>
-                    <th className="text-right">{t('reports.vetelOsszeg')}</th>
-                    <th className="text-right">{t('darius.eladasDb')}</th>
-                    <th className="text-right">{t('reports.eladasOsszeg')}</th>
-                    <th className="text-right">{t('cashier.conversion')}</th>
-                    <th className="text-right">{t('reports.nettoMozgas')}</th>
-                    <th className="text-right">{t('reports.profit')}</th>
+                    <th className="text-right">Elszámolási árfolyam (100/Ft)</th>
+                    <th className="text-right">Vásárlás (mennyiség)</th>
+                    <th className="text-right">Vásárlás (Ft)</th>
+                    <th className="text-right">Eladás (mennyiség)</th>
+                    <th className="text-right">Eladás (Ft)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.currencies.map(c => (
-                    <tr key={c.currency}>
-                      <td className="font-mono font-bold">{c.currency}</td>
-                      <td className="text-right">{c.buyCount}</td>
-                      <td className="text-right font-mono">{fmtNum(c.buyAmount)}</td>
-                      <td className="text-right">{c.sellCount}</td>
-                      <td className="text-right font-mono">{fmtNum(c.sellAmount)}</td>
-                      <td className="text-right">{c.conversionCount}</td>
-                      <td className={`text-right font-mono ${c.netFlow > 0 ? 'text-green-600' : c.netFlow < 0 ? 'text-red-600' : ''}`}>
-                        {fmtNum(c.netFlow)}
-                      </td>
-                      <td className="text-right font-mono text-yellow-600">{fmtHuf(c.profit)}</td>
+                  {rows.map((c) => (
+                    <tr key={c.currencyCode}>
+                      <td className="font-mono font-bold">{c.currencyCode}</td>
+                      <td className="text-right font-mono">{fmtRate(c.officialRate)}</td>
+                      <td className="text-right font-mono">{fmtNum(c.buyVolume)}</td>
+                      <td className="text-right font-mono">{fmtHuf(c.buyHuf)}</td>
+                      <td className="text-right font-mono">{fmtNum(c.sellVolume)}</td>
+                      <td className="text-right font-mono">{fmtHuf(c.sellHuf)}</td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot>
-                  <tr className="font-bold bg-gray-50">
-                    <td>{t('reports.osszesen')}</td>
-                    <td className="text-right">{data.currencies.reduce((s, c) => s + c.buyCount, 0)}</td>
-                    <td></td>
-                    <td className="text-right">{data.currencies.reduce((s, c) => s + c.sellCount, 0)}</td>
-                    <td></td>
-                    <td className="text-right">{data.currencies.reduce((s, c) => s + c.conversionCount, 0)}</td>
-                    <td></td>
-                    <td className="text-right">{fmtHuf(data.currencies.reduce((s, c) => s + c.profit, 0))}</td>
-                  </tr>
-                </tfoot>
               </table>
             )}
           </div>
 
-          {/* Forgalmi grafikon (FR-KC-08) */}
-          {(data.currencies || []).length > 0 && (
-            <div className="form-panel">
-              <h2 className="font-semibold mb-3 flex items-center gap-2">
-                <BarChart3 size={18} />{t('reports.forgalmiGrafikon')}
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <div className="text-sm text-gray-500 mb-2">{t('reports.grafikonProfit')}</div>
-                  <HorizontalBarChart
-                    data={data.currencies.map(c => ({ label: c.currency, value: c.profit }))}
-                    barClassName="bg-yellow-500"
-                    formatValue={fmtHuf}
-                    emptyText={t('reports.nincsForgalmiAdat')}
-                    ariaLabel={t('reports.grafikonProfit')}
-                  />
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500 mb-2">{t('reports.grafikonTranzakcio')}</div>
-                  <HorizontalBarChart
-                    data={data.currencies.map(c => ({
-                      label: c.currency,
-                      value: c.buyCount + c.sellCount + c.conversionCount,
-                    }))}
-                    barClassName="bg-blue-500"
-                    formatValue={(n) => n.toLocaleString('hu-HU')}
-                    emptyText={t('reports.nincsForgalmiAdat')}
-                    ariaLabel={t('reports.grafikonTranzakcio')}
-                  />
-                </div>
-              </div>
+          {/* FR-8 összesítő sor */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="form-panel text-center bg-green-50">
+              <TrendingUp size={24} className="mx-auto text-green-600 mb-1" />
+              <div className="text-lg font-bold text-green-700">{fmtHuf(data.totalBuy)}</div>
+              <div className="text-sm text-gray-500">VETT összesen</div>
             </div>
-          )}
+            <div className="form-panel text-center bg-blue-50">
+              <TrendingDown size={24} className="mx-auto text-blue-600 mb-1" />
+              <div className="text-lg font-bold text-blue-700">{fmtHuf(data.totalSell)}</div>
+              <div className="text-sm text-gray-500">ELADOTT összesen</div>
+            </div>
+          </div>
         </>
       )}
     </div>
