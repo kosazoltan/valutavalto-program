@@ -112,7 +112,7 @@ jobs:
         run: echo "key=$(date -u +'%G-W%V')" >> "$GITHUB_OUTPUT"
 
       - name: Cache OWASP NVD database
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: backend/.owasp-dependency-check-data
           key: owasp-nvd-${{ runner.os }}-${{ steps.nvd_cache_key.outputs.key }}
