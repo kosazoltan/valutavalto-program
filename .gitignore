@@ -225,5 +225,4 @@ docs/legacy-analysis/generated/legacy-binary-analysis.json
 .env.ssh-keys
 
 # Coverage riportok (JaCoCo + Vitest) — generált, nem verziókövetett
-frontend-react/coverage/
 **/coverage/
