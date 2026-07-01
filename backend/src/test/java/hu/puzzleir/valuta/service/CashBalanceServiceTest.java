@@ -547,15 +547,19 @@ class CashBalanceServiceTest {
     void getCompanyCashPosition_withRate() {
         UUID companyId = UUID.randomUUID();
         Currency eur = Currency.builder().id(4L).code("EUR").build();
-        Branch branch = Branch.builder().id(BRANCH_ID).build();
-        CashBalance b1 = CashBalance.builder().currency(eur).branch(branch).currentBalance(new BigDecimal("100")).build();
-        CashBalance b2 = CashBalance.builder().currency(eur).branch(branch).currentBalance(new BigDecimal("100")).build();
+        // Két KÜLÖNBÖZŐ iroda ugyanazzal a valutával — a CashBalance egyedi (branch,currency) kulcsú,
+        // így egy valutához branchenként 1 sor tartozik → branchCount = distinct irodák száma (=2).
+        Branch branch1 = Branch.builder().id(BRANCH_ID).build();
+        Branch branch2 = Branch.builder().id(UUID.randomUUID()).build();
+        CashBalance b1 = CashBalance.builder().currency(eur).branch(branch1).currentBalance(new BigDecimal("100")).build();
+        CashBalance b2 = CashBalance.builder().currency(eur).branch(branch2).currentBalance(new BigDecimal("100")).build();
         ExchangeRate er = ExchangeRate.builder()
                 .baseBuyRate(new BigDecimal("400")).baseSellRate(new BigDecimal("420")).build(); // mid=410
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
             when(cashBalanceRepository.findByCompanyId(companyId)).thenReturn(List.of(b1, b2));
+            // A production a csoport ELSŐ elemének branch-ét használja az árfolyam-lekéréshez (b1 = BRANCH_ID).
             when(exchangeRateRepository.findLatestRate(companyId, 4L, BRANCH_ID))
                     .thenReturn(Optional.of(er));
 
