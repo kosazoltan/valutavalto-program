@@ -27,7 +27,7 @@ jobs:
     name: Backend diff-coverage (JaCoCo)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # a diff-cover a base branch-hez méri a diffet
       - uses: actions/setup-java@v4
@@ -61,7 +61,7 @@ jobs:
     name: Frontend diff-coverage (Vitest)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v4
