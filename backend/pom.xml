@@ -47,6 +47,8 @@
         <testcontainers.version>1.21.4</testcontainers.version>
         <archunit.version>1.3.0</archunit.version>
         <jacoco.version>0.8.12</jacoco.version>
+        <pitest.version>1.16.3</pitest.version>
+        <pitest.junit5.version>1.2.3</pitest.junit5.version>
         <!-- CVE-2026-41293/43512 (9.8) + 43515 (9.1) + 41284/43513/42498/43514 fix:
              Tomcat 11.0.21 -> 11.0.22. AZONOS 11.0.x Servlet-6.1 line (csak biztonsagi
              point-release) — NEM a korabbi 10.1.x Servlet-6.0 override-risk (ld. fentebb). -->
@@ -494,6 +496,50 @@
                         <configuration>
                             <groups>performance</groups>
                             <excludedGroups></excludedGroups>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Mutation testing (PIT). Csak explicit hívásra fut (NEM lassítja a normál buildet):
+             `mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage` (a `test` goal felesleges —
+             a PIT úgyis újrafuttatja a teszteket). A tesztek HATÉKONYSÁGÁT méri: szándékos hibákat (mutánsokat)
+             injektál a cél-kódba, és ellenőrzi, elkapja-e egy teszt. A pénz-út kritikus service-eire szűkítve
+             (targetClasses) — a teljes repo mutation-tesztje órákig futna és nem adna arányos értéket.
+             Küszöb: mutationThreshold=60 (a kritikus pénz-úton a tesztnek a mutánsok többségét ölnie kell). -->
+        <profile>
+            <id>mutation</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-maven</artifactId>
+                        <version>${pitest.version}</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.pitest</groupId>
+                                <artifactId>pitest-junit5-plugin</artifactId>
+                                <version>${pitest.junit5.version}</version>
+                            </dependency>
+                        </dependencies>
+                        <configuration>
+                            <targetClasses>
+                                <param>hu.puzzleir.valuta.service.DailyBalanceService</param>
+                                <param>hu.puzzleir.valuta.service.CashBalanceService</param>
+                                <param>hu.puzzleir.valuta.service.AverageRateReportService</param>
+                            </targetClasses>
+                            <targetTests>
+                                <param>hu.puzzleir.valuta.service.DailyBalanceServiceTest</param>
+                                <param>hu.puzzleir.valuta.service.CashBalanceServiceTest</param>
+                                <param>hu.puzzleir.valuta.service.AverageRateReportServiceTest</param>
+                            </targetTests>
+                            <outputFormats>
+                                <param>HTML</param>
+                                <param>XML</param>
+                            </outputFormats>
+                            <mutationThreshold>60</mutationThreshold>
+                            <timestampedReports>false</timestampedReports>
                         </configuration>
                     </plugin>
                 </plugins>

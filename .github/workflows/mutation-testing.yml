@@ -1,0 +1,51 @@
+name: Mutation Testing (PIT)
+
+# PIT mutation testing a kritikus pénz-út service-ekre (DailyBalance / CashBalance / AverageRateReport).
+# A tesztek HATÉKONYSÁGÁT méri: szándékos hibákat (mutánsokat) injektál, és ellenőrzi, elkapja-e egy teszt.
+#
+# MIÉRT külön workflow (nem a PR-gate része):
+# - A PIT lassú (mutánsonként újrafuttatja a teszteket) — nem való minden PR-re.
+# - JDK 21-en fut (a PIT+JUnit5 minion a helyi JDK 25-tel instabil — ismert upstream probléma);
+#   a CI ubuntu+temurin-21 a stabil környezet.
+# - Ütemezett (heti) + kézi (workflow_dispatch), mint a backend-owasp-weekly SCA.
+
+on:
+  schedule:
+    - cron: '0 4 * * 1'   # hétfő 04:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pit-mutation:
+    name: PIT Mutation Coverage (pénz-út service-ek)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30   # GLM-review #3: a PIT lassú; egy megakadt mutáns ne égesse a default 6 órát
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: PIT mutation coverage
+        run: cd backend && mvn -B -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage --no-transfer-progress
+      - name: PIT riport artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pit-mutation-report
+          path: backend/target/pit-reports/
+          if-no-files-found: warn
+      - name: Job summary
+        if: always()
+        run: |
+          echo "## PIT Mutation Coverage" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f backend/target/pit-reports/mutations.xml ]; then
+            total=$(grep -c '<mutation ' backend/target/pit-reports/mutations.xml); total=${total:-0}
+            killed=$(grep -c "status='KILLED'" backend/target/pit-reports/mutations.xml); killed=${killed:-0}
+            echo "- Mutánsok: $total, ebből KILLED: $killed" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Nincs mutations.xml (lásd a job logot)." >> "$GITHUB_STEP_SUMMARY"
+          fi
