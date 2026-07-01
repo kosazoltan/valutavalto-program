@@ -574,4 +574,97 @@ class DailyBalanceServiceTest {
             assertThat(b.getActualStock()).isEqualByComparingTo("777");
         });
     }
+
+    // ============================================================
+    // FK Batch3-followup: closeDailyBalance + recordActualStock
+    // mutation-coverage (túlélő VoidMethodCall/Negate/Boundary ölése)
+    // ============================================================
+
+    @Test
+    @DisplayName("closeDailyBalance — sikeres lezárás: isClosed=true, closedAt/By beállítva, mentés + audit")
+    void closeDailyBalance_success() {
+        DailyBalance balance = DailyBalance.builder()
+                .branchId(TEST_BRANCH_ID).balanceDate(TEST_DATE).currencyCode("EUR").isClosed(false).build();
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(TEST_BRANCH_ID, TEST_DATE, "EUR"))
+                .thenReturn(Optional.of(balance));
+
+        dailyBalanceService.closeDailyBalance(TEST_BRANCH_ID, TEST_DATE, "EUR");
+
+        assertThat(balance.getIsClosed()).isTrue();
+        assertThat(balance.getClosedAt()).isNotNull();
+        assertThat(balance.getClosedBy()).isNotNull();
+        verify(dailyBalanceRepository).save(balance);
+        verify(auditLogService).log(eq("DAILY_BALANCE_CLOSED"), anyString(), eq(TEST_BRANCH_ID.toString()));
+    }
+
+    @Test
+    @DisplayName("closeDailyBalance — nincs mérleg → ValidationException, NEM ment/auditál")
+    void closeDailyBalance_notFound_throws() {
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(TEST_BRANCH_ID, TEST_DATE, "EUR"))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> dailyBalanceService.closeDailyBalance(TEST_BRANCH_ID, TEST_DATE, "EUR"))
+                .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class)
+                .hasMessageContaining("Nincs napi mérleg");
+        verify(dailyBalanceRepository, never()).save(any());
+        verify(auditLogService, never()).log(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("closeDailyBalance — már lezárt → ValidationException (dupla zárás tiltva)")
+    void closeDailyBalance_alreadyClosed_throws() {
+        DailyBalance balance = DailyBalance.builder()
+                .branchId(TEST_BRANCH_ID).balanceDate(TEST_DATE).currencyCode("EUR").isClosed(true).build();
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(TEST_BRANCH_ID, TEST_DATE, "EUR"))
+                .thenReturn(Optional.of(balance));
+
+        assertThatThrownBy(() -> dailyBalanceService.closeDailyBalance(TEST_BRANCH_ID, TEST_DATE, "EUR"))
+                .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class)
+                .hasMessageContaining("már lezárva");
+        verify(dailyBalanceRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("recordActualStock — leltár rögzítése + note beállítás, difference számítás")
+    void recordActualStock_withNote() {
+        DailyBalance balance = DailyBalance.builder()
+                .branchId(TEST_BRANCH_ID).balanceDate(TEST_DATE).currencyCode("EUR")
+                .closingBalance(new BigDecimal("1000")).build();
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(TEST_BRANCH_ID, TEST_DATE, "EUR"))
+                .thenReturn(Optional.of(balance));
+
+        dailyBalanceService.recordActualStock(TEST_BRANCH_ID, TEST_DATE, "EUR", new BigDecimal("950"), "leltár eltérés");
+
+        assertThat(balance.getActualStock()).isEqualByComparingTo("950");
+        assertThat(balance.getDifferenceNote()).isEqualTo("leltár eltérés");
+        verify(dailyBalanceRepository).save(balance);
+    }
+
+    @Test
+    @DisplayName("recordActualStock — üres/blank note NEM íródik felül a mezőn")
+    void recordActualStock_blankNote_notSet() {
+        DailyBalance balance = DailyBalance.builder()
+                .branchId(TEST_BRANCH_ID).balanceDate(TEST_DATE).currencyCode("EUR")
+                .closingBalance(new BigDecimal("1000")).build();
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(TEST_BRANCH_ID, TEST_DATE, "EUR"))
+                .thenReturn(Optional.of(balance));
+
+        dailyBalanceService.recordActualStock(TEST_BRANCH_ID, TEST_DATE, "EUR", new BigDecimal("980"), "   ");
+
+        assertThat(balance.getActualStock()).isEqualByComparingTo("980");
+        assertThat(balance.getDifferenceNote()).isNull(); // blank → nem állítja be
+        verify(dailyBalanceRepository).save(balance);
+    }
+
+    @Test
+    @DisplayName("recordActualStock — nincs mérleg → ValidationException")
+    void recordActualStock_notFound_throws() {
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(TEST_BRANCH_ID, TEST_DATE, "USD"))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> dailyBalanceService.recordActualStock(
+                TEST_BRANCH_ID, TEST_DATE, "USD", BigDecimal.TEN, "x"))
+                .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class);
+        verify(dailyBalanceRepository, never()).save(any());
+    }
 }

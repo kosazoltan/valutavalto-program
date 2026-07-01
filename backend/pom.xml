@@ -49,6 +49,7 @@
         <jacoco.version>0.8.12</jacoco.version>
         <pitest.version>1.16.3</pitest.version>
         <pitest.junit5.version>1.2.3</pitest.junit5.version>
+        <cyclonedx.version>2.9.1</cyclonedx.version>
         <!-- CVE-2026-41293/43512 (9.8) + 43515 (9.1) + 41284/43513/42498/43514 fix:
              Tomcat 11.0.21 -> 11.0.22. AZONOS 11.0.x Servlet-6.1 line (csak biztonsagi
              point-release) — NEM a korabbi 10.1.x Servlet-6.0 override-risk (ld. fentebb). -->
@@ -417,6 +418,28 @@
                 </executions>
             </plugin>
 
+            <!-- CycloneDX SBOM: a build a target/-be írja a bom.json + bom.xml szoftver-anyagjegyzéket
+                 (supply-chain transzparencia, szabályozott/pénzügyi elvárás). A `package` fázishoz kötve. -->
+            <plugin>
+                <groupId>org.cyclonedx</groupId>
+                <artifactId>cyclonedx-maven-plugin</artifactId>
+                <version>${cyclonedx.version}</version>
+                <executions>
+                    <execution>
+                        <id>cyclonedx-sbom</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>makeAggregateBom</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <outputName>bom</outputName>
+                    <outputFormat>all</outputFormat>
+                    <projectType>application</projectType>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -538,6 +561,9 @@
                                 <param>HTML</param>
                                 <param>XML</param>
                             </outputFormats>
+                            <!-- mutationThreshold=60: a tesztek a mutánsok többségét (lefedettséggel együtt)
+                                 öljék a kritikus pénz-úton. A NO_COVERAGE mutáns is számít — a lefedetlen
+                                 pénz-út-kód valódi teszt-hiány, amit tesztírással zárunk, NEM küszöb-lazítással. -->
                             <mutationThreshold>60</mutationThreshold>
                             <timestampedReports>false</timestampedReports>
                         </configuration>
