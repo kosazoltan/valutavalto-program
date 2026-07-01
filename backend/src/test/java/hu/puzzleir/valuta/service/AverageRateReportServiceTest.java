@@ -329,4 +329,64 @@ class AverageRateReportServiceTest {
                 .doesNotContain("ORSZAGOS")
                 .containsExactly("PECS", "SZEGED", "total");
     }
+
+    // ============================================================
+    // FK Batch3-followup: generate() filter-ágak + weightedAvg NPE-guard
+    // (túlélő NegateConditionals sor 95/98/101 + null/signum guard sor 144)
+    // ============================================================
+
+    @Test
+    @DisplayName("generate — mindhárom filter (branchId+currencyId+transactionType) megadva: a JPQL tartalmazza a szűrőket")
+    void generate_allFilters_appendsClauses() {
+        // A getResultList üres, de a JPQL-append + setParameter ágak lefutnak (NegateConditionals ölése).
+        when(query.getResultList()).thenReturn(java.util.Collections.emptyList());
+
+        List<AverageRateReportDto> result = service.generate(companyId,
+                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31),
+                UUID.randomUUID(), 4L, "BUY");
+
+        assertThat(result).isEmpty();
+        // Verifikáljuk, hogy a 3 opcionális szűrő JPQL-be került (a branchId/currencyId/type != null ágak).
+        org.mockito.ArgumentCaptor<String> jpqlCap = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(entityManager).createQuery(jpqlCap.capture());
+        String jpql = jpqlCap.getValue();
+        assertThat(jpql).contains("t.branch.id = :branchId");
+        assertThat(jpql).contains("t.currency.id = :currencyId");
+        assertThat(jpql).contains("t.transactionType = :transactionType");
+    }
+
+    @Test
+    @DisplayName("generate — érvénytelen transactionType → IllegalArgumentException (sanitized üzenettel)")
+    void generate_invalidTransactionType_throws() {
+        assertThatThrownBy(() -> service.generate(companyId,
+                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31), null, null, "NEMLETEZIK"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Érvénytelen transactionType");
+    }
+
+    @Test
+    @DisplayName("generate — totalCurrency=0 → weightedAvg marad 0 (signum guard, nincs osztás)")
+    void generate_zeroCurrency_weightedAvgZero() {
+        Object[] row = {1L, "EUR", 0L, BigDecimal.ZERO, new BigDecimal("107000")};
+        when(query.getResultList()).thenReturn(java.util.Collections.singletonList(row));
+
+        List<AverageRateReportDto> result = service.generate(companyId,
+                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31), null, null, null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getWeightedAverageRate()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("generate — totalHuf=null → weightedAvg marad 0 (null guard, nincs NPE)")
+    void generate_nullHuf_weightedAvgZero() {
+        Object[] row = {1L, "EUR", 2L, new BigDecimal("300"), null};
+        when(query.getResultList()).thenReturn(java.util.Collections.singletonList(row));
+
+        List<AverageRateReportDto> result = service.generate(companyId,
+                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31), null, null, null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getWeightedAverageRate()).isEqualByComparingTo("0");
+    }
 }
