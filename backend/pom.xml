@@ -46,6 +46,7 @@
         <postgresql.version>42.7.11</postgresql.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <archunit.version>1.3.0</archunit.version>
+        <jacoco.version>0.8.12</jacoco.version>
         <!-- CVE-2026-41293/43512 (9.8) + 43515 (9.1) + 41284/43513/42498/43514 fix:
              Tomcat 11.0.21 -> 11.0.22. AZONOS 11.0.x Servlet-6.1 line (csak biztonsagi
              point-release) — NEM a korabbi 10.1.x Servlet-6.0 override-risk (ld. fentebb). -->
@@ -388,7 +389,32 @@
                     </excludes>
                 </configuration>
             </plugin>
-            
+
+            <!-- JaCoCo: teszt-lefedettség mérése. A `report` XML/HTML riportot a target/site/jacoco alá
+                 írja; a CI diff-coverage gate (diff-cover) ebből a jacoco.xml-ből méri a PR-diff sorait.
+                 NEM állítunk teljes-repo coverage-küszöböt (a legacy adósság nem blokkolhat) — a küszöb
+                 kizárólag a MEGVÁLTOZOTT sorokra érvényes, a CI-ben (diff-cover). -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>jacoco-prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

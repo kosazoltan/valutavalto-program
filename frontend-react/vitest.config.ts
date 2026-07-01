@@ -30,6 +30,17 @@ const config: UserConfig & { test: InlineConfig } = {
     setupFiles: './src/test/setup.ts',
     css: true,
     exclude: ['e2e/**', 'playwright/**', 'node_modules/**', 'dist/**'],
+    // FK: diff-coverage gate — a CI a MEGVÁLTOZOTT sorokra méri a lefedettséget (diff-cover),
+    // nem a teljes repóra (a legacy adósság nem blokkolhat). lcov+cobertura a diff-cover-hez.
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'lcov', 'cobertura'],
+      reportsDirectory: './coverage',
+      exclude: [
+        'e2e/**', 'playwright/**', 'node_modules/**', 'dist/**',
+        '**/*.test.{ts,tsx}', '**/*.config.{ts,js}', 'src/test/**',
+      ],
+    },
   },
   envPrefix: 'VITE_',
   clearScreen: false,

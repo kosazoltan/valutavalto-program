@@ -223,3 +223,7 @@ scripts/media/__pycache__/
 docs/legacy-analysis/generated/legacy-binary-analysis.json
 .audit-ok
 .env.ssh-keys
+
+# Coverage riportok (JaCoCo + Vitest) — generált, nem verziókövetett
+frontend-react/coverage/
+**/coverage/

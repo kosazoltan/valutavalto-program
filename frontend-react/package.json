@@ -19,7 +19,8 @@
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test e2e/smoke.spec.ts --config=playwright.config.ts",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
@@ -74,6 +75,7 @@
     "@typescript-eslint/eslint-plugin": "^8.61.1",
     "@typescript-eslint/parser": "^8.61.1",
     "@vitejs/plugin-react": "^6.0.2",
+    "@vitest/coverage-v8": "^4.1.9",
     "autoprefixer": "^10.5.0",
     "baseline-browser-mapping": "^2.10.38",
     "eslint": "^10.5.0",
