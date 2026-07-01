@@ -573,9 +573,8 @@ public class InventoryService {
     private List<CashBalance> appendSyntheticZeroRowsForScope(List<CashBalance> realRows,
                                                               java.util.Set<UUID> branchScope) {
         // A scope aktív, nem-vault branch-ei (a saját vault-fiók is a scope-ban van, de azt a !isVault kizárja).
-        List<Branch> targetBranches = branchScope.stream()
-                .map(id -> branchRepository.findById(id).orElse(null))
-                .filter(java.util.Objects::nonNull)
+        // GLM #1: egyetlen findAllById a scope-ra (N+1 helyett).
+        List<Branch> targetBranches = branchRepository.findAllById(branchScope).stream()
                 .filter(b -> Boolean.TRUE.equals(b.getIsActive()))
                 .filter(b -> !Boolean.TRUE.equals(b.getIsVault()))
                 .toList();

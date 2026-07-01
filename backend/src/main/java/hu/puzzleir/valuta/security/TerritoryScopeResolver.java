@@ -131,7 +131,7 @@ public final class TerritoryScopeResolver {
             ids.add(branchId); // a saját fiók mindig látható
             return ids;
         } catch (Exception e) {
-            log.warn("regionScope: exception → fail-closed (üres): {}", e.getMessage());
+            log.warn("regionScope: exception → fail-closed (üres): {}", e.getMessage(), e);
             return Set.of();
         }
     }
