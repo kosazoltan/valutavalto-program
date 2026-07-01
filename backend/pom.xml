@@ -503,8 +503,9 @@
         </profile>
 
         <!-- Mutation testing (PIT). Csak explicit hívásra fut (NEM lassítja a normál buildet):
-             `mvn -Pmutation test`. A tesztek HATÉKONYSÁGÁT méri: szándékos hibákat (mutánsokat) injektál
-             a cél-kódba, és ellenőrzi, elkapja-e egy teszt. A pénz-út kritikus service-eire szűkítve
+             `mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage` (a `test` goal felesleges —
+             a PIT úgyis újrafuttatja a teszteket). A tesztek HATÉKONYSÁGÁT méri: szándékos hibákat (mutánsokat)
+             injektál a cél-kódba, és ellenőrzi, elkapja-e egy teszt. A pénz-út kritikus service-eire szűkítve
              (targetClasses) — a teljes repo mutation-tesztje órákig futna és nem adna arányos értéket.
              Küszöb: mutationThreshold=60 (a kritikus pénz-úton a tesztnek a mutánsok többségét ölnie kell). -->
         <profile>
