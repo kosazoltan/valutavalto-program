@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
+import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
@@ -264,6 +265,325 @@ class CashBalanceServiceTest {
         assertThat(created).isZero();
         verify(cashBalanceRepository, never()).save(any());
         verify(currencyRepository, never()).findAllActiveOrdered();
+    }
+
+    // =================================================================
+    // FK Batch3-followup: mutation-coverage a pénz-út metódusokra
+    // (adjustBalance, setLimits, getBranchSummary, getDetailedCashPosition,
+    //  getCompanyCashPosition, getCompanyTotals, getBalanceBy*) — erős
+    //  asszertálással a túlélő NegateConditionals/Math/NullReturn/VoidCall mutánsok ölésére.
+    // =================================================================
+
+    @Test
+    @DisplayName("adjustBalance — nem-manager → ValidationException")
+    void adjustBalance_notManager_throws() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::isManagerOrAbove).thenReturn(false);
+            var req = CashBalanceService.AdjustBalanceRequest.builder()
+                    .currencyId(4L).amount(new BigDecimal("100")).incoming(true).build();
+
+            assertThatThrownBy(() -> service.adjustBalance(req))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("manager");
+            verify(cashBalanceRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("adjustBalance — incoming feltöltés növeli az egyenleget és ment")
+    void adjustBalance_incoming_addsAndSaves() {
+        Currency eur = Currency.builder().id(4L).code("EUR").build();
+        Branch branch = Branch.builder().id(BRANCH_ID).build();
+        CashBalance balance = CashBalance.builder()
+                .currency(eur).branch(branch).currentBalance(new BigDecimal("1000")).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::isManagerOrAbove).thenReturn(true);
+            when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 4L))
+                    .thenReturn(Optional.of(balance));
+            when(cashBalanceRepository.save(any(CashBalance.class))).thenAnswer(i -> i.getArgument(0));
+
+            var req = CashBalanceService.AdjustBalanceRequest.builder()
+                    .currencyId(4L).amount(new BigDecimal("250")).incoming(true).build();
+            CashBalance result = service.adjustBalance(req);
+
+            assertThat(result.getCurrentBalance()).isEqualByComparingTo("1250");
+            verify(cashBalanceRepository).save(balance);
+        }
+    }
+
+    @Test
+    @DisplayName("adjustBalance — kimenő levonás elég készlettel csökkenti az egyenleget")
+    void adjustBalance_outgoing_sufficient_subtracts() {
+        Currency eur = Currency.builder().id(4L).code("EUR").build();
+        Branch branch = Branch.builder().id(BRANCH_ID).build();
+        CashBalance balance = CashBalance.builder()
+                .currency(eur).branch(branch).currentBalance(new BigDecimal("1000")).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::isManagerOrAbove).thenReturn(true);
+            when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 4L))
+                    .thenReturn(Optional.of(balance));
+            when(cashBalanceRepository.save(any(CashBalance.class))).thenAnswer(i -> i.getArgument(0));
+
+            var req = CashBalanceService.AdjustBalanceRequest.builder()
+                    .currencyId(4L).amount(new BigDecimal("300")).incoming(false).build();
+            CashBalance result = service.adjustBalance(req);
+
+            assertThat(result.getCurrentBalance()).isEqualByComparingTo("700");
+            verify(cashBalanceRepository).save(balance);
+        }
+    }
+
+    @Test
+    @DisplayName("adjustBalance — kimenő levonás NEM elég készlettel → ValidationException (service-guard), NEM ment")
+    void adjustBalance_outgoing_insufficient_throws() {
+        Currency eur = Currency.builder().id(4L).code("EUR").build();
+        CashBalance balance = CashBalance.builder()
+                .currency(eur).currentBalance(new BigDecimal("100")).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::isManagerOrAbove).thenReturn(true);
+            when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 4L))
+                    .thenReturn(Optional.of(balance));
+
+            var req = CashBalanceService.AdjustBalanceRequest.builder()
+                    .currencyId(4L).amount(new BigDecimal("500")).incoming(false).build();
+
+            assertThatThrownBy(() -> service.adjustBalance(req))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("Nincs elegendő");
+            assertThat(balance.getCurrentBalance()).isEqualByComparingTo("100"); // változatlan
+            verify(cashBalanceRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("adjustBalance — egyenleg nem található → ResourceNotFoundException")
+    void adjustBalance_notFound_throws() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::isManagerOrAbove).thenReturn(true);
+            when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 9L))
+                    .thenReturn(Optional.empty());
+
+            var req = CashBalanceService.AdjustBalanceRequest.builder()
+                    .currencyId(9L).amount(BigDecimal.TEN).incoming(true).build();
+
+            assertThatThrownBy(() -> service.adjustBalance(req))
+                    .isInstanceOf(ResourceNotFoundException.class);
+        }
+    }
+
+    @Test
+    @DisplayName("setLimits — nem-manager → ValidationException")
+    void setLimits_notManager_throws() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::isManagerOrAbove).thenReturn(false);
+            var req = CashBalanceService.SetLimitsRequest.builder()
+                    .currencyId(4L).minBalance(BigDecimal.ONE).build();
+
+            assertThatThrownBy(() -> service.setLimits(req))
+                    .isInstanceOf(ValidationException.class);
+            verify(cashBalanceRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("setLimits — min+max beállítás, ment")
+    void setLimits_minAndMax_setsAndSaves() {
+        Currency eur = Currency.builder().id(4L).code("EUR").build();
+        CashBalance balance = CashBalance.builder().currency(eur).currentBalance(BigDecimal.TEN).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::isManagerOrAbove).thenReturn(true);
+            when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 4L))
+                    .thenReturn(Optional.of(balance));
+            when(cashBalanceRepository.save(any(CashBalance.class))).thenAnswer(i -> i.getArgument(0));
+
+            var req = CashBalanceService.SetLimitsRequest.builder()
+                    .currencyId(4L).minBalance(new BigDecimal("100")).maxBalance(new BigDecimal("9000")).build();
+            CashBalance result = service.setLimits(req);
+
+            assertThat(result.getMinBalance()).isEqualByComparingTo("100");
+            assertThat(result.getMaxBalance()).isEqualByComparingTo("9000");
+            verify(cashBalanceRepository).save(balance);
+        }
+    }
+
+    @Test
+    @DisplayName("setLimits — csak min (max marad null)")
+    void setLimits_onlyMin() {
+        Currency eur = Currency.builder().id(4L).code("EUR").build();
+        CashBalance balance = CashBalance.builder().currency(eur).currentBalance(BigDecimal.TEN)
+                .maxBalance(new BigDecimal("5000")).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::isManagerOrAbove).thenReturn(true);
+            when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 4L))
+                    .thenReturn(Optional.of(balance));
+            when(cashBalanceRepository.save(any(CashBalance.class))).thenAnswer(i -> i.getArgument(0));
+
+            var req = CashBalanceService.SetLimitsRequest.builder()
+                    .currencyId(4L).minBalance(new BigDecimal("200")).build();
+            CashBalance result = service.setLimits(req);
+
+            assertThat(result.getMinBalance()).isEqualByComparingTo("200");
+            assertThat(result.getMaxBalance()).isEqualByComparingTo("5000"); // érintetlen
+        }
+    }
+
+    @Test
+    @DisplayName("getBranchSummary — HUF-egyenleg + low/high alertek pontos számlálása")
+    void getBranchSummary_countsAlerts() {
+        Currency huf = Currency.builder().id(1L).code("HUF").build();
+        Currency eur = Currency.builder().id(4L).code("EUR").build();
+        Currency usd = Currency.builder().id(5L).code("USD").build();
+        // HUF: 500000; EUR: low (current<=min); USD: high (current>=max)
+        CashBalance hufB = CashBalance.builder().currency(huf).currentBalance(new BigDecimal("500000")).build();
+        CashBalance eurLow = CashBalance.builder().currency(eur).currentBalance(new BigDecimal("50"))
+                .minBalance(new BigDecimal("100")).build();
+        CashBalance usdHigh = CashBalance.builder().currency(usd).currentBalance(new BigDecimal("9000"))
+                .maxBalance(new BigDecimal("8000")).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            when(cashBalanceRepository.findByBranchId(BRANCH_ID))
+                    .thenReturn(List.of(hufB, eurLow, usdHigh));
+
+            var summary = service.getBranchSummary();
+
+            assertThat(summary.getTotalCurrencies()).isEqualTo(3);
+            assertThat(summary.getHufBalance()).isEqualByComparingTo("500000");
+            assertThat(summary.getLowBalanceAlerts()).isEqualTo(1);
+            assertThat(summary.getHighBalanceAlerts()).isEqualTo(1);
+            assertThat(summary.getBalances()).hasSize(3);
+        }
+    }
+
+    @Test
+    @DisplayName("getDetailedCashPosition — deviza árfolyammal: hufValue, midRate, dailyChange pontos")
+    void getDetailedCashPosition_withRate() {
+        UUID companyId = UUID.randomUUID();
+        Currency eur = Currency.builder().id(4L).code("EUR").name("Euró").build();
+        Branch branch = Branch.builder().id(BRANCH_ID).build();
+        CashBalance eurB = CashBalance.builder().currency(eur).branch(branch)
+                .currentBalance(new BigDecimal("100")).openingBalance(new BigDecimal("80")).build();
+        // buy=400, sell=420 → mid=410; hufValue=100*410=41000; dailyChange=20
+        ExchangeRate er = ExchangeRate.builder()
+                .baseBuyRate(new BigDecimal("400")).baseSellRate(new BigDecimal("420")).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(List.of(eurB));
+            when(exchangeRateRepository.findLatestRate(companyId, 4L, BRANCH_ID))
+                    .thenReturn(Optional.of(er));
+
+            var pos = service.getDetailedCashPosition();
+
+            assertThat(pos.getItems()).hasSize(1);
+            var item = pos.getItems().get(0);
+            assertThat(item.getMidRate()).isEqualByComparingTo("410");
+            assertThat(item.getHufValue()).isEqualByComparingTo("41000");
+            assertThat(item.getDailyChange()).isEqualByComparingTo("20");
+            assertThat(pos.getTotalHufValue()).isEqualByComparingTo("41000");
+            assertThat(pos.getCurrencyCount()).isEqualTo(1);
+        }
+    }
+
+    @Test
+    @DisplayName("getDetailedCashPosition — nincs árfolyam → rate marad 1 (hufValue=balance)")
+    void getDetailedCashPosition_noRate() {
+        UUID companyId = UUID.randomUUID();
+        Currency eur = Currency.builder().id(4L).code("EUR").name("Euró").build();
+        Branch branch = Branch.builder().id(BRANCH_ID).build();
+        CashBalance eurB = CashBalance.builder().currency(eur).branch(branch)
+                .currentBalance(new BigDecimal("100")).openingBalance(new BigDecimal("100")).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(List.of(eurB));
+            when(exchangeRateRepository.findLatestRate(companyId, 4L, BRANCH_ID))
+                    .thenReturn(Optional.empty());
+
+            var pos = service.getDetailedCashPosition();
+
+            assertThat(pos.getItems().get(0).getMidRate()).isEqualByComparingTo("1");
+            assertThat(pos.getItems().get(0).getHufValue()).isEqualByComparingTo("100");
+        }
+    }
+
+    @Test
+    @DisplayName("getCompanyTotals — valutánkénti összesítés több iroda azonos valutával")
+    void getCompanyTotals_aggregates() {
+        UUID companyId = UUID.randomUUID();
+        Currency eur = Currency.builder().id(4L).code("EUR").build();
+        CashBalance b1 = CashBalance.builder().currency(eur).currentBalance(new BigDecimal("1000")).build();
+        CashBalance b2 = CashBalance.builder().currency(eur).currentBalance(new BigDecimal("500")).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            when(cashBalanceRepository.findByCompanyId(companyId)).thenReturn(List.of(b1, b2));
+
+            var totals = service.getCompanyTotals();
+
+            assertThat(totals).hasSize(1);
+            assertThat(totals.get(0).getCurrencyCode()).isEqualTo("EUR");
+            assertThat(totals.get(0).getTotalBalance()).isEqualByComparingTo("1500");
+        }
+    }
+
+    @Test
+    @DisplayName("getCompanyCashPosition — deviza összesítés árfolyammal + grandTotalHuf")
+    void getCompanyCashPosition_withRate() {
+        UUID companyId = UUID.randomUUID();
+        Currency eur = Currency.builder().id(4L).code("EUR").build();
+        Branch branch = Branch.builder().id(BRANCH_ID).build();
+        CashBalance b1 = CashBalance.builder().currency(eur).branch(branch).currentBalance(new BigDecimal("100")).build();
+        CashBalance b2 = CashBalance.builder().currency(eur).branch(branch).currentBalance(new BigDecimal("100")).build();
+        ExchangeRate er = ExchangeRate.builder()
+                .baseBuyRate(new BigDecimal("400")).baseSellRate(new BigDecimal("420")).build(); // mid=410
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            when(cashBalanceRepository.findByCompanyId(companyId)).thenReturn(List.of(b1, b2));
+            when(exchangeRateRepository.findLatestRate(companyId, 4L, BRANCH_ID))
+                    .thenReturn(Optional.of(er));
+
+            var pos = service.getCompanyCashPosition();
+
+            assertThat(pos.getCurrencyPositions()).hasSize(1);
+            var cp = pos.getCurrencyPositions().get(0);
+            assertThat(cp.getTotalBalance()).isEqualByComparingTo("200");
+            assertThat(cp.getBranchCount()).isEqualTo(2);
+            assertThat(cp.getHufValue()).isEqualByComparingTo("82000"); // 200*410
+            assertThat(pos.getGrandTotalHuf()).isEqualByComparingTo("82000");
+        }
+    }
+
+    @Test
+    @DisplayName("getBalanceByCurrency — létező valuta visszaadása")
+    void getBalanceByCurrency_found() {
+        Currency eur = Currency.builder().id(4L).code("EUR").build();
+        CashBalance balance = CashBalance.builder().currency(eur).currentBalance(new BigDecimal("777")).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdWithDetails(BRANCH_ID, 4L))
+                    .thenReturn(Optional.of(balance));
+
+            CashBalance result = service.getBalanceByCurrency(4L);
+            assertThat(result.getCurrentBalance()).isEqualByComparingTo("777");
+        }
     }
 
     /** Helper: beallit egy authentikalt SecurityContext-et a teszt erejeig. */

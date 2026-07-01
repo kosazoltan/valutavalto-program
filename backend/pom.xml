@@ -561,6 +561,9 @@
                                 <param>HTML</param>
                                 <param>XML</param>
                             </outputFormats>
+                            <!-- mutationThreshold=60: a tesztek a mutánsok többségét (lefedettséggel együtt)
+                                 öljék a kritikus pénz-úton. A NO_COVERAGE mutáns is számít — a lefedetlen
+                                 pénz-út-kód valódi teszt-hiány, amit tesztírással zárunk, NEM küszöb-lazítással. -->
                             <mutationThreshold>60</mutationThreshold>
                             <timestampedReports>false</timestampedReports>
                         </configuration>
