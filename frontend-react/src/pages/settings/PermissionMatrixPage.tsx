@@ -229,8 +229,8 @@ export default function PermissionMatrixPage() {
                             {roles.map((r, rowIdx) => {
                                 const isDirty = dirtyRoles.has(r.id)
                                 return (
-                                    <tr key={r.id} className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-secondary-50/50'}>
-                                        <td className={`px-3 py-2 sticky left-0 border-r border-secondary-200 ${rowIdx % 2 === 0 ? 'bg-white' : 'bg-secondary-50'} ${isDirty ? 'border-l-4 border-l-amber-500' : ''}`}>
+                                    <tr key={r.id} className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                        <td className={`px-3 py-2 sticky left-0 border-r border-secondary-200 ${rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} ${isDirty ? 'border-l-4 border-l-amber-500' : ''}`}>
                                             <div className="flex items-center gap-2">
                                                 {r.isSystemRole && (
                                                     <span title="Rendszer role">

@@ -21,7 +21,10 @@ import java.util.UUID;
 /**
  * Átlag árfolyam riport REST endpoint — legacy ATLAGARF parity (Sprint A P2.5).
  *
- * <p>Csak főértéktáros / iroda-vezető / vezetői szerepkör érheti el.</p>
+ * <p>FK-049: csak a Főértéktáros ({@code FOERTEKTAR}), Ügyvezető ({@code UGYVEZETO}) és Belső
+ * ellenőr ({@code BELSO_ELLENOR}) kanonikus szerepkör, valamint a legacy {@code MANAGER} /
+ * {@code SUPERVISOR} / {@code ADMIN} érheti el. (Az irodavezető / területi vezető / pénzügyi
+ * vezető NEM — a korábbi négy fantom szerepkör-név sem engedett be senkit, csak megtévesztő volt.)</p>
  */
 @RestController
 @RequestMapping("/api/v1/reports/average-rate")
@@ -42,8 +45,7 @@ public class AverageRateReportController {
      * @param branchId null = "Összes iroda" (9 oszlopcsoport); egyébként 1 fiók-oszlopcsoport
      */
     @GetMapping("/pivot")
-    @PreAuthorize("hasAnyRole('MANAGER','TREASURY_MANAGER','MAIN_TREASURY','ADMIN',"
-            + "'REGIONAL_MANAGER','SUPERVISOR','CASHIER_SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('MANAGER','SUPERVISOR','ADMIN','FOERTEKTAR','UGYVEZETO','BELSO_ELLENOR')")
     public ResponseEntity<AverageRateReportResponse> generatePivot(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
@@ -63,8 +65,7 @@ public class AverageRateReportController {
      * Audit: action=EXPORT (FR-9).</p>
      */
     @GetMapping("/export")
-    @PreAuthorize("hasAnyRole('MANAGER','TREASURY_MANAGER','MAIN_TREASURY','ADMIN',"
-            + "'REGIONAL_MANAGER','SUPERVISOR','CASHIER_SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('MANAGER','SUPERVISOR','ADMIN','FOERTEKTAR','UGYVEZETO','BELSO_ELLENOR')")
     public ResponseEntity<byte[]> export(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
@@ -107,8 +108,7 @@ public class AverageRateReportController {
      * @return riport sorok valuta szerint
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('MANAGER','TREASURY_MANAGER','MAIN_TREASURY','ADMIN',"
-            + "'REGIONAL_MANAGER','SUPERVISOR','CASHIER_SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('MANAGER','SUPERVISOR','ADMIN','FOERTEKTAR','UGYVEZETO','BELSO_ELLENOR')")
     public ResponseEntity<List<AverageRateReportDto>> generate(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,

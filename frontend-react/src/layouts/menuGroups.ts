@@ -225,7 +225,7 @@ export const menuGroups: MenuGroup[] = [
       { path: '/reports/bank-transactions', label: 'Banki tranzakciók', icon: FileText },
       { path: '/reports/cashier-turnover', label: 'Pénztáros forgalom', icon: FileText },
       { path: '/reports/recurring-customers', label: 'Visszatérő ügyfél (AML)', icon: FileText },
-      { path: '/reports/average-rate', label: 'Átlag árfolyam', icon: TrendingUp },
+      { path: '/reports/average-rate', label: 'Átlag árfolyam', icon: TrendingUp, canonicalRoles: ['foertektar', 'ugyvezeto', 'belso_ellenor'] },
       { path: '/reports/daily-journal', label: 'Napkönyv (PDF)', icon: FileText },
       { path: '/reports/central', label: 'Központi riportok (CSV)', icon: Building2 },
       { path: '/reports/nav', label: 'NAV adatszolgáltatás', icon: ShieldAlert },

@@ -838,7 +838,7 @@ export default function RatesPage() {
                       return (
                         <tr
                           key={s.currencyId}
-                          className={`${idx % 2 === 1 ? 'bg-gray-50/70' : 'bg-white'} border-b border-gray-100 last:border-0 hover:bg-blue-50/60`}
+                          className={`${idx % 2 === 1 ? 'bg-gray-50' : 'bg-white'} border-b border-gray-100 last:border-0 hover:bg-blue-50/60`}
                         >
                           <td className="sticky left-0 z-10 whitespace-nowrap bg-inherit px-3 py-2 align-top">
                             <span className="font-mono text-base font-bold text-blue-800">

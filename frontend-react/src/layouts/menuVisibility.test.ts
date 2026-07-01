@@ -95,6 +95,26 @@ describe('menuVisibility — konzisztens szigorítás (full mód)', () => {
     expect(isMenuGroupVisible(admin, ctxFor(['penztar'], 'full'))).toBe(false)
     expect(isMenuGroupVisible(aml, ctxFor(['penztar'], 'full'))).toBe(false)
   })
+
+  // FK-049: az "Átlag árfolyam" menüpont saját canonicalRoles-a [foertektar, ugyvezeto, belso_ellenor].
+  it('FK-049: irodavezeto (full) NEM látja az "Átlag árfolyam" itemet, a többi Riportok-itemet igen', () => {
+    const riportok = groupByLabel('Riportok')
+    const ctx = ctxFor(['irodavezeto'], 'full')
+    expect(isMenuItemVisible(itemByPath(riportok, '/reports/average-rate'), riportok, ctx)).toBe(false)
+    // egy örökölt (item-szintű roles nélküli) Riportok-item viszont látszik neki (csoport örökli)
+    expect(isMenuItemVisible(itemByPath(riportok, '/reports'), riportok, ctx)).toBe(true)
+  })
+
+  it('FK-049: foertektar / ugyvezeto / belso_ellenor (full) LÁTJA az "Átlag árfolyam" itemet', () => {
+    const riportok = groupByLabel('Riportok')
+    for (const role of ['foertektar', 'ugyvezeto', 'belso_ellenor']) {
+      const ctx = ctxFor([role], 'full')
+      expect(
+        isMenuItemVisible(itemByPath(riportok, '/reports/average-rate'), riportok, ctx),
+        `nem látja: ${role}`,
+      ).toBe(true)
+    }
+  })
 })
 
 describe('menuVisibility — lokál oversight-bypass (penztar/ertektar)', () => {
@@ -201,6 +221,14 @@ describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-h
 
   it('ismeretlen útvonal → undefined', () => {
     expect(effectiveCanonicalRolesForPath(menuGroups, '/nincs-ilyen')).toBeUndefined()
+  })
+
+  // FK-049: az "Átlag árfolyam" menüpont saját canonicalRoles-t kapott, felülírva a Riportok
+  // csoport örökölt listáját. A route-gate (effectiveCanonicalRolesForPath) ugyanezt tükrözi.
+  it('FK-049: /reports/average-rate → item-szintű [belso_ellenor, foertektar, ugyvezeto]', () => {
+    expect(
+      [...(effectiveCanonicalRolesForPath(menuGroups, '/reports/average-rate') ?? [])].sort(),
+    ).toEqual(['belso_ellenor', 'foertektar', 'ugyvezeto'])
   })
 
   // Fail-safe: a MenuRoleGate fail-open, ha az útvonalnak nincs menü-szerepköre. Ez a teszt
