@@ -87,4 +87,52 @@ public final class TerritoryScopeResolver {
             return null;
         }
     }
+
+    /**
+     * FK-051 (2026-07-01): a territory-scoped felhasználó által PÉNZTÁR-kontextusban (cash_balance /
+     * mozgás) látható branch-ID halmaza a saját {@code region}-je alapján, VAGY {@code null}, ha
+     * a role nem territory-scoped (központi — nincs szűrés).
+     *
+     * <p><b>Miért region, nem vault_territory_id?</b> A pénztárak ({@code is_vault=FALSE}) NEM kapnak
+     * {@code vault_territory_id}-t (a V322/V326 backfill elvből csak {@code is_vault=TRUE} branch-re tölt),
+     * ezért a korábbi {@code vault_territory_id}-szűrő ({@link #currentTerritoryFilterOrNull}) a régiós
+     * értéktárosnak ÜRES pénztár-listát adott (élő országos bug: minden valuta 0). A területi
+     * értéktár↔pénztár kapcsolat a {@code region} oszlopon él (pl. 'SZEGED'), ezért a pénztár-nézetek
+     * region-scope-ot használnak — összhangban az {@code AccessScopeService.vaultRegionBranchScopeOrNull()}-lel.
+     * Az ÉRTÉKTÁRI készlet nézet ({@code currency_stock} / {@code vault_territory}) továbbra is a
+     * {@code vault_territory_id}-t használja — az helyes, mert ott a territory az entitás.</p>
+     *
+     * <p>FAIL-CLOSED: territory-scoped role, de nincs user branch / nincs region → ÜRES halmaz
+     * (nem országos hozzáférés). Központi role → {@code null} (nincs szűrés).</p>
+     *
+     * @return {@code null} = nincs szűrés (központi role); egyébként a saját régió aktív branch-ID-i
+     *         (a saját fiók mindig benne). Üres halmaz = fail-closed (nincs meghatározható region).
+     */
+    public static Set<UUID> currentRegionBranchScopeOrNull(BranchRepository branchRepository) {
+        try {
+            if (!isCurrentRoleTerritoryScoped()) {
+                return null; // központi role — nincs területi szűrés
+            }
+            UUID companyId = SecurityUtils.getCurrentCompanyId();
+            UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
+            if (branchId == null || companyId == null) {
+                log.warn("regionScope: territory-scoped role-nak NINCS user branch/company → fail-closed (üres)");
+                return Set.of();
+            }
+            String region = branchRepository.findById(branchId).map(Branch::getRegion).orElse(null);
+            if (region == null || region.isBlank()) {
+                log.warn("regionScope: territory-scoped user branch-nek NINCS region-je → fail-closed (csak saját fiók)");
+                return Set.of(branchId);
+            }
+            Set<UUID> ids = branchRepository.findActiveByCompanyIdAndRegion(companyId, region)
+                    .stream()
+                    .map(Branch::getId)
+                    .collect(java.util.stream.Collectors.toCollection(java.util.HashSet::new));
+            ids.add(branchId); // a saját fiók mindig látható
+            return ids;
+        } catch (Exception e) {
+            log.warn("regionScope: exception → fail-closed (üres): {}", e.getMessage());
+            return Set.of();
+        }
+    }
 }

@@ -857,6 +857,87 @@ class InventoryServiceTest {
         assertThat(result).allMatch(cb -> cb.getCurrentBalance().compareTo(BigDecimal.ZERO) == 0);
     }
 
+    // ============ FK-051: Országos/Pénztári készlet — territory-scoped értéktáros REGION-scope ============
+
+    @Test
+    @DisplayName("FK-051 getAllStock (értéktáros): a saját RÉGIÓ nem-vault pénztárainak készletét látja (nem 0)")
+    void getAllStock_territoryScoped_seesRegionNonVaultBranches() {
+        // VALÓS ORSZÁGOS BUG (W1-W4 Neon-diagnosztika, 2026-07-01): a régiós értéktáros (ERTEKTAR)
+        // a Pénztári/Országos készlet nézetben MINDEN valutára 0-t látott. Gyökérok: a getAllStock
+        // territory-ága a vault_territory_id-szűrőt (findByCompanyIdAndVaultTerritoryId) használta,
+        // de a V322/V326 CSAK is_vault=TRUE branch-re töltött vt_id-t — a nem-vault PÉNZTÁRAKNAK
+        // (ahol a cash_balance van) vt_id=NULL → a metszet ÜRES → 0. A helyes scope a `region`-alapú
+        // (mint az AccessScopeService), amely a nem-vault pénztárakat is tartalmazza.
+
+        // Az értéktáros saját (vault) fiókja: region=SZEGED, van vt_id (mint prod BR020).
+        branch.setRegion("SZEGED");
+        branch.setIsVault(true);
+        branch.setVaultTerritoryId(4);
+        branch.setIsActive(true);
+
+        // Ugyanabban a régióban egy NEM-vault PÉNZTÁR, ahol a valódi készlet van, vt_id=NULL (mint prod BR035).
+        branch2.setRegion("SZEGED");
+        branch2.setIsVault(false);
+        branch2.setVaultTerritoryId(null);
+        branch2.setIsActive(true);
+
+        CashBalance penztarHuf = CashBalance.builder()
+                .branch(branch2).currency(hufCurrency).company(company)
+                .currentBalance(new BigDecimal("1376165")).openingBalance(BigDecimal.ZERO).build();
+
+        // ERTEKTAR user a saját (vault) fiókján → territory-scoped, region=SZEGED.
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(BRANCH_ID);
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(cashBalanceRepository.findByCompanyId(COMPANY_ID)).thenReturn(java.util.List.of(penztarHuf));
+        // A region-scope a SZEGED régió aktív branch-eit adja (a nem-vault pénztár is benne).
+        when(branchRepository.findActiveByCompanyIdAndRegion(COMPANY_ID, "SZEGED"))
+                .thenReturn(java.util.List.of(branch, branch2));
+        when(currencyRepository.findAllActiveOrdered()).thenReturn(java.util.List.of(hufCurrency, eurCurrency));
+
+        var result = inventoryService.getAllStock();
+
+        // A JAVÍTÁS ELŐTT ez ÜRES (0 sor) → a teszt bukik (RED). A fix után a nem-vault pénztár
+        // valódi HUF sora (1 376 165) megjelenik.
+        assertThat(result).as("az értéktáros a saját régiója pénztár-készletét látja")
+                .isNotEmpty();
+        assertThat(result).filteredOn(cb -> BRANCH_ID_2.equals(cb.getBranch().getId())
+                        && "HUF".equals(cb.getCurrency().getCode()))
+                .singleElement()
+                .extracting(CashBalance::getCurrentBalance)
+                .isEqualTo(new BigDecimal("1376165"));
+    }
+
+    @Test
+    @DisplayName("FK-051 getStockMatrix (értéktáros): a saját RÉGIÓ nem-vault pénztárai megjelennek a mátrixban")
+    void getStockMatrix_territoryScoped_seesRegionNonVaultBranches() {
+        branch.setRegion("SZEGED");
+        branch.setIsVault(true);
+        branch.setVaultTerritoryId(4);
+        branch.setIsActive(true);
+        branch2.setRegion("SZEGED");
+        branch2.setIsVault(false);
+        branch2.setVaultTerritoryId(null);
+        branch2.setIsActive(true);
+
+        CashBalance penztarHuf = CashBalance.builder()
+                .branch(branch2).currency(hufCurrency).company(company)
+                .currentBalance(new BigDecimal("1376165")).openingBalance(BigDecimal.ZERO).build();
+
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(BRANCH_ID);
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(cashBalanceRepository.findByCompanyId(COMPANY_ID)).thenReturn(java.util.List.of(penztarHuf));
+        when(branchRepository.findActiveByCompanyIdAndRegion(COMPANY_ID, "SZEGED"))
+                .thenReturn(java.util.List.of(branch, branch2));
+
+        var matrix = inventoryService.getStockMatrix().getMatrix();
+
+        // A fix előtt üres (vt_id-szűrő) → a nem-vault pénztár most a mátrixban van a valódi HUF-fal.
+        assertThat(matrix).containsKey(BRANCH_ID_2.toString());
+        assertThat(matrix.get(BRANCH_ID_2.toString()).get("HUF")).isEqualByComparingTo("1376165");
+    }
+
     // ============ FK-032: Országos készlet — VAULT_COUNTERPARTY virtuális partnerek kizárása ============
 
     @Test
