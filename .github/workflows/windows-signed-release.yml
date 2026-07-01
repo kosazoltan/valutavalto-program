@@ -69,8 +69,82 @@ jobs:
         shell: pwsh
         run: git config --global core.longpaths true
 
-      - name: Checkout
+      - name: Checkout (CSAK a kész main-ből épül a release)
         uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Build-integritasi kapu (KOTELEZO — Kosa Zoltan direktiva 2026-06-29)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A telepítő CSAK a kész, legfrissebb main-ből épülhet. Ha egy javítás
+          # child branch-en / nyitott PR-en maradt és nincs main-be merge-elve, a
+          # build régi kódból épülne → a javítás "eltűnik" (visszaesés). Ez a kapu
+          # ezt CI-szinten kikényszeríti. Részletek: AGENTS.md §3.1.
+          set -uo pipefail
+          git fetch --prune origin >/dev/null 2>&1 || true
+          BLOCK=0; WARN=0
+
+          # 1. a checkout valóban a main HEAD-jén áll (origin/main = HEAD)
+          HEAD_SHA="$(git rev-parse HEAD)"
+          MAIN_SHA="$(git rev-parse origin/main)"
+          if [ "$HEAD_SHA" = "$MAIN_SHA" ]; then
+            echo "✓ a build forrása az origin/main HEAD ($HEAD_SHA)"
+          else
+            echo "::error::A build NEM az origin/main HEAD-jéről indul (HEAD=$HEAD_SHA, origin/main=$MAIN_SHA)."
+            BLOCK=1
+          fi
+
+          # 2. a workflow-t a main branch-ről indították (workflow_dispatch ref)
+          if [ "${GITHUB_REF_NAME:-}" = "main" ]; then
+            echo "✓ a workflow a 'main' branch-ről indult"
+          else
+            echo "::error::A release workflow-t a '${GITHUB_REF_NAME:-?}' ref-ről indították — CSAK 'main'-ről engedélyezett."
+            BLOCK=1
+          fi
+
+          # 3. tiszta fa (CI-ban triviálisan az, de a szabály explicit)
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "✓ tiszta working tree"
+          else
+            echo "::error::A working tree nem tiszta a build előtt."; BLOCK=1
+          fi
+
+          # 4. nincs unmerged, main-be szánt FEATURE/FIX branch (dependabot/release külön)
+          UNMERGED="$(git branch -r --no-merged origin/main 2>/dev/null | sed 's/^[[:space:]]*//' | grep -v 'origin/main$' || true)"
+          FEATURE="$(echo "$UNMERGED" | grep -vE 'origin/(dependabot/|release/|HEAD)' | grep -v '^$' || true)"
+          if [ -n "$FEATURE" ]; then
+            echo "::warning::FELADAT/FIX branch-ek NINCSENEK main-ben — ellenőrizd, hogy egy aktuális javítás sem maradt ki:"
+            echo "$FEATURE" | sed 's/^/  - /'
+            WARN=1
+          else
+            echo "✓ nincs unmerged feature/fix branch"
+          fi
+
+          # 5. nincs nyitott PR a main ellen (gh elérhető a runneren)
+          if command -v gh >/dev/null 2>&1; then
+            OPEN_PRS="$(gh pr list --state open --base main --json number,title --jq '.[] | "#\(.number) \(.title)"' 2>/dev/null || true)"
+            if [ -n "$OPEN_PRS" ]; then
+              echo "::warning::NYITOTT PR(ek) a main ellen — tartalmazhatnak buildbe szánt javítást:"
+              echo "$OPEN_PRS" | sed 's/^/  - /'
+              WARN=1
+            else
+              echo "✓ nincs nyitott PR a main ellen"
+            fi
+          fi
+
+          echo ""
+          if [ "$BLOCK" = "1" ]; then
+            echo "::error::BUILD-INTEGRITÁS BLOKKOL — a release nem a kész main-ből épülne. Lásd AGENTS.md §3.1."
+            exit 1
+          fi
+          if [ "$WARN" = "1" ]; then
+            echo "::warning::Build-integritás: FELTÉTELES — main tiszta és szinkronban, de van nyitott ág/PR. Erősítsd meg, hogy nem maradt ki javítás."
+          fi
+          echo "Build-integritási kapu: OK — a release a kész main HEAD-ről ($HEAD_SHA) épül."
 
       - name: Resolve version + build date
         id: resolve

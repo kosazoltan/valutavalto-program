@@ -128,6 +128,34 @@ Alap mukodes:
 - Ne nyiss uj nagy refaktort a kert javitas melle.
 - Ha a felhasznalo agent-mukodest ker javitani, ne irj uzleti programkodot.
 
+### 3.1 KÖTELEZŐ build-integritási kapu — telepítő/release CSAK kész main-ből (Kósa Zoltán direktíva, 2026-06-29)
+
+> **Indok:** ha egy javítás child branch-en / nyitott PR-en marad és nem kerül
+> main-be merge-elve, a telepítő a régi main-ből épül → a javítás "eltűnik",
+> visszaesés történik (hiába javítottuk, nem kerül be az új verzióba). Ezt
+> MINDEN buildnél meg kell előzni.
+
+MINDEN telepítő/release build (lokális `installer/*.ps1`, `npm run package:*`,
+vagy a `windows-signed-release.yml` workflow) ELŐTT kötelező ellenőrizni:
+
+1. **A build forrása a `main` legfrissebb HEAD-je.** Release build NEM indulhat
+   feature/fix branch-ről, sem elavult lokális main-ről.
+2. **A lokális `main` = `origin/main` HEAD** (nincs behind/ahead/divergencia):
+   `git fetch --prune && git rev-list --left-right --count origin/main...HEAD` → `0  0`.
+3. **A working tree tiszta** (`git status --porcelain` üres) — nincs commitolatlan
+   változás, ami kimaradna a buildből.
+4. **Nincs unmerged, main-be szánt child branch vagy nyitott PR.** Ellenőrzés:
+   `git branch -r --no-merged origin/main` és `gh pr list --state open --base main`.
+   A `dependabot/*` és `release/*` ágak külön elbírálandók; a FELADAT/FIX ágak
+   közül egyetlen aktuális javítás SEM maradhat a buildből kihagyva.
+
+Gyors végrehajtás: `bash C:\Repo\hermes-agent\scripts\build-integrity-gate.sh <repo>`.
+A kapu BLOKKOL, ha a main nem szinkron / nem tiszta / nem a main az aktív branch;
+FELTÉTELES (nyugtázandó), ha van nyitott ág/PR. A zárójelentésben rögzíteni kell a
+build-forrás commit SHA-ját (`git rev-parse HEAD`) és a kapu eredményét.
+A CI workflow `actions/checkout`-jának a `main` ref-et kell használnia, és a
+`workflow_dispatch`-et a `main` branch-ről kell indítani.
+
 ## 4. Ellenorzes kockazat szerint
 
 ### Mindig tilos
