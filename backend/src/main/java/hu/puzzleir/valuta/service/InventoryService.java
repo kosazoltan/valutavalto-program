@@ -751,7 +751,7 @@ public class InventoryService {
         // FK-051: PÉNZTÁR-nézet → region-scope (a nem-vault pénztárak vt_id=NULL miatt a régi
         // vault_territory_id-szűrő üres mátrixot adott a régiós értéktárosnak).
         java.util.Set<UUID> allowedBranchIds = getCurrentRegionBranchScopeOrNull();
-        if (isCurrentRoleTerritoryScoped() && (allowedBranchIds == null || allowedBranchIds.isEmpty())) {
+        if (allowedBranchIds != null && allowedBranchIds.isEmpty()) {
             log.warn("getStockMatrix: territory-scoped role region-scope NÉLKÜL → fail-closed (üres mátrix)");
             return StockMatrixDto.builder().matrix(java.util.Map.of()).build();
         }
@@ -760,6 +760,9 @@ public class InventoryService {
         Map<String, Map<String, BigDecimal>> matrix = new LinkedHashMap<>();
         for (CashBalance cb : allBalances) {
             if (cb.getBranch() == null) continue;
+            // FK-051: a Mátrix PÉNZTÁR-nézet — a vault (értéktár) branch-eket kizárjuk, konzisztensen
+            // a getAllStock activeNonVaultBranch szűrőjével (a vault-készlet a getVaultStockFlow-ban van).
+            if (Boolean.TRUE.equals(cb.getBranch().getIsVault())) continue;
             UUID bId = cb.getBranch().getId();
             if (allowedBranchIds != null && !allowedBranchIds.contains(bId)) continue;
             String branchIdStr = bId.toString();

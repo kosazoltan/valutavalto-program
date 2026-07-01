@@ -936,6 +936,8 @@ class InventoryServiceTest {
         // A fix előtt üres (vt_id-szűrő) → a nem-vault pénztár most a mátrixban van a valódi HUF-fal.
         assertThat(matrix).containsKey(BRANCH_ID_2.toString());
         assertThat(matrix.get(BRANCH_ID_2.toString()).get("HUF")).isEqualByComparingTo("1376165");
+        // FK-051 GLM #4: a saját VAULT (értéktár) fiók NEM jelenik meg a pénztár-mátrixban (konzisztens getAllStock-kal).
+        assertThat(matrix).doesNotContainKey(BRANCH_ID.toString());
     }
 
     @Test
