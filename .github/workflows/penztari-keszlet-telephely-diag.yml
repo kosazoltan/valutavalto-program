@@ -1,0 +1,122 @@
+name: Penztari keszlet — telephely-azonosito diag (read-only)
+
+# FK (Kósa 2026-07-01): a "Pénztári készletek" oldalon a Szeged Tisza Sarok pénztárra
+# a VW0001 (Szeged Értéktár Google-login) 0-t lát, a BALI saját login helyes értéket.
+# Gyanú (a migrációk szövege alapján, kódból verifikálva): a VW0001 worker branch_id/
+# vault_territory_id a régi TISZA fiókra vagy rossz területre mutat — a V282 8 másik
+# értéktár-account-ot már javított, de a VW0001 kimaradt (VW0001 SEHOL a migrációkban).
+#
+# EZ A WORKFLOW KIZÁRÓLAG OLVAS (7 SELECT, a MD 6.1–6.7 lekérdezései). SEMMIT NEM MÓDOSÍT.
+# A backend a NEON-t szolgálja ki (a hetzner-db-check.yml igazolja), ezért a lekérdezések a
+# NEON (élő) DB-n futnak; ahol értelmes, a lokális 'valuta' (elavult) oldallal összevetve.
+# Jelszó/kapcsolati string maszkolva (GitHub is maszkolja a secretet).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  keszlet-diag:
+    name: VW0001/BALI telephely-diag (Neon read-only)
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Set up SSH (deploy key)
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: 7 read-only SELECT a Neon (élő) DB-n
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            NEON_URL=$(grep '^NEON_DATABASE_URL=' /opt/valutavalto/backend/.env 2>/dev/null | cut -d= -f2-)
+            # GLM-review #3: az esetleges körülvevő idézőjelek eltávolítása (psql különben elhasal)
+            NEON_URL="${NEON_URL%\"}"; NEON_URL="${NEON_URL#\"}"; NEON_URL="${NEON_URL%\'}"; NEON_URL="${NEON_URL#\'}"
+            NEON_URL="$(printf '%s' "$NEON_URL" | tr -d '\r')"
+            PSQL17=/usr/lib/postgresql/17/bin/psql; [ -x "$PSQL17" ] || PSQL17=psql
+            if [ -z "$NEON_URL" ]; then echo "::error::NEON_DATABASE_URL nincs a prod .env-ben"; exit 1; fi
+            N() { "$PSQL17" "$NEON_URL" -P pager=off "$@"; }
+
+            echo "=================================================================="
+            echo "6.1 — A három érintett branch rekord állapota"
+            echo "=================================================================="
+            N -c "SELECT id, code, name, is_vault, is_active, region, region_code, vault_territory_id, company_id
+                  FROM branch
+                  WHERE code IN ('TISZA','BR035','BR020')
+                     OR name IN ('Tisza Sarok','Szeged Tisza Sarok','Szeged Értéktár')
+                  ORDER BY code;"
+
+            echo "=================================================================="
+            echo "6.2 — VW0001 és BALI worker fiók- és szerepkör-kötése"
+            echo "=================================================================="
+            N -c "SELECT w.id, w.code, w.name, w.role, w.is_active, w.branch_id,
+                         b.code AS branch_code, b.name AS branch_name, b.region, b.region_code, b.vault_territory_id,
+                         w.google_login_enabled
+                  FROM worker w
+                  LEFT JOIN branch b ON b.id = w.branch_id
+                  WHERE w.code IN ('VW0001','BALI')
+                     OR w.name ILIKE '%szeged%ért%'
+                     OR w.code ILIKE 'VW%'
+                  ORDER BY w.code;"
+
+            echo "=================================================================="
+            echo "6.3 — A worker aktív operatív szerepköre"
+            echo "=================================================================="
+            N -c "SELECT w.code AS worker_code, wrd.code AS role_def_code, wra.is_primary
+                  FROM worker_role_assignment wra
+                  JOIN worker w ON w.id = wra.worker_id
+                  JOIN worker_role_def wrd ON wrd.id = wra.role_def_id
+                  WHERE w.code IN ('VW0001','BALI');"
+
+            echo "=================================================================="
+            echo "6.4 — A három branch tényleges cash_balance egyenlege"
+            echo "=================================================================="
+            N -c "SELECT b.code, b.name, c.code AS currency_code, cb.current_balance, cb.updated_at
+                  FROM cash_balance cb
+                  JOIN branch b ON b.id = cb.branch_id
+                  JOIN currency c ON c.id = cb.currency_id
+                  WHERE b.code IN ('TISZA','BR035','BR020')
+                  ORDER BY b.code, c.code;"
+
+            echo "=================================================================="
+            echo "6.5 — TISZA-forrású függő shipment_request tranzakciók"
+            echo "=================================================================="
+            N -c "SELECT sr.request_number, sr.status, sr.from_branch_id, fb.code AS from_code, fb.name AS from_name,
+                         sr.to_branch_id, tb.name AS to_name, sr.request_date, sr.delivery_date
+                  FROM shipment_request sr
+                  JOIN branch fb ON fb.id = sr.from_branch_id
+                  JOIN branch tb ON tb.id = sr.to_branch_id
+                  WHERE fb.code = 'TISZA' OR fb.name ILIKE '%Tisza Sarok%'
+                  ORDER BY sr.request_date;"
+
+            echo "=================================================================="
+            echo "6.6 — vault_territory állapota (Szeged)"
+            echo "=================================================================="
+            N -c "SELECT id, company_id, name, is_active
+                  FROM vault_territory
+                  WHERE name ILIKE '%szeged%'
+                  ORDER BY name;"
+
+            echo "=================================================================="
+            echo "6.7 — Flyway-migrációk lefutása (244,247,248,282,322,326)"
+            echo "=================================================================="
+            N -c "SELECT installed_rank, version, description, success, installed_on
+                  FROM flyway_schema_history
+                  WHERE version IN ('244','247','248','282','322','326')
+                  ORDER BY installed_rank;"
+
+            echo "=================================================================="
+            echo "KIEGÉSZÍTŐ — a V282 által javított 8 vault-account branch-kötése (referencia a VW0001-hez)"
+            echo "=================================================================="
+            N -c "SELECT w.code, w.name, w.branch_id, b.code AS branch_code, b.name AS branch_name, w.google_login_enabled
+                  FROM worker w LEFT JOIN branch b ON b.id = w.branch_id
+                  WHERE w.google_login_enabled = TRUE AND (w.name ILIKE '%ért%' OR w.code ILIKE 'VW%' OR w.code ILIKE 'G[_]%')
+                  ORDER BY b.code, w.code;"
+          ENDSSH
