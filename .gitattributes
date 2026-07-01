@@ -16,3 +16,6 @@ mvnw.cmd text eol=crlf
 *.tsx text=auto working-tree-encoding=UTF-8
 *.json text=auto working-tree-encoding=UTF-8
 *.md text=auto working-tree-encoding=UTF-8
+
+# ArchUnit FreezingArchRule baseline — stabil LF, hogy a store-match ne törjön Win/CI között
+backend/archunit_store/** text eol=lf
