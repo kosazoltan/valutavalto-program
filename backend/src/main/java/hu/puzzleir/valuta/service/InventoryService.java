@@ -410,6 +410,11 @@ public class InventoryService {
         return hu.puzzleir.valuta.security.TerritoryScopeResolver.currentTerritoryFilterOrNull(branchRepository);
     }
 
+    /** FK-051: PÉNZTÁR-kontextusú (cash_balance/mozgás) region-scope — a nem-vault pénztárakat is tartalmazza. */
+    private java.util.Set<UUID> getCurrentRegionBranchScopeOrNull() {
+        return hu.puzzleir.valuta.security.TerritoryScopeResolver.currentRegionBranchScopeOrNull(branchRepository);
+    }
+
     /**
      * Összes iroda teljes készlete (CashBalance lista) - multi-tenant + területi szűréssel.
      *
@@ -457,7 +462,11 @@ public class InventoryService {
                     cb.getCurrentBalance()));
         }
 
-        if (territoryFilter == null) {
+        // FK-051 (2026-07-01): PÉNZTÁR-nézet territory-scope a REGION-en (nem vault_territory_id-n).
+        // A nem-vault pénztáraknak nincs vault_territory_id-je (V322/V326 csak vault branch-re tölt),
+        // ezért a régi vt_id-szűrő a régiós értéktárosnak ÜRES listát adott (élő országos bug: 0 készlet).
+        java.util.Set<UUID> regionScope = getCurrentRegionBranchScopeOrNull();
+        if (regionScope == null) {
             List<CashBalance> result = allRaw.stream().filter(activeNonVaultBranch).toList();
             log.info("FK-005 getAllStock END (no territory): {} rows after activeNonVaultBranch filter (was {})",
                     result.size(), allRaw.size());
@@ -465,18 +474,15 @@ public class InventoryService {
             // (szintetikus, NEM perzisztált) 0-sort, ha nincs valódi cash_balance rekordja.
             return appendSyntheticZeroRows(result, companyId, null);
         }
-        var territoryBranchIds = branchRepository.findByCompanyIdAndVaultTerritoryId(companyId, territoryFilter)
-                .stream().map(Branch::getId).collect(java.util.stream.Collectors.toSet());
-        log.info("FK-005 getAllStock: territoryBranchIds={} (territoryFilter={})",
-                territoryBranchIds.size(), territoryFilter);
+        log.info("FK-005 getAllStock: regionScope branch-ek={} (territory-scoped értéktáros)", regionScope.size());
         List<CashBalance> result = allRaw.stream()
                 .filter(activeNonVaultBranch)
-                .filter(cb -> territoryBranchIds.contains(cb.getBranch().getId()))
+                .filter(cb -> regionScope.contains(cb.getBranch().getId()))
                 .toList();
-        log.info("FK-005 getAllStock END (territory={}): {} rows after activeNonVaultBranch+territory filter (was {})",
-                territoryFilter, result.size(), allRaw.size());
-        // FK-029: territory-scope-helyes szintézis (ugyanaz a territoryFilter, mint a valódi soroknál).
-        return appendSyntheticZeroRows(result, companyId, territoryFilter);
+        log.info("FK-005 getAllStock END (region-scope): {} rows after activeNonVaultBranch+region filter (was {})",
+                result.size(), allRaw.size());
+        // FK-029/FK-051: szintézis a region-scope branch-halmazra (ugyanaz, mint a valódi soroknál).
+        return appendSyntheticZeroRowsForScope(result, regionScope);
     }
 
     /**
@@ -554,6 +560,54 @@ public class InventoryService {
             }
         }
         log.info("FK-029 getAllStock: {} szintetikus 0-sor ({} aktiv nem-vault branch x {} aktiv valuta; {} valodi sor scope-szurt)",
+                synth, targetBranches.size(), activeCurrencies.size(), scopedReal.size());
+        return out;
+    }
+
+    /**
+     * FK-051 (2026-07-01): szintetikus 0-sorok egy KONKRÉT branch-ID scope-halmazra (region-scope-os
+     * pénztár-nézet). A {@link #appendSyntheticZeroRows} vault_territory_id-alapú változatának region-
+     * analógja: a scope aktív, nem-vault branch-eire tesz 0-egyenlegű, NEM perzisztált sort minden aktív
+     * valutára, amelyre nincs valódi cash_balance. A valódi sorokat is a scope-ra szűri (defense-in-depth).
+     */
+    private List<CashBalance> appendSyntheticZeroRowsForScope(List<CashBalance> realRows,
+                                                              java.util.Set<UUID> branchScope) {
+        // A scope aktív, nem-vault branch-ei (a saját vault-fiók is a scope-ban van, de azt a !isVault kizárja).
+        // GLM #1: egyetlen findAllById a scope-ra (N+1 helyett).
+        List<Branch> targetBranches = branchRepository.findAllById(branchScope).stream()
+                .filter(b -> Boolean.TRUE.equals(b.getIsActive()))
+                .filter(b -> !Boolean.TRUE.equals(b.getIsVault()))
+                .toList();
+        // Defense-in-depth: a valódi sorokat is a scope-ra szűrjük (a getAllStock már szűrt, de itt is).
+        List<CashBalance> scopedReal = realRows.stream()
+                .filter(cb -> cb.getBranch() != null && branchScope.contains(cb.getBranch().getId()))
+                .toList();
+        if (targetBranches.isEmpty()) {
+            return scopedReal;
+        }
+        List<hu.puzzleir.valuta.entity.Currency> activeCurrencies = currencyRepository.findAllActiveOrdered();
+        java.util.Set<String> existing = scopedReal.stream()
+                .filter(cb -> cb.getBranch() != null && cb.getCurrency() != null)
+                .map(cb -> cb.getBranch().getId() + ":" + cb.getCurrency().getId())
+                .collect(java.util.stream.Collectors.toSet());
+        List<CashBalance> out = new java.util.ArrayList<>(scopedReal);
+        int synth = 0;
+        for (Branch b : targetBranches) {
+            for (hu.puzzleir.valuta.entity.Currency cur : activeCurrencies) {
+                if (existing.contains(b.getId() + ":" + cur.getId())) {
+                    continue;
+                }
+                out.add(CashBalance.builder()
+                        .company(b.getCompany())
+                        .branch(b)
+                        .currency(cur)
+                        .currentBalance(java.math.BigDecimal.ZERO)
+                        .openingBalance(java.math.BigDecimal.ZERO)
+                        .build());
+                synth++;
+            }
+        }
+        log.info("FK-051 getAllStock (region-scope): {} szintetikus 0-sor ({} aktiv nem-vault branch x {} valuta; {} valodi)",
                 synth, targetBranches.size(), activeCurrencies.size(), scopedReal.size());
         return out;
     }
@@ -694,23 +748,21 @@ public class InventoryService {
     @Transactional(readOnly = true)
     public StockMatrixDto getStockMatrix() {
         UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
-        boolean territoryScoped = isCurrentRoleTerritoryScoped();
-        Integer territoryFilter = getCurrentTerritoryFilterOrNull();
-        if (territoryScoped && territoryFilter == null) {
-            log.warn("getStockMatrix: territory-scoped role vault_territory NÉLKÜL → fail-closed (üres mátrix)");
+        // FK-051: PÉNZTÁR-nézet → region-scope (a nem-vault pénztárak vt_id=NULL miatt a régi
+        // vault_territory_id-szűrő üres mátrixot adott a régiós értéktárosnak).
+        java.util.Set<UUID> allowedBranchIds = getCurrentRegionBranchScopeOrNull();
+        if (allowedBranchIds != null && allowedBranchIds.isEmpty()) {
+            log.warn("getStockMatrix: territory-scoped role region-scope NÉLKÜL → fail-closed (üres mátrix)");
             return StockMatrixDto.builder().matrix(java.util.Map.of()).build();
         }
         List<CashBalance> allBalances = cashBalanceRepository.findByCompanyId(companyId);
 
-        java.util.Set<UUID> allowedBranchIds = null;
-        if (territoryFilter != null) {
-            allowedBranchIds = branchRepository.findByCompanyIdAndVaultTerritoryId(companyId, territoryFilter)
-                    .stream().map(Branch::getId).collect(java.util.stream.Collectors.toSet());
-        }
-
         Map<String, Map<String, BigDecimal>> matrix = new LinkedHashMap<>();
         for (CashBalance cb : allBalances) {
             if (cb.getBranch() == null) continue;
+            // FK-051: a Mátrix PÉNZTÁR-nézet — a vault (értéktár) branch-eket kizárjuk, konzisztensen
+            // a getAllStock activeNonVaultBranch szűrőjével (a vault-készlet a getVaultStockFlow-ban van).
+            if (Boolean.TRUE.equals(cb.getBranch().getIsVault())) continue;
             UUID bId = cb.getBranch().getId();
             if (allowedBranchIds != null && !allowedBranchIds.contains(bId)) continue;
             String branchIdStr = bId.toString();
