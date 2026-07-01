@@ -405,7 +405,7 @@ export default function RateGrid({
                 ? 'bg-yellow-50'
                 : !r.hasRate
                   ? 'bg-gray-50'
-                  : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                  : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
 
               // FK03-fix: a sor-szintű cella-render — a J (officialRate, colIdx=0) a többi
               // oszloppal AZONOS útvonalon megy (kijelölés/szerkesztés/Escape/commit),

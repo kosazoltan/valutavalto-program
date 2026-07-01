@@ -340,7 +340,7 @@ export default function CashDeskPage() {
                       className={`border-b border-gray-100 last:border-0 ${
                         balanceStatus === 'low' ? 'bg-orange-50' :
                         balanceStatus === 'high' ? 'bg-yellow-50' :
-                        idx % 2 === 1 ? 'bg-gray-50/50' : ''
+                        idx % 2 === 1 ? 'bg-gray-50' : ''
                       }`}
                     >
                       <td className="px-3 py-1">

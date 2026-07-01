@@ -132,6 +132,14 @@
     @apply border-b border-secondary-100 px-3 py-1.5 text-xs;
   }
 
+  /* FK-050: egységes váltakozó sorok — a páratlan sorok bg-gray-50, a párosak fehérek (a .data-grid
+     alap bg-white). Ez a szabály a hover-blokk ELŐTT van, ezért az azonos-specificitású
+     tbody tr:hover (később a forrásban) felülírja — a hover, a selected (magasabb: td+osztály) és a
+     JSX-ből jövő állapot-színek (pl. bg-emerald-50 pozitív egyenleg) elsőbbséget élveznek. */
+  .data-grid tbody tr:nth-child(odd) {
+    @apply bg-gray-50;
+  }
+
   .data-grid tbody tr {
     @apply hover:bg-primary-50 transition-colors duration-150 cursor-pointer;
   }
