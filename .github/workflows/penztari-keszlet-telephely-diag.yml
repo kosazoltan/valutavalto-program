@@ -37,6 +37,9 @@ jobs:
               bash -s << 'ENDSSH'
             set -o pipefail
             NEON_URL=$(grep '^NEON_DATABASE_URL=' /opt/valutavalto/backend/.env 2>/dev/null | cut -d= -f2-)
+            # GLM-review #3: az esetleges körülvevő idézőjelek eltávolítása (psql különben elhasal)
+            NEON_URL="${NEON_URL%\"}"; NEON_URL="${NEON_URL#\"}"; NEON_URL="${NEON_URL%\'}"; NEON_URL="${NEON_URL#\'}"
+            NEON_URL="$(printf '%s' "$NEON_URL" | tr -d '\r')"
             PSQL17=/usr/lib/postgresql/17/bin/psql; [ -x "$PSQL17" ] || PSQL17=psql
             if [ -z "$NEON_URL" ]; then echo "::error::NEON_DATABASE_URL nincs a prod .env-ben"; exit 1; fi
             N() { "$PSQL17" "$NEON_URL" -P pager=off "$@"; }
@@ -90,7 +93,7 @@ jobs:
                   FROM shipment_request sr
                   JOIN branch fb ON fb.id = sr.from_branch_id
                   JOIN branch tb ON tb.id = sr.to_branch_id
-                  WHERE fb.code = 'TISZA' OR fb.name = 'Tisza Sarok'
+                  WHERE fb.code = 'TISZA' OR fb.name ILIKE '%Tisza Sarok%'
                   ORDER BY sr.request_date;"
 
             echo "=================================================================="
