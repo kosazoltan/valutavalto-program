@@ -22,6 +22,9 @@ import CurrencyManagerModal from './components/CurrencyManagerModal'
 import { arfolyamInternetLinkApi, type ArfolyamInternetLink } from '../../services/api/arfolyamInternetLinks'
 import { computeCrossSettlement, resolveSettlement, crossSettlementStaysAuto } from './mainSheetRules'
 import { validateRateDirection } from './rateDirectionRules'
+// FK06: a Főlap E/F oszlop 10%-os eltérés-figyelmeztetésének tiszta döntési logikája
+// (a közös deviationCheck.ts küszöbét használja — nincs duplikált küszöb-definíció).
+import { evaluateDeviationWarning } from './mainSheetCommit'
 import {
   euaDeviationExceeds, computeEuaRate, raiffeisenBandViolations,
   RAIFFEISEN_BAND_PERCENT, type BandSource,
@@ -248,6 +251,25 @@ export default function MainRateSheetPage() {
   // különben a fetch közben commitolt user-szerkesztést a válasz némán felülírná.
   const dirtyRef = useRef(dirty)
   useEffect(() => { dirtyRef.current = dirty }, [dirty])
+  // FK06 baseline-frissítés: amikor a rows NEM dirty (frissen betöltött/szinkronizált állapot),
+  // rögzítjük az E/F értékeket valutakódonként. Dirty (felhasználó által szerkesztett) állapotban
+  // NEM frissítjük, hogy a szerkesztés közbeni értékek ne mossák el a valódi baseline-t.
+  useEffect(() => {
+    if (dirty) return
+    const map: Record<string, { E: number | null; F: number | null }> = {}
+    for (const r of rows) {
+      map[r.currency.toUpperCase()] = {
+        E: typeof r.weakMultiBuy === 'number' && r.weakMultiBuy > 0 ? r.weakMultiBuy : null,
+        F: typeof r.weakMultiSell === 'number' && r.weakMultiSell > 0 ? r.weakMultiSell : null,
+      }
+    }
+    efBaselineRef.current = map
+  }, [rows, dirty])
+  // FK06: baseline az E/F 10%-os eltérés-ellenőrzéshez — valutakódonként a legutóbb betöltött
+  // (szerver-szinkron / localStorage-ból hidratált) vételi/eladási érték. A commit ehhez méri
+  // az új értéket; üres/0 baseline esetén NINCS riasztás (FR-5). Csak NEM-dirty állapotban
+  // frissül, így a lépésenkénti elcsúszás (400→430→470) is a betöltött értékhez mérve látszik.
+  const efBaselineRef = useRef<Record<string, { E: number | null; F: number | null }>>({})
   // FK04 (FR-1, FR-2): a valutasorok tagsága + sorrendje a currency táblából
   // (useCurrencyCatalog). A Valutakezelő módosítása után catalog.reload() frissít
   // (a korábbi currencyReloadVersion bump helyett), app-újraindítás nélkül.
@@ -524,12 +546,48 @@ export default function MainRateSheetPage() {
   // Side-effect wrapper: aszinkron állapotfrissítés (NEM használható azonnali serialization-höz).
   const commitCell = useCallback((rowIdx: number, col: keyof MainRateRow, raw: string) => {
     if (!canEdit) return
+    // FK06 (FR-1..5): E (vétel) / F (eladás) oszlopnál 10%-os eltérés-figyelmeztetés a betöltött
+    // baseline-hoz mérten, a közös `deviationCheck.ts` küszöbével (nincs duplikált küszöb).
+    // A döntés tiszta függvényben (mainSheetCommit.ts) — itt csak a megerősítő UI + revert.
+    if (col === 'weakMultiBuy' || col === 'weakMultiSell') {
+      const code = rows[rowIdx]?.currency?.toUpperCase()
+      const base = code ? efBaselineRef.current[code] : undefined
+      const baseline = base ? (col === 'weakMultiBuy' ? base.E : base.F) : null
+      const decision = evaluateDeviationWarning(col, raw, baseline)
+      if (decision.warn) {
+        const label = COL_NAMES[col as FormulaColumn] ?? String(col)
+        const proceed = window.confirm(
+          `Nagy árfolyam-eltérés:\n\n${rows[rowIdx]?.currency} – ${label}: ${decision.previous} → ${decision.next} ` +
+          `(${decision.percent}% eltérés a korábbi értékhez képest).\n\nBiztosan elmenti?`,
+        )
+        if (!proceed) return // revert: a cella az előző értéken marad (nincs commit)
+      }
+    }
+
     const next = computeCellCommit(rows, rowIdx, col, raw)
     if (next) {
       setRows(next)
       setDirty(true)
+      // FK07 (FR-1..6): commit-szinkron perzisztálás — az érték ÉS a képlet AZONNAL a localStorage-ba
+      // íródik (nem a 1000 ms debounce-ra halasztva), így azonnali lapváltásnál sem vész el.
+      // A képlet-snapshotot itt szinkronban számoljuk (a setFormulas async), a flushActiveCell mintája
+      // szerint — különben a stale closure-beli `formulas` menne a tárba (Copilot #863 tanulság).
+      const trimmed = raw.trim()
+      const formulaKey = `${rows[rowIdx]?.currency ?? rowIdx}.${String(col)}`
+      const isFormulaCol = (FORMULA_COLUMNS as readonly string[]).includes(col as string)
+      let nextFormulas = formulas
+      if (isFormulaCol) {
+        if (isFormula(trimmed)) nextFormulas = { ...formulas, [formulaKey]: trimmed }
+        else if (formulas[formulaKey]) { nextFormulas = { ...formulas }; delete nextFormulas[formulaKey] }
+      }
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+        localStorage.setItem(FORMULA_STORAGE_KEY, JSON.stringify(nextFormulas))
+      } catch (e) {
+        logger.error('MainRateSheetPage', 'Commit-szinkron helyi mentés sikertelen (quota/privát?)', e)
+      }
     }
-  }, [canEdit, rows, computeCellCommit])
+  }, [canEdit, rows, computeCellCommit, formulas])
 
   const blurCell = useCallback((rowIdx: number, col: keyof MainRateRow) => {
     // CSAK akkor commitolunk, ha tényleg szerkesztés volt — különben a kijelölt
