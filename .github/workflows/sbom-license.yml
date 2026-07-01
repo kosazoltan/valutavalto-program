@@ -1,0 +1,91 @@
+name: SBOM + License Compliance
+
+# SBOM (CycloneDX) generálás + license-compliance gate. A zárt, kereskedelmi Valutaváltó ERP-be
+# NEM kerülhet erős-copyleft (GPL/AGPL) függőség — ez jogi kockázat. A gate PR-en fut:
+# - backend: a CycloneDX bom.json-ból olvassa a komponens-licenceket
+# - frontend: license-checker a telepített npm-fából
+# Tiltott (fail): GPL-*, AGPL-*, SSPL. A gate artifactként feltölti mindkét SBOM-ot (transzparencia).
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/pom.xml'
+      - 'frontend-react/package.json'
+      - 'frontend-react/package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-sbom-license:
+    name: Backend SBOM + license (CycloneDX)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: SBOM generálás (CycloneDX)
+        run: cd backend && mvn -B -DskipTests package --no-transfer-progress
+      - name: SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-sbom
+          path: |
+            backend/target/bom.json
+            backend/target/bom.xml
+          if-no-files-found: error
+      - name: "License-gate (tiltott erős-copyleft GPL/AGPL/SSPL — LGPL engedett)"
+        run: |
+          python3 - <<'PY'
+          import json, re, sys
+          bom = json.load(open('backend/target/bom.json'))
+          # ERŐS-copyleft tiltva (fertőzi a zárt kódot statikus/aggregált linkeléskor).
+          # NEM tiltott: LGPL (könyvtárként linkelve nem fertőz), GPL+Classpath-Exception (JDK/Hibernate),
+          # és a "GPL-compatible" jelző más (pl. BSD) licencben. Word-boundary matching a téves LGPL-hit ellen.
+          strong_copyleft = re.compile(r'\b(A?GPL|SSPL)[-\s]?(v?[0-9]|$)', re.IGNORECASE)
+          allowed = ('CLASSPATH-EXCEPTION', 'GPL-COMPATIBLE', 'LGPL')
+          hits = []
+          for comp in bom.get('components', []):
+              name = comp.get('name', '?')
+              for lic in comp.get('licenses', []):
+                  lid = (lic.get('license', {}).get('id') or lic.get('license', {}).get('name') or lic.get('expression') or '')
+                  U = lid.upper()
+                  if 'LGPL' in U:
+                      continue  # LGPL engedett (könyvtár-linkelés nem fertőz)
+                  if strong_copyleft.search(lid) and not any(a in U for a in allowed):
+                      hits.append(f"{name}: {lid}")
+          if hits:
+              print("TILTOTT erős-copyleft licenc(ek) a backend függőségekben:")
+              for h in sorted(set(hits)): print("  -", h)
+              sys.exit(1)
+          print("Backend license-gate OK — nincs tiltott erős-copyleft (LGPL / Classpath-Exception / GPL-compatible BSD megengedett).")
+          PY
+
+  frontend-license:
+    name: Frontend license-checker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend-react/package-lock.json
+      - name: npm ci
+        run: cd frontend-react && npm ci
+      - name: License-gate (tiltott GPL/AGPL/SSPL a prod-függőségekben)
+        run: |
+          cd frontend-react
+          npx --yes license-checker-rseidelsohn@4.4.2 \
+            --production \
+            --excludePackages "valuta-frontend@0.0.0" \
+            --failOn "GPL-2.0;GPL-3.0;AGPL-1.0;AGPL-3.0;SSPL-1.0" \
+            --summary || { echo "TILTOTT copyleft licenc a frontend prod-függőségben"; exit 1; }
+          echo "Frontend license-gate OK."
