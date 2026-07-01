@@ -80,42 +80,73 @@ class ArchitectureRulesTest {
     }
 
     @Test
-    @DisplayName("Controller-biztonság: minden @RestController hordoz @PreAuthorize-t (class- vagy method-szinten), a dokumentált public kivételekkel")
+    @DisplayName("Controller-biztonság: minden @RestController @PreAuthorize-védett (class- vagy teljes method-szinten); baseline-frozen a SecurityConfig-matcherrel védett meglévőkre")
     void restControllersMustBeSecured() {
-        // A Spring a class-szintű @PreAuthorize-t is érvényesíti minden metódusra; a repo bevált
-        // mintája a class-szintű annotáció. Ez a szabály azt garantálja, hogy egyetlen üzleti
-        // @RestController se maradjon teljesen védelem nélkül (deny-by-default; FK-049 hibaosztály).
-        // Kivételek: a SecurityConfig-ban permitAll-ként dokumentált, SZÁNDÉKOSAN publikus controllerek
-        // (Auth = login/refresh/bootstrap; ErrorLog/ErrorReport = pre-login hibabejelentés; StaticAudit).
+        // Deny-by-default a @PreAuthorize rétegen. A repo KETTŐS védelmi modellt használ: method/class
+        // @PreAuthorize ÉS/VAGY SecurityConfig HTTP-matcher (requestMatchers(...).hasAnyRole/authenticated).
+        // Az ArchUnit statikusan a @PreAuthorize-t látja, a SecurityConfig-matchert nem — ezért a
+        // jelenleg @PreAuthorize nélküli, de SecurityConfig-matcherrel védett végpontok (pl. /workers/**,
+        // saját-adat /me végpontok, MFA/Supervisor auth-lépések) FROZEN baseline-ba kerülnek (kódból
+        // verifikálva NEM rések). A FreezingArchRule így minden ÚJ, teljesen új védtelen végpontot elkap
+        // (regresszió-védelem; FK-049 hibaosztály), miközben a meglévő legitim eseteket nem hamisítja hibává.
         ArchRule rule = classes()
                 .that().areAnnotatedWith(org.springframework.web.bind.annotation.RestController.class)
                 .and().haveSimpleNameNotEndingWith("AuthController")
                 .and().haveSimpleNameNotEndingWith("ErrorLogController")
                 .and().haveSimpleNameNotEndingWith("ErrorReportController")
                 .and().haveSimpleNameNotEndingWith("StaticAuditController")
-                .should(HAVE_CLASS_OR_METHOD_PREAUTHORIZE)
+                .should(HAVE_CLASS_OR_ALL_METHODS_PREAUTHORIZE)
                 .because("minden üzleti @RestController-nek explicit @PreAuthorize-t kell hordoznia "
                         + "(deny-by-default; az FK-049 @PreAuthorize-hiány/eltévesztés hibaosztály elleni statikus védelem)");
-        rule.check(productionClasses);
+        com.tngtech.archunit.library.freeze.FreezingArchRule.freeze(rule).check(productionClasses);
     }
 
-    /** Igaz, ha az osztályon VAGY bármely metódusán van @PreAuthorize (a Spring mindkettőt érvényesíti). */
+    /**
+     * Deny-by-default: a controller VAGY class-szintű @PreAuthorize-t hordoz (a Spring ezt minden
+     * metódusra érvényesíti), VAGY MINDEN HTTP-végpont-metódusa saját method-szintű @PreAuthorize-t
+     * kap. Részlegesen védett controller (néhány metódus védtelen) MEGBUKIK — a védtelen metódusokat
+     * név szerint jelenti. Ez zárja az FK-049 @PreAuthorize-hiány hibaosztályt (GLM-review #1).
+     *
+     * <p>Megj.: a repo kizárólag @RestController-t használ (nincs @Controller+@ResponseBody), és a
+     * HTTP-leképzés @Get/@Post/@Put/@Delete/@PatchMapping — ezeket nézzük végpont-metódusként.</p>
+     */
     private static final com.tngtech.archunit.lang.ArchCondition<com.tngtech.archunit.core.domain.JavaClass>
-            HAVE_CLASS_OR_METHOD_PREAUTHORIZE = new com.tngtech.archunit.lang.ArchCondition<>(
-                    "have @PreAuthorize on the class or on at least one method") {
+            HAVE_CLASS_OR_ALL_METHODS_PREAUTHORIZE = new com.tngtech.archunit.lang.ArchCondition<>(
+                    "have class-level @PreAuthorize, or @PreAuthorize on EVERY HTTP endpoint method") {
         @Override
         public void check(com.tngtech.archunit.core.domain.JavaClass clazz,
                           com.tngtech.archunit.lang.ConditionEvents events) {
-            boolean classLevel = clazz.isAnnotatedWith(
-                    org.springframework.security.access.prepost.PreAuthorize.class);
-            boolean anyMethodLevel = clazz.getMethods().stream().anyMatch(m -> m.isAnnotatedWith(
-                    org.springframework.security.access.prepost.PreAuthorize.class));
-            boolean satisfied = classLevel || anyMethodLevel;
-            events.add(new com.tngtech.archunit.lang.SimpleConditionEvent(clazz, satisfied,
-                    String.format("%s %s @PreAuthorize (%s)",
-                            clazz.getName(),
-                            satisfied ? "hordoz" : "NEM hordoz",
-                            clazz.getSourceCodeLocation())));
+            if (clazz.isAnnotatedWith(org.springframework.security.access.prepost.PreAuthorize.class)) {
+                events.add(new com.tngtech.archunit.lang.SimpleConditionEvent(clazz, true,
+                        clazz.getName() + " class-szintű @PreAuthorize (minden metódusra érvényes)"));
+                return;
+            }
+            // Nincs class-szintű → MINDEN HTTP-végpont-metódusnak method-szintű @PreAuthorize kell.
+            var unsecured = clazz.getMethods().stream()
+                    .filter(ArchitectureRulesTest::isHttpEndpoint)
+                    .filter(m -> !m.isAnnotatedWith(
+                            org.springframework.security.access.prepost.PreAuthorize.class))
+                    .map(m -> m.getFullName())
+                    .sorted()
+                    .toList();
+            boolean secured = unsecured.isEmpty();
+            events.add(new com.tngtech.archunit.lang.SimpleConditionEvent(clazz, secured,
+                    secured
+                        ? clazz.getName() + " minden HTTP-metódusa method-szintű @PreAuthorize-t hordoz"
+                        : clazz.getName() + " védtelen HTTP-metódus(ok) @PreAuthorize nélkül: " + unsecured));
         }
     };
+
+    private static final java.util.List<Class<? extends java.lang.annotation.Annotation>> HTTP_MAPPINGS =
+            java.util.List.of(
+                    org.springframework.web.bind.annotation.GetMapping.class,
+                    org.springframework.web.bind.annotation.PostMapping.class,
+                    org.springframework.web.bind.annotation.PutMapping.class,
+                    org.springframework.web.bind.annotation.DeleteMapping.class,
+                    org.springframework.web.bind.annotation.PatchMapping.class,
+                    org.springframework.web.bind.annotation.RequestMapping.class);
+
+    private static boolean isHttpEndpoint(com.tngtech.archunit.core.domain.JavaMethod method) {
+        return HTTP_MAPPINGS.stream().anyMatch(method::isAnnotatedWith);
+    }
 }
