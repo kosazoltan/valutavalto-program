@@ -119,4 +119,53 @@ jobs:
                   FROM worker w LEFT JOIN branch b ON b.id = w.branch_id
                   WHERE w.google_login_enabled = TRUE AND (w.name ILIKE '%ért%' OR w.code ILIKE 'VW%' OR w.code ILIKE 'G[_]%')
                   ORDER BY b.code, w.code;"
+
+            echo "=================================================================="
+            echo "SZÉLESSÉG W1 — MINDEN territory-scoped (értéktáros) worker + a branch-ük vault_territory_id-ja"
+            echo "=================================================================="
+            N -c "SELECT w.code, w.name, w.is_active, wrd.code AS role_def, wra.is_primary,
+                         b.code AS branch_code, b.name AS branch_name, b.is_vault, b.region, b.vault_territory_id
+                  FROM worker w
+                  JOIN worker_role_assignment wra ON wra.worker_id = w.id
+                  JOIN worker_role_def wrd ON wrd.id = wra.role_def_id
+                  LEFT JOIN branch b ON b.id = w.branch_id
+                  WHERE wrd.code IN ('ertektar','ertektaros','vault_keeper')
+                  ORDER BY b.region, w.code;"
+
+            echo "=================================================================="
+            echo "SZÉLESSÉG W2 — régiónként az AKTÍV, nem-vault pénztárak vault_territory_id fedettsége"
+            echo "=================================================================="
+            N -c "SELECT COALESCE(b.region,'(NULL)') AS region,
+                         count(*) AS penztar_db,
+                         count(*) FILTER (WHERE b.vault_territory_id IS NOT NULL) AS van_vt_id,
+                         count(*) FILTER (WHERE b.vault_territory_id IS NULL)     AS nincs_vt_id
+                  FROM branch b
+                  WHERE b.is_active = TRUE AND b.is_vault = FALSE
+                  GROUP BY b.region
+                  ORDER BY b.region;"
+
+            echo "=================================================================="
+            echo "SZÉLESSÉG W3 — a bug hatás-szimulációja: territory-szűrő (getAllStock) vs region-scope találatszám vault-territory-nként"
+            echo "=================================================================="
+            N -c "SELECT vt.id AS territory_id, vt.name AS territory,
+                         (SELECT count(*) FROM branch bx
+                            WHERE bx.is_active AND bx.is_vault = FALSE AND bx.vault_territory_id = vt.id)
+                              AS territory_szuro_talalat_nemvault,
+                         (SELECT count(*) FROM branch br
+                            WHERE br.is_active AND br.is_vault = FALSE
+                              AND br.region = (SELECT region FROM branch vb
+                                               WHERE vb.is_vault AND vb.vault_territory_id = vt.id LIMIT 1))
+                              AS region_scope_talalat_nemvault
+                  FROM vault_territory vt
+                  WHERE vt.is_active
+                  ORDER BY vt.name;"
+
+            echo "=================================================================="
+            echo "SZÉLESSÉG W4 — érintett értéktáros userek száma (aktív, territory-scoped)"
+            echo "=================================================================="
+            N -c "SELECT count(DISTINCT w.id) AS erintett_ertektaros_userek
+                  FROM worker w
+                  JOIN worker_role_assignment wra ON wra.worker_id = w.id
+                  JOIN worker_role_def wrd ON wrd.id = wra.role_def_id
+                  WHERE w.is_active AND wrd.code IN ('ertektar','ertektaros','vault_keeper');"
           ENDSSH
