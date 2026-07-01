@@ -44,7 +44,7 @@ jobs:
     steps:
       - name: Checkout (freeze-watchdog telepítő + V327-V330 migrációs .sql-ek)
         if: ${{ github.event.inputs.action == 'ha-install-freeze-watchdog' || github.event.inputs.action == 'local-rub-data-fix' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up SSH (deploy key)
         run: |

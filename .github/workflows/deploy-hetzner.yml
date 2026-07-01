@@ -42,7 +42,7 @@ jobs:
       jar_name: ${{ steps.mvn.outputs.jar_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # 2026-05-20 V234 outage hotfix: deploy pre-flight Flyway dup-version guard.
       # A flyway-migration-lint.yml F14b a PR-branch-en fut, de a collision csak
@@ -209,7 +209,7 @@ jobs:
     environment: production
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Repo max migration version
         id: repo
@@ -278,7 +278,7 @@ jobs:
     environment: production
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Repo max migration version
         id: repo
@@ -478,7 +478,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node 20
         uses: actions/setup-node@v6
@@ -527,7 +527,7 @@ jobs:
       contains(github.event.commits.*.added, 'deploy/hetzner/systemd/')
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up SSH
         run: |
