@@ -1,9 +1,9 @@
 # =============================================================================
-# ⚠️ DEPRECATED (2026-06-16) — a Hetzner↔Scaleway streaming-HA KIVEZETVE (Local-First).
-# A Scaleway standby postgres leállítva, a replikációs slot eltávolítva, synchronous_standby_names=''.
-# Ez a drill MÁR NEM FUTTATHATÓ értelmesen (nincs élő standby/replikáció). NE indítsd manuálisan sem,
-# amíg a streaming-HA nincs visszaállítva. Új védvonal: lokális primary + Neon-backup (~5 perc RPO)
-# + napi B2 + kliens-outbox + freeze-watchdog. Részletek: vault/operations/scaleway-failover-runbook.md.
+# ✅ AKTÍV (2026-07-02) — a Hetzner↔Scaleway streaming-HA VISSZAÁLLÍTVA (user-direktíva).
+# Helyreállítás: .github/workflows/scaleway-ha-restore.yml (idempotens, dry_run-nal).
+# Élő állapot: scaleway_standby streaming/sync (RPO=0), sync-replication-guard (Hetzner) +
+# primary-watchdog (Scaleway, off-host) + freeze-watchdog aktív. A Neon-backup lánc emellett
+# változatlanul él (kettős védelem). Történet: 2026-06-16-án kivezetve, 07-02-én visszaállítva.
 # =============================================================================
 # Scaleway Failover Drill — automatikus végrehajtás
 # =============================================================================
@@ -56,12 +56,9 @@ concurrency:
 
 jobs:
   preflight:
-    name: 'Pre-flight (HTTP + replikáció) [DEPRECATED — HA kivezetve]'
-    # 2026-06-16: a streaming-HA KIVEZETVE → a drill nem futtatható (nincs élő standby/replikáció).
-    # Az `if: false` letiltja az EGÉSZ láncot: a `drill` és `dry_run_summary` a preflight.outputs.ready-re
-    # épül, ami skip-elt preflightnál üres → azok is skip-elnek. (A workflow_dispatch trigger megmarad,
-    # de minden job skip-el.) Visszaállítás: lásd vault/operations/scaleway-failover-runbook.md.
-    if: false
+    name: 'Pre-flight (HTTP + replikáció)'
+    # 2026-07-02: streaming-HA VISSZAÁLLÍTVA (scaleway-ha-restore.yml, user-direktíva) —
+    # a drill újra futtatható. Történet: 2026-06-16-án kivezetve (if:false), 07-02-én reaktiválva.
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
