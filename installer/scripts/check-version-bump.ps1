@@ -1,13 +1,13 @@
 #!/usr/bin/env pwsh
 # =============================================================================
-# check-version-bump.ps1 - Version bump enforcement gate (FULL 6-way sync)
+# check-version-bump.ps1 - Version bump enforcement gate (FULL 11-way sync)
 # =============================================================================
 # Strategy: dot-sources `build-common.ps1` (CLAUDE.md established pattern,
 # PR #103 + #104) and uses the official `npm version patch` CLI command
 # (industry standard: https://docs.npmjs.com/cli/v10/commands/npm-version)
 # plus Maven pom.xml manipulation.
 #
-# IMPORTANT: This repo has 6 version locations that MUST be kept in sync
+# IMPORTANT: This repo has 11 version locations that MUST be kept in sync
 # (kanonikus forras: scripts/check-version-sync.mjs; CLAUDE.md release process,
 # PR #177):
 #   1. package.json (monorepo root)
@@ -16,9 +16,14 @@
 #   4. arfolyam-keszito-client/package.json
 #   5. kozponti-client/package.json
 #   6. backend/pom.xml (top-level <version>)
+#   7. package-lock.json (root: version + packages."".version)
+#   8. frontend-react/package-lock.json (version + packages."".version)
+#   9. penztar-client/package-lock.json (version + packages."".version)
+#   10. arfolyam-keszito-client/package-lock.json (version + packages."".version)
+#   11. kozponti-client/package-lock.json (version + packages."".version)
 #
 # Behavior (DEFAULT mode = AUTO-PATCH):
-#   - If current version <= latest existing build/*.exe: bump all 6 locations
+#   - If current version <= latest existing build/*.exe: bump all 11 locations
 #   - If current version > latest existing: keep as-is (no bump)
 #
 # Optional flags:
@@ -56,7 +61,7 @@ $ErrorActionPreference = "Stop"
 . (Join-Path (Split-Path -Parent $PSScriptRoot) 'build-common.ps1')
 
 Write-Host ""
-Write-Host "=== Version Bump Gate (6-way: package.json x5 + pom.xml) ===" -ForegroundColor Cyan
+Write-Host "=== Version Bump Gate (11-way: package.json x5 + pom.xml + package-lock.json x5) ===" -ForegroundColor Cyan
 Write-Host "Current version: $CurrentVersion" -ForegroundColor Yellow
 Write-Host "Build dir: $BuildDir" -ForegroundColor DarkGray
 $modeLabel = if ($NoAutoPatch) { "STRICT (no auto-patch)" } else { "AUTO-PATCH (default)" }
@@ -69,26 +74,183 @@ if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
     exit 2
 }
 
-# Validate ALL 6 version locations are in sync BEFORE deciding on bump.
+function Format-VersionField {
+    param([AllowNull()][string]$Version)
+    if ([string]::IsNullOrWhiteSpace($Version)) { return '<missing>' }
+    return $Version
+}
+
+function Get-PackageLockVersionRow {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Label,
+
+        [Parameter(Mandatory = $true)]
+        [string]$RelativePath
+    )
+
+    $path = Join-Path $RepoRoot $RelativePath
+    if (-not (Test-Path $path)) {
+        throw "package-lock.json not found: $path"
+    }
+
+    $content = Get-Content $path -Raw
+    if ((Get-Command Test-Json -ErrorAction SilentlyContinue) -and -not (Test-Json $content)) {
+        throw "Invalid package-lock.json: $path"
+    }
+
+    $topLevelMatch = [regex]::Match($content, '"version"\s*:\s*"([^"]+)"')
+    $packageRootMatch = [regex]::Match($content, '(?s)"packages"\s*:\s*\{\s*""\s*:\s*\{.*?"version"\s*:\s*"([^"]+)"')
+    $topLevelVersion = if ($topLevelMatch.Success) { $topLevelMatch.Groups[1].Value } else { $null }
+    $packageRootVersion = if ($packageRootMatch.Success) { $packageRootMatch.Groups[1].Value } else { $null }
+
+    return [PSCustomObject]@{
+        Label              = $Label
+        RelativePath       = $RelativePath
+        Path               = $path
+        TopLevelVersion    = [string]$topLevelVersion
+        PackageRootVersion = [string]$packageRootVersion
+    }
+}
+
+function Get-AllPackageLockVersions {
+    param([Parameter(Mandatory = $true)][string]$RepoRoot)
+
+    return @(
+        Get-PackageLockVersionRow -RepoRoot $RepoRoot -Label 'package-lock.json (root)' -RelativePath 'package-lock.json'
+        Get-PackageLockVersionRow -RepoRoot $RepoRoot -Label 'frontend-react/package-lock.json' -RelativePath 'frontend-react\package-lock.json'
+        Get-PackageLockVersionRow -RepoRoot $RepoRoot -Label 'penztar-client/package-lock.json' -RelativePath 'penztar-client\package-lock.json'
+        Get-PackageLockVersionRow -RepoRoot $RepoRoot -Label 'arfolyam-keszito-client/package-lock.json' -RelativePath 'arfolyam-keszito-client\package-lock.json'
+        Get-PackageLockVersionRow -RepoRoot $RepoRoot -Label 'kozponti-client/package-lock.json' -RelativePath 'kozponti-client\package-lock.json'
+    )
+}
+
+function Get-AllVersionValues {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$ProjectVersions,
+
+        [Parameter(Mandatory = $true)]
+        [object[]]$LockfileVersions
+    )
+
+    $values = @(
+        $ProjectVersions.Root,
+        $ProjectVersions.FrontendReact,
+        $ProjectVersions.PenztarClient,
+        $ProjectVersions.ArfolyamKeszitoClient,
+        $ProjectVersions.KozpontiClient,
+        $ProjectVersions.BackendPom
+    )
+
+    foreach ($lock in $LockfileVersions) {
+        $values += $lock.TopLevelVersion
+        $values += $lock.PackageRootVersion
+    }
+
+    return $values
+}
+
+function Test-VersionGateConsistency {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$ProjectVersions,
+
+        [Parameter(Mandatory = $true)]
+        [object[]]$LockfileVersions
+    )
+
+    $values = Get-AllVersionValues -ProjectVersions $ProjectVersions -LockfileVersions $LockfileVersions
+    $missing = @($values | Where-Object { [string]::IsNullOrWhiteSpace($_) })
+    $unique = @($values | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
+
+    return [PSCustomObject]@{
+        IsConsistent   = ($ProjectVersions.IsConsistent -and $missing.Count -eq 0 -and $unique.Count -eq 1)
+        MissingCount   = $missing.Count
+        UniqueVersions = $unique
+    }
+}
+
+function Write-VersionLocations {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$ProjectVersions,
+
+        [Parameter(Mandatory = $true)]
+        [object[]]$LockfileVersions,
+
+        [Parameter(Mandatory = $true)]
+        [ConsoleColor]$Color
+    )
+
+    Write-Host "  package.json (root):                  $($ProjectVersions.Root)" -ForegroundColor $Color
+    Write-Host "  frontend-react/package.json:          $($ProjectVersions.FrontendReact)" -ForegroundColor $Color
+    Write-Host "  penztar-client/package.json:          $($ProjectVersions.PenztarClient)" -ForegroundColor $Color
+    Write-Host "  arfolyam-keszito-client/package.json: $($ProjectVersions.ArfolyamKeszitoClient)" -ForegroundColor $Color
+    Write-Host "  kozponti-client/package.json:         $($ProjectVersions.KozpontiClient)" -ForegroundColor $Color
+    Write-Host "  backend/pom.xml:                      $($ProjectVersions.BackendPom)" -ForegroundColor $Color
+    foreach ($lock in $LockfileVersions) {
+        Write-Host ("  {0}: version={1}, packages.`"`".version={2}" -f $lock.Label, (Format-VersionField $lock.TopLevelVersion), (Format-VersionField $lock.PackageRootVersion)) -ForegroundColor $Color
+    }
+}
+
+function Set-PackageLockJsonVersion {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [Parameter(Mandatory = $true)]
+        [string]$NewVersion
+    )
+
+    if (-not (Test-Path $Path)) {
+        throw "package-lock.json not found: $Path"
+    }
+
+    $content = Get-Content $Path -Raw
+    if ((Get-Command Test-Json -ErrorAction SilentlyContinue) -and -not (Test-Json $content)) {
+        throw "Invalid package-lock.json: $Path"
+    }
+
+    $topPattern = '("version"\s*:\s*")([^"]*)(")'
+    if (-not [regex]::IsMatch($content, $topPattern)) {
+        throw "package-lock.json missing top-level version field: $Path"
+    }
+    $topRegex = [regex]::new($topPattern)
+    $content = $topRegex.Replace($content, { param($m) $m.Groups[1].Value + $NewVersion + $m.Groups[3].Value }, 1)
+
+    $rootPackagePattern = '(?s)("packages"\s*:\s*\{\s*""\s*:\s*\{.*?"version"\s*:\s*")([^"]*)(")'
+    if (-not [regex]::IsMatch($content, $rootPackagePattern)) {
+        throw ("package-lock.json missing packages.`"`".version field: {0}" -f $Path)
+    }
+    $rootPackageRegex = [regex]::new($rootPackagePattern)
+    $content = $rootPackageRegex.Replace($content, { param($m) $m.Groups[1].Value + $NewVersion + $m.Groups[3].Value }, 1)
+
+    Set-Content -Path $Path -Value $content -NoNewline
+}
+
+# Validate ALL 11 version locations are in sync BEFORE deciding on bump.
 # Eszter F2 finding 3 (HIGH): no-bump early-exit must not skip this check.
-# CLAUDE.md release process: 6-way sync required.
+# CLAUDE.md release process: 11-way sync required.
 $projectVersions = Get-AllProjectVersions -RepoRoot $RepoRoot
+$lockfileVersions = Get-AllPackageLockVersions -RepoRoot $RepoRoot
+$gateConsistency = Test-VersionGateConsistency -ProjectVersions $projectVersions -LockfileVersions $lockfileVersions
 
-Write-Host "Version locations (6-way check):" -ForegroundColor DarkGray
-Write-Host "  package.json (root):                 $($projectVersions.Root)" -ForegroundColor DarkGray
-Write-Host "  frontend-react/package.json:         $($projectVersions.FrontendReact)" -ForegroundColor DarkGray
-Write-Host "  penztar-client/package.json:         $($projectVersions.PenztarClient)" -ForegroundColor DarkGray
-Write-Host "  arfolyam-keszito-client/package.json: $($projectVersions.ArfolyamKeszitoClient)" -ForegroundColor DarkGray
-Write-Host "  kozponti-client/package.json:        $($projectVersions.KozpontiClient)" -ForegroundColor DarkGray
-Write-Host "  backend/pom.xml:                     $($projectVersions.BackendPom)" -ForegroundColor DarkGray
+Write-Host "Version locations (11-way check):" -ForegroundColor DarkGray
+Write-VersionLocations -ProjectVersions $projectVersions -LockfileVersions $lockfileVersions -Color DarkGray
 
-if (-not $projectVersions.IsConsistent) {
+if (-not $gateConsistency.IsConsistent) {
     Write-Host ""
     Write-Host ("ERROR: Version drift detected. " +
-                "All 6 locations must be in sync (CLAUDE.md release process, PR #177).") -ForegroundColor Red
-    Write-Host ("Found: " + ($projectVersions.UniqueVersions -join ', ')) -ForegroundColor Red
+                "All 11 locations must be in sync (CLAUDE.md release process, PR #177).") -ForegroundColor Red
+    $foundVersions = @($gateConsistency.UniqueVersions)
+    if ($gateConsistency.MissingCount -gt 0) { $foundVersions += '<missing>' }
+    Write-Host ("Found: " + ($foundVersions -join ', ')) -ForegroundColor Red
     Write-Host ""
-    Write-Host "Fix: align all 6 files manually to a single version, then re-run the gate." -ForegroundColor Red
+    Write-Host "Fix: align all 11 version locations manually to a single version, then re-run the gate." -ForegroundColor Red
     exit 2
 }
 
@@ -131,7 +293,7 @@ if ($NoAutoPatch) {
     $msg = 'VERSION BUMP REQUIRED!' + [Environment]::NewLine + [Environment]::NewLine
     $msg += "Current version ($CurrentVersion) is not greater than latest build ($maxV)." + [Environment]::NewLine
     $msg += 'Manual bump required (NoAutoPatch mode active).' + [Environment]::NewLine + [Environment]::NewLine
-    $msg += 'Run (6-way sync needed):' + [Environment]::NewLine
+    $msg += 'Run (11-way sync needed; npm also updates the matching package-lock.json files):' + [Environment]::NewLine
     $msg += "  cd $RepoRoot && npm version patch --no-git-tag-version" + [Environment]::NewLine
     $msg += "  cd $RepoRoot\frontend-react && npm version patch --no-git-tag-version" + [Environment]::NewLine
     $msg += "  cd $RepoRoot\penztar-client && npm version patch --no-git-tag-version" + [Environment]::NewLine
@@ -156,7 +318,7 @@ $patchPart = if ($b.Build -ge 0) { $b.Build } else { 0 }
 $targetVersion = "{0}.{1}.{2}" -f $b.Major, $b.Minor, ($patchPart + 1)
 
 if ($DryRun) {
-    Write-Host "DryRun: would update 6 locations $baseVersion -> $targetVersion" -ForegroundColor Yellow
+    Write-Host "DryRun: would update 11 locations $baseVersion -> $targetVersion" -ForegroundColor Yellow
     Write-Output "BUMPED_VERSION=$targetVersion"
     exit 0
 }
@@ -168,6 +330,11 @@ $clientPkgPath   = Join-Path $RepoRoot 'penztar-client\package.json'
 $arfolyamPkgPath = Join-Path $RepoRoot 'arfolyam-keszito-client\package.json'
 $kozpontiPkgPath = Join-Path $RepoRoot 'kozponti-client\package.json'
 $pomXmlPath      = Join-Path $RepoRoot 'backend\pom.xml'
+$rootLockPath     = Join-Path $RepoRoot 'package-lock.json'
+$feReactLockPath  = Join-Path $RepoRoot 'frontend-react\package-lock.json'
+$clientLockPath   = Join-Path $RepoRoot 'penztar-client\package-lock.json'
+$arfolyamLockPath = Join-Path $RepoRoot 'arfolyam-keszito-client\package-lock.json'
+$kozpontiLockPath = Join-Path $RepoRoot 'kozponti-client\package-lock.json'
 
 if ($baseVersion -ne $CurrentVersion) {
     Set-PackageJsonVersion -Path $rootPkgPath     -NewVersion $baseVersion
@@ -176,7 +343,12 @@ if ($baseVersion -ne $CurrentVersion) {
     Set-PackageJsonVersion -Path $arfolyamPkgPath -NewVersion $baseVersion
     Set-PackageJsonVersion -Path $kozpontiPkgPath -NewVersion $baseVersion
     Set-PomXmlVersion      -Path $pomXmlPath      -NewVersion $baseVersion
-    Write-Host "Pre-bump sync: $CurrentVersion -> $baseVersion (6-way)" -ForegroundColor DarkGray
+    Set-PackageLockJsonVersion -Path $rootLockPath     -NewVersion $baseVersion
+    Set-PackageLockJsonVersion -Path $feReactLockPath  -NewVersion $baseVersion
+    Set-PackageLockJsonVersion -Path $clientLockPath   -NewVersion $baseVersion
+    Set-PackageLockJsonVersion -Path $arfolyamLockPath -NewVersion $baseVersion
+    Set-PackageLockJsonVersion -Path $kozpontiLockPath -NewVersion $baseVersion
+    Write-Host "Pre-bump sync: $CurrentVersion -> $baseVersion (11-way)" -ForegroundColor DarkGray
 }
 
 # Run npm version patch in 5 directories (uses build-common.ps1 helper)
@@ -210,19 +382,16 @@ Set-PomXmlVersion -Path $pomXmlPath -NewVersion $newRootVersion
 $newPomVersion = Get-PomXmlVersion -Path $pomXmlPath
 Write-Host "  Backend pom.xml: $newPomVersion" -ForegroundColor Green
 
-# Sanity check: ALL 6 locations must agree
+# Sanity check: ALL 11 locations must agree
 $postVersions = Get-AllProjectVersions -RepoRoot $RepoRoot
-if (-not $postVersions.IsConsistent) {
+$postLockfileVersions = Get-AllPackageLockVersions -RepoRoot $RepoRoot
+$postGateConsistency = Test-VersionGateConsistency -ProjectVersions $postVersions -LockfileVersions $postLockfileVersions
+if (-not $postGateConsistency.IsConsistent) {
     Write-Host "ERROR: Version drift after bump:" -ForegroundColor Red
-    Write-Host "  Root:                    $($postVersions.Root)" -ForegroundColor Red
-    Write-Host "  Frontend-react:          $($postVersions.FrontendReact)" -ForegroundColor Red
-    Write-Host "  Penztar-client:          $($postVersions.PenztarClient)" -ForegroundColor Red
-    Write-Host "  Arfolyam-keszito-client: $($postVersions.ArfolyamKeszitoClient)" -ForegroundColor Red
-    Write-Host "  Kozponti-client:         $($postVersions.KozpontiClient)" -ForegroundColor Red
-    Write-Host "  Backend pom:             $($postVersions.BackendPom)" -ForegroundColor Red
+    Write-VersionLocations -ProjectVersions $postVersions -LockfileVersions $postLockfileVersions -Color Red
     exit 2
 }
 
-Write-Host "Auto-patch complete: $CurrentVersion -> $newRootVersion (6-way sync OK)" -ForegroundColor Green
+Write-Host "Auto-patch complete: $CurrentVersion -> $newRootVersion (11-way sync OK)" -ForegroundColor Green
 Write-Output "BUMPED_VERSION=$newRootVersion"
 exit 0
