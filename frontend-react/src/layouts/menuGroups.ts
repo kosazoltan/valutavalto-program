@@ -230,6 +230,7 @@ export const menuGroups: MenuGroup[] = [
       { path: '/reports/central', label: 'Központi riportok (CSV)', icon: Building2 },
       { path: '/reports/nav', label: 'NAV adatszolgáltatás', icon: ShieldAlert },
       { path: '/daily-turnover', label: 'Napi forgalom', icon: TrendingUp },
+      { path: '/daily-check', label: 'Napi ellenőrző lista', icon: ClipboardCheck, canonicalRoles: ['foertektar', 'ugyvezeto', 'belso_ellenor'] },
       { path: '/profit', label: 'Nyereség (haszon)', icon: TrendingUp },
       { path: '/stock-snapshot', label: 'Készlet pillanatképek', icon: FileText },
       { path: '/booking-export', label: 'Könyvelés export', icon: Download },

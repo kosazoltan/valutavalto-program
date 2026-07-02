@@ -214,6 +214,7 @@ const DaybookPage = lazy(() => import('./pages/reports/DaybookPage'))
 const DailyTurnoverPage = lazy(() => import('./pages/reports/DailyTurnoverPage'))
 const EveningClosingPage = lazy(() => import('./pages/closing/EveningClosingPage'))
 const DailyChecklistPage = lazy(() => import('./pages/cashdesk/DailyChecklistPage'))
+const DailyCheckPage = lazy(() => import('./pages/foertektar/DailyCheckPage'))
 
 function RouteLoadingFallback() {
   return (
@@ -972,6 +973,7 @@ export default function App() {
                 <Route path="/daily-turnover" element={<DailyTurnoverPage />} />
                 <Route path="/evening-closing" element={<EveningClosingPage />} />
                 <Route path="/daily-checklist" element={<DailyChecklistPage />} />
+                <Route path="/daily-check" element={<DailyCheckPage />} />
 
                 {/* === Árfolyam-kezelés Routes === */}
                 <Route path="/rate-management" element={<RateCreationDashboard />} />

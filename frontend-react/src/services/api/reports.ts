@@ -452,6 +452,43 @@ export const averageRateApi = {
   },
 }
 
+// ================== DAILY BALANCE GRID (FK-047) API ==================
+
+/** FK-047: Napi ellenőrző lista grid — egy valuta összesített napi mérleg-sora. */
+export interface DailyBalanceGridRow {
+  currencyCode: string
+  openingBalance: number
+  purchases: number
+  sales: number
+  transfersIn: number
+  transfersOut: number
+  closingBalance: number
+  /** Pénztári SZÁMZÁR — null, ha az adott napon nincs rögzítve (a grid „–"-t mutat). */
+  actualStock: number | null
+  /** TH-tranzakcióból számolt többlet (FR-6, NEM a matematikai difference). */
+  surplus: number
+  /** TH-tranzakcióból számolt hiány (FR-6). */
+  shortage: number
+}
+
+export const dailyBalanceGridApi = {
+  /**
+   * FK-047: valutánkénti összesített napi mérleg a kért scope-ra (teljes cég / terület / pénztár).
+   * Backend: GET /api/v1/reports/daily-balance-grid?date[&branchId][&vaultTerritoryId]
+   */
+  getGrid: async (
+    date: string,
+    branchId?: string,
+    vaultTerritoryId?: number,
+  ): Promise<DailyBalanceGridRow[]> => {
+    const params: Record<string, string | number> = { date }
+    if (branchId) params.branchId = branchId
+    if (vaultTerritoryId != null) params.vaultTerritoryId = vaultTerritoryId
+    const response = await api.get<DailyBalanceGridRow[]>('/reports/daily-balance-grid', { params })
+    return response.data
+  },
+}
+
 // ================== RECURRING CUSTOMER (AML) REPORT API ==================
 
 /** Visszatérő ügyfél riport sor — Pmt. 16. § fokozott ügyfél-átvilágítás. */
