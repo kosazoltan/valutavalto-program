@@ -131,7 +131,7 @@ test('napi forgalom oldalon a cég időszak mód a /turnover/company backend sze
 
   await expect(page.getByText('Cég összesen')).toBeVisible()
   await expect(page.getByRole('cell', { name: 'EUR' })).toBeVisible()
-  await expect(page.getByText('3').first()).toBeVisible()
+  await expect(page.getByText('3 Ft', { exact: true })).toBeVisible()
 
   const horizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
