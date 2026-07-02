@@ -99,6 +99,24 @@ const STORAGE_KEY = 'arfolyamkeszito.mainSheet.v1'
 // Online módban a szűrés inherens: a katalógus (useCurrencyCatalog) csak aktív ∪ EUA-t ad (FK04).
 const INACTIVE_STORAGE_KEY = 'arfolyamkeszito.mainSheet.inactiveCurrencies.v1'
 
+// FK07-fix (FR-1): PERZISZTÁLT helyi-módosítás jelző. A `dirtyRef` csak in-memory él —
+// remountkor (lapváltás) mindig false-ra indul, így a mount-kori szerver-szinkron
+// felülírta a frissen mentett, de még ki nem küldött cellákat. A jelző kulcsa
+// `${valutakód}.${oszlop}` → commit-timestamp; a mount-merge (FR-2) ezeket a cellákat
+// NEM írja felül; sikeres szétküldés (FR-3) törli.
+const LOCAL_EDIT_STORAGE_KEY = 'arfolyamkeszito.mainSheet.localEdits.v1'
+
+export function loadLocalEditFlags(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(LOCAL_EDIT_STORAGE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, number>
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
 export function loadInactiveCurrencyCodes(): Set<string> {
   try {
     const raw = localStorage.getItem(INACTIVE_STORAGE_KEY)
@@ -583,6 +601,12 @@ export default function MainRateSheetPage() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
         localStorage.setItem(FORMULA_STORAGE_KEY, JSON.stringify(nextFormulas))
+        // FK07-fix (FR-1): perzisztált helyi-módosítás jelző — remount után is jelzi,
+        // hogy ez a cella a legutóbbi szerver-szinkronnál frissebb, ki nem küldött
+        // helyi értéket hordoz (a mount-merge nem írhatja felül, FR-2).
+        const editFlags = loadLocalEditFlags()
+        editFlags[formulaKey] = Date.now()
+        localStorage.setItem(LOCAL_EDIT_STORAGE_KEY, JSON.stringify(editFlags))
       } catch (e) {
         logger.error('MainRateSheetPage', 'Commit-szinkron helyi mentés sikertelen (quota/privát?)', e)
       }
@@ -839,16 +863,27 @@ export default function MainRateSheetPage() {
           logger.warn('MainRateSheetPage', 'MNB hivatalos ráták lehúzása sikertelen — seed kihagyva', offErr)
         }
 
+        // FK07-fix (FR-2): a perzisztált helyi-módosítás jelzők — a remountot túlélő,
+        // még ki nem küldött cella-értékeket a merge NEM írhatja felül (a dirtyRef
+        // in-memory guard remountkor false-ra indul, ezért nem elég).
+        const localEditFlags = loadLocalEditFlags()
+        const isLocallyEdited = (currency: string, col: string) =>
+          localEditFlags[`${currency}.${col}`] !== undefined
+
         const mergedRows = cachedRows.map((row) => {
           const sr = codeToServerRate.get(row.currency)
           if (sr) {
             // Publikált master ráta. Backend mapping: officialRate -> A (settlement),
             // baseBuyRate -> E (weakMultiBuy), baseSellRate -> F (weakMultiSell).
+            // FK07-fix: helyi, ki nem küldött módosítású cella marad a cache-értéken.
             return {
               ...row,
-              settlement: Number(sr.officialRate) || row.settlement,
-              weakMultiBuy: Number(sr.baseBuyRate) || row.weakMultiBuy,
-              weakMultiSell: Number(sr.baseSellRate) || row.weakMultiSell,
+              settlement: isLocallyEdited(row.currency, 'settlement')
+                ? row.settlement : (Number(sr.officialRate) || row.settlement),
+              weakMultiBuy: isLocallyEdited(row.currency, 'weakMultiBuy')
+                ? row.weakMultiBuy : (Number(sr.baseBuyRate) || row.weakMultiBuy),
+              weakMultiSell: isLocallyEdited(row.currency, 'weakMultiSell')
+                ? row.weakMultiSell : (Number(sr.baseSellRate) || row.weakMultiSell),
             }
           }
           // Nincs publikált master ráta → seed az MNB hivatalos rátából (ha van),
@@ -857,9 +892,12 @@ export default function MainRateSheetPage() {
           if (off && (off.officialRate > 0 || off.baseBuyRate > 0 || off.baseSellRate > 0)) {
             return {
               ...row,
-              settlement: off.officialRate || off.baseBuyRate || row.settlement,
-              weakMultiBuy: off.baseBuyRate || row.weakMultiBuy,
-              weakMultiSell: off.baseSellRate || row.weakMultiSell,
+              settlement: isLocallyEdited(row.currency, 'settlement')
+                ? row.settlement : (off.officialRate || off.baseBuyRate || row.settlement),
+              weakMultiBuy: isLocallyEdited(row.currency, 'weakMultiBuy')
+                ? row.weakMultiBuy : (off.baseBuyRate || row.weakMultiBuy),
+              weakMultiSell: isLocallyEdited(row.currency, 'weakMultiSell')
+                ? row.weakMultiSell : (off.baseSellRate || row.weakMultiSell),
             }
           }
           return row // se master, se hivatalos ráta — marad üres
@@ -1049,6 +1087,13 @@ export default function MainRateSheetPage() {
       } else {
         const summary = summarizePublishAll(result)
         if (summary.ok) {
+          // FK07-fix (FR-3): TELJES sikerű szétküldés után a helyi-módosítás jelzők
+          // törlődnek — a következő szerver-szinkron már felülírhat (nincs örökre
+          // beragadt lokális felülbírálás). Részleges sikernél a jelzők maradnak
+          // (a ki nem küldött érték védelme fontosabb).
+          try {
+            localStorage.removeItem(LOCAL_EDIT_STORAGE_KEY)
+          } catch { /* quota/privát mód — a védelem legfeljebb tovább él */ }
           toast.success(summary.title, summary.detail)
         } else if (result.published > 0) {
           toast.warning(summary.title, summary.detail)
