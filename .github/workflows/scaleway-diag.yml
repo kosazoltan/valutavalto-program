@@ -14,12 +14,20 @@ jobs:
           chmod 600 ~/.ssh/scaleway_key
           ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Run Diagnostics on Scaleway
+      - name: Run Diagnostics and Cleanup on Scaleway
         run: |
           ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
             root@${{ secrets.SCALEWAY_SERVER_IP }} \
-            "echo '=== Disk Space ===' && df -h && \
-             echo '=== Memory ===' && free -m && \
-             echo '=== Load ===' && uptime && \
-             echo '=== PG processes ===' && ps aux | grep -iE 'postgres|postmaster' && \
-             echo '=== systemctl PG status ===' && systemctl status postgresql* --no-pager || true"
+            "echo '=== Force killing postgres to break the deadlock ===' && \
+             pkill -9 -u postgres || true && \
+             pkill -9 -f postgres || true && \
+             pkill -9 -f postmaster || true && \
+             sleep 2 && \
+             echo '=== Systemctl stop PG ===' && \
+             systemctl stop postgresql@16-main postgresql || true && \
+             echo '=== Largest directories in / ===' && \
+             du -hx --max-depth=2 / | sort -rh | head -n 20 && \
+             echo '=== Cleaning up journal logs ===' && \
+             journalctl --vacuum-size=100M || true && \
+             echo '=== Cleaned Disk Space ===' && \
+             df -h"
