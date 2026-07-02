@@ -72,6 +72,8 @@ public class ShipmentStockBookingService {
     public static final String ERR_INSUFFICIENT = "VV-VALID-003";
     /** FR-4 hibakód: nem az átvevő branch próbál visszaigazolni. */
     public static final String ERR_NOT_RECEIVER = "VV-AUTH-001";
+    /** Approve hibakód: nem az átadó/requester branch próbál jóváhagyni. */
+    public static final String ERR_NOT_REQUESTER = "VV-AUTH-002";
     /** §6/§6b hibakód: idegen tenant branch-ére irányuló könyvelési kísérlet (404). */
     public static final String ERR_CROSS_TENANT = "VV-TENANT-001";
 
@@ -169,6 +171,28 @@ public class ShipmentStockBookingService {
                     req.getRequestNumber(), req.getToBranchId(), currentBranchId);
             throw new AccessDeniedException(
                     ERR_NOT_RECEIVER + ": a szállítmány átvételét kizárólag az átvevő fiók igazolhatja vissza.");
+        }
+    }
+
+    /**
+     * A jóváhagyást KIZÁRÓLAG a kérő/átadó (from) branch felhasználója végezheti.
+     * Hiányzó branch-kontextus esetén fail-closed: {@code VV-AUTH-002} + {@code ACCESS_DENIED} audit.
+     */
+    public void assertRequester(ShipmentRequest req) {
+        UUID currentBranchId = SecurityUtils.getCurrentBranchIdOrNull();
+        if (currentBranchId == null || !currentBranchId.equals(req.getFromBranchId())) {
+            auditLogService.logInNewTransaction(
+                    ACTION_ACCESS_DENIED, AUDIT_ENTITY_TYPE, idStr(req.getId()),
+                    workerIdStr(), null,
+                    currentBranchId != null ? currentBranchId.toString() : null, null,
+                    String.format("{\"KAT\":\"AUTH\",\"error_code\":\"%s\",\"shipment_request_id\":\"%s\","
+                                    + "\"from_branch_id\":\"%s\",\"attempt_branch_id\":\"%s\"}",
+                            ERR_NOT_REQUESTER, req.getId(), req.getFromBranchId(),
+                            currentBranchId != null ? currentBranchId.toString() : "null"));
+            log.warn("Szállítmány jóváhagyás megtagadva: shipment={}, fromBranch={}, attemptBranch={}",
+                    req.getRequestNumber(), req.getFromBranchId(), currentBranchId);
+            throw new AccessDeniedException(
+                    ERR_NOT_REQUESTER + ": a szállítmány jóváhagyását kizárólag a kérő (átadó) fiók végezheti.");
         }
     }
 

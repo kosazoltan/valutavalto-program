@@ -10,6 +10,8 @@ import hu.puzzleir.valuta.entity.ShipmentRequestItem;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.CashBalanceRepository;
+import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -54,6 +56,15 @@ class ShipmentServiceTest {
 
     @Mock
     private ShipmentStockBookingService stockBookingService;
+
+    @Mock
+    private AuditLogService auditLogService;
+
+    @Mock
+    private CashBalanceRepository cashBalanceRepository;
+
+    @Mock
+    private CurrencyStockRepository currencyStockRepository;
 
     @InjectMocks
     private ShipmentService service;
@@ -467,6 +478,170 @@ class ShipmentServiceTest {
         // a gate bukása után NINCS IN-könyvelés és NINCS státuszváltás (save).
         verify(stockBookingService, never()).bookStockIn(any(), any());
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    void approve_deniedWhenCallerNotFromBranch() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        UUID attemptBranch = UUID.randomUUID();
+        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        ShipmentService serviceWithRealRequesterGate = serviceWithRealStockBookingService();
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(attemptBranch);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(77L);
+
+            assertThatThrownBy(() -> serviceWithRealRequesterGate.approve(shipmentId))
+                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                    .hasMessageContaining("VV-AUTH-002");
+        }
+
+        assertThat(sr.getStatus()).isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        verify(auditLogService).logInNewTransaction(
+                org.mockito.ArgumentMatchers.eq(ShipmentStockBookingService.ACTION_ACCESS_DENIED),
+                org.mockito.ArgumentMatchers.eq("ShipmentRequest"),
+                org.mockito.ArgumentMatchers.eq(shipmentId.toString()),
+                org.mockito.ArgumentMatchers.eq("77"),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(attemptBranch.toString()),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.argThat(changes -> changes != null
+                        && changes.contains("\"KAT\":\"AUTH\"")
+                        && changes.contains("\"error_code\":\"" + ShipmentStockBookingService.ERR_NOT_REQUESTER + "\"")
+                        && changes.contains("\"from_branch_id\":\"" + sr.getFromBranchId() + "\"")
+                        && changes.contains("\"attempt_branch_id\":\"" + attemptBranch + "\"")));
+        verifyNoInteractions(stockBookingService);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void approve_allowedWhenCallerIsFromBranch() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(sr.getFromBranchId());
+
+            ShipmentRequest result = service.approve(shipmentId);
+
+            assertThat(result.getStatus())
+                    .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
+        }
+
+        org.mockito.InOrder order = inOrder(stockBookingService, repository);
+        order.verify(stockBookingService).assertRequester(sr);
+        order.verify(repository).save(sr);
+    }
+
+    @Test
+    void approve_deniedWhenNoBranchInToken() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        long workerId = 77L;
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        ShipmentService serviceWithRealRequesterGate = serviceWithRealStockBookingService();
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(null);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(workerId);
+
+            assertThatThrownBy(() -> serviceWithRealRequesterGate.approve(shipmentId))
+                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                    .hasMessageContaining("VV-AUTH-002");
+        }
+
+        assertThat(sr.getStatus()).isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        verify(auditLogService).logInNewTransaction(
+                org.mockito.ArgumentMatchers.eq(ShipmentStockBookingService.ACTION_ACCESS_DENIED),
+                org.mockito.ArgumentMatchers.eq("ShipmentRequest"),
+                org.mockito.ArgumentMatchers.eq(shipmentId.toString()),
+                org.mockito.ArgumentMatchers.eq(String.valueOf(workerId)),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.argThat(changes -> changes != null
+                        && changes.contains("\"KAT\":\"AUTH\"")
+                        && changes.contains("\"error_code\":\"" + ShipmentStockBookingService.ERR_NOT_REQUESTER + "\"")
+                        && changes.contains("\"from_branch_id\":\"" + sr.getFromBranchId() + "\"")
+                        && changes.contains("\"attempt_branch_id\":\"null\"")));
+        verifyNoInteractions(stockBookingService);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void toResponseDto_itemsIncludeCurrencyCode() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        UUID fromBranchId = UUID.randomUUID();
+        UUID toBranchId = UUID.randomUUID();
+        Company company = Company.builder().id(companyId).build();
+        Branch from = Branch.builder().id(fromBranchId).company(company).build();
+        Branch to = Branch.builder().id(toBranchId).company(company).build();
+        ShipmentRequest request = ShipmentRequest.builder()
+                .id(shipmentId)
+                .companyId(companyId)
+                .fromBranchId(fromBranchId)
+                .toBranchId(toBranchId)
+                .status(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED)
+                .items(new ArrayList<>(List.of(
+                        ShipmentRequestItem.builder()
+                                .currencyId(4L)
+                                .requestedAmount(new BigDecimal("100"))
+                                .build(),
+                        ShipmentRequestItem.builder()
+                                .currencyId(999L)
+                                .requestedAmount(new BigDecimal("200"))
+                                .build(),
+                        ShipmentRequestItem.builder()
+                                .currencyId(null)
+                                .requestedAmount(new BigDecimal("300"))
+                                .build())))
+                .build();
+        when(branchRepository.findByIdAndCompanyId(fromBranchId, companyId)).thenReturn(java.util.Optional.of(from));
+        when(branchRepository.findByIdAndCompanyId(toBranchId, companyId)).thenReturn(java.util.Optional.of(to));
+        when(currencyRepository.findAllById(org.mockito.ArgumentMatchers.anyIterable()))
+                .thenReturn(List.of(currency("EUR")));
+
+        ShipmentRequestResponseDto response = service.toResponseDto(request);
+
+        assertThat(response.getItems()).hasSize(3);
+        assertThat(response.getItems().get(0).getCurrencyCode()).isEqualTo("EUR");
+        assertThat(response.getItems().get(1).getCurrencyCode()).isNull();
+        assertThat(response.getItems().get(2).getCurrencyCode()).isNull();
+        verify(currencyRepository).findAllById(org.mockito.ArgumentMatchers.argThat(ids -> {
+            List<Long> collected = new ArrayList<>();
+            ids.forEach(collected::add);
+            return collected.containsAll(List.of(4L, 999L)) && collected.size() == 2;
+        }));
+    }
+
+    private ShipmentService serviceWithRealStockBookingService() {
+        ShipmentStockBookingService realStockBookingService = new ShipmentStockBookingService(
+                branchRepository,
+                cashBalanceRepository,
+                currencyStockRepository,
+                currencyRepository,
+                auditLogService);
+        return new ShipmentService(
+                repository,
+                branchRepository,
+                currencyRepository,
+                workerRepository,
+                exchangeRateService,
+                transferSerialSequenceService,
+                realStockBookingService);
     }
 
     @Test

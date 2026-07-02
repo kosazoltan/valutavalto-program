@@ -93,7 +93,7 @@ public class ShipmentController {
      * POST /api/v1/shipments/{id}/approve
      */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<ShipmentRequestResponseDto> approve(@PathVariable UUID id) {
         return ResponseEntity.ok(shipmentService.approveResponse(id));
     }

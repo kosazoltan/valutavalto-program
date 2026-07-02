@@ -29,6 +29,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -319,6 +320,7 @@ public class ShipmentService {
 
     public ShipmentRequest approve(UUID id) {
         ShipmentRequest request = findById(id);
+        stockBookingService.assertRequester(request);
         validateStatusTransition(request, ShipmentRequestStatus.SUBMITTED, ShipmentRequestStatus.APPROVED);
         request.setStatus(ShipmentRequestStatus.APPROVED);
         log.info("Szállítmánykérés jóváhagyva: {}", request.getRequestNumber());
@@ -486,14 +488,16 @@ public class ShipmentService {
         return cache.get(workerId);
     }
 
-    private static List<ShipmentRequestItemResponseDto> toItemDtos(List<ShipmentRequestItem> items) {
+    private List<ShipmentRequestItemResponseDto> toItemDtos(List<ShipmentRequestItem> items) {
         if (items == null) {
             return List.of();
         }
+        Map<Long, String> currencyCodes = resolveCurrencyCodes(items);
         return items.stream()
                 .map(item -> ShipmentRequestItemResponseDto.builder()
                         .id(item.getId())
                         .currencyId(item.getCurrencyId())
+                        .currencyCode(currencyCodes.get(item.getCurrencyId()))
                         .requestedAmount(item.getRequestedAmount())
                         .approvedAmount(item.getApprovedAmount())
                         .deliveredAmount(item.getDeliveredAmount())
@@ -501,6 +505,21 @@ public class ShipmentService {
                         .hufValue(item.getHufValue())
                         .build())
                 .toList();
+    }
+
+    private Map<Long, String> resolveCurrencyCodes(List<ShipmentRequestItem> items) {
+        List<Long> currencyIds = items.stream()
+                .map(ShipmentRequestItem::getCurrencyId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (currencyIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> currencyCodes = new HashMap<>();
+        currencyRepository.findAllById(currencyIds)
+                .forEach(currency -> currencyCodes.put(currency.getId(), currency.getCode()));
+        return currencyCodes;
     }
 
     /**
