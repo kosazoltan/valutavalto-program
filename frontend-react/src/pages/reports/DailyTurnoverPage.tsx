@@ -198,7 +198,7 @@ export default function DailyTurnoverPage() {
       <div className="form-panel flex gap-3 items-end flex-wrap">
         <div>
           <label className="form-label">Év</label>
-          <select className="form-input" value={year} onChange={(e) => setYear(Number(e.target.value))}>
+          <select className="form-input" aria-label="Év" value={year} onChange={(e) => setYear(Number(e.target.value))}>
             {years.map((y) => (
               <option key={y} value={y}>{y}</option>
             ))}
@@ -206,7 +206,7 @@ export default function DailyTurnoverPage() {
         </div>
         <div>
           <label className="form-label">Hónap</label>
-          <select className="form-input" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+          <select className="form-input" aria-label="Hónap" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
             {months.map((m, i) => (
               <option key={m} value={i + 1}>{m}</option>
             ))}
@@ -216,6 +216,7 @@ export default function DailyTurnoverPage() {
           <label className="form-label">Nap (tól)</label>
           <input
             className="form-input w-20"
+            aria-label="Nap (tól)"
             type="number"
             min={1}
             max={lastDayOfMonth}
@@ -227,6 +228,7 @@ export default function DailyTurnoverPage() {
           <label className="form-label">Nap (ig)</label>
           <input
             className="form-input w-20"
+            aria-label="Nap (ig)"
             type="number"
             min={1}
             max={lastDayOfMonth}
@@ -238,6 +240,7 @@ export default function DailyTurnoverPage() {
           <label className="form-label">Egység</label>
           <select
             className="form-input"
+            aria-label="Egység"
             value={unitMode}
             onChange={(e) => setUnitMode(e.target.value as UnitMode)}
           >
@@ -251,6 +254,7 @@ export default function DailyTurnoverPage() {
             <label className="form-label">Terület</label>
             <select
               className="form-input"
+              aria-label="Terület"
               value={territoryId}
               onChange={(e) => setTerritoryId(e.target.value === '' ? '' : Number(e.target.value))}
             >
@@ -264,7 +268,7 @@ export default function DailyTurnoverPage() {
         {unitMode === 'branch' && (
           <div>
             <label className="form-label">Pénztár</label>
-            <select className="form-input" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+            <select className="form-input" aria-label="Pénztár" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
               <option value="">— válasszon —</option>
               {cashierBranches.map((b) => (
                 <option key={b.id} value={b.id}>{b.code} — {b.name}</option>

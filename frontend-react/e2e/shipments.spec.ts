@@ -49,7 +49,14 @@ const worker = {
   companyName: 'Exclusive Best Change',
 }
 
-async function mockShipmentApis(page: Page, activeShipment = shipment) {
+const receiverWorker = {
+  ...worker,
+  branchId: 'branch-2',
+  branchCode: 'BEL01',
+  branchName: 'Belváros',
+}
+
+async function mockShipmentApis(page: Page, activeShipment = shipment, activeWorker = worker) {
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
     activeRole: 'ADMIN',
@@ -70,7 +77,7 @@ async function mockShipmentApis(page: Page, activeShipment = shipment) {
           token,
           tokenType: 'Bearer',
           expiresAt: new Date(Date.now() + 3600_000).toISOString(),
-          worker,
+          worker: activeWorker,
           activeRole: 'ADMIN',
           permissions: ['READ', 'WRITE'],
           roles: ['ADMIN'],
@@ -84,7 +91,7 @@ async function mockShipmentApis(page: Page, activeShipment = shipment) {
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(activeWorker) })
     }
 
     if (path.endsWith('/shipments') && method === 'GET') {
@@ -136,7 +143,7 @@ async function login(page: Page) {
 
 test('szállítmány lista detail, deliver és cancel backend workflow-t hív', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await mockShipmentApis(page)
+  await mockShipmentApis(page, shipment, receiverWorker)
   page.on('dialog', dialog => void dialog.accept())
   await login(page)
 
@@ -153,7 +160,7 @@ test('szállítmány lista detail, deliver és cancel backend workflow-t hív', 
   const deliverRequest = page.waitForRequest(request =>
     request.method() === 'POST' && request.url().includes('/shipments/shipment-1/deliver')
   )
-  await page.getByTitle('Kézbesítés').click()
+  await page.getByTitle('Megérkezett').click()
   await deliverRequest
 
   const cancelRequest = page.waitForRequest(request =>
@@ -166,6 +173,16 @@ test('szállítmány lista detail, deliver és cancel backend workflow-t hív', 
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
   )
   expect(horizontalOverflow).toBe(false)
+})
+
+test('deliver gomb NEM latszik a felado fiok felhasznalojanak', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mockShipmentApis(page, shipment, worker)
+  await login(page)
+
+  await page.goto('/shipments', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByText('SH-001')).toBeVisible()
+  await expect(page.getByTitle('Megérkezett')).toHaveCount(0)
 })
 
 test('szállítmány DRAFT szerkesztés mobilnézetben PUT /shipments/{id} backendhez kötött', async ({ page }) => {

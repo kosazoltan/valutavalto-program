@@ -72,29 +72,19 @@ async function mockApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          date: `${url.searchParams.get('from')} - ${url.searchParams.get('to')}`,
-          branchName: 'Cég összesen',
-          currencies: [
+          period: 'Cég összesen',
+          totalBuy: 3,
+          totalSell: 0,
+          byCurrency: [
             {
-              currency: 'EUR',
-              buyCount: 2,
-              buyAmount: 1000,
-              sellCount: 1,
-              sellAmount: 500,
-              conversionCount: 0,
-              conversionAmount: 0,
-              netFlow: 500,
-              profit: 12000,
+              currencyCode: 'EUR',
+              officialRate: null,
+              buyVolume: 1000,
+              buyHuf: 400000,
+              sellVolume: 500,
+              sellHuf: 200000,
             },
           ],
-          totals: {
-            totalTransactions: 3,
-            totalBuyHuf: 400000,
-            totalSellHuf: 200000,
-            totalProfit: 12000,
-            totalHandlingFees: 1500,
-            totalCommissions: 700,
-          },
         }),
       })
     }
@@ -123,9 +113,11 @@ test('napi forgalom oldalon a cég időszak mód a /turnover/company backend sze
   await login(page)
 
   await page.goto('/daily-turnover', { waitUntil: 'domcontentloaded' })
-  await page.getByRole('combobox').selectOption('company')
-  await page.getByLabel('Kezdő dátum').fill('2026-06-01')
-  await page.getByLabel('Záró dátum').fill('2026-06-18')
+  await page.getByRole('combobox', { name: 'Egység' }).selectOption('company')
+  await page.getByRole('combobox', { name: 'Év' }).selectOption('2026')
+  await page.getByRole('combobox', { name: 'Hónap' }).selectOption('6')
+  await page.getByLabel('Nap (tól)').fill('1')
+  await page.getByLabel('Nap (ig)').fill('18')
 
   const companyTurnoverRequest = page.waitForRequest(request => {
     const url = new URL(request.url())
@@ -134,7 +126,7 @@ test('napi forgalom oldalon a cég időszak mód a /turnover/company backend sze
       && url.searchParams.get('from') === '2026-06-01'
       && url.searchParams.get('to') === '2026-06-18'
   })
-  await page.getByRole('button', { name: /Lekérdezés/i }).click()
+  await page.getByRole('button', { name: /Időszak rendben/i }).click()
   await companyTurnoverRequest
 
   await expect(page.getByText('Cég összesen')).toBeVisible()
