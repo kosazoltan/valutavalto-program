@@ -1,27 +1,28 @@
 ---
 title: Scaleway Standby Failover Runbook
 created: 2026-05-13
-last_tested: NEVER (initial — needs live drill)
-maturity: DEPRECATED (streaming-HA kivezetve 2026-06-16)
+last_tested: 2026-07-02 (Drill 1 — lásd lent)
+maturity: ACTIVE (streaming-HA visszaállítva 2026-07-02)
 trigger: Hetzner primary down (excvaluta.com 5xx > 3 min OR backend unreachable)
 estimated_downtime: 2-5 min
 ---
 
 # Scaleway Failover Runbook
 
-> ## ⚠️ DEPRECATED (2026-06-16) — a streaming-HA KIVEZETVE (Local-First)
+> ## ✅ AKTÍV (2026-07-02) — a streaming-HA VISSZAÁLLÍTVA (user-direktíva)
 >
-> A Hetzner↔Scaleway szinkron replikáció nyugdíjazva. **Prod-állapot:** Scaleway standby postgres
-> leállítva, `standby_slot_0` slot eltávolítva, `synchronous_standby_names=''`, `sync-replication-guard`
-> + `primary-watchdog` leállítva, a `deploy-standby` job és a failover-drill inaktív (`if:false`).
+> A 2026-06-16-i kivezetés félreértés volt — a 60-70 iroda működése előrébb való a Scaleway
+> költségénél. **Prod-állapot:** `scaleway_standby` streaming + `sync_state=sync` (RPO=0),
+> `standby_slot_0` él, `sync-replication-guard` (Hetzner) + `primary-watchdog` (Scaleway,
+> off-host) + `freeze-watchdog` aktív. Helyreállító workflow (idempotens, dry_run-nal):
+> `.github/workflows/scaleway-ha-restore.yml`.
 >
-> **Új védvonal (Local-First):** lokális primary + Neon-backup (~5 perc RPO) + napi B2 `pg_dump` +
-> kliens-outbox (idempotens resync) + on-host `freeze-watchdog`. **Helyreállítás új gépre:** a Neon-backup
-> a Local-First igazság-forrás melletti teljes, friss másolat (lásd `project_neon_backup_local_first_rebuild_2026_06_16`).
+> **Kettős védelem:** a Neon-backup lánc (~5 perc RPO) + napi B2 `pg_dump` + kliens-outbox
+> VÁLTOZATLANUL él a streaming-HA MELLETT.
 >
-> Az alábbi failover-eljárás **történeti referencia** — csak a streaming-HA visszaállítása után érvényes.
+> Az alábbi failover-eljárás ÉLES — Hetzner-halál esetén ezt kell követni.
 
-> **2-régiós HA** (történeti): Hetzner Helsinki (primary, 95.216.191.162) ↔ Scaleway Paris (warm standby, 163.172.152.234)
+> **2-régiós HA:** Hetzner Helsinki (primary, 95.216.191.162) ↔ Scaleway Paris (warm standby, 163.172.152.234)
 
 ## 0. Mikor használd?
 
