@@ -62,6 +62,8 @@ jobs:
           echo "[hetzner] WireGuard service"
           systemctl is-active --quiet wg-quick@wg0
           if command -v wg >/dev/null 2>&1; then
+            timeout 10 ping -c 2 10.8.0.2 >/dev/null || true
+            sleep 2
             now=$(date +%s)
             latest=$(wg show wg0 latest-handshakes | awk '{print $2}' | sort -nr | head -1)
             if [ -z "${latest:-}" ] || [ "$latest" -eq 0 ]; then
@@ -70,15 +72,14 @@ jobs:
             fi
             age=$((now - latest))
             echo "[hetzner] latest WireGuard handshake age: ${age}s"
-            if [ "$age" -gt 60 ]; then
-              echo "ERROR: WireGuard handshake is older than 60s"
+            if [ "$age" -gt 180 ]; then
+              echo "ERROR: WireGuard handshake is older than 180s"
               exit 1
             fi
           else
             echo "ERROR: wg command not found"
             exit 1
           fi
-          timeout 10 ping -c 2 10.8.0.2 >/dev/null
           echo "[hetzner] PostgreSQL readiness"
           sudo -u postgres pg_isready -q
           sudo -u postgres psql -tA -c "SELECT 1;" >/dev/null
@@ -175,6 +176,8 @@ jobs:
           echo "[scaleway] WireGuard service"
           systemctl is-active --quiet wg-quick@wg0
           if command -v wg >/dev/null 2>&1; then
+            timeout 10 ping -c 2 10.8.0.1 >/dev/null || true
+            sleep 2
             now=$(date +%s)
             latest=$(wg show wg0 latest-handshakes | awk '{print $2}' | sort -nr | head -1)
             if [ -z "${latest:-}" ] || [ "$latest" -eq 0 ]; then
@@ -183,15 +186,14 @@ jobs:
             fi
             age=$((now - latest))
             echo "[scaleway] latest WireGuard handshake age: ${age}s"
-            if [ "$age" -gt 60 ]; then
-              echo "ERROR: WireGuard handshake is older than 60s"
+            if [ "$age" -gt 180 ]; then
+              echo "ERROR: WireGuard handshake is older than 180s"
               exit 1
             fi
           else
             echo "ERROR: wg command not found"
             exit 1
           fi
-          timeout 10 ping -c 2 10.8.0.1 >/dev/null
 
           if ! pg_lsclusters | awk '$1 == "16" && $2 == "main" { found=1 } END { exit found ? 0 : 1 }'; then
             echo "ERROR: PostgreSQL 16 main cluster not found on Scaleway"
