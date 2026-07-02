@@ -27,6 +27,8 @@ jobs:
       HETZNER_USER: ${{ secrets.VPS_SSH_USER }}
       SCALEWAY_HOST: ${{ secrets.SCALEWAY_SERVER_IP }}
     steps:
+      - uses: actions/checkout@v7
+
       - name: Set up SSH (Hetzner + Scaleway)
         run: |
           set -euo pipefail
@@ -48,13 +50,15 @@ jobs:
           HETZNER_SSH=(ssh -i ~/.ssh/hetzner_key "${SSH_OPTS[@]}" "$HETZNER_TARGET")
           SCALEWAY_SSH=(ssh -i ~/.ssh/scaleway_key "${SSH_OPTS[@]}" "$SCALEWAY_TARGET")
 
-          echo "## Scaleway HA restore" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Setting | Value |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| dry_run | $DRY_RUN |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Hetzner | $HETZNER_HOST |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Scaleway | $SCALEWAY_HOST |" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Scaleway HA restore"
+            echo ""
+            echo "| Setting | Value |"
+            echo "|---|---|"
+            echo "| dry_run | $DRY_RUN |"
+            echo "| Hetzner | $HETZNER_HOST |"
+            echo "| Scaleway | $SCALEWAY_HOST |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
           echo "=== Hetzner pre-flight ==="
           "${HETZNER_SSH[@]}" bash -s <<'END_HETZNER_PREFLIGHT'
@@ -134,8 +138,10 @@ jobs:
 
           if [ "$DRY_RUN" = "true" ]; then
             echo "=== Dry run complete: no changes made ==="
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "✅ Dry run completed. No slot creation, basebackup, ALTER SYSTEM, or service changes were executed." >> "$GITHUB_STEP_SUMMARY"
+            {
+              echo ""
+              echo "✅ Dry run completed. No slot creation, basebackup, ALTER SYSTEM, or service changes were executed."
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
@@ -152,11 +158,25 @@ jobs:
           sudo -u postgres psql -c "SELECT slot_name, active, restart_lsn FROM pg_replication_slots WHERE slot_name = 'standby_slot_0';"
           END_HETZNER_SLOT
 
-          echo "=== Transfer replicator password to Scaleway via stdin (not logged) ==="
-          printf '%s' "$REPLICATION_PASSWORD" | "${SCALEWAY_SSH[@]}" 'set -euo pipefail; umask 077; cat > /root/.replication_password_restore'
+          echo "=== Check whether Scaleway replication is already streaming on Hetzner ==="
+          REPLICATION_ALREADY_STREAMING=$("${HETZNER_SSH[@]}" bash -s <<'END_HETZNER_STREAMING_CHECK'
+          set -euo pipefail
+          state=$(sudo -u postgres psql -tA -c "SELECT COALESCE((SELECT state FROM pg_stat_replication WHERE application_name = 'scaleway_standby'), 'missing');")
+          if [ "$state" = "streaming" ]; then
+            printf 'true'
+          else
+            printf 'false'
+          fi
+          END_HETZNER_STREAMING_CHECK
+          )
+          if [ "$REPLICATION_ALREADY_STREAMING" = "true" ]; then
+            echo "[skip] replication already streaming — skipping rebuild"
+          else
+            echo "=== Transfer replicator password to Scaleway via stdin (not logged) ==="
+            printf '%s' "$REPLICATION_PASSWORD" | "${SCALEWAY_SSH[@]}" 'set -euo pipefail; umask 077; cat > /root/.replication_password_restore'
 
-          echo "=== Rebuild Scaleway standby from Hetzner over WireGuard ==="
-          "${SCALEWAY_SSH[@]}" bash -s <<'END_SCALEWAY_REBUILD'
+            echo "=== Rebuild Scaleway standby from Hetzner over WireGuard ==="
+            "${SCALEWAY_SSH[@]}" bash -s <<'END_SCALEWAY_REBUILD'
           set -euo pipefail
           cleanup() {
             shred -u /root/.replication_password_restore 2>/dev/null || rm -f /root/.replication_password_restore
@@ -235,6 +255,7 @@ jobs:
           sudo -u postgres psql -c "SELECT status, receive_start_lsn, latest_end_lsn, last_msg_receipt_time FROM pg_stat_wal_receiver;" || true
           exit 1
           END_SCALEWAY_REBUILD
+          fi
 
           echo "=== Wait for Hetzner to confirm Scaleway streaming (bounded 10 min) ==="
           "${HETZNER_SSH[@]}" bash -s <<'END_HETZNER_WAIT_STREAMING'
@@ -283,11 +304,8 @@ jobs:
           "${HETZNER_SSH[@]}" bash -s <<'END_HETZNER_GUARDS'
           set -euo pipefail
           systemctl enable --now sync-replication-guard.service
-          systemctl enable --now primary-watchdog.timer
           systemctl is-active --quiet sync-replication-guard.service
-          systemctl is-active --quiet primary-watchdog.timer
           systemctl status sync-replication-guard.service --no-pager -l | sed -n '1,12p'
-          systemctl status primary-watchdog.timer --no-pager -l | sed -n '1,12p'
           END_HETZNER_GUARDS
 
           echo "=== Scaleway backend standby-mode report (read-only) ==="
@@ -306,11 +324,44 @@ jobs:
           END_SCALEWAY_BACKEND_REPORT
 
           echo "=== Final HA summary ==="
-          FINAL_REPORT=$("${HETZNER_SSH[@]}" "sudo -u postgres psql -P pager=off -c \"SELECT application_name, client_addr, state, sync_state, write_lag, flush_lag, replay_lag FROM pg_stat_replication WHERE application_name = 'scaleway_standby';\" && systemctl is-active sync-replication-guard.service && systemctl is-active primary-watchdog.timer")
+          FINAL_REPORT=$("${HETZNER_SSH[@]}" "sudo -u postgres psql -P pager=off -c \"SELECT application_name, client_addr, state, sync_state, write_lag, flush_lag, replay_lag FROM pg_stat_replication WHERE application_name = 'scaleway_standby';\" && echo \"sync-replication-guard.service: \$(systemctl is-active sync-replication-guard.service)\"")
           echo "$FINAL_REPORT"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "✅ Scaleway standby rebuilt and synchronous replication restored." >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          echo "$FINAL_REPORT" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo ""
+            echo "✅ Scaleway standby streaming verified and synchronous replication restored."
+            echo ""
+            echo '```'
+            echo "$FINAL_REPORT"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install and enable primary watchdog (Scaleway)
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          set -euo pipefail
+          SCALEWAY_TARGET="root@${SCALEWAY_HOST}"
+          SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=15)
+
+          echo "=== Upload primary-watchdog files to Scaleway ==="
+          scp -i ~/.ssh/scaleway_key "${SSH_OPTS[@]}" \
+            deploy/hetzner/ha/primary-watchdog.sh \
+            deploy/hetzner/ha/primary-watchdog.service \
+            deploy/hetzner/ha/primary-watchdog.timer \
+            "$SCALEWAY_TARGET:/tmp/"
+
+          echo "=== Install and enable primary-watchdog on Scaleway ==="
+          ssh -i ~/.ssh/scaleway_key "${SSH_OPTS[@]}" "$SCALEWAY_TARGET" bash -s <<'END_SCALEWAY_PRIMARY_WATCHDOG'
+          set -euo pipefail
+          DEST=/opt/valutavalto/deploy/hetzner/ha
+          mkdir -p "$DEST"
+          cp /tmp/primary-watchdog.sh "$DEST/primary-watchdog.sh"
+          chmod +x "$DEST/primary-watchdog.sh"
+          cp /tmp/primary-watchdog.service /etc/systemd/system/primary-watchdog.service
+          cp /tmp/primary-watchdog.timer /etc/systemd/system/primary-watchdog.timer
+          systemctl daemon-reload
+          systemctl enable --now primary-watchdog.timer
+          systemctl is-active --quiet primary-watchdog.timer
+          systemctl status primary-watchdog.timer --no-pager -l | sed -n '1,12p'
+          END_SCALEWAY_PRIMARY_WATCHDOG
+
+          echo "✅ Scaleway primary-watchdog.timer installed and active." >> "$GITHUB_STEP_SUMMARY"
