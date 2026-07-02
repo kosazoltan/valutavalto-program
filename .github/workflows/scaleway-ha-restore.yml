@@ -1,0 +1,314 @@
+name: Scaleway HA Restore
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run: only pre-flight/password-source/slot checks; no changes'
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scaleway-ha-restore
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    name: Restore Scaleway streaming HA
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 45
+    env:
+      HETZNER_HOST: ${{ secrets.VPS_SERVER_IP }}
+      HETZNER_USER: ${{ secrets.VPS_SSH_USER }}
+      SCALEWAY_HOST: ${{ secrets.SCALEWAY_SERVER_IP }}
+    steps:
+      - name: Set up SSH (Hetzner + Scaleway)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/hetzner_key
+          printf '%s\n' "${{ secrets.SCALEWAY_SSH_PRIVATE_KEY }}" > ~/.ssh/scaleway_key
+          chmod 600 ~/.ssh/hetzner_key ~/.ssh/scaleway_key
+          ssh-keyscan -H "$HETZNER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -H "$SCALEWAY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Restore streaming replication safely
+        run: |
+          set -euo pipefail
+          DRY_RUN='${{ inputs.dry_run }}'
+          HETZNER_USER="${HETZNER_USER:-root}"
+          HETZNER_TARGET="${HETZNER_USER}@${HETZNER_HOST}"
+          SCALEWAY_TARGET="root@${SCALEWAY_HOST}"
+          SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=15)
+          HETZNER_SSH=(ssh -i ~/.ssh/hetzner_key "${SSH_OPTS[@]}" "$HETZNER_TARGET")
+          SCALEWAY_SSH=(ssh -i ~/.ssh/scaleway_key "${SSH_OPTS[@]}" "$SCALEWAY_TARGET")
+
+          echo "## Scaleway HA restore" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Setting | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| dry_run | $DRY_RUN |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Hetzner | $HETZNER_HOST |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Scaleway | $SCALEWAY_HOST |" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "=== Hetzner pre-flight ==="
+          "${HETZNER_SSH[@]}" bash -s <<'END_HETZNER_PREFLIGHT'
+          set -euo pipefail
+          echo "[hetzner] WireGuard service"
+          systemctl is-active --quiet wg-quick@wg0
+          if command -v wg >/dev/null 2>&1; then
+            now=$(date +%s)
+            latest=$(wg show wg0 latest-handshakes | awk '{print $2}' | sort -nr | head -1)
+            if [ -z "${latest:-}" ] || [ "$latest" -eq 0 ]; then
+              echo "ERROR: no WireGuard handshake timestamp"
+              exit 1
+            fi
+            age=$((now - latest))
+            echo "[hetzner] latest WireGuard handshake age: ${age}s"
+            if [ "$age" -gt 60 ]; then
+              echo "ERROR: WireGuard handshake is older than 60s"
+              exit 1
+            fi
+          else
+            echo "ERROR: wg command not found"
+            exit 1
+          fi
+          timeout 10 ping -c 2 10.8.0.2 >/dev/null
+          echo "[hetzner] PostgreSQL readiness"
+          sudo -u postgres pg_isready -q
+          sudo -u postgres psql -tA -c "SELECT 1;" >/dev/null
+          wal_level=$(sudo -u postgres psql -tA -c "SHOW wal_level;")
+          max_wal_senders=$(sudo -u postgres psql -tA -c "SHOW max_wal_senders;")
+          sync_names=$(sudo -u postgres psql -tA -c "SHOW synchronous_standby_names;")
+          echo "[hetzner] wal_level=${wal_level}, max_wal_senders=${max_wal_senders}, synchronous_standby_names=${sync_names:-<empty>}"
+          if [ "$wal_level" != "replica" ] && [ "$wal_level" != "logical" ]; then
+            echo "ERROR: wal_level must support replication"
+            exit 1
+          fi
+          if [ "$max_wal_senders" -lt 1 ]; then
+            echo "ERROR: max_wal_senders must be >= 1"
+            exit 1
+          fi
+          if [ -f /opt/valutavalto/backend/.env ] && grep -q '^NEON_DATABASE_URL=' /opt/valutavalto/backend/.env; then
+            echo "[hetzner] Neon backup chain config present (not modified)"
+          else
+            echo "[hetzner] Neon backup chain config not found in backend .env (not modified)"
+          fi
+          END_HETZNER_PREFLIGHT
+
+          echo "=== Read existing replicator password source on Hetzner ==="
+          REPLICATION_PASSWORD=$("${HETZNER_SSH[@]}" bash -s <<'END_HETZNER_PASSWORD'
+          set -euo pipefail
+          password=""
+          if [ -f /var/lib/postgresql/.pgpass ]; then
+            password=$(awk -F: '$4 == "replicator" && $5 != "" { print $5; exit }' /var/lib/postgresql/.pgpass)
+          fi
+          if [ -z "$password" ] && [ -f /opt/valutavalto/ha.env ]; then
+            password=$(grep -E '^REPLICATION_PASSWORD=' /opt/valutavalto/ha.env | head -1 | cut -d= -f2-)
+            password="${password%\"}"; password="${password#\"}"; password="${password%\'}"; password="${password#\'}"
+            password=$(printf '%s' "$password" | tr -d '\r')
+          fi
+          if [ -z "$password" ]; then
+            echo "ERROR: existing replicator password not found in /var/lib/postgresql/.pgpass or /opt/valutavalto/ha.env" >&2
+            exit 1
+          fi
+          printf '%s' "$password"
+          END_HETZNER_PASSWORD
+          )
+          if [ -z "$REPLICATION_PASSWORD" ]; then
+            echo "ERROR: empty replicator password"
+            exit 1
+          fi
+          echo "[runner] Existing replicator password loaded; value will not be printed."
+
+          echo "=== Slot existence check ==="
+          SLOT_STATE=$("${HETZNER_SSH[@]}" "sudo -u postgres psql -tA -c \"SELECT COALESCE((SELECT 'exists:' || active::text FROM pg_replication_slots WHERE slot_name = 'standby_slot_0'), 'missing');\"")
+          echo "[hetzner] standby_slot_0: $SLOT_STATE"
+          echo "| standby_slot_0 | $SLOT_STATE |" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "=== Dry run complete: no changes made ==="
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "✅ Dry run completed. No slot creation, basebackup, ALTER SYSTEM, or service changes were executed." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "=== Create replication slot if missing (Hetzner) ==="
+          "${HETZNER_SSH[@]}" bash -s <<'END_HETZNER_SLOT'
+          set -euo pipefail
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "DO \$\$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'standby_slot_0') THEN
+              PERFORM pg_create_physical_replication_slot('standby_slot_0');
+            END IF;
+          END
+          \$\$;"
+          sudo -u postgres psql -c "SELECT slot_name, active, restart_lsn FROM pg_replication_slots WHERE slot_name = 'standby_slot_0';"
+          END_HETZNER_SLOT
+
+          echo "=== Transfer replicator password to Scaleway via stdin (not logged) ==="
+          printf '%s' "$REPLICATION_PASSWORD" | "${SCALEWAY_SSH[@]}" 'set -euo pipefail; umask 077; cat > /root/.replication_password_restore'
+
+          echo "=== Rebuild Scaleway standby from Hetzner over WireGuard ==="
+          "${SCALEWAY_SSH[@]}" bash -s <<'END_SCALEWAY_REBUILD'
+          set -euo pipefail
+          cleanup() {
+            shred -u /root/.replication_password_restore 2>/dev/null || rm -f /root/.replication_password_restore
+          }
+          trap cleanup EXIT
+
+          if [ ! -s /root/.replication_password_restore ]; then
+            echo "ERROR: replication password transfer failed"
+            exit 1
+          fi
+          REPLICATION_PASSWORD=$(cat /root/.replication_password_restore)
+          if [ -z "$REPLICATION_PASSWORD" ]; then
+            echo "ERROR: empty replication password on standby"
+            exit 1
+          fi
+
+          echo "[scaleway] WireGuard service"
+          systemctl is-active --quiet wg-quick@wg0
+          if command -v wg >/dev/null 2>&1; then
+            now=$(date +%s)
+            latest=$(wg show wg0 latest-handshakes | awk '{print $2}' | sort -nr | head -1)
+            if [ -z "${latest:-}" ] || [ "$latest" -eq 0 ]; then
+              echo "ERROR: no WireGuard handshake timestamp"
+              exit 1
+            fi
+            age=$((now - latest))
+            echo "[scaleway] latest WireGuard handshake age: ${age}s"
+            if [ "$age" -gt 60 ]; then
+              echo "ERROR: WireGuard handshake is older than 60s"
+              exit 1
+            fi
+          else
+            echo "ERROR: wg command not found"
+            exit 1
+          fi
+          timeout 10 ping -c 2 10.8.0.1 >/dev/null
+
+          if ! pg_lsclusters | awk '$1 == "16" && $2 == "main" { found=1 } END { exit found ? 0 : 1 }'; then
+            echo "ERROR: PostgreSQL 16 main cluster not found on Scaleway"
+            exit 1
+          fi
+          echo "[scaleway] PostgreSQL 16 cluster found"
+          pg_lsclusters
+
+          echo "[scaleway] Stop PostgreSQL and wipe data directory"
+          systemctl stop postgresql@16-main postgresql 2>/dev/null || true
+          sleep 2
+          pkill -9 -f '/usr/lib/postgresql/16/bin/postgres.*-D /var/lib/postgresql/16/main' 2>/dev/null || true
+          DATA_DIR=/var/lib/postgresql/16/main
+          test -d "$DATA_DIR"
+          find "$DATA_DIR" -mindepth 1 -delete
+
+          echo "[scaleway] pg_basebackup from Hetzner WireGuard address (10.8.0.1)"
+          BIN=/usr/lib/postgresql/16/bin
+          sudo -u postgres env PGPASSWORD="$REPLICATION_PASSWORD" "$BIN/pg_basebackup" \
+            -d "host=10.8.0.1 port=5432 user=replicator dbname=postgres application_name=scaleway_standby" \
+            -D "$DATA_DIR" -X stream -P -R -S standby_slot_0
+          test -f "$DATA_DIR/standby.signal"
+          grep -q "standby_slot_0" "$DATA_DIR/postgresql.auto.conf"
+          chown -R postgres:postgres "$DATA_DIR"
+          chmod 700 "$DATA_DIR"
+
+          echo "[scaleway] Start PostgreSQL and wait for wal receiver streaming"
+          systemctl start postgresql@16-main
+          for i in $(seq 1 24); do
+            if sudo -u postgres psql -tA -c "SELECT status FROM pg_stat_wal_receiver;" | grep -qx 'streaming'; then
+              sudo -u postgres psql -c "SELECT pg_is_in_recovery(), status, sender_host, sender_port, latest_end_lsn FROM pg_stat_wal_receiver;"
+              exit 0
+            fi
+            echo "[scaleway] waiting for wal receiver streaming ($((i * 5))/120s)"
+            sleep 5
+          done
+          echo "ERROR: Scaleway wal receiver did not reach streaming within 120s"
+          sudo -u postgres psql -c "SELECT pg_is_in_recovery();" || true
+          sudo -u postgres psql -c "SELECT status, receive_start_lsn, latest_end_lsn, last_msg_receipt_time FROM pg_stat_wal_receiver;" || true
+          exit 1
+          END_SCALEWAY_REBUILD
+
+          echo "=== Wait for Hetzner to confirm Scaleway streaming (bounded 10 min) ==="
+          "${HETZNER_SSH[@]}" bash -s <<'END_HETZNER_WAIT_STREAMING'
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            state=$(sudo -u postgres psql -tA -c "SELECT COALESCE((SELECT state FROM pg_stat_replication WHERE application_name = 'scaleway_standby'), 'missing');")
+            echo "[hetzner] scaleway_standby state=$state ($((i * 10))/600s)"
+            if [ "$state" = "streaming" ]; then
+              sudo -u postgres psql -c "SELECT application_name, client_addr, state, sync_state, write_lag, flush_lag, replay_lag FROM pg_stat_replication WHERE application_name = 'scaleway_standby';"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "ERROR: Hetzner did not see scaleway_standby streaming within 600s"
+          sudo -u postgres psql -c "SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;" || true
+          exit 1
+          END_HETZNER_WAIT_STREAMING
+
+          echo "=== Enable synchronous replication only after streaming is confirmed ==="
+          "${HETZNER_SSH[@]}" bash -s <<'END_HETZNER_ENABLE_SYNC'
+          set -euo pipefail
+          state=$(sudo -u postgres psql -tA -c "SELECT COALESCE((SELECT state FROM pg_stat_replication WHERE application_name = 'scaleway_standby'), 'missing');")
+          if [ "$state" != "streaming" ]; then
+            echo "ERROR: refusing to enable sync before streaming is confirmed (state=$state)"
+            exit 1
+          fi
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "ALTER SYSTEM SET synchronous_standby_names = 'scaleway_standby';"
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "ALTER SYSTEM SET synchronous_commit = 'on';"
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "ALTER SYSTEM SET wal_sender_timeout = '10s';"
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "SELECT pg_reload_conf();"
+          for i in $(seq 1 24); do
+            sync_state=$(sudo -u postgres psql -tA -c "SELECT COALESCE((SELECT sync_state FROM pg_stat_replication WHERE application_name = 'scaleway_standby'), 'missing');")
+            echo "[hetzner] scaleway_standby sync_state=$sync_state ($((i * 5))/120s)"
+            if [ "$sync_state" = "sync" ]; then
+              sudo -u postgres psql -c "SELECT application_name, state, sync_state, write_lag, flush_lag, replay_lag FROM pg_stat_replication WHERE application_name = 'scaleway_standby';"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "ERROR: scaleway_standby did not become sync within 120s"
+          sudo -u postgres psql -c "SELECT application_name, state, sync_state FROM pg_stat_replication;" || true
+          exit 1
+          END_HETZNER_ENABLE_SYNC
+
+          echo "=== Enable HA guard services (Hetzner) ==="
+          "${HETZNER_SSH[@]}" bash -s <<'END_HETZNER_GUARDS'
+          set -euo pipefail
+          systemctl enable --now sync-replication-guard.service
+          systemctl enable --now primary-watchdog.timer
+          systemctl is-active --quiet sync-replication-guard.service
+          systemctl is-active --quiet primary-watchdog.timer
+          systemctl status sync-replication-guard.service --no-pager -l | sed -n '1,12p'
+          systemctl status primary-watchdog.timer --no-pager -l | sed -n '1,12p'
+          END_HETZNER_GUARDS
+
+          echo "=== Scaleway backend standby-mode report (read-only) ==="
+          "${SCALEWAY_SSH[@]}" bash -s <<'END_SCALEWAY_BACKEND_REPORT'
+          set -euo pipefail
+          ENV_FILE=/opt/valutavalto/backend/.env
+          if [ ! -f "$ENV_FILE" ]; then
+            echo "[scaleway] backend .env not found"
+            exit 0
+          fi
+          readonly_value=$(grep -E '^(READ_ONLY|APP_READ_ONLY|VALUTA_READ_ONLY)=' "$ENV_FILE" | sed 's/=.*/=<redacted>/' || true)
+          flyway_value=$(grep -E '^(SPRING_FLYWAY_ENABLED|FLYWAY_ENABLED)=' "$ENV_FILE" | sed 's/=.*/=<redacted>/' || true)
+          echo "[scaleway] standby-mode keys present:"
+          echo "${readonly_value:-READ_ONLY key not found}"
+          echo "${flyway_value:-FLYWAY key not found}"
+          END_SCALEWAY_BACKEND_REPORT
+
+          echo "=== Final HA summary ==="
+          FINAL_REPORT=$("${HETZNER_SSH[@]}" "sudo -u postgres psql -P pager=off -c \"SELECT application_name, client_addr, state, sync_state, write_lag, flush_lag, replay_lag FROM pg_stat_replication WHERE application_name = 'scaleway_standby';\" && systemctl is-active sync-replication-guard.service && systemctl is-active primary-watchdog.timer")
+          echo "$FINAL_REPORT"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "✅ Scaleway standby rebuilt and synchronous replication restored." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "$FINAL_REPORT" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
