@@ -17,6 +17,7 @@ import java.util.UUID;
 public class ShipmentRequestItemResponseDto {
     private UUID id;
     private Long currencyId;
+    private String currencyCode;
     private BigDecimal requestedAmount;
     private BigDecimal approvedAmount;
     private BigDecimal deliveredAmount;
