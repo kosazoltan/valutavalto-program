@@ -7,9 +7,11 @@
 # =============================================================================
 # Scaleway Failover Drill — automatikus végrehajtás
 # =============================================================================
-# Drill 1: pg_ctl promote + pg_basebackup failback a tunnelen (DNS érintetlen) — biztonságos
-#   (2026-06-05: pg_rewind helyett pg_basebackup, mert a cluster nem támogatja a rewindot
-#    és a replikáció a pg-repl-tunnel.service-en megy — lásd REPLICATION-TUNNEL-SETUP.md)
+# Drill 1: pg_ctl promote + pg_basebackup failback WireGuard-on (DNS érintetlen) — biztonságos
+#   (2026-06-05: pg_rewind helyett pg_basebackup, mert a cluster nem támogatja a rewindot;
+#    2026-07-02: a replikáció immár született WireGuard-on megy (Hetzner 10.8.0.1 ←
+#    Scaleway 10.8.0.2, port 5432. A korábbi SSH-alapú replikációs alagút kivezetve.
+#    A replicator jelszó a Hetzner /opt/valutavalto/ha.env fájljából kerül lekérésre.
 # Drill 2: Drill 1 + Cloudflare DNS swap rövid időre (élesi forgalom Scaleway-re)
 # Drill 3: Drill 1 + Drill 2 + adatvesztés mérés + monitoring
 #
@@ -210,30 +212,55 @@ jobs:
           ssh -i ~/.ssh/scaleway_key root@${{ secrets.SCALEWAY_SERVER_IP }} \
             "systemctl stop valuta-backend && systemctl stop postgresql && echo 'Services stopped'"
 
-      - name: 'Failback 2 — pg_basebackup re-clone (SSH-tunnelen at)'
+      - name: 'Failback 2 — pg_basebackup re-clone (WireGuard-on at)'
         if: ${{ always() && steps.promote.outcome == 'success' }}
         run: |
           # 2026-06-05 BUGFIX (drill-altal feltart): pg_rewind NEM hasznalhato itt —
           # (1) a cluster wal_log_hints=off ES nincs data checksum -> pg_rewind elutasit;
-          # (2) a `sudo -u postgres pg_rewind` a PATH-on nincs (full path /usr/lib/...);
-          # (3) a publikus 5432 a szerverek kozott Hetzner-Cloud-Firewall-blokkolt ->
-          #     a replikacio a pg-repl-tunnel.service-en (127.0.0.1:5433) megy.
-          # Megoldas: friss pg_basebackup a tunnelen at (a DB csak ~35MB, gyors).
-          cat > /tmp/basebackup_failback.sh << 'SCRIPT_EOF'
+          # (2) a `sudo -u postgres pg_rewind` a PATH-on nincs (full path /usr/lib/...).
+          # 2026-07-02: a replikacio immar szuletett WireGuard-on megy (Hetzner 10.8.0.1,
+          # Scaleway 10.8.0.2, port 5432. A korabbi SSH-alapu replikacios alagut kivezetve.
+          # A replicator jelszo a Hetzner /opt/valutavalto/ha.env fajlbol kerul lekeresre es
+          # az alabbi scriptbe atoltesre.
+          # Megoldas: friss pg_basebackup a WireGuard-on at (a DB csak ~35MB, gyors).
+          echo "=== Hetzner: replicator jelszo lekerese a /opt/valutavalto/ha.env-bol ==="
+          RPWD=$(ssh -i ~/.ssh/hetzner_key -o StrictHostKeyChecking=accept-new \
+            root@${{ secrets.VPS_SERVER_IP }} \
+            "grep -E '^REPLICATION_PASSWORD=' /opt/valutavalto/ha.env | cut -d= -f2- | tr -d '\r'")
+          [ -n "$RPWD" ] || { echo "ERROR: ures replicator jelszo a Hetzner /opt/valutavalto/ha.env-bol"; exit 1; }
+          cat > /tmp/basebackup_failback.sh << SCRIPT_EOF
           #!/usr/bin/env bash
           set -euo pipefail
           BIN=/usr/lib/postgresql/16/bin
-          RPWD=$(grep -oE "password=[^ ']+" /var/lib/postgresql/16/main/postgresql.auto.conf | head -1 | cut -d= -f2-)
-          [ -n "$RPWD" ] || { echo "ERROR: nincs replicator jelszo a postgresql.auto.conf-ban"; exit 1; }
-          systemctl is-active pg-repl-tunnel.service >/dev/null 2>&1 || systemctl start pg-repl-tunnel.service
-          sleep 2
-          ss -ltn | grep -q ":5433" || { echo "ERROR: a replikacios tunnel (127.0.0.1:5433) nem el"; exit 1; }
+          echo "=== Scaleway: WireGuard service + handshake ellenorzes ==="
+          systemctl is-active --quiet wg-quick@wg0
+          if command -v wg >/dev/null 2>&1; then
+            timeout 10 ping -c 2 10.8.0.1 >/dev/null || true
+            sleep 2
+            now=\$(date +%s)
+            latest=\$(wg show wg0 latest-handshakes | awk '{print \$2}' | sort -nr | head -1)
+            if [ -z "\${latest:-}" ] || [ "\$latest" -eq 0 ]; then
+              echo "ERROR: no WireGuard handshake timestamp"
+              exit 1
+            fi
+            age=\$((now - latest))
+            echo "[scaleway] latest WireGuard handshake age: \${age}s"
+            if [ "\$age" -gt 180 ]; then
+              echo "ERROR: WireGuard handshake is older than 180s"
+              exit 1
+            fi
+          else
+            echo "ERROR: wg command not found"
+            exit 1
+          fi
+          echo "=== Scaleway: PG stop + data dir tisztitas ==="
           systemctl stop postgresql postgresql@16-main 2>/dev/null || true
           sleep 2; pkill -9 -f "postgresql/16/main" 2>/dev/null || true; sleep 2
           rm -rf /var/lib/postgresql/16/main
-          echo "=== pg_basebackup a tunnelen at (127.0.0.1:5433) ==="
-          sudo -u postgres $BIN/pg_basebackup -D /var/lib/postgresql/16/main \
-            -d "host=127.0.0.1 port=5433 user=replicator password=$RPWD dbname=postgres" \
+          echo "=== pg_basebackup a WireGuard-on at (10.8.0.1:5432) ==="
+          sudo -u postgres env PGPASSWORD="$RPWD" \$BIN/pg_basebackup \
+            -D /var/lib/postgresql/16/main \
+            -d "host=10.8.0.1 port=5432 user=replicator dbname=postgres application_name=scaleway_standby" \
             -R -X stream -c fast
           echo "primary_slot_name = 'standby_slot_0'" >> /var/lib/postgresql/16/main/postgresql.auto.conf
           chown -R postgres:postgres /var/lib/postgresql/16/main
@@ -244,12 +271,15 @@ jobs:
           sudo -u postgres psql -c "SELECT pg_is_in_recovery();"
           sudo -u postgres psql -c "SELECT status, sender_host, sender_port FROM pg_stat_wal_receiver;"
           SCRIPT_EOF
-          chmod +x /tmp/basebackup_failback.sh
+          # 600: a script tartalmazza a tiszta replicator jelszot (a runner-en
+          # kiertekelt $RPWD) — ne legyen masok altal olvashato. A `bash /tmp/...`
+          # hivas miatt a vegrehajthatsoag bit nem szukseges.
+          chmod 600 /tmp/basebackup_failback.sh
           scp -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
             /tmp/basebackup_failback.sh \
             root@${{ secrets.SCALEWAY_SERVER_IP }}:/tmp/basebackup_failback.sh
           ssh -i ~/.ssh/scaleway_key root@${{ secrets.SCALEWAY_SERVER_IP }} \
-            "bash /tmp/basebackup_failback.sh"
+            "chmod 600 /tmp/basebackup_failback.sh && bash /tmp/basebackup_failback.sh; rc=\$?; shred -u /tmp/basebackup_failback.sh 2>/dev/null || rm -f /tmp/basebackup_failback.sh; exit \$rc"
 
       - name: 'Failback 3 — backend restart'
         if: ${{ always() && steps.promote.outcome == 'success' }}
