@@ -35,7 +35,7 @@ jobs:
           echo "=== D1 — currency_stock VAULT sorok (a panel adatforrása) ==="
           "$PSQL17" "$NEON_URL" -c "
             SELECT cs.entity_id AS territory_id, vt.name AS territory, cs.currency_code,
-                   cs.quantity, cs.weighted_avg_cost, cs.updated_at
+                   cs.quantity, cs.weighted_avg_cost, cs.last_updated
             FROM currency_stock cs
             LEFT JOIN vault_territory vt ON vt.id::text = cs.entity_id
             WHERE cs.entity_type = 'VAULT'
@@ -79,7 +79,7 @@ jobs:
 
           echo "=== D6 — currency_stock updated_at histogram (mikor irodott utoljara VAULT sor) ==="
           "$PSQL17" "$NEON_URL" -c "
-            SELECT date_trunc('day', updated_at) AS nap, COUNT(*)
+            SELECT date_trunc('day', last_updated) AS nap, COUNT(*)
             FROM currency_stock WHERE entity_type='VAULT'
             GROUP BY 1 ORDER BY 1 DESC LIMIT 10;"
           REMOTE
