@@ -12,10 +12,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.UnsupportedJwtException;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -115,8 +111,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
             
             filterChain.doFilter(request, response);
-        } catch (ExpiredJwtException | MalformedJwtException | UnsupportedJwtException
-                 | io.jsonwebtoken.security.SignatureException ex) {
+        } catch (JwtTokenException ex) {
             logger.warn("JWT token rejected: " + ex.getMessage());
             SecurityContextHolder.clearContext();
             filterChain.doFilter(request, response);
