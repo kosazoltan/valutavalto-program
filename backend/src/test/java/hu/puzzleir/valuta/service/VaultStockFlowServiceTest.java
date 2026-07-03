@@ -274,6 +274,29 @@ class VaultStockFlowServiceTest {
     }
 
     @Test
+    @DisplayName("FK-054: applyDistributionLine elégtelen vault-készlet -> ValidationException, nincs részleges könyvelés")
+    void applyDistributionLine_insufficientVaultStock_throwsValidation_noPartialBookkeeping() {
+        when(vaultTerritoryRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of(territory));
+        Company company = Company.builder().id(COMPANY_ID).build();
+        CurrencyStock vaultStock = CurrencyStock.builder()
+                .company(company).entityType("VAULT").entityId(TERRITORY_ID.toString())
+                .currencyCode("EUR").quantity(new BigDecimal("50.00"))
+                .weightedAvgCost(new BigDecimal("395.5")).build();
+        when(currencyStockRepository.findForUpdate(COMPANY_ID, "VAULT", TERRITORY_ID.toString(), "EUR"))
+                .thenReturn(Optional.of(vaultStock));
+
+        assertThatThrownBy(() -> service.applyDistributionLine(COMPANY_ID, "BR035", "EUR", new BigDecimal("100.00")))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("Nincs elegendő értéktári EUR készlet! Elérhető: 50.00, szükséges: 100.00 "
+                        + "(territory: 1). A művelet nem hajtható végre — készleten túli forgalmazás tiltva.");
+
+        assertThat(vaultStock.getQuantity()).isEqualByComparingTo("50.00");
+        verify(currencyStockRepository, never()).save(vaultStock);
+        verifyNoInteractions(cashBalanceRepository);
+        verifyNoInteractions(messagingTemplate);
+    }
+
+    @Test
     @DisplayName("FIX: applyDistributionLine target branch hianyzik -> ResourceNotFoundException")
     void applyDistributionLine_missingTargetBranch_throwsResourceNotFound() {
         when(vaultTerritoryRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of(territory));

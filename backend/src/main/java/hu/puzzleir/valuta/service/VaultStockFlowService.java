@@ -93,7 +93,12 @@ public class VaultStockFlowService {
         VaultTerritory territory = getFirstActiveTerritory(companyId);
         String vaultEntityId = territory.getId().toString();
 
-        CurrencyStock vaultStock = getOrCreateStock(companyId, ENTITY_TYPE_VAULT, vaultEntityId, currencyCode);
+        CurrencyStock vaultStock = currencyStockRepository
+                .findForUpdate(companyId, ENTITY_TYPE_VAULT, vaultEntityId, currencyCode)
+                .orElseThrow(() -> VaultStockCoverageGate.insufficientStockException(
+                        ENTITY_TYPE_VAULT, vaultEntityId, currencyCode, BigDecimal.ZERO, amount));
+        VaultStockCoverageGate.requireSufficientStock(
+                ENTITY_TYPE_VAULT, vaultEntityId, currencyCode, vaultStock.getQuantity(), amount);
         vaultStock.issueStock(amount);
         currencyStockRepository.save(vaultStock);
 

@@ -206,8 +206,10 @@ public class VaultTransferService {
             // Eredeti VAULT-CASHIER / VAULT-VAULT logika (CurrencyStock + WAC)
             CurrencyStock sourceStock = currencyStockRepository.findForUpdate(
                     companyId, sourceType, sourceId, transfer.getCurrencyCode())
-                    .orElseThrow(() -> new IllegalStateException(
-                            "Forrás készlet nem található: " + sourceType + "/" + sourceId + "/" + transfer.getCurrencyCode()));
+                    .orElseThrow(() -> VaultStockCoverageGate.insufficientStockException(
+                            sourceType, sourceId, transfer.getCurrencyCode(), BigDecimal.ZERO, transfer.getAmount()));
+            VaultStockCoverageGate.requireSufficientStock(
+                    sourceType, sourceId, transfer.getCurrencyCode(), sourceStock.getQuantity(), transfer.getAmount());
 
             BigDecimal wacAtIssue = sourceStock.issueStock(transfer.getAmount());
             transfer.setWacAtTransfer(wacAtIssue);
