@@ -177,6 +177,18 @@ public class InventoryService {
         InventoryMovement movement = findMovementForUpdate(movementId);
         Worker worker = findWorker(workerId);
 
+        // 4-szem-elv: a jóváhagyó nem lehet a mozgást rögzítő dolgozó
+        // (AmlApprovalService.resolveSeniorApprover mintája; fail-closed, FK-053/054 invariáns).
+        Worker initiator = movement.getInitiatedBy();
+        if (initiator == null || initiator.getId() == null) {
+            throw new ValidationException(
+                    "A mozgás rögzítője nem azonosítható — a jóváhagyás nem engedélyezett!");
+        }
+        if (initiator.getId().equals(workerId)) {
+            throw new ValidationException(
+                    "A készletmozgást nem hagyhatja jóvá az azt rögzítő dolgozó (4-szem-elv)!");
+        }
+
         // Stornó védelem: véglegesen lezárt mozgás nem módosítható
         validateNotFinalized(movement);
 

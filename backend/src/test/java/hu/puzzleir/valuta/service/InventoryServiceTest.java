@@ -195,7 +195,10 @@ class InventoryServiceTest {
         InventoryMovement movement = buildMovement(MovementType.BANK_DEPOSIT, MovementStatus.PENDING,
                 eurCurrency, branch, null);
         movement.setId(1L);
-        movement.setInitiatedBy(worker);
+        Worker initiator = new Worker();
+        initiator.setId(99L);
+        initiator.setName("Rögzítő dolgozó");
+        movement.setInitiatedBy(initiator);
 
         CashBalance balance = CashBalance.builder()
                 .branch(branch)
@@ -223,7 +226,10 @@ class InventoryServiceTest {
         InventoryMovement movement = buildMovement(MovementType.BANK_DEPOSIT, MovementStatus.PENDING,
                 eurCurrency, branch, null);
         movement.setId(2L);
-        movement.setInitiatedBy(worker);
+        Worker initiator = new Worker();
+        initiator.setId(99L);
+        initiator.setName("Rögzítő dolgozó");
+        movement.setInitiatedBy(initiator);
 
         CashBalance balance = CashBalance.builder()
                 .branch(branch)
@@ -244,6 +250,63 @@ class InventoryServiceTest {
 
         // Assert
         assertThat(captor.getValue().getStatus()).isEqualTo(MovementStatus.APPROVED);
+    }
+
+    // ============ FK-xxx: 4-szem-elv — self-approval tilalom (approveMovement) ============
+
+    @Test
+    @DisplayName("approveMovement: a rögzítő NEM hagyhatja jóvá a saját mozgását (4-szem-elv) → ValidationException, nincs mutáció")
+    void approveMovement_selfApproval_throwsValidationException() {
+        InventoryMovement movement = buildMovement(MovementType.BANK_WITHDRAW, MovementStatus.PENDING,
+                eurCurrency, null, branch);
+        movement.setId(7L);
+        movement.setInitiatedBy(worker); // worker.id == WORKER_ID
+        when(movementRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(movement));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+        assertThatThrownBy(() -> inventoryService.approveMovement(7L, WORKER_ID))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("4-szem");
+
+        verify(movementRepository, never()).save(any());
+        verify(stockAccessor, never()).adjust(any(), any(), any());
+        assertThat(movement.getStatus()).isEqualTo(MovementStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("approveMovement: azonosíthatatlan rögzítő (initiatedBy null) → fail-closed ValidationException")
+    void approveMovement_nullInitiator_failClosed() {
+        InventoryMovement movement = buildMovement(MovementType.BANK_WITHDRAW, MovementStatus.PENDING,
+                eurCurrency, null, branch);
+        movement.setId(8L);
+        movement.setInitiatedBy(null);
+        when(movementRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(movement));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+        assertThatThrownBy(() -> inventoryService.approveMovement(8L, WORKER_ID))
+                .isInstanceOf(ValidationException.class);
+        verify(movementRepository, never()).save(any());
+        verify(stockAccessor, never()).adjust(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("approveMovement: MÁSIK dolgozó jóváhagyhatja (4-szem teljesül) → APPROVED/IN_TRANSIT")
+    void approveMovement_differentApprover_succeeds() {
+        Worker initiator = new Worker();
+        initiator.setId(99L);
+        initiator.setName("Rögzítő dolgozó");
+        InventoryMovement movement = buildMovement(MovementType.BANK_WITHDRAW, MovementStatus.PENDING,
+                eurCurrency, null, branch);
+        movement.setId(9L);
+        movement.setInitiatedBy(initiator);
+        when(movementRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(movement));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+        when(movementRepository.save(any(InventoryMovement.class))).thenAnswer(i -> i.getArgument(0));
+
+        InventoryMovementDto dto = inventoryService.approveMovement(9L, WORKER_ID);
+
+        assertThat(dto).isNotNull();
+        assertThat(movement.getStatus()).isEqualTo(MovementStatus.IN_TRANSIT); // BANK_WITHDRAW → IN_TRANSIT
     }
 
     // ============ Fix #2: transferBetweenBranches — forrás-készlet ellenőrzés ============
