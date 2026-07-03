@@ -60,6 +60,7 @@ class TransactionServiceBusinessLogicTest {
     @Mock private TransactionValidationService transactionValidationService;
     @Mock private PmtComplianceValidator pmtComplianceValidator;
     @Mock private WacService wacService;
+    @Mock private VaultStockFlowService vaultStockFlowService;
 
     @InjectMocks
     private TransactionService transactionService;
@@ -116,6 +117,7 @@ class TransactionServiceBusinessLogicTest {
         eur = currency(EUR_ID, "EUR");
         usd = currency(USD_ID, "USD");
         when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(huf));
+        when(currencyRepository.findById(HUF_ID)).thenReturn(Optional.of(huf));
         when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eur));
         when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eur));
         when(currencyRepository.findById(USD_ID)).thenReturn(Optional.of(usd));

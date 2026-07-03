@@ -29,6 +29,8 @@ public class TransactionOperationHelper {
     private final AmlApprovalService amlApprovalService;
     private final CashBalanceRepository cashBalanceRepository;
     private final CurrencyRepository currencyRepository;
+    private final BranchRepository branchRepository;
+    private final VaultStockFlowService vaultStockFlowService;
     private final ObjectProvider<CameraTransactionLinker> cameraTransactionLinkerProvider;
     // A4 (b9-korlevelek FR-02): kötelező körlevél-nyugtázás gate a multi-line / konverzió / sztornó
     // úton is. Flag-gated (default OFF) → a `systemParameterService != null` guard miatt a meglévő
@@ -242,6 +244,12 @@ public class TransactionOperationHelper {
         if (balance == null || balance.getCurrentBalance().compareTo(amount) < 0) {
             throw new ValidationException("Nincs elegendo valuta keszlet!");
         }
+
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem talalhato"));
+        Currency currency = currencyRepository.findById(currencyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Valuta nem talalhato"));
+        vaultStockFlowService.validateVaultStockCoverage(branch, currency.getCode(), amount);
     }
 
     /**
@@ -251,9 +259,22 @@ public class TransactionOperationHelper {
         // Pessimistic lock hasznalata race condition elkerulesere
         CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, currencyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Kassza egyenleg nem talalhato"));
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem talalhato"));
+        Currency currency = currencyRepository.findById(currencyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Valuta nem talalhato"));
+        BigDecimal normalizedAmount = amount.abs();
 
-        balance.updateBalance(amount.abs(), isIncoming);
+        if (!isIncoming) {
+            vaultStockFlowService.validateVaultStockCoverage(branch, currency.getCode(), normalizedAmount);
+        }
+
+        balance.updateBalance(normalizedAmount, isIncoming);
         cashBalanceRepository.save(balance);
+
+        if (Boolean.TRUE.equals(branch.getIsVault())) {
+            vaultStockFlowService.applyGenericVaultStock(branch, currency.getCode(), normalizedAmount, isIncoming);
+        }
     }
 
     /**

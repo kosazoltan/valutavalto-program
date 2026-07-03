@@ -135,10 +135,9 @@ public class VaultStockFlowService {
      *   <li>Novekedes: a meglevo WAC-on (az atlagar nem valtozik — a belso mozgas
      *       bekerulesi ara tenyadatbol nem ismert); ures/0 WAC-nal HUF=1, deviza=0
      *       (a WAC a jovobeni vault-modulos mozgasokbol epul).</li>
-     *   <li>Csokkenes elegtelen keszletnel: WARN + negativba mehet — a
-     *       decrementBranchCashBalance precedensevel azonos uzleti szabaly (a penz
-     *       fizikailag mar mozgott, a konyveles nem blokkolhatja); a V324 backfill
-     *       es a kesobbi adatpotlas rendezi.</li>
+     *   <li>Csokkenes elegtelen keszletnel: fail-closed {@link ValidationException} —
+     *       fedezet nelkul nincs penzmozgas, es a mirror-utvonal sem viheti negativba
+     *       az ertektari keszletet.</li>
      * </ul>
      */
     public void applyGenericVaultStock(Branch branch, String currencyCode,
@@ -165,11 +164,7 @@ public class VaultStockFlowService {
                     : ("HUF".equals(currencyCode) ? HUF_WAC : BigDecimal.ZERO);
             stock.receiveStock(amount, wac);
         } else if (stock.getQuantity().compareTo(amount) < 0) {
-            log.warn("applyGenericVaultStock: elegtelen vault-keszlet ({} {} < {}), folytatva "
-                            + "(a penz fizikailag mar mozgott; backfill/adatpotlas rendezi) — branch={}",
-                    currencyCode, stock.getQuantity(), amount, branch.getCode());
-            stock.setQuantity(stock.getQuantity().subtract(amount));
-            stock.setLastUpdated(LocalDateTime.now());
+            throw insufficientVaultStockException(currencyCode, stock.getQuantity(), amount, territoryId);
         } else {
             stock.issueStock(amount);
         }
@@ -178,6 +173,39 @@ public class VaultStockFlowService {
                 territoryId, currencyCode, increase ? "+" : "-", amount, oldQty, stock.getQuantity(), branch.getCode());
 
         publishVaultStockChanged(companyId, territoryId);
+    }
+
+    /**
+     * FK-053 front-gate: vault branch kimenő pénzmozgása előtt, PESSIMISTIC_WRITE lockkal ellenőrzi,
+     * hogy az értéktári {@code currency_stock} fedezi-e a mozgást. Nem-vault branch esetén no-op.
+     */
+    public void validateVaultStockCoverage(Branch branch, String currencyCode, BigDecimal amount) {
+        if (!Boolean.TRUE.equals(branch.getIsVault())) {
+            return;
+        }
+        Integer territoryId = branch.getVaultTerritoryId();
+        if (territoryId == null) {
+            throw new ValidationException(String.format(
+                    "Az értéktár (%s) vault_territory_id mezője nincs kitöltve — a készlet-könyvelés "
+                            + "nem végezhető el (V322 backfill / törzsadat-rendezés szükséges).",
+                    branch.getCode()));
+        }
+        UUID companyId = branch.getCompany().getId();
+        BigDecimal available = currencyStockRepository
+                .findForUpdate(companyId, ENTITY_TYPE_VAULT, territoryId.toString(), currencyCode)
+                .map(CurrencyStock::getQuantity)
+                .orElse(BigDecimal.ZERO);
+        if (available.compareTo(amount) < 0) {
+            throw insufficientVaultStockException(currencyCode, available, amount, territoryId);
+        }
+    }
+
+    private ValidationException insufficientVaultStockException(
+            String currencyCode, BigDecimal available, BigDecimal amount, Integer territoryId) {
+        return new ValidationException(String.format(
+                "Nincs elegendő értéktári %s készlet! Elérhető: %s, szükséges: %s (territory: %s). "
+                        + "A művelet nem hajtható végre — készleten túli forgalmazás tiltva.",
+                currencyCode, available.toPlainString(), amount.toPlainString(), territoryId));
     }
 
     // ============ HELPER METODUSOK ============

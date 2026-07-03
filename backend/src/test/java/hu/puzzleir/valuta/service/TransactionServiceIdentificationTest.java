@@ -37,6 +37,7 @@ class TransactionServiceIdentificationTest {
     @Mock private TransactionValidationService transactionValidationService;
     @Mock private PmtComplianceValidator pmtComplianceValidator;
     @Mock private WacService wacService;
+    @Mock private VaultStockFlowService vaultStockFlowService;
 
     @InjectMocks
     private TransactionService transactionService;
@@ -91,6 +92,7 @@ class TransactionServiceIdentificationTest {
         Currency huf = new Currency();
         huf.setId(1L);
         huf.setCode("HUF");
+        when(currencyRepository.findById(1L)).thenReturn(Optional.of(huf));
         when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(huf));
 
         // Valuta: EUR, id=2
