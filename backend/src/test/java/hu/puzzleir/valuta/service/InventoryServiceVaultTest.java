@@ -188,6 +188,9 @@ class InventoryServiceVaultTest {
     void approveMovement_bankDepositDebitsVaultStock() {
         InventoryMovement movement = movement(MovementType.BANK_DEPOSIT, MovementStatus.PENDING, vaultBranch, null, new BigDecimal("1000.00"));
         movement.setId(2L);
+        Worker initiator = new Worker();
+        initiator.setId(99L);
+        movement.setInitiatedBy(initiator);
         when(movementRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(movement));
 
         inventoryService.approveMovement(2L, WORKER_ID);
