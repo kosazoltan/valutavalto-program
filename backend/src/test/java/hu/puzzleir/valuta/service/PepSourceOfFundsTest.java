@@ -54,6 +54,7 @@ class PepSourceOfFundsTest {
         private static final Long EUR_ID     = 4L; // EUR=4 prod ID
 
         @Mock private WacService wacService;
+        @Mock private VaultStockFlowService vaultStockFlowService;
         @InjectMocks private TransactionService transactionService;
 
         @Mock private TransactionValidationService transactionValidationService;
@@ -107,9 +108,10 @@ class PepSourceOfFundsTest {
 
             huf = currency(HUF_ID, "HUF");
             eur = currency(EUR_ID, "EUR");
-            when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(huf));
-            when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eur));
-            when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eur));
+            lenient().when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(huf));
+            lenient().when(currencyRepository.findById(HUF_ID)).thenReturn(Optional.of(huf));
+            lenient().when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eur));
+            lenient().when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eur));
 
             ExchangeRate rate = rate(eur, "395.00", "400.00");
             when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(rate);
