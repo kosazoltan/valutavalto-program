@@ -1,4 +1,4 @@
-import yaml from 'js-yaml'
+import { load } from 'js-yaml'
 import modulesYamlRaw from '../knowledge/modules.yaml?raw'
 import faqYamlRaw from '../knowledge/faq.yaml?raw'
 import workflowsYamlRaw from '../knowledge/workflows.yaml?raw'
@@ -33,7 +33,7 @@ let cache: { docs: SearchableDoc[]; raw: Record<string, ParsedYaml> } | null = n
 
 function parseYaml(raw: string, label: string): ParsedYaml {
   try {
-    const parsed = yaml.load(raw)
+    const parsed = load(raw)
     return (parsed && typeof parsed === 'object' ? parsed : {}) as ParsedYaml
   } catch (err) {
     // Copilot PR #665: NE csendben swallow-oljuk a YAML hibakat — log-oljuk
