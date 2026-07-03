@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.ratecreation.BankRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.BranchListDTO;
 import hu.puzzleir.valuta.dto.ratecreation.CompetitorRateDTO;
@@ -767,7 +767,7 @@ public class RateCreationService {
             byte[] json = objectMapper.writeValueAsString(canonical).getBytes(StandardCharsets.UTF_8);
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             return HexFormat.of().formatHex(digest.digest(json));
-        } catch (JsonProcessingException | NoSuchAlgorithmException e) {
+        } catch (JacksonException | NoSuchAlgorithmException e) {
             throw new IllegalStateException("Árfolyamcsomag hash számítás sikertelen", e);
         }
     }

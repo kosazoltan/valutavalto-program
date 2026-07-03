@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.dto.voice;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -73,7 +73,7 @@ class VoiceAssistantModeTest {
         // Ezt a GlobalExceptionHandler@HttpMessageNotReadableException kapja el es
         // alakit a felhasznalo-barat "INVALID_ENUM_VALUE" 400 valassza.
         assertThatThrownBy(() -> MAPPER.readValue("\"unknown\"", VoiceAssistantMode.class))
-                .isInstanceOf(com.fasterxml.jackson.databind.exc.ValueInstantiationException.class)
+                .isInstanceOf(tools.jackson.databind.exc.ValueInstantiationException.class)
                 .hasMessageContaining("VoiceAssistantMode")
                 .satisfies(ex -> {
                     Throwable root = ex;

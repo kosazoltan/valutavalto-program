@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.ratemanagement.RateUpdateMessage;
 import hu.puzzleir.valuta.dto.sync.SyncInboundEventRequest;
 import hu.puzzleir.valuta.dto.sync.SyncInboundEventResponse;
@@ -137,7 +137,7 @@ public class SyncInboundEventService {
         }
     }
 
-    private void dispatch(String eventType, String payload) throws JsonProcessingException {
+    private void dispatch(String eventType, String payload) {
         if (!RATE_PUBLISHED_EVENT.equals(eventType)) {
             throw new ValidationException("Nem támogatott sync esemény típus: " + eventType);
         }
@@ -158,7 +158,7 @@ public class SyncInboundEventService {
     private String serializePayload(SyncInboundEventRequest request) {
         try {
             return objectMapper.writeValueAsString(request.getPayload());
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             throw new ValidationException("Érvénytelen payload JSON: " + ex.getMessage());
         }
     }

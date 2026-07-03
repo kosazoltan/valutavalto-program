@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.receipt.CancelledTransactionReceiptRequest;
 import hu.puzzleir.valuta.entity.Receipt;
 import hu.puzzleir.valuta.entity.Transaction;
@@ -545,7 +545,7 @@ public class ReceiptService {
 
         try {
             return OBJECT_MAPPER.writeValueAsString(payload);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new ValidationException("A megszakitott bizonylat tartalma nem serializalhato.");
         }
     }

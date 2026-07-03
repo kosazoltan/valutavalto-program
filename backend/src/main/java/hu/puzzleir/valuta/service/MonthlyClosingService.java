@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.ArchivedMonthlyTransaction;
 import hu.puzzleir.valuta.entity.CurrencyStock;
@@ -437,7 +437,7 @@ public class MonthlyClosingService {
 
         try {
             return objectMapper.writeValueAsString(breakdownMap.values());
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Hiba a currency breakdown JSON generálásakor", e);
             return "[]";
         }

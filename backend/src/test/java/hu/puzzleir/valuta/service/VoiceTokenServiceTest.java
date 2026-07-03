@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.voice.VoiceAssistantMode;
 import hu.puzzleir.valuta.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;

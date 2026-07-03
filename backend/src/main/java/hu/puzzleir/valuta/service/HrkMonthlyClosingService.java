@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.HrkTransactionDto;
 import hu.puzzleir.valuta.service.HrkService;
@@ -100,7 +100,7 @@ public class HrkMonthlyClosingService {
         String breakdownJson;
         try {
             breakdownJson = objectMapper.writeValueAsString(byСurrency.values());
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             breakdownJson = "[]";
         }
 

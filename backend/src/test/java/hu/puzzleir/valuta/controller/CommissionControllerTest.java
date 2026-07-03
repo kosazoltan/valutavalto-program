@@ -1,7 +1,6 @@
 package hu.puzzleir.valuta.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.json.JsonMapper;
 import hu.puzzleir.valuta.exception.GlobalExceptionHandler;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.CommissionCalculation;
@@ -15,7 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -51,12 +50,11 @@ class CommissionControllerTest {
 
     @BeforeEach
     void setUp() {
-        ObjectMapper om = new ObjectMapper();
-        om.registerModule(new JavaTimeModule());
+        JsonMapper om = new JsonMapper();
 
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
-                .setMessageConverters(new MappingJackson2HttpMessageConverter(om))
+                .setMessageConverters(new JacksonJsonHttpMessageConverter(om))
                 .build();
     }
 

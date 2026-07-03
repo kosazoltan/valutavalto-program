@@ -15,6 +15,8 @@ import java.io.IOException;
  * (`Caused by: AuthFailure(token=...) `, kartya-szam, IBAN-mintazatok). A
  * {@code RedactingPatternConverter#redact} statikus metodusat futtatjuk
  * a serialized stack-en mielott a JSON-be kerul.
+ * <p>Jackson 2 SZÁNDÉKOSAN: a logstash-logback-encoder 8.x Jackson 2-alapú,
+ * ezért ezt a provider-signature-t NE migráld a #386 Jackson 3 flipben.</p>
  */
 public class RedactingStackTraceJsonProvider extends StackTraceJsonProvider {
 

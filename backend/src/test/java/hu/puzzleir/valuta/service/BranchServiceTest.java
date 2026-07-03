@@ -46,7 +46,7 @@ class BranchServiceTest {
     @Mock private AccessScopeService accessScopeService;
     // FK-022: update() audit log + JSON-serializálás
     @Mock private AuditLogService auditLogService;
-    @Mock private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    @Mock private tools.jackson.databind.ObjectMapper objectMapper;
     @InjectMocks private BranchService service;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();

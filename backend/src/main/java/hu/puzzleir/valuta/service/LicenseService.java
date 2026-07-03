@@ -1,8 +1,8 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.dto.license.LicenseResponse;
 import hu.puzzleir.valuta.dto.license.LicenseStatusResponse;
@@ -107,7 +107,7 @@ public class LicenseService {
                         try {
                             List<String> list = objectMapper.readValue(trimmed, new TypeReference<List<String>>() {});
                             return list.stream().anyMatch(f -> f.trim().equalsIgnoreCase(normalizedName));
-                        } catch (JsonProcessingException e) {
+                        } catch (JacksonException e) {
                             log.warn("Licenc feature JSON parsolás sikertelen, fallback: {}", e.getMessage(), e);
                         }
                     }

@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.ratecreation.BranchListDTO;
 import hu.puzzleir.valuta.dto.ratecreation.TerritoryWorkgroupRateDTO;
 import hu.puzzleir.valuta.dto.ratecreation.WorkgroupDetailDTO;

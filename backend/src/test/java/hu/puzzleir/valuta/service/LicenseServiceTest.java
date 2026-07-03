@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.license.LicenseStatusResponse;
 import hu.puzzleir.valuta.entity.License;
 import hu.puzzleir.valuta.repository.LicenseRepository;

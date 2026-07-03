@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.dto.closingwizard;
 
 import com.fasterxml.jackson.annotation.JsonRawValue;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.*;
 
 import java.util.Map;

@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.ratemanagement.RateUpdateMessage;
 import hu.puzzleir.valuta.dto.sync.SyncInboundEventRequest;
 import hu.puzzleir.valuta.dto.sync.SyncInboundEventResponse;
@@ -46,7 +46,7 @@ class SyncInboundEventServiceTest {
 
     @BeforeEach
     void setUp() {
-        ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+        ObjectMapper objectMapper = new ObjectMapper();
         service = new SyncInboundEventService(syncInboxRepository, messagingTemplate, objectMapper);
 
         when(syncInboxRepository.save(any(SyncInboxEvent.class)))
@@ -84,7 +84,7 @@ class SyncInboundEventServiceTest {
         String idempotencyKey = UUID.randomUUID().toString();
         String payload = "{\"workgroupId\":\"f9c218ce-5f79-4a67-87aa-8f0e9e978cf4\",\"branchCodes\":[],\"publishedAt\":\"2026-03-14T12:00:00\",\"rates\":[]}";
 
-        ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
+        ObjectMapper mapper = new ObjectMapper();
         String hash = sha256(mapper.writeValueAsString(mapper.readTree(payload)));
 
         when(syncInboxRepository.findByIdempotencyKey(idempotencyKey))

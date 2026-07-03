@@ -1,7 +1,8 @@
 package hu.puzzleir.valuta.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import tools.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -9,7 +10,9 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
-@NoArgsConstructor
+// Jackson 3 creator-detection: explicit no-args @JsonCreator kell, mert az
+// openingDate mezon egyedi @JsonDeserialize(using=...) deszerializer van (#386).
+@NoArgsConstructor(onConstructor_ = @JsonCreator)
 @AllArgsConstructor
 @Builder
 public class UpdateBranchDto {
