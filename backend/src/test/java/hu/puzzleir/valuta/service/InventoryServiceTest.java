@@ -55,6 +55,7 @@ class InventoryServiceTest {
     @Mock private AuditLogService auditLogService;
     @Mock private ExchangeRateRepository exchangeRateRepository;
     @Mock private CurrencyStockRepository currencyStockRepository;
+    @Mock private InventoryStockAccessor stockAccessor;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID OTHER_COMPANY_ID = UUID.randomUUID();
@@ -103,6 +104,10 @@ class InventoryServiceTest {
         worker = new Worker();
         worker.setId(WORKER_ID);
         worker.setName("Teszt dolgozó");
+
+        lenient().when(stockAccessor.getBalance(branch, eurCurrency)).thenReturn(new BigDecimal("5000"));
+        lenient().when(stockAccessor.getBalance(branch, hufCurrency)).thenReturn(new BigDecimal("100000"));
+        lenient().when(stockAccessor.getBalance(branch2, eurCurrency)).thenReturn(new BigDecimal("500"));
     }
 
     @AfterEach
@@ -207,10 +212,8 @@ class InventoryServiceTest {
         // Act
         inventoryService.approveMovement(1L, WORKER_ID);
 
-        // Assert: balance csökkent (subtractBalance hívódott)
-        verify(cashBalanceRepository).save(argThat((CashBalance cb) ->
-                cb.getCurrentBalance().compareTo(new BigDecimal("4000")) == 0
-        ));
+        // Assert: a készlet-hozzáférőn keresztül csökkentjük (nem-vault ágban cash_balance)
+        verify(stockAccessor).adjust(branch, eurCurrency, new BigDecimal("-1000"));
     }
 
     @Test
@@ -329,8 +332,8 @@ class InventoryServiceTest {
         when(branchRepository.findById(BRANCH_ID_2)).thenReturn(Optional.of(branch2));
         when(currencyRepository.findById(CURRENCY_ID)).thenReturn(Optional.of(eurCurrency));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
-                .thenReturn(Optional.empty());
+        when(stockAccessor.getBalance(branch, eurCurrency))
+                .thenThrow(new ValidationException("Nincs kassza egyenleg a forrás irodánál ehhez a valutához: EUR"));
 
         // Act & Assert
         assertThatThrownBy(() -> inventoryService.transferBetweenBranches(dto, WORKER_ID))
@@ -521,6 +524,42 @@ class InventoryServiceTest {
         ArgumentCaptor<AuditLog> cap = ArgumentCaptor.forClass(AuditLog.class);
         verify(auditLogRepository).save(cap.capture());
         assertThat(cap.getValue().getAction()).isEqualTo("INVENTORY_MOVEMENT_RECEIVED");
+    }
+
+    @Test
+    @DisplayName("correctInventory nem-vault audit: CashBalance entityId bit-azonosan a cash_balance rekord id-ja marad")
+    void correctInventory_nonVaultAuditUsesCashBalanceEntityId() {
+        hu.puzzleir.valuta.dto.inventory.CorrectionRequestDto dto =
+                hu.puzzleir.valuta.dto.inventory.CorrectionRequestDto.builder()
+                        .branchId(BRANCH_ID.toString())
+                        .currencyId(CURRENCY_ID)
+                        .newAmount(new BigDecimal("5500"))
+                        .reason("Leltár")
+                        .build();
+        CashBalance balance = CashBalance.builder()
+                .id(42L)
+                .branch(branch)
+                .currency(eurCurrency)
+                .currentBalance(new BigDecimal("5000"))
+                .build();
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(currencyRepository.findById(CURRENCY_ID)).thenReturn(Optional.of(eurCurrency));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+        when(stockAccessor.getBalance(branch, eurCurrency)).thenReturn(new BigDecimal("5000"));
+        when(stockAccessor.isVaultContext(branch)).thenReturn(false);
+        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
+                .thenReturn(Optional.of(balance));
+        when(exchangeRateRepository.findLatestMidRateByCurrencyCode(any(), eq("EUR")))
+                .thenReturn(Optional.of(new BigDecimal("390")));
+        when(movementRepository.findMaxReferenceNumber(anyString())).thenReturn(0L);
+        when(movementRepository.save(any(InventoryMovement.class))).thenAnswer(i -> i.getArgument(0));
+
+        inventoryService.correctInventory(dto, WORKER_ID);
+
+        ArgumentCaptor<AuditLog> cap = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(cap.capture());
+        assertThat(cap.getValue().getEntityType()).isEqualTo("CashBalance");
+        assertThat(cap.getValue().getEntityId()).isEqualTo("42");
     }
 
     // ============ Audit 2026-05-31: multi-tenant IDOR védelem ============

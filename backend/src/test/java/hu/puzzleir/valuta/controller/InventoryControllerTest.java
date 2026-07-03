@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.exception.GlobalExceptionHandler;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.InventoryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -23,6 +25,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mockStatic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -95,5 +98,33 @@ class InventoryControllerTest {
 
         verify(inventoryService, times(1)).getAllStock();
         verifyNoMoreInteractions(inventoryService);
+    }
+
+    @Test
+    @DisplayName("GET /inventory/transfer-targets returns active branch options and excludes caller branch in service")
+    void getTransferTargets_returnsBranchOptions() throws Exception {
+        UUID ownBranchId = UUID.randomUUID();
+        UUID targetBranchId = UUID.randomUUID();
+        Branch target = Branch.builder()
+                .id(targetBranchId)
+                .code("BR002")
+                .name("Szeged Pénztár")
+                .isVault(false)
+                .build();
+
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(ownBranchId);
+            when(inventoryService.getTransferTargets(ownBranchId)).thenReturn(List.of(target));
+
+            mockMvc.perform(get("/api/v1/inventory/transfer-targets"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(1))
+                    .andExpect(jsonPath("$[0].branchId").value(targetBranchId.toString()))
+                    .andExpect(jsonPath("$[0].code").value("BR002"))
+                    .andExpect(jsonPath("$[0].name").value("Szeged Pénztár"))
+                    .andExpect(jsonPath("$[0].isVault").value(false));
+        }
+
+        verify(inventoryService).getTransferTargets(ownBranchId);
     }
 }

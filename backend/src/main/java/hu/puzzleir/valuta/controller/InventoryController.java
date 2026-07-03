@@ -141,6 +141,21 @@ public class InventoryController {
                 .body(inventoryService.transferBetweenBranches(dto, workerId));
     }
 
+    @GetMapping("/transfer-targets")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'ERTEKTAR')")
+    public ResponseEntity<List<TransferTargetDto>> getTransferTargets() {
+        UUID currentBranchId = SecurityUtils.getCurrentBranchId();
+        return ResponseEntity.ok(inventoryService.getTransferTargets(currentBranchId).stream()
+                .map(branch -> new TransferTargetDto(
+                        branch.getId(),
+                        branch.getCode(),
+                        branch.getName(),
+                        Boolean.TRUE.equals(branch.getIsVault())))
+                .toList());
+    }
+
+    public record TransferTargetDto(UUID branchId, String code, String name, boolean isVault) {}
+
     // ============ CORRECTION ============
 
     @PostMapping("/correction")

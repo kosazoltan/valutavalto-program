@@ -91,6 +91,21 @@ const INVENTORY_CURRENCIES = [
   { id: 840, code: 'USD', name: 'Amerikai dollár', decimals: 2, active: true },
 ]
 
+const TRANSFER_TARGETS = [
+  {
+    branchId: '22222222-2222-2222-2222-222222222222',
+    code: 'BR002',
+    name: 'Szeged Pénztár',
+    isVault: false,
+  },
+  {
+    branchId: '33333333-3333-3333-3333-333333333333',
+    code: 'VLT02',
+    name: 'Szeged Értéktár',
+    isVault: true,
+  },
+]
+
 const MOVEMENT_ROWS = [
   {
     id: 77,
@@ -126,6 +141,7 @@ function setupApiGet() {
       return Promise.resolve({ data: { matrix: { '11111111-1111-1111-1111-111111111111': { EUR: 1200, HUF: 700 } } } })
     }
     if (path === '/inventory/movements') return Promise.resolve({ data: { content: MOVEMENT_ROWS } })
+    if (path === '/inventory/transfer-targets') return Promise.resolve({ data: TRANSFER_TARGETS })
     if (path === '/inventory/movements/77') {
       return Promise.resolve({ data: { ...MOVEMENT_ROWS[0], statusDisplay: 'Részletesen jóváhagyva' } })
     }
@@ -379,7 +395,9 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     })
 
     fireEvent.change(screen.getByLabelText('Készletművelet típusa'), { target: { value: 'transfer' } })
-    fireEvent.change(screen.getByPlaceholderText('Csak átadásnál'), { target: { value: '22222222-2222-2222-2222-222222222222' } })
+    const targetSelect = await screen.findByLabelText('Cél telephely kiválasztása')
+    await waitFor(() => expect(targetSelect).toHaveTextContent('BR002 — Szeged Pénztár'))
+    fireEvent.change(targetSelect, { target: { value: '22222222-2222-2222-2222-222222222222' } })
     fireEvent.change(screen.getByPlaceholderText('Összeg'), { target: { value: '75' } })
     fireEvent.click(screen.getByRole('button', { name: 'Művelet rögzítése' }))
 
@@ -426,6 +444,51 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     })
   })
 
+  it('inventory műveletek: transfer kiválasztásakor cél telephely dropdown töltődik és branchId-t küld', async () => {
+    render(<InventoryPage />)
+
+    await waitFor(() => expect(screen.getByTestId('inventory-operation-panel')).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), { target: { value: 'transfer' } })
+
+    const targetSelect = await screen.findByLabelText('Cél telephely kiválasztása')
+    await waitFor(() => expect(targetSelect).toHaveTextContent('BR002 — Szeged Pénztár'))
+    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/transfer-targets', { _skipGlobal403Toast: true })
+
+    fireEvent.change(targetSelect, { target: { value: '22222222-2222-2222-2222-222222222222' } })
+    fireEvent.change(screen.getByPlaceholderText('Összeg'), { target: { value: '75' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Művelet rögzítése' }))
+
+    await waitFor(() => {
+      expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/transfer', {
+        fromBranchId: '11111111-1111-1111-1111-111111111111',
+        toBranchId: '22222222-2222-2222-2222-222222222222',
+        currencyId: 978,
+        amount: 75,
+        notes: undefined,
+      })
+    })
+  })
+
+  it('inventory műveletek: üres transfer cél lista disabled selectet és magyarázatot mutat', async () => {
+    mocks.apiGet.mockImplementation((path: string) => {
+      if (path === '/inventory/transfer-targets') return Promise.resolve({ data: [] })
+      if (path === '/inventory/vault-stock') return Promise.resolve({ data: ROWS })
+      if (path.includes('/banknote-inventory/branch/') && path.endsWith('/low-stock')) return Promise.resolve({ data: [BANKNOTE_ROWS[0]] })
+      if (path.includes('/banknote-inventory/branch/') && path.endsWith('/over-stock')) return Promise.resolve({ data: [] })
+      if (path.includes('/banknote-inventory/branch/')) return Promise.resolve({ data: BANKNOTE_ROWS })
+      return Promise.resolve({ data: [] })
+    })
+
+    render(<InventoryPage />)
+
+    await waitFor(() => expect(screen.getByTestId('inventory-operation-panel')).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), { target: { value: 'transfer' } })
+
+    const targetSelect = await screen.findByLabelText('Cél telephely kiválasztása')
+    await waitFor(() => expect(targetSelect).toBeDisabled())
+    expect(screen.getByText('Nincs elérhető cél telephely a jelenlegi jogosultsági körben.')).toBeInTheDocument()
+  })
+
   it('inventory műveletek: devizalista betöltése alatt a rögzítés disabled, cél telephely csak transfernél aktív', async () => {
     let resolveCurrencies: (value: typeof INVENTORY_CURRENCIES) => void = () => {}
     mocks.currencyList.mockReturnValue(new Promise((resolve) => {
@@ -435,18 +498,20 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     render(<InventoryPage />)
 
     const submitButton = await screen.findByRole('button', { name: 'Művelet rögzítése' })
+    const targetSelect = screen.getByLabelText('Cél telephely kiválasztása')
     expect(submitButton).toBeDisabled()
-    expect(screen.getByPlaceholderText('Csak átadásnál')).toBeDisabled()
+    expect(targetSelect).toBeDisabled()
 
     await act(async () => {
       resolveCurrencies(INVENTORY_CURRENCIES)
     })
 
     await waitFor(() => expect(submitButton).not.toBeDisabled())
-    expect(screen.getByPlaceholderText('Csak átadásnál')).toBeDisabled()
+    expect(targetSelect).toBeDisabled()
 
     fireEvent.change(screen.getByLabelText('Készletművelet típusa'), { target: { value: 'transfer' } })
-    expect(screen.getByPlaceholderText('Csak átadásnál')).not.toBeDisabled()
+    await waitFor(() => expect(targetSelect).toHaveTextContent('BR002 — Szeged Pénztár'))
+    expect(targetSelect).not.toBeDisabled()
   })
 
   it('inventory mozgás státuszok: beköti az approve, receive és cancel workflow endpointokat', async () => {
