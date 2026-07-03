@@ -44,6 +44,7 @@ class TransactionServiceCashierQuotaTest {
     @Mock private TransactionValidationService transactionValidationService;
     @Mock private PmtComplianceValidator pmtComplianceValidator;
     @Mock private WacService wacService;
+    @Mock private VaultStockFlowService vaultStockFlowService;
 
     @InjectMocks
     private TransactionService transactionService;
@@ -96,6 +97,7 @@ class TransactionServiceCashierQuotaTest {
         Currency huf = new Currency();
         huf.setId(1L);
         huf.setCode("HUF");
+        when(currencyRepository.findById(1L)).thenReturn(Optional.of(huf));
         when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(huf));
 
         Currency eur = new Currency();

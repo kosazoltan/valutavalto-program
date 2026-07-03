@@ -132,16 +132,18 @@ class VaultStockFlowGenericTest {
     }
 
     @Test
-    @DisplayName("csökkentés ELÉGTELEN készletnél: negatívba megy, NEM dob (cash_balance precedens — a pénz fizikailag már mozgott)")
-    void decreaseWithInsufficientStockGoesNegative() {
+    @DisplayName("csökkentés ELÉGTELEN készletnél: fail-closed, a stock változatlan marad")
+    void decreaseWithInsufficientStockFailsClosed() {
         CurrencyStock s = stock("USD", "100", "350.0000");
         when(currencyStockRepository.findForUpdate(COMPANY_ID, "VAULT", "3", "USD"))
                 .thenReturn(Optional.of(s));
 
-        assertThatCode(() ->
+        // FK-053 terv (2026-07-03): "FEDEZET NÉLKÜL NINCS PÉNZMOZGÁS" — a régi negatív stock spec hibás volt.
+        assertThatThrownBy(() ->
                 service.applyGenericVaultStock(vaultBranch(3), "USD", new BigDecimal("250"), false))
-                .doesNotThrowAnyException();
-        assertThat(s.getQuantity()).isEqualByComparingTo("-150");
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("készleten túli forgalmazás tiltva");
+        assertThat(s.getQuantity()).isEqualByComparingTo("100");
     }
 
     @Test

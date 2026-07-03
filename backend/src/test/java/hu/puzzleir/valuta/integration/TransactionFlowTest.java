@@ -78,6 +78,7 @@ class TransactionFlowTest {
     @Mock private hu.puzzleir.valuta.service.TransactionMultiLineService multiLineService;
     @Mock private LicenseService licenseService;
     @Mock private hu.puzzleir.valuta.service.WacService wacService;
+    @Mock private hu.puzzleir.valuta.service.VaultStockFlowService vaultStockFlowService;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID BRANCH_ID = UUID.randomUUID();
@@ -89,6 +90,7 @@ class TransactionFlowTest {
     private Branch branch;
     private Worker worker;
     private Currency eurCurrency;
+    private Currency hufCurrency;
     private ExchangeRate eurRate;
     private CashBalance eurBalance;
     private CashBalance hufBalance;
@@ -118,6 +120,14 @@ class TransactionFlowTest {
         eurCurrency.setId(EUR_ID);
         eurCurrency.setCode("EUR");
         eurCurrency.setName("Eur__");
+
+        hufCurrency = new Currency();
+        hufCurrency.setId(HUF_ID);
+        hufCurrency.setCode("HUF");
+        hufCurrency.setName("Forint");
+
+        when(currencyRepository.findById(HUF_ID)).thenReturn(Optional.of(hufCurrency));
+        when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(hufCurrency));
 
         eurRate = new ExchangeRate();
         eurRate.setId(1L);

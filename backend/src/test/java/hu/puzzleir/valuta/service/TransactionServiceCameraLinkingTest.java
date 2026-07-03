@@ -36,6 +36,7 @@ class TransactionServiceCameraLinkingTest {
     @Mock private TransactionValidationService transactionValidationService;
     @Mock private PmtComplianceValidator pmtComplianceValidator;
     @Mock private WacService wacService;
+    @Mock private VaultStockFlowService vaultStockFlowService;
 
     @InjectMocks
     private TransactionService transactionService;
@@ -96,6 +97,7 @@ class TransactionServiceCameraLinkingTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
         when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eur));
+        when(currencyRepository.findById(HUF_ID)).thenReturn(Optional.of(huf));
         when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(huf));
         when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(rate);
         when(receiptSequenceService.generateReceiptNumber(BRANCH_ID, TransactionType.BUY)).thenReturn("V00001");

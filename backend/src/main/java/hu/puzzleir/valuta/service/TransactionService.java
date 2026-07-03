@@ -88,6 +88,7 @@ public class TransactionService {
     /** A4: kötelező körlevél-nyugtázás gate (flag-gated, default OFF → @InjectMocks tesztekben nem hívódik). */
     private final hu.puzzleir.valuta.repository.CircularRepository circularRepository;
     private final TransactionValidationService transactionValidationService;
+    private final VaultStockFlowService vaultStockFlowService;
 
     // Sztornó limit supervisor nélkül (3 db/nap)
     private static final int DAILY_REVERSAL_LIMIT = 3;
@@ -1214,15 +1215,30 @@ public class TransactionService {
                 "Nincs elegendő %s készlet a tranzakcióhoz! Szükséges: %s, elérhető: %s.",
                 label, amount.toPlainString(), available.toPlainString()));
         }
+
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található"));
+        Currency currency = currencyRepository.findById(currencyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található"));
+        vaultStockFlowService.validateVaultStockCoverage(branch, currency.getCode(), amount);
     }
 
     private void updateCashBalance(UUID branchId, Long currencyId, BigDecimal amount, boolean isIncoming) {
         // Pessimistic lock használata race condition elkerülésére
         CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, currencyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Kassza egyenleg nem található"));
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található"));
+        Currency currency = currencyRepository.findById(currencyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található"));
+        BigDecimal normalizedAmount = amount.abs();
 
-        balance.updateBalance(amount.abs(), isIncoming);
+        balance.updateBalance(normalizedAmount, isIncoming);
         cashBalanceRepository.save(balance);
+
+        if (Boolean.TRUE.equals(branch.getIsVault())) {
+            vaultStockFlowService.applyGenericVaultStock(branch, currency.getCode(), normalizedAmount, isIncoming);
+        }
     }
 
     /**

@@ -124,6 +124,11 @@ public class TransferService {
         UUID companyId = fromBranch.getCompany() != null
                 ? fromBranch.getCompany().getId() : SecurityUtils.getCurrentCompanyIdOrNull();
 
+        // FK-053: fedezet nélkül nincs pénzmozgás. A vault-oldali currency_stock fedezetet
+        // még a sorszám- és bizonylat-mentés előtt ellenőrizzük, hogy elutasított mozgásnál
+        // ne keletkezzen részleges transfer/transaction/cash_balance állapot.
+        validateVaultCoverageBeforeCreate(fromBranch, toBranch, currency, dto, direction);
+
         String transferNumber = generateTransferNumber(direction, currency, companyId);
 
         // HUF-fallback (FR-5, FR-6): HUF esetén az elszámoló árfolyam konstans 1,0000 → a forintosított
@@ -155,12 +160,8 @@ public class TransferService {
 
         // #6: több-valutás átadólap — a sorokat a transfer-hez csatoljuk (cascade ALL menti).
         if (dto.getLines() != null && !dto.getLines().isEmpty()) {
-            // Korai duplikált-valuta védelem (a DB unique index csak később dobna).
-            java.util.Set<Long> seenCurrencies = new java.util.HashSet<>();
-            for (var l : dto.getLines()) {
-                if (!seenCurrencies.add(l.getCurrencyId())) {
-                    throw new ValidationException("Egy átadólapon egy valuta csak egyszer szerepelhet! currencyId=" + l.getCurrencyId());
-                }
+            if (!hasVaultCoverageCheckOnCreate(direction)) {
+                validateUniqueTransferLineCurrencies(dto);
             }
             int lineNo = 1;
             for (var lineDto : dto.getLines()) {
@@ -542,6 +543,67 @@ public class TransferService {
     }
 
     /**
+     * FK-053 front-gate a create útvonalra. Irányonként csak azokat az oldalakat ellenőrzi,
+     * ahol a create ténylegesen csökkentené a készletet: F/UF a fromBranch-et, FF mindkét oldalt.
+     */
+    private void validateVaultCoverageBeforeCreate(Branch fromBranch, Branch toBranch, Currency headerCurrency,
+                                                   CreateTransferDto dto, Transfer.TransferDirection direction) {
+        boolean fromDecreases = decreasesFromVaultStockOnCreate(direction);
+        boolean toDecreases = decreasesToVaultStockOnCreate(direction);
+        if (!fromDecreases && !toDecreases) {
+            return;
+        }
+
+        if (dto.getLines() != null && !dto.getLines().isEmpty()) {
+            validateUniqueTransferLineCurrencies(dto);
+            for (var lineDto : dto.getLines()) {
+                Currency lineCurrency = currencyRepository.findById(lineDto.getCurrencyId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: " + lineDto.getCurrencyId()));
+                validateVaultCoverageForDecreasingSides(
+                        fromBranch, toBranch, lineCurrency, lineDto.getAmount(), fromDecreases, toDecreases);
+            }
+            return;
+        }
+
+        validateVaultCoverageForDecreasingSides(
+                fromBranch, toBranch, headerCurrency, dto.getAmount(), fromDecreases, toDecreases);
+    }
+
+    private boolean hasVaultCoverageCheckOnCreate(Transfer.TransferDirection direction) {
+        return decreasesFromVaultStockOnCreate(direction) || decreasesToVaultStockOnCreate(direction);
+    }
+
+    private boolean decreasesFromVaultStockOnCreate(Transfer.TransferDirection direction) {
+        return direction == Transfer.TransferDirection.F
+                || direction == Transfer.TransferDirection.UF
+                || direction == Transfer.TransferDirection.FF;
+    }
+
+    private boolean decreasesToVaultStockOnCreate(Transfer.TransferDirection direction) {
+        return direction == Transfer.TransferDirection.FF;
+    }
+
+    private void validateUniqueTransferLineCurrencies(CreateTransferDto dto) {
+        java.util.Set<Long> seenCurrencies = new java.util.HashSet<>();
+        for (var lineDto : dto.getLines()) {
+            if (!seenCurrencies.add(lineDto.getCurrencyId())) {
+                throw new ValidationException("Egy átadólapon egy valuta csak egyszer szerepelhet! currencyId="
+                        + lineDto.getCurrencyId());
+            }
+        }
+    }
+
+    private void validateVaultCoverageForDecreasingSides(Branch fromBranch, Branch toBranch, Currency currency,
+                                                         BigDecimal amount, boolean fromDecreases, boolean toDecreases) {
+        if (fromDecreases) {
+            vaultStockFlowService.validateVaultStockCoverage(fromBranch, currency.getCode(), amount);
+        }
+        if (toDecreases) {
+            vaultStockFlowService.validateVaultStockCoverage(toBranch, currency.getCode(), amount);
+        }
+    }
+
+    /**
      * SZTORNÓ — az EREDETI (COMPLETED) átadás-átvétel készletmozgásának FIZIKAI visszafordítása.
      * Az eredeti net cash-hatás negálása irányonként, soronként, cash-lock-kal (deadlock-safe), és
      * ellentételező TRANSFER tranzakciók (referencia: {@code <sorszám>-SZ}) az audit/készlet-invariánshoz.
@@ -782,6 +844,11 @@ public class TransferService {
                     "Fiók egyenlege nem elegendő! Iroda: %s, valuta: %s, elérhető: %s, szükséges: %s",
                     branch.getCode(), currency.getCode(), balance.getCurrentBalance(), amount));
         }
+
+        // FK-053 mirror-védőháló: minden TransferService-en belüli készlet-csökkentésnél
+        // (create, receive jövőbeli bővítés, sztornó-visszafordítás) még a cash_balance mutáció
+        // előtt ellenőrizzük a vault currency_stock fedezetet. Nem-vault branch esetén no-op.
+        vaultStockFlowService.validateVaultStockCoverage(branch, currency.getCode(), amount);
 
         balance.updateBalance(amount, false);
         cashBalanceRepository.save(balance);

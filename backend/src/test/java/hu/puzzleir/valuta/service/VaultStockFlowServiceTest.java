@@ -293,4 +293,94 @@ class VaultStockFlowServiceTest {
         // Atomicity: a target oldal nem mentodott (a forras-oldal save-je transactional rollback-kel terul vissza)
         verify(cashBalanceRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("FK-053: applyGenericVaultStock elégtelen vault-készletnél fail-closed ValidationException, nincs negatív készlet")
+    void applyGenericVaultStock_insufficientStock_throwsValidation_noNegativeStock() {
+        Company company = Company.builder().id(COMPANY_ID).build();
+        Branch vaultBranch = Branch.builder()
+                .id(BRANCH_SOURCE_ID)
+                .code("BR105")
+                .company(company)
+                .isVault(true)
+                .vaultTerritoryId(TERRITORY_ID)
+                .build();
+        CurrencyStock vaultStock = CurrencyStock.builder()
+                .company(company)
+                .entityType("VAULT")
+                .entityId(TERRITORY_ID.toString())
+                .currencyCode("EUR")
+                .quantity(new BigDecimal("100.00"))
+                .weightedAvgCost(new BigDecimal("395.5000"))
+                .build();
+        when(currencyStockRepository.findForUpdate(COMPANY_ID, "VAULT", TERRITORY_ID.toString(), "EUR"))
+                .thenReturn(Optional.of(vaultStock));
+
+        assertThatThrownBy(() -> service.applyGenericVaultStock(vaultBranch, "EUR", new BigDecimal("500.00"), false))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("Nincs elegendő értéktári EUR készlet! Elérhető: 100.00, szükséges: 500.00 "
+                        + "(territory: 1). A művelet nem hajtható végre — készleten túli forgalmazás tiltva.");
+
+        assertThat(vaultStock.getQuantity()).isEqualByComparingTo("100.00");
+        verify(currencyStockRepository, never()).save(vaultStock);
+        verifyNoInteractions(messagingTemplate);
+    }
+
+    @Test
+    @DisplayName("FK-053: applyGenericVaultStock fedezettel issueStock-ot hajt végre és invalidál")
+    void applyGenericVaultStock_sufficientStock_issuesStock() {
+        Company company = Company.builder().id(COMPANY_ID).build();
+        Branch vaultBranch = Branch.builder()
+                .id(BRANCH_SOURCE_ID)
+                .code("BR105")
+                .company(company)
+                .isVault(true)
+                .vaultTerritoryId(TERRITORY_ID)
+                .build();
+        CurrencyStock vaultStock = CurrencyStock.builder()
+                .company(company)
+                .entityType("VAULT")
+                .entityId(TERRITORY_ID.toString())
+                .currencyCode("EUR")
+                .quantity(new BigDecimal("500.00"))
+                .weightedAvgCost(new BigDecimal("395.5000"))
+                .build();
+        when(currencyStockRepository.findForUpdate(COMPANY_ID, "VAULT", TERRITORY_ID.toString(), "EUR"))
+                .thenReturn(Optional.of(vaultStock));
+
+        service.applyGenericVaultStock(vaultBranch, "EUR", new BigDecimal("125.00"), false);
+
+        assertThat(vaultStock.getQuantity()).isEqualByComparingTo("375.00");
+        verify(currencyStockRepository).save(vaultStock);
+        verify(messagingTemplate).convertAndSend(
+                eq("/topic/vault-stock/" + COMPANY_ID), any(VaultStockChangedMessage.class));
+    }
+
+    @Test
+    @DisplayName("FK-053: applyGenericVaultStock növelés változatlanul receiveStock ágon fut")
+    void applyGenericVaultStock_increase_stillReceivesStock() {
+        Company company = Company.builder().id(COMPANY_ID).build();
+        Branch vaultBranch = Branch.builder()
+                .id(BRANCH_SOURCE_ID)
+                .code("BR105")
+                .company(company)
+                .isVault(true)
+                .vaultTerritoryId(TERRITORY_ID)
+                .build();
+        CurrencyStock vaultStock = CurrencyStock.builder()
+                .company(company)
+                .entityType("VAULT")
+                .entityId(TERRITORY_ID.toString())
+                .currencyCode("EUR")
+                .quantity(new BigDecimal("100.00"))
+                .weightedAvgCost(new BigDecimal("395.5000"))
+                .build();
+        when(currencyStockRepository.findForUpdate(COMPANY_ID, "VAULT", TERRITORY_ID.toString(), "EUR"))
+                .thenReturn(Optional.of(vaultStock));
+
+        service.applyGenericVaultStock(vaultBranch, "EUR", new BigDecimal("25.00"), true);
+
+        assertThat(vaultStock.getQuantity()).isEqualByComparingTo("125.00");
+        verify(currencyStockRepository).save(vaultStock);
+    }
 }
