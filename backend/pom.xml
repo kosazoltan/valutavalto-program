@@ -145,23 +145,31 @@
             <optional>true</optional>
         </dependency>
         
-        <!-- JWT -->
+        <!-- JWT: jjwt test-only, csak a JwtLegacyTokenCompatTest legacy-token-generálásához. -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
             <version>0.13.0</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-impl</artifactId>
             <version>0.13.0</version>
-            <scope>runtime</scope>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
             <version>0.13.0</version>
-            <scope>runtime</scope>
+            <scope>test</scope>
+        </dependency>
+        <!-- JWT: nimbus-jose-jwt (jjwt-ről cserélve #386 — a jjwt-jackson Jackson 2-lock
+             blokkolta a Jackson 3 migrációt; a nimbus POM-ja Jackson-mentes). -->
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+            <version>10.3</version>
         </dependency>
         
         <!-- SpringDoc OpenAPI / Swagger UI - 2.8.17 marad (Spring Boot 3.5 kompat)

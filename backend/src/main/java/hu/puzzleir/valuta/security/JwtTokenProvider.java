@@ -1,23 +1,28 @@
 package hu.puzzleir.valuta.security;
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jose.crypto.MACVerifier;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import hu.puzzleir.valuta.entity.Worker;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
-
-import java.nio.charset.StandardCharsets;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -100,25 +105,40 @@ public class JwtTokenProvider {
     }
     
     /**
-     * Token létrehozás.
-     *
-     * <p>F12 fix (2026-05-07): java.util.Date helyett java.time.Instant.
-     * A JJWT 0.12+ API a `java.util.Date`-et várja az issuedAt/expiration metódusokhoz,
-     * ezért az `Instant` adapter `Date.from(...)`-t használunk a határfelületen.</p>
+     * Token létrehozás nimbus-jose-jwt-vel.
      */
     private String createToken(Map<String, Object> claims, String subject) {
         Instant now = Instant.now();
-        Instant expiryAt = now.plusMillis(expiration);
+        byte[] secretBytes = secretKey.getBytes(StandardCharsets.UTF_8);
 
-        SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
-
-        return Jwts.builder()
-                .claims(claims)
+        JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder()
                 .subject(subject)
-                .issuedAt(Date.from(now))
-                .expiration(Date.from(expiryAt))
-                .signWith(key)
-                .compact();
+                .issueTime(Date.from(now))
+                .expirationTime(Date.from(now.plusMillis(expiration)));
+
+        claims.forEach((key, value) ->
+                builder.claim(key, value instanceof UUID uuid ? uuid.toString() : value));
+
+        try {
+            SignedJWT jwt = new SignedJWT(
+                    new JWSHeader.Builder(resolveAlgorithm(secretBytes)).build(),
+                    builder.build());
+            jwt.sign(new MACSigner(secretBytes));
+            return jwt.serialize();
+        } catch (JOSEException e) {
+            throw new JwtTokenException("JWT aláírás sikertelen", e);
+        }
+    }
+
+    /** jjwt Keys.hmacShaKeyFor + signWith(key) algoritmus-választásának replikája (D3). */
+    private JWSAlgorithm resolveAlgorithm(byte[] secretBytes) {
+        if (secretBytes.length >= 64) {
+            return JWSAlgorithm.HS512;
+        }
+        if (secretBytes.length >= 48) {
+            return JWSAlgorithm.HS384;
+        }
+        return JWSAlgorithm.HS256;
     }
     
     /**
@@ -126,23 +146,13 @@ public class JwtTokenProvider {
      */
     public boolean validateToken(String token) {
         try {
-            SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
-            Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token);
+            getClaimsSet(token);
             return true;
-        } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            log.warn("JWT token lejárt: {}", e.getMessage());
-            return false;
-        } catch (io.jsonwebtoken.security.SignatureException e) {
-            log.warn("JWT aláírás érvénytelen: {}", e.getMessage());
-            return false;
-        } catch (io.jsonwebtoken.MalformedJwtException e) {
-            log.warn("JWT token hibás formátumú: {}", e.getMessage());
+        } catch (JwtTokenException e) {
+            log.warn("JWT validálás sikertelen: {}", e.getMessage());
             return false;
         } catch (Exception e) {
-            log.warn("JWT validálás sikertelen: {}", e.getMessage());
+            log.warn("JWT validálás váratlan hibával: {}", e.getMessage());
             return false;
         }
     }
@@ -151,14 +161,23 @@ public class JwtTokenProvider {
      * Worker kód kinyerése token-ből
      */
     public String getWorkerCodeFromToken(String token) {
-        return getClaims(token).getSubject();
+        return getClaimsSet(token).getSubject();
     }
     
     /**
      * Worker ID kinyerése
      */
     public Long getWorkerIdFromToken(String token) {
-        return getClaims(token).get("workerId", Long.class);
+        JWTClaimsSet claimsSet = getClaimsSet(token);
+        Object workerId = claimsSet.getClaim("workerId");
+        if (workerId instanceof Number number) {
+            return number.longValue();
+        }
+        try {
+            return claimsSet.getLongClaim("workerId");
+        } catch (ParseException e) {
+            throw new JwtTokenException("JWT workerId claim hibás", e);
+        }
     }
     
     /**
@@ -166,7 +185,8 @@ public class JwtTokenProvider {
      */
     public UUID getCompanyIdFromToken(String token) {
         try {
-            String companyIdStr = getClaims(token).get("companyId", String.class);
+            Object companyId = getClaimsSet(token).getClaim("companyId");
+            String companyIdStr = companyId != null ? companyId.toString() : null;
             return companyIdStr != null ? UUID.fromString(companyIdStr) : null;
         } catch (IllegalArgumentException e) {
             return null;
@@ -178,7 +198,8 @@ public class JwtTokenProvider {
      */
     public UUID getBranchIdFromToken(String token) {
         try {
-            String branchIdStr = getClaims(token).get("branchId", String.class);
+            Object branchId = getClaimsSet(token).getClaim("branchId");
+            String branchIdStr = branchId != null ? branchId.toString() : null;
             return branchIdStr != null ? UUID.fromString(branchIdStr) : null;
         } catch (IllegalArgumentException e) {
             return null;
@@ -189,42 +210,65 @@ public class JwtTokenProvider {
      * Role kinyerése
      */
     public String getRoleFromToken(String token) {
-        return getClaims(token).get("role", String.class);
+        return getStringClaim(token, "role");
     }
     
     /**
      * Token ID kinyerése
      */
     public String getTokenIdFromToken(String token) {
-        return getClaims(token).get("tokenId", String.class);
+        return getStringClaim(token, "tokenId");
     }
     
     /**
-     * Claims parse
+     * Claims parse + aláírás-ellenőrzés + explicit lejárat-check.
      */
-    private Claims getClaims(String token) {
-        SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
-        return Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+    private JWTClaimsSet getClaimsSet(String token) {
+        if (token == null || token.isBlank()) {
+            throw new JwtTokenException("JWT token üres");
+        }
+        try {
+            SignedJWT jwt = SignedJWT.parse(token);
+            if (!jwt.verify(new MACVerifier(secretKey.getBytes(StandardCharsets.UTF_8)))) {
+                throw new JwtTokenException("JWT aláírás érvénytelen");
+            }
+            JWTClaimsSet claimsSet = jwt.getJWTClaimsSet();
+            Date expirationTime = claimsSet.getExpirationTime();
+            if (expirationTime == null || !expirationTime.toInstant().isAfter(Instant.now())) {
+                throw new JwtTokenException("JWT token lejárt");
+            }
+            return claimsSet;
+        } catch (JwtTokenException e) {
+            throw e;
+        } catch (ParseException | JOSEException e) {
+            throw new JwtTokenException("JWT token hibás formátumú: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new JwtTokenException("JWT token feldolgozása sikertelen: " + e.getMessage(), e);
+        }
+    }
+
+    private String getStringClaim(String token, String claimName) {
+        try {
+            return getClaimsSet(token).getStringClaim(claimName);
+        } catch (ParseException e) {
+            throw new JwtTokenException("JWT " + claimName + " claim hibás", e);
+        }
     }
     
     /**
      * Token lejárati idő ellenőrzés.
      *
      * <p>F12 fix (2026-05-07): java.time.Instant alapú összehasonlítás.
-     * A JJWT 0.12 továbbra is `Date`-et ad vissza, de azt azonnal
+     * A JWTClaimsSet továbbra is `Date`-et ad vissza, de azt azonnal
      * `Instant`-ra konvertáljuk az időaritmetikához.</p>
      */
     public boolean isTokenExpired(String token) {
-        Instant expirationInstant = getClaims(token).getExpiration().toInstant();
+        Instant expirationInstant = getClaimsSet(token).getExpirationTime().toInstant();
         return expirationInstant.isBefore(Instant.now());
     }
 
     public LocalDateTime getExpirationDateTimeFromToken(String token) {
-        Instant expirationInstant = getClaims(token).getExpiration().toInstant();
+        Instant expirationInstant = getClaimsSet(token).getExpirationTime().toInstant();
         return LocalDateTime.ofInstant(expirationInstant, ZoneId.systemDefault());
     }
 
@@ -236,19 +280,19 @@ public class JwtTokenProvider {
      * Operatív szerepkör kinyerése token-ből (V57)
      */
     public String getActiveRoleFromToken(String token) {
-        return getClaims(token).get("activeRole", String.class);
+        return getStringClaim(token, "activeRole");
     }
 
     /**
      * Permission lista kinyerése token-ből (V57)
      */
-    @SuppressWarnings("unchecked")
     public java.util.List<String> getPermissionsFromToken(String token) {
-        Object perms = getClaims(token).get("permissions");
-        if (perms instanceof java.util.List) {
-            return (java.util.List<String>) perms;
+        try {
+            List<String> permissions = getClaimsSet(token).getStringListClaim("permissions");
+            return permissions != null ? permissions : Collections.emptyList();
+        } catch (ParseException e) {
+            return Collections.emptyList();
         }
-        return java.util.Collections.emptyList();
     }
 }
 
