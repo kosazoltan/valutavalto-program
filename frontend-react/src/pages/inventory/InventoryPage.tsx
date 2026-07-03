@@ -96,6 +96,13 @@ interface InventoryCurrencyOption {
   name: string
 }
 
+interface TransferTargetOption {
+  branchId: string
+  code: string
+  name: string
+  isVault: boolean
+}
+
 function formatCurrency(value: number | null | undefined, code?: string): string {
   if (value == null) return '—'
   const opts: Intl.NumberFormatOptions = code === 'HUF'
@@ -158,6 +165,10 @@ export default function InventoryPage() {
   const [inventoryCurrencies, setInventoryCurrencies] = useState<InventoryCurrencyOption[]>([])
   const [inventoryCurrenciesLoading, setInventoryCurrenciesLoading] = useState(false)
   const [inventoryCurrenciesError, setInventoryCurrenciesError] = useState<string | null>(null)
+  const [transferTargets, setTransferTargets] = useState<TransferTargetOption[]>([])
+  const [transferTargetsLoading, setTransferTargetsLoading] = useState(false)
+  const [transferTargetsLoaded, setTransferTargetsLoaded] = useState(false)
+  const [transferTargetsError, setTransferTargetsError] = useState<string | null>(null)
   const [inventoryAmount, setInventoryAmount] = useState('')
   const [inventoryTargetBranchId, setInventoryTargetBranchId] = useState('')
   const [inventoryNotes, setInventoryNotes] = useState('')
@@ -248,6 +259,28 @@ export default function InventoryPage() {
       setInventoryCurrenciesLoading(false)
     }
   }, [])
+
+  const loadTransferTargets = useCallback(async () => {
+    if (transferTargetsLoaded || transferTargetsLoading) return
+    setTransferTargetsLoading(true)
+    setTransferTargetsError(null)
+    try {
+      const response = await api.get<TransferTargetOption[]>('/inventory/transfer-targets', { _skipGlobal403Toast: true })
+      const options = safeArray<TransferTargetOption>(response.data)
+        .filter((target) => Boolean(target.branchId))
+      setTransferTargets(options)
+      setInventoryTargetBranchId((current) => current || (options[0]?.branchId ?? ''))
+      setTransferTargetsLoaded(true)
+    } catch (err) {
+      const msg = getErrorMessage(err)
+      logger.error('InventoryPage', 'Transfer cél telephely lista betöltési hiba:', err)
+      setTransferTargets([])
+      setTransferTargetsError(msg)
+      setTransferTargetsLoaded(true)
+    } finally {
+      setTransferTargetsLoading(false)
+    }
+  }, [transferTargetsLoaded, transferTargetsLoading])
 
   const loadOperationalInventory = useCallback(async () => {
     if (!worker?.branchId) {
@@ -387,11 +420,20 @@ export default function InventoryPage() {
     void loadInventoryCurrencies()
   }, [loadData, loadBanknoteInventory, loadOperationalInventory, loadInventoryCurrencies])
 
+  useEffect(() => {
+    if (inventoryOperationType === 'transfer') {
+      void loadTransferTargets()
+    } else {
+      setInventoryTargetBranchId('')
+    }
+  }, [inventoryOperationType, loadTransferTargets])
+
   useVaultStockUpdates(refreshIfChanged)
 
   const totalHufClosing = rows
     .filter(r => r.currencyCode === 'HUF')
     .reduce((sum, r) => sum + (r.closing ?? 0), 0)
+  const isVaultOperationalContext = rows.length > 0
 
   const selectedBanknote = banknoteRows.find((row) => row.id === selectedBanknoteId) ?? banknoteRows[0]
   const parsedBanknoteQuantity = Math.max(0, Number.parseInt(banknoteQuantity, 10) || 0)
@@ -686,7 +728,10 @@ export default function InventoryPage() {
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
           <div>
             <h2 className="text-sm font-bold text-secondary-900">Mobil készlet-riportok</h2>
-            <div className="text-xs text-gray-500">Backend: inventory + inventory-movements / saját telephely</div>
+            <div className="text-xs text-gray-500">
+              {t('inventory.operativRiportokAlcim')}
+              {isVaultOperationalContext ? ` · ${t('inventory.ertektariCurrencyStockKonyveles')}` : ''}
+            </div>
           </div>
           <button type="button" onClick={() => void loadOperationalInventory()} className="form-button h-8 text-xs flex items-center gap-1">
             <RefreshCw className="h-3 w-3" />
@@ -739,14 +784,27 @@ export default function InventoryPage() {
               />
             </label>
             <label className="block">
-              <span className="form-label">Cél telephely</span>
-              <input
-                className="form-input w-full font-mono"
-                value={inventoryTargetBranchId}
+              <span className="form-label">{t('inventory.celTelephely')}</span>
+              <select
+                className="form-input w-full"
+                value={inventoryOperationType === 'transfer' ? inventoryTargetBranchId : ''}
                 onChange={(event) => setInventoryTargetBranchId(event.target.value)}
-                disabled={inventoryOperationType !== 'transfer'}
-                placeholder="Csak átadásnál"
-              />
+                disabled={inventoryOperationType !== 'transfer' || transferTargetsLoading || (transferTargetsLoaded && transferTargets.length === 0)}
+                aria-label={t('inventory.celTelephelyKivalasztasa')}
+              >
+                <option value="">
+                  {inventoryOperationType !== 'transfer'
+                    ? t('inventory.csakAtadasnal')
+                    : transferTargetsLoading
+                      ? t('inventory.celTelephelyekBetoltese')
+                      : t('inventory.valasszCelTelephelyet')}
+                </option>
+                {transferTargets.map((target) => (
+                  <option key={target.branchId} value={target.branchId}>
+                    {target.code} — {target.name}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="block">
               <span className="form-label">{inventoryOperationType === 'correction' ? 'Indoklás' : 'Megjegyzés'}</span>
@@ -771,6 +829,12 @@ export default function InventoryPage() {
           )}
           {inventoryCurrenciesError && (
             <p className="mt-2 text-xs text-red-700">Devizalista betöltési hiba: {inventoryCurrenciesError}</p>
+          )}
+          {inventoryOperationType === 'transfer' && transferTargetsLoaded && transferTargets.length === 0 && !transferTargetsLoading && (
+            <p className="mt-2 text-xs text-gray-600">{t('inventory.nincsElerhetoCelTelephely')}</p>
+          )}
+          {transferTargetsError && (
+            <p className="mt-2 text-xs text-red-700">{t('inventory.celTelephelyListaBetoltesiHiba')}: {transferTargetsError}</p>
           )}
         </div>
         <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-4">

@@ -48,6 +48,7 @@ public class InventoryService {
     private final AuditLogService auditLogService;
     private final ExchangeRateRepository exchangeRateRepository;
     private final hu.puzzleir.valuta.repository.CurrencyStockRepository currencyStockRepository;
+    private final InventoryStockAccessor stockAccessor;
 
     private static final DateTimeFormatter REF_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
@@ -93,15 +94,11 @@ public class InventoryService {
         assertBranchAllowedForCurrentTerritory(branch, worker, "BANK_DEPOSIT");
         Currency currency = findCurrency(dto.getCurrencyId());
 
-        // Ellenőrzés: van-e elegendő készlet
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(
-                branch.getId(), currency.getId())
-                .orElseThrow(() -> new ValidationException(
-                        "Nincs kassza egyenleg ehhez a valutához: " + currency.getCode()));
-
-        if (balance.getCurrentBalance().compareTo(dto.getAmount()) < 0) {
+        // Ellenőrzés: van-e elegendő készlet (pénztár: cash_balance, értéktár: currency_stock)
+        BigDecimal currentBalance = stockAccessor.getBalance(branch, currency);
+        if (currentBalance.compareTo(dto.getAmount()) < 0) {
             throw new ValidationException("Nincs elegendő készlet! Egyenleg: "
-                    + balance.getCurrentBalance().setScale(4, RoundingMode.HALF_UP)
+                    + currentBalance.setScale(4, RoundingMode.HALF_UP)
                     + ", kért: " + dto.getAmount());
         }
 
@@ -142,15 +139,11 @@ public class InventoryService {
             throw new ValidationException("A forrás és cél iroda nem lehet azonos!");
         }
 
-        // Forrás iroda készlet ellenőrzés
-        CashBalance sourceBalance = cashBalanceRepository.findByBranchIdAndCurrencyId(
-                fromBranch.getId(), currency.getId())
-                .orElseThrow(() -> new ValidationException(
-                        "Nincs kassza egyenleg a forrás irodánál ehhez a valutához: " + currency.getCode()));
-
-        if (sourceBalance.getCurrentBalance().compareTo(dto.getAmount()) < 0) {
+        // Forrás iroda készlet ellenőrzés (pénztár: cash_balance, értéktár: currency_stock)
+        BigDecimal sourceBalance = stockAccessor.getBalance(fromBranch, currency);
+        if (sourceBalance.compareTo(dto.getAmount()) < 0) {
             throw new ValidationException("Nincs elegendő készlet a forrás irodánál! Egyenleg: "
-                    + sourceBalance.getCurrentBalance().setScale(4, RoundingMode.HALF_UP)
+                    + sourceBalance.setScale(4, RoundingMode.HALF_UP)
                     + ", kért: " + dto.getAmount());
         }
 
@@ -196,13 +189,12 @@ public class InventoryService {
         movement.setApprovedBy(worker);
         movement.setApprovedAt(LocalDateTime.now());
 
-        // Bank befizetés jóváhagyásakor CashBalance csökkentés (négy-szem elv)
+        // Bank befizetés jóváhagyásakor készlet csökkentés (pénztár: cash_balance, értéktár: currency_stock)
         if (movement.getMovementType() == MovementType.BANK_DEPOSIT) {
             if (movement.getFromBranch() == null) {
                 throw new ValidationException("Bank befizetés mozgásnál a forrás iroda (fromBranch) nem lehet null!");
             }
-            updateCashBalance(movement.getFromBranch().getId(),
-                    movement.getCurrency().getId(), movement.getAmount(), false);
+            stockAccessor.adjust(movement.getFromBranch(), movement.getCurrency(), movement.getAmount().negate());
         }
 
         // Bank kivét és irodák közti szállítás jóváhagyáskor automatikusan IN_TRANSIT
@@ -248,15 +240,14 @@ public class InventoryService {
         movement.setReceivedAmount(receivedAmount);
         movement.setDifference(difference);
 
-        // CashBalance frissítés a mozgás típusa alapján
+        // Készlet frissítés a mozgás típusa alapján (pénztár: cash_balance, értéktár: currency_stock)
         switch (movement.getMovementType()) {
             case BANK_WITHDRAW -> {
                 // Bank → pénztár: cél iroda készlet növelése
                 if (movement.getToBranch() == null) {
                     throw new ValidationException("Bank kivét mozgásnál a cél iroda (toBranch) nem lehet null!");
                 }
-                updateCashBalance(movement.getToBranch().getId(),
-                        movement.getCurrency().getId(), receivedAmount, true);
+                stockAccessor.adjust(movement.getToBranch(), movement.getCurrency(), receivedAmount);
             }
             case BRANCH_TRANSFER -> {
                 // Irodák közti: forrás csökkentés, cél növelés — NPE védelem
@@ -264,10 +255,8 @@ public class InventoryService {
                     throw new ValidationException(
                             "Irodák közti mozgásnál fromBranch és toBranch nem lehet null!");
                 }
-                updateCashBalance(movement.getFromBranch().getId(),
-                        movement.getCurrency().getId(), movement.getAmount(), false);
-                updateCashBalance(movement.getToBranch().getId(),
-                        movement.getCurrency().getId(), receivedAmount, true);
+                stockAccessor.adjust(movement.getFromBranch(), movement.getCurrency(), movement.getAmount().negate());
+                stockAccessor.adjust(movement.getToBranch(), movement.getCurrency(), receivedAmount);
             }
             default -> {
                 // BANK_DEPOSIT, CORRECTION, INITIAL_STOCK — nem ide tartozik
@@ -338,25 +327,19 @@ public class InventoryService {
         assertBranchAllowedForCurrentTerritory(branch, worker, "INVENTORY_CORRECTION");
         Currency currency = findCurrency(dto.getCurrencyId());
 
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(
-                branch.getId(), currency.getId())
-                .orElseThrow(() -> new ValidationException(
-                        "Nincs kassza egyenleg ehhez a valutához: " + currency.getCode()));
-
-        BigDecimal oldAmount = balance.getCurrentBalance();
+        BigDecimal oldAmount = stockAccessor.getBalance(branch, currency);
         BigDecimal correctionDiff = dto.getNewAmount().subtract(oldAmount)
                 .setScale(4, RoundingMode.HALF_UP);
 
-        // CashBalance frissítés
-        balance.setCurrentBalance(dto.getNewAmount().setScale(4, RoundingMode.HALF_UP));
-        balance.setLastTransactionAt(LocalDateTime.now());
-        cashBalanceRepository.save(balance);
+        // Készlet frissítés (pénztár: cash_balance, értéktár: currency_stock)
+        stockAccessor.adjust(branch, currency, correctionDiff);
 
         // AuditLog bejegyzés — KÖTELEZŐ
+        boolean vaultContext = stockAccessor.isVaultContext(branch);
         AuditLog auditLog = AuditLog.builder()
                 .action("INVENTORY_CORRECTION")
-                .entityType("CashBalance")
-                .entityId(balance.getId().toString())
+                .entityType(vaultContext ? "CurrencyStock" : "CashBalance")
+                .entityId(correctionAuditEntityId(branch, currency, vaultContext))
                 .userId(worker.getId().toString())
                 .userName(worker.getName())
                 .branchId(branch.getId().toString())
@@ -393,6 +376,16 @@ public class InventoryService {
 
         movement = movementRepository.save(movement);
         return toDto(movement);
+    }
+
+    private String correctionAuditEntityId(Branch branch, Currency currency, boolean vaultContext) {
+        if (vaultContext) {
+            return branch.getId().toString();
+        }
+        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(branch.getId(), currency.getId())
+                .orElseThrow(() -> new ValidationException(
+                        "Nincs kassza egyenleg ehhez a valutához: " + currency.getCode()));
+        return balance.getId().toString();
     }
 
     // ============ QUERIES ============
@@ -620,6 +613,22 @@ public class InventoryService {
         Branch branch = findBranch(branchId.toString());
         assertBranchAllowedForCurrentTerritory(branch, null, "INVENTORY_STOCK_READ");
         return cashBalanceRepository.findByBranchId(branchId);
+    }
+
+    /**
+     * Irodák közti átadás célpontjai: cég + aktív valódi branch-ek, saját branch nélkül.
+     * Territory-scoped értéktár szerepkörnél ugyanazt a régió-scope-ot használja, mint a pénztári
+     * készletnézet, így vault→pénztár átadásnál csak a saját régió pénztárai választhatók.
+     */
+    @Transactional(readOnly = true)
+    public List<Branch> getTransferTargets(UUID currentBranchId) {
+        UUID companyId = hu.puzzleir.valuta.security.SecurityUtils.getCurrentCompanyId();
+        java.util.Set<UUID> regionScope = getCurrentRegionBranchScopeOrNull();
+        return branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId).stream()
+                .filter(branch -> currentBranchId == null || !currentBranchId.equals(branch.getId()))
+                .filter(branch -> regionScope == null || regionScope.contains(branch.getId()))
+                .sorted(java.util.Comparator.comparing(Branch::getCode, java.util.Comparator.nullsLast(String::compareTo)))
+                .toList();
     }
 
     /**
