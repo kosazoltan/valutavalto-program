@@ -106,10 +106,13 @@ public class VaultBankTransactionService {
         // === KÉSZLETMOZGÁS ===
         if ("BUY".equals(request.getTransactionType())) {
             // Bankból valutát veszünk → valutakészlet nő, HUF csökken
+            CurrencyStock hufStock = currencyStockRepository.findForUpdate(companyId, "VAULT", entityId, "HUF")
+                    .orElseThrow(() -> VaultStockCoverageGate.insufficientStockException(
+                            "VAULT", entityId, "HUF", BigDecimal.ZERO, hufAmount));
+            VaultStockCoverageGate.requireSufficientStock("VAULT", entityId, "HUF", hufStock.getQuantity(), hufAmount);
+
             CurrencyStock foreignStock = getOrCreateStock(companyId, "VAULT", entityId, request.getCurrencyCode());
             foreignStock.receiveStock(request.getAmount(), request.getExchangeRate());
-
-            CurrencyStock hufStock = getOrCreateStock(companyId, "VAULT", entityId, "HUF");
             hufStock.issueStock(hufAmount);
 
             log.info("Banki vétel: {} {} @ {} = {} HUF, vault={}",
@@ -117,7 +120,12 @@ public class VaultBankTransactionService {
 
         } else if ("SELL".equals(request.getTransactionType())) {
             // Banknak valutát eladunk → valutakészlet csökken, HUF nő
-            CurrencyStock foreignStock = getOrCreateStock(companyId, "VAULT", entityId, request.getCurrencyCode());
+            CurrencyStock foreignStock = currencyStockRepository
+                    .findForUpdate(companyId, "VAULT", entityId, request.getCurrencyCode())
+                    .orElseThrow(() -> VaultStockCoverageGate.insufficientStockException(
+                            "VAULT", entityId, request.getCurrencyCode(), BigDecimal.ZERO, request.getAmount()));
+            VaultStockCoverageGate.requireSufficientStock(
+                    "VAULT", entityId, request.getCurrencyCode(), foreignStock.getQuantity(), request.getAmount());
             foreignStock.issueStock(request.getAmount());
 
             CurrencyStock hufStock = getOrCreateStock(companyId, "VAULT", entityId, "HUF");

@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.entity.VaultBankTransaction;
 import hu.puzzleir.valuta.entity.VaultOperationStatus;
 import hu.puzzleir.valuta.entity.VaultTerritory;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.VaultBankTransactionRepository;
 import hu.puzzleir.valuta.repository.VaultTerritoryRepository;
@@ -32,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -153,6 +155,54 @@ class VaultBankTransactionServiceCreateTest {
         assertThat(eurStock.getQuantity()).isEqualByComparingTo("1500");
         assertThat(hufStock.getQuantity()).isEqualByComparingTo("195000.00");
         assertThat(result.getStatus()).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    @DisplayName("FK-054: createBankTransaction BUY elégtelen HUF-készlet -> ValidationException, deviza sem könyvelődik")
+    void createBankTransaction_BUY_insufficientHuf_throwsValidation_noPartialStockMutation() {
+        BankTransactionRequestDto req = buildRequest("BUY", "EUR", new BigDecimal("1000"), new BigDecimal("395.5"));
+
+        when(vaultTerritoryRepository.findByIdAndCompanyId(TERRITORY_ID, COMPANY_ID)).thenReturn(Optional.of(territory));
+
+        CurrencyStock hufStock = CurrencyStock.builder()
+                .company(company).entityType("VAULT").entityId(TERRITORY_ENTITY_ID)
+                .currencyCode("HUF").quantity(new BigDecimal("1000.00"))
+                .weightedAvgCost(BigDecimal.ONE).build();
+        when(currencyStockRepository.findForUpdate(COMPANY_ID, "VAULT", TERRITORY_ENTITY_ID, "HUF"))
+                .thenReturn(Optional.of(hufStock));
+
+        assertThatThrownBy(() -> service.createBankTransaction(req))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("Nincs elegendő értéktári HUF készlet! Elérhető: 1000.00, szükséges: 395500.00 "
+                        + "(territory: 1). A művelet nem hajtható végre — készleten túli forgalmazás tiltva.");
+
+        assertThat(hufStock.getQuantity()).isEqualByComparingTo("1000.00");
+        verify(currencyStockRepository, never()).findForUpdate(COMPANY_ID, "VAULT", TERRITORY_ENTITY_ID, "EUR");
+        verify(bankTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("FK-054: createBankTransaction SELL elégtelen devizakészlet -> ValidationException, HUF sem könyvelődik")
+    void createBankTransaction_SELL_insufficientForeign_throwsValidation_noPartialStockMutation() {
+        BankTransactionRequestDto req = buildRequest("SELL", "EUR", new BigDecimal("500"), new BigDecimal("390.0"));
+
+        when(vaultTerritoryRepository.findByIdAndCompanyId(TERRITORY_ID, COMPANY_ID)).thenReturn(Optional.of(territory));
+
+        CurrencyStock eurStock = CurrencyStock.builder()
+                .company(company).entityType("VAULT").entityId(TERRITORY_ENTITY_ID)
+                .currencyCode("EUR").quantity(new BigDecimal("100.00"))
+                .weightedAvgCost(new BigDecimal("395.0")).build();
+        when(currencyStockRepository.findForUpdate(COMPANY_ID, "VAULT", TERRITORY_ENTITY_ID, "EUR"))
+                .thenReturn(Optional.of(eurStock));
+
+        assertThatThrownBy(() -> service.createBankTransaction(req))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("Nincs elegendő értéktári EUR készlet! Elérhető: 100.00, szükséges: 500 "
+                        + "(territory: 1). A művelet nem hajtható végre — készleten túli forgalmazás tiltva.");
+
+        assertThat(eurStock.getQuantity()).isEqualByComparingTo("100.00");
+        verify(currencyStockRepository, never()).findForUpdate(COMPANY_ID, "VAULT", TERRITORY_ENTITY_ID, "HUF");
+        verify(bankTransactionRepository, never()).save(any());
     }
 
     @Test

@@ -275,6 +275,11 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex.getMessage());
     }
 
+    // FK-054: deliberately no IllegalStateException handler here. CurrencyStock.issueStock()
+    // keeps IllegalStateException as a last-resort internal invariant; service-layer stock
+    // coverage pre-gates convert user-facing insufficient-stock denials to ValidationException.
+    // Mapping every IllegalStateException to 400 would mask real server defects as client errors.
+
     // --- 400 Bad Request (IllegalArgument) ---
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleBadRequest(IllegalArgumentException ex) {

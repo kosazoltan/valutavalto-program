@@ -146,9 +146,8 @@ public class MaterialReceiptService {
         boolean isBevétel = "B".equals(receipt.getReceiptType());
 
         for (MaterialReceiptLine line : receipt.getLines()) {
-            CurrencyStock stock = getOrCreateStock(companyId, entityType, entityId, line.getCurrencyCode());
-
             if (isBevétel) {
+                CurrencyStock stock = getOrCreateStock(companyId, entityType, entityId, line.getCurrencyCode());
                 // Bevétel: készlet nő
                 BigDecimal costPerUnit = line.getExchangeRate() != null
                         ? line.getExchangeRate()
@@ -158,7 +157,13 @@ public class MaterialReceiptService {
                 }
                 stock.receiveStock(line.getAmount(), costPerUnit);
             } else {
-                // Kiadás: készlet csökken
+                // Kiadás: készlet csökken; FK-054 business pre-gate az entity invariáns előtt.
+                CurrencyStock stock = currencyStockRepository
+                        .findForUpdate(companyId, entityType, entityId, line.getCurrencyCode())
+                        .orElseThrow(() -> VaultStockCoverageGate.insufficientStockException(
+                                entityType, entityId, line.getCurrencyCode(), BigDecimal.ZERO, line.getAmount()));
+                VaultStockCoverageGate.requireSufficientStock(
+                        entityType, entityId, line.getCurrencyCode(), stock.getQuantity(), line.getAmount());
                 stock.issueStock(line.getAmount());
             }
         }
