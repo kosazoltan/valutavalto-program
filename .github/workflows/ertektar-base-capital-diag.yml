@@ -82,4 +82,42 @@ jobs:
             SELECT date_trunc('day', last_updated) AS nap, COUNT(*)
             FROM currency_stock WHERE entity_type='VAULT'
             GROUP BY 1 ORDER BY 1 DESC LIMIT 10;"
+
+          echo "=== D7 — MOZGAS-ALAPU LEVEZETETT vault-keszlet territory+valuta bontasban ==="
+          # A vault tenyleges keszlete a lezart (DELIVERED) shipmentekbol:
+          #   +delivered_amount ahol a vault a CEL (to_branch), -ahol a FORRAS (from_branch);
+          # + a lezart (COMPLETED) transferek ugyanigy. inventory_movement historikusan 0 (D4).
+          "$PSQL17" "$NEON_URL" -c "
+            WITH ship AS (
+              SELECT b.vault_territory_id AS territory, c.code AS currency,
+                     SUM(CASE WHEN sr.to_branch_id = b.id THEN COALESCE(sri.delivered_amount, sri.approved_amount, 0) ELSE 0 END)
+                   - SUM(CASE WHEN sr.from_branch_id = b.id THEN COALESCE(sri.delivered_amount, sri.approved_amount, 0) ELSE 0 END) AS net
+              FROM shipment_request sr
+              JOIN shipment_request_item sri ON sri.shipment_request_id = sr.id
+              JOIN currency c ON c.id = sri.currency_id
+              JOIN branch b ON b.is_vault = TRUE AND (b.id = sr.to_branch_id OR b.id = sr.from_branch_id)
+              WHERE sr.status = 'DELIVERED'
+              GROUP BY 1, 2
+            ), tr AS (
+              SELECT b.vault_territory_id AS territory, c.code AS currency,
+                     SUM(CASE WHEN t.to_branch_id = b.id THEN COALESCE(t.received_amount, t.amount, 0) ELSE 0 END)
+                   - SUM(CASE WHEN t.from_branch_id = b.id THEN COALESCE(t.amount, 0) ELSE 0 END) AS net
+              FROM transfer t
+              JOIN currency c ON c.id = t.currency_id
+              JOIN branch b ON b.is_vault = TRUE AND (b.id = t.to_branch_id OR b.id = t.from_branch_id)
+              WHERE t.status = 'COMPLETED'
+              GROUP BY 1, 2
+            )
+            SELECT COALESCE(s.territory, tr.territory) AS territory,
+                   COALESCE(s.currency, tr.currency) AS currency,
+                   COALESCE(s.net, 0) AS shipment_net,
+                   COALESCE(tr.net, 0) AS transfer_net,
+                   COALESCE(s.net, 0) + COALESCE(tr.net, 0) AS derived_stock
+            FROM ship s FULL OUTER JOIN tr ON tr.territory = s.territory AND tr.currency = s.currency
+            ORDER BY 1, 2;" 2>&1 || true
+
+          echo "=== D7b — transfer tabla oszlopai (ha a fenti elhasalt) ==="
+          "$PSQL17" "$NEON_URL" -c "
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'transfer' ORDER BY ordinal_position;" 2>&1 || true
           REMOTE
