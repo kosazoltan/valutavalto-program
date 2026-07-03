@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
@@ -74,7 +74,7 @@ class RatePublishServiceTest {
     private hu.puzzleir.valuta.repository.WorkerRepository workerRepository;
 
     @Spy
-    private ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks
     private RatePublishService service;

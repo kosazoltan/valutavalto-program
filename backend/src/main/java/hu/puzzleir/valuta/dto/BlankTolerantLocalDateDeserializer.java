@@ -1,10 +1,10 @@
 package hu.puzzleir.valuta.dto;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
 
-import java.io.IOException;
 import java.time.LocalDate;
 
 /**
@@ -16,9 +16,9 @@ import java.time.LocalDate;
  * Eredetileg az UpdateBranchDto beágyazott osztálya volt (commit 4cf0ebc6f) — a
  * CreateBranchDto TBD#1 javításával közös használatra top-level osztályba került.
  */
-public class BlankTolerantLocalDateDeserializer extends JsonDeserializer<LocalDate> {
+public class BlankTolerantLocalDateDeserializer extends ValueDeserializer<LocalDate> {
     @Override
-    public LocalDate deserialize(JsonParser p, DeserializationContext ctx) throws IOException {
+    public LocalDate deserialize(JsonParser p, DeserializationContext ctx) throws JacksonException {
         String value = p.getText();
         if (value == null || value.isBlank()) {
             return null;

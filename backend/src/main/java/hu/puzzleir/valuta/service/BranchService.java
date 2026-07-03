@@ -13,8 +13,8 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.DictionaryRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -890,7 +890,7 @@ public class BranchService {
     private String toJsonSafe(BranchDto dto) {
         try {
             return objectMapper.writeValueAsString(dto);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.warn("Branch audit JSON serialization failed: {}", e.getMessage());
             try {
                 java.util.Map<String, Object> fallback = new java.util.LinkedHashMap<>();
@@ -898,7 +898,7 @@ public class BranchService {
                 fallback.put("code", dto.getCode());
                 fallback.put("name", dto.getName());
                 return objectMapper.writeValueAsString(fallback);
-            } catch (JsonProcessingException inner) {
+            } catch (JacksonException inner) {
                 // Copilot P2: az oldValue/newValue mindig parse-olható JSON marad — a végső
                 // fallback sem nyers toString, hanem garantáltan JSON error-wrapper.
                 log.warn("Branch audit fallback serialization failed: {}", inner.getMessage());

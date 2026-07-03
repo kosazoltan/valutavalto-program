@@ -19,6 +19,8 @@ import java.io.IOException;
  *
  * <p>A LogstashEncoder helyett a {@code LoggingEventCompositeJsonEncoder}
  * konfigja hivja ezt a provider-t (lasd logback-spring.xml).
+ * <p>Jackson 2 SZÁNDÉKOSAN: a logstash-logback-encoder 8.x Jackson 2-alapú,
+ * ezért ezt a provider-signature-t NE migráld a #386 Jackson 3 flipben.</p>
  */
 public class RedactingMessageJsonProvider extends MessageJsonProvider {
 

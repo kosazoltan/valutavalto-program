@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.sanction.SanctionScreeningRequest;
 import hu.puzzleir.valuta.dto.sanction.SanctionScreeningResult;
 import hu.puzzleir.valuta.repository.SanctionEntryRepository;

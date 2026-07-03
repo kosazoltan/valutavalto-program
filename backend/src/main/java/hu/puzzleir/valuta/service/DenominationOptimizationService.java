@@ -1,8 +1,8 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.entity.Denomination;
 import hu.puzzleir.valuta.entity.DenominationType;
 import hu.puzzleir.valuta.entity.OptimizationStrategy;
@@ -327,7 +327,7 @@ public class DenominationOptimizationService {
         try {
             List<String> raw = objectMapper.readValue(priorityOrderJson, new TypeReference<>() {});
             priorityFaceValues = raw.stream().map(BigDecimal::new).toList();
-        } catch (JsonProcessingException | NumberFormatException e) {
+        } catch (JacksonException | NumberFormatException e) {
             String truncatedJson = priorityOrderJson.length() > 200
                     ? priorityOrderJson.substring(0, 200) + "…"
                     : priorityOrderJson;

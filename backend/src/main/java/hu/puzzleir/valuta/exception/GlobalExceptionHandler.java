@@ -168,7 +168,7 @@ public class GlobalExceptionHandler {
         Throwable cur = ex.getCause();
         while (cur != null) {
             // (a) Klasszikus InvalidFormatException — Jackson default enum bind failure
-            if (cur instanceof com.fasterxml.jackson.databind.exc.InvalidFormatException ife) {
+            if (cur instanceof tools.jackson.databind.exc.InvalidFormatException ife) {
                 Class<?> targetType = ife.getTargetType();
                 if (targetType != null && targetType.isEnum()) {
                     return buildEnumBindError(targetType, ife.getValue(), extractFieldName(ife.getPath()));
@@ -176,7 +176,7 @@ public class GlobalExceptionHandler {
             }
             // (b) ValueInstantiationException — @JsonCreator factory dobott IAE-t
             // (pl. VoiceAssistantMode.fromWireName("unknown") → IllegalArgumentException)
-            if (cur instanceof com.fasterxml.jackson.databind.exc.ValueInstantiationException vie) {
+            if (cur instanceof tools.jackson.databind.exc.ValueInstantiationException vie) {
                 Class<?> targetType = vie.getType() != null ? vie.getType().getRawClass() : null;
                 if (targetType != null && targetType.isEnum()) {
                     Throwable rootCause = vie.getCause();
@@ -185,7 +185,7 @@ public class GlobalExceptionHandler {
                 }
             }
             // (c) MismatchedInputException — egyeb Jackson bind failure path-ek
-            if (cur instanceof com.fasterxml.jackson.databind.exc.MismatchedInputException mie) {
+            if (cur instanceof tools.jackson.databind.exc.MismatchedInputException mie) {
                 Class<?> targetType = mie.getTargetType();
                 if (targetType != null && targetType.isEnum()) {
                     Object value = extractEnumValueFromCauseAndProcessor(mie.getCause(), mie);
@@ -234,10 +234,10 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, "INVALID_ENUM_VALUE", message);
     }
 
-    private String extractFieldName(java.util.List<com.fasterxml.jackson.databind.JsonMappingException.Reference> path) {
+    private String extractFieldName(java.util.List<tools.jackson.core.JacksonException.Reference> path) {
         return (path == null || path.isEmpty())
                 ? "<unknown>"
-                : path.get(path.size() - 1).getFieldName();
+                : path.get(path.size() - 1).getPropertyName();
     }
 
     /**
@@ -246,7 +246,7 @@ public class GlobalExceptionHandler {
      *  2. ha az nem mukodik, a Jackson parser current token text-jebol
      */
     private Object extractEnumValueFromCauseAndProcessor(Throwable rootCause,
-                                                         com.fasterxml.jackson.databind.JsonMappingException jme) {
+                                                         tools.jackson.databind.DatabindException jme) {
         // (1) IAE message tail: "VoiceAssistantMode ismeretlen: foobar"
         if (rootCause != null) {
             String message = rootCause.getMessage();
@@ -258,12 +258,12 @@ public class GlobalExceptionHandler {
             }
         }
         // (2) JsonParser current token text
-        Object processor = jme.getProcessor();
-        if (processor instanceof com.fasterxml.jackson.core.JsonParser parser) {
+        Object processor = jme.processor();
+        if (processor instanceof tools.jackson.core.JsonParser parser) {
             try {
                 String currentText = parser.getText();
                 if (currentText != null && !currentText.isBlank()) return currentText;
-            } catch (java.io.IOException ignored) { /* fallthrough */ }
+            } catch (tools.jackson.core.JacksonException ignored) { /* fallthrough */ }
         }
         return rootCause != null ? rootCause.getMessage() : null;
     }

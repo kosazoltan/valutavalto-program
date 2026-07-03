@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.entity.ArchivedMonthlyTransaction;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;

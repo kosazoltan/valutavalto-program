@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.errorlog.ErrorLogController;
 import hu.puzzleir.valuta.util.ClientIpResolver;
 import org.junit.jupiter.api.BeforeEach;

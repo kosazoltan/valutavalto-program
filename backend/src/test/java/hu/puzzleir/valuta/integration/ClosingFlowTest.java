@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;

@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.entity;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class RateTemplateSerializationTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     @DisplayName("RateTemplate szerializáció: NINCS 'company' objektum (nincs lazy-proxy hozzáférés), companyId flat mezőként")

@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.config.IntegrationTransportProperties;
 import hu.puzzleir.valuta.dto.nav.NavSendResult;
 import org.junit.jupiter.api.BeforeEach;

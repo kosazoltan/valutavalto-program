@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.exception;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.exc.MismatchedInputException;
 import hu.puzzleir.valuta.dto.voice.VoiceAssistantMode;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpInputMessage;
@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>Codex PR #692 P1 + Copilot PR #692 P1 finding:
  * A VoiceAssistantMode {@code @JsonCreator} factory metodus {@code IllegalArgumentException}-t
  * dob, amit Jackson {@link MismatchedInputException}-be csomagol — NEM
- * {@link com.fasterxml.jackson.databind.exc.InvalidFormatException}-be.
+ * {@link tools.jackson.databind.exc.InvalidFormatException}-be.
  *
  * <p>Ezert a handler-nek mind a ket exception tipust el kell kapnia, hogy a
  * felhasznalo actionable hibauzenetet kapjon
@@ -87,11 +87,9 @@ class GlobalExceptionHandlerEnumBindTest {
         try {
             mapper.readValue(invalidJson, hu.puzzleir.valuta.dto.voice.VoiceTokenRequestDto.class);
             throw new IllegalStateException("Nem dobott exception-t — a teszt feltetel hibas");
-        } catch (com.fasterxml.jackson.core.JsonProcessingException jackson) {
+        } catch (tools.jackson.core.JacksonException jackson) {
             HttpInputMessage stubMsg = new MockHttpInputMessage(invalidJson.getBytes());
             return new HttpMessageNotReadableException(jackson.getMessage(), jackson, stubMsg);
-        } catch (java.io.IOException io) {
-            throw new IllegalStateException("Unexpected IO error", io);
         }
     }
 }

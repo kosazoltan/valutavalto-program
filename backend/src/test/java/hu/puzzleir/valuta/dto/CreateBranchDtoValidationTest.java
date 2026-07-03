@@ -1,7 +1,6 @@
 package hu.puzzleir.valuta.dto;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -34,7 +33,7 @@ class CreateBranchDtoValidationTest {
 
     @BeforeAll
     static void setUp() {
-        objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        objectMapper = new ObjectMapper();
         // Codex P1 (#1093) minta: a factory a tesztek alatt nyitva marad, @AfterAll zárja.
         validatorFactory = Validation.buildDefaultValidatorFactory();
         validator = validatorFactory.getValidator();

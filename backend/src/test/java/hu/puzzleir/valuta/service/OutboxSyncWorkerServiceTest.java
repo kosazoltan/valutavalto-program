@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.ratemanagement.RateUpdateMessage;
 import hu.puzzleir.valuta.entity.SyncInboxEvent;
 import hu.puzzleir.valuta.entity.SyncOutboxEvent;
@@ -52,7 +52,7 @@ class OutboxSyncWorkerServiceTest {
 
     @BeforeEach
     void setUp() {
-        ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+        ObjectMapper objectMapper = new ObjectMapper();
         service = spy(new OutboxSyncWorkerService(
                 syncOutboxRepository,
                 syncInboxRepository,

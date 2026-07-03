@@ -200,7 +200,7 @@ public class DiagnosticsController {
         if (ctx == null || ctx.isEmpty()) return null;
         try {
             // Spring Boot default Jackson - injektaljuk csak ha kell, kulonben Map.toString()
-            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(ctx);
+            return new tools.jackson.databind.ObjectMapper().writeValueAsString(ctx);
         } catch (Exception ex) {
             log.warn("Context serialize failed, fallback to toString: {}", ex.getMessage());
             return ctx.toString();

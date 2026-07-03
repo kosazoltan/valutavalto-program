@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.CurrencyAuditLog;
 import hu.puzzleir.valuta.exception.BusinessException;

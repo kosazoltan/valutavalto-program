@@ -4,9 +4,9 @@ import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardDto;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardStepDto;
 import hu.puzzleir.valuta.entity.*;
@@ -660,7 +660,7 @@ public class ClosingWizardService {
         if (step.getStepData() != null && !step.getStepData().isBlank()) {
             try {
                 stepDataMap = objectMapper.readValue(step.getStepData(), new TypeReference<>() {});
-            } catch (JsonProcessingException e) {
+            } catch (JacksonException e) {
                 log.warn("Nem sikerült parse-olni a stepData-t: {}", step.getStepData());
             }
         }

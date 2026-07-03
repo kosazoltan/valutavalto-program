@@ -1,6 +1,6 @@
 package hu.puzzleir.valuta.util;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.entity.IdempotencyRecord;
 import hu.puzzleir.valuta.exception.ConflictException;
 import hu.puzzleir.valuta.exception.ValidationException;

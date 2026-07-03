@@ -1,8 +1,8 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.exception.BusinessException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.sanction.SanctionMatch;
 import hu.puzzleir.valuta.dto.sanction.SanctionScreeningResult;
 import hu.puzzleir.valuta.entity.SanctionEntry;

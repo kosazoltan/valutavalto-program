@@ -238,7 +238,7 @@ public class AuditDiagnosticsController {
     private static String serializeAttrs(Map<String, Object> attrs) {
         if (attrs == null || attrs.isEmpty()) return "{}";
         try {
-            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(attrs);
+            return new tools.jackson.databind.ObjectMapper().writeValueAsString(attrs);
         } catch (Exception e) {
             return "{\"_serialize_error\":\"" + e.getClass().getSimpleName() + "\"}";
         }

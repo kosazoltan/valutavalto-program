@@ -1,8 +1,8 @@
 package hu.puzzleir.valuta.util;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.entity.IdempotencyRecord;
 import hu.puzzleir.valuta.exception.ConflictException;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -227,7 +227,7 @@ public class IdempotencyGuard {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] digest = md.digest(body.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(digest);
-        } catch (JsonProcessingException | NoSuchAlgorithmException e) {
+        } catch (JacksonException | NoSuchAlgorithmException e) {
             throw new IllegalStateException("Idempotency request hash compute failed", e);
         }
     }
@@ -237,7 +237,7 @@ public class IdempotencyGuard {
         try {
             JavaType type = objectMapper.getTypeFactory().constructType(resultType);
             return objectMapper.readValue(json, type);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Idempotency response deserialize failed", e);
         }
     }
@@ -245,7 +245,7 @@ public class IdempotencyGuard {
     private String serializeResponse(Object result) {
         try {
             return objectMapper.writeValueAsString(result);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Idempotency response serialize failed", e);
         }
     }

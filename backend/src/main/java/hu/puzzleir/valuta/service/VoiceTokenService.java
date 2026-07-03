@@ -1,7 +1,8 @@
 package hu.puzzleir.valuta.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.voice.VoiceAssistantMode;
 import hu.puzzleir.valuta.dto.voice.VoiceTokenResponseDto;
 import hu.puzzleir.valuta.exception.BusinessException;
@@ -18,7 +19,6 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayDeque;
@@ -191,7 +191,7 @@ public class VoiceTokenService {
                     "Az OpenAI Realtime API jelenleg nem elérhető. Próbáld újra perceken belül.",
                     "VOICE_ASSISTANT_UPSTREAM_ERROR"
             );
-        } catch (IOException ex) {
+        } catch (JacksonException ex) {
             VV_LOG.error("VV-VOICE-005", "voice.token.json_parse_error", ex,
                     java.util.Map.of("mode", parsedMode.getWireName()));
             throw new BusinessException(
