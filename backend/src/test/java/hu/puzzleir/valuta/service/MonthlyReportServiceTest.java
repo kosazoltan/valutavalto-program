@@ -80,9 +80,9 @@ class MonthlyReportServiceTest {
     void generateFullReport_basicFields() {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(testBranch));
         when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of());
-        when(dailyBalanceRepository.findByBranchAndMonth(eq(BRANCH_ID), eq(2026), eq(3)))
+        when(dailyBalanceRepository.findByBranchAndMonth(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), eq(2026), eq(3)))
                 .thenReturn(List.of());
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(eq(BRANCH_ID), any()))
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), any()))
                 .thenReturn(List.of());
         when(transactionRepository.findActiveByBranchAndDateRange(eq(BRANCH_ID), any(), any()))
                 .thenReturn(List.of());
@@ -93,8 +93,8 @@ class MonthlyReportServiceTest {
                 any(), any(), any(), any())).thenReturn(Optional.empty());
         when(subledgerSnapshotRepository.findByBranchIdAndSnapshotDateBetweenAndSubledgerTypeAndCurrencyCode(
                 any(), any(), any(), any(), any())).thenReturn(List.of());
-        when(transferRepository.sumTransfersInByPeriod(any(), any(), any())).thenReturn(List.of());
-        when(transferRepository.sumTransfersOutByPeriod(any(), any(), any())).thenReturn(List.of());
+        when(transferRepository.sumTransfersInByPeriod(any(), any(), any(), any())).thenReturn(List.of());
+        when(transferRepository.sumTransfersOutByPeriod(any(), any(), any(), any())).thenReturn(List.of());
 
         MonthlyReportFullDto result = service.generateFullReport(BRANCH_ID, "2026-03");
 
@@ -110,16 +110,16 @@ class MonthlyReportServiceTest {
     void generateFullReport_cashVsCardSplit() {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(testBranch));
         when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of());
-        when(dailyBalanceRepository.findByBranchAndMonth(eq(BRANCH_ID), eq(2026), eq(3))).thenReturn(List.of());
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(eq(BRANCH_ID), any())).thenReturn(List.of());
+        when(dailyBalanceRepository.findByBranchAndMonth(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), eq(2026), eq(3))).thenReturn(List.of());
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), any())).thenReturn(List.of());
         when(mnbExchangeRateService.getRatesForDate(any())).thenReturn(Map.of());
         when(exchangeRateRepository.findActiveByDateAndBranch(any(), any(), eq(BRANCH_ID))).thenReturn(List.of());
         when(subledgerSnapshotRepository.findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(
                 any(), any(), any(), any())).thenReturn(Optional.empty());
         when(subledgerSnapshotRepository.findByBranchIdAndSnapshotDateBetweenAndSubledgerTypeAndCurrencyCode(
                 any(), any(), any(), any(), any())).thenReturn(List.of());
-        when(transferRepository.sumTransfersInByPeriod(any(), any(), any())).thenReturn(List.of());
-        when(transferRepository.sumTransfersOutByPeriod(any(), any(), any())).thenReturn(List.of());
+        when(transferRepository.sumTransfersInByPeriod(any(), any(), any(), any())).thenReturn(List.of());
+        when(transferRepository.sumTransfersOutByPeriod(any(), any(), any(), any())).thenReturn(List.of());
 
         Transaction cardBuy = Transaction.builder().transactionType(TransactionType.BUY)
                 .paymentMethod(PaymentMethod.CARD).hufAmount(new BigDecimal("100000")).build();
@@ -141,17 +141,17 @@ class MonthlyReportServiceTest {
     void generateFullReport_handlingFeeFromSubledger() {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(testBranch));
         when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of());
-        when(dailyBalanceRepository.findByBranchAndMonth(eq(BRANCH_ID), anyInt(), anyInt()))
+        when(dailyBalanceRepository.findByBranchAndMonth(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), anyInt(), anyInt()))
                 .thenReturn(List.of());
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(eq(BRANCH_ID), any()))
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), any()))
                 .thenReturn(List.of());
         when(transactionRepository.findActiveByBranchAndDateRange(eq(BRANCH_ID), any(), any()))
                 .thenReturn(List.of());
         when(mnbExchangeRateService.getRatesForDate(any())).thenReturn(Map.of());
         when(exchangeRateRepository.findActiveByDateAndBranch(any(), any(), eq(BRANCH_ID)))
                 .thenReturn(List.of());
-        when(transferRepository.sumTransfersInByPeriod(any(), any(), any())).thenReturn(List.of());
-        when(transferRepository.sumTransfersOutByPeriod(any(), any(), any())).thenReturn(List.of());
+        when(transferRepository.sumTransfersInByPeriod(any(), any(), any(), any())).thenReturn(List.of());
+        when(transferRepository.sumTransfersOutByPeriod(any(), any(), any(), any())).thenReturn(List.of());
 
         // Handling fee opening (march 1)
         DailySubledgerSnapshot hfOpening = DailySubledgerSnapshot.builder()

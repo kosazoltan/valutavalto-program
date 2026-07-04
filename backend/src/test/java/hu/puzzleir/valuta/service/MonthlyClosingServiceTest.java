@@ -95,7 +95,7 @@ class MonthlyClosingServiceTest {
         when(monthlyClosingSummaryRepository.existsByBranchIdAndYearMonth(BRANCH_ID, yearMonth))
                 .thenReturn(false);
         // 2 nyitott session van a hónapban
-        when(dailySessionRepository.countOpenSessionsInRange(eq(BRANCH_ID), any(LocalDate.class), any(LocalDate.class)))
+        when(dailySessionRepository.countOpenSessionsInRange(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(2L);
 
         assertThatThrownBy(() -> service.performMonthlyClosing(BRANCH_ID, yearMonth))
@@ -119,7 +119,7 @@ class MonthlyClosingServiceTest {
 
         when(monthlyClosingSummaryRepository.existsByBranchIdAndYearMonth(BRANCH_ID, yearMonth))
                 .thenReturn(false);
-        when(dailySessionRepository.countOpenSessionsInRange(eq(BRANCH_ID), any(LocalDate.class), any(LocalDate.class)))
+        when(dailySessionRepository.countOpenSessionsInRange(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(0L);
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
@@ -148,7 +148,7 @@ class MonthlyClosingServiceTest {
 
         assertThat(result).isNotNull();
         assertThat(result.getYearMonth()).isEqualTo(yearMonth);
-        verify(dailySessionRepository).countOpenSessionsInRange(eq(BRANCH_ID), any(), any());
+        verify(dailySessionRepository).countOpenSessionsInRange(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), any(), any());
     }
 
     // ============ 2. GETLASTBUSINESSDAY — HÉTVÉGE ============
@@ -330,7 +330,7 @@ class MonthlyClosingServiceTest {
 
         when(monthlyClosingSummaryRepository.existsByBranchIdAndYearMonth(BRANCH_ID, yearMonth))
                 .thenReturn(false);
-        when(dailySessionRepository.countOpenSessionsInRange(eq(BRANCH_ID), any(LocalDate.class), any(LocalDate.class)))
+        when(dailySessionRepository.countOpenSessionsInRange(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(0L);
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));

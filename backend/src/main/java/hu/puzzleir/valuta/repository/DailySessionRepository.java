@@ -27,8 +27,10 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
            "JOIN FETCH ds.company " +
            "LEFT JOIN FETCH ds.openedByWorker " +
            "LEFT JOIN FETCH ds.closedByWorker " +
-           "WHERE ds.branch.id = :branchId AND ds.sessionDate = :sessionDate")
+           "WHERE ds.company.id = :companyId " +
+           "AND ds.branch.id = :branchId AND ds.sessionDate = :sessionDate")
     Optional<DailySession> findByBranchIdAndSessionDate(
+            @Param("companyId") UUID companyId,
             @Param("branchId") UUID branchId,
             @Param("sessionDate") LocalDate sessionDate);
 
@@ -48,6 +50,8 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
      * .findByBranchIdAndCurrencyIdForUpdate}) — a FOR UPDATE PostgreSQL-en nem alkalmazható outer join
      * nullable oldalára; a hívó csak a {@code reversalCount} primitív mezőt olvassa (nincs lazy access).
      */
+    // TENANT-NOTE: szándékosan companyId-szűrés NÉLKÜL (lock-query) — a hívó a branchId-t
+    // SecurityUtils.getCurrentBranchId()-ból veszi (DailySessionService.getDailyReversalCountForUpdate).
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT ds FROM DailySession ds " +
            "WHERE ds.branch.id = :branchId AND ds.sessionDate = :sessionDate")
@@ -62,8 +66,10 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
            "LEFT JOIN FETCH ds.branch " +
            "LEFT JOIN FETCH ds.openedByWorker " +
            "LEFT JOIN FETCH ds.closedByWorker " +
-           "WHERE ds.branch.id = :branchId AND ds.sessionDate = :sessionDate")
+           "WHERE ds.company.id = :companyId " +
+           "AND ds.branch.id = :branchId AND ds.sessionDate = :sessionDate")
     Optional<DailySession> findByBranchIdAndSessionDateWithDetails(
+            @Param("companyId") UUID companyId,
             @Param("branchId") UUID branchId,
             @Param("sessionDate") LocalDate sessionDate);
 
@@ -75,10 +81,12 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
            "JOIN FETCH ds.company " +
            "LEFT JOIN FETCH ds.openedByWorker " +
            "LEFT JOIN FETCH ds.closedByWorker " +
-           "WHERE ds.branch.id = :branchId " +
+           "WHERE ds.company.id = :companyId " +
+           "AND ds.branch.id = :branchId " +
            "AND ds.status = 'OPEN' " +
            "ORDER BY ds.sessionDate DESC")
-    List<DailySession> findOpenSessionsByBranch(@Param("branchId") UUID branchId);
+    List<DailySession> findOpenSessionsByBranch(@Param("companyId") UUID companyId,
+                                                @Param("branchId") UUID branchId);
 
     /**
      * Utolsó session egy fiókhoz (JOIN FETCH)
@@ -88,9 +96,11 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
            "JOIN FETCH ds.company " +
            "LEFT JOIN FETCH ds.openedByWorker " +
            "LEFT JOIN FETCH ds.closedByWorker " +
-           "WHERE ds.branch.id = :branchId " +
+           "WHERE ds.company.id = :companyId " +
+           "AND ds.branch.id = :branchId " +
            "ORDER BY ds.sessionDate DESC")
-    List<DailySession> findLatestByBranch(@Param("branchId") UUID branchId);
+    List<DailySession> findLatestByBranch(@Param("companyId") UUID companyId,
+                                          @Param("branchId") UUID branchId);
 
     /**
      * Sessions időszakra (JOIN FETCH a lazy proxy hiba elkerüléséhez)
@@ -154,10 +164,12 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
            "JOIN FETCH ds.company " +
            "LEFT JOIN FETCH ds.openedByWorker " +
            "LEFT JOIN FETCH ds.closedByWorker " +
-           "WHERE ds.branch.id = :branchId " +
+           "WHERE ds.company.id = :companyId " +
+           "AND ds.branch.id = :branchId " +
            "AND ds.sessionDate BETWEEN :startDate AND :endDate " +
            "ORDER BY ds.sessionDate ASC")
     List<DailySession> findByBranchAndDateRange(
+        @Param("companyId") UUID companyId,
         @Param("branchId") UUID branchId,
         @Param("startDate") LocalDate startDate,
         @Param("endDate") LocalDate endDate
@@ -168,10 +180,12 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
      * Havi zárás előtt 0-nak kell lennie!
      */
     @Query("SELECT COUNT(ds) FROM DailySession ds " +
-           "WHERE ds.branch.id = :branchId " +
+           "WHERE ds.company.id = :companyId " +
+           "AND ds.branch.id = :branchId " +
            "AND ds.sessionDate BETWEEN :startDate AND :endDate " +
            "AND ds.status = 'OPEN'")
     long countOpenSessionsInRange(
+        @Param("companyId") UUID companyId,
         @Param("branchId") UUID branchId,
         @Param("startDate") LocalDate startDate,
         @Param("endDate") LocalDate endDate
@@ -185,25 +199,27 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
            "JOIN FETCH ds.company " +
            "LEFT JOIN FETCH ds.openedByWorker " +
            "LEFT JOIN FETCH ds.closedByWorker " +
-           "WHERE ds.branch.id = :branchId " +
+           "WHERE ds.company.id = :companyId " +
+           "AND ds.branch.id = :branchId " +
            "AND ds.sessionDate = :sessionDate " +
            "AND ds.status = 'OPEN'")
     Optional<DailySession> findOpenSessionByBranchAndDate(
+            @Param("companyId") UUID companyId,
             @Param("branchId") UUID branchId,
             @Param("sessionDate") LocalDate sessionDate);
 
     /**
      * Van-e nyitott session (MAI napra)
      */
-    default boolean hasOpenSession(UUID branchId) {
-        return findOpenSessionByBranchAndDate(branchId, LocalDate.now()).isPresent();
+    default boolean hasOpenSession(UUID companyId, UUID branchId) {
+        return findOpenSessionByBranchAndDate(companyId, branchId, LocalDate.now()).isPresent();
     }
 
     /**
      * Utolsó session lekérése
      */
-    default Optional<DailySession> findLatest(UUID branchId) {
-        List<DailySession> sessions = findLatestByBranch(branchId);
+    default Optional<DailySession> findLatest(UUID companyId, UUID branchId) {
+        List<DailySession> sessions = findLatestByBranch(companyId, branchId);
         return sessions.isEmpty() ? Optional.empty() : Optional.of(sessions.get(0));
     }
 }

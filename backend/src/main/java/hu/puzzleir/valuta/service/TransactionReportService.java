@@ -77,8 +77,8 @@ public class TransactionReportService {
         UUID branchId = SecurityUtils.getCurrentBranchId();
         LocalDate today = LocalDate.now();
 
-        BigDecimal buyTotal = transactionRepository.sumDailyTurnover(branchId, today, TransactionType.BUY);
-        BigDecimal sellTotal = transactionRepository.sumDailyTurnover(branchId, today, TransactionType.SELL);
+        BigDecimal buyTotal = transactionRepository.sumDailyTurnover(companyId, branchId, today, TransactionType.BUY);
+        BigDecimal sellTotal = transactionRepository.sumDailyTurnover(companyId, branchId, today, TransactionType.SELL);
         long reversalCount = transactionRepository.countReversalsByBranchAndDate(companyId, branchId, today);
 
         long buyCount = transactionRepository.countByBranchIdAndTransactionDateAndTransactionType(branchId, today, TransactionType.BUY);

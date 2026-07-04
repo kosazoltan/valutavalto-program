@@ -19,14 +19,16 @@ import java.util.UUID;
 @Repository
 public interface TransferRepository extends JpaRepository<Transfer, Long> {
 
+    // TENANT-NOTE: szándékosan companyId-szűrés NÉLKÜL (lookup-query) — a hívó
+    // KÖTELEZŐEN assertOwnCompany-t futtat (TransferService.getByTransferNumber).
     Optional<Transfer> findByTransferNumber(String transferNumber);
 
     /** Pessimistic lock a sztornóhoz: a konkurens dupla-sztornó (kétszeres készlet-visszafordítás) ellen. */
+    // TENANT-NOTE: szándékosan companyId-szűrés NÉLKÜL (lock-query) — a hívó
+    // KÖTELEZŐEN assertOwnCompany-t futtat (TransferService.storno).
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM Transfer t WHERE t.id = :id")
     Optional<Transfer> findByIdForUpdate(@Param("id") Long id);
-
-    List<Transfer> findByStatus(Transfer.TransferStatus status);
 
     @Query("SELECT t FROM Transfer t WHERE " +
            "(t.fromBranch.company.id = :companyId OR t.toBranch.company.id = :companyId) " +
@@ -50,19 +52,25 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
                                         @Param("branchId") UUID branchId,
                                         @Param("status") Transfer.TransferStatus status);
 
-    @Query("SELECT t FROM Transfer t WHERE t.fromBranch.id = :branchId AND t.status IN ('PENDING', 'IN_TRANSIT')")
-    List<Transfer> findOutgoingByBranch(@Param("branchId") UUID branchId);
+    @Query("SELECT t FROM Transfer t WHERE t.fromBranch.company.id = :companyId " +
+           "AND t.fromBranch.id = :branchId AND t.status IN ('PENDING', 'IN_TRANSIT')")
+    List<Transfer> findOutgoingByBranch(@Param("companyId") UUID companyId,
+                                        @Param("branchId") UUID branchId);
 
-    @Query("SELECT t FROM Transfer t WHERE t.toBranch.id = :branchId AND t.status IN ('PENDING', 'IN_TRANSIT')")
-    List<Transfer> findIncomingByBranch(@Param("branchId") UUID branchId);
+    @Query("SELECT t FROM Transfer t WHERE t.toBranch.company.id = :companyId " +
+           "AND t.toBranch.id = :branchId AND t.status IN ('PENDING', 'IN_TRANSIT')")
+    List<Transfer> findIncomingByBranch(@Param("companyId") UUID companyId,
+                                        @Param("branchId") UUID branchId);
 
     @Query("SELECT t FROM Transfer t WHERE " +
-           "(:branchId IS NULL OR t.fromBranch.id = :branchId OR t.toBranch.id = :branchId) " +
+           "(t.fromBranch.company.id = :companyId OR t.toBranch.company.id = :companyId) " +
+           "AND (:branchId IS NULL OR t.fromBranch.id = :branchId OR t.toBranch.id = :branchId) " +
            "AND (:startDate IS NULL OR t.transferDate >= :startDate) " +
            "AND (:endDate IS NULL OR t.transferDate <= :endDate) " +
            "AND (:status IS NULL OR t.status = :status) " +
            "AND (:type IS NULL OR t.transferType = :type)")
     Page<Transfer> search(
+            @Param("companyId") UUID companyId,
             @Param("branchId") UUID branchId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
@@ -70,8 +78,10 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
             @Param("type") Transfer.TransferType type,
             Pageable pageable);
 
-    @Query("SELECT COUNT(t) FROM Transfer t WHERE t.toBranch.id = :branchId AND t.status IN ('PENDING', 'IN_TRANSIT')")
-    long countPendingByBranch(@Param("branchId") UUID branchId);
+    @Query("SELECT COUNT(t) FROM Transfer t WHERE t.toBranch.company.id = :companyId " +
+           "AND t.toBranch.id = :branchId AND t.status IN ('PENDING', 'IN_TRANSIT')")
+    long countPendingByBranch(@Param("companyId") UUID companyId,
+                              @Param("branchId") UUID branchId);
 
     /**
      * FK-003: Pénztárak/értéktárak közötti pénzmozgások egyeztetéshez — cég-szűrt, intervallumra.
@@ -113,6 +123,8 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
      * @param startPos a numerikus szuffix kezdő pozíciója (1-indexelt SUBSTRING) =
      *                 {@code fullPrefix.length() + 1}
      */
+    // TENANT-NOTE: szándékosan companyId-szűrés NÉLKÜL (rendszer-szintű sorszám-query) —
+    // a teljes prefix branch-kódolt, a hívó saját branch-ből képzi.
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(t.transferNumber, :startPos) AS long)), 0) "
             + "FROM Transfer t WHERE t.transferNumber LIKE CONCAT(:fullPrefix, '%')")
     long findMaxSlipSequence(@Param("fullPrefix") String fullPrefix, @Param("startPos") int startPos);
@@ -180,25 +192,33 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
 
     /** Havi aggregalt bejovo transfer osszegek devizanementkent */
     @Query("SELECT t.currency.code, COALESCE(SUM(t.amount), 0) FROM Transfer t " +
-           "WHERE t.toBranch.id = :branchId AND t.transferDate BETWEEN :startDate AND :endDate " +
+           "WHERE t.toBranch.company.id = :companyId " +
+           "AND t.toBranch.id = :branchId AND t.transferDate BETWEEN :startDate AND :endDate " +
            "AND t.status = 'COMPLETED' GROUP BY t.currency.code")
-    List<Object[]> sumTransfersInByPeriod(@Param("branchId") UUID branchId,
+    List<Object[]> sumTransfersInByPeriod(@Param("companyId") UUID companyId,
+                                          @Param("branchId") UUID branchId,
                                           @Param("startDate") LocalDate startDate,
                                           @Param("endDate") LocalDate endDate);
 
     /** Havi aggregalt kimeno transfer osszegek devizanementkent */
     @Query("SELECT t.currency.code, COALESCE(SUM(t.amount), 0) FROM Transfer t " +
-           "WHERE t.fromBranch.id = :branchId AND t.transferDate BETWEEN :startDate AND :endDate " +
+           "WHERE t.fromBranch.company.id = :companyId " +
+           "AND t.fromBranch.id = :branchId AND t.transferDate BETWEEN :startDate AND :endDate " +
            "AND t.status = 'COMPLETED' GROUP BY t.currency.code")
-    List<Object[]> sumTransfersOutByPeriod(@Param("branchId") UUID branchId,
+    List<Object[]> sumTransfersOutByPeriod(@Param("companyId") UUID companyId,
+                                           @Param("branchId") UUID branchId,
                                            @Param("startDate") LocalDate startDate,
                                            @Param("endDate") LocalDate endDate);
 
     /** ReportService â€" kimenĹ' ĂˇtadĂˇsok */
-    @Query("SELECT t FROM Transfer t WHERE t.fromBranch.id = :branchId ORDER BY t.createdAt DESC")
-    List<Transfer> findByFromBranchIdOrderByCreatedAtDesc(@Param("branchId") UUID branchId);
+    @Query("SELECT t FROM Transfer t WHERE t.fromBranch.company.id = :companyId " +
+           "AND t.fromBranch.id = :branchId ORDER BY t.createdAt DESC")
+    List<Transfer> findByFromBranchIdOrderByCreatedAtDesc(@Param("companyId") UUID companyId,
+                                                          @Param("branchId") UUID branchId);
 
     /** ReportService â€" bejĂ¶vĹ' ĂˇtadĂˇsok */
-    @Query("SELECT t FROM Transfer t WHERE t.toBranch.id = :branchId ORDER BY t.createdAt DESC")
-    List<Transfer> findByToBranchIdOrderByCreatedAtDesc(@Param("branchId") UUID branchId);
+    @Query("SELECT t FROM Transfer t WHERE t.toBranch.company.id = :companyId " +
+           "AND t.toBranch.id = :branchId ORDER BY t.createdAt DESC")
+    List<Transfer> findByToBranchIdOrderByCreatedAtDesc(@Param("companyId") UUID companyId,
+                                                        @Param("branchId") UUID branchId);
 }

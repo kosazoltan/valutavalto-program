@@ -54,6 +54,7 @@ public class SessionOpenService {
     public SessionDataDto openSession(Long workerId, UUID branchId) {
         Company company = companyRepository.findById(SecurityUtils.getCurrentCompanyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cég nem található!"));
+        UUID companyId = company.getId();
 
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
@@ -91,7 +92,7 @@ public class SessionOpenService {
         LocalDate today = LocalDate.now();
 
         // Stale sessionök automatikus lezárása (korábbi napok) — #2 fix
-        List<DailySession> staleSessions = dailySessionRepository.findOpenSessionsByBranch(branchId).stream()
+        List<DailySession> staleSessions = dailySessionRepository.findOpenSessionsByBranch(companyId, branchId).stream()
                 .filter(s -> s.getSessionDate() != null && s.getSessionDate().isBefore(today))
                 .toList();
         for (DailySession stale : staleSessions) {
@@ -104,12 +105,12 @@ public class SessionOpenService {
         }
 
         // Ellenőrzés: nincs-e lezáratlan MAI session
-        if (dailySessionRepository.hasOpenSession(branchId)) {
+        if (dailySessionRepository.hasOpenSession(companyId, branchId)) {
             throw new ValidationException("Van lezáratlan korábbi munkamenet! Először zárja le!");
         }
 
         // REOPEN: ha mai session CLOSED → újranyitás engedélyezett
-        Optional<DailySession> existingOpt = dailySessionRepository.findByBranchIdAndSessionDate(branchId, today);
+        Optional<DailySession> existingOpt = dailySessionRepository.findByBranchIdAndSessionDate(companyId, branchId, today);
         if (existingOpt.isPresent()) {
             DailySession existingSession = existingOpt.get();
 
@@ -220,10 +221,11 @@ public class SessionOpenService {
     @Transactional(readOnly = true)
     public List<String> validateSessionOpen(UUID branchId) {
         List<String> warnings = new ArrayList<>();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         LocalDate today = LocalDate.now();
 
         // Előző nap lezárva? (csak korábbi napra vonatkozó session-ök)
-        dailySessionRepository.findLatest(branchId).ifPresent(lastSession -> {
+        dailySessionRepository.findLatest(companyId, branchId).ifPresent(lastSession -> {
             // Csak korábbi dátumú session-ök relevánsak — a mai OPEN session REOPEN utáni normális állapot
             if (lastSession.getSessionDate() != null && lastSession.getSessionDate().isBefore(today)) {
                 if (lastSession.getStatus() == DailySessionStatus.OPEN) {
@@ -237,7 +239,7 @@ public class SessionOpenService {
 
         // Mai session warning: csak PENDING_CLOSE/egyéb nem-normális állapotban releváns
         // OPEN vagy CLOSED mai session a normális működés része (nyitás/REOPEN), nem warning
-        dailySessionRepository.findByBranchIdAndSessionDate(branchId, today).ifPresent(existing -> {
+        dailySessionRepository.findByBranchIdAndSessionDate(companyId, branchId, today).ifPresent(existing -> {
             if (existing.getStatus() != DailySessionStatus.OPEN && existing.getStatus() != DailySessionStatus.CLOSED) {
                 warnings.add("⚠️ Mai napra már létezik munkamenet! Státusz: " + existing.getStatus().getDisplayName());
             }

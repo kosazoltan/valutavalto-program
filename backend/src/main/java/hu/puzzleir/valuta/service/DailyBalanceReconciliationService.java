@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.DailyBalance;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.DailyBalanceRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -48,9 +49,10 @@ public class DailyBalanceReconciliationService {
      */
     public List<ReconciliationAlert> reconcile(UUID branchId, LocalDate date) {
         log.info("Napi egyeztetés indítva: branchId={}, date={}", branchId, date);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
 
         List<DailyBalance> dailyBalances = dailyBalanceRepository
-            .findByBranchIdAndBalanceDate(branchId, date);
+            .findByBranchIdAndBalanceDate(companyId, branchId, date);
 
         if (dailyBalances.isEmpty()) {
             log.debug("Nincs napi mérleg egyeztetéshez: branchId={}, date={}", branchId, date);

@@ -45,7 +45,7 @@ public class DailyReportGenerator {
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
         // Session adatok
-        DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(branchId, date)
+        DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(companyId, branchId, date)
                 .orElse(null);
 
         // Napi tranzakciok

@@ -94,14 +94,14 @@ public class MonthlyReportService {
 
         // 1. Havi osszesitett forgalom — napi balance-ok aggregalasa
         List<DailyBalance> monthlyBalances = dailyBalanceRepository.findByBranchAndMonth(
-                branchId, ym.getYear(), ym.getMonthValue());
+                companyId, branchId, ym.getYear(), ym.getMonthValue());
 
         // Utolso nap balance (zaro keszlet)
         List<DailyBalance> lastDayBalances = dailyBalanceRepository.findByBranchIdAndBalanceDate(
-                branchId, monthEnd);
+                companyId, branchId, monthEnd);
         // Elso nap balance (nyito keszlet)
         List<DailyBalance> firstDayBalances = dailyBalanceRepository.findByBranchIdAndBalanceDate(
-                branchId, monthStart);
+                companyId, branchId, monthStart);
 
         Map<String, BigDecimal> openingMap = new HashMap<>();
         for (DailyBalance bal : firstDayBalances) {
@@ -257,14 +257,14 @@ public class MonthlyReportService {
 
         // 6. Penztar kozotti mozgasok (Delphi: AtadAtvetLista)
         List<MonthlyReportFullDto.TransferLineDto> transferLines = buildTransferLines(
-                branchId, monthStart, monthEnd, currencyNameMap);
+                companyId, branchId, monthStart, monthEnd, currencyNameMap);
 
         // 7. Munkanapok
         int workingDays = 0;
         for (LocalDate d = monthStart; !d.isAfter(monthEnd); d = d.plusDays(1)) {
             if (isBusinessDay(d)) workingDays++;
         }
-        int closedDays = (int) dailyBalanceRepository.findByBranchAndMonth(branchId, ym.getYear(), ym.getMonthValue())
+        int closedDays = (int) dailyBalanceRepository.findByBranchAndMonth(companyId, branchId, ym.getYear(), ym.getMonthValue())
                 .stream().map(DailyBalance::getBalanceDate).distinct().count();
 
         // Branch cim + adoszam
@@ -323,16 +323,16 @@ public class MonthlyReportService {
      * Devizanemenként aggregalja a bejovo es kimeno transfer osszegeket.
      */
     private List<MonthlyReportFullDto.TransferLineDto> buildTransferLines(
-            UUID branchId, LocalDate start, LocalDate end, Map<String, String> currencyNameMap) {
+            UUID companyId, UUID branchId, LocalDate start, LocalDate end, Map<String, String> currencyNameMap) {
 
         // Egyetlen aggregalt query devizanementkent (N1 fix: nem N×M napi iteracio)
         Map<String, BigDecimal> inMap = new HashMap<>();
-        for (Object[] row : transferRepository.sumTransfersInByPeriod(branchId, start, end)) {
+        for (Object[] row : transferRepository.sumTransfersInByPeriod(companyId, branchId, start, end)) {
             inMap.put((String) row[0], (BigDecimal) row[1]);
         }
 
         Map<String, BigDecimal> outMap = new HashMap<>();
-        for (Object[] row : transferRepository.sumTransfersOutByPeriod(branchId, start, end)) {
+        for (Object[] row : transferRepository.sumTransfersOutByPeriod(companyId, branchId, start, end)) {
             outMap.put((String) row[0], (BigDecimal) row[1]);
         }
 

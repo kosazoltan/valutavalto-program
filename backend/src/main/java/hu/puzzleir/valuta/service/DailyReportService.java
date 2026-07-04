@@ -146,7 +146,7 @@ public class DailyReportService {
                 .forEach(c -> currencyNameMap.put(c.getCode(), c.getName()));
 
         // 1. Záró készletek — DailyBalance
-        List<DailyBalance> balances = dailyBalanceRepository.findByBranchIdAndBalanceDate(branchId, date);
+        List<DailyBalance> balances = dailyBalanceRepository.findByBranchIdAndBalanceDate(companyId, branchId, date);
         BigDecimal closingHuf = BigDecimal.ZERO;
         BigDecimal closingForeignHuf = BigDecimal.ZERO; // B7 fix: HUF-ekvivalens összeg
 

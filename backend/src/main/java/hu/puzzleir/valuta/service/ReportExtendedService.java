@@ -279,10 +279,11 @@ public class ReportExtendedService {
 
     public Map<String, Object> getMonthlyTransfers(int year, int month, UUID branchId) {
         UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
 
         // Transfers: find outgoing and incoming
-        List<Transfer> outgoing = transferRepository.findOutgoingByBranch(effectiveBranch);
-        List<Transfer> incoming = transferRepository.findIncomingByBranch(effectiveBranch);
+        List<Transfer> outgoing = transferRepository.findOutgoingByBranch(companyId, effectiveBranch);
+        List<Transfer> incoming = transferRepository.findIncomingByBranch(companyId, effectiveBranch);
 
         LocalDate start = LocalDate.of(year, month, 1);
         LocalDate end = start.withDayOfMonth(start.lengthOfMonth());

@@ -74,7 +74,7 @@ public class DecadeReportService {
         LocalDate periodEnd = period[1];
 
         // Napzárás teljességi ellenőrzés: a dekád utolsó napjának le kell lennie zárva
-        validateDailyClosingCompleteness(branchId, periodStart, periodEnd);
+        validateDailyClosingCompleteness(currentCompanyId, branchId, periodStart, periodEnd);
 
         // Meglévő ellenőrzés
         DecadeReport existing = decadeReportRepository
@@ -111,10 +111,10 @@ public class DecadeReportService {
         report.setStatus(DecadeReportStatus.DRAFT);
 
         // === MNB árfolyamos dekád haszonszámítás ===
-        calculateDecadeProfit(report, branchId, period[0], period[1]);
+        calculateDecadeProfit(report, currentCompanyId, branchId, period[0], period[1]);
 
         // === FORINT KONTROLL (Legacy: DEKRUTIN.DLL) ===
-        calculateForintControl(report, branchId, period[0], period[1]);
+        calculateForintControl(report, currentCompanyId, branchId, period[0], period[1]);
 
         report = decadeReportRepository.save(report);
         log.info("Dekádjelentés generálva: branch={}, year={}, decade={}, txCount={}, profit={}",
@@ -176,16 +176,16 @@ public class DecadeReportService {
      * Ha egy dátumra nincs MNB árfolyam (pl. hétvége, ünnepnap),
      * a service fallback-ként az utolsó elérhető árfolyamot használja.
      */
-    private void calculateDecadeProfit(DecadeReport report, UUID branchId,
+    private void calculateDecadeProfit(DecadeReport report, UUID companyId, UUID branchId,
                                        LocalDate periodStart, LocalDate periodEnd) {
 
         // Nyitó napi mérlegek — dekád első napja
         List<DailyBalance> openingBalances =
-            dailyBalanceRepository.findByBranchIdAndBalanceDate(branchId, periodStart);
+            dailyBalanceRepository.findByBranchIdAndBalanceDate(companyId, branchId, periodStart);
 
         // Záró napi mérlegek — dekád utolsó napja
         List<DailyBalance> closingBalances =
-            dailyBalanceRepository.findByBranchIdAndBalanceDate(branchId, periodEnd);
+            dailyBalanceRepository.findByBranchIdAndBalanceDate(companyId, branchId, periodEnd);
 
         // Összegyűjtjük az összes érintett valutát
         Set<String> allCurrencies = new LinkedHashSet<>();
@@ -317,7 +317,7 @@ public class DecadeReportService {
      *   - FIZETOESZKOZ=2: bankkártyás elkülönítés
      *   - KEZDOSORSZAM / UTOLSOSORSZAM: bizonylat sorszám tracking
      */
-    private void calculateForintControl(DecadeReport report, UUID branchId,
+    private void calculateForintControl(DecadeReport report, UUID companyId, UUID branchId,
                                          LocalDate periodStart, LocalDate periodEnd) {
 
         // Aktív tranzakciók a dekádban — riport-celu, financialEffective szurve.
@@ -328,7 +328,7 @@ public class DecadeReportService {
 
         // HUF napi mérleg a nyitó napra (forint nyitó)
         List<DailyBalance> openingHufBalances = dailyBalanceRepository
-            .findByBranchIdAndBalanceDate(branchId, periodStart);
+            .findByBranchIdAndBalanceDate(companyId, branchId, periodStart);
         BigDecimal forintOpening = openingHufBalances.stream()
             .filter(b -> "HUF".equals(b.getCurrencyCode()))
             .map(DailyBalance::getOpeningBalance)
@@ -337,7 +337,7 @@ public class DecadeReportService {
 
         // HUF napi mérleg a záró napra (forint záró)
         List<DailyBalance> closingHufBalances = dailyBalanceRepository
-            .findByBranchIdAndBalanceDate(branchId, periodEnd);
+            .findByBranchIdAndBalanceDate(companyId, branchId, periodEnd);
         BigDecimal forintClosing = closingHufBalances.stream()
             .filter(b -> "HUF".equals(b.getCurrencyCode()))
             .map(DailyBalance::getClosingBalance)
@@ -455,8 +455,8 @@ public class DecadeReportService {
      * Napzárás teljességi ellenőrzés: a dekád utolsó napjának lezárt napi mérleggel kell rendelkeznie.
      * Ha nem, ValidationException-t dob.
      */
-    private void validateDailyClosingCompleteness(UUID branchId, LocalDate periodStart, LocalDate periodEnd) {
-        List<LocalDate> closedDates = dailyBalanceRepository.findClosedDates(branchId, periodStart, periodEnd);
+    private void validateDailyClosingCompleteness(UUID companyId, UUID branchId, LocalDate periodStart, LocalDate periodEnd) {
+        List<LocalDate> closedDates = dailyBalanceRepository.findClosedDates(companyId, branchId, periodStart, periodEnd);
         if (!closedDates.contains(periodEnd)) {
             throw new ValidationException(
                 "A dekádjelentés nem generálható: a dekád utolsó napja (" + periodEnd +

@@ -7,6 +7,9 @@ import hu.puzzleir.valuta.entity.DailySubledgerSnapshot;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.DailyBalanceRepository;
 import hu.puzzleir.valuta.repository.DailySubledgerSnapshotRepository;
+import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +18,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -39,7 +44,20 @@ class LiveCashPositionServiceTest {
 
     @InjectMocks private LiveCashPositionService service;
 
+    private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID BRANCH_ID = UUID.randomUUID();
+
+    @BeforeEach
+    void setUpSecurityContext() {
+        TestingAuthenticationToken auth = new TestingAuthenticationToken("test", "pass", "ROLE_ADMIN");
+        auth.setDetails(new WorkerAuthenticationDetails(1L, COMPANY_ID, BRANCH_ID, "ADMIN"));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     @DisplayName("G9: valutánkénti NYITÓ/BEVÉTEL/KIADÁS/ZÁRÓ + kezelési-díj egyenleg")
@@ -59,7 +77,7 @@ class LiveCashPositionServiceTest {
                 .transfersOut(new BigDecimal("0"))
                 .closingBalance(new BigDecimal("1150"))
                 .build();
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(eq(BRANCH_ID), any()))
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.any(UUID.class), eq(BRANCH_ID), any()))
                 .thenReturn(List.of(eurBal));
 
         DailySubledgerSnapshot hf = DailySubledgerSnapshot.builder()
@@ -87,7 +105,7 @@ class LiveCashPositionServiceTest {
     @DisplayName("G9: nincs napi mozgás → üres sorok, 0 kezelési díj")
     void getLivePosition_empty() {
         when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of());
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(eq(BRANCH_ID), any())).thenReturn(List.of());
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.any(UUID.class), eq(BRANCH_ID), any())).thenReturn(List.of());
         when(subledgerSnapshotRepository.findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(
                 eq(BRANCH_ID), any(), eq("HANDLING_FEE"), eq("HUF"))).thenReturn(Optional.empty());
 

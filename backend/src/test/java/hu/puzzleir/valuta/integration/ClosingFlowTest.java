@@ -271,7 +271,7 @@ class ClosingFlowTest {
         @Test
         @DisplayName("testClosingWizard_withOpenTransactions — nyitott tranzakciók figyelmeztetés")
         void testClosingWizard_withOpenTransactions() {
-            when(dailySessionRepository.hasOpenSession(BRANCH_ID)).thenReturn(false);
+            when(dailySessionRepository.hasOpenSession(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID))).thenReturn(false);
 
             List<String> warnings = closingWizardService.validateOpenTransactions(BRANCH_ID);
 

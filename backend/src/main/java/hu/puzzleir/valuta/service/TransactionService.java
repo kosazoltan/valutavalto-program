@@ -829,8 +829,8 @@ public class TransactionService {
 
     private DailyTurnoverSummary buildTurnoverSummary(UUID branchId, LocalDate date) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        BigDecimal buyTotal = transactionRepository.sumDailyTurnover(branchId, date, TransactionType.BUY);
-        BigDecimal sellTotal = transactionRepository.sumDailyTurnover(branchId, date, TransactionType.SELL);
+        BigDecimal buyTotal = transactionRepository.sumDailyTurnover(companyId, branchId, date, TransactionType.BUY);
+        BigDecimal sellTotal = transactionRepository.sumDailyTurnover(companyId, branchId, date, TransactionType.SELL);
         long reversalCount = transactionRepository.countReversalsByBranchAndDate(companyId, branchId, date);
 
         long buyCount = transactionRepository.countByBranchIdAndTransactionDateAndTransactionType(branchId, date, TransactionType.BUY);

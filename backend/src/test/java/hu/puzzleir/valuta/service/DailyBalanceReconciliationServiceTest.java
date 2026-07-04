@@ -78,7 +78,7 @@ class DailyBalanceReconciliationServiceTest {
     @DisplayName("Egyeztetés: eltérés felfedezése → riasztás visszaadva")
     void testReconcile_mismatchDetected() {
         // Számított záró: 1000, tényleges: 950 → diff = 50
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, TEST_DATE))
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
             .thenReturn(List.of(makeDailyBalance("EUR", new BigDecimal("1000.00"))));
         when(cashBalanceRepository.findAllByBranchId(BRANCH_ID))
             .thenReturn(List.of(makeCashBalance("EUR", new BigDecimal("950.00"))));
@@ -104,7 +104,7 @@ class DailyBalanceReconciliationServiceTest {
     @DisplayName("Egyeztetés: tolerancián belüli eltérés → nincs riasztás")
     void testReconcile_withinTolerance_noAlert() {
         // Eltérés: 0.005 < 0.01 tűréshatár
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, TEST_DATE))
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
             .thenReturn(List.of(makeDailyBalance("EUR", new BigDecimal("1000.005"))));
         when(cashBalanceRepository.findAllByBranchId(BRANCH_ID))
             .thenReturn(List.of(makeCashBalance("EUR", new BigDecimal("1000.00"))));
@@ -119,7 +119,7 @@ class DailyBalanceReconciliationServiceTest {
     @Test
     @DisplayName("Egyeztetés: számított > tényleges → isOverage() = true")
     void testReconcile_calculatedGreaterThanActual_isOverage() {
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, TEST_DATE))
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
             .thenReturn(List.of(makeDailyBalance("USD", new BigDecimal("500.00"))));
         when(cashBalanceRepository.findAllByBranchId(BRANCH_ID))
             .thenReturn(List.of(makeCashBalance("USD", new BigDecimal("400.00"))));
@@ -136,7 +136,7 @@ class DailyBalanceReconciliationServiceTest {
     @Test
     @DisplayName("Egyeztetés: számított < tényleges → isShortage() = true")
     void testReconcile_calculatedLessThanActual_isShortage() {
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, TEST_DATE))
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
             .thenReturn(List.of(makeDailyBalance("GBP", new BigDecimal("300.00"))));
         when(cashBalanceRepository.findAllByBranchId(BRANCH_ID))
             .thenReturn(List.of(makeCashBalance("GBP", new BigDecimal("350.00"))));
@@ -154,7 +154,7 @@ class DailyBalanceReconciliationServiceTest {
     @Test
     @DisplayName("Egyeztetés: nincs napi mérleg → üres lista")
     void testReconcile_noDailyBalances_emptyResult() {
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, TEST_DATE))
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
             .thenReturn(Collections.emptyList());
 
         List<DailyBalanceReconciliationService.ReconciliationAlert> alerts =
@@ -168,7 +168,7 @@ class DailyBalanceReconciliationServiceTest {
     @Test
     @DisplayName("Egyeztetés: több valuta, csak az egyik tér el → egy riasztás")
     void testReconcile_multipleCurrencies_oneMismatch() {
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, TEST_DATE))
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
             .thenReturn(List.of(
                 makeDailyBalance("EUR", new BigDecimal("1000.00")),
                 makeDailyBalance("USD", new BigDecimal("500.00"))

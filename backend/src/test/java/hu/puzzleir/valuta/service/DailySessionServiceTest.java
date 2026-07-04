@@ -116,10 +116,10 @@ class DailySessionServiceTest {
                 .openingBalanceHuf(BigDecimal.ZERO)
                 .build();
 
-        when(dailySessionRepository.findOpenSessionsByBranch(branchId)).thenReturn(List.of());
-        when(dailySessionRepository.findByBranchIdAndSessionDate(eq(branchId), eq(LocalDate.now())))
+        when(dailySessionRepository.findOpenSessionsByBranch(org.mockito.ArgumentMatchers.eq(companyId), org.mockito.ArgumentMatchers.eq(branchId))).thenReturn(List.of());
+        when(dailySessionRepository.findByBranchIdAndSessionDate(org.mockito.ArgumentMatchers.eq(companyId), eq(branchId), eq(LocalDate.now())))
                 .thenReturn(Optional.empty());
-        when(dailySessionRepository.findLatest(branchId)).thenReturn(Optional.empty());
+        when(dailySessionRepository.findLatest(org.mockito.ArgumentMatchers.eq(companyId), org.mockito.ArgumentMatchers.eq(branchId))).thenReturn(Optional.empty());
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
         when(workerRepository.findById(workerId)).thenReturn(Optional.of(worker));
@@ -158,10 +158,10 @@ class DailySessionServiceTest {
                 .openingBalanceHuf(BigDecimal.ZERO)
                 .build();
 
-        when(dailySessionRepository.findOpenSessionsByBranch(branchId)).thenReturn(List.of());
-        when(dailySessionRepository.findByBranchIdAndSessionDate(eq(branchId), eq(LocalDate.now())))
+        when(dailySessionRepository.findOpenSessionsByBranch(org.mockito.ArgumentMatchers.eq(companyId), org.mockito.ArgumentMatchers.eq(branchId))).thenReturn(List.of());
+        when(dailySessionRepository.findByBranchIdAndSessionDate(org.mockito.ArgumentMatchers.eq(companyId), eq(branchId), eq(LocalDate.now())))
                 .thenReturn(Optional.empty());
-        when(dailySessionRepository.findLatest(branchId)).thenReturn(Optional.empty());
+        when(dailySessionRepository.findLatest(org.mockito.ArgumentMatchers.eq(companyId), org.mockito.ArgumentMatchers.eq(branchId))).thenReturn(Optional.empty());
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
         when(workerRepository.findById(workerId)).thenReturn(Optional.of(worker));

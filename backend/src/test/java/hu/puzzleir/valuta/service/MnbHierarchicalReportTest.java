@@ -78,7 +78,7 @@ class MnbHierarchicalReportTest {
         SecurityContextHolder.getContext().setAuthentication(auth);
 
         // S1-01: DailyBalanceRepository alapértelmezett mock (üres készlet)
-        lenient().when(dailyBalanceRepository.findByBranchIdsAndDate(anyList(), any(LocalDate.class)))
+        lenient().when(dailyBalanceRepository.findByBranchIdsAndDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), anyList(), any(LocalDate.class)))
                 .thenReturn(Collections.emptyList());
     }
 

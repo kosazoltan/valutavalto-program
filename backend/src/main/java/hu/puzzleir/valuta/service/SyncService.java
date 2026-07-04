@@ -128,10 +128,11 @@ public class SyncService {
     }
 
     private int executeSync(SyncLog.SyncType syncType, UUID branchId, String branchCode, SyncLog.SyncDirection direction) {
+        UUID companyId = findBranchInCurrentCompany(branchId).getCompany().getId();
         int rates = countCurrentRates(branchId);
         int transactions = transactionRepository.findActiveByBranchAndDate(branchId, LocalDate.now()).size();
         int inventory = cashBalanceRepository.findByBranchId(branchId).size();
-        int closing = dailySessionRepository.findOpenSessionsByBranch(branchId).size();
+        int closing = dailySessionRepository.findOpenSessionsByBranch(companyId, branchId).size();
 
         String safeBranchCode = fileTransportService.sanitizePathSegment(branchCode, "branchCode");
         String safeSyncDir = fileTransportService.sanitizePathSegment(

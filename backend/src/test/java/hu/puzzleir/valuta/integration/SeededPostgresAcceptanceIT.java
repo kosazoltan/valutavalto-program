@@ -150,16 +150,19 @@ class SeededPostgresAcceptanceIT {
             assertThat(transactionRepository.findByBranchAndDate(seed.branch().getId(), businessDate))
                     .extracting(Transaction::getReceiptNumber)
                     .containsExactlyInAnyOrder("ETC001", "VTC001");
-            assertThat(transactionRepository.sumDailyTurnover(seed.branch().getId(), businessDate, TransactionType.BUY))
+            assertThat(transactionRepository.sumDailyTurnover(
+                    seed.company().getId(), seed.branch().getId(), businessDate, TransactionType.BUY))
                     .isEqualByComparingTo("39000.00");
-            assertThat(transactionRepository.sumDailyTurnover(seed.branch().getId(), businessDate, TransactionType.SELL))
+            assertThat(transactionRepository.sumDailyTurnover(
+                    seed.company().getId(), seed.branch().getId(), businessDate, TransactionType.SELL))
                     .isEqualByComparingTo("16000.00");
 
             assertThat(cashBalanceRepository.findByBranchIdAndCurrencyCode(seed.branch().getId(), "HUF").orElseThrow()
                     .getCurrentBalance()).isEqualByComparingTo("9977000.00");
             assertThat(cashBalanceRepository.findByBranchIdAndCurrencyCode(seed.branch().getId(), "EUR").orElseThrow()
                     .getCurrentBalance()).isEqualByComparingTo("5060.00");
-            assertThat(dailySessionRepository.findOpenSessionByBranchAndDate(seed.branch().getId(), businessDate))
+            assertThat(dailySessionRepository.findOpenSessionByBranchAndDate(
+                    seed.company().getId(), seed.branch().getId(), businessDate))
                     .isPresent()
                     .get()
                     .extracting(DailySession::getTransactionCount)

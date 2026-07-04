@@ -74,7 +74,7 @@ public class DailyBalanceService {
 
         // Ellenőrzés: már létezik-e
         DailyBalance existing = dailyBalanceRepository
-            .findByBranchIdAndBalanceDateAndCurrencyCode(branchId, date, currencyCode)
+            .findByBranchIdAndBalanceDateAndCurrencyCode(companyId, branchId, date, currencyCode)
             .orElse(null);
 
         if (existing != null && existing.getIsClosed()) {
@@ -188,10 +188,11 @@ public class DailyBalanceService {
      * 4. Nulla (első nap az irodában)
      */
     BigDecimal getOpeningBalance(UUID branchId, LocalDate date, String currencyCode) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         // Szint 1: előző nap záró egyenlege
         LocalDate previousDay = date.minusDays(1);
         Optional<BigDecimal> previousClosing = dailyBalanceRepository
-            .findClosingBalance(branchId, currencyCode, previousDay);
+            .findClosingBalance(companyId, branchId, currencyCode, previousDay);
 
         if (previousClosing.isPresent()) {
             log.debug("Nyitó egyenleg forrása: előző napi záró ({}): {}", previousDay, previousClosing.get());
@@ -317,8 +318,9 @@ public class DailyBalanceService {
      * Napi mérleg lezárása
      */
     public void closeDailyBalance(UUID branchId, LocalDate date, String currencyCode) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         DailyBalance balance = dailyBalanceRepository
-            .findByBranchIdAndBalanceDateAndCurrencyCode(branchId, date, currencyCode)
+            .findByBranchIdAndBalanceDateAndCurrencyCode(companyId, branchId, date, currencyCode)
             .orElseThrow(() -> new ValidationException(
                 String.format("Nincs napi mérleg: %s / %s", date, currencyCode)
             ));
@@ -352,8 +354,9 @@ public class DailyBalanceService {
         BigDecimal actualStock,
         String note
     ) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         DailyBalance balance = dailyBalanceRepository
-            .findByBranchIdAndBalanceDateAndCurrencyCode(branchId, date, currencyCode)
+            .findByBranchIdAndBalanceDateAndCurrencyCode(companyId, branchId, date, currencyCode)
             .orElseThrow(() -> new ValidationException(
                 String.format("Nincs napi mérleg: %s / %s", date, currencyCode)
             ));
@@ -425,7 +428,7 @@ public class DailyBalanceService {
 
             // A nap napi mérleg-sorai valutakód szerint indexelve (idempotens felülíráshoz).
             Map<String, DailyBalance> balanceByCurrency = new HashMap<>();
-            for (DailyBalance b : dailyBalanceRepository.findByBranchIdAndBalanceDate(branchId, date)) {
+            for (DailyBalance b : dailyBalanceRepository.findByBranchIdAndBalanceDate(companyId, branchId, date)) {
                 balanceByCurrency.put(b.getCurrencyCode(), b);
             }
 
@@ -528,7 +531,8 @@ public class DailyBalanceService {
      */
     @Transactional(readOnly = true)
     public List<DailyBalance> getDailyBalances(UUID branchId, LocalDate date) {
-        return dailyBalanceRepository.findByBranchIdAndBalanceDate(branchId, date);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return dailyBalanceRepository.findByBranchIdAndBalanceDate(companyId, branchId, date);
     }
 
     /**
@@ -536,6 +540,7 @@ public class DailyBalanceService {
      */
     @Transactional(readOnly = true)
     public List<DailyBalance> getMonthlyBalances(UUID branchId, int year, int month) {
-        return dailyBalanceRepository.findByBranchAndMonth(branchId, year, month);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return dailyBalanceRepository.findByBranchAndMonth(companyId, branchId, year, month);
     }
 }
