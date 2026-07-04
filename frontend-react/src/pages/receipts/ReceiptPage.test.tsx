@@ -133,7 +133,7 @@ describe('ReceiptPage backend detail contract', () => {
     })
 
     await user.type(await screen.findByLabelText('Zárás azonosító'), 'closing-1')
-    await user.click(screen.getByTestId('receipt-closing-pdf-download'))
+    await user.click(await screen.findByTestId('receipt-closing-pdf-download'))
 
     await waitFor(() => {
       expect(mocks.receiptDownloadClosingPdf).toHaveBeenCalledWith('closing-1')

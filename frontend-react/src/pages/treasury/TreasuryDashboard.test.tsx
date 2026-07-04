@@ -524,7 +524,7 @@ describe('TreasuryDashboard', () => {
       expect(mocks.getCompanyPosition).toHaveBeenCalled()
     })
 
-    const totalStockRow = screen.getByText('Készlet érték (összes)').closest('div')
+    const totalStockRow = (await screen.findByText('Készlet érték (összes)')).closest('div')
     expect(totalStockRow).toHaveTextContent('1.2M Ft')
   })
 
@@ -552,7 +552,7 @@ describe('TreasuryDashboard', () => {
       expect(mocks.getPendingCorrections).toHaveBeenCalled()
     })
 
-    expect(screen.getByText('Backend treasury összesítő')).toBeInTheDocument()
+    expect(await screen.findByText('Backend treasury összesítő')).toBeInTheDocument()
     expect(screen.getByText('Fiók összehasonlítás')).toBeInTheDocument()
     expect(screen.getByText('Beküldési státusz')).toBeInTheDocument()
     expect(screen.getByText('Bankflow összesítő')).toBeInTheDocument()
