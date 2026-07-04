@@ -256,6 +256,27 @@ function recordCompanyMismatch(
   return message;
 }
 
+function standaloneCompanyMismatchMessage(
+  entityLabel: string,
+  id: number,
+  rowCompanyCode: string | null | undefined,
+  sessionCompanyCode: string | null | undefined,
+): string | null {
+  if (!companyMismatch(rowCompanyCode, sessionCompanyCode)) {
+    return null;
+  }
+  const row = rowCompanyCode?.trim() ?? '';
+  const session = sessionCompanyCode?.trim() ?? '';
+  const message = `Cégeltérés: a tétel a(z) '${row}' céghez tartozik, az aktív cég '${session}' — a tétel visszatartva`;
+  log.warn('[SyncEngine] Cégeltérés miatt tétel visszatartva', {
+    entityLabel,
+    id,
+    rowCompanyCode: row,
+    sessionCompanyCode: session,
+  });
+  return message;
+}
+
 // --- HTTP kliens (lightweight, nincs axios az electron main-ben) ---
 
 async function httpGet<T>(url: string, token: string | null): Promise<T> {
@@ -1093,6 +1114,16 @@ export class SyncEngine {
     }
 
     for (const bankTransaction of pendingBankTransactions) {
+      if (companyMismatch(bankTransaction.company_code, sessionCompanyCode)) {
+        recordCompanyMismatch(
+          result,
+          'BANK',
+          bankTransaction.id,
+          bankTransaction.company_code,
+          sessionCompanyCode,
+        );
+        continue;
+      }
       try {
         await this.syncBankTransaction(serverUrl, token, bankTransaction);
         markBankTransactionSynced(bankTransaction.id);
@@ -1135,6 +1166,16 @@ export class SyncEngine {
     }
 
     for (const distribution of pendingDistributions) {
+      if (companyMismatch(distribution.company_code, sessionCompanyCode)) {
+        recordCompanyMismatch(
+          result,
+          'DIST',
+          distribution.id,
+          distribution.company_code,
+          sessionCompanyCode,
+        );
+        continue;
+      }
       try {
         await this.syncDistribution(serverUrl, token, distribution);
         markDistributionSynced(distribution.id);
@@ -1221,6 +1262,16 @@ export class SyncEngine {
     }
 
     for (const collection of pendingCollections) {
+      if (companyMismatch(collection.company_code, sessionCompanyCode)) {
+        recordCompanyMismatch(
+          result,
+          'COLLECTION',
+          collection.id,
+          collection.company_code,
+          sessionCompanyCode,
+        );
+        continue;
+      }
       try {
         await this.syncCollection(serverUrl, token, collection);
         markCollectionSynced(collection.id);
@@ -1263,6 +1314,16 @@ export class SyncEngine {
     }
 
     for (const storno of pendingStornos) {
+      if (companyMismatch(storno.company_code, sessionCompanyCode)) {
+        recordCompanyMismatch(
+          result,
+          'STORNO',
+          storno.id,
+          storno.company_code,
+          sessionCompanyCode,
+        );
+        continue;
+      }
       try {
         await this.syncStorno(serverUrl, token, storno);
         markStornoSynced(storno.id);
@@ -1301,6 +1362,16 @@ export class SyncEngine {
     }
 
     for (const operation of pendingHandoverOperations) {
+      if (companyMismatch(operation.company_code, sessionCompanyCode)) {
+        recordCompanyMismatch(
+          result,
+          'HANDOVER',
+          operation.id,
+          operation.company_code,
+          sessionCompanyCode,
+        );
+        continue;
+      }
       try {
         await this.syncHandoverOperation(serverUrl, token, operation);
         markHandoverOperationSynced(operation.id);
@@ -2175,8 +2246,16 @@ export class SyncEngine {
       }
       const token = this.getAuthToken();
       if (!token) return;
+      const sessionCompanyCode = getConfig('bootstrap_company_code');
 
       for (const dist of pending) {
+        const mismatchMessage = standaloneCompanyMismatchMessage(
+          'DIST',
+          dist.id,
+          dist.company_code,
+          sessionCompanyCode,
+        );
+        if (mismatchMessage) continue;
         try {
           const body: Record<string, unknown> = {
             targetBranchCode: dist.target_branch_code,
@@ -2231,8 +2310,16 @@ export class SyncEngine {
       }
       const token = this.getAuthToken();
       if (!token) return;
+      const sessionCompanyCode = getConfig('bootstrap_company_code');
 
       for (const tx of pending) {
+        const mismatchMessage = standaloneCompanyMismatchMessage(
+          'TRANSFER',
+          tx.id,
+          tx.company_code,
+          sessionCompanyCode,
+        );
+        if (mismatchMessage) continue;
         try {
           const body: Record<string, unknown> = {
             amount: tx.amount,
@@ -2307,8 +2394,16 @@ export class SyncEngine {
       if (!serverUrl) return;
       const token = this.getAuthToken();
       if (!token) return;
+      const sessionCompanyCode = getConfig('bootstrap_company_code');
 
       for (const st of pending) {
+        const mismatchMessage = standaloneCompanyMismatchMessage(
+          'TRANSFER_STORNO',
+          st.id,
+          st.company_code,
+          sessionCompanyCode,
+        );
+        if (mismatchMessage) continue;
         try {
           await httpPost(
             `${serverUrl}/transfers/${st.transfer_id}/storno`,
@@ -2365,8 +2460,16 @@ export class SyncEngine {
       }
       const token = this.getAuthToken();
       if (!token) return;
+      const sessionCompanyCode = getConfig('bootstrap_company_code');
 
       for (const col of pending) {
+        const mismatchMessage = standaloneCompanyMismatchMessage(
+          'COLLECTION',
+          col.id,
+          col.company_code,
+          sessionCompanyCode,
+        );
+        if (mismatchMessage) continue;
         try {
           const body: Record<string, unknown> = {
             sourceBranchCode: col.source_branch_code,
@@ -2421,8 +2524,19 @@ export class SyncEngine {
       }
       const token = this.getAuthToken();
       if (!token) return;
+      const sessionCompanyCode = getConfig('bootstrap_company_code');
 
       for (const row of pending) {
+        const mismatchMessage = standaloneCompanyMismatchMessage(
+          'STOCKTAKE',
+          row.id,
+          row.company_code,
+          sessionCompanyCode,
+        );
+        if (mismatchMessage) {
+          markStocktakeItemError(row.id, mismatchMessage);
+          continue;
+        }
         try {
           const body: Record<string, unknown> = {
             actualQuantity: row.actual_quantity,

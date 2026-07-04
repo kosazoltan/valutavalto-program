@@ -1390,6 +1390,7 @@ export interface PendingBankTransactionRow {
   note: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
+  company_code?: string | null;
   created_at: string;
   synced: number;
 }
@@ -1411,6 +1412,7 @@ export interface PendingStornoRow {
   customer_document_number: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
+  company_code?: string | null;
   created_at: string;
   synced: number;
 }
@@ -1426,6 +1428,7 @@ export interface PendingHandoverOperationRow {
   note: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
+  company_code?: string | null;
   created_at: string;
   synced: number;
 }
@@ -2141,6 +2144,7 @@ export interface PendingDistributionRow {
   note: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
+  company_code?: string | null;
   created_at: string;
   synced: number;
 }
@@ -2164,9 +2168,19 @@ export function savePendingDistribution(
       denominations,
       note,
       local_reference_number,
-      idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [targetBranchCode, currencyCode, amount, denominations, note, localReferenceNumber, idempotencyKey],
+      idempotency_key,
+      company_code
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      targetBranchCode,
+      currencyCode,
+      amount,
+      denominations,
+      note,
+      localReferenceNumber,
+      idempotencyKey,
+      getActiveCompanyCode(),
+    ],
   );
   saveDatabase();
 
@@ -2376,6 +2390,7 @@ export interface PendingCollectionRow {
   note: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
+  company_code?: string | null;
   created_at: string;
   synced: number;
 }
@@ -2397,9 +2412,10 @@ export function savePendingCollection(
       amount,
       note,
       local_reference_number,
-      idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?)`,
-    [sourceBranchCode, currencyCode, amount, note, localReferenceNumber, idempotencyKey],
+      idempotency_key,
+      company_code
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [sourceBranchCode, currencyCode, amount, note, localReferenceNumber, idempotencyKey, getActiveCompanyCode()],
   );
   saveDatabase();
 
@@ -2457,8 +2473,9 @@ export function savePendingBankTransaction(
       bank_reference,
       note,
       local_reference_number,
-      idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      idempotency_key,
+      company_code
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       transactionType,
       currencyCode,
@@ -2471,6 +2488,7 @@ export function savePendingBankTransaction(
       note?.trim() || null,
       localReferenceNumber,
       idempotencyKey,
+      getActiveCompanyCode(),
     ],
   );
   saveDatabase();
@@ -2565,8 +2583,9 @@ export function savePendingStorno(params: {
       customer_name,
       customer_document_number,
       local_reference_number,
-      idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      idempotency_key,
+      company_code
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       params.transactionId,
       params.originalReceiptNumber,
@@ -2583,6 +2602,7 @@ export function savePendingStorno(params: {
       params.customerDocumentNumber?.trim() || null,
       localReferenceNumber,
       idempotencyKey,
+      getActiveCompanyCode(),
     ],
   );
   saveDatabase();
@@ -2658,6 +2678,7 @@ export interface PendingTransferStornoRow {
   reason: string;
   local_reference_number: string | null;
   idempotency_key: string | null;
+  company_code?: string | null;
   created_at: string;
   synced: number;
 }
@@ -2677,9 +2698,16 @@ export function savePendingTransferStorno(params: {
   const idempotencyKey = crypto.randomUUID();
 
   db.run(
-    `INSERT INTO pending_transfer_stornos (transfer_id, transfer_number, reason, local_reference_number, idempotency_key)
-     VALUES (?, ?, ?, ?, ?)`,
-    [params.transferId, params.transferNumber ?? null, params.reason.trim(), localReferenceNumber, idempotencyKey],
+    `INSERT INTO pending_transfer_stornos (transfer_id, transfer_number, reason, local_reference_number, idempotency_key, company_code)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      params.transferId,
+      params.transferNumber ?? null,
+      params.reason.trim(),
+      localReferenceNumber,
+      idempotencyKey,
+      getActiveCompanyCode(),
+    ],
   );
   saveDatabase();
 
@@ -2868,8 +2896,9 @@ export function savePendingHandoverOperation(params: {
       amounts_json,
       note,
       local_reference_number,
-      idempotency_key
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      idempotency_key,
+      company_code
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       params.operationType,
       params.sheetId ?? null,
@@ -2880,6 +2909,7 @@ export function savePendingHandoverOperation(params: {
       params.note?.trim() || null,
       localReferenceNumber,
       idempotencyKey,
+      getActiveCompanyCode(),
     ],
   );
   saveDatabase();
@@ -2951,6 +2981,7 @@ export interface PendingStocktakeItemRow {
   actual_quantity: number;
   note: string | null;
   idempotency_key: string | null;
+  company_code?: string | null;
   created_at: string;
   synced: number;
   sync_error: string | null;
@@ -2965,9 +2996,9 @@ export function queueStocktakeCount(
 ): number {
   if (!db) return 0;
   const stmt = db.prepare(
-    'INSERT INTO pending_stocktake_items (item_id, actual_quantity, note, idempotency_key) VALUES (?, ?, ?, ?)',
+    'INSERT INTO pending_stocktake_items (item_id, actual_quantity, note, idempotency_key, company_code) VALUES (?, ?, ?, ?, ?)',
   );
-  stmt.run([itemId, actualQuantity, note, idempotencyKey]);
+  stmt.run([itemId, actualQuantity, note, idempotencyKey, getActiveCompanyCode()]);
   stmt.free();
   saveDatabase();
   const idStmt = db.prepare('SELECT last_insert_rowid() as id');
