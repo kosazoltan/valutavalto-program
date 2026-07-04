@@ -53,6 +53,16 @@
 !ifndef OUTPUT_DIR
   !define OUTPUT_DIR "build"
 !endif
+; Audit TOP15 #3 (2026-07-04 incidens): kritikus Electron runtime-fajl
+; post-copy verifikacio. Silent (/S) modban a MessageBox kimarad, az Abort NEM
+; (ugyanaz a minta, mint a Penztar.exe-check, PR #698).
+!macro VerifyElectronFile RELPATH
+    IfFileExists "$INSTDIR\${RELPATH}" electron_file_ok_${__LINE__} 0
+        IfSilent +2 0
+        MessageBox MB_OK|MB_ICONSTOP "TELEPITÉS SIKERTELEN!$\r$\n$\r$\nEgy kritikus programfájl hiányzik a következő helyről:$\r$\n$INSTDIR\${RELPATH}$\r$\n$\r$\nValószínű ok: az AV (ESET, Windows Defender) blokkolta a fájl másolását. Megoldás:$\r$\n1. Kapcsolja ki az ESET-et 10 percre (Setup > Pause protection)$\r$\n2. Indítsa újra a telepítőt ($EXEFILE)$\r$\n3. Indítsa újra az ESET-et$\r$\n$\r$\nKérem jelezze a fejlesztőnek (Kósa Zoltán)."
+        Abort "Electron resource file missing: ${RELPATH} — install aborted"
+    electron_file_ok_${__LINE__}:
+!macroend
 
 ; =============================================================================
 ; v2.3.8 BUG FIX: PowerShell -EncodedCommand b64 strings
@@ -428,6 +438,19 @@ Section "Telepites" SecInstall
         Abort "Penztar.exe missing — install aborted"
     penztar_exe_ok:
         DetailPrint "Penztar.exe verified at $INSTDIR\Penztar.exe"
+    ; Kritikus Electron runtime-fajlok verifikacioja (audit TOP15 #3)
+    DetailPrint "Electron runtime fajlok ellenorzese..."
+    !insertmacro VerifyElectronFile "icudtl.dat"
+    !insertmacro VerifyElectronFile "resources.pak"
+    !insertmacro VerifyElectronFile "v8_context_snapshot.bin"
+    !insertmacro VerifyElectronFile "snapshot_blob.bin"
+    !insertmacro VerifyElectronFile "chrome_100_percent.pak"
+    !insertmacro VerifyElectronFile "chrome_200_percent.pak"
+    !insertmacro VerifyElectronFile "ffmpeg.dll"
+    !insertmacro VerifyElectronFile "locales\en-US.pak"
+    !insertmacro VerifyElectronFile "locales\hu.pak"
+    !insertmacro VerifyElectronFile "resources\app.asar"
+    DetailPrint "Electron runtime fajlok rendben (10/10)."
 
     ; v2.5.9: Diagnosztikai szkript bemasolasa az INSTDIR-be (mindenkinek)
     DetailPrint "Diagnosztikai eszkoz telepitese..."
