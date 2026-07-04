@@ -163,6 +163,14 @@ function setupApiGet() {
   })
 }
 
+async function clickEnabledButton(name: string | RegExp): Promise<void> {
+  const button = await screen.findByRole('button', { name })
+  await waitFor(() => expect(button).toBeEnabled())
+  await act(async () => {
+    fireEvent.click(button)
+  })
+}
+
 describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -371,7 +379,7 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
 
     fireEvent.change(screen.getByPlaceholderText('Összeg'), { target: { value: '250' } })
     fireEvent.change(screen.getByPlaceholderText('Opcionális'), { target: { value: 'Teszt bank kivét' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Művelet rögzítése' }))
+    await clickEnabledButton('Művelet rögzítése')
 
     await waitFor(() => {
       expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/bank-withdraw', {
@@ -384,7 +392,7 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
 
     fireEvent.change(screen.getByLabelText('Készletművelet típusa'), { target: { value: 'bankDeposit' } })
     fireEvent.change(screen.getByPlaceholderText('Összeg'), { target: { value: '125' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Művelet rögzítése' }))
+    await clickEnabledButton('Művelet rögzítése')
 
     await waitFor(() => {
       expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/bank-deposit', {
@@ -400,7 +408,7 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     await waitFor(() => expect(targetSelect).toHaveTextContent('BR002 — Szeged Pénztár'))
     fireEvent.change(targetSelect, { target: { value: '22222222-2222-2222-2222-222222222222' } })
     fireEvent.change(screen.getByPlaceholderText('Összeg'), { target: { value: '75' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Művelet rögzítése' }))
+    await clickEnabledButton('Művelet rögzítése')
 
     await waitFor(() => {
       expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/transfer', {
@@ -415,7 +423,7 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     fireEvent.change(screen.getByLabelText('Készletművelet típusa'), { target: { value: 'correction' } })
     fireEvent.change(screen.getByPlaceholderText('Új egyenleg'), { target: { value: '1000' } })
     fireEvent.change(screen.getByPlaceholderText('Kötelező indoklás'), { target: { value: 'Leltár korrekció' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Művelet rögzítése' }))
+    await clickEnabledButton('Művelet rögzítése')
 
     await waitFor(() => {
       expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/correction', {
@@ -557,7 +565,7 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
 
     const darabInput = screen.getByPlaceholderText('Darab')
     fireEvent.change(darabInput, { target: { value: '4' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Bevét' }))
+    await clickEnabledButton('Bevét')
 
     await waitFor(() => {
       expect(mocks.apiPost).toHaveBeenCalledWith('/banknote-inventory/branch/11111111-1111-1111-1111-111111111111/add', null, {
@@ -570,7 +578,7 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
       })
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Kiad' }))
+    await clickEnabledButton('Kiad')
     await waitFor(() => {
       expect(mocks.apiPost).toHaveBeenCalledWith('/banknote-inventory/branch/11111111-1111-1111-1111-111111111111/remove', null, {
         params: {
@@ -581,7 +589,7 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
       })
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Leltárdarab' }))
+    await clickEnabledButton('Leltárdarab')
     await waitFor(() => {
       expect(mocks.apiPost).toHaveBeenCalledWith('/banknote-inventory/1/count', null, {
         params: {
@@ -593,7 +601,7 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
 
     fireEvent.change(screen.getByPlaceholderText('Min.'), { target: { value: '2' } })
     fireEvent.change(screen.getByPlaceholderText('Max.'), { target: { value: '20' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Küszöb mentése' }))
+    await clickEnabledButton('Küszöb mentése')
 
     await waitFor(() => {
       expect(mocks.apiPut).toHaveBeenCalledWith('/banknote-inventory/1/thresholds', null, {
