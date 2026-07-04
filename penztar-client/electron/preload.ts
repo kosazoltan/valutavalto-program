@@ -122,7 +122,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // V235 (2026-05-19 HIBA #14 + #15 + #17 + #18): bővített API objektum-
   // paraméterrel a teljes Pmt. customer-snapshot mentéséhez.
-  savePendingTransactionV2: (input: unknown): Promise<number> =>
+  savePendingTransactionV2: (
+    input: IpcRequest<'save-pending-transaction-v2'>,
+  ): Promise<IpcResponse<'save-pending-transaction-v2'>> =>
     ipcRenderer.invoke('save-pending-transaction-v2', input),
 
   savePendingConversion: (
@@ -159,7 +161,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // V235 + V236 (2026-05-19 Codex P1 #695): bővített Konverzio API teljes
   // Pmt. customer-snapshot-tal.
-  savePendingConversionV2: (input: unknown): Promise<number> =>
+  savePendingConversionV2: (
+    input: IpcRequest<'save-pending-conversion-v2'>,
+  ): Promise<IpcResponse<'save-pending-conversion-v2'>> =>
     ipcRenderer.invoke('save-pending-conversion-v2', input),
 
   savePendingBankTransaction: (
@@ -375,7 +379,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }>> =>
     ipcRenderer.invoke('get-reprintable-stornos', limit),
 
-  syncOffline: (): Promise<number> =>
+  syncOffline: (): Promise<IpcResponse<'sync-offline'>> =>
     ipcRenderer.invoke('sync-offline'),
 
   getSyncStatus: (): Promise<string> =>
@@ -433,11 +437,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
     sealNumber: string | null = null,
     direction: string | null = null,
     lines: string | null = null,
-  ): Promise<number> =>
-    ipcRenderer.invoke(
-      'save-pending-transfer',
-      targetBranchId, targetBranchCode, currencyId, currencyCode, amount, hufValue, transferType, denominations, note, carrierName, sealNumber, direction, lines,
-    ),
+  ): Promise<IpcResponse<'save-pending-transfer'>> => {
+    const args: IpcRequest<'save-pending-transfer'> = [
+      targetBranchId,
+      targetBranchCode,
+      currencyId,
+      currencyCode,
+      amount,
+      hufValue,
+      transferType,
+      denominations,
+      note,
+      carrierName,
+      sealNumber,
+      direction,
+      lines,
+    ];
+    return ipcRenderer.invoke('save-pending-transfer', ...args);
+  },
 
   getPendingTransfers: (): Promise<Array<{
     id: number;

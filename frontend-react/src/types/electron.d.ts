@@ -1,3 +1,9 @@
+import type {
+  PendingConversionInputV2,
+  PendingTransactionInputV2,
+  SavePendingTransferArgs,
+} from '@valuta/shared-ipc';
+
 export interface ElectronAPI {
   // --- Google OAuth Desktop Flow (Authorization Code + loopback, RFC 8252) ---
   googleOAuthFlow(): Promise<
@@ -91,58 +97,7 @@ export interface ElectronAPI {
   // V235 (2026-05-19 HIBA #14 + #15 + #17 + #18): bővített API teljes
   // Pmt. customer-snapshot-tal (szül.hely/idő, anyja neve, állampolgárság,
   // PEP minőség, "más nevében" flag + actor teljes azonosítása).
-  savePendingTransactionV2?: (input: {
-    type: 'SELL' | 'BUY'
-    currencyCode: string
-    foreignAmount: number
-    hufAmount: number
-    roundedHufAmount: number
-    rate: number
-    handlingFee: number | null
-    discountPercent: number | null
-    customerIdentifier: string | null
-    customerName: string | null
-    customerDocumentNumber: string | null
-    customerAddress: string | null
-    denominations: string | null
-    foreignStatus: 'DOMESTIC' | 'FOREIGN' | null
-    customerBirthPlace: string | null
-    customerBirthDate: string | null
-    customerMotherName: string | null
-    customerNationality: string | null
-    customerDocumentType: string | null
-    sourceOfFunds: string | null
-    customerIsPep: boolean | null
-    customerOnOwnBehalf: boolean | null
-    customerActorName: string | null
-    customerPepKind: string | null
-    customerActorBirthPlace: string | null
-    customerActorBirthDate: string | null
-    customerActorMotherName: string | null
-    customerActorNationality: string | null
-    customerActorDocumentType: string | null
-    customerActorDocumentNumber: string | null
-    customerActorAddress: string | null
-    // AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, NULL ha nem kellett.
-    approverWorkerId?: number | null
-    // AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1).
-    approvalSessionId?: string | null
-    // Multi-line aggregate (2026-06-04): tobb-soros nyugta sorai JSON-kent (backend
-    // TransactionLineRequestDto alak). NULL/hianyzo → egysoros (valtozatlan viselkedes).
-    lines?: string | null
-    // FK-KEZDIJ offline (2026-06-12): kezelesi dij override mezok (HALF/WAIVED/SPECIAL +
-    // indok + ugyfelkartya) — a sync-engine a REST-tel azonos mezokkel kuldi fel.
-    handlingFeeOverrideType?: string | null
-    handlingFeeOverrideReason?: string | null
-    customerCardNumber?: string | null
-    // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok (JSON-string, max 4).
-    isLegalEntityCustomer?: boolean | null
-    legalEntityName?: string | null
-    legalEntitySeat?: string | null
-    legalEntityTaxNumber?: string | null
-    legalDeedNumber?: string | null
-    beneficialOwnersJson?: string | null
-  }) => Promise<number>;
+  savePendingTransactionV2?: (input: PendingTransactionInputV2) => Promise<number>;
   savePendingConversion(
     fromCurrencyId: number | null,
     fromCurrencyCode: string,
@@ -161,44 +116,7 @@ export interface ElectronAPI {
 
   // V235 + V236 (2026-05-19 Codex P1 #695): bővített Konverzio API teljes
   // Pmt. customer-snapshot-tal.
-  savePendingConversionV2?: (input: {
-    fromCurrencyId: number | null
-    fromCurrencyCode: string
-    toCurrencyId: number | null
-    toCurrencyCode: string
-    fromAmount: number
-    calculatedHufAmount: number
-    calculatedToAmount: number
-    conversionRate: number
-    handlingFee: number | null
-    customerId: string | null
-    customerName: string | null
-    customerDocumentNumber: string | null
-    customerAddress: string | null
-    customerNationality: string | null
-    customerBirthPlace: string | null
-    customerBirthDate: string | null
-    customerMotherName: string | null
-    customerDocumentType: string | null
-    sourceOfFunds: string | null
-    customerIsPep: boolean | null
-    customerOnOwnBehalf: boolean | null
-    customerActorName: string | null
-    customerPepKind: string | null
-    customerActorBirthPlace: string | null
-    customerActorBirthDate: string | null
-    customerActorMotherName: string | null
-    customerActorNationality: string | null
-    customerActorDocumentType: string | null
-    customerActorDocumentNumber: string | null
-    customerActorAddress: string | null
-    foreignStatus: string | null
-    note: string | null
-    // AML vezetoi jovahagyas (2026-06-04): jovahagyo workerId, NULL ha nem kellett.
-    approverWorkerId?: number | null
-    // AML jovahagyas-session azonosito — a grantot a konkret nyugtahoz koti (Codex P1).
-    approvalSessionId?: string | null
-  }) => Promise<number>;
+  savePendingConversionV2?: (input: PendingConversionInputV2) => Promise<number>;
   savePendingBankTransaction(
     transactionType: 'BUY' | 'SELL',
     currencyCode: string,
@@ -386,21 +304,7 @@ export interface ElectronAPI {
     denominations: string | null,
     note: string | null,
   ): Promise<number>;
-  savePendingTransfer(
-    targetBranchId: string | null,
-    targetBranchCode: string,
-    currencyId: number | null,
-    currencyCode: string,
-    amount: number,
-    hufValue: number | null,
-    transferType: string | null,
-    denominations: string | null,
-    note: string | null,
-    carrierName?: string | null,
-    sealNumber?: string | null,
-    direction?: string | null,
-    lines?: string | null,
-  ): Promise<number>;
+  savePendingTransfer(...args: SavePendingTransferArgs): Promise<number>;
   getPendingTransfers(): Promise<Array<{
     id: number;
     target_branch_id: string | null;

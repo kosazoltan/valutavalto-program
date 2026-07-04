@@ -19,6 +19,8 @@
 //
 // Minden uj IPC endpoint csak ide kerul be, es a 3 processz
 // mar jatszik egy forrasbol.
+// X4 minta: IpcRoutes-entry + IPC_CHANNELS-konstans + preload IpcRequest/IpcResponse kötés.
+// A maradék pénzmozgás-channel ugyanezt a mintát követi.
 // ============================================================
 
 // ---- Setup Wizard IPC ----
@@ -86,6 +88,138 @@ export interface SyncStatusResponse {
   errorMessage?: string
 }
 
+// ---- Pénzmozgás IPC (X4 2026-07-05): a 4 kritikus channel tipizálása ----
+/**
+ * V235 (2026-05-19 HIBA #14 + #15 + #17 + #18): bővített input objektum a
+ * pending tranzakciók teljes Pmt. customer-snapshot mentéséhez. A korábbi
+ * pozicionális paraméterű {@link savePendingTransaction} megmaradt backward
+ * compat miatt — az új helyek a `savePendingTransactionV2`-t használják.
+ */
+export interface PendingTransactionInputV2 {
+  type: 'SELL' | 'BUY';
+  currencyCode: string;
+  foreignAmount: number;
+  hufAmount: number;
+  roundedHufAmount: number;
+  rate: number;
+  handlingFee: number | null;
+  discountPercent: number | null;
+  customerIdentifier: string | null;
+  customerName: string | null;
+  customerDocumentNumber: string | null;
+  customerAddress: string | null;
+  denominations: string | null;
+  foreignStatus: 'DOMESTIC' | 'FOREIGN' | null;
+  // V229 100k+ snapshot
+  customerBirthPlace: string | null;
+  customerBirthDate: string | null;
+  customerMotherName: string | null;
+  customerNationality: string | null;
+  customerDocumentType: string | null;
+  // V229 300k+ JOGCÍM
+  sourceOfFunds: string | null;
+  customerIsPep: boolean | null;
+  // AML vezetoi jovahagyas (2026-06-04): jovahagyo supervisor/manager/admin workerId.
+  approverWorkerId: number | null;
+  // AML jovahagyas-session azonosito (Codex P1: receipt-scoping).
+  approvalSessionId: string | null;
+  customerOnOwnBehalf: boolean | null;
+  customerActorName: string | null;
+  // V235 NEW (HIBA #15): PEP minőség
+  customerPepKind: string | null;
+  // V235 NEW (HIBA #17): actor teljes azonosítása
+  customerActorBirthPlace: string | null;
+  customerActorBirthDate: string | null;
+  customerActorMotherName: string | null;
+  customerActorNationality: string | null;
+  customerActorDocumentType: string | null;
+  customerActorDocumentNumber: string | null;
+  customerActorAddress: string | null;
+  /**
+   * Multi-line aggregate (2026-06-04): ha kitoltott, ez a pending sor EGY tobb-soros
+   * vetel/eladas nyugtat kepvisel — a backend `lines[]` aggregalt utvonalra kerul (egy
+   * AML-kapu, egy approval-grant). JSON-string a backend TransactionLineRequestDto alakjaban
+   * ([{ currencyCode, banknoteCount, customExchangeRate, discountType, foreignStatus }]).
+   * NULL/undefined → egysoros tranzakcio (valtozatlan viselkedes).
+   */
+  lines?: string | null;
+  // FK-KEZDIJ offline (2026-06-12, penztar-batch B.1/b): a Felezes/Elenegedes/Ugyfelkartya
+  // override a pending sorban is — a sync-engine a REST-tel azonos mezokkel kuldi fel.
+  handlingFeeOverrideType?: string | null;
+  handlingFeeOverrideReason?: string | null;
+  customerCardNumber?: string | null;
+  // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok (JSON-string, max 4).
+  isLegalEntityCustomer?: boolean | null;
+  legalEntityName?: string | null;
+  legalEntitySeat?: string | null;
+  legalEntityTaxNumber?: string | null;
+  legalDeedNumber?: string | null;
+  beneficialOwnersJson?: string | null;
+}
+
+/**
+ * V235 + V236 (2026-05-19 Codex P1 #695): bővített input objektum a
+ * Konverzio offline outbox-hoz, teljes Pmt. customer-snapshot mentéséhez.
+ * A pozicionális {@link savePendingConversion} megmarad backward compat
+ * miatt — új helyek a `savePendingConversionV2`-t használják.
+ */
+export interface PendingConversionInputV2 {
+  fromCurrencyId: number | null;
+  fromCurrencyCode: string;
+  toCurrencyId: number | null;
+  toCurrencyCode: string;
+  fromAmount: number;
+  calculatedHufAmount: number;
+  calculatedToAmount: number;
+  conversionRate: number;
+  handlingFee: number | null;
+  customerId: string | null;
+  customerName: string | null;
+  customerDocumentNumber: string | null;
+  customerAddress: string | null;
+  customerNationality: string | null;
+  customerBirthPlace: string | null;
+  customerBirthDate: string | null;
+  customerMotherName: string | null;
+  customerDocumentType: string | null;
+  sourceOfFunds: string | null;
+  customerIsPep: boolean | null;
+  approverWorkerId: number | null;
+  approvalSessionId: string | null;
+  customerOnOwnBehalf: boolean | null;
+  customerActorName: string | null;
+  customerPepKind: string | null;
+  customerActorBirthPlace: string | null;
+  customerActorBirthDate: string | null;
+  customerActorMotherName: string | null;
+  customerActorNationality: string | null;
+  customerActorDocumentType: string | null;
+  customerActorDocumentNumber: string | null;
+  customerActorAddress: string | null;
+  // HIBA 2026-05-26 (#2): ugyfel deviza-statusza (DOMESTIC/FOREIGN)
+  foreignStatus: string | null;
+  note: string | null;
+}
+
+// A pozicionális wire-formátum version-skew miatt VÁLTOZATLAN (régi telepített
+// main + új renderer). A tuple címkézett, az utolsó 4 elem opcionális — a
+// main-oldali default (= null) paritásban (main.ts save-pending-transfer).
+export type SavePendingTransferArgs = [
+  targetBranchId: string | null,
+  targetBranchCode: string,
+  currencyId: number | null,
+  currencyCode: string,
+  amount: number,
+  hufValue: number | null,
+  transferType: string | null,
+  denominations: string | null,
+  note: string | null,
+  carrierName?: string | null,
+  sealNumber?: string | null,
+  direction?: string | null,
+  lines?: string | null,
+]
+
 // ---- Aggregate contract table ----
 // A router-szintu fel-hasznalas: Record<channel, req/res parja>
 export interface IpcRoutes {
@@ -105,6 +239,22 @@ export interface IpcRoutes {
     request: void
     response: SyncStatusResponse
   }
+  'save-pending-transaction-v2': {
+    request: PendingTransactionInputV2
+    response: number // SQLite rowid (SPEND-RETID, PR #1301)
+  }
+  'save-pending-conversion-v2': {
+    request: PendingConversionInputV2
+    response: number
+  }
+  'save-pending-transfer': {
+    request: SavePendingTransferArgs // pozicionális tuple — lásd D2
+    response: number
+  }
+  'sync-offline': {
+    request: void
+    response: number // syncAll().synced — NEM a teljes SyncResult
+  }
 }
 
 // Type helper: kihuzza egy channel request/response tipusat
@@ -117,4 +267,8 @@ export const IPC_CHANNELS = {
   SETUP_TEST_CONNECTION: 'setup:test-connection' as const,
   SETUP_WORKERS: 'setup:workers' as const,
   SYNC_STATUS: 'sync:status' as const,
+  SAVE_PENDING_TRANSACTION_V2: 'save-pending-transaction-v2' as const,
+  SAVE_PENDING_CONVERSION_V2: 'save-pending-conversion-v2' as const,
+  SAVE_PENDING_TRANSFER: 'save-pending-transfer' as const,
+  SYNC_OFFLINE: 'sync-offline' as const,
 } satisfies Record<string, keyof IpcRoutes>
