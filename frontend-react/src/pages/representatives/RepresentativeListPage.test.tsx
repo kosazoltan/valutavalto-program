@@ -59,7 +59,7 @@ describe('RepresentativeListPage backend contract', () => {
     await waitFor(() => expect(mockList).toHaveBeenCalledTimes(1))
 
     expect(mockFindByCustomer).not.toHaveBeenCalled()
-    expect(screen.getAllByText('Kovács Pál').length).toBeGreaterThan(0)
+    expect((await screen.findAllByText('Kovács Pál')).length).toBeGreaterThan(0)
     expect(screen.getAllByText('42').length).toBeGreaterThan(0)
   })
 
@@ -75,6 +75,6 @@ describe('RepresentativeListPage backend contract', () => {
     await waitFor(() => expect(mockFindByCustomer).toHaveBeenCalledWith('42'))
 
     expect(mockList).not.toHaveBeenCalled()
-    expect(screen.getAllByText('Kovács Pál').length).toBeGreaterThan(0)
+    expect((await screen.findAllByText('Kovács Pál')).length).toBeGreaterThan(0)
   })
 })

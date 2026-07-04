@@ -102,8 +102,8 @@ describe('TradePage backend contract', () => {
         size: 20,
       }))
     })
-    expect(screen.getAllByText(/Budapest 01/).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/Szeged 01/).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/Budapest 01/)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/Szeged 01/)).length).toBeGreaterThan(0)
   })
 
   it('új trade ajánlatot POST /trades/propose szerződésre küld', async () => {
@@ -111,13 +111,19 @@ describe('TradePage backend contract', () => {
 
     await screen.findByText('Irodaközi trade')
     await waitFor(() => expect(mocks.listVaultCounterparties).toHaveBeenCalled())
-    expect(screen.getByDisplayValue('Budapest 01')).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Cél iroda'), { target: { value: '22222222-2222-2222-2222-222222222222' } })
-    fireEvent.change(screen.getByLabelText('Valuta'), { target: { value: 'usd' } })
-    fireEvent.change(screen.getByLabelText('Összeg'), { target: { value: '2500' } })
-    fireEvent.change(screen.getByLabelText('Árfolyam'), { target: { value: '351.25' } })
-    fireEvent.change(screen.getByLabelText('Megjegyzés'), { target: { value: 'Új ajánlat' } })
-    fireEvent.click(screen.getByRole('button', { name: /Ajánlat létrehozása/i }))
+    expect(await screen.findByDisplayValue('Budapest 01')).toBeInTheDocument()
+    const celIroda = await screen.findByLabelText('Cél iroda')
+    fireEvent.change(celIroda, { target: { value: '22222222-2222-2222-2222-222222222222' } })
+    const valuta = screen.getByLabelText('Valuta')
+    fireEvent.change(valuta, { target: { value: 'usd' } })
+    const osszeg = screen.getByLabelText('Összeg')
+    fireEvent.change(osszeg, { target: { value: '2500' } })
+    const arfolyam = screen.getByLabelText('Árfolyam')
+    fireEvent.change(arfolyam, { target: { value: '351.25' } })
+    const megjegyzes = screen.getByLabelText('Megjegyzés')
+    fireEvent.change(megjegyzes, { target: { value: 'Új ajánlat' } })
+    const submitBtn = screen.getByRole('button', { name: /Ajánlat létrehozása/i })
+    fireEvent.click(submitBtn)
 
     await waitFor(() => {
       expect(mocks.propose).toHaveBeenCalledWith({
@@ -135,7 +141,8 @@ describe('TradePage backend contract', () => {
     render(<TradePage />)
 
     expect((await screen.findAllByText('Teszt trade')).length).toBeGreaterThan(0)
-    fireEvent.change(screen.getByPlaceholderText('Elutasítás oka'), { target: { value: 'Nincs készlet' } })
+    const rejectReason = await screen.findByPlaceholderText('Elutasítás oka')
+    fireEvent.change(rejectReason, { target: { value: 'Nincs készlet' } })
     fireEvent.click(screen.getAllByRole('button', { name: /Elutasítás/i })[0] as HTMLElement)
     await waitFor(() => {
       expect(mocks.reject).toHaveBeenCalledWith('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Nincs készlet')
