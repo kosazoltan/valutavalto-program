@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.config;
 
 import hu.puzzleir.valuta.security.IdempotencyFilter;
 import hu.puzzleir.valuta.security.JwtAuthenticationFilter;
+import hu.puzzleir.valuta.security.CompanyCodeCrossCheckFilter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -42,6 +43,17 @@ class FilterRegistrationConfigTest {
     void idempotencyFilterServletRegistrationDisabled() {
         IdempotencyFilter filter = Mockito.mock(IdempotencyFilter.class);
         FilterRegistrationBean<IdempotencyFilter> reg = config.idempotencyFilterRegistration(filter);
+        assertThat(reg).isNotNull();
+        assertThat(reg.isEnabled()).isFalse();
+        assertThat(reg.getFilter()).isSameAs(filter);
+    }
+
+    @Test
+    @DisplayName("companyCodeCrossCheckFilterRegistration setEnabled(false)")
+    void companyCodeCrossCheckFilterServletRegistrationDisabled() {
+        CompanyCodeCrossCheckFilter filter = Mockito.mock(CompanyCodeCrossCheckFilter.class);
+        FilterRegistrationBean<CompanyCodeCrossCheckFilter> reg =
+                config.companyCodeCrossCheckFilterRegistration(filter);
         assertThat(reg).isNotNull();
         assertThat(reg.isEnabled()).isFalse();
         assertThat(reg.getFilter()).isSameAs(filter);

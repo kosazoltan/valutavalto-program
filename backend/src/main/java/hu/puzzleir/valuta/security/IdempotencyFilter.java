@@ -13,8 +13,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Set;
 
 /**
  * Enforces Idempotency-Key header on protected write endpoints (POST/PUT/PATCH/DELETE).
@@ -45,45 +43,15 @@ public class IdempotencyFilter extends OncePerRequestFilter {
     private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
     private static final String LEGACY_IDEMPOTENCY_HEADER = "X-Idempotency-Key";
 
-    private static final Set<String> WRITE_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
+    private final ObjectMapper objectMapper;
 
-    private static final List<String> EXCLUDED_PREFIXES = List.of(
-            "/api/v1/auth/",
-            // 2026-05-15: SetupWizard public endpointok (google-identify, setup-status, etc.)
-            // — egyszeri belepesi flow, NEM kell idempotency, es a kliens nem tud
-            // header-t kuldeni a publikus context-ben (no JWT, no apiClient interceptor).
-            "/api/v1/public/",
-            "/api/v1/email/accounts/callback",
-            "/api/v1/health",
-            "/api/v1/error-report",
-            "/api/v1/error-log",
-            // v2.5.16: kliens-oldali hibajelentes (Penztar.exe -> backend) idempotency-mentes
-            "/api/v1/diagnostics/",
-            "/swagger-ui/",
-            "/v3/api-docs",
-            "/api-docs/",
-            "/actuator/",
-            "/ws/"
-    );
-
-        private final ObjectMapper objectMapper;
-
-        public IdempotencyFilter(ObjectMapper objectMapper) {
+    public IdempotencyFilter(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
-        }
+    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        if (!WRITE_METHODS.contains(request.getMethod())) {
-            return true;
-        }
-
-        String path = request.getRequestURI();
-        if (!path.startsWith("/api/v1/")) {
-            return true;
-        }
-
-        return EXCLUDED_PREFIXES.stream().anyMatch(path::startsWith);
+        return ProtectedWritePaths.shouldNotFilter(request);
     }
 
     @Override
