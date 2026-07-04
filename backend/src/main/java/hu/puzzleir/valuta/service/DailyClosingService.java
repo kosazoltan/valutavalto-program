@@ -129,9 +129,11 @@ public class DailyClosingService {
         // Eredmeny osszesites
         boolean allPassed = stepResults.stream().allMatch(ClosingStepResult::isPassed);
 
+        List<ClosingWarning> warnings = new ArrayList<>();
+
         if (allPassed) {
             // Napzaras vegrehajtasa
-            executeClosing(branchId, companyId, closingDate);
+            executeClosing(branchId, companyId, closingDate, warnings);
             closingControlService.markClosingDone(companyId, branchId, closingDate, ClosingMarkType.DAILY);
             wizard.setWizardStatus(WizardStatus.COMPLETED);
             wizard.setCompletedAt(LocalDateTime.now());
@@ -148,6 +150,7 @@ public class DailyClosingService {
             .closingDate(closingDate)
             .allPassed(allPassed)
             .steps(stepResults)
+            .warnings(warnings)
             .build();
     }
 
@@ -428,7 +431,7 @@ public class DailyClosingService {
      *         + napi arfolyamtablak rogzitese
      *         + ugyfel napi gyujtok nullazasa
      */
-    private void executeClosing(UUID branchId, UUID companyId, LocalDate closingDate) {
+    private void executeClosing(UUID branchId, UUID companyId, LocalDate closingDate, List<ClosingWarning> warnings) {
         log.info("Napzaras vegrehajtasa: datum={}", closingDate);
 
         // 0. Bizonylat folytonossági ellenőrzés (gap detektálás) — MUNKAMENET ZÁRÁS ELŐTT
@@ -457,6 +460,10 @@ public class DailyClosingService {
                     java.util.Map.of("closing_date", closingDate,
                             "branch_id", branchId,
                             "step", "receipt_gap_check"));
+            warnings.add(ClosingWarning.builder()
+                    .step("receipt_gap_check")
+                    .message("Bizonylat folytonossági ellenőrzés hiba: " + e.getMessage())
+                    .build());
             // NEM dobunk kivételt — ne akadjon meg a zárás
         }
 
@@ -475,6 +482,10 @@ public class DailyClosingService {
                     java.util.Map.of("closing_date", closingDate,
                             "branch_id", branchId,
                             "step", "balance_calc"));
+            warnings.add(ClosingWarning.builder()
+                    .step("balance_calc")
+                    .message("Napi mérleg számítás hiba: " + e.getMessage())
+                    .build());
             // NEM dobunk kivételt — ne akadjon meg a zárás, csak logoljuk
         }
 
@@ -488,11 +499,15 @@ public class DailyClosingService {
                     java.util.Map.of("closing_date", closingDate,
                             "branch_id", branchId,
                             "step", "szamzar_th_adjustment"));
+            warnings.add(ClosingWarning.builder()
+                    .step("szamzar_th_adjustment")
+                    .message("SZÁMZÁR TH igazítás hiba: " + e.getMessage())
+                    .build());
             // NEM dobunk kivételt — ne akadjon meg a zárás (FR-7/FR-9 szellemében)
         }
 
         // 4. POS terminál napi zárás — ha van aktív terminál az irodán
-        executePosTerminalClosing(branchId, closingDate);
+        executePosTerminalClosing(branchId, closingDate, warnings);
 
         // 5. Esti zárás adatcsomag küldés a központnak (legacy ESTIZAR ekvivalens)
         executeEveningSync(branchId, closingDate);
@@ -506,6 +521,10 @@ public class DailyClosingService {
                     java.util.Map.of("closing_date", closingDate,
                             "branch_id", branchId,
                             "phase", "daily_archive"));
+            warnings.add(ClosingWarning.builder()
+                    .step("daily_archive")
+                    .message("Napi archiválás hiba: " + e.getMessage())
+                    .build());
             // NEM dobunk kivételt — ne akadjon meg a zárás
         }
 
@@ -518,6 +537,10 @@ public class DailyClosingService {
                     java.util.Map.of("closing_date", closingDate,
                             "branch_id", branchId,
                             "phase", "s1_02_archive"));
+            warnings.add(ClosingWarning.builder()
+                    .step("s1_02_archive")
+                    .message("S1-02 napi archiválás hiba: " + e.getMessage())
+                    .build());
             // NEM dobunk kivételt — ne akadjon meg a zárás
         }
 
@@ -530,11 +553,15 @@ public class DailyClosingService {
                     java.util.Map.of("closing_date", closingDate,
                             "branch_id", branchId,
                             "step", "aml_cache_reset"));
+            warnings.add(ClosingWarning.builder()
+                    .step("aml_cache_reset")
+                    .message("AML napi cache reset hiba: " + e.getMessage())
+                    .build());
             // NEM dobunk kivételt — ne akadjon meg a zárás
         }
 
         // 8. Dekad kontroll (10 napos idoszak zaras) — most már valódi generateDecadeReport hívással
-        checkDecadeClosing(branchId, closingDate);
+        checkDecadeClosing(branchId, closingDate, warnings);
 
         log.info("Napzaras vegrehajtva: datum={}, iroda={}", closingDate, branchId);
     }
@@ -573,7 +600,7 @@ public class DailyClosingService {
      * POS terminál napi zárás — az irodához tartozó összes aktív terminálon.
      * Legacy: otpterminal DLL — napzárás hívás.
      */
-    private void executePosTerminalClosing(UUID branchId, LocalDate closingDate) {
+    private void executePosTerminalClosing(UUID branchId, LocalDate closingDate, List<ClosingWarning> warnings) {
         try {
             List<PosTerminal> terminals = posTerminalRepository
                     .findByBranchIdAndIsActiveTrueOrderByTerminalNameAsc(branchId);
@@ -606,6 +633,10 @@ public class DailyClosingService {
                         attrs.put("terminal_id", "<null - inkonzisztens DB-rekord>");
                     }
                     VV_LOG.error("VV-BIZ-007", "daily_closing.pos_terminal_failed", e, attrs);
+                    warnings.add(ClosingWarning.builder()
+                            .step("pos_terminal")
+                            .message("POS terminál napi zárás hiba (" + terminalId + "): " + e.getMessage())
+                            .build());
                     // NEM dobunk kivételt — ne akadjon meg a zárás
                 }
             }
@@ -613,6 +644,10 @@ public class DailyClosingService {
             VV_LOG.error("VV-BIZ-007", "daily_closing.pos_terminal_general_failed", e,
                     java.util.Map.of("branch_id", branchId,
                             "scope", "all_terminals"));
+            warnings.add(ClosingWarning.builder()
+                    .step("pos_terminal")
+                    .message("POS terminál napi zárás általános hiba: " + e.getMessage())
+                    .build());
         }
     }
 
@@ -655,7 +690,7 @@ public class DailyClosingService {
      * HIGH FIX #6: Dekád zárás — ne csak logoljon, hozzon létre audit riport record-ot.
      * Legacy: DekzarCtrl — a 10., 20. és hónap utolsó napján dekád összesítés.
      */
-    private void checkDecadeClosing(UUID branchId, LocalDate date) {
+    private void checkDecadeClosing(UUID branchId, LocalDate date, List<ClosingWarning> warnings) {
         int dayOfMonth = date.getDayOfMonth();
         if (dayOfMonth == 10 || dayOfMonth == 20 || dayOfMonth == date.lengthOfMonth()) {
             // Dekád számítás: (hónap-1)*3 + dekádInHónap
@@ -683,6 +718,10 @@ public class DailyClosingService {
                         java.util.Map.of("branch_id", branchId,
                                 "year", date.getYear(),
                                 "decade", globalDecade));
+                warnings.add(ClosingWarning.builder()
+                        .step("decade_report")
+                        .message("Dekád jelentés hiba: " + e.getMessage())
+                        .build());
                 // NEM dobunk kivételt — ne akadjon meg a zárás
             }
 
@@ -763,10 +802,23 @@ public class DailyClosingService {
     @lombok.Builder
     @lombok.NoArgsConstructor
     @lombok.AllArgsConstructor
+    public static class ClosingWarning {
+        /** Gépi lépés-kulcs — azonos a VVLogger step/phase attribútummal. */
+        private String step;
+        /** Emberi hibaüzenet a UI-nak. */
+        private String message;
+    }
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
     public static class ClosingWizardResult {
         private String wizardId;
         private LocalDate closingDate;
         private boolean allPassed;
         private List<ClosingStepResult> steps;
+        @lombok.Builder.Default
+        private List<ClosingWarning> warnings = new ArrayList<>();
     }
 }

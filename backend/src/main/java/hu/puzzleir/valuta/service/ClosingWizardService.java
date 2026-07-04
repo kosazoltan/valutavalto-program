@@ -544,6 +544,14 @@ public class ClosingWizardService {
             throw new ValidationException("Napzárás belső ellenőrzés sikertelen: " + failedSteps);
         }
 
+        if (!closingResult.getWarnings().isEmpty()) {
+            log.warn("Napzárás lezárva, de {} lépés figyelmeztetéssel: {}",
+                    closingResult.getWarnings().size(),
+                    closingResult.getWarnings().stream()
+                            .map(w -> w.getStep() + ": " + w.getMessage())
+                            .collect(Collectors.joining("; ")));
+        }
+
         // Wizard lezárása
         wizard.setWizardStatus(WizardStatus.COMPLETED);
         wizard.setCompletedByWorker(worker);
