@@ -353,8 +353,9 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
   it('inventory mozgás részlet: a listából lekéri a /inventory/movements/{id} detail endpointot', async () => {
     render(<InventoryPage />)
 
-    await waitFor(() => expect(screen.getByText('Mozgások')).toBeInTheDocument())
-    fireEvent.click(screen.getAllByRole('button', { name: 'Részlet' })[0]!)
+    await screen.findByText('Mozgások')
+    const detailBtns = await screen.findAllByRole('button', { name: 'Részlet' })
+    fireEvent.click(detailBtns[0])
 
     await waitFor(() => {
       expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/movements/77')
@@ -552,9 +553,10 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
   it('banknote-inventory: beköti az add, remove, count és thresholds backend műveleteket', async () => {
     render(<InventoryPage />)
 
-    await waitFor(() => expect(screen.getByText('Címletszintű értéktári készlet')).toBeInTheDocument())
+    await screen.findByText('Címletszintű értéktári készlet')
 
-    fireEvent.change(screen.getByPlaceholderText('Darab'), { target: { value: '4' } })
+    const darabInput = screen.getByPlaceholderText('Darab')
+    fireEvent.change(darabInput, { target: { value: '4' } })
     fireEvent.click(screen.getByRole('button', { name: 'Bevét' }))
 
     await waitFor(() => {
