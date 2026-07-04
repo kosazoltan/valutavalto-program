@@ -35,8 +35,13 @@ public final class RedactingPatternConverter extends ClassicConverter {
     private static final Pattern BEARER = Pattern.compile("(?i)Bearer\\s+[A-Za-z0-9._\\-+/=]{20,}");
     // IBAN: szigorubb hossz-korlat (HU 28 char tipikus), 11..30 az alanumeric body
     private static final Pattern IBAN = Pattern.compile("\\b[A-Z]{2}\\d{2}[A-Z0-9]{11,30}\\b");
+    // Linearis ReDoS-vedett email-minta: a domain label osztalyban nincs pont,
+    // a karakterosztalyok possessive-ek, a label-loop korlatos (SO ellen), a
+    // local-part 320-ra korlatos (ujrapasztazas ellen). A 320/255/126 limitek
+    // az RFC 5321/1035 korlatok bo rahagyasai; az ures label szandekosan
+    // megengedett a regi viselkedes megorzesere.
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
-            "\\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}\\b");
+            "\\b[a-zA-Z0-9._%+-]{1,320}+@[a-zA-Z0-9-]++(?:\\.[a-zA-Z0-9-]{0,255}+){0,126}\\.[a-zA-Z]{2,}\\b");
 
     // Copilot PR #681 P1: a sima 13-19 digit pattern false-positive-okra szuretik
     // (W3C trace ID, UUID hex, NAV bizonylat, transaction ID). IIN prefix-szel

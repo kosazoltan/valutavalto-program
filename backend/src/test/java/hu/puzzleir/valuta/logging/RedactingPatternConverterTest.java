@@ -3,7 +3,10 @@ package hu.puzzleir.valuta.logging;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 /**
  * Unit tesztek a {@link RedactingPatternConverter} regex-mintaira.
@@ -141,5 +144,68 @@ class RedactingPatternConverterTest {
         String output = RedactingPatternConverter.redact(input);
         assertThat(output).contains("[EMAIL]").contains("Bearer [REDACTED]").contains("[IBAN]");
         assertThat(output).doesNotContain("test@a.hu").doesNotContain("HU42117730");
+    }
+
+    @Test
+    @DisplayName("Adverzarial email input teljes redact() alatt 2s-on belul lefut")
+    void redact_adversarialEmailInput_finishesUnderTimeout() {
+        String adversarial = "a".repeat(50_000) + "@" + "a.".repeat(25_000);
+        String output = assertTimeoutPreemptively(
+                Duration.ofSeconds(2), () -> RedactingPatternConverter.redact(adversarial));
+        assertThat(output).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Adverzarial nem-email mintak teljes redact() alatt 2s-on belul lefutnak")
+    void redact_allPatterns_adversarialInputs_underTimeout() {
+        assertTimeoutPreemptively(Duration.ofSeconds(2), () -> {
+            String jwtLike = "eyJ" + "aaaaaaaaaa.".repeat(9_000);
+            String bearerLike = "Bearer " + "A.".repeat(45_000);
+            String ibanLike = "HU" + "4".repeat(90_000);
+
+            assertThat(RedactingPatternConverter.redact(jwtLike)).isNotNull();
+            assertThat(RedactingPatternConverter.redact(bearerLike)).isNotNull();
+            assertThat(RedactingPatternConverter.redact(ibanLike)).isNotNull();
+        });
+    }
+
+    @Test
+    @DisplayName("Ures string valtozatlanul ures string marad")
+    void redact_emptyString_returnsEmpty() {
+        assertThat(RedactingPatternConverter.redact("")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("OpenAI sk-svcacct- kulcs redact-olva [OPENAI_KEY]-re")
+    void redact_openaiSvcacctKey_isMasked() {
+        String key = "sk-svcacct-" + "AbcdefghijklmnopQRST_123";
+        String input = "OpenAI service account key: " + key;
+
+        String output = RedactingPatternConverter.redact(input);
+
+        assertThat(output).contains("[OPENAI_KEY]");
+        assertThat(output).doesNotContain(key);
+    }
+
+    @Test
+    @DisplayName("Bearer-ben levo JWT-t elobb a JWT pattern maszkolja")
+    void redact_bearerWithJwt_jwtWinsInOrder() {
+        String token = "eyJ" + "a".repeat(20) + "." + "b".repeat(20) + "." + "c".repeat(20);
+        String input = "Authorization: Bearer " + token;
+
+        String output = RedactingPatternConverter.redact(input);
+
+        assertThat(output).contains("Bearer [JWT]");
+        assertThat(output).doesNotContain("a".repeat(20)).doesNotContain("b".repeat(20)).doesNotContain("c".repeat(20));
+    }
+
+    @Test
+    @DisplayName("Hosszu PII-mentes input gyors es valtozatlan marad")
+    void redact_longCleanInput_unchangedAndFast() {
+        String input = "Tranzakcio 50000 EUR vetel sikeres. ".repeat(5_556);
+
+        String output = assertTimeoutPreemptively(Duration.ofSeconds(2), () -> RedactingPatternConverter.redact(input));
+
+        assertThat(output).isEqualTo(input);
     }
 }
