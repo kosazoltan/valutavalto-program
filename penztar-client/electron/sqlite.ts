@@ -3,6 +3,9 @@ import path from 'node:path';
 import { app } from 'electron';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import type { PendingConversionInputV2, PendingTransactionInputV2 } from '@valuta/shared-ipc';
+
+export type { PendingConversionInputV2, PendingTransactionInputV2 };
 
 let db: Database | null = null;
 let dbPath = '';
@@ -1230,74 +1233,6 @@ export interface PendingTransactionRow {
   last_attempt_at?: string | null;
 }
 
-/**
- * V235 (2026-05-19 HIBA #14 + #15 + #17 + #18): bővített input objektum a
- * pending tranzakciók teljes Pmt. customer-snapshot mentéséhez. A korábbi
- * pozicionális paraméterű {@link savePendingTransaction} megmaradt backward
- * compat miatt — az új helyek a `savePendingTransactionV2`-t használják.
- */
-export interface PendingTransactionInputV2 {
-  type: 'SELL' | 'BUY';
-  currencyCode: string;
-  foreignAmount: number;
-  hufAmount: number;
-  roundedHufAmount: number;
-  rate: number;
-  handlingFee: number | null;
-  discountPercent: number | null;
-  customerIdentifier: string | null;
-  customerName: string | null;
-  customerDocumentNumber: string | null;
-  customerAddress: string | null;
-  denominations: string | null;
-  foreignStatus: 'DOMESTIC' | 'FOREIGN' | null;
-  // V229 100k+ snapshot
-  customerBirthPlace: string | null;
-  customerBirthDate: string | null;
-  customerMotherName: string | null;
-  customerNationality: string | null;
-  customerDocumentType: string | null;
-  // V229 300k+ JOGCÍM
-  sourceOfFunds: string | null;
-  customerIsPep: boolean | null;
-  // AML vezetoi jovahagyas (2026-06-04): jovahagyo supervisor/manager/admin workerId.
-  approverWorkerId: number | null;
-  // AML jovahagyas-session azonosito (Codex P1: receipt-scoping).
-  approvalSessionId: string | null;
-  customerOnOwnBehalf: boolean | null;
-  customerActorName: string | null;
-  // V235 NEW (HIBA #15): PEP minőség
-  customerPepKind: string | null;
-  // V235 NEW (HIBA #17): actor teljes azonosítása
-  customerActorBirthPlace: string | null;
-  customerActorBirthDate: string | null;
-  customerActorMotherName: string | null;
-  customerActorNationality: string | null;
-  customerActorDocumentType: string | null;
-  customerActorDocumentNumber: string | null;
-  customerActorAddress: string | null;
-  /**
-   * Multi-line aggregate (2026-06-04): ha kitoltott, ez a pending sor EGY tobb-soros
-   * vetel/eladas nyugtat kepvisel — a backend `lines[]` aggregalt utvonalra kerul (egy
-   * AML-kapu, egy approval-grant). JSON-string a backend TransactionLineRequestDto alakjaban
-   * ([{ currencyCode, banknoteCount, customExchangeRate, discountType, foreignStatus }]).
-   * NULL/undefined → egysoros tranzakcio (valtozatlan viselkedes).
-   */
-  lines?: string | null;
-  // FK-KEZDIJ offline (2026-06-12, penztar-batch B.1/b): a Felezes/Elenegedes/Ugyfelkartya
-  // override a pending sorban is — a sync-engine a REST-tel azonos mezokkel kuldi fel.
-  handlingFeeOverrideType?: string | null;
-  handlingFeeOverrideReason?: string | null;
-  customerCardNumber?: string | null;
-  // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok (JSON-string, max 4).
-  isLegalEntityCustomer?: boolean | null;
-  legalEntityName?: string | null;
-  legalEntitySeat?: string | null;
-  legalEntityTaxNumber?: string | null;
-  legalDeedNumber?: string | null;
-  beneficialOwnersJson?: string | null;
-}
-
 export interface PendingConversionRow {
   id: number;
   from_currency_id: number | null;
@@ -1341,50 +1276,6 @@ export interface PendingConversionRow {
   company_code?: string | null;
   created_at: string;
   synced: number;
-}
-
-/**
- * V235 + V236 (2026-05-19 Codex P1 #695): bővített input objektum a
- * Konverzio offline outbox-hoz, teljes Pmt. customer-snapshot mentéséhez.
- * A pozicionális {@link savePendingConversion} megmarad backward compat
- * miatt — új helyek a `savePendingConversionV2`-t használják.
- */
-export interface PendingConversionInputV2 {
-  fromCurrencyId: number | null;
-  fromCurrencyCode: string;
-  toCurrencyId: number | null;
-  toCurrencyCode: string;
-  fromAmount: number;
-  calculatedHufAmount: number;
-  calculatedToAmount: number;
-  conversionRate: number;
-  handlingFee: number | null;
-  customerId: string | null;
-  customerName: string | null;
-  customerDocumentNumber: string | null;
-  customerAddress: string | null;
-  customerNationality: string | null;
-  customerBirthPlace: string | null;
-  customerBirthDate: string | null;
-  customerMotherName: string | null;
-  customerDocumentType: string | null;
-  sourceOfFunds: string | null;
-  customerIsPep: boolean | null;
-  approverWorkerId: number | null;
-  approvalSessionId: string | null;
-  customerOnOwnBehalf: boolean | null;
-  customerActorName: string | null;
-  customerPepKind: string | null;
-  customerActorBirthPlace: string | null;
-  customerActorBirthDate: string | null;
-  customerActorMotherName: string | null;
-  customerActorNationality: string | null;
-  customerActorDocumentType: string | null;
-  customerActorDocumentNumber: string | null;
-  customerActorAddress: string | null;
-  // HIBA 2026-05-26 (#2): ugyfel deviza-statusza (DOMESTIC/FOREIGN)
-  foreignStatus: string | null;
-  note: string | null;
 }
 
 export interface PendingBankTransactionRow {
