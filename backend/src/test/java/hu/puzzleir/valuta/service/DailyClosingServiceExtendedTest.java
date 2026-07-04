@@ -308,4 +308,59 @@ class DailyClosingServiceExtendedTest {
         // Akkor: a session zárás megtörtént (a zárás nem akadt el)
         verify(dailySessionService, times(1)).closeSession(any());
     }
+
+    @Test
+    @DisplayName("Mérleg-számítás hiba: zárás lezárul ÉS warning kerül a válaszba")
+    void executeClosing_balanceCalcFails_closingCompletesWithWarning() {
+        LocalDate closingDate = LocalDate.of(2026, 3, 15);
+        doThrow(new RuntimeException("mérleg hiba"))
+            .when(dailyBalanceService).calculateAllCurrenciesForDay(any(), any());
+
+        var result = dailyClosingService.startDailyClosing(closingDate);
+
+        assertThat(result.isAllPassed()).isTrue();
+        assertThat(result.getWarnings())
+            .extracting(DailyClosingService.ClosingWarning::getStep)
+            .contains("balance_calc");
+        verify(closingControlService).markClosingDone(any(), any(), eq(closingDate), any());
+    }
+
+    @Test
+    @DisplayName("Hibátlan zárás: warnings üres lista (nem null)")
+    void executeClosing_noFailures_warningsEmpty() {
+        var result = dailyClosingService.startDailyClosing(LocalDate.of(2026, 3, 15));
+
+        assertThat(result.isAllPassed()).isTrue();
+        assertThat(result.getWarnings()).isNotNull().isEmpty();
+    }
+
+    @Test
+    @DisplayName("Napi archiválás hiba: warning keletkezik és a későbbi S1-02 archívum lefut")
+    void executeClosing_dailyArchiveFails_warningAndLaterArchiveStillRuns() {
+        LocalDate closingDate = LocalDate.of(2026, 3, 15);
+        when(monthlyArchiveService.archiveDailyTransactions(any(), any()))
+            .thenThrow(new RuntimeException("archív hiba"));
+
+        var result = dailyClosingService.startDailyClosing(closingDate);
+
+        assertThat(result.isAllPassed()).isTrue();
+        assertThat(result.getWarnings())
+            .extracting(DailyClosingService.ClosingWarning::getStep)
+            .contains("daily_archive");
+        verify(dailyClosingArchiveService).executeFullDailyArchive(eq(BRANCH_ID), eq(closingDate));
+    }
+
+    @Test
+    @DisplayName("AML cache reset hiba: warning kerül a válaszba")
+    void executeClosing_amlCacheResetFails_warningReturned() {
+        LocalDate closingDate = LocalDate.of(2026, 3, 15);
+        doThrow(new RuntimeException("AML hiba")).when(amlService).resetDailyCache();
+
+        var result = dailyClosingService.startDailyClosing(closingDate);
+
+        assertThat(result.isAllPassed()).isTrue();
+        assertThat(result.getWarnings())
+            .extracting(DailyClosingService.ClosingWarning::getStep)
+            .contains("aml_cache_reset");
+    }
 }

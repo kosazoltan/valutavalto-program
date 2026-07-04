@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.errorlog;
 
+import hu.puzzleir.valuta.logging.RedactingPatternConverter;
+import jakarta.annotation.PostConstruct;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,7 +34,7 @@ public class ErrorMailerService {
     private static final Pattern LINE_NUM = Pattern.compile("(:\\d+)");
     private static final Pattern HEX_ADDR = Pattern.compile("[0-9a-f]{6,}");
 
-    @Value("${errorlog.hmac.secret:errorlog-hmac-s3cr3t-valutavalto-2026-kz}")
+    @Value("${errorlog.hmac.secret:}")
     private String hmacSecret;
 
     private final ErrorLogRepository errorLogRepo;
@@ -46,6 +48,14 @@ public class ErrorMailerService {
         this.errorLogRepo = errorLogRepo;
         this.mailSender = mailSender;
         this.transactionManager = transactionManager;
+    }
+
+    @PostConstruct
+    void warnIfSecretMissing() {
+        if (hmacSecret == null || hmacSecret.isBlank()) {
+            log.warn("errorlog.hmac.secret nincs beállítva (ERRORLOG_HMAC_SECRET env) — "
+                + "hiba-email küldés le lesz tiltva (fail-closed)");
+        }
     }
 
     // ── Fingerprint ──────────────────────────────────────────────────────────
@@ -102,7 +112,14 @@ public class ErrorMailerService {
             byte[] raw = mac.doFinal((fp + ":" + timestamp).getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(raw);
         } catch (Exception e) {
-            return "hmac-error";
+            throw new IllegalStateException("HMAC aláírás sikertelen", e);
+        }
+    }
+
+    private void requireHmacSecret() {
+        if (hmacSecret == null || hmacSecret.isBlank()) {
+            throw new IllegalStateException(
+                "errorlog.hmac.secret hiányzik — hiba-email nem küldhető (ERRORLOG_HMAC_SECRET)");
         }
     }
 
@@ -114,6 +131,8 @@ public class ErrorMailerService {
         String now = Instant.now().toString();
 
         ErrorLog entry = saveOrUpdateErrorLog(req, fp, severity);
+
+        requireHmacSecret();
 
         if (shouldSendEmail(entry)) {
             try {
@@ -129,6 +148,9 @@ public class ErrorMailerService {
                 mailSender.send(msg);
 
                 markEmailSent(entry.getId());
+            } catch (IllegalStateException e) {
+                log.warn("Failed to sign error email for fingerprint {}: {}", fp, e.getMessage());
+                throw e;
             } catch (Exception e) {
                 log.warn("Failed to send error email for fingerprint {}: {}", fp, e.getMessage());
             }
@@ -196,6 +218,9 @@ public class ErrorMailerService {
     }
 
     private String buildEmailHtml(ErrorReportRequest req, String fp, String severity, String timestamp, String hmac) {
+        String redactedMessage = RedactingPatternConverter.redact(req.getMessage());
+        String redactedStack = RedactingPatternConverter.redact(req.getStack());
+
         return "<!DOCTYPE html><html><body style='font-family:monospace;'>" +
             "<!-- HMAC:" + hmac + " -->" +
             "<!-- FINGERPRINT:" + fp + " -->" +
@@ -204,7 +229,7 @@ public class ErrorMailerService {
             row("App", APP_NAME) +
             row("Repo", REPO_PATH) +
             row("Type", sanitizeForEmail(req.getErrorType(), 100)) +
-            row("Message", sanitizeForEmail(req.getMessage(), 500)) +
+            row("Message", sanitizeForEmail(redactedMessage, 500)) +
             row("URL", sanitizeForEmail(req.getUrl(), 300)) +
             row("Method", sanitizeForEmail(req.getRequestMethod(), 10)) +
             row("Request-ID", sanitizeForEmail(req.getRequestId(), 100)) +
@@ -215,7 +240,7 @@ public class ErrorMailerService {
             row("Fingerprint", fp) +
             "</table>" +
             "<h3>Stack Trace</h3><pre style='background:#f5f5f5;padding:12px;'>" +
-            sanitizeForEmail(req.getStack(), 3000) +
+            sanitizeForEmail(redactedStack, 3000) +
             "</pre>" +
             "<p style='color:#999;font-size:11px;'>FORBIDDEN_REPO=" + FORBIDDEN_REPO + " (TILOS!)</p>" +
             "</body></html>";
