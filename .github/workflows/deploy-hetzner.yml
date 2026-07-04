@@ -136,6 +136,16 @@ jobs:
             # PostgreSQL postgres OS user has peer auth, can connect to any DB
             sudo -u postgres psql -d "$DB_NAME" -c "SELECT version, success FROM flyway_schema_history WHERE success = false ORDER BY installed_rank DESC LIMIT 10;" || true
             sudo -u postgres psql -d "$DB_NAME" -c "DELETE FROM flyway_schema_history WHERE success = false;" || true
+            # 2026-07-04 hotfix (PROD-502): a V339 ALTER TABLE exchange_rate_distribution
+            # elbukott "must be owner of table" hibaval — egyes tablak nem a runtime
+            # DB_USER (valuta_user) tulajdonaban voltak (V71 postgres-owner-rel jott letre),
+            # igy a Flyway ADD COLUMN nem futott le -> backend startup crash -> 502.
+            # Normalizaljuk MINDEN public tabla+sequence tulajdonosat a runtime DB_USER-re
+            # (idempotens; dollar-quote/heredoc NELKUL, hogy a bash/YAML ne torje) MIELOTT
+            # a backend ujrainditva Flyway-t futtat.
+            echo "=== Owner-normalizalas: public tablak+sequence-ek -> $DB_USER ==="
+            sudo -u postgres psql -d "$DB_NAME" -tAc "SELECT format('ALTER TABLE public.%I OWNER TO %I;', tablename, '$DB_USER') FROM pg_tables WHERE schemaname='public'" | sudo -u postgres psql -d "$DB_NAME" -v ON_ERROR_STOP=0 || true
+            sudo -u postgres psql -d "$DB_NAME" -tAc "SELECT format('ALTER SEQUENCE public.%I OWNER TO %I;', sequencename, '$DB_USER') FROM pg_sequences WHERE schemaname='public'" | sudo -u postgres psql -d "$DB_NAME" -v ON_ERROR_STOP=0 || true
             echo "=== Repair done ==="
           ENDSSH
 
