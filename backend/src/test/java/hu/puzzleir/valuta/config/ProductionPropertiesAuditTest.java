@@ -53,6 +53,16 @@ class ProductionPropertiesAuditTest {
             .isEqualTo("X-Forwarded-Proto");
     }
 
+    @Test
+    @DisplayName("spring.flyway.repair-on-migrate fail-closed default (audit TOP15 #4)")
+    void flywayRepairOnMigrateIsFailClosed() throws Exception {
+        Properties props = loadProductionProperties();
+        assertThat(props.getProperty("spring.flyway.repair-on-migrate"))
+            .as("Production repair-guard: env override + false default kotelezo, "
+                + "kulonben a FlywayConfig strategia repair-t futtathat prodban.")
+            .isEqualTo("${FLYWAY_REPAIR_ON_MIGRATE:false}");
+    }
+
     private Properties loadProductionProperties() throws Exception {
         Properties props = new Properties();
         try (InputStream is = getClass()
