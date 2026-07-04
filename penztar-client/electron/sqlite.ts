@@ -48,6 +48,20 @@ export function runInTransaction<T>(database: Database, fn: () => T): T {
   }
 }
 
+/**
+ * A frissen beszúrt sor rowid-ja. KRITIKUS: közvetlenül az INSERT után,
+ * még BÁRMELY saveDatabase() előtt kell hívni — a sql.js Database.export()
+ * (amit a saveDatabase() hív) bezárja és újranyitja az alacsony szintű
+ * sqlite3 kapcsolatot, ami után a last_insert_rowid() már 0.
+ */
+function lastInsertRowId(database: Database): number {
+  const stmt = database.prepare('SELECT last_insert_rowid() as id');
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return (row['id'] as number) ?? 0;
+}
+
 function withTransaction<T>(fn: () => T): T {
   if (!db) throw new Error('Database not initialized');
   return runInTransaction(db, fn);
@@ -965,13 +979,9 @@ export function saveLocalAuditEvent(params: {
       computeRetentionUntil(params.retentionDays ?? 31),
     ],
   );
+  const insertedId = lastInsertRowId(db);
   saveDatabase();
-
-  const stmt = db.prepare('SELECT last_insert_rowid() as id');
-  stmt.step();
-  const row = stmt.getAsObject();
-  stmt.free();
-  return (row['id'] as number) ?? 0;
+  return insertedId;
 }
 
 export function getLocalAuditEvents(limit: number = 200): LocalAuditEventRow[] {
@@ -1473,7 +1483,7 @@ export function savePendingTransaction(
 
   // NGM 23/2014 atomicitás: a sorszám-inkrement ÉS a sor INSERT egy tranzakcióban,
   // hogy egy INSERT-hiba ROLLBACK-elje a sorszám-előléptetést is (nincs hézag).
-  const localReferenceNumber = withTransaction(() => {
+  const { ref: localReferenceNumber, id: insertedId } = withTransaction(() => {
     const ref = generateStrictReceiptNumber(type === 'BUY' ? 'V' : 'E', branchCodeForReceipt);
     db!.run(
       `INSERT INTO pending_transactions (
@@ -1526,16 +1536,9 @@ export function savePendingTransaction(
         getActiveCompanyCode(),
       ],
     );
-    return ref;
+    return { ref, id: lastInsertRowId(db!) };
   });
   saveDatabase();
-
-  // Get last inserted ID
-  const stmt = db.prepare('SELECT last_insert_rowid() as id');
-  stmt.step();
-  const row = stmt.getAsObject();
-  stmt.free();
-  const insertedId = (row['id'] as number) ?? 0;
 
   saveLocalAuditEvent({
     entityType: 'TRANSACTION',
@@ -1629,7 +1632,7 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
   };
 
   // NGM 23/2014 atomicitás: sorszám-inkrement + sor INSERT egy tranzakcióban.
-  const localReferenceNumber = withTransaction(() => {
+  const { ref: localReferenceNumber, id: insertedId } = withTransaction(() => {
     const ref = generateStrictReceiptNumber(
       input.type === 'BUY' ? 'V' : 'E',
       branchCodeForReceipt,
@@ -1705,15 +1708,9 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
         getActiveCompanyCode(),
       ],
     );
-    return ref;
+    return { ref, id: lastInsertRowId(db!) };
   });
   saveDatabase();
-
-  const stmt = db.prepare('SELECT last_insert_rowid() as id');
-  stmt.step();
-  const row = stmt.getAsObject();
-  stmt.free();
-  const insertedId = (row['id'] as number) ?? 0;
 
   saveLocalAuditEvent({
     entityType: 'TRANSACTION',
@@ -1859,7 +1856,7 @@ export function savePendingConversion(
     v === null ? null : roundFin(v, decimals);
 
   // NGM 23/2014 atomicitás: sorszám-inkrement + sor INSERT egy tranzakcióban.
-  const localReferenceNumber = withTransaction(() => {
+  const { ref: localReferenceNumber, id: insertedId } = withTransaction(() => {
     const ref = generateStrictReceiptNumber('K', branchCodeForReceipt);
     db!.run(
       `INSERT INTO pending_conversions (
@@ -1899,15 +1896,9 @@ export function savePendingConversion(
         getActiveCompanyCode(),
       ],
     );
-    return ref;
+    return { ref, id: lastInsertRowId(db!) };
   });
   saveDatabase();
-
-  const stmt = db.prepare('SELECT last_insert_rowid() as id');
-  stmt.step();
-  const row = stmt.getAsObject();
-  stmt.free();
-  const insertedId = (row['id'] as number) ?? 0;
 
   saveLocalAuditEvent({
     entityType: 'CONVERSION',
@@ -1974,7 +1965,7 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
     v === null ? null : roundFin(v, decimals);
 
   // NGM 23/2014 atomicitás: sorszám-inkrement + sor INSERT egy tranzakcióban.
-  const localReferenceNumber = withTransaction(() => {
+  const { ref: localReferenceNumber, id: insertedId } = withTransaction(() => {
     const ref = generateStrictReceiptNumber('K', branchCodeForReceipt);
     db!.run(
       `INSERT INTO pending_conversions (
@@ -2013,15 +2004,9 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
         trimOrNull(input.note), ref, idempotencyKey, getActiveCompanyCode(),
       ],
     );
-    return ref;
+    return { ref, id: lastInsertRowId(db!) };
   });
   saveDatabase();
-
-  const stmt = db.prepare('SELECT last_insert_rowid() as id');
-  stmt.step();
-  const row = stmt.getAsObject();
-  stmt.free();
-  const insertedId = (row['id'] as number) ?? 0;
 
   saveLocalAuditEvent({
     entityType: 'CONVERSION',
@@ -2182,13 +2167,8 @@ export function savePendingDistribution(
       getActiveCompanyCode(),
     ],
   );
+  const insertedId = lastInsertRowId(db);
   saveDatabase();
-
-  const stmt = db.prepare('SELECT last_insert_rowid() as id');
-  stmt.step();
-  const row = stmt.getAsObject();
-  stmt.free();
-  const insertedId = (row['id'] as number) ?? 0;
 
   saveLocalAuditEvent({
     entityType: 'TREASURY_DISTRIBUTION',
@@ -2280,7 +2260,7 @@ export function savePendingTransfer(
   // NGM 23/2014 atomicitás: a szigorú átadólap-sorszám (AT-prefix) inkrement +
   // sor INSERT egy tranzakcióban, hogy egy INSERT-hiba ROLLBACK-elje a sorszám-
   // előléptetést is (nincs hézag). Az LT-fallback nem érinti a sequence-t.
-  const localReferenceNumber = withTransaction(() => {
+  const { ref: localReferenceNumber, id: insertedId } = withTransaction(() => {
     const ref = sourceBranchCode
       ? generateStrictReceiptNumber('AT', sourceBranchCode)
       : generateLocalReference('LT');
@@ -2322,15 +2302,9 @@ export function savePendingTransfer(
         getActiveCompanyCode(),
       ],
     );
-    return ref;
+    return { ref, id: lastInsertRowId(db!) };
   });
   saveDatabase();
-
-  const stmt = db.prepare('SELECT last_insert_rowid() as id');
-  stmt.step();
-  const row = stmt.getAsObject();
-  stmt.free();
-  const insertedId = (row['id'] as number) ?? 0;
 
   saveLocalAuditEvent({
     entityType: 'TRANSFER',
@@ -2417,13 +2391,8 @@ export function savePendingCollection(
     ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [sourceBranchCode, currencyCode, amount, note, localReferenceNumber, idempotencyKey, getActiveCompanyCode()],
   );
+  const insertedId = lastInsertRowId(db);
   saveDatabase();
-
-  const stmt = db.prepare('SELECT last_insert_rowid() as id');
-  stmt.step();
-  const row = stmt.getAsObject();
-  stmt.free();
-  const insertedId = (row['id'] as number) ?? 0;
 
   saveLocalAuditEvent({
     entityType: 'TREASURY_COLLECTION',
@@ -2491,13 +2460,8 @@ export function savePendingBankTransaction(
       getActiveCompanyCode(),
     ],
   );
+  const insertedId = lastInsertRowId(db);
   saveDatabase();
-
-  const stmt = db.prepare('SELECT last_insert_rowid() as id');
-  stmt.step();
-  const row = stmt.getAsObject();
-  stmt.free();
-  const insertedId = (row['id'] as number) ?? 0;
 
   saveLocalAuditEvent({
     entityType: 'BANK_TRANSACTION',
@@ -2605,13 +2569,8 @@ export function savePendingStorno(params: {
       getActiveCompanyCode(),
     ],
   );
+  const insertedId = lastInsertRowId(db);
   saveDatabase();
-
-  const stmt = db.prepare('SELECT last_insert_rowid() as id');
-  stmt.step();
-  const row = stmt.getAsObject();
-  stmt.free();
-  const insertedId = (row['id'] as number) ?? 0;
 
   saveLocalAuditEvent({
     entityType: 'STORNO',
@@ -2709,13 +2668,8 @@ export function savePendingTransferStorno(params: {
       getActiveCompanyCode(),
     ],
   );
+  const insertedId = lastInsertRowId(db);
   saveDatabase();
-
-  const stmt = db.prepare('SELECT last_insert_rowid() as id');
-  stmt.step();
-  const row = stmt.getAsObject();
-  stmt.free();
-  const insertedId = (row['id'] as number) ?? 0;
 
   saveLocalAuditEvent({
     entityType: 'TRANSFER',
@@ -2912,13 +2866,8 @@ export function savePendingHandoverOperation(params: {
       getActiveCompanyCode(),
     ],
   );
+  const insertedId = lastInsertRowId(db);
   saveDatabase();
-
-  const stmt = db.prepare('SELECT last_insert_rowid() as id');
-  stmt.step();
-  const row = stmt.getAsObject();
-  stmt.free();
-  const insertedId = (row['id'] as number) ?? 0;
 
   saveLocalAuditEvent({
     entityType: 'HANDOVER_SHEET',
@@ -2999,13 +2948,10 @@ export function queueStocktakeCount(
     'INSERT INTO pending_stocktake_items (item_id, actual_quantity, note, idempotency_key, company_code) VALUES (?, ?, ?, ?, ?)',
   );
   stmt.run([itemId, actualQuantity, note, idempotencyKey, getActiveCompanyCode()]);
+  const insertedId = lastInsertRowId(db);
   stmt.free();
   saveDatabase();
-  const idStmt = db.prepare('SELECT last_insert_rowid() as id');
-  idStmt.step();
-  const row = idStmt.getAsObject() as { id: number };
-  idStmt.free();
-  return row.id;
+  return insertedId;
 }
 
 export function getPendingStocktakeItems(): PendingStocktakeItemRow[] {
