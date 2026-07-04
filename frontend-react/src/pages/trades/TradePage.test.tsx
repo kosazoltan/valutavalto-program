@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TradePage from './TradePage'
 
@@ -67,6 +67,16 @@ const acceptedTrade = {
   ...proposedTrade,
   id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
   status: 'ACCEPTED',
+}
+
+async function clickEnabledButton(name: string | RegExp, index = 0): Promise<void> {
+  const buttons = await screen.findAllByRole('button', { name })
+  const button = buttons[index]
+  if (!button) throw new Error(`Button not found: ${String(name)} at index ${index}`)
+  await waitFor(() => expect(button).toBeEnabled())
+  await act(async () => {
+    fireEvent.click(button)
+  })
 }
 
 describe('TradePage backend contract', () => {
@@ -143,19 +153,19 @@ describe('TradePage backend contract', () => {
     expect((await screen.findAllByText('Teszt trade')).length).toBeGreaterThan(0)
     const rejectReason = await screen.findByPlaceholderText('Elutasítás oka')
     fireEvent.change(rejectReason, { target: { value: 'Nincs készlet' } })
-    fireEvent.click(screen.getAllByRole('button', { name: /Elutasítás/i })[0] as HTMLElement)
+    await clickEnabledButton(/Elutasítás/i)
     await waitFor(() => {
       expect(mocks.reject).toHaveBeenCalledWith('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Nincs készlet')
     })
-    fireEvent.click(screen.getAllByRole('button', { name: /Elfogadás/i })[0] as HTMLElement)
+    await clickEnabledButton(/Elfogadás/i)
     await waitFor(() => {
       expect(mocks.accept).toHaveBeenCalledWith('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
     })
-    fireEvent.click(screen.getAllByRole('button', { name: /Törlés/i })[0] as HTMLElement)
+    await clickEnabledButton(/Törlés/i)
     await waitFor(() => {
       expect(mocks.cancel).toHaveBeenCalledWith('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
     })
-    fireEvent.click(screen.getAllByRole('button', { name: /Teljesítés/i })[0] as HTMLElement)
+    await clickEnabledButton(/Teljesítés/i)
     await waitFor(() => {
       expect(mocks.complete).toHaveBeenCalledWith('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')
     })

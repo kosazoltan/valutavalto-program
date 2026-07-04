@@ -107,6 +107,6 @@ describe('CentralVaultDashboard — FK-048 készlet-riasztás', () => {
     render(<CentralVaultDashboard />)
     await waitFor(() => expect(screen.getByText('Offline (>10 perc)')).toBeInTheDocument())
     // A fiók offline (nincs device/heartbeat) — a státusz oszlopban "sosem"
-    expect(screen.getByText('foertektar.sosem')).toBeInTheDocument()
+    expect(await screen.findByText('foertektar.sosem')).toBeInTheDocument()
   })
 })
