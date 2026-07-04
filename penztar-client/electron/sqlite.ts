@@ -53,6 +53,46 @@ function withTransaction<T>(fn: () => T): T {
   return runInTransaction(db, fn);
 }
 
+export const OUTBOX_TABLES = [
+  'pending_transactions',
+  'pending_conversions',
+  'pending_bank_transactions',
+  'pending_stornos',
+  'pending_handover_operations',
+  'pending_transfers',
+  'pending_transfer_stornos',
+  'pending_distributions',
+  'pending_collections',
+  'pending_stocktake_items',
+] as const;
+
+/**
+ * Multi-tenant outbox invariant (2026-07-04): every offline outbox row can carry
+ * the company code active when it was recorded. Additive + idempotent repo pattern.
+ */
+export function ensureOutboxCompanyColumns(
+  database: Database,
+  activeCompanyCode: string | null,
+): void {
+  for (const table of OUTBOX_TABLES) {
+    try {
+      database.run(`ALTER TABLE ${table} ADD COLUMN company_code TEXT`);
+    } catch {
+      // Column already exists — expected on fresh installs or repeated init.
+    }
+  }
+
+  const code = activeCompanyCode?.trim();
+  if (!code) return;
+
+  for (const table of OUTBOX_TABLES) {
+    database.run(
+      `UPDATE ${table} SET company_code = ? WHERE company_code IS NULL AND synced = 0`,
+      [code],
+    );
+  }
+}
+
 function getDbPath(): string {
   const userDir = app.getPath('home');
   const valutaDir = path.join(userDir, '.valuta');
@@ -677,6 +717,8 @@ export async function initDatabase(): Promise<void> {
     `);
     db.run(`CREATE INDEX IF NOT EXISTS idx_pending_stocktake_synced ON pending_stocktake_items(synced);`);
 
+    ensureOutboxCompanyColumns(db, getConfig('bootstrap_company_code'));
+
     const pendingTransferColumns = [
       'target_branch_id TEXT',
       'currency_id INTEGER',
@@ -1104,6 +1146,10 @@ export function deleteConfig(key: string): void {
   saveDatabase();
 }
 
+function getActiveCompanyCode(): string | null {
+  return getConfig('bootstrap_company_code')?.trim() || null;
+}
+
 // --- Offline Pending Transactions ---
 
 export interface PendingTransactionRow {
@@ -1164,6 +1210,7 @@ export interface PendingTransactionRow {
   beneficial_owners_json?: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
+  company_code?: string | null;
   created_at: string;
   synced: number;
   // FK-SYNC (2026-06-02): a legutóbbi sync-hiba (miért nem ment fel a tétel), próbálkozások száma,
@@ -1281,6 +1328,7 @@ export interface PendingConversionRow {
   note: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
+  company_code?: string | null;
   created_at: string;
   synced: number;
 }
@@ -1446,9 +1494,10 @@ export function savePendingTransaction(
         approval_session_id,
         foreign_status,
         local_reference_number,
-        idempotency_key
+        idempotency_key,
+        company_code
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         type,
         currencyCode,
@@ -1471,6 +1520,7 @@ export function savePendingTransaction(
         foreignStatus,
         ref,
         idempotencyKey,
+        getActiveCompanyCode(),
       ],
     );
     return ref;
@@ -1599,9 +1649,9 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
         handling_fee_override_type, handling_fee_override_reason, customer_card_number,
         is_legal_entity_customer, legal_entity_name, legal_entity_seat,
         legal_entity_tax_number, legal_deed_number, beneficial_owners_json,
-        local_reference_number, idempotency_key
+        local_reference_number, idempotency_key, company_code
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         input.type,
         input.currencyCode,
@@ -1649,6 +1699,7 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
         input.beneficialOwnersJson ?? null,
         ref,
         idempotencyKey,
+        getActiveCompanyCode(),
       ],
     );
     return ref;
@@ -1823,8 +1874,9 @@ export function savePendingConversion(
         customer_document_number,
         note,
         local_reference_number,
-        idempotency_key
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        idempotency_key,
+        company_code
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         fromCurrencyId,
         fromCurrencyCode,
@@ -1841,6 +1893,7 @@ export function savePendingConversion(
         note?.trim() || null,
         ref,
         idempotencyKey,
+        getActiveCompanyCode(),
       ],
     );
     return ref;
@@ -1934,8 +1987,8 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
         customer_actor_nationality, customer_actor_document_type,
         customer_actor_document_number, customer_actor_address,
         foreign_status,
-        note, local_reference_number, idempotency_key
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        note, local_reference_number, idempotency_key, company_code
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         input.fromCurrencyId, input.fromCurrencyCode, input.toCurrencyId, input.toCurrencyCode,
         roundFin(input.fromAmount, 8), roundFin(input.calculatedHufAmount, 2), roundFin(input.calculatedToAmount, 8), roundFin(input.conversionRate, 10),
@@ -1954,7 +2007,7 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
         trimOrNull(input.customerActorDocumentType),
         trimOrNull(input.customerActorDocumentNumber), trimOrNull(input.customerActorAddress),
         trimOrNull(input.foreignStatus),
-        trimOrNull(input.note), ref, idempotencyKey,
+        trimOrNull(input.note), ref, idempotencyKey, getActiveCompanyCode(),
       ],
     );
     return ref;
@@ -2179,6 +2232,7 @@ export interface PendingTransferRow {
   lines: string | null;
   local_reference_number: string | null;
   idempotency_key: string | null;
+  company_code?: string | null;
   created_at: string;
   synced: number;
 }
@@ -2232,8 +2286,9 @@ export function savePendingTransfer(
         direction,
         lines,
         local_reference_number,
-        idempotency_key
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        idempotency_key,
+        company_code
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         targetBranchId,
         targetBranchCode,
@@ -2250,6 +2305,7 @@ export function savePendingTransfer(
         lines,
         ref,
         idempotencyKey,
+        getActiveCompanyCode(),
       ],
     );
     return ref;

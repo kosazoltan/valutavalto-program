@@ -221,6 +221,41 @@ function isAuthStatusError(err: unknown): boolean {
   return err instanceof HttpStatusError && (err.status === 401 || err.status === 403);
 }
 
+/**
+ * Multi-tenant sync guard: TRUE when the pending row's recorded company code is
+ * provably different from the active session company code. NULL/empty on either
+ * side means no proven mismatch, so legacy rows are not permanently blocked.
+ */
+export function companyMismatch(
+  rowCompanyCode: string | null | undefined,
+  sessionCompanyCode: string | null | undefined,
+): boolean {
+  const row = rowCompanyCode?.trim();
+  const session = sessionCompanyCode?.trim();
+  return Boolean(row && session && row !== session);
+}
+
+function recordCompanyMismatch(
+  result: SyncResult,
+  entityLabel: string,
+  id: number,
+  rowCompanyCode: string | null | undefined,
+  sessionCompanyCode: string | null | undefined,
+): string {
+  const row = rowCompanyCode?.trim() ?? '';
+  const session = sessionCompanyCode?.trim() ?? '';
+  const message = `Cégeltérés: a tétel a(z) '${row}' céghez tartozik, az aktív cég '${session}' — a tétel visszatartva`;
+  result.failed++;
+  result.errors.push(`${entityLabel} #${id}: ${message}`);
+  log.warn('[SyncEngine] Cégeltérés miatt tétel visszatartva', {
+    entityLabel,
+    id,
+    rowCompanyCode: row,
+    sessionCompanyCode: session,
+  });
+  return message;
+}
+
 // --- HTTP kliens (lightweight, nincs axios az electron main-ben) ---
 
 async function httpGet<T>(url: string, token: string | null): Promise<T> {
@@ -943,7 +978,24 @@ export class SyncEngine {
       return result;
     }
 
+    const sessionCompanyCode = getConfig('bootstrap_company_code');
+
     for (const tx of pendingTransactions) {
+      if (companyMismatch(tx.company_code, sessionCompanyCode)) {
+        const errorMsg = recordCompanyMismatch(
+          result,
+          'TX',
+          tx.id,
+          tx.company_code,
+          sessionCompanyCode,
+        );
+        try {
+          markTransactionSyncError(tx.id, errorMsg, new Date().toISOString());
+        } catch {
+          // Best-effort persistence; the in-memory result already reports the withheld row.
+        }
+        continue;
+      }
       try {
         await this.syncTransaction(serverUrl, token, tx);
         markTransactionSynced(tx.id);
@@ -991,6 +1043,16 @@ export class SyncEngine {
     }
 
     for (const conversion of pendingConversions) {
+      if (companyMismatch(conversion.company_code, sessionCompanyCode)) {
+        recordCompanyMismatch(
+          result,
+          'CONV',
+          conversion.id,
+          conversion.company_code,
+          sessionCompanyCode,
+        );
+        continue;
+      }
       try {
         await this.syncConversion(serverUrl, token, conversion);
         markConversionSynced(conversion.id);
@@ -1111,6 +1173,16 @@ export class SyncEngine {
     }
 
     for (const transfer of pendingTransfers) {
+      if (companyMismatch(transfer.company_code, sessionCompanyCode)) {
+        recordCompanyMismatch(
+          result,
+          'TRANSFER',
+          transfer.id,
+          transfer.company_code,
+          sessionCompanyCode,
+        );
+        continue;
+      }
       try {
         await this.syncTransfer(serverUrl, token, transfer);
         markTransferSynced(transfer.id);
