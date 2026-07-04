@@ -7,7 +7,7 @@ export interface ExchangeRateMaster {
   id: string
   companyId: string
   currencyId: number
-  currencyCode?: string  // joined from currency table
+  currencyCode?: string // joined from currency table
   baseBuyRate: number
   baseSellRate: number
   officialRate?: number
@@ -42,7 +42,30 @@ export interface ExchangeRateDistribution {
   status: DistributionStatus
   distributedAt?: string
   acknowledgedAt?: string
+  printedAt?: string
+  printedBy?: number
   errorMessage?: string
+}
+
+export interface PendingPrintObligation {
+  distributionId: string
+  masterRateId: string
+  currencyCode: string
+  versionNumber: number
+  baseBuyRate: number
+  baseSellRate: number
+  officialRate?: number | null
+  limit1Amount?: number | null
+  limit1BuyRate?: number | null
+  limit1SellRate?: number | null
+  limit2Amount?: number | null
+  limit2BuyRate?: number | null
+  limit2SellRate?: number | null
+  limit3Amount?: number | null
+  limit3BuyRate?: number | null
+  limit3SellRate?: number | null
+  validFrom: string
+  printProofToken: string
 }
 
 /**
@@ -101,7 +124,11 @@ export const exchangeRateMasterApi = {
   /** APPROVED -> PUBLISHED + automata elosztas a penztaraknak. */
   publish: async (id: string, workgroupId?: string): Promise<ExchangeRateMaster> => {
     const params = workgroupId ? { workgroupId } : {}
-    const response = await api.post<ExchangeRateMaster>(`/exchange-rate-master/${id}/publish`, null, { params })
+    const response = await api.post<ExchangeRateMaster>(
+      `/exchange-rate-master/${id}/publish`,
+      null,
+      { params },
+    )
     return response.data
   },
 
@@ -113,12 +140,27 @@ export const exchangeRateMasterApi = {
 
   /** Elosztas statusza - melyik penztar kapta meg (PENDING / DISTRIBUTED / ACKNOWLEDGED / FAILED). */
   getDistributionStatus: async (id: string): Promise<ExchangeRateDistribution[]> => {
-    const response = await api.get<ExchangeRateDistribution[]>(`/exchange-rate-master/${id}/distribution`)
+    const response = await api.get<ExchangeRateDistribution[]>(
+      `/exchange-rate-master/${id}/distribution`,
+    )
     return response.data ?? []
   },
 
-  /** Pénztári elosztás-visszaigazolás regisztrálása. */
-  acknowledgeDistribution: async (distributionId: string): Promise<void> => {
-    await api.post(`/exchange-rate-master/distribution/${distributionId}/acknowledge`)
+  /** Pénztári elosztás-visszaigazolás regisztrálása Proof-of-Print tokennel. */
+  acknowledgeDistribution: async (
+    distributionId: string,
+    printProofToken: string,
+  ): Promise<void> => {
+    await api.post(`/exchange-rate-master/distribution/${distributionId}/acknowledge`, {
+      printProofToken,
+    })
+  },
+
+  /** Aktuális branch nyitott árfolyam-nyomtatási kötelezettségei. */
+  getPendingPrintObligations: async (): Promise<PendingPrintObligation[]> => {
+    const response = await api.get<PendingPrintObligation[]>(
+      '/exchange-rate-master/distribution/pending-print',
+    )
+    return response.data ?? []
   },
 }

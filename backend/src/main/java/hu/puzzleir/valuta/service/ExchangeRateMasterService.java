@@ -44,6 +44,7 @@ public class ExchangeRateMasterService {
     private final RateWorkgroupRepository workgroupRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final AuditLogService auditLogService;
+    private final RatePrintProofService ratePrintProofService;
 
     /**
      * Törzs árfolyam létrehozása (DRAFT állapotban).
@@ -236,8 +237,8 @@ public class ExchangeRateMasterService {
                 currency.getCode(), master.getVersionNumber(), successCount, failCount);
 
         auditLogService.log("RATE_PUBLISH",
-                String.format("Arfolyam publikalva: %s v%d -> %d penztar (%d OK, %d hiba)",
-                        currency.getCode(), master.getVersionNumber(), targetBranches.size(), successCount, failCount),
+                String.format("Arfolyam publikalva: %s v%d -> %d penztar (%d OK, %d hiba), print-kotelezettseg: %d branch",
+                        currency.getCode(), master.getVersionNumber(), targetBranches.size(), successCount, failCount, successCount),
                 masterRateId.toString());
 
         return master;
@@ -311,10 +312,10 @@ public class ExchangeRateMasterService {
     }
 
     /**
-     * Pénztár visszaigazolás (acknowledge) regisztrálása.
+     * Pénztár visszaigazolás (acknowledge) regisztrálása Proof-of-Print tokennel.
      */
     @Transactional(rollbackFor = Exception.class)
-    public void acknowledgeDistribution(UUID distributionId) {
+    public void acknowledgeDistribution(UUID distributionId, String proofToken) {
         ExchangeRateDistribution dist = distributionRepository.findById(distributionId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                     "Elosztás nem található: " + distributionId));
@@ -326,12 +327,99 @@ public class ExchangeRateMasterService {
                     "Elosztás nem található: " + distributionId));
         assertOwnCompany(master, distributionId);
 
+        assertBranchMayAcknowledge(dist);
+
+        boolean validToken = ratePrintProofService.verifyToken(
+                proofToken,
+                dist.getId(),
+                dist.getBranchId(),
+                dist.getMasterRateId(),
+                master.getCompanyId());
+        if (!validToken) {
+            throw new ValidationException(
+                    "Proof-of-Print token hiányzik vagy érvénytelen — nyomtatás nélkül az árfolyam nem igazolható vissza!");
+        }
+
+        if (dist.getStatus() == DistributionStatus.ACKNOWLEDGED) {
+            return;
+        }
+
+        if (dist.getStatus() == DistributionStatus.FAILED) {
+            throw new ValidationException("FAILED státuszú árfolyam-elosztás nem igazolható vissza, előbb újra-elosztás szükséges!");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
         dist.setStatus(DistributionStatus.ACKNOWLEDGED);
-        dist.setAcknowledgedAt(LocalDateTime.now());
+        dist.setAcknowledgedAt(now);
+        dist.setPrintedAt(now);
+        dist.setPrintedBy(SecurityUtils.getCurrentWorkerId());
         distributionRepository.save(dist);
+        auditLogService.log("RATE_PRINT_CONFIRM",
+                String.format("Arfolyam nyomtatas es lefuzes visszaigazolva: distributionId=%s masterRateId=%s branchId=%s",
+                        distributionId, dist.getMasterRateId(), dist.getBranchId()),
+                distributionId.toString());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PendingPrintObligation> getPendingPrintObligations() {
+        UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
+        if (branchId == null) {
+            throw new ValidationException("Nincs aktív branch a nyomtatási kötelezettségek lekérdezéséhez!");
+        }
+
+        return distributionRepository.findByBranchIdAndStatus(branchId, DistributionStatus.DISTRIBUTED)
+                .stream()
+                .map(this::toPendingPrintObligation)
+                .toList();
     }
 
     // ============ BELSŐ SEGÉD METÓDUSOK ============
+
+    private void assertBranchMayAcknowledge(ExchangeRateDistribution dist) {
+        String role = SecurityUtils.getCurrentRole();
+        if (isPrintAcknowledgePrivilegedRole(role)) {
+            return;
+        }
+        UUID currentBranchId = SecurityUtils.getCurrentBranchIdOrNull();
+        if (currentBranchId == null || !currentBranchId.equals(dist.getBranchId())) {
+            throw new ValidationException("Az árfolyam-elosztás csak a címzett branch-ből igazolható vissza!");
+        }
+    }
+
+    private boolean isPrintAcknowledgePrivilegedRole(String role) {
+        return "ADMIN".equals(role) || "FOERTEKTAR".equals(role) || "UGYVEZETO".equals(role);
+    }
+
+    private PendingPrintObligation toPendingPrintObligation(ExchangeRateDistribution dist) {
+        ExchangeRateMaster master = masterRepository.findById(dist.getMasterRateId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "Törzs árfolyam nem található: " + dist.getMasterRateId()));
+        assertOwnCompany(master, dist.getId());
+        hu.puzzleir.valuta.entity.Currency currency = currencyRepository.findById(master.getCurrencyId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "Valuta nem található: " + master.getCurrencyId()));
+
+        return PendingPrintObligation.builder()
+                .distributionId(dist.getId())
+                .masterRateId(master.getId())
+                .currencyCode(currency.getCode())
+                .versionNumber(master.getVersionNumber())
+                .baseBuyRate(master.getBaseBuyRate())
+                .baseSellRate(master.getBaseSellRate())
+                .officialRate(master.getOfficialRate())
+                .limit1Amount(master.getLimit1Amount())
+                .limit1BuyRate(master.getLimit1BuyRate())
+                .limit1SellRate(master.getLimit1SellRate())
+                .limit2Amount(master.getLimit2Amount())
+                .limit2BuyRate(master.getLimit2BuyRate())
+                .limit2SellRate(master.getLimit2SellRate())
+                .limit3Amount(master.getLimit3Amount())
+                .limit3BuyRate(master.getLimit3BuyRate())
+                .limit3SellRate(master.getLimit3SellRate())
+                .validFrom(master.getValidFrom())
+                .printProofToken(ratePrintProofService.issueToken(dist.getId(), dist.getBranchId(), master.getId(), master.getCompanyId()))
+                .build();
+    }
 
     /**
      * Multi-tenant ownership-guard: a törzs árfolyam a hívó cégéhez tartozik-e.
@@ -465,5 +553,30 @@ public class ExchangeRateMasterService {
         private BigDecimal limit3BuyRate;
         private BigDecimal limit3SellRate;
         private String notes;
+    }
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class PendingPrintObligation {
+        private UUID distributionId;
+        private UUID masterRateId;
+        private String currencyCode;
+        private Integer versionNumber;
+        private BigDecimal baseBuyRate;
+        private BigDecimal baseSellRate;
+        private BigDecimal officialRate;
+        private BigDecimal limit1Amount;
+        private BigDecimal limit1BuyRate;
+        private BigDecimal limit1SellRate;
+        private BigDecimal limit2Amount;
+        private BigDecimal limit2BuyRate;
+        private BigDecimal limit2SellRate;
+        private BigDecimal limit3Amount;
+        private BigDecimal limit3BuyRate;
+        private BigDecimal limit3SellRate;
+        private LocalDateTime validFrom;
+        private String printProofToken;
     }
 }

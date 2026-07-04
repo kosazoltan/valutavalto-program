@@ -55,11 +55,13 @@ import {
 } from './sqlite';
 import { safeStorage } from 'electron';
 import log from 'electron-log';
+import type { Database, SqlValue } from 'sql.js';
 import {
   collectRoleCodes,
   normalizeSetupAppMode,
   preferredRoleCodesForAppMode,
 } from './setup-app-mode-roles';
+import { printReceipt, type PrintReceiptData } from './printer';
 
 // --- Típusok ---
 
@@ -74,6 +76,8 @@ interface SyncStatus {
   lastSyncResult: SyncResult | null;
   isRunning: boolean;
 }
+
+type RatePrintOutboxDb = Pick<Database, 'run' | 'exec'>;
 
 interface RateResponse {
   currencyCode: string;
@@ -91,6 +95,27 @@ interface RateResponse {
   limit3Amount?: number | null;
   limit3BuyRate?: number | null;
   limit3SellRate?: number | null;
+}
+
+interface RatePrintObligationResponse {
+  distributionId: string;
+  masterRateId: string;
+  currencyCode: string;
+  versionNumber: number;
+  baseBuyRate: number;
+  baseSellRate: number;
+  officialRate?: number | null;
+  limit1Amount?: number | null;
+  limit1BuyRate?: number | null;
+  limit1SellRate?: number | null;
+  limit2Amount?: number | null;
+  limit2BuyRate?: number | null;
+  limit2SellRate?: number | null;
+  limit3Amount?: number | null;
+  limit3BuyRate?: number | null;
+  limit3SellRate?: number | null;
+  validFrom: string;
+  printProofToken: string;
 }
 
 interface CircularResponse {
@@ -180,7 +205,7 @@ export function selectBootstrapRoleCode(
     return [...roles][0] ?? null;
   }
 
-  return roles.size === 1 ? [...roles][0] ?? null : null;
+  return roles.size === 1 ? ([...roles][0] ?? null) : null;
 }
 
 class HttpStatusError extends Error {
@@ -224,7 +249,12 @@ async function httpGet<T>(url: string, token: string | null): Promise<T> {
   }
 }
 
-async function httpPost<T>(url: string, body: Record<string, unknown>, token: string | null, idempotencyKey?: string): Promise<T> {
+async function httpPost<T>(
+  url: string,
+  body: Record<string, unknown>,
+  token: string | null,
+  idempotencyKey?: string,
+): Promise<T> {
   try {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -348,7 +378,11 @@ export class SyncEngine {
    * Config: 'server_url_fallback_primary' vagy backward-compat 'server_url_fallback'.
    */
   private getServerUrlFallbackPrimary(): string | null {
-    const stored = (getConfig('server_url_fallback_primary') ?? getConfig('server_url_fallback') ?? '').trim();
+    const stored = (
+      getConfig('server_url_fallback_primary') ??
+      getConfig('server_url_fallback') ??
+      ''
+    ).trim();
     return stored || null;
   }
 
@@ -363,8 +397,6 @@ export class SyncEngine {
     return stored || null;
   }
 
-
-
   /**
    * 3-regios HA: primary -> fallback_primary (Contabo) -> fallback_secondary (Scaleway).
    * A runSync hiba eseten lepked egyet az elso irany, sikere eseten visszaprobalja
@@ -377,14 +409,24 @@ export class SyncEngine {
   // szinttel — a rotáció után a cikluson kívüli hívók sem kapnak elavult URL-t.
 
   private getBootstrapCredentials(): BootstrapCredentials | null {
-    const companyCode = process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE?.trim() || getConfig('bootstrap_company_code')?.trim() || '';
-    const workerCode = process.env.PENZTAR_BOOTSTRAP_WORKER_CODE?.trim() || getConfig('bootstrap_worker_code')?.trim() || '';
+    const companyCode =
+      process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE?.trim() ||
+      getConfig('bootstrap_company_code')?.trim() ||
+      '';
+    const workerCode =
+      process.env.PENZTAR_BOOTSTRAP_WORKER_CODE?.trim() ||
+      getConfig('bootstrap_worker_code')?.trim() ||
+      '';
     // Security: regi env var kompatibilitas utan DPAPI/safeStorage titkositott config.
-    const password = process.env.PENZTAR_BOOTSTRAP_PASSWORD?.trim() || this.getStoredBootstrapPassword();
+    const password =
+      process.env.PENZTAR_BOOTSTRAP_PASSWORD?.trim() || this.getStoredBootstrapPassword();
     // FIGYELEM: a bootstrap_password torlese CSAK sikeres login UTAN tortenjen meg
     // (bootstrapAuthSession success agaban). Itt NE toroljuk, mert ha a login hibazik
     // (pl. rossz companyCode), a user elveszti a plaintext jelszavat es nem tud ujra login-olni.
-    const roleCode = process.env.PENZTAR_BOOTSTRAP_ROLE_CODE?.trim() || getConfig('bootstrap_role_code')?.trim() || null;
+    const roleCode =
+      process.env.PENZTAR_BOOTSTRAP_ROLE_CODE?.trim() ||
+      getConfig('bootstrap_role_code')?.trim() ||
+      null;
     const appMode = process.env.PENZTAR_APP_MODE?.trim() || getConfig('app_mode')?.trim() || null;
 
     if (!companyCode || !workerCode || !password) {
@@ -474,7 +516,11 @@ export class SyncEngine {
       let token = login.token;
 
       if (login.roleSelectionRequired) {
-        const selectedRoleCode = selectBootstrapRoleCode(credentials.appMode, credentials.roleCode, login);
+        const selectedRoleCode = selectBootstrapRoleCode(
+          credentials.appMode,
+          credentials.roleCode,
+          login,
+        );
         if (!selectedRoleCode) {
           log.warn('[SyncEngine] Role selection szukseges, de nincs appMode-hoz illeszkedo role.', {
             appMode: credentials.appMode,
@@ -505,9 +551,14 @@ export class SyncEngine {
       return token;
     } catch (err) {
       if (isAuthStatusError(err)) {
-        log.warn('[SyncEngine] Lokális auth bootstrap sikertelen (401/403). Ellenőrizd a bootstrap credentialöket.');
+        log.warn(
+          '[SyncEngine] Lokális auth bootstrap sikertelen (401/403). Ellenőrizd a bootstrap credentialöket.',
+        );
       } else {
-        log.warn('[SyncEngine] Lokális auth bootstrap hiba:', err instanceof Error ? err.message : err);
+        log.warn(
+          '[SyncEngine] Lokális auth bootstrap hiba:',
+          err instanceof Error ? err.message : err,
+        );
       }
       return null;
     }
@@ -573,7 +624,9 @@ export class SyncEngine {
     const now = Date.now();
     if (this.backoffUntilMs > now) {
       const remainingS = Math.ceil((this.backoffUntilMs - now) / 1000);
-      log.info(`[SyncEngine] Backoff aktív, ${remainingS}s múlva próbáljuk újra (consecutive failures: ${this.consecutiveFailures})`);
+      log.info(
+        `[SyncEngine] Backoff aktív, ${remainingS}s múlva próbáljuk újra (consecutive failures: ${this.consecutiveFailures})`,
+      );
       return;
     }
 
@@ -614,22 +667,32 @@ export class SyncEngine {
         if (this.activeServerKind === 'primary' && this.getServerUrlFallbackPrimary()) {
           log.warn('[SyncEngine] Auth bootstrap sikertelen — kovetkezo ciklus: fallback_primary');
           this.activeServerKind = 'fallback_primary';
-        } else if (this.activeServerKind === 'fallback_primary' && this.getServerUrlFallbackSecondary()) {
+        } else if (
+          this.activeServerKind === 'fallback_primary' &&
+          this.getServerUrlFallbackSecondary()
+        ) {
           log.warn('[SyncEngine] Auth bootstrap sikertelen — kovetkezo ciklus: fallback_secondary');
           this.activeServerKind = 'fallback_secondary';
         } else if (this.activeServerKind === 'fallback_secondary') {
-          log.warn('[SyncEngine] Auth bootstrap sikertelen — kovetkezo ciklus: primary ujraprobalas');
+          log.warn(
+            '[SyncEngine] Auth bootstrap sikertelen — kovetkezo ciklus: primary ujraprobalas',
+          );
           this.activeServerKind = 'primary';
         }
         this.consecutiveFailures += 1;
         if (this.consecutiveFailures >= 3) {
-          const backoffMs = Math.min(30_000 * Math.pow(2, this.consecutiveFailures - 3), this.maxBackoffMs);
+          const backoffMs = Math.min(
+            30_000 * Math.pow(2, this.consecutiveFailures - 3),
+            this.maxBackoffMs,
+          );
           this.backoffUntilMs = Date.now() + backoffMs;
           log.warn(
             `[SyncEngine] Auth sikertelen (${this.consecutiveFailures}. hiba) — backoff: ${Math.round(backoffMs / 1000)}s`,
           );
         } else {
-          log.warn(`[SyncEngine] Auth sikertelen (${this.consecutiveFailures}. hiba) — sync kihagyva`);
+          log.warn(
+            `[SyncEngine] Auth sikertelen (${this.consecutiveFailures}. hiba) — sync kihagyva`,
+          );
         }
         return;
       }
@@ -648,6 +711,7 @@ export class SyncEngine {
       // 2. Árfolyamok és cache frissítése (csak ha van érvényes token)
       if (token) {
         await this.syncRates();
+        await this.syncRatePrintObligations();
         await this.syncCirculars();
         // 3. Értéktár szinkronizáció
         await this.syncDistributions();
@@ -666,7 +730,9 @@ export class SyncEngine {
       // E-B6.3 v2.3.11: sikeres sync resetel a backoff-ot
       const recoveredFromOutage = this.consecutiveFailures > 0;
       if (this.consecutiveFailures > 0) {
-        log.info(`[SyncEngine] Sikeres sync — backoff reset (volt: ${this.consecutiveFailures} failure)`);
+        log.info(
+          `[SyncEngine] Sikeres sync — backoff reset (volt: ${this.consecutiveFailures} failure)`,
+        );
         this.consecutiveFailures = 0;
         this.backoffUntilMs = 0;
       }
@@ -687,13 +753,22 @@ export class SyncEngine {
       // 3-regios HA: failover lepked egy szintet tovabb.
       // primary -> fallback_primary (Contabo) -> fallback_secondary (Scaleway) -> (ujra) primary
       if (this.activeServerKind === 'primary' && this.getServerUrlFallbackPrimary()) {
-        log.warn('[SyncEngine] Primary hibazott, kovetkezo ciklus: fallback_primary (Contabo warm standby)');
+        log.warn(
+          '[SyncEngine] Primary hibazott, kovetkezo ciklus: fallback_primary (Contabo warm standby)',
+        );
         this.activeServerKind = 'fallback_primary';
-      } else if (this.activeServerKind === 'fallback_primary' && this.getServerUrlFallbackSecondary()) {
-        log.warn('[SyncEngine] Fallback_primary is hibazott, kovetkezo ciklus: fallback_secondary (Scaleway cold standby)');
+      } else if (
+        this.activeServerKind === 'fallback_primary' &&
+        this.getServerUrlFallbackSecondary()
+      ) {
+        log.warn(
+          '[SyncEngine] Fallback_primary is hibazott, kovetkezo ciklus: fallback_secondary (Scaleway cold standby)',
+        );
         this.activeServerKind = 'fallback_secondary';
       } else if (this.activeServerKind === 'fallback_secondary') {
-        log.warn('[SyncEngine] Mindharom HA szint hibazott, kovetkezo ciklus: primary ujraprobalas');
+        log.warn(
+          '[SyncEngine] Mindharom HA szint hibazott, kovetkezo ciklus: primary ujraprobalas',
+        );
         this.activeServerKind = 'primary';
       }
 
@@ -701,9 +776,14 @@ export class SyncEngine {
       this.consecutiveFailures += 1;
       if (this.consecutiveFailures >= 3) {
         // 30s base, 30s * 2^(n-3) — capped at maxBackoffMs (5 perc)
-        const backoffMs = Math.min(30_000 * Math.pow(2, this.consecutiveFailures - 3), this.maxBackoffMs);
+        const backoffMs = Math.min(
+          30_000 * Math.pow(2, this.consecutiveFailures - 3),
+          this.maxBackoffMs,
+        );
         this.backoffUntilMs = Date.now() + backoffMs;
-        log.warn(`[SyncEngine] ${this.consecutiveFailures} egymást követő failure — backoff: ${Math.round(backoffMs / 1000)}s`);
+        log.warn(
+          `[SyncEngine] ${this.consecutiveFailures} egymást követő failure — backoff: ${Math.round(backoffMs / 1000)}s`,
+        );
       }
 
       log.error('[SyncEngine] Sync hiba:', err);
@@ -756,7 +836,9 @@ export class SyncEngine {
     if (this.syncAllInFlight) {
       if (this.syncAllInFlightTokenKey !== tokenKey) {
         const currentRun = this.syncAllInFlight;
-        log.warn('[SyncEngine] syncAll már fut eltérő auth tokennel, az új kérés az aktuális futás után indul');
+        log.warn(
+          '[SyncEngine] syncAll már fut eltérő auth tokennel, az új kérés az aktuális futás után indul',
+        );
         return this.syncAllAfterInFlight(tokenOverride, currentRun);
       }
       log.info('[SyncEngine] syncAll már fut, a folyamatban lévő futás eredményére várunk');
@@ -780,7 +862,10 @@ export class SyncEngine {
     try {
       await inFlight;
     } catch (error) {
-      log.warn('[SyncEngine] Az előző syncAll futás hibával zárult, az új auth kontextusú futás mégis indul', error);
+      log.warn(
+        '[SyncEngine] Az előző syncAll futás hibával zárult, az új auth kontextusú futás mégis indul',
+        error,
+      );
     }
 
     await Promise.resolve();
@@ -796,20 +881,29 @@ export class SyncEngine {
     const allPendingConv = getPendingConversions();
     const pendingConversions = allPendingConv.filter((c) => !this.abandonedConvIds.has(c.id));
     const allPendingBankTx = getPendingBankTransactions();
-    const pendingBankTransactions = allPendingBankTx.filter((b) => !this.abandonedBankTxIds.has(b.id));
+    const pendingBankTransactions = allPendingBankTx.filter(
+      (b) => !this.abandonedBankTxIds.has(b.id),
+    );
     const allPendingDistrib = getPendingDistributions();
-    const pendingDistributions = allPendingDistrib.filter((d) => !this.abandonedDistribIds.has(d.id));
+    const pendingDistributions = allPendingDistrib.filter(
+      (d) => !this.abandonedDistribIds.has(d.id),
+    );
     const allPendingTransfer = getPendingTransfers();
     const pendingTransfers = allPendingTransfer.filter((t) => !this.abandonedTransferIds.has(t.id));
     const allPendingCollect = getPendingCollections();
-    const pendingCollections = allPendingCollect.filter((c) => !this.abandonedCollectionIds.has(c.id));
+    const pendingCollections = allPendingCollect.filter(
+      (c) => !this.abandonedCollectionIds.has(c.id),
+    );
     const allPendingStorno = getPendingStornos();
     const pendingStornos = allPendingStorno.filter((s) => !this.abandonedStornoIds.has(s.id));
     const allPendingHandover = getPendingHandoverOperations();
-    const pendingHandoverOperations = allPendingHandover.filter((h) => !this.abandonedHandoverIds.has(h.id));
+    const pendingHandoverOperations = allPendingHandover.filter(
+      (h) => !this.abandonedHandoverIds.has(h.id),
+    );
 
     const skippedAbandoned =
-      (allPendingTx.length - pendingTransactions.length) +
+      allPendingTx.length -
+      pendingTransactions.length +
       (allPendingConv.length - pendingConversions.length) +
       (allPendingBankTx.length - pendingBankTransactions.length) +
       (allPendingDistrib.length - pendingDistributions.length) +
@@ -818,23 +912,29 @@ export class SyncEngine {
       (allPendingStorno.length - pendingStornos.length) +
       (allPendingHandover.length - pendingHandoverOperations.length);
     if (skippedAbandoned > 0) {
-      log.info(`[SyncEngine] PR #116: ${skippedAbandoned} abandoned (business error) tranzakció kihagyva`);
+      log.info(
+        `[SyncEngine] PR #116: ${skippedAbandoned} abandoned (business error) tranzakció kihagyva`,
+      );
     }
-    const totalPending = pendingTransactions.length
-      + pendingConversions.length
-      + pendingBankTransactions.length
-      + pendingDistributions.length
-      + pendingTransfers.length
-      + pendingCollections.length
-      + pendingStornos.length
-      + pendingHandoverOperations.length;
+    const totalPending =
+      pendingTransactions.length +
+      pendingConversions.length +
+      pendingBankTransactions.length +
+      pendingDistributions.length +
+      pendingTransfers.length +
+      pendingCollections.length +
+      pendingStornos.length +
+      pendingHandoverOperations.length;
 
     if (totalPending === 0) {
       return result;
     }
 
     const serverUrl = this.getActiveServerUrl();
-    if (!serverUrl) { result.errors.push('Offline mód — szerver URL nincs beállítva'); return result; }
+    if (!serverUrl) {
+      result.errors.push('Offline mód — szerver URL nincs beállítva');
+      return result;
+    }
     const token = tokenOverride ?? this.getAuthToken();
 
     if (!token) {
@@ -854,19 +954,31 @@ export class SyncEngine {
         result.errors.push(`TX #${tx.id} (${tx.type} ${tx.currency_code}): ${errorMsg}`);
         // FK-SYNC (2026-06-02): a hibát TARTÓSAN a pending soron is rögzítjük (nem csak in-memory +
         // log), hogy a "Függőben" ragadt tételnél a felhasználó lássa, MIÉRT nem ment fel.
-        try { markTransactionSyncError(tx.id, errorMsg, new Date().toISOString()); } catch { /* best-effort */ }
+        try {
+          markTransactionSyncError(tx.id, errorMsg, new Date().toISOString());
+        } catch {
+          /* best-effort */
+        }
         // PR #116: business-validation-error -> abandon (ne retry-oljon végtelenül)
         if (this.isBusinessValidationError(errorMsg)) {
           this.abandonedTxIds.add(tx.id);
           log.warn(`[SyncEngine] TX #${tx.id} abandoned (business error): ${errorMsg}`);
         }
-        if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
+        if (
+          isAuthStatusError(err) ||
+          errorMsg.includes('HTTP 401') ||
+          errorMsg.includes('HTTP 403')
+        ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
         }
         // Ha hálózati hiba, a többi se fog menni — megszakítjuk
-        if (errorMsg.includes('fetch') || errorMsg.includes('network') || errorMsg.includes('timeout')) {
+        if (
+          errorMsg.includes('fetch') ||
+          errorMsg.includes('network') ||
+          errorMsg.includes('timeout')
+        ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
@@ -893,12 +1005,20 @@ export class SyncEngine {
           this.abandonedConvIds.add(conversion.id);
           log.warn(`[SyncEngine] CONV #${conversion.id} abandoned (business error): ${errorMsg}`);
         }
-        if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
+        if (
+          isAuthStatusError(err) ||
+          errorMsg.includes('HTTP 401') ||
+          errorMsg.includes('HTTP 403')
+        ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
         }
-        if (errorMsg.includes('fetch') || errorMsg.includes('network') || errorMsg.includes('timeout')) {
+        if (
+          errorMsg.includes('fetch') ||
+          errorMsg.includes('network') ||
+          errorMsg.includes('timeout')
+        ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
@@ -918,17 +1038,29 @@ export class SyncEngine {
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         result.failed++;
-        result.errors.push(`BANK #${bankTransaction.id} (${bankTransaction.transaction_type} ${bankTransaction.currency_code}): ${errorMsg}`);
+        result.errors.push(
+          `BANK #${bankTransaction.id} (${bankTransaction.transaction_type} ${bankTransaction.currency_code}): ${errorMsg}`,
+        );
         if (this.isBusinessValidationError(errorMsg)) {
           this.abandonedBankTxIds.add(bankTransaction.id);
-          log.warn(`[SyncEngine] BANK #${bankTransaction.id} abandoned (business error): ${errorMsg}`);
+          log.warn(
+            `[SyncEngine] BANK #${bankTransaction.id} abandoned (business error): ${errorMsg}`,
+          );
         }
-        if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
+        if (
+          isAuthStatusError(err) ||
+          errorMsg.includes('HTTP 401') ||
+          errorMsg.includes('HTTP 403')
+        ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
         }
-        if (errorMsg.includes('fetch') || errorMsg.includes('network') || errorMsg.includes('timeout')) {
+        if (
+          errorMsg.includes('fetch') ||
+          errorMsg.includes('network') ||
+          errorMsg.includes('timeout')
+        ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
@@ -953,12 +1085,20 @@ export class SyncEngine {
           this.abandonedDistribIds.add(distribution.id);
           log.warn(`[SyncEngine] DIST #${distribution.id} abandoned (business error): ${errorMsg}`);
         }
-        if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
+        if (
+          isAuthStatusError(err) ||
+          errorMsg.includes('HTTP 401') ||
+          errorMsg.includes('HTTP 403')
+        ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
         }
-        if (errorMsg.includes('fetch') || errorMsg.includes('network') || errorMsg.includes('timeout')) {
+        if (
+          errorMsg.includes('fetch') ||
+          errorMsg.includes('network') ||
+          errorMsg.includes('timeout')
+        ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
@@ -983,12 +1123,20 @@ export class SyncEngine {
           this.abandonedTransferIds.add(transfer.id);
           log.warn(`[SyncEngine] TRANSFER #${transfer.id} abandoned (business error): ${errorMsg}`);
         }
-        if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
+        if (
+          isAuthStatusError(err) ||
+          errorMsg.includes('HTTP 401') ||
+          errorMsg.includes('HTTP 403')
+        ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
         }
-        if (errorMsg.includes('fetch') || errorMsg.includes('network') || errorMsg.includes('timeout')) {
+        if (
+          errorMsg.includes('fetch') ||
+          errorMsg.includes('network') ||
+          errorMsg.includes('timeout')
+        ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
@@ -1008,17 +1156,29 @@ export class SyncEngine {
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         result.failed++;
-        result.errors.push(`COLLECTION #${collection.id} (${collection.currency_code}): ${errorMsg}`);
+        result.errors.push(
+          `COLLECTION #${collection.id} (${collection.currency_code}): ${errorMsg}`,
+        );
         if (this.isBusinessValidationError(errorMsg)) {
           this.abandonedCollectionIds.add(collection.id);
-          log.warn(`[SyncEngine] COLLECTION #${collection.id} abandoned (business error): ${errorMsg}`);
+          log.warn(
+            `[SyncEngine] COLLECTION #${collection.id} abandoned (business error): ${errorMsg}`,
+          );
         }
-        if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
+        if (
+          isAuthStatusError(err) ||
+          errorMsg.includes('HTTP 401') ||
+          errorMsg.includes('HTTP 403')
+        ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
         }
-        if (errorMsg.includes('fetch') || errorMsg.includes('network') || errorMsg.includes('timeout')) {
+        if (
+          errorMsg.includes('fetch') ||
+          errorMsg.includes('network') ||
+          errorMsg.includes('timeout')
+        ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
@@ -1043,12 +1203,20 @@ export class SyncEngine {
           this.abandonedStornoIds.add(storno.id);
           log.warn(`[SyncEngine] STORNO #${storno.id} abandoned (business error): ${errorMsg}`);
         }
-        if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
+        if (
+          isAuthStatusError(err) ||
+          errorMsg.includes('HTTP 401') ||
+          errorMsg.includes('HTTP 403')
+        ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
         }
-        if (errorMsg.includes('fetch') || errorMsg.includes('network') || errorMsg.includes('timeout')) {
+        if (
+          errorMsg.includes('fetch') ||
+          errorMsg.includes('network') ||
+          errorMsg.includes('timeout')
+        ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
@@ -1071,14 +1239,24 @@ export class SyncEngine {
         result.errors.push(`HANDOVER #${operation.id} (${operation.operation_type}): ${errorMsg}`);
         if (this.isBusinessValidationError(errorMsg)) {
           this.abandonedHandoverIds.add(operation.id);
-          log.warn(`[SyncEngine] HANDOVER #${operation.id} abandoned (business error): ${errorMsg}`);
+          log.warn(
+            `[SyncEngine] HANDOVER #${operation.id} abandoned (business error): ${errorMsg}`,
+          );
         }
-        if (isAuthStatusError(err) || errorMsg.includes('HTTP 401') || errorMsg.includes('HTTP 403')) {
+        if (
+          isAuthStatusError(err) ||
+          errorMsg.includes('HTTP 401') ||
+          errorMsg.includes('HTTP 403')
+        ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
         }
-        if (errorMsg.includes('fetch') || errorMsg.includes('network') || errorMsg.includes('timeout')) {
+        if (
+          errorMsg.includes('fetch') ||
+          errorMsg.includes('network') ||
+          errorMsg.includes('timeout')
+        ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
@@ -1099,9 +1277,7 @@ export class SyncEngine {
    */
   private async reassertRecentSynced(serverUrl: string, token: string): Promise<number> {
     if (!serverUrl || !token) return 0;
-    const since = new Date(
-      Date.now() - SyncEngine.REASSERT_WINDOW_HOURS * 3_600_000,
-    ).toISOString();
+    const since = new Date(Date.now() - SyncEngine.REASSERT_WINDOW_HOURS * 3_600_000).toISOString();
     let count = 0;
     const tryOne = async (label: string, fn: () => Promise<void>): Promise<void> => {
       try {
@@ -1146,9 +1322,8 @@ export class SyncEngine {
     token: string,
     tx: PendingTransactionRow,
   ): Promise<void> {
-    const endpoint = tx.type === 'SELL'
-      ? `${serverUrl}/transactions/sell`
-      : `${serverUrl}/transactions/buy`;
+    const endpoint =
+      tx.type === 'SELL' ? `${serverUrl}/transactions/sell` : `${serverUrl}/transactions/buy`;
 
     const body: Record<string, unknown> = {
       currencyCode: tx.currency_code,
@@ -1193,8 +1368,8 @@ export class SyncEngine {
       body['discountPercent'] = tx.discount_percent;
     }
 
-    const customerIdentifier = tx.customer_identifier
-      ?? (typeof tx.customer_id === 'string' ? tx.customer_id : null);
+    const customerIdentifier =
+      tx.customer_identifier ?? (typeof tx.customer_id === 'string' ? tx.customer_id : null);
     if (customerIdentifier && customerIdentifier.trim().length > 0) {
       body['customerId'] = customerIdentifier;
     }
@@ -1239,7 +1414,10 @@ export class SyncEngine {
 
     // V226 (2026-05-14): per-line devizastatusz — DOMESTIC vagy FOREIGN.
     // Ha hianyzik (regi pending sor), a backend defaultolja a tranzakcio-szintu erteket.
-    if (tx.foreign_status && (tx.foreign_status === 'DOMESTIC' || tx.foreign_status === 'FOREIGN')) {
+    if (
+      tx.foreign_status &&
+      (tx.foreign_status === 'DOMESTIC' || tx.foreign_status === 'FOREIGN')
+    ) {
       body['foreignStatus'] = tx.foreign_status;
     }
 
@@ -1327,8 +1505,11 @@ export class SyncEngine {
 
     // HIBA 2026-05-26 (#4/#5): a penztaros (cimletezeshez) modositott cel-osszege.
     // A backend felso hatarra vagja (clamp) es a maradek forintot visszajaroként konyveli.
-    if (conversion.calculated_to_amount !== null && conversion.calculated_to_amount !== undefined
-        && conversion.calculated_to_amount > 0) {
+    if (
+      conversion.calculated_to_amount !== null &&
+      conversion.calculated_to_amount !== undefined &&
+      conversion.calculated_to_amount > 0
+    ) {
       body['toAmount'] = conversion.calculated_to_amount;
     }
 
@@ -1349,7 +1530,10 @@ export class SyncEngine {
       body['customerName'] = conversion.customer_name;
     }
 
-    if (conversion.customer_document_number && conversion.customer_document_number.trim().length > 0) {
+    if (
+      conversion.customer_document_number &&
+      conversion.customer_document_number.trim().length > 0
+    ) {
       body['customerDocumentNumber'] = conversion.customer_document_number;
     }
 
@@ -1380,7 +1564,10 @@ export class SyncEngine {
     if (conversion.approval_session_id !== null && conversion.approval_session_id !== undefined) {
       body['approvalSessionId'] = conversion.approval_session_id;
     }
-    if (conversion.customer_on_own_behalf !== null && conversion.customer_on_own_behalf !== undefined) {
+    if (
+      conversion.customer_on_own_behalf !== null &&
+      conversion.customer_on_own_behalf !== undefined
+    ) {
       body['customerOnOwnBehalf'] = conversion.customer_on_own_behalf === 1;
     }
     // Actor mezok csak akkor mennek fel, ha onOwnBehalf=0 (FALSE) — Copilot P2 mintaja
@@ -1415,7 +1602,10 @@ export class SyncEngine {
       exchangeRate: bankTransaction.exchange_rate,
     };
 
-    if (bankTransaction.vault_territory_id !== null && bankTransaction.vault_territory_id !== undefined) {
+    if (
+      bankTransaction.vault_territory_id !== null &&
+      bankTransaction.vault_territory_id !== undefined
+    ) {
       body['vaultTerritoryId'] = bankTransaction.vault_territory_id;
     }
     if (bankTransaction.bank_name && bankTransaction.bank_name.trim().length > 0) {
@@ -1456,25 +1646,47 @@ export class SyncEngine {
       body['paymentMethodDid'] = storno.payment_method;
     }
 
-    await httpPost(`${serverUrl}/stornos/execute`, body, token, storno.idempotency_key ?? undefined);
+    await httpPost(
+      `${serverUrl}/stornos/execute`,
+      body,
+      token,
+      storno.idempotency_key ?? undefined,
+    );
   }
 
-  private async syncDistribution(serverUrl: string, token: string, dist: ReturnType<typeof getPendingDistributions>[number]): Promise<void> {
+  private async syncDistribution(
+    serverUrl: string,
+    token: string,
+    dist: ReturnType<typeof getPendingDistributions>[number],
+  ): Promise<void> {
     const body: Record<string, unknown> = {
       targetBranchCode: dist.target_branch_code,
       currencyCode: dist.currency_code,
       amount: dist.amount,
     };
     if (dist.denominations) {
-      try { body['denominations'] = JSON.parse(dist.denominations); } catch { /* keep omitted */ }
+      try {
+        body['denominations'] = JSON.parse(dist.denominations);
+      } catch {
+        /* keep omitted */
+      }
     }
     if (dist.note) {
       body['note'] = dist.note;
     }
-    await httpPost(`${serverUrl}/ertektar/distribution`, body, token, dist.idempotency_key ?? undefined);
+    await httpPost(
+      `${serverUrl}/ertektar/distribution`,
+      body,
+      token,
+      dist.idempotency_key ?? undefined,
+    );
   }
 
-  private async syncTransfer(serverUrl: string, token: string, tx: ReturnType<typeof getPendingTransfers>[number]): Promise<void> {
+  private async syncTransfer(
+    serverUrl: string,
+    token: string,
+    tx: ReturnType<typeof getPendingTransfers>[number],
+  ): Promise<void> {
     const body: Record<string, unknown> = {
       amount: tx.amount,
       targetBranchCode: tx.target_branch_code,
@@ -1493,7 +1705,11 @@ export class SyncEngine {
       body['hufValue'] = tx.huf_value;
     }
     if (tx.denominations) {
-      try { body['denominations'] = JSON.parse(tx.denominations); } catch { /* keep omitted */ }
+      try {
+        body['denominations'] = JSON.parse(tx.denominations);
+      } catch {
+        /* keep omitted */
+      }
     }
     if (tx.note) {
       body['notes'] = tx.note;
@@ -1505,12 +1721,20 @@ export class SyncEngine {
     body['sealNumber'] = tx.seal_number || 'LEGACY';
     if (tx.direction) body['direction'] = tx.direction;
     if (tx.lines) {
-      try { body['lines'] = JSON.parse(tx.lines); } catch { /* keep omitted */ }
+      try {
+        body['lines'] = JSON.parse(tx.lines);
+      } catch {
+        /* keep omitted */
+      }
     }
     await httpPost(`${serverUrl}/transfers`, body, token, tx.idempotency_key ?? undefined);
   }
 
-  private async syncCollection(serverUrl: string, token: string, col: ReturnType<typeof getPendingCollections>[number]): Promise<void> {
+  private async syncCollection(
+    serverUrl: string,
+    token: string,
+    col: ReturnType<typeof getPendingCollections>[number],
+  ): Promise<void> {
     const body: Record<string, unknown> = {
       sourceBranchCode: col.source_branch_code,
       currencyCode: col.currency_code,
@@ -1519,7 +1743,12 @@ export class SyncEngine {
     if (col.note) {
       body['note'] = col.note;
     }
-    await httpPost(`${serverUrl}/ertektar/collections`, body, token, col.idempotency_key ?? undefined);
+    await httpPost(
+      `${serverUrl}/ertektar/collections`,
+      body,
+      token,
+      col.idempotency_key ?? undefined,
+    );
   }
 
   private async syncHandoverOperation(
@@ -1546,9 +1775,10 @@ export class SyncEngine {
       throw new Error('Hiányzó handover sheet id');
     }
 
-    const endpoint = operation.operation_type === 'PRINT'
-      ? `${serverUrl}/handover-sheets/${operation.sheet_id}/print`
-      : `${serverUrl}/handover-sheets/${operation.sheet_id}/complete`;
+    const endpoint =
+      operation.operation_type === 'PRINT'
+        ? `${serverUrl}/handover-sheets/${operation.sheet_id}/print`
+        : `${serverUrl}/handover-sheets/${operation.sheet_id}/complete`;
     await httpPost(endpoint, {}, token, operation.idempotency_key ?? undefined);
   }
 
@@ -1562,13 +1792,12 @@ export class SyncEngine {
   async syncRates(): Promise<void> {
     try {
       const serverUrl = this.getActiveServerUrl();
-      if (!serverUrl) { return; }
+      if (!serverUrl) {
+        return;
+      }
       const token = this.getAuthToken();
 
-      const rates = await httpGet<RateResponse[]>(
-        `${serverUrl}/exchange-rates/pos-current`,
-        token,
-      );
+      const rates = await httpGet<RateResponse[]>(`${serverUrl}/exchange-rates/pos-current`, token);
 
       const db = getDb();
       if (!db || !Array.isArray(rates)) return;
@@ -1596,10 +1825,20 @@ export class SyncEngine {
              limit3_buy_rate = excluded.limit3_buy_rate,
              limit3_sell_rate = excluded.limit3_sell_rate`,
           [
-            rate.currencyCode, rate.buyRate, rate.sellRate, rate.unit, rate.updatedAt,
-            rate.officialRate ?? null, rate.limit1Amount ?? null, rate.limit1BuyRate ?? null,
-            rate.limit1SellRate ?? null, rate.limit2Amount ?? null, rate.limit2BuyRate ?? null,
-            rate.limit2SellRate ?? null, rate.limit3Amount ?? null, rate.limit3BuyRate ?? null,
+            rate.currencyCode,
+            rate.buyRate,
+            rate.sellRate,
+            rate.unit,
+            rate.updatedAt,
+            rate.officialRate ?? null,
+            rate.limit1Amount ?? null,
+            rate.limit1BuyRate ?? null,
+            rate.limit1SellRate ?? null,
+            rate.limit2Amount ?? null,
+            rate.limit2BuyRate ?? null,
+            rate.limit2SellRate ?? null,
+            rate.limit3Amount ?? null,
+            rate.limit3BuyRate ?? null,
             rate.limit3SellRate ?? null,
           ],
         );
@@ -1611,11 +1850,185 @@ export class SyncEngine {
       // Nem kritikus hiba — legközelebb újrapróbáljuk
       if (isAuthStatusError(err)) {
         this.clearStoredAuthToken();
-        log.warn('[SyncEngine] Árfolyam sync auth hiba (401/403), session újra-bootstrap szükséges.');
+        log.warn(
+          '[SyncEngine] Árfolyam sync auth hiba (401/403), session újra-bootstrap szükséges.',
+        );
         return;
       }
       log.warn('[SyncEngine] Árfolyam sync hiba:', err instanceof Error ? err.message : err);
     }
+  }
+
+  async syncRatePrintObligations(): Promise<void> {
+    try {
+      const serverUrl = this.getActiveServerUrl();
+      if (!serverUrl) return;
+      const token = this.getAuthToken();
+      if (!token) return;
+      const db = getDb();
+      if (!db) return;
+
+      this.ensureRatePrintOutboxTable(db);
+      await this.flushRatePrintOutbox(serverUrl, token, db);
+
+      const obligations = await httpGet<RatePrintObligationResponse[]>(
+        `${serverUrl}/exchange-rate-master/distribution/pending-print`,
+        token,
+      );
+      if (!Array.isArray(obligations) || obligations.length === 0) return;
+
+      for (const obligation of obligations) {
+        const printed = await printReceipt(this.buildRateChangePrintData(obligation));
+        if (!printed) {
+          log.warn(
+            `[SyncEngine] Rate-print nyomtatás sikertelen, nincs ACK: ${obligation.distributionId}`,
+          );
+          continue;
+        }
+
+        try {
+          await this.acknowledgeRatePrint(
+            serverUrl,
+            token,
+            obligation.distributionId,
+            obligation.printProofToken,
+          );
+        } catch (err) {
+          this.enqueueRatePrintOutbox(
+            db,
+            obligation.distributionId,
+            obligation.printProofToken,
+            new Date().toISOString(),
+          );
+          if (isAuthStatusError(err)) {
+            this.clearStoredAuthToken();
+            log.warn('[SyncEngine] Rate-print ACK auth hiba (401/403), outboxba mentve.');
+            break;
+          }
+          log.warn(
+            `[SyncEngine] Rate-print ACK hiba, outboxba mentve: ${obligation.distributionId}`,
+            err instanceof Error ? err.message : err,
+          );
+        }
+      }
+
+      saveDatabase();
+    } catch (err) {
+      if (isAuthStatusError(err)) {
+        this.clearStoredAuthToken();
+        log.warn(
+          '[SyncEngine] Rate-print sync auth hiba (401/403), session újra-bootstrap szükséges.',
+        );
+        return;
+      }
+      log.warn('[SyncEngine] Rate-print sync hiba:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  private ensureRatePrintOutboxTable(db: RatePrintOutboxDb): void {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS rate_print_outbox (
+        distribution_id TEXT PRIMARY KEY,
+        token TEXT NOT NULL,
+        printed_at TEXT NOT NULL
+      )
+    `);
+  }
+
+  private async flushRatePrintOutbox(
+    serverUrl: string,
+    token: string,
+    db: RatePrintOutboxDb,
+  ): Promise<void> {
+    const rows = this.readRatePrintOutboxRows(db);
+    for (const row of rows) {
+      await this.acknowledgeRatePrint(serverUrl, token, row.distributionId, row.token);
+      db.run('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [row.distributionId]);
+    }
+  }
+
+  private readRatePrintOutboxRows(
+    db: Pick<Database, 'exec'>,
+  ): Array<{ distributionId: string; token: string }> {
+    const result = db.exec('SELECT distribution_id, token, printed_at FROM rate_print_outbox');
+    const table = result[0];
+    if (!table) return [];
+    return table.values.map((value) => ({
+      distributionId: String(value[0]),
+      token: String(value[1]),
+    }));
+  }
+
+  private enqueueRatePrintOutbox(
+    db: Pick<Database, 'run'>,
+    distributionId: string,
+    token: string,
+    printedAt: string,
+  ): void {
+    const params: SqlValue[] = [distributionId, token, printedAt];
+    db.run(
+      `INSERT INTO rate_print_outbox (distribution_id, token, printed_at)
+       VALUES (?, ?, ?)
+       ON CONFLICT(distribution_id) DO UPDATE SET
+         token = excluded.token,
+         printed_at = excluded.printed_at`,
+      params,
+    );
+  }
+
+  private async acknowledgeRatePrint(
+    serverUrl: string,
+    token: string,
+    distributionId: string,
+    printProofToken: string,
+  ): Promise<void> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': `rate-print-${distributionId}`,
+      Authorization: `Bearer ${token}`,
+    };
+    const response = await fetch(
+      `${serverUrl}/exchange-rate-master/distribution/${distributionId}/acknowledge`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ printProofToken }),
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+    if (!response.ok) {
+      throw new HttpStatusError(response.status, response.statusText);
+    }
+  }
+
+  private buildRateChangePrintData(obligation: RatePrintObligationResponse): PrintReceiptData {
+    const now = new Date();
+    const companyType = getConfig('company_type') === 'EXPRESSZ' ? 'EXPRESSZ' : 'BEST_CHANGE';
+    return {
+      type: 'rate_change',
+      companyType,
+      receiptNumber: `RATE-${obligation.masterRateId}-v${obligation.versionNumber}`,
+      branchCode: getConfig('branch_code') ?? 'UNKNOWN',
+      cashierName: getConfig('worker_name') ?? 'Ismeretlen dolgozó',
+      date: now.toISOString().slice(0, 10),
+      time: now.toTimeString().slice(0, 8),
+      currencyCode: obligation.currencyCode,
+      versionNumber: obligation.versionNumber,
+      validFrom: obligation.validFrom,
+      rate: obligation.baseSellRate,
+      baseBuyRate: obligation.baseBuyRate,
+      baseSellRate: obligation.baseSellRate,
+      officialRate: obligation.officialRate,
+      limit1Amount: obligation.limit1Amount,
+      limit1BuyRate: obligation.limit1BuyRate,
+      limit1SellRate: obligation.limit1SellRate,
+      limit2Amount: obligation.limit2Amount,
+      limit2BuyRate: obligation.limit2BuyRate,
+      limit2SellRate: obligation.limit2SellRate,
+      limit3Amount: obligation.limit3Amount,
+      limit3BuyRate: obligation.limit3BuyRate,
+      limit3SellRate: obligation.limit3SellRate,
+    };
   }
 
   /**
@@ -1624,13 +2037,12 @@ export class SyncEngine {
   async syncCirculars(): Promise<void> {
     try {
       const serverUrl = this.getActiveServerUrl();
-      if (!serverUrl) { return; }
+      if (!serverUrl) {
+        return;
+      }
       const token = this.getAuthToken();
 
-      const circulars = await httpGet<CircularResponse[]>(
-        `${serverUrl}/circulars`,
-        token,
-      );
+      const circulars = await httpGet<CircularResponse[]>(`${serverUrl}/circulars`, token);
 
       const db = getDb();
       if (!db || !Array.isArray(circulars)) return;
@@ -1668,7 +2080,9 @@ export class SyncEngine {
     } catch (err) {
       if (isAuthStatusError(err)) {
         this.clearStoredAuthToken();
-        log.warn('[SyncEngine] Körlevél sync auth hiba (401/403), session újra-bootstrap szükséges.');
+        log.warn(
+          '[SyncEngine] Körlevél sync auth hiba (401/403), session újra-bootstrap szükséges.',
+        );
         return;
       }
       log.warn('[SyncEngine] Körlevél sync hiba:', err instanceof Error ? err.message : err);
@@ -1684,7 +2098,9 @@ export class SyncEngine {
       if (pending.length === 0) return;
 
       const serverUrl = this.getActiveServerUrl();
-      if (!serverUrl) { return; }
+      if (!serverUrl) {
+        return;
+      }
       const token = this.getAuthToken();
       if (!token) return;
 
@@ -1696,11 +2112,20 @@ export class SyncEngine {
             amount: dist.amount,
           };
           if (dist.denominations) {
-            try { body['denominations'] = JSON.parse(dist.denominations); } catch { /* skip */ }
+            try {
+              body['denominations'] = JSON.parse(dist.denominations);
+            } catch {
+              /* skip */
+            }
           }
           if (dist.note) body['note'] = dist.note;
 
-          await httpPost(`${serverUrl}/ertektar/distribution`, body, token, dist.idempotency_key ?? undefined);
+          await httpPost(
+            `${serverUrl}/ertektar/distribution`,
+            body,
+            token,
+            dist.idempotency_key ?? undefined,
+          );
           markDistributionSynced(dist.id);
         } catch (err) {
           if (isAuthStatusError(err)) {
@@ -1708,7 +2133,10 @@ export class SyncEngine {
             log.warn('[SyncEngine] Distribution auth hiba (401/403), ciklus leállítva.');
             break;
           }
-          log.warn(`[SyncEngine] Distribution #${dist.id} sync hiba:`, err instanceof Error ? err.message : err);
+          log.warn(
+            `[SyncEngine] Distribution #${dist.id} sync hiba:`,
+            err instanceof Error ? err.message : err,
+          );
           break; // Hálózati hiba → kilépés
         }
       }
@@ -1726,7 +2154,9 @@ export class SyncEngine {
       if (pending.length === 0) return;
 
       const serverUrl = this.getActiveServerUrl();
-      if (!serverUrl) { return; }
+      if (!serverUrl) {
+        return;
+      }
       const token = this.getAuthToken();
       if (!token) return;
 
@@ -1750,7 +2180,11 @@ export class SyncEngine {
             body['hufValue'] = tx.huf_value;
           }
           if (tx.denominations) {
-            try { body['denominations'] = JSON.parse(tx.denominations); } catch { /* skip */ }
+            try {
+              body['denominations'] = JSON.parse(tx.denominations);
+            } catch {
+              /* skip */
+            }
           }
           if (tx.note) body['notes'] = tx.note;
           // Codex P1 (backward-compat): régi, frissítés előtt queue-olt sorokon null carrier/seal →
@@ -1759,7 +2193,11 @@ export class SyncEngine {
           body['sealNumber'] = tx.seal_number || 'LEGACY';
           if (tx.direction) body['direction'] = tx.direction;
           if (tx.lines) {
-            try { body['lines'] = JSON.parse(tx.lines); } catch { /* keep omitted */ }
+            try {
+              body['lines'] = JSON.parse(tx.lines);
+            } catch {
+              /* keep omitted */
+            }
           }
 
           await httpPost(`${serverUrl}/transfers`, body, token, tx.idempotency_key ?? undefined);
@@ -1770,7 +2208,10 @@ export class SyncEngine {
             log.warn('[SyncEngine] Transfer auth hiba (401/403), ciklus leállítva.');
             break;
           }
-          log.warn(`[SyncEngine] Transfer #${tx.id} sync hiba:`, err instanceof Error ? err.message : err);
+          log.warn(
+            `[SyncEngine] Transfer #${tx.id} sync hiba:`,
+            err instanceof Error ? err.message : err,
+          );
           break;
         }
       }
@@ -1797,13 +2238,21 @@ export class SyncEngine {
 
       for (const st of pending) {
         try {
-          await httpPost(`${serverUrl}/transfers/${st.transfer_id}/storno`,
-            { reason: st.reason }, token, st.idempotency_key ?? undefined);
+          await httpPost(
+            `${serverUrl}/transfers/${st.transfer_id}/storno`,
+            { reason: st.reason },
+            token,
+            st.idempotency_key ?? undefined,
+          );
           markTransferStornoSynced(st.id);
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           // Már sztornózva (409 / VV-TX-003) → a kívánt végállapot már fennáll → kész.
-          if (errorMsg.includes('409') || errorMsg.includes('VV-TX-003') || errorMsg.includes('már sztornózva')) {
+          if (
+            errorMsg.includes('409') ||
+            errorMsg.includes('VV-TX-003') ||
+            errorMsg.includes('már sztornózva')
+          ) {
             markTransferStornoSynced(st.id);
             log.info(`[SyncEngine] Transfer-storno #${st.id} már sztornózva a szerveren → synced.`);
             continue;
@@ -1816,7 +2265,9 @@ export class SyncEngine {
           // Üzleti validációs hiba (nem-újrázható) → ne blokkolja a queue-t.
           if (this.isBusinessValidationError(errorMsg)) {
             markTransferStornoSynced(st.id);
-            log.warn(`[SyncEngine] Transfer-storno #${st.id} elvetve (business error): ${errorMsg}`);
+            log.warn(
+              `[SyncEngine] Transfer-storno #${st.id} elvetve (business error): ${errorMsg}`,
+            );
             continue;
           }
           log.warn(`[SyncEngine] Transfer-storno #${st.id} sync hiba:`, errorMsg);
@@ -1837,7 +2288,9 @@ export class SyncEngine {
       if (pending.length === 0) return;
 
       const serverUrl = this.getActiveServerUrl();
-      if (!serverUrl) { return; }
+      if (!serverUrl) {
+        return;
+      }
       const token = this.getAuthToken();
       if (!token) return;
 
@@ -1850,7 +2303,12 @@ export class SyncEngine {
           };
           if (col.note) body['note'] = col.note;
 
-          await httpPost(`${serverUrl}/ertektar/collections`, body, token, col.idempotency_key ?? undefined);
+          await httpPost(
+            `${serverUrl}/ertektar/collections`,
+            body,
+            token,
+            col.idempotency_key ?? undefined,
+          );
           markCollectionSynced(col.id);
         } catch (err) {
           if (isAuthStatusError(err)) {
@@ -1858,7 +2316,10 @@ export class SyncEngine {
             log.warn('[SyncEngine] Collection auth hiba (401/403), ciklus leállítva.');
             break;
           }
-          log.warn(`[SyncEngine] Collection #${col.id} sync hiba:`, err instanceof Error ? err.message : err);
+          log.warn(
+            `[SyncEngine] Collection #${col.id} sync hiba:`,
+            err instanceof Error ? err.message : err,
+          );
           break;
         }
       }
@@ -1883,7 +2344,9 @@ export class SyncEngine {
       if (pending.length === 0) return;
 
       const serverUrl = this.getActiveServerUrl();
-      if (!serverUrl) { return; }
+      if (!serverUrl) {
+        return;
+      }
       const token = this.getAuthToken();
       if (!token) return;
 
@@ -1925,7 +2388,9 @@ export class SyncEngine {
   async cacheBranchStatus(): Promise<void> {
     try {
       const serverUrl = this.getActiveServerUrl();
-      if (!serverUrl) { return; }
+      if (!serverUrl) {
+        return;
+      }
       const token = this.getAuthToken();
 
       const branches = await httpGet<BranchStatusResponse[]>(
@@ -1954,7 +2419,9 @@ export class SyncEngine {
     } catch (err) {
       if (isAuthStatusError(err)) {
         this.clearStoredAuthToken();
-        log.warn('[SyncEngine] Branch status auth hiba (401/403), session újra-bootstrap szükséges.');
+        log.warn(
+          '[SyncEngine] Branch status auth hiba (401/403), session újra-bootstrap szükséges.',
+        );
         return;
       }
       log.warn('[SyncEngine] Branch status cache hiba:', err instanceof Error ? err.message : err);
@@ -1967,7 +2434,9 @@ export class SyncEngine {
   async syncCashDeskMasterData(): Promise<void> {
     try {
       const serverUrl = this.getActiveServerUrl();
-      if (!serverUrl) { return; }
+      if (!serverUrl) {
+        return;
+      }
       const token = this.getAuthToken();
 
       const cashDesks = await httpGet<CashDeskResponse[]>(
@@ -1998,7 +2467,9 @@ export class SyncEngine {
     } catch (err) {
       if (isAuthStatusError(err)) {
         this.clearStoredAuthToken();
-        log.warn('[SyncEngine] Pénztár törzs sync auth hiba (401/403), session újra-bootstrap szükséges.');
+        log.warn(
+          '[SyncEngine] Pénztár törzs sync auth hiba (401/403), session újra-bootstrap szükséges.',
+        );
         return;
       }
       log.warn('[SyncEngine] Pénztár törzs sync hiba:', err instanceof Error ? err.message : err);
@@ -2011,13 +2482,12 @@ export class SyncEngine {
   async syncWorkerMasterData(): Promise<void> {
     try {
       const serverUrl = this.getActiveServerUrl();
-      if (!serverUrl) { return; }
+      if (!serverUrl) {
+        return;
+      }
       const token = this.getAuthToken();
 
-      const workers = await httpGet<WorkerResponse[]>(
-        `${serverUrl}/workers/active`,
-        token,
-      );
+      const workers = await httpGet<WorkerResponse[]>(`${serverUrl}/workers/active`, token);
 
       if (!Array.isArray(workers)) return;
 
@@ -2042,7 +2512,9 @@ export class SyncEngine {
     } catch (err) {
       if (isAuthStatusError(err)) {
         this.clearStoredAuthToken();
-        log.warn('[SyncEngine] Dolgozó törzs sync auth hiba (401/403), session újra-bootstrap szükséges.');
+        log.warn(
+          '[SyncEngine] Dolgozó törzs sync auth hiba (401/403), session újra-bootstrap szükséges.',
+        );
         return;
       }
       log.warn('[SyncEngine] Dolgozó törzs sync hiba:', err instanceof Error ? err.message : err);
@@ -2060,10 +2532,14 @@ export class SyncEngine {
    * Szerver → Pénztár visszaállítás — ha helyi adatvesztés történt.
    * A szerveren tárolt tranzakciók visszaolvasása a helyi cache-be.
    */
-  async restoreFromServer(sinceDaysAgo: number = 180): Promise<{ restored: number; error: string | null }> {
+  async restoreFromServer(
+    sinceDaysAgo: number = 180,
+  ): Promise<{ restored: number; error: string | null }> {
     try {
       const serverUrl = this.getActiveServerUrl();
-      if (!serverUrl) { return { restored: 0, error: 'offline' }; }
+      if (!serverUrl) {
+        return { restored: 0, error: 'offline' };
+      }
       const token = this.getAuthToken();
       if (!token) {
         return { restored: 0, error: 'Nincs auth token — bejelentkezés szükséges' };
@@ -2075,12 +2551,18 @@ export class SyncEngine {
 
       log.info(`[SyncEngine] Restore szervről: since=${sinceStr}`);
 
-      const status = await httpGet<{ totalTransactions: number; restoreAvailable: boolean }>(`${serverUrl}/sync/restore/status`, token);
+      const status = await httpGet<{ totalTransactions: number; restoreAvailable: boolean }>(
+        `${serverUrl}/sync/restore/status`,
+        token,
+      );
       if (!status.restoreAvailable) {
         return { restored: 0, error: 'Nincs visszaállítható adat a szerveren' };
       }
 
-      const transactions = await httpGet<Array<Record<string, unknown>>>(`${serverUrl}/sync/restore/transactions?since=${sinceStr}`, token);
+      const transactions = await httpGet<Array<Record<string, unknown>>>(
+        `${serverUrl}/sync/restore/transactions?since=${sinceStr}`,
+        token,
+      );
       log.info(`[SyncEngine] Restore: ${transactions.length} tranzakció érkezett`);
 
       // Mentés a helyi SQLite cache-be
@@ -2134,15 +2616,14 @@ export class SyncEngine {
       return; // nincs regisztralt eszkoz (offline telepites)
     }
     try {
-      await httpPost<unknown>(
-        `${serverUrl}/cash-register/device/${deviceId}/heartbeat`,
-        {},
-        token,
-      );
+      await httpPost<unknown>(`${serverUrl}/cash-register/device/${deviceId}/heartbeat`, {}, token);
       this.lastHeartbeatAt = now;
       log.debug('[SyncEngine] Heartbeat sikeres:', deviceId);
     } catch (err) {
-      log.warn('[SyncEngine] Heartbeat sikertelen (nem blokkolo):', err instanceof Error ? err.message : err);
+      log.warn(
+        '[SyncEngine] Heartbeat sikertelen (nem blokkolo):',
+        err instanceof Error ? err.message : err,
+      );
     }
   }
 }

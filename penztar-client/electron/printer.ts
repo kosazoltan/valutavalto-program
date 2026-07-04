@@ -79,7 +79,8 @@ export type PrintJobType =
   | 'handling_fee'
   | 'cash_status'
   | 'vault_closing'
-  | 'kktg_transfer';
+  | 'kktg_transfer'
+  | 'rate_change';
 
 /**
  * Multi-line aggregált vétel/eladás (2026-06-04) egyetlen valuta-sora.
@@ -105,6 +106,20 @@ export interface PrintReceiptData {
   date: string;
   time: string;
   currencyCode?: string;
+  versionNumber?: number;
+  validFrom?: string;
+  officialRate?: number | null;
+  baseBuyRate?: number;
+  baseSellRate?: number;
+  limit1Amount?: number | null;
+  limit1BuyRate?: number | null;
+  limit1SellRate?: number | null;
+  limit2Amount?: number | null;
+  limit2BuyRate?: number | null;
+  limit2SellRate?: number | null;
+  limit3Amount?: number | null;
+  limit3BuyRate?: number | null;
+  limit3SellRate?: number | null;
   foreignAmount?: number;
   rate?: number;
   hufAmount?: number;
@@ -227,6 +242,7 @@ const JOB_TYPE_LABELS: Record<PrintJobType, string> = {
   cash_status: 'PÉNZTÁR ÁLLÁS',
   vault_closing: 'ÉRTÉKTÁRI ZÁRÁS',
   kktg_transfer: 'KKTG ÁTADÁS-ÁTVÉTEL',
+  rate_change: 'ÁRFOLYAMVÁLTOZÁS',
 };
 
 function getJobTypeLabel(data: PrintReceiptData): string {
@@ -248,7 +264,10 @@ export const HIGH_VALUE_THRESHOLD = 300000;
 export function isHighValueReceipt(data: PrintReceiptData): boolean {
   // Codex PR #1102 P1: az AML-lel azonos fizetendő összeg az alap (díj+kedvezmény után);
   // a payableHufAmount-ot a bizonylat-építő adja át, fallback a fejléc-összegre.
-  return Math.abs(data.payableHufAmount ?? data.roundedHufAmount ?? data.hufAmount ?? 0) >= HIGH_VALUE_THRESHOLD;
+  return (
+    Math.abs(data.payableHufAmount ?? data.roundedHufAmount ?? data.hufAmount ?? 0) >=
+    HIGH_VALUE_THRESHOLD
+  );
 }
 
 /** Deviza-státusz szöveg: NULL → „—" (ismeretlen, régi adat), FOREIGN/DOMESTIC explicit. */
@@ -266,13 +285,20 @@ export function pepKindReceiptText(kind: string | undefined): string | undefined
   const k = kind?.trim();
   if (!k) return undefined;
   switch (k) {
-    case 'CSALADTAG': return 'kiemelt közszereplő családtagja';
-    case 'KOZELI_MUNKATARS': return 'kiemelt közszereplő közeli munkatársa';
-    case 'KORMANYFO': return 'kormányfő / miniszter / államtitkár';
-    case 'PARLAMENTI': return 'országgyűlési / önkormányzati képviselő';
-    case 'NAV_VEZETO': return 'NAV / állami vállalat felsővezetés';
-    case 'EGYEB': return 'egyéb kiemelt közszereplő';
-    default: return k;
+    case 'CSALADTAG':
+      return 'kiemelt közszereplő családtagja';
+    case 'KOZELI_MUNKATARS':
+      return 'kiemelt közszereplő közeli munkatársa';
+    case 'KORMANYFO':
+      return 'kormányfő / miniszter / államtitkár';
+    case 'PARLAMENTI':
+      return 'országgyűlési / önkormányzati képviselő';
+    case 'NAV_VEZETO':
+      return 'NAV / állami vállalat felsővezetés';
+    case 'EGYEB':
+      return 'egyéb kiemelt közszereplő';
+    default:
+      return k;
   }
 }
 
@@ -304,7 +330,9 @@ export function buildSourceDeclarationLines(data: PrintReceiptData): string[] {
     if (data.customerActorMotherName) lines.push(`  anyja: ${data.customerActorMotherName}`);
     if (data.customerActorNationality) lines.push(`  állampolg.: ${data.customerActorNationality}`);
     if (data.customerActorDocumentNumber) {
-      lines.push(`  ${data.customerActorDocumentType ?? 'okmány'}: ${data.customerActorDocumentNumber}`);
+      lines.push(
+        `  ${data.customerActorDocumentType ?? 'okmány'}: ${data.customerActorDocumentNumber}`,
+      );
     }
     if (data.customerActorAddress) lines.push(`  lakcím: ${data.customerActorAddress}`);
   } else {
@@ -420,9 +448,11 @@ export function isRussianEurPurchase(data: PrintReceiptData): boolean {
   if (data.type !== 'sell') return false;
   if (!isHighValueReceipt(data)) return false;
   const nat = (data.customerNationality ?? '').trim().toLowerCase();
-  if (nat !== 'ru' && nat !== 'rus' && !nat.includes('orosz') && !nat.includes('russia')) return false;
-  const hasEur = data.currencyCode === 'EUR'
-    || (data.transactionLines ?? []).some(l => l.currencyCode === 'EUR');
+  if (nat !== 'ru' && nat !== 'rus' && !nat.includes('orosz') && !nat.includes('russia'))
+    return false;
+  const hasEur =
+    data.currencyCode === 'EUR' ||
+    (data.transactionLines ?? []).some((l) => l.currencyCode === 'EUR');
   return hasEur;
 }
 
@@ -486,7 +516,8 @@ export function generateReceiptContent(data: PrintReceiptData): string {
   // FR-2/FR-3: átadás-átvételnél a telefonszám KIZÁRÓLAG a branch.phone-ból jön (vaultPhone);
   // hiány esetén nincs telefon sor (TBD-3) — a hardcode-olt cég-telefonszám transfer bizonylatra
   // nem kerülhet.
-  const phone = data.type === 'transfer' ? (data.vaultPhone ?? '') : (data.companyPhone || company.phone);
+  const phone =
+    data.type === 'transfer' ? (data.vaultPhone ?? '') : data.companyPhone || company.phone;
   if (phone) {
     lines.push(`Tel: ${phone}`);
   }
@@ -537,6 +568,8 @@ export function generateReceiptContent(data: PrintReceiptData): string {
     lines.push(...generateVaultClosingLines(data));
   } else if (data.type === 'kktg_transfer') {
     lines.push(...generateKktgTransferLines(data));
+  } else if (data.type === 'rate_change') {
+    lines.push(...generateRateChangeLines(data));
   }
 
   // Ügyfél adatok (ha van, >300K HUF tranzakciónál kötelező)
@@ -603,7 +636,10 @@ export function generateReceiptContent(data: PrintReceiptData): string {
   }
 
   // QR kód szekció (ha van bizonylat szám — KÖTELEZŐ a bizonylaton)
-  if (data.receiptNumber && (data.type === 'sell' || data.type === 'buy' || data.type === 'conversion')) {
+  if (
+    data.receiptNumber &&
+    (data.type === 'sell' || data.type === 'buy' || data.type === 'conversion')
+  ) {
     lines.push('');
     lines.push(CMD.LINE);
     lines.push(CMD.ALIGN_CENTER);
@@ -649,9 +685,9 @@ export function generateReceiptContent(data: PrintReceiptData): string {
   lines.push('');
   lines.push(CMD.ALIGN_LEFT);
   lines.push('...............    ...............');
-  lines.push(data.type === 'transfer'
-    ? '  Átadó                Átvevő'
-    : '  Pénztáros            Ügyfél');
+  lines.push(
+    data.type === 'transfer' ? '  Átadó                Átvevő' : '  Pénztáros            Ügyfél',
+  );
 
   // Lábléc
   lines.push('');
@@ -684,11 +720,14 @@ function generateTransactionLines(data: PrintReceiptData): string[] {
     // Multi-line aggregate: minden valuta-sor listázva EGY bizonylatszám alatt.
     txLines.forEach((ln) => {
       // C.2: vegyes B/K nyugtán a sor deviza-státusza a valutakód mellett.
-      const statusSuffix = data.foreignStatus == null && ln.foreignStatus != null
-        ? ` (${foreignStatusText(ln.foreignStatus)})`
-        : '';
+      const statusSuffix =
+        data.foreignStatus == null && ln.foreignStatus != null
+          ? ` (${foreignStatusText(ln.foreignStatus)})`
+          : '';
       lines.push(`${ln.currencyCode}${statusSuffix}:`);
-      lines.push(`  ${formatAmount(ln.foreignAmount)} × ${formatRate(ln.rate)} = ${formatAmount(ln.hufAmount)} Ft`);
+      lines.push(
+        `  ${formatAmount(ln.foreignAmount)} × ${formatRate(ln.rate)} = ${formatAmount(ln.hufAmount)} Ft`,
+      );
     });
   } else {
     lines.push(`Valutanem:   ${data.currencyCode ?? '—'}`);
@@ -700,7 +739,11 @@ function generateTransactionLines(data: PrintReceiptData): string[] {
   lines.push(CMD.BOLD_ON);
   lines.push(`HUF összeg:  ${formatAmount(data.hufAmount)} Ft`);
 
-  if (data.roundedHufAmount !== undefined && data.roundingDiff !== undefined && data.roundingDiff !== 0) {
+  if (
+    data.roundedHufAmount !== undefined &&
+    data.roundingDiff !== undefined &&
+    data.roundingDiff !== 0
+  ) {
     lines.push(`Kerekítés:   ${formatAmount(data.roundingDiff)} Ft`);
     lines.push(CMD.DOUBLE_HEIGHT);
     lines.push(`FIZETENDŐ:   ${formatAmount(data.roundedHufAmount)} Ft`);
@@ -764,7 +807,9 @@ function generateTransferLines(data: PrintReceiptData): string[] {
     lines.push('Címletezés:');
     for (const denomination of data.denominations) {
       const lineTotal = denomination.quantity * denomination.faceValue;
-      lines.push(`  ${denomination.quantity} x ${formatAmount(denomination.faceValue)} = ${formatAmount(lineTotal)}`);
+      lines.push(
+        `  ${denomination.quantity} x ${formatAmount(denomination.faceValue)} = ${formatAmount(lineTotal)}`,
+      );
     }
   }
 
@@ -829,7 +874,9 @@ function generateCancelledTransactionLines(data: PrintReceiptData): string[] {
   if (data.transactionLines && data.transactionLines.length > 0) {
     for (const ln of data.transactionLines) {
       lines.push(`${ln.currencyCode}:`);
-      lines.push(`  ${formatAmount(ln.foreignAmount)} × ${formatRate(ln.rate)} = ${formatAmount(ln.hufAmount)} Ft`);
+      lines.push(
+        `  ${formatAmount(ln.foreignAmount)} × ${formatRate(ln.rate)} = ${formatAmount(ln.hufAmount)} Ft`,
+      );
     }
   } else {
     lines.push(`Valutanem:   ${data.currencyCode ?? '—'}`);
@@ -881,7 +928,9 @@ function generateClosingLines(data: PrintReceiptData): string[] {
     lines.push('ELTÉRÉSEK:');
     lines.push(CMD.BOLD_OFF);
     for (const d of summary.discrepancies) {
-      lines.push(`  ${d.currencyCode}: várt ${formatAmount(d.expected)} → tény ${formatAmount(d.actual)} (${formatAmount(d.difference)})`);
+      lines.push(
+        `  ${d.currencyCode}: várt ${formatAmount(d.expected)} → tény ${formatAmount(d.actual)} (${formatAmount(d.difference)})`,
+      );
     }
   }
 
@@ -935,6 +984,47 @@ function generateKktgTransferLines(data: PrintReceiptData): string[] {
   return lines;
 }
 
+function generateRateChangeLines(data: PrintReceiptData): string[] {
+  const lines: string[] = [];
+  lines.push('');
+  lines.push(CMD.BOLD_ON);
+  lines.push('ÁRFOLYAMVÁLTOZÁS');
+  lines.push(CMD.BOLD_OFF);
+  if (data.currencyCode) lines.push(`Valuta:        ${data.currencyCode}`);
+  if (data.versionNumber !== undefined) lines.push(`Verzió:        v${data.versionNumber}`);
+  if (data.validFrom) lines.push(`Érvényes:      ${data.validFrom}`);
+  lines.push(`Vételi árf.:   ${formatRate(data.baseBuyRate ?? data.rate)}`);
+  lines.push(`Eladási árf.:  ${formatRate(data.baseSellRate ?? data.rate)}`);
+  if (data.officialRate !== undefined && data.officialRate !== null) {
+    lines.push(`MNB árf.:      ${formatRate(data.officialRate)}`);
+  }
+  pushRateLimitLine(lines, 'Limit 1', data.limit1Amount, data.limit1BuyRate, data.limit1SellRate);
+  pushRateLimitLine(lines, 'Limit 2', data.limit2Amount, data.limit2BuyRate, data.limit2SellRate);
+  pushRateLimitLine(lines, 'Limit 3', data.limit3Amount, data.limit3BuyRate, data.limit3SellRate);
+  lines.push('');
+  lines.push('PÉLDÁNY LEFŰZENDŐ — Pmt./MNB előírás');
+  return lines;
+}
+
+function pushRateLimitLine(
+  lines: string[],
+  label: string,
+  amount: number | null | undefined,
+  buyRate: number | null | undefined,
+  sellRate: number | null | undefined,
+): void {
+  if (
+    amount === undefined ||
+    amount === null ||
+    (buyRate === undefined && sellRate === undefined)
+  ) {
+    return;
+  }
+  lines.push(
+    `${label}: ${formatAmount(amount)} — V:${formatRate(buyRate ?? undefined)} E:${formatRate(sellRate ?? undefined)}`,
+  );
+}
+
 function formatAmount(value: number | undefined): string {
   if (value === undefined) return '—';
   return value.toLocaleString('hu-HU', { maximumFractionDigits: 2 });
@@ -964,7 +1054,8 @@ export async function generateReceiptHtml(data: PrintReceiptData): Promise<strin
   // KIZÁRÓLAG a branch táblából jövő vaultAddress/vaultPhone; hiány esetén nincs cím/telefon sor
   // (TBD-3), hardcode-olt székhely/telefon transfer bizonylatra nem kerülhet.
   const htmlHeaderAddress = data.type === 'transfer' ? (data.vaultAddress ?? '') : company.address;
-  const htmlHeaderPhone = data.type === 'transfer' ? (data.vaultPhone ?? '') : (data.companyPhone || company.phone);
+  const htmlHeaderPhone =
+    data.type === 'transfer' ? (data.vaultPhone ?? '') : data.companyPhone || company.phone;
   bodyContent += `
     <div class="center">
       <div class="company-name">${escHtml(company.name)}</div>
@@ -979,9 +1070,11 @@ export async function generateReceiptHtml(data: PrintReceiptData): Promise<strin
     <div class="meta">
       <div>Bizonylat: ${escHtml(data.receiptNumber)}</div>
       <div>Dátum: ${escHtml(data.date)} &nbsp; ${escHtml(data.time)}</div>
-      ${data.type === 'transfer'
-        ? `<div>Ügyintéző: ${escHtml(data.cashierName)}</div>`
-        : `<div>Pénztár: ${escHtml(data.branchCode)}</div><div>Pénztáros: ${escHtml(data.cashierName)}</div>`}
+      ${
+        data.type === 'transfer'
+          ? `<div>Ügyintéző: ${escHtml(data.cashierName)}</div>`
+          : `<div>Pénztár: ${escHtml(data.branchCode)}</div><div>Pénztáros: ${escHtml(data.cashierName)}</div>`
+      }
     </div>
     <div class="line"></div>
   `;
@@ -1007,6 +1100,8 @@ export async function generateReceiptHtml(data: PrintReceiptData): Promise<strin
     bodyContent += generateVaultClosingHtml(data);
   } else if (data.type === 'kktg_transfer') {
     bodyContent += generateKktgTransferHtml(data);
+  } else if (data.type === 'rate_change') {
+    bodyContent += generateRateChangeHtml(data);
   }
 
   // Ügyfél adatok (300K felett kötelező)
@@ -1022,10 +1117,14 @@ export async function generateReceiptHtml(data: PrintReceiptData): Promise<strin
       ${data.customerDocType ? `<div class="amount-row"><span>Okmány:</span><span>${escHtml(data.customerDocType)}</span></div>` : ''}
       ${data.customerDocNumber ? `<div class="amount-row"><span>Okmányszám:</span><span>${escHtml(data.customerDocNumber)}</span></div>` : ''}
       ${data.customerNationality ? `<div class="amount-row"><span>Állampolgárság:</span><span>${escHtml(data.customerNationality)}</span></div>` : ''}
-      ${(data.type === 'sell' || data.type === 'buy') && isHighValueReceipt(data)
-        ? `<div>${escHtml(pepStatusText(data))}</div>
-           <div style="white-space: pre-wrap;">${buildLegalEntityLines(data).map(l => `<div>${escHtml(l)}</div>`).join('')}</div>`
-        : ''}
+      ${
+        (data.type === 'sell' || data.type === 'buy') && isHighValueReceipt(data)
+          ? `<div>${escHtml(pepStatusText(data))}</div>
+           <div style="white-space: pre-wrap;">${buildLegalEntityLines(data)
+             .map((l) => `<div>${escHtml(l)}</div>`)
+             .join('')}</div>`
+          : ''
+      }
     `;
   }
 
@@ -1045,7 +1144,9 @@ export async function generateReceiptHtml(data: PrintReceiptData): Promise<strin
         <div class="line"></div>
         <div class="bold">JOGCÍM NYILATKOZAT</div>
         <div style="font-size: 9px; margin: 2px 0; white-space: pre-wrap;">
-          ${buildSourceDeclarationLines(data).map(l => `<div>${escHtml(l)}</div>`).join('')}
+          ${buildSourceDeclarationLines(data)
+            .map((l) => `<div>${escHtml(l)}</div>`)
+            .join('')}
         </div>
       `;
     }
@@ -1054,7 +1155,9 @@ export async function generateReceiptHtml(data: PrintReceiptData): Promise<strin
     if (isRussianEurPurchase(data)) {
       bodyContent += `
         <div style="font-size: 9px; margin: 2px 0; white-space: pre-wrap;">
-          ${buildRussianDeclarationLines(data).map(l => `<div>${escHtml(l)}</div>`).join('')}
+          ${buildRussianDeclarationLines(data)
+            .map((l) => `<div>${escHtml(l)}</div>`)
+            .join('')}
         </div>
       `;
     }
@@ -1064,9 +1167,10 @@ export async function generateReceiptHtml(data: PrintReceiptData): Promise<strin
   bodyContent += `
     <div class="line"></div>
     <div style="font-size: 9px; margin: 4px 0;">
-      ${data.vatExemptionText
-        ? `<div>${escHtml(data.vatExemptionText)}</div>`
-        : `<div>Szj 67.13.10.0</div><div>Az ÁFA alól mentes: 2007. évi CXVII tv. 85. § e)</div>`
+      ${
+        data.vatExemptionText
+          ? `<div>${escHtml(data.vatExemptionText)}</div>`
+          : `<div>Szj 67.13.10.0</div><div>Az ÁFA alól mentes: 2007. évi CXVII tv. 85. § e)</div>`
       }
     </div>
     <div class="line"></div>
@@ -1110,7 +1214,11 @@ export async function generateReceiptHtml(data: PrintReceiptData): Promise<strin
   ].join('|');
   try {
     const QRCode = await import('qrcode');
-    const qrDataUrl = await QRCode.toDataURL(qrText, { width: 120, margin: 1, errorCorrectionLevel: 'M' });
+    const qrDataUrl = await QRCode.toDataURL(qrText, {
+      width: 120,
+      margin: 1,
+      errorCorrectionLevel: 'M',
+    });
     bodyContent += `
       <div class="center" style="margin: 8px 0;">
         <img src="${qrDataUrl}" style="width: 100px; height: 100px;" alt="QR" />
@@ -1195,18 +1303,22 @@ function generateTransactionHtml(data: PrintReceiptData): string {
   const label = isSell ? 'Deviza eladás (HUF → valuta):' : 'Deviza vásárlás (valuta → HUF):';
 
   const txLines = data.transactionLines;
-  const bodyRows = (txLines && txLines.length > 0)
-    // Multi-line aggregate: minden valuta-sor listázva EGY bizonylatszám alatt.
-    // C.2: vegyes B/K nyugtán a sor deviza-státusza a valutakód mellett.
-    ? txLines.map((ln) => {
-        const statusSuffix = data.foreignStatus == null && ln.foreignStatus != null
-          ? ` (${foreignStatusText(ln.foreignStatus)})`
-          : '';
-        return `
+  const bodyRows =
+    txLines && txLines.length > 0
+      ? // Multi-line aggregate: minden valuta-sor listázva EGY bizonylatszám alatt.
+        // C.2: vegyes B/K nyugtán a sor deviza-státusza a valutakód mellett.
+        txLines
+          .map((ln) => {
+            const statusSuffix =
+              data.foreignStatus == null && ln.foreignStatus != null
+                ? ` (${foreignStatusText(ln.foreignStatus)})`
+                : '';
+            return `
         <div class="amount-row"><span>${escHtml(ln.currencyCode)}${escHtml(statusSuffix)}: ${formatAmount(ln.foreignAmount)} × ${formatRate(ln.rate)}</span><span>${formatAmount(ln.hufAmount)} Ft</span></div>
       `;
-      }).join('')
-    : `
+          })
+          .join('')
+      : `
       <div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
       <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>
       <div class="amount-row"><span>Árfolyam:</span><span>${formatRate(data.rate)}</span></div>
@@ -1221,7 +1333,11 @@ function generateTransactionHtml(data: PrintReceiptData): string {
     <div class="amount-row bold"><span>HUF összeg:</span><span>${formatAmount(data.hufAmount)} Ft</span></div>
   `;
 
-  if (data.roundedHufAmount !== undefined && data.roundingDiff !== undefined && data.roundingDiff !== 0) {
+  if (
+    data.roundedHufAmount !== undefined &&
+    data.roundingDiff !== undefined &&
+    data.roundingDiff !== 0
+  ) {
     html += `
       <div class="amount-row"><span>Kerekítés:</span><span>${formatAmount(data.roundingDiff)} Ft</span></div>
       <div class="amount-row total"><span>FIZETENDŐ:</span><span>${formatAmount(data.roundedHufAmount)} Ft</span></div>
@@ -1236,28 +1352,37 @@ function generateTransactionHtml(data: PrintReceiptData): string {
 }
 
 function generateTransferHtml(data: PrintReceiptData): string {
-  const denominationRows = data.denominations && data.denominations.length > 0
-    ? `
+  const denominationRows =
+    data.denominations && data.denominations.length > 0
+      ? `
       <div class="bold mt">Címletezés:</div>
-      ${data.denominations.map((denomination) => {
-        const lineTotal = denomination.quantity * denomination.faceValue;
-        return `<div class="amount-row"><span>${denomination.quantity} x ${formatAmount(denomination.faceValue)}</span><span>${formatAmount(lineTotal)}</span></div>`;
-      }).join('')}
+      ${data.denominations
+        .map((denomination) => {
+          const lineTotal = denomination.quantity * denomination.faceValue;
+          return `<div class="amount-row"><span>${denomination.quantity} x ${formatAmount(denomination.faceValue)}</span><span>${formatAmount(lineTotal)}</span></div>`;
+        })
+        .join('')}
     `
-    : '';
+      : '';
 
   return `
     <div class="section">
       <div class="bold">Átadás-átvétel:</div>
       <div class="amount-row"><span>Kérő iroda:</span><span>${escHtml(data.branchCode || '—')}</span></div>
       <div class="amount-row"><span>Cél iroda:</span><span>${escHtml(data.transferTarget ?? '—')}</span></div>
-      ${data.transferLines && data.transferLines.length > 0
-        ? `<div class="bold">Valuták és összegek:</div>${data.transferLines.map(tl =>
-            `<div class="amount-row"><span>${escHtml(tl.currencyCode)}:</span><span>${formatAmount(tl.amount)}</span></div>`).join('')}`
-        : `<div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
-      <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>`}
+      ${
+        data.transferLines && data.transferLines.length > 0
+          ? `<div class="bold">Valuták és összegek:</div>${data.transferLines
+              .map(
+                (tl) =>
+                  `<div class="amount-row"><span>${escHtml(tl.currencyCode)}:</span><span>${formatAmount(tl.amount)}</span></div>`,
+              )
+              .join('')}`
+          : `<div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
+      <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>`
+      }
       ${data.rate != null && data.currencyCode !== 'HUF' ? `<div class="amount-row"><span>Árfolyam:</span><span>${formatRate(data.rate)}</span></div>` : ''}
-      ${(data.roundedHufAmount !== undefined || data.hufAmount !== undefined) ? `<div class="amount-row"><span>Forint érték:</span><span>${formatAmount(data.roundedHufAmount ?? data.hufAmount)} HUF</span></div>` : ''}
+      ${data.roundedHufAmount !== undefined || data.hufAmount !== undefined ? `<div class="amount-row"><span>Forint érték:</span><span>${formatAmount(data.roundedHufAmount ?? data.hufAmount)} HUF</span></div>` : ''}
       ${data.carrierName ? `<div class="amount-row"><span>Szállító:</span><span>${escHtml(data.carrierName)}</span></div>` : ''}
       ${data.sealNumber ? `<div class="amount-row"><span>Plombaszám:</span><span>${escHtml(data.sealNumber)}</span></div>` : ''}
       ${data.deliveryDate ? `<div class="amount-row"><span>Kézbesítési dátum:</span><span>${escHtml(data.deliveryDate)}</span></div>` : ''}
@@ -1282,11 +1407,16 @@ function generateStornoHtml(data: PrintReceiptData): string {
 }
 
 function generateCancelledTransactionHtml(data: PrintReceiptData): string {
-  const rows = data.transactionLines && data.transactionLines.length > 0
-    ? data.transactionLines.map((ln) => `
+  const rows =
+    data.transactionLines && data.transactionLines.length > 0
+      ? data.transactionLines
+          .map(
+            (ln) => `
       <div class="amount-row"><span>${escHtml(ln.currencyCode)}: ${formatAmount(ln.foreignAmount)} × ${formatRate(ln.rate)}</span><span>${formatAmount(ln.hufAmount)} Ft</span></div>
-    `).join('')
-    : `
+    `,
+          )
+          .join('')
+      : `
       <div class="amount-row"><span>Valutanem:</span><span>${escHtml(data.currencyCode ?? '—')}</span></div>
       <div class="amount-row"><span>Összeg:</span><span>${formatAmount(data.foreignAmount)} ${escHtml(data.currencyCode ?? '')}</span></div>
       <div class="amount-row"><span>Árfolyam:</span><span>${formatRate(data.rate)}</span></div>
@@ -1393,6 +1523,43 @@ function generateKktgTransferHtml(data: PrintReceiptData): string {
   `;
 }
 
+function generateRateChangeHtml(data: PrintReceiptData): string {
+  const limitRows = [
+    rateLimitHtml('Limit 1', data.limit1Amount, data.limit1BuyRate, data.limit1SellRate),
+    rateLimitHtml('Limit 2', data.limit2Amount, data.limit2BuyRate, data.limit2SellRate),
+    rateLimitHtml('Limit 3', data.limit3Amount, data.limit3BuyRate, data.limit3SellRate),
+  ].join('');
+  return `
+    <div class="section">
+      <div class="bold">ÁRFOLYAMVÁLTOZÁS</div>
+      ${data.currencyCode ? `<div class="amount-row"><span>Valuta:</span><span>${escHtml(data.currencyCode)}</span></div>` : ''}
+      ${data.versionNumber !== undefined ? `<div class="amount-row"><span>Verzió:</span><span>v${data.versionNumber}</span></div>` : ''}
+      ${data.validFrom ? `<div class="amount-row"><span>Érvényes:</span><span>${escHtml(data.validFrom)}</span></div>` : ''}
+      <div class="amount-row"><span>Vételi árfolyam:</span><span>${formatRate(data.baseBuyRate ?? data.rate)}</span></div>
+      <div class="amount-row"><span>Eladási árfolyam:</span><span>${formatRate(data.baseSellRate ?? data.rate)}</span></div>
+      ${data.officialRate !== undefined && data.officialRate !== null ? `<div class="amount-row"><span>MNB árfolyam:</span><span>${formatRate(data.officialRate)}</span></div>` : ''}
+      ${limitRows}
+      <div class="bold" style="margin-top: 8px;">PÉLDÁNY LEFŰZENDŐ — Pmt./MNB előírás</div>
+    </div>
+  `;
+}
+
+function rateLimitHtml(
+  label: string,
+  amount: number | null | undefined,
+  buyRate: number | null | undefined,
+  sellRate: number | null | undefined,
+): string {
+  if (
+    amount === undefined ||
+    amount === null ||
+    (buyRate === undefined && sellRate === undefined)
+  ) {
+    return '';
+  }
+  return `<div class="amount-row"><span>${label}:</span><span>${formatAmount(amount)} — V:${formatRate(buyRate ?? undefined)} E:${formatRate(sellRate ?? undefined)}</span></div>`;
+}
+
 /** Egyszerű HTML escape az XSS elkerülésére. */
 function escHtml(str: string): string {
   return str
@@ -1446,7 +1613,7 @@ async function printViaElectron(html: string, printerName?: string): Promise<boo
     // Rejtett ablak létrehozása a bizonylat rendereléshez
     printWindow = new BrowserWindow({
       show: false,
-      width: 302,   // ~80mm @ 96 DPI
+      width: 302, // ~80mm @ 96 DPI
       height: 800,
       webPreferences: {
         contextIsolation: true,
@@ -1455,9 +1622,7 @@ async function printViaElectron(html: string, printerName?: string): Promise<boo
     });
 
     // HTML tartalom betöltése data URL-ként
-    await printWindow.loadURL(
-      `data:text/html;charset=utf-8,${encodeURIComponent(html)}`,
-    );
+    await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
     // Nyomtatási opciók — csendes nyomtatás (nincs dialógus)
     const printOptions: Electron.WebContentsPrintOptions = {
@@ -1523,7 +1688,9 @@ export async function printReceipt(
     // átvételi egyaránt) automatikusan KÉT példányban nyomtat (1. iratározás, 2. könyvelés);
     // deviza esetén egy példány. Más bizonylat-típusokra nem vonatkozik.
     const copies = data.type === 'transfer' && data.currencyCode === 'HUF' ? 2 : 1;
-    log.info(`[PRINTER] Nyomtatás indítása: ${data.type} ${data.receiptNumber} (${copies} példány)`);
+    log.info(
+      `[PRINTER] Nyomtatás indítása: ${data.type} ${data.receiptNumber} (${copies} példány)`,
+    );
 
     // 1. Próbáljuk soros blokknyomtatón (Star SP500 / kompatibilis)
     // A sikeresen kinyomtatott példányokat számoljuk, hogy részleges soros hiba
@@ -1539,10 +1706,14 @@ export async function printReceipt(
         printedCopies++;
       }
       if (printedCopies === copies) {
-        log.info(`[PRINTER] Soros blokknyomtató (${serialPort}): OK — ${data.receiptNumber} (${copies} példány)`);
+        log.info(
+          `[PRINTER] Soros blokknyomtató (${serialPort}): OK — ${data.receiptNumber} (${copies} példány)`,
+        );
         return true;
       }
-      log.warn(`[PRINTER] Soros port ${serialPort} sikertelen (${printedCopies}/${copies} példány kész), Electron fallback a maradékra...`);
+      log.warn(
+        `[PRINTER] Soros port ${serialPort} sikertelen (${printedCopies}/${copies} példány kész), Electron fallback a maradékra...`,
+      );
     }
 
     // 2. Fallback: Electron rendszer nyomtató (HTML alapú) — csak a hiányzó példányokra
@@ -1560,7 +1731,9 @@ export async function printReceipt(
     if (electronSuccess) {
       log.info(`[PRINTER] Electron print: OK — ${data.receiptNumber} (${copies} példány)`);
     } else {
-      log.error(`[PRINTER] Nyomtatás sikertelen — ${data.receiptNumber}. Ellenőrizd a nyomtató állapotát (offline / papír kifogyott).`);
+      log.error(
+        `[PRINTER] Nyomtatás sikertelen — ${data.receiptNumber}. Ellenőrizd a nyomtató állapotát (offline / papír kifogyott).`,
+      );
     }
 
     return electronSuccess;
