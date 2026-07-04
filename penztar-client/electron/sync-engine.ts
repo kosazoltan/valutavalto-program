@@ -317,6 +317,10 @@ async function httpPost<T>(
       // Idempotency-Key: megakadályozza a duplikált tranzakciókat újrapróbálkozás esetén
       'Idempotency-Key': idempotencyKey ?? crypto.randomUUID(),
     };
+    const companyCode = getConfig('bootstrap_company_code')?.trim();
+    if (companyCode) {
+      headers['X-Company-Code'] = companyCode;
+    }
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }

@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.config;
 
 import hu.puzzleir.valuta.security.JwtAuthenticationFilter;
 import hu.puzzleir.valuta.security.IdempotencyFilter;
+import hu.puzzleir.valuta.security.CompanyCodeCrossCheckFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,13 +25,16 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final IdempotencyFilter idempotencyFilter;
+    private final CompanyCodeCrossCheckFilter companyCodeCrossCheckFilter;
     private final ProductionCorsFilter productionCorsFilter;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
                           IdempotencyFilter idempotencyFilter,
+                          CompanyCodeCrossCheckFilter companyCodeCrossCheckFilter,
                           ProductionCorsFilter productionCorsFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.idempotencyFilter = idempotencyFilter;
+        this.companyCodeCrossCheckFilter = companyCodeCrossCheckFilter;
         this.productionCorsFilter = productionCorsFilter;
     }
     
@@ -131,7 +135,10 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
             // Idempotency header enforcement (JWT után, de UsernamePassword előtt)
-            .addFilterBefore(idempotencyFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(idempotencyFilter, UsernamePasswordAuthenticationFilter.class)
+
+            // Optional X-Company-Code cross-check (JWT -> idempotency -> companyCode sorrend)
+            .addFilterBefore(companyCodeCrossCheckFilter, UsernamePasswordAuthenticationFilter.class);
         
         return http.build();
     }

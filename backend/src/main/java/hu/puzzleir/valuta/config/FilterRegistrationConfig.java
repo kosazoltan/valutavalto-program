@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.config;
 
 import hu.puzzleir.valuta.security.IdempotencyFilter;
 import hu.puzzleir.valuta.security.JwtAuthenticationFilter;
+import hu.puzzleir.valuta.security.CompanyCodeCrossCheckFilter;
 import jakarta.servlet.Filter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -51,6 +52,12 @@ public class FilterRegistrationConfig {
     @Bean
     public FilterRegistrationBean<IdempotencyFilter> idempotencyFilterRegistration(
             IdempotencyFilter filter) {
+        return disabledRegistration(filter);
+    }
+
+    @Bean
+    public FilterRegistrationBean<CompanyCodeCrossCheckFilter> companyCodeCrossCheckFilterRegistration(
+            CompanyCodeCrossCheckFilter filter) {
         return disabledRegistration(filter);
     }
 
