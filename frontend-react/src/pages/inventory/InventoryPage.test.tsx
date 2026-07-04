@@ -478,6 +478,40 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     })
   })
 
+  it('inventory műveletek: transfer cél dropdown csak az értéktár célpontot jelöli Értéktár badge-szöveggel', async () => {
+    render(<InventoryPage />)
+
+    await waitFor(() => expect(screen.getByTestId('inventory-operation-panel')).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), { target: { value: 'transfer' } })
+
+    const targetSelect = await screen.findByLabelText('Cél telephely kiválasztása')
+    await waitFor(() => expect(targetSelect).toHaveTextContent('VLT02 — Szeged Értéktár · Értéktár'))
+    expect(within(targetSelect).getByRole('option', { name: 'BR002 — Szeged Pénztár' })).toBeInTheDocument()
+    expect(within(targetSelect).getByRole('option', { name: 'VLT02 — Szeged Értéktár · Értéktár' })).toBeInTheDocument()
+  })
+
+  it('inventory riportok: vault kontextusban fejléc Értéktár badge-et mutat', async () => {
+    render(<InventoryPage />)
+
+    await waitFor(() => expect(screen.getByText('Mobil készlet-riportok')).toBeInTheDocument())
+    expect(screen.getByTestId('vault-context-badge')).toHaveTextContent('Értéktár')
+  })
+
+  it('inventory riportok: üres vault-stock lista mellett nincs fejléc Értéktár badge', async () => {
+    mocks.apiGet.mockImplementation((path: string) => {
+      if (path === '/inventory/vault-stock') return Promise.resolve({ data: [] })
+      if (path.includes('/banknote-inventory/branch/') && path.endsWith('/low-stock')) return Promise.resolve({ data: [BANKNOTE_ROWS[0]] })
+      if (path.includes('/banknote-inventory/branch/') && path.endsWith('/over-stock')) return Promise.resolve({ data: [] })
+      if (path.includes('/banknote-inventory/branch/')) return Promise.resolve({ data: BANKNOTE_ROWS })
+      return Promise.resolve({ data: [] })
+    })
+
+    render(<InventoryPage />)
+
+    await waitFor(() => expect(screen.getByText('Mobil készlet-riportok')).toBeInTheDocument())
+    expect(screen.queryByTestId('vault-context-badge')).not.toBeInTheDocument()
+  })
+
   it('inventory műveletek: üres transfer cél lista disabled selectet és magyarázatot mutat', async () => {
     mocks.apiGet.mockImplementation((path: string) => {
       if (path === '/inventory/transfer-targets') return Promise.resolve({ data: [] })

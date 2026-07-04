@@ -79,14 +79,20 @@ vi.mock('./components/CurrencySelector', () => ({
   ),
 }))
 
-vi.mock('./components/CustomerPanel', () => ({
+vi.mock('./components/LegacyCustomerPanel', () => ({
   default: ({ onCustomerChange }: any) => (
     <div data-testid="customer-panel">
       <input
         type="text"
         data-field="customer-name"
         placeholder="Ügyfél"
-        onChange={(e) => onCustomerChange(e.target.value ? { id: '1', name: e.target.value, documentNumber: '12345', nationality: 'HU' } : null)}
+        onChange={(e) => onCustomerChange(e.target.value ? {
+          id: undefined,
+          name: e.target.value,
+          documentType: 'Személyi igazolvány',
+          documentNumber: '12345',
+          nationality: 'HU',
+        } : null)}
       />
     </div>
   ),
@@ -207,6 +213,7 @@ describe('TransactionPage', () => {
 
     const inputs = screen.getAllByPlaceholderText('0,00')
     await user.type(inputs[0]!, '100')
+    await user.type(screen.getByPlaceholderText('Ügyfél'), 'Kiss János')
 
     const saveButton = screen.getByTestId('tx-save-print')
     await user.click(saveButton)
@@ -217,9 +224,13 @@ describe('TransactionPage', () => {
           currencyId: 1,
           currencyAmount: 100,
           customExchangeRate: 391.50,
+          customerName: 'Kiss János',
         }),
       )
     })
+
+    const payload = mocks.transactionApiBuy.mock.calls[0]?.[0]
+    expect(payload).not.toHaveProperty('customerId')
   })
 
   it('sikeres SELL tranzakció mentésekor API-t meghívja', async () => {

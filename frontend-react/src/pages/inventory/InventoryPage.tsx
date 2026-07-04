@@ -727,7 +727,17 @@ export default function InventoryPage() {
       <section className="no-print form-panel p-0">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
           <div>
-            <h2 className="text-sm font-bold text-secondary-900">Mobil készlet-riportok</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-secondary-900">Mobil készlet-riportok</h2>
+              {isVaultOperationalContext && (
+                <span
+                  data-testid="vault-context-badge"
+                  className="text-[9px] font-bold uppercase bg-amber-500 text-white rounded px-1 py-px shrink-0"
+                >
+                  {t('inventory.ertektarBadge')}
+                </span>
+              )}
+            </div>
             <div className="text-xs text-gray-500">
               {t('inventory.operativRiportokAlcim')}
               {isVaultOperationalContext ? ` · ${t('inventory.ertektariCurrencyStockKonyveles')}` : ''}
@@ -801,7 +811,7 @@ export default function InventoryPage() {
                 </option>
                 {transferTargets.map((target) => (
                   <option key={target.branchId} value={target.branchId}>
-                    {target.code} — {target.name}
+                    {target.code} — {target.name}{target.isVault ? ` · ${t('inventory.ertektarBadge')}` : ''}
                   </option>
                 ))}
               </select>

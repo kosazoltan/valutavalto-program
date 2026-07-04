@@ -4,7 +4,7 @@ import type { IdentificationLevel } from '../hooks/useIdentificationLevel'
 import { useTranslation } from 'react-i18next'
 
 export interface Customer {
-  id: string
+  id?: string
   name: string
   documentType: string
   documentNumber: string
@@ -37,13 +37,15 @@ export default function CustomerPanel({
   const [customerBirthDate, setCustomerBirthDate] = useState('')
   const [customerMotherName, setCustomerMotherName] = useState('')
   const [customerAddress, setCustomerAddress] = useState('')
+  const canSave = customerName.trim() !== '' && customerDocNumber.trim() !== ''
 
   const handleSaveCustomer = () => {
+    if (!canSave) return
     onCustomerChange({
-      id: '1',
-      name: customerName || 'Teszt Ügyfél',
+      id: undefined,
+      name: customerName.trim(),
       documentType: customerDocType,
-      documentNumber: customerDocNumber || '123456AB',
+      documentNumber: customerDocNumber.trim(),
       nationality: customerNationality,
     })
     onCustomerAddressChange?.(customerAddress)
@@ -256,7 +258,8 @@ export default function CustomerPanel({
           </div>
           <button
             onClick={handleSaveCustomer}
-            className="form-button-primary w-full mt-2 focus:ring-2 focus:ring-primary"
+            disabled={!canSave}
+            className="form-button-primary w-full mt-2 focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
             data-action="save-customer"
             onKeyDown={(e) => {
               if (e.key === 'Enter') {

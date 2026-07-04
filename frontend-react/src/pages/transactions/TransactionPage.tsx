@@ -279,7 +279,7 @@ export default function TransactionPage() {
     setIsSubmitting(true)
     try {
       const customerData = customer ? {
-        customerId: customer.id,
+        ...(customer.id ? { customerId: customer.id } : {}),
         customerName: customer.name,
         customerDocumentNumber: customer.documentNumber,
         customerNationality: customer.nationality,
