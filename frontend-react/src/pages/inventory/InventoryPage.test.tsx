@@ -355,7 +355,7 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
 
     await screen.findByText('Mozgások')
     const detailBtns = await screen.findAllByRole('button', { name: 'Részlet' })
-    fireEvent.click(detailBtns[0])
+    fireEvent.click(detailBtns[0]!)
 
     await waitFor(() => {
       expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/movements/77')
