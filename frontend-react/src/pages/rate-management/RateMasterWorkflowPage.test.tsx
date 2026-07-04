@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   revoke: vi.fn(),
   getDistributionStatus: vi.fn(),
   acknowledgeDistribution: vi.fn(),
+  getPendingPrintObligations: vi.fn(),
 }))
 
 vi.mock('react-i18next', () => ({
@@ -55,6 +56,19 @@ describe('RateMasterWorkflowPage backend contract', () => {
       },
     ])
     mocks.acknowledgeDistribution.mockResolvedValue(undefined)
+    mocks.getPendingPrintObligations.mockResolvedValue([
+      {
+        distributionId: 'dist-1',
+        masterRateId: 'rate-1',
+        currencyCode: 'EUR',
+        versionNumber: 3,
+        baseBuyRate: 390,
+        baseSellRate: 399,
+        officialRate: 394,
+        validFrom: '2026-07-04T09:00:00',
+        printProofToken: 'proof-token',
+      },
+    ])
     mocks.create.mockResolvedValue({
       ...publishedRate,
       id: 'draft-1',
@@ -85,8 +99,9 @@ describe('RateMasterWorkflowPage backend contract', () => {
     })
   })
 
-  it('elosztás kártyából meghívja az exchange-rate-master acknowledge backend szerződést', async () => {
+  it('elosztás kártyából nyomtatás után proof tokennel hívja az acknowledge szerződést', async () => {
     const user = userEvent.setup()
+    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {})
     render(<RateMasterWorkflowPage />)
 
     await user.click(screen.getByRole('button', { name: /Publikálva/i }))
@@ -96,8 +111,26 @@ describe('RateMasterWorkflowPage backend contract', () => {
     await user.click(screen.getByTestId('exchange-rate-distribution-ack-dist-1'))
 
     await waitFor(() => {
-      expect(mocks.acknowledgeDistribution).toHaveBeenCalledWith('dist-1')
+      expect(printSpy).toHaveBeenCalled()
+      expect(mocks.acknowledgeDistribution).toHaveBeenCalledWith('dist-1', 'proof-token')
       expect(mocks.getDistributionStatus).toHaveBeenCalledWith('rate-1')
     })
+  })
+
+  it('proof token nélkül hibát jelez és nem hív acknowledge-t', async () => {
+    const user = userEvent.setup()
+    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {})
+    mocks.getPendingPrintObligations.mockResolvedValue([])
+    render(<RateMasterWorkflowPage />)
+
+    await user.click(screen.getByRole('button', { name: /Publikálva/i }))
+    await screen.findByText('EUR')
+    await user.click(screen.getByRole('button', { name: 'Elosztás' }))
+    await screen.findByText('BUD01')
+    await user.click(screen.getByTestId('exchange-rate-distribution-ack-dist-1'))
+
+    await screen.findByText(/Proof-of-Print token hiányzik/i)
+    expect(printSpy).not.toHaveBeenCalled()
+    expect(mocks.acknowledgeDistribution).not.toHaveBeenCalled()
   })
 })

@@ -50,6 +50,12 @@ public class ExchangeRateDistribution {
     @Column(name = "acknowledged_at")
     private LocalDateTime acknowledgedAt;
 
+    @Column(name = "printed_at")
+    private LocalDateTime printedAt;
+
+    @Column(name = "printed_by")
+    private Long printedBy;
+
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 

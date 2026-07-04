@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/vault-closing-checklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getOrCreate"];
+        put: operations["updateItems"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{id}": {
         parameters: {
             query?: never;
@@ -222,7 +238,7 @@ export interface paths {
         get?: never;
         put: operations["updateWorkgroup"];
         post?: never;
-        delete?: never;
+        delete: operations["deleteWorkgroup"];
         options?: never;
         head?: never;
         patch?: never;
@@ -372,6 +388,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/machine-config/{workstationCode}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getConfig"];
+        put: operations["upsertConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/local-rate-maker/sheet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getSheet"];
+        put: operations["putSheet"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/led/config": {
         parameters: {
             query?: never;
@@ -395,8 +443,24 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getConfig"];
+        get: operations["getConfig_1"];
         put: operations["updateConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/handling-fee-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getConfig_2"];
+        put: operations["updateConfig_1"];
         post?: never;
         delete?: never;
         options?: never;
@@ -692,6 +756,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bank-api-config/{providerName}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get"];
+        put: operations["update_14"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/authorized-representatives/{id}": {
         parameters: {
             query?: never;
@@ -700,9 +780,25 @@ export interface paths {
             cookie?: never;
         };
         get: operations["findById_1"];
-        put: operations["update_14"];
+        put: operations["update_15"];
         post?: never;
         delete: operations["delete_13"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/denomination/optimizations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateOptimization"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -756,7 +852,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/workstations": {
+    "/api/v1/wu-partner-companies": {
         parameters: {
             query?: never;
             header?: never;
@@ -766,6 +862,22 @@ export interface paths {
         get: operations["list"];
         put?: never;
         post: operations["create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workstations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_1"];
+        put?: never;
+        post: operations["create_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -782,6 +894,22 @@ export interface paths {
         get: operations["getAllWorkers"];
         put?: never;
         post: operations["createWorker"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workers/{id}/unlock-login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["unlockLogin"];
         delete?: never;
         options?: never;
         head?: never;
@@ -996,6 +1124,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/western-union/daily-limit/use": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["useDailyLimit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/western-union-stub/send": {
         parameters: {
             query?: never;
@@ -1030,6 +1174,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/voice/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requestToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vault-workers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_2"];
+        put?: never;
+        post: operations["create_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vault-stocktake": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_3"];
+        put?: never;
+        post: operations["createSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vault-stocktake/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["review"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vault-stocktake/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["close"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vault-stocktake/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vault-stocktake/items/{itemId}/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["countItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vault-closing-checklist/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/vat-refund": {
         parameters: {
             query?: never;
@@ -1039,7 +1311,7 @@ export interface paths {
         };
         get: operations["getList"];
         put?: never;
-        post: operations["create_1"];
+        post: operations["create_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1069,9 +1341,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_1"];
+        get: operations["list_4"];
         put?: never;
-        post: operations["create_2"];
+        post: operations["create_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1199,7 +1471,23 @@ export interface paths {
         };
         get: operations["search"];
         put?: never;
-        post: operations["create_3"];
+        post: operations["create_5"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transfers/{id}/storno": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["storno"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1247,7 +1535,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["cancel"];
+        post: operations["cancel_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1261,9 +1549,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_2"];
+        get: operations["list_5"];
         put?: never;
-        post: operations["create_4"];
+        post: operations["create_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1279,7 +1567,7 @@ export interface paths {
         };
         get: operations["findByTransaction"];
         put?: never;
-        post: operations["create_5"];
+        post: operations["create_7"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1375,7 +1663,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["complete"];
+        post: operations["complete_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1414,6 +1702,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/territories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_6"];
+        put?: never;
+        post: operations["create_8"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-params/bulk-update": {
         parameters: {
             query?: never;
@@ -1437,9 +1741,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_3"];
+        get: operations["list_7"];
         put?: never;
-        post: operations["create_6"];
+        post: operations["create_9"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1606,6 +1910,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/supervisor-pin/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["verifyPin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supervisor-pin/set": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["setPin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supervisor-pin/clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["clearPin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stornos/request-approval": {
         parameters: {
             query?: never;
@@ -1686,22 +2038,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/stornos/approvals/pending": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getPendingStornoApprovals"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/stamps/receive": {
         parameters: {
             query?: never;
@@ -1743,7 +2079,7 @@ export interface paths {
         };
         get: operations["findAll"];
         put?: never;
-        post: operations["create_7"];
+        post: operations["create_10"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1760,6 +2096,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipments/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reject_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1791,7 +2143,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["cancel_1"];
+        post: operations["cancel_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1888,6 +2240,74 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["confirmArrival"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/seal-numbers/{id}/use": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Plomba felhasználásának rögzítése */
+        post: operations["markAsUsed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/seal-numbers/{id}/use": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Plomba felhasználásának rögzítése */
+        post: operations["markAsUsed_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/seal-numbers/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Plomba szám generálása és mentése */
+        post: operations["generate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/seal-numbers/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Plomba szám generálása és mentése */
+        post: operations["generate_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1997,9 +2417,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_4"];
+        get: operations["list_8"];
         put?: never;
-        post: operations["create_8"];
+        post: operations["create_11"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2144,6 +2564,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["print"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/receipts/cancelled-transaction": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createCancelledTransactionReceipt"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2351,7 +2787,7 @@ export interface paths {
         };
         get: operations["getForAmount"];
         put?: never;
-        post: operations["create_9"];
+        post: operations["create_12"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2400,6 +2836,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["requestRateChange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/setup/google-identify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["identifyGoogleSetup"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2544,9 +2996,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_5"];
+        get: operations["list_9"];
         put?: never;
-        post: operations["create_10"];
+        post: operations["create_13"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2576,9 +3028,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_6"];
+        get: operations["list_10"];
         put?: never;
-        post: operations["create_11"];
+        post: operations["create_14"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2592,9 +3044,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_7"];
+        get: operations["list_11"];
         put?: never;
-        post: operations["create_12"];
+        post: operations["create_15"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2608,9 +3060,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_8"];
+        get: operations["list_12"];
         put?: never;
-        post: operations["create_13"];
+        post: operations["create_16"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2642,7 +3094,7 @@ export interface paths {
         };
         get: operations["getAll"];
         put?: never;
-        post: operations["create_14"];
+        post: operations["create_17"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2656,7 +3108,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_9"];
+        get: operations["list_13"];
         put?: never;
         post: operations["send"];
         delete?: never;
@@ -2873,6 +3325,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mfa/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["verifyLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mfa/verify-backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["verifyBackupCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mfa/enroll/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["startEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mfa/enroll/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["completeEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mfa/admin/{workerId}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminDisable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/local-rate-maker/packages/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["publishPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/license/activate": {
         parameters: {
             query?: never;
@@ -3010,7 +3558,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["cancel_2"];
+        post: operations["cancel_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3203,7 +3751,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["complete_1"];
+        post: operations["complete_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3219,7 +3767,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["generate"];
+        post: operations["generate_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3252,6 +3800,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["calculate_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/handling-fee-config/brackets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["saveBracketsEndpoint"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3491,7 +4055,23 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["update_15"];
+        post: operations["update_16"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evening-closing/{branchId}/{date}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sendPackage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3770,6 +4350,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/employees/{employeeId}/vacations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listVacations"];
+        put?: never;
+        post: operations["addVacation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/employees/{employeeId}/occupational-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listOccupationalHealth"];
+        put?: never;
+        post: operations["addOccupationalHealth"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/employees/{employeeId}/children": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listChildren"];
+        put?: never;
+        post: operations["addChild"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/employees/import": {
         parameters: {
             query?: never;
@@ -3857,9 +4485,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_10"];
+        get: operations["list_14"];
         put?: never;
-        post: operations["create_15"];
+        post: operations["create_18"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3873,9 +4501,41 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_11"];
+        get: operations["list_15"];
         put?: never;
         post: operations["upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/document-shortages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_16"];
+        put?: never;
+        post: operations["create_19"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/document-shortages/{id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["resolve"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3916,6 +4576,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/discount-approval/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Kedvezmény validálása a jelenlegi worker szerepkörével (400 ha nem engedélyezett) */
+        post: operations["validate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/diagnostics/error-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reportError_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/diagnostics/audit/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Frontend / Electron kliens ERROR / WARN forward backend log + audit */
+        post: operations["forwardLog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/denominations/validate": {
         parameters: {
             query?: never;
@@ -3932,6 +4642,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/denomination-calculator/suggest-balanced": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Készlet-figyelő címlet javaslat */
+        post: operations["suggestBalanced"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/denomination-calculator/suggest-balanced": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Készlet-figyelő címlet javaslat */
+        post: operations["suggestBalanced_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/decade-reports/{id}/close": {
         parameters: {
             query?: never;
@@ -3941,7 +4685,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["close"];
+        post: operations["close_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3957,7 +4701,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["generate_1"];
+        post: operations["generate_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4229,7 +4973,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["generate_2"];
+        post: operations["generate_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4245,7 +4989,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["generate_3"];
+        post: operations["generate_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4364,6 +5108,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customers/{id}/edd-mark": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["markCustomerEdd"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customers/{id}/deactivate": {
         parameters: {
             query?: never;
@@ -4428,6 +5188,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customer-control/suspicion-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reportSuspicion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/currency-groups": {
         parameters: {
             query?: never;
@@ -4437,7 +5213,23 @@ export interface paths {
         };
         get: operations["getAll_1"];
         put?: never;
-        post: operations["create_16"];
+        post: operations["create_20"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/currencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAllActiveCurrencies"];
+        put?: never;
+        post: operations["createCurrency"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4485,7 +5277,23 @@ export interface paths {
         };
         get: operations["getAll_2"];
         put?: never;
-        post: operations["create_17"];
+        post: operations["create_21"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/competitor-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["submit_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4499,9 +5307,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_12"];
+        get: operations["list_17"];
         put?: never;
-        post: operations["create_18"];
+        post: operations["create_22"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4581,7 +5389,7 @@ export interface paths {
         };
         get: operations["getAll_3"];
         put?: never;
-        post: operations["create_19"];
+        post: operations["create_23"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4677,7 +5485,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["complete_2"];
+        post: operations["complete_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4693,7 +5501,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["cancel_3"];
+        post: operations["cancel_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4710,6 +5518,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["startWizard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/closing-control/mark-done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["markDone"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4741,7 +5565,7 @@ export interface paths {
         };
         get: operations["findAll_1"];
         put?: never;
-        post: operations["create_20"];
+        post: operations["create_24"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4833,6 +5657,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/central/transfer-reconciliation/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cash-register/storno": {
         parameters: {
             query?: never;
@@ -4913,6 +5753,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cash-register/command": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["executeCommand"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cash-register/close": {
         parameters: {
             query?: never;
@@ -4977,6 +5833,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cash-balances/init-branch/{branchId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["initBranchBalances"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash-balances/init-all-branches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["initAllBranchBalances"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cash-balances/adjust": {
         parameters: {
             query?: never;
@@ -5002,7 +5890,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["reject_2"];
+        post: operations["reject_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5018,7 +5906,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["reject_3"];
+        post: operations["reject_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5051,6 +5939,38 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["execute_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/camera/export/{requestId}/approve-second": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["approveSecond"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/camera/export/{requestId}/approve-second": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["approveSecond_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5201,6 +6121,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/branches/simple-cashier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createSimpleCashier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/branch-groups": {
         parameters: {
             query?: never;
@@ -5208,9 +6144,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_13"];
+        get: operations["list_18"];
         put?: never;
-        post: operations["create_21"];
+        post: operations["create_25"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5281,6 +6217,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/banks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_19"];
+        put?: never;
+        post: operations["create_26"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/banknote-inventory/{inventoryId}/count": {
         parameters: {
             query?: never;
@@ -5329,6 +6281,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bank-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_20"];
+        put?: never;
+        post: operations["create_27"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bank-orders/{id}/execute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["execute_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bank-orders/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cancel_5"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bank-orders/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["approve_8"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bank-api-config/raiffeisen/fetch-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["fetchRaiffeisenNow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/backup/{id}/restore": {
         parameters: {
             query?: never;
@@ -5370,7 +6402,7 @@ export interface paths {
         };
         get: operations["findAll_2"];
         put?: never;
-        post: operations["create_22"];
+        post: operations["create_28"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5386,7 +6418,7 @@ export interface paths {
         };
         get: operations["findByRepresentative"];
         put?: never;
-        post: operations["create_23"];
+        post: operations["create_29"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5489,6 +6521,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/worker-setup-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["issueWorkerSetupToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["resetPassword_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/refresh": {
         parameters: {
             query?: never;
@@ -5569,6 +6633,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/google-vault/select-worker": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["selectVaultWorker"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/google-login": {
         parameters: {
             query?: never;
@@ -5579,6 +6659,38 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["googleLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["forgotPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/first-time-worker-setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["firstTimeWorkerSetup"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5627,6 +6739,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["recordLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/arfolyam-internet-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_21"];
+        put?: never;
+        post: operations["create_30"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5688,9 +6816,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_14"];
+        get: operations["list_22"];
         put?: never;
-        post: operations["create_24"];
+        post: operations["create_31"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5706,7 +6834,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["resolve"];
+        post: operations["resolve_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5761,7 +6889,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/seal-numbers/{id}/use": {
+    "/api/v1/aml-approval/verify-approver": {
         parameters: {
             query?: never;
             header?: never;
@@ -5770,15 +6898,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Plomba felhasználásának rögzítése */
-        post: operations["markAsUsed"];
+        post: operations["verifyApprover"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/seal-numbers/generate": {
+    "/api/v1/aml-approval/check-required": {
         parameters: {
             query?: never;
             header?: never;
@@ -5787,41 +6914,39 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Plomba szám generálása és mentése */
-        post: operations["generate_4"];
+        post: operations["checkApprovalRequired"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/evening-closing/{branchId}/{date}/send": {
+    "/api/v1/admin/denomination/rules": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["listRules"];
         put?: never;
-        post: operations["sendPackage"];
+        post: operations["createRule"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/denomination-calculator/suggest-balanced": {
+    "/api/v1/admin/denomination/optimizations": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["listOptimizations"];
         put?: never;
-        /** Készlet-figyelő címlet javaslat */
-        post: operations["suggestBalanced"];
+        post: operations["createOptimization"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5892,6 +7017,38 @@ export interface paths {
         patch: operations["updateBankTransactionStatus"];
         trace?: never;
     };
+    "/api/v1/currencies/{id}/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["setActive"];
+        trace?: never;
+    };
+    "/api/v1/branches/{id}/is-vault": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateIsVault"];
+        trace?: never;
+    };
     "/api/v1/year-opening/status": {
         parameters: {
             query?: never;
@@ -5948,6 +7105,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getCurrentWorker"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workers/directory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getWorkerDirectory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6100,6 +7273,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/western-union/daily-limit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getDailyLimit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/western-union/balance": {
         parameters: {
             query?: never;
@@ -6158,6 +7347,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vault-stocktake/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vault-stocktake/{id}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["summary"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6246,6 +7467,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/turnover/territory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["territory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/turnover/monthly": {
         parameters: {
             query?: never;
@@ -6286,6 +7523,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["company"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/turnover/branch-range": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["branchRange"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6550,6 +7803,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/transfers/{id}/storno-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["stornoPreview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/transfers/pending": {
         parameters: {
             query?: never;
@@ -6710,6 +7979,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/transactions/cashier-rate-quota": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCashierRateQuota"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/trades/pending": {
         parameters: {
             query?: never;
@@ -6742,14 +8027,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/territories": {
+    "/api/v1/territories/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["list_15"];
+        get: operations["getById_15"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6766,6 +8051,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["territoryProfit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teaor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["search_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6966,7 +8267,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/stornos/check/{transactionId}": {
+    "/api/v1/stornos/check/{transactionIdOrReceipt}": {
         parameters: {
             query?: never;
             header?: never;
@@ -6974,6 +8275,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["checkStorno"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stornos/approvals/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPendingStornoApprovals"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7142,6 +8459,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/seal-numbers/unused": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Felhasználatlan plomba számok */
+        get: operations["listUnused"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/seal-numbers/unused": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Felhasználatlan plomba számok */
+        get: operations["listUnused_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/seal-numbers/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mai plomba számok listázása */
+        get: operations["listToday"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/seal-numbers/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mai plomba számok listázása */
+        get: operations["listToday_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/seal-numbers/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Következő plomba szám lekérése (preview) */
+        get: operations["getNext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/seal-numbers/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Következő plomba szám lekérése (preview) */
+        get: operations["getNext_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scanned-documents/transaction/{transactionId}": {
         parameters: {
             query?: never;
@@ -7246,6 +8665,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getReservation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reservations/{id}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getReservationReceipt"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7366,6 +8801,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/territory-reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/region-turnover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getRegionTurnover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/recurring-customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Visszatérő ügyfelek (≥ N tranzakció) az időszakban — AML monitoring */
+        get: operations["generate_6"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/period": {
         parameters: {
             query?: never;
@@ -7422,6 +8906,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["exportMonthlyTurnoverCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/live-cash-position": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getLivePosition"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7526,6 +9026,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/daily-journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["generate_7"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/daily-closing": {
         parameters: {
             query?: never;
@@ -7534,6 +9050,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getDailyClosingReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/daily-balance-grid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getGrid"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7566,6 +9098,54 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getCashStatusReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/average-rate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["generate_8"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/average-rate/pivot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["generatePivot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/average-rate/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["export"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7757,7 +9337,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_16"];
+        get: operations["list_23"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7773,7 +9353,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getById_15"];
+        get: operations["getById_16"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7958,6 +9538,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rate-creation/territory-workgroup-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTerritoryWorkgroupRates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rate-creation/prepare/{currencyId}": {
         parameters: {
             query?: never;
@@ -8118,6 +9714,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/auth/google-config-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getGoogleConfigStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/profit/territory/{territoryId}": {
         parameters: {
             query?: never;
@@ -8237,7 +9849,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getById_16"];
+        get: operations["getById_17"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8679,6 +10291,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mfa/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/logs/system": {
         parameters: {
             query?: never;
@@ -8735,6 +10363,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["exportLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/local-rate-maker/bootstrap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["bootstrap"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8847,6 +10491,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getSerialStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/vault-stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getVaultStock"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/transfer-targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTransferTargets"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9074,7 +10750,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_17"];
+        get: operations["list_24"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9090,7 +10766,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getById_17"];
+        get: operations["getById_18"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9123,6 +10799,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getSyncHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getFeatures"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9275,6 +10967,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/exchange-rate-master/distribution/pending-print": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPendingPrintObligations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/exchange-rate-master/active": {
         parameters: {
             query?: never;
@@ -9315,6 +11023,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getCurrentRates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evening-closing/{branchId}/{date}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getDailyReport_3"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evening-closing/{branchId}/{date}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["previewPackage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9427,6 +11167,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getBankTransactionsByType"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/employees/vacations/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["exportVacationsCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/employees/occupational-health/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["exportOccupationalHealthCsv"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9580,6 +11352,307 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/discount-threshold/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Kedvezmény/felár meghatározása összeg alapján */
+        get: operations["resolve_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/discount-threshold/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Kedvezmény/felár meghatározása összeg alapján */
+        get: operations["resolve_3"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/discount-threshold/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Kedvezmény alkalmazása a kezelési díjra */
+        get: operations["apply"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/discount-threshold/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Kedvezmény alkalmazása a kezelési díjra */
+        get: operations["apply_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/discount-threshold/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Összes aktív kedvezmény listázása */
+        get: operations["listActive_5"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/discount-threshold/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Összes aktív kedvezmény listázása */
+        get: operations["listActive_6"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/discount-approval/required-level": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Kedvezmény %-hoz szükséges jóváhagyási szint + a jelenlegi worker képessége */
+        get: operations["requiredLevel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dictionaries/{category}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getByCategory_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/diagnostics/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["health"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/diagnostics/errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listErrors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/diagnostics/errors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getError"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/diagnostics/errors/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["errorSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/diagnostics/audit/trace/{traceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Egy trace_id-hez tartozo osszes audit-esemeny (kliens-backend korrelacio) - company-scoped */
+        get: operations["byTrace"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/diagnostics/audit/recent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Utolso N audit-bejegyzes szuretlen (alapertelmezett 100, max 500) - company-scoped */
+        get: operations["recent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/diagnostics/audit/recent-errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Utolso N ERROR / WARN / FATAL audit-bejegyzes (alapertelmezett 100, max 500) - company-scoped */
+        get: operations["recentErrors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/diagnostics/audit/hash-chain-verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Audit hash-chain integritas-ellenorzes (utolso N esemeny) - company-scoped */
+        get: operations["verifyHashChain"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/diagnostics/audit/error-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** AI-olvashato hibakod-katalogus (packages/shared-logging/error-codes.yaml) */
+        get: operations["errorCodes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/diagnostics/audit/entity/{entityType}/{entityId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Egy entity audit-lancanak idorendi lekerdezese - company-scoped */
+        get: operations["auditChain"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/denominations/summary/{currencyId}": {
         parameters: {
             query?: never;
@@ -9660,6 +11733,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/denomination-calculator/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Greedy címlet javaslat */
+        get: operations["suggest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/denomination-calculator/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Greedy címlet javaslat */
+        get: operations["suggest_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/decade-reports": {
         parameters: {
             query?: never;
@@ -9667,7 +11774,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_18"];
+        get: operations["list_25"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9731,7 +11838,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getById_18"];
+        get: operations["getById_19"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9747,7 +11854,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getById_19"];
+        get: operations["getById_20"];
         put?: never;
         post?: never;
         delete?: never;
@@ -10220,22 +12327,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/currencies": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getAllActiveCurrencies"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/currencies/{id}": {
         parameters: {
             query?: never;
@@ -10323,7 +12414,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getById_20"];
+        get: operations["getById_21"];
         put?: never;
         post?: never;
         delete?: never;
@@ -10372,6 +12463,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["exportAll"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/competitor-rates/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTodayRates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/competitor-rates/bootstrap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getBootstrap"];
         put?: never;
         post?: never;
         delete?: never;
@@ -10589,6 +12712,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/circulars/{id}/acknowledgment-breakdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["acknowledgmentBreakdown"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/circulars/unacknowledged": {
         parameters: {
             query?: never;
@@ -10758,6 +12897,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/central/received-data/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getStatus_7"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/central-reports/weekly": {
         parameters: {
             query?: never;
@@ -10797,7 +12952,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getDailyReport_3"];
+        get: operations["getDailyReport_4"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11181,7 +13336,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getById_21"];
+        get: operations["getById_22"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11197,7 +13352,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getById_22"];
+        get: operations["getById_23"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11318,6 +13473,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/branches/vault-only": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getVaultBranches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/branches/vault-counterparties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getVaultCounterparties"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/branches/roots": {
         parameters: {
             query?: never;
@@ -11334,6 +13521,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/branches/my-territory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getMyTerritoryBranches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/branches/code/{code}": {
         parameters: {
             query?: never;
@@ -11342,6 +13545,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getBranchByCode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/branches/cashier-shipment-targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCashierShipmentTargets"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11373,7 +13592,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listActive_5"];
+        get: operations["listActive_7"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11470,6 +13689,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getLowStock"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bank-orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_3"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bank-api-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_26"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11732,7 +13983,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getById_23"];
+        get: operations["getById_24"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11765,6 +14016,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["checkStructuring"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/aml/rolling-window-audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getRollingWindowAudit"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11837,6 +14104,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/denomination/selection-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["previewSelection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/branches": {
         parameters: {
             query?: never;
@@ -11845,6 +14128,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getAllBranchesWithStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/bank-integration/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getStatus_8"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11869,152 +14168,17 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/seal-numbers/unused": {
+    "/api/v1/wu-partner-companies/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Felhasználatlan plomba számok */
-        get: operations["listUnused"];
+        get?: never;
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/seal-numbers/today": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Mai plomba számok listázása */
-        get: operations["listToday"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/seal-numbers/next": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Következő plomba szám lekérése (preview) */
-        get: operations["getNext"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/evening-closing/{branchId}/{date}/report": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getDailyReport_4"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/evening-closing/{branchId}/{date}/preview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["previewPackage"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/discount-threshold/resolve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Kedvezmény/felár meghatározása összeg alapján */
-        get: operations["resolve_1"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/discount-threshold/apply": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Kedvezmény alkalmazása a kezelési díjra */
-        get: operations["apply"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/discount-threshold/active": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Összes aktív kedvezmény listázása */
-        get: operations["listActive_6"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/denomination-calculator/suggest": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Greedy címlet javaslat */
-        get: operations["suggest"];
-        put?: never;
-        post?: never;
-        delete?: never;
+        delete: operations["deactivate"];
         options?: never;
         head?: never;
         patch?: never;
@@ -12030,7 +14194,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["cancel_4"];
+        delete: operations["cancel_6"];
         options?: never;
         head?: never;
         patch?: never;
@@ -12078,7 +14242,55 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["cancel_5"];
+        delete: operations["cancel_7"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/employees/{employeeId}/vacations/{recordId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteVacation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/employees/{employeeId}/occupational-health/{recordId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteOccupationalHealth"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/employees/{employeeId}/children/{recordId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteChild"];
         options?: never;
         head?: never;
         patch?: never;
@@ -12116,6 +14328,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/banks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deactivate_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/arfolyam-internet-links/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_16"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/denomination/rules/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteRule"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -12144,6 +14404,7 @@ export interface components {
             /** Format: uuid */
             branchId?: string;
             phone?: string;
+            /** Format: email */
             email?: string;
             active?: boolean;
             otpUserId?: string;
@@ -12172,6 +14433,45 @@ export interface components {
             otpEnabled?: boolean;
             /** Format: date-time */
             lastLoginAt?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        UpdateChecklistItemsRequest: {
+            item1?: boolean;
+            item2?: boolean;
+            item3?: boolean;
+            item4?: boolean;
+            item5?: boolean;
+            item6?: boolean;
+            item7?: boolean;
+            item8?: boolean;
+            item9?: boolean;
+        };
+        VaultClosingChecklistDto: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            branchId?: string;
+            branchName?: string;
+            /** Format: date */
+            closingDate?: string;
+            item1?: boolean;
+            item2?: boolean;
+            item3?: boolean;
+            item4?: boolean;
+            item5?: boolean;
+            item6?: boolean;
+            item7?: boolean;
+            item8?: boolean;
+            item9?: boolean;
+            auditorName?: string;
+            auditorRole?: string;
+            /** Format: int64 */
+            completedByWorkerId?: number;
+            /** Format: date-time */
+            completedAt?: string;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
@@ -12235,9 +14535,17 @@ export interface components {
             denominationRuleId?: string;
             /** Format: int32 */
             vaultTerritoryId?: number;
+            isVault?: boolean;
             regionCode?: string;
             region?: string;
             isActive?: boolean;
+            shortName?: string;
+            hasAfa?: boolean;
+            hasWu?: boolean;
+            hasMg?: boolean;
+            hasPos?: boolean;
+            closedSaturday?: boolean;
+            closedSunday?: boolean;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
@@ -12323,6 +14631,19 @@ export interface components {
             lastLoginAt?: string;
             /** Format: date-time */
             passwordChangedAt?: string;
+            setupGrace?: boolean;
+            supervisorPin?: string;
+            /** Format: date-time */
+            supervisorPinChangedAt?: string;
+            /** Format: date-time */
+            supervisorPinLastUsedAt?: string;
+            googleSubject?: string;
+            googleLoginEnabled?: boolean;
+            /** Format: date-time */
+            googleLinkedAt?: string;
+            /** Format: date-time */
+            googleLastLoginAt?: string;
+            sharedAccount?: boolean;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
@@ -12352,18 +14673,29 @@ export interface components {
             id?: string;
             requestNumber?: string;
             /** Format: uuid */
+            companyId?: string;
+            serialPrefix?: string;
+            /** Format: int64 */
+            serialNumber?: number;
+            /** Format: uuid */
             fromBranchId?: string;
             /** Format: uuid */
             toBranchId?: string;
+            transferType?: string;
             /** Format: int64 */
             requestedById?: number;
             /** @enum {string} */
-            status?: "DRAFT" | "SUBMITTED" | "APPROVED" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED";
+            status?: "DRAFT" | "SUBMITTED" | "APPROVED" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED" | "REJECTED";
             /** Format: date */
             requestDate?: string;
             /** Format: date */
             deliveryDate?: string;
             notes?: string;
+            carrierName: string;
+            sealNumber: string;
+            rejectionReason?: string;
+            /** Format: int64 */
+            rejectedByWorkerId?: number;
             /** Format: date-time */
             createdAt?: string;
             items?: components["schemas"]["ShipmentRequestItem"][];
@@ -12376,6 +14708,71 @@ export interface components {
             requestedAmount?: number;
             approvedAmount?: number;
             deliveredAmount?: number;
+            appliedRate?: number;
+            hufValue?: number;
+        };
+        ShipmentRequestItemResponseDto: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: int64 */
+            currencyId?: number;
+            currencyCode?: string;
+            requestedAmount?: number;
+            approvedAmount?: number;
+            deliveredAmount?: number;
+            appliedRate?: number;
+            hufValue?: number;
+        };
+        ShipmentRequestResponseDto: {
+            /** Format: uuid */
+            id?: string;
+            requestNumber?: string;
+            /** Format: uuid */
+            companyId?: string;
+            serialPrefix?: string;
+            /** Format: int64 */
+            serialNumber?: number;
+            /** Format: uuid */
+            fromBranchId?: string;
+            fromBranchCode?: string;
+            fromBranchName?: string;
+            /** Format: uuid */
+            toBranchId?: string;
+            toBranchCode?: string;
+            toBranchName?: string;
+            /** Format: int64 */
+            requestedById?: number;
+            requestedByWorkerName?: string;
+            /** @enum {string} */
+            status?: "DRAFT" | "SUBMITTED" | "APPROVED" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED" | "REJECTED";
+            /** Format: date */
+            requestDate?: string;
+            /** Format: date */
+            deliveryDate?: string;
+            notes?: string;
+            carrierName?: string;
+            sealNumber?: string;
+            rejectionReason?: string;
+            /** Format: int64 */
+            rejectedByWorkerId?: number;
+            rejectedByWorkerName?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            items?: components["schemas"]["ShipmentRequestItemResponseDto"][];
+            /** Format: uuid */
+            requestingBranchId?: string;
+            requestingBranchName?: string;
+            /** Format: uuid */
+            targetBranchId?: string;
+            targetBranchName?: string;
+            /** @enum {string} */
+            requestStatus?: "DRAFT" | "SUBMITTED" | "APPROVED" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED" | "REJECTED";
+            /** Format: date */
+            requestedDeliveryDate?: string;
+            /** Format: int64 */
+            requestedByWorkerId?: number;
+            /** Format: date-time */
+            requestedAt?: string;
         };
         RoleDto: {
             id?: string;
@@ -12415,23 +14812,24 @@ export interface components {
         RateWorkgroup: {
             /** Format: uuid */
             id?: string;
-            company?: components["schemas"]["Company"];
             name?: string;
             code?: string;
             /** Format: int32 */
             legacyGroupNumber?: number;
+            tileColor?: string;
             active?: boolean;
             /** Format: date-time */
             createdAt?: string;
             limit1Boundary?: number;
             limit2Boundary?: number;
             limit3Boundary?: number;
-            branches?: components["schemas"]["Branch"][];
+            protectionEnabled?: boolean;
+            /** Format: uuid */
+            companyId?: string;
         };
         RateTemplate: {
             /** Format: uuid */
             id?: string;
-            company?: components["schemas"]["Company"];
             /** Format: int64 */
             currencyId?: number;
             /** Format: uuid */
@@ -12464,6 +14862,8 @@ export interface components {
             approvedAt?: string;
             /** Format: date-time */
             publishedAt?: string;
+            /** Format: uuid */
+            companyId?: string;
         };
         RateDiscount: {
             /** Format: uuid */
@@ -12573,6 +14973,28 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        MachineConfigUpdateRequest: {
+            configJson?: string;
+            dailyReportPassword?: string;
+        };
+        RateMakerSheetUpdateRequest: {
+            sheetJson: string;
+            source?: string;
+            deviceId?: string;
+            /** Format: int64 */
+            baseVersion?: number;
+        };
+        RateMakerSheetDto: {
+            sheetJson?: string;
+            /** Format: int64 */
+            version?: number;
+            source?: string;
+            deviceId?: string;
+            /** Format: int64 */
+            updatedBy?: number;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         SaveLedDisplayConfigRequest: {
             /** Format: uuid */
             branchId: string;
@@ -12609,6 +15031,21 @@ export interface components {
             displayIds?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        HandlingFeeBracketDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int32 */
+            bracketOrder?: number;
+            upperLimit?: number;
+            feeAmount?: number;
+            active?: boolean;
+        };
+        HandlingFeeConfigDto: {
+            feeType?: string;
+            perMilleRate?: number;
+            perMilleMaxAmount?: number;
+            brackets?: components["schemas"]["HandlingFeeBracketDto"][];
         };
         FeeType: {
             /** Format: uuid */
@@ -12649,6 +15086,7 @@ export interface components {
         FeeDiscount: {
             /** Format: uuid */
             id?: string;
+            company?: components["schemas"]["Company"];
             code?: string;
             name?: string;
             discountType?: string;
@@ -12708,6 +15146,7 @@ export interface components {
             idCardNumber?: string;
             /** Format: date */
             idCardExpiry?: string;
+            /** Format: email */
             email?: string;
             phone?: string;
             /** Format: date */
@@ -12733,6 +15172,12 @@ export interface components {
             vocationalQualification?: string;
             /** Format: date */
             certificateDate?: string;
+            appraiserCertificateNumber?: string;
+            appraiserCertificateDate?: string;
+            sellerCertificateNumber?: string;
+            sellerCertificateDate?: string;
+            cashierCertificateNumber?: string;
+            cashierCertificateDate?: string;
             personalTaxCredit?: string;
             familyTaxCredit?: string;
             twoChildrenCredit?: string;
@@ -12799,6 +15244,15 @@ export interface components {
             vocationalQualification?: string;
             /** Format: date */
             certificateDate?: string;
+            appraiserCertificateNumber?: string;
+            /** Format: date */
+            appraiserCertificateDate?: string;
+            sellerCertificateNumber?: string;
+            /** Format: date */
+            sellerCertificateDate?: string;
+            cashierCertificateNumber?: string;
+            /** Format: date */
+            cashierCertificateDate?: string;
             personalTaxCredit?: string;
             familyTaxCredit?: string;
             twoChildrenCredit?: string;
@@ -12857,12 +15311,13 @@ export interface components {
         VaultTerritory: {
             /** Format: int32 */
             id?: number;
-            company?: components["schemas"]["Company"];
             name?: string;
             baseCapital?: number;
             /** Format: date */
             baseCapitalApprovedAt?: string;
             active?: boolean;
+            /** Format: uuid */
+            companyId?: string;
         };
         UpdateDenominationDto: {
             /** Format: int64 */
@@ -12946,6 +15401,8 @@ export interface components {
             passportNumber?: string;
             /** Format: date */
             passportExpiry?: string;
+            residence?: string;
+            addressCardNumber?: string;
             address?: string;
             postalCode?: string;
             city?: string;
@@ -12956,7 +15413,9 @@ export interface components {
             companyName?: string;
             taxNumber?: string;
             registrationNumber?: string;
+            teaorCode?: string;
             isVip?: boolean;
+            isPep?: boolean;
             notes?: string;
         };
         CustomerDto: {
@@ -12981,6 +15440,8 @@ export interface components {
             passportNumber?: string;
             /** Format: date */
             passportExpiry?: string;
+            residence?: string;
+            addressCardNumber?: string;
             address?: string;
             postalCode?: string;
             city?: string;
@@ -12991,9 +15452,15 @@ export interface components {
             companyName?: string;
             taxNumber?: string;
             registrationNumber?: string;
+            teaorCode?: string;
             active?: boolean;
             isVip?: boolean;
+            isPep?: boolean;
             notes?: string;
+            /** Format: date */
+            eddUntil?: string;
+            eddReason?: string;
+            eddActive?: boolean;
             /** Format: date */
             lastTransactionDate?: string;
             /** Format: int32 */
@@ -13080,6 +15547,15 @@ export interface components {
             /** Format: uuid */
             denominationRuleId?: string;
             isActive?: boolean;
+            shortName?: string;
+            hasAfa?: boolean;
+            hasWu?: boolean;
+            hasMg?: boolean;
+            hasPos?: boolean;
+            closedSaturday?: boolean;
+            closedSunday?: boolean;
+            isVault?: boolean;
+            regionCode?: string;
         };
         BranchDto: {
             /** Format: uuid */
@@ -13114,6 +15590,18 @@ export interface components {
             /** Format: uuid */
             denominationRuleId?: string;
             isActive?: boolean;
+            /** Format: int32 */
+            vaultTerritoryId?: number;
+            isVault?: boolean;
+            region?: string;
+            regionCode?: string;
+            shortName?: string;
+            hasAfa?: boolean;
+            hasWu?: boolean;
+            hasMg?: boolean;
+            hasPos?: boolean;
+            closedSaturday?: boolean;
+            closedSunday?: boolean;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
@@ -13201,6 +15689,40 @@ export interface components {
             lastCountedAt?: string;
             lastCountedBy?: string;
         };
+        UpdateBankApiConfigRequest: {
+            /** @enum {string} */
+            mode: "HTML_SCRAPING_FALLBACK" | "REST_PRIMARY_WITH_HTML_FALLBACK" | "DISABLED";
+            endpointUrl?: string;
+            /** @enum {string} */
+            authType: "NONE" | "OAUTH2_CLIENT_CREDENTIALS" | "OAUTH2_MTLS";
+            clientId?: string;
+            clientSecret?: string;
+            mtlsCertificateAlias?: string;
+            updateFrequency: string;
+            enabled: boolean;
+        };
+        BankApiConfigDto: {
+            /** Format: uuid */
+            id?: string;
+            providerName?: string;
+            /** @enum {string} */
+            mode?: "HTML_SCRAPING_FALLBACK" | "REST_PRIMARY_WITH_HTML_FALLBACK" | "DISABLED";
+            endpointUrl?: string;
+            /** @enum {string} */
+            authType?: "NONE" | "OAUTH2_CLIENT_CREDENTIALS" | "OAUTH2_MTLS";
+            clientId?: string;
+            clientSecretConfigured?: boolean;
+            mtlsCertificateAlias?: string;
+            updateFrequency?: string;
+            enabled?: boolean;
+            /** Format: date-time */
+            lastRunTimestamp?: string;
+            /** @enum {string} */
+            lastRunStatus?: "NEVER_RUN" | "SUCCESS" | "FAILED" | "SKIPPED";
+            lastRunMessage?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         CreateRepresentativeDto: {
             name: string;
             firstName?: string;
@@ -13258,6 +15780,37 @@ export interface components {
             /** Format: date-time */
             registeredAt?: string;
         };
+        OptimizationCreateRequest: {
+            name?: string;
+            description?: string;
+            /** @enum {string} */
+            strategy?: "GREEDY" | "DYNAMIC" | "MIN_COINS" | "MIN_BANKNOTES" | "MIN_TOTAL" | "CUSTOM" | "BRANCH_SPECIFIC";
+            priorityOrderJson?: string;
+            minCoins?: boolean;
+            minBanknotes?: boolean;
+            minTotalCount?: boolean;
+            isDefault?: boolean;
+        };
+        DenominationOptimization: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            description?: string;
+            /** @enum {string} */
+            strategy?: "GREEDY" | "DYNAMIC" | "MIN_COINS" | "MIN_BANKNOTES" | "MIN_TOTAL" | "CUSTOM" | "BRANCH_SPECIFIC";
+            priorityOrderJson?: string;
+            minCoins?: boolean;
+            minBanknotes?: boolean;
+            minTotalCount?: boolean;
+            isDefault?: boolean;
+            isActive?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+            /** Format: int64 */
+            version?: number;
+        };
         CompanyUpdateDto: {
             name?: string;
             taxNumber?: string;
@@ -13274,6 +15827,14 @@ export interface components {
             phone?: string;
             email?: string;
         };
+        CreateRequest: {
+            name: string;
+        };
+        Dto: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+        };
         CreateWorkerDto: {
             /** Format: uuid */
             companyId: string;
@@ -13285,6 +15846,7 @@ export interface components {
             /** Format: uuid */
             branchId: string;
             phone?: string;
+            /** Format: email */
             email?: string;
             otpUserId?: string;
             otpEnabled?: boolean;
@@ -13356,10 +15918,27 @@ export interface components {
             transactionDate?: string;
             /** Format: date-time */
             createdAt?: string;
-            /** @description SOF (V.2.8 A.1): forrás-dokumentum típusa — a 10M/7nap kumulált triggernél kötelező */
             sourceOfFundsDocType?: string;
             /** Format: date */
             sourceOfFundsDocDate?: string;
+        };
+        WuDailyLimitUseRequest: {
+            amountUsd: number;
+            /** Format: date */
+            businessDate?: string;
+        };
+        WuDailyLimitDto: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: date */
+            businessDate?: string;
+            currencyCode?: string;
+            dailyLimit?: number;
+            usedAmount?: number;
+            remainingAmount?: number;
+            usagePercent?: number;
+            /** Format: date-time */
+            resetAt?: string;
         };
         WuStubTransferRequest: {
             /** Format: uuid */
@@ -13381,6 +15960,8 @@ export interface components {
         Customer: {
             /** Format: int64 */
             id?: number;
+            /** Format: int64 */
+            version?: number;
             company?: components["schemas"]["Company"];
             customerCode?: string;
             name?: string;
@@ -13401,6 +15982,8 @@ export interface components {
             passportNumber?: string;
             /** Format: date */
             passportExpiry?: string;
+            residence?: string;
+            addressCardNumber?: string;
             address?: string;
             postalCode?: string;
             city?: string;
@@ -13411,6 +15994,7 @@ export interface components {
             companyName?: string;
             taxNumber?: string;
             registrationNumber?: string;
+            teaorCode?: string;
             /** @enum {string} */
             customerType?: "FULL" | "SIMPLIFIED";
             active?: boolean;
@@ -13421,6 +16005,11 @@ export interface components {
             highRiskReason?: string;
             /** Format: date-time */
             highRiskSetAt?: string;
+            /** Format: date */
+            eddUntil?: string;
+            eddReason?: string;
+            /** Format: date-time */
+            eddSetAt?: string;
             notes?: string;
             /** Format: date */
             lastTransactionDate?: string;
@@ -13475,10 +16064,109 @@ export interface components {
             reversedTransaction?: components["schemas"]["WuTransaction"];
             reversalReason?: string;
             worker?: components["schemas"]["Worker"];
+            sourceOfFundsDocType?: string;
+            /** Format: date */
+            sourceOfFundsDocDate?: string;
             /** Format: date-time */
             transactionDate?: string;
             /** Format: date-time */
             createdAt?: string;
+        };
+        VoiceTokenRequestDto: {
+            /** @enum {string} */
+            mode: "install" | "test" | "support" | "unified";
+        };
+        ClientSecret: {
+            value?: string;
+            /** Format: int64 */
+            expires_at?: number;
+        };
+        VoiceTokenResponseDto: {
+            client_secret?: components["schemas"]["ClientSecret"];
+            model?: string;
+            mode?: string;
+        };
+        VaultWorkerCreateRequestDto: {
+            name: string;
+            password: string;
+            passwordConfirm: string;
+        };
+        VaultWorkerOptionDto: {
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+        };
+        CreateSessionRequest: {
+            /** Format: uuid */
+            branchId?: string;
+            /** Format: int32 */
+            territoryId?: number;
+            sessionName?: string;
+            note?: string;
+        };
+        VaultStocktakeSession: {
+            /** Format: uuid */
+            id?: string;
+            sessionName?: string;
+            /** @enum {string} */
+            status?: "OPEN" | "IN_PROGRESS" | "REVIEW" | "CLOSED" | "CANCELLED";
+            /** Format: date-time */
+            startedAt?: string;
+            /** Format: date-time */
+            completedAt?: string;
+            startedBy?: string;
+            reviewedBy?: string;
+            approvedBy?: string;
+            note?: string;
+            discrepancyTotalHuf?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+            /** Format: int64 */
+            version?: number;
+            /** Format: uuid */
+            branchId?: string;
+            /** Format: int32 */
+            territoryId?: number;
+            /** Format: uuid */
+            companyId?: string;
+        };
+        CountItemRequest: {
+            /** Format: int32 */
+            actualQuantity?: number;
+            note?: string;
+        };
+        VaultStocktakeItem: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: int64 */
+            currencyId?: number;
+            currencyCode?: string;
+            faceValue?: number;
+            /** Format: int32 */
+            expectedQuantity?: number;
+            /** Format: int32 */
+            actualQuantity?: number;
+            /** Format: int32 */
+            discrepancy?: number;
+            discrepancyValue?: number;
+            countedBy?: string;
+            /** Format: date-time */
+            countedAt?: string;
+            note?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+            /** Format: int64 */
+            version?: number;
+            /** Format: uuid */
+            sessionId?: string;
+        };
+        CompleteChecklistRequest: {
+            auditorName: string;
+            auditorRole: string;
         };
         CreateVatRefundRequest: {
             voucherType: string;
@@ -13582,19 +16270,44 @@ export interface components {
             amount: number;
             hufValue?: number;
             transferType: string;
+            lines?: components["schemas"]["TransferLineDto"][];
             direction?: string;
             notes?: string;
+            denominations?: components["schemas"]["TransferDenominationDto"][];
+            carrierName: string;
+            sealNumber: string;
+        };
+        TransferDenominationDto: {
+            /** Format: int32 */
+            quantity: number;
+            faceValue: number;
+            currencyCode?: string;
+            lineTotal?: number;
+        };
+        TransferLineDto: {
+            /** Format: int64 */
+            currencyId: number;
+            amount: number;
+            currencyCode?: string;
+            currencyName?: string;
+            receivedAmount?: number;
+            difference?: number;
+            /** Format: int32 */
+            lineNo?: number;
         };
         TransferDto: {
+            lines?: components["schemas"]["TransferLineDto"][];
             /** Format: int64 */
             id?: number;
             transferNumber?: string;
             fromBranchId?: string;
             fromBranchCode?: string;
             fromBranchName?: string;
+            fromBranchRegionCode?: string;
             toBranchId?: string;
             toBranchCode?: string;
             toBranchName?: string;
+            toBranchRegionCode?: string;
             /** Format: int64 */
             fromWorkerId?: number;
             fromWorkerName?: string;
@@ -13620,27 +16333,27 @@ export interface components {
             receivedAmount?: number;
             difference?: number;
             notes?: string;
+            carrierName?: string;
+            sealNumber?: string;
             handoverPrinted?: boolean;
             receiptPrinted?: boolean;
             createdAt?: string;
             hasDifference?: boolean;
             isCompleted?: boolean;
             isPending?: boolean;
+            vaultAddress?: string;
+            vaultPhone?: string;
+            isCancelled?: boolean;
+            cancellationReason?: string;
+            cancelledAt?: string;
+            stornoSerialNumber?: string;
+            denominations?: components["schemas"]["TransferDenominationDto"][];
+        };
+        StornoRequestDto: {
+            reason: string;
         };
         ReceiveTransferDto: {
             receivedAmount: number;
-            notes?: string;
-        };
-        CreateRequest: {
-            /** Format: int64 */
-            senderId?: number;
-            currencyCode?: string;
-            quantity?: number;
-            sourceType?: string;
-            sourceId?: string;
-            destinationType?: string;
-            destinationId?: string;
-            courierPin?: string;
             notes?: string;
         };
         TransactionBanknoteDto: {
@@ -13657,6 +16370,17 @@ export interface components {
             direction: string;
             totalValue?: number;
         };
+        BeneficialOwnerDto: {
+            name: string;
+            address?: string;
+            birthPlace?: string;
+            birthDate?: string;
+            nationality?: string;
+            residenceAbroad?: string;
+            interestNature?: string;
+            interestExtent?: string;
+            isPep?: boolean;
+        };
         SellRequestDto: {
             /** Format: int64 */
             currencyId?: number;
@@ -13664,6 +16388,11 @@ export interface components {
             currencyAmount: number;
             discountPercent?: number;
             handlingFee?: number;
+            /** @enum {string} */
+            handlingFeeOverrideType?: "NONE" | "HALF" | "WAIVED" | "SPECIAL";
+            /** @enum {string} */
+            handlingFeeOverrideReason?: "DIRECTOR_APPROVAL" | "CUSTOMER_CARD" | "PROMOTION";
+            customerCardNumber?: string;
             customExchangeRate?: number;
             customerId?: string;
             customerName?: string;
@@ -13671,8 +16400,38 @@ export interface components {
             customerDocumentNumber?: string;
             customerNationality?: string;
             sourceOfFunds?: string;
+            sourceOfFundsDocType?: string;
+            /** Format: date */
+            sourceOfFundsDocDate?: string;
+            /** Format: int64 */
+            approverWorkerId?: number;
+            approvalSessionId?: string;
             customerIsPep?: boolean;
+            customerBirthPlace?: string;
+            /** Format: date */
+            customerBirthDate?: string;
+            customerMotherName?: string;
+            customerDocumentType?: string;
+            customerOnOwnBehalf?: boolean;
+            customerActorName?: string;
+            customerPepKind?: string;
+            customerActorBirthPlace?: string;
+            /** Format: date */
+            customerActorBirthDate?: string;
+            customerActorMotherName?: string;
+            customerActorNationality?: string;
+            customerActorDocumentType?: string;
+            customerActorDocumentNumber?: string;
+            customerActorAddress?: string;
+            isLegalEntityCustomer?: boolean;
+            legalEntityName?: string;
+            legalEntitySeat?: string;
+            legalEntityTaxNumber?: string;
+            legalDeedNumber?: string;
+            beneficialOwners?: components["schemas"]["BeneficialOwnerDto"][];
             notes?: string;
+            cashierCustomRate?: boolean;
+            foreignStatus?: string;
             lines?: components["schemas"]["TransactionLineRequestDto"][];
         };
         TransactionLineRequestDto: {
@@ -13683,6 +16442,7 @@ export interface components {
             customExchangeRate?: number;
             /** Format: int32 */
             discountType?: number;
+            foreignStatus?: string;
         };
         TransactionDto: {
             /** Format: int64 */
@@ -13721,6 +16481,7 @@ export interface components {
             originalReceiptNumber?: string;
             reversalReason?: string;
             approvedBy?: string;
+            foreignStatus?: string;
             notes?: string;
             printed?: boolean;
             mtcn?: string;
@@ -13748,6 +16509,7 @@ export interface components {
             lineDiscount?: number;
             /** Format: int32 */
             discountType?: number;
+            foreignStatus?: string;
         };
         ReversalRequestDto: {
             /** Format: int64 */
@@ -13764,13 +16526,37 @@ export interface components {
             toCurrencyCode?: string;
             fromAmount: number;
             handlingFee?: number;
+            toAmount?: number;
+            foreignStatus?: string;
             customerId?: string;
             customerName?: string;
             customerAddress?: string;
             customerDocumentNumber?: string;
             customerNationality?: string;
             sourceOfFunds?: string;
+            sourceOfFundsDocType?: string;
+            /** Format: date */
+            sourceOfFundsDocDate?: string;
+            /** Format: int64 */
+            approverWorkerId?: number;
+            approvalSessionId?: string;
             customerIsPep?: boolean;
+            customerBirthPlace?: string;
+            /** Format: date */
+            customerBirthDate?: string;
+            customerMotherName?: string;
+            customerDocumentType?: string;
+            customerOnOwnBehalf?: boolean;
+            customerActorName?: string;
+            customerPepKind?: string;
+            customerActorBirthPlace?: string;
+            /** Format: date */
+            customerActorBirthDate?: string;
+            customerActorMotherName?: string;
+            customerActorNationality?: string;
+            customerActorDocumentType?: string;
+            customerActorDocumentNumber?: string;
+            customerActorAddress?: string;
         };
         BuyRequestDto: {
             /** Format: int64 */
@@ -13779,6 +16565,11 @@ export interface components {
             currencyAmount: number;
             discountPercent?: number;
             handlingFee?: number;
+            /** @enum {string} */
+            handlingFeeOverrideType?: "NONE" | "HALF" | "WAIVED" | "SPECIAL";
+            /** @enum {string} */
+            handlingFeeOverrideReason?: "DIRECTOR_APPROVAL" | "CUSTOMER_CARD" | "PROMOTION";
+            customerCardNumber?: string;
             customExchangeRate?: number;
             customerId?: string;
             customerName?: string;
@@ -13786,8 +16577,38 @@ export interface components {
             customerDocumentNumber?: string;
             customerNationality?: string;
             sourceOfFunds?: string;
+            sourceOfFundsDocType?: string;
+            /** Format: date */
+            sourceOfFundsDocDate?: string;
+            /** Format: int64 */
+            approverWorkerId?: number;
+            approvalSessionId?: string;
             customerIsPep?: boolean;
+            customerBirthPlace?: string;
+            /** Format: date */
+            customerBirthDate?: string;
+            customerMotherName?: string;
+            customerDocumentType?: string;
+            customerOnOwnBehalf?: boolean;
+            customerActorName?: string;
+            customerPepKind?: string;
+            customerActorBirthPlace?: string;
+            /** Format: date */
+            customerActorBirthDate?: string;
+            customerActorMotherName?: string;
+            customerActorNationality?: string;
+            customerActorDocumentType?: string;
+            customerActorDocumentNumber?: string;
+            customerActorAddress?: string;
+            isLegalEntityCustomer?: boolean;
+            legalEntityName?: string;
+            legalEntitySeat?: string;
+            legalEntityTaxNumber?: string;
+            legalDeedNumber?: string;
+            beneficialOwners?: components["schemas"]["BeneficialOwnerDto"][];
             notes?: string;
+            cashierCustomRate?: boolean;
+            foreignStatus?: string;
             lines?: components["schemas"]["TransactionLineRequestDto"][];
         };
         RejectTradeDto: {
@@ -13828,6 +16649,12 @@ export interface components {
             rate: number;
             notes?: string;
         };
+        VaultTerritoryRequestDto: {
+            name: string;
+            baseCapital: number;
+            /** Format: date */
+            baseCapitalApprovedAt?: string;
+        };
         BulkUpdateDto: {
             parameters?: {
                 [key: string]: string;
@@ -13849,11 +16676,10 @@ export interface components {
             recordCount?: number;
             errorMessage?: string;
         };
-        JsonNode: unknown;
         SyncInboundEventRequest: {
             sourceNodeId: string;
             eventType: string;
-            payload: components["schemas"]["JsonNode"];
+            payload: unknown;
         };
         SyncInboundEventResponse: {
             idempotencyKey?: string;
@@ -13908,14 +16734,6 @@ export interface components {
             pin: string;
             approved: boolean;
             reason?: string;
-        };
-        StornoRequestDto: {
-            transactionId?: string;
-            reason?: string;
-            approvalId?: string;
-            customExchangeRate?: number;
-            paymentMethodDid?: string;
-            useCurrentRate?: boolean;
         };
         CreateStampBatchRequest: {
             /** Format: uuid */
@@ -14016,6 +16834,32 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        SealNumber: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            branchId?: string;
+            sealNumber?: string;
+            /** @enum {string} */
+            sealType?: "OPEN" | "CLOSE" | "TRANSFER";
+            /** Format: uuid */
+            sessionId?: string;
+            /** Format: int64 */
+            workerId?: number;
+            note?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            usedAt?: string;
+        };
+        GenerateRequest: {
+            branchCode?: string;
+            /** @enum {string} */
+            sealType?: "OPEN" | "CLOSE" | "TRANSFER";
+            /** Format: uuid */
+            sessionId?: string;
+            note?: string;
+        };
         ScheduledTaskDto: {
             /** Format: uuid */
             id?: string;
@@ -14063,6 +16907,7 @@ export interface components {
             name: string;
             documentNumber?: string;
             dateOfBirth?: string;
+            nationality?: string;
         };
         SanctionMatch: {
             /** Format: uuid */
@@ -14082,6 +16927,11 @@ export interface components {
             matched?: boolean;
             matches?: components["schemas"]["SanctionMatch"][];
             riskLevel?: string;
+            staleData?: boolean;
+            /** Format: int32 */
+            listAgeDays?: number;
+            fatfTier?: string;
+            fatfRiskCountry?: string;
         };
         CreateReservationDto: {
             /** Format: int64 */
@@ -14176,6 +17026,32 @@ export interface components {
             printedAt?: string;
             /** Format: date-time */
             createdAt?: string;
+            customerName?: string;
+            hufAmount?: number;
+            customerMotherName?: string;
+            customerBirthPlace?: string;
+            /** Format: date */
+            customerBirthDate?: string;
+            customerNationality?: string;
+            customerAddress?: string;
+            customerDocumentType?: string;
+            customerDocumentNumber?: string;
+            customerActorName?: string;
+            approvedByName?: string;
+            approvedByRole?: string;
+        };
+        CancelledTransactionReceiptRequest: {
+            mode: string;
+            reason?: string;
+            customerName?: string;
+            customerDocumentNumber?: string;
+            lines?: components["schemas"]["Line"][];
+        };
+        Line: {
+            currencyCode?: string;
+            foreignAmount?: number;
+            rate?: number;
+            hufAmount?: number;
         };
         ApplyMarginsDto: {
             /** Format: int64 */
@@ -14197,6 +17073,11 @@ export interface components {
             publishedAt?: string;
             /** Format: int32 */
             affectedBranches?: number;
+            source?: string;
+            clientPackageId?: string;
+            clientPackageHash?: string;
+            clientVersion?: string;
+            clientDeviceId?: string;
             notes?: string;
         };
         RatePublishRequestDto: {
@@ -14285,6 +17166,44 @@ export interface components {
             newBuyRate: number;
             newSellRate: number;
             reason?: string;
+        };
+        SetupGoogleIdentifyRequestDto: {
+            idToken: string;
+            companyCode: string;
+            appMode?: string;
+            selectedWorkerCode?: string;
+            bindGoogleSubject?: boolean;
+        };
+        GoogleIdentityDto: {
+            email?: string;
+            googleSub?: string;
+            name?: string;
+            picture?: string;
+        };
+        SetupBranchDto: {
+            code?: string;
+            name?: string;
+            city?: string;
+            address?: string;
+            isVault?: boolean;
+        };
+        SetupGoogleIdentifyResponseDto: {
+            matchType?: string;
+            requiresWorkerSelection?: boolean;
+            message?: string;
+            googleIdentity?: components["schemas"]["GoogleIdentityDto"];
+            branch?: components["schemas"]["SetupBranchDto"];
+            worker?: components["schemas"]["SetupWorkerDto"];
+            workerOptions?: components["schemas"]["SetupWorkerDto"][];
+            validAppModes?: string[];
+            requestedAppModeAllowed?: boolean;
+        };
+        SetupWorkerDto: {
+            code?: string;
+            name?: string;
+            role?: string;
+            roles?: string[];
+            validAppModes?: string[];
         };
         PrintTemplatePreviewRequest: {
             data?: {
@@ -14499,6 +17418,58 @@ export interface components {
             /** Format: int32 */
             transactionCount?: number;
         };
+        VerifyRequest: {
+            code: string;
+        };
+        VerifyResponse: {
+            verified?: boolean;
+            message?: string;
+        };
+        BackupCodeRequest: {
+            code: string;
+        };
+        EnrollmentResponse: {
+            secret?: string;
+            otpAuthUrl?: string;
+            qrCodePngBase64?: string;
+        };
+        EnrollmentCompleteResponse: {
+            backupCodes?: string[];
+            message?: string;
+        };
+        DisableResponse: {
+            /** Format: int64 */
+            workerId?: number;
+            message?: string;
+        };
+        LocalRatePackageDto: {
+            clientPackageId: string;
+            clientDeviceId: string;
+            clientVersion: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            groupId: string;
+            clientPackageHash?: string;
+            signature?: string;
+            operatorNote?: string;
+            rates: components["schemas"]["RateEntry"][];
+        };
+        LocalRatePublishResponseDto: {
+            /** Format: uuid */
+            publicationId?: string;
+            /** Format: uuid */
+            workgroupId?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            /** Format: int32 */
+            acceptedRates?: number;
+            /** Format: int32 */
+            affectedBranches?: number;
+            status?: string;
+            serverPackageHash?: string;
+            branchCodes?: string[];
+        };
         LicenseActivateRequest: {
             licenseKey?: string;
         };
@@ -14548,6 +17519,8 @@ export interface components {
             currencyName?: string;
             amount?: number;
             hufValue?: number;
+            receivedAmount?: number;
+            difference?: number;
             movementType?: string;
             movementTypeDisplay?: string;
             status?: string;
@@ -14744,6 +17717,7 @@ export interface components {
             id?: string;
             /** Format: int64 */
             transactionId?: number;
+            paymentMethod?: string;
             feeType?: string;
             amount?: number;
             /** Format: int32 */
@@ -14904,6 +17878,9 @@ export interface components {
             approvedAt?: string;
             notes?: string;
         };
+        AcknowledgeRequest: {
+            printProofToken: string;
+        };
         ExchangeRateDisplay: {
             /** Format: uuid */
             id?: string;
@@ -14916,6 +17893,15 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        DataSyncResult: {
+            success?: boolean;
+            message?: string;
+            /** Format: int32 */
+            attemptCount?: number;
+            /** Format: date-time */
+            completedAt?: string;
+            checksum?: string;
         };
         VaultTransferRequestDto: {
             /** Format: int32 */
@@ -15131,6 +18117,7 @@ export interface components {
             idCardNumber?: string;
             /** Format: date */
             idCardExpiry?: string;
+            /** Format: email */
             email?: string;
             phone?: string;
             /** Format: date */
@@ -15156,6 +18143,15 @@ export interface components {
             vocationalQualification?: string;
             /** Format: date */
             certificateDate?: string;
+            appraiserCertificateNumber?: string;
+            /** Format: date */
+            appraiserCertificateDate?: string;
+            sellerCertificateNumber?: string;
+            /** Format: date */
+            sellerCertificateDate?: string;
+            cashierCertificateNumber?: string;
+            /** Format: date */
+            cashierCertificateDate?: string;
             personalTaxCredit?: string;
             familyTaxCredit?: string;
             twoChildrenCredit?: string;
@@ -15171,6 +18167,44 @@ export interface components {
             under30MotherCreditAmount?: string;
             addresses?: components["schemas"]["EmployeeAddressDto"][];
             bankAccounts?: components["schemas"]["EmployeeBankAccountDto"][];
+        };
+        EmployeeVacationDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int32 */
+            year?: number;
+            /** Format: int32 */
+            broughtForward?: number;
+            /** Format: int32 */
+            vacationDays?: number;
+            /** Format: int32 */
+            sickLeaveDays?: number;
+            /** Format: int32 */
+            takenVacation?: number;
+            /** Format: int32 */
+            takenSickLeave?: number;
+            /** Format: int32 */
+            sickPayDays?: number;
+            /** Format: int32 */
+            unpaidLeaveDays?: number;
+        };
+        EmployeeOccupationalHealthDto: {
+            /** Format: int64 */
+            id?: number;
+            status?: string;
+            /** Format: date */
+            deadlineDate?: string;
+            /** Format: date */
+            examDate?: string;
+            result?: string;
+            restriction?: string;
+        };
+        EmployeeChildDto: {
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+            /** Format: date */
+            birthDate?: string;
         };
         ComposeEmailDto: {
             to: string;
@@ -15198,6 +18232,32 @@ export interface components {
             uploadedById?: number;
             /** Format: uuid */
             companyId?: string;
+        };
+        ErrorReportDto: {
+            component: string;
+            version?: string;
+            osInfo?: string;
+            userIdentifier?: string;
+            errorMessage: string;
+            stackTrace?: string;
+            context?: {
+                [key: string]: unknown;
+            };
+        };
+        FrontendLogEntryRequestDto: {
+            level: string;
+            eventType: string;
+            errorCode?: string;
+            message: string;
+            /** Format: date-time */
+            clientTs?: string;
+            traceId?: string;
+            clientContext?: string;
+            clientVersion?: string;
+            attrs?: {
+                [key: string]: unknown;
+            };
+            stackTrace?: string;
         };
         Currency: {
             /** Format: int64 */
@@ -15252,6 +18312,22 @@ export interface components {
             difference?: number;
             denominations?: components["schemas"]["Denomination"][];
             valid?: boolean;
+        };
+        BalancedRequest: {
+            currencyCode?: string;
+            amount?: number;
+            availableStock?: {
+                [key: string]: number;
+            };
+        };
+        CalculationResult: {
+            currencyCode?: string;
+            requestedAmount?: number;
+            denominations?: {
+                [key: string]: number;
+            };
+            totalAmount?: number;
+            remainder?: number;
         };
         DecadeReportDto: {
             /** Format: uuid */
@@ -15479,6 +18555,9 @@ export interface components {
             allPassed?: boolean;
             steps?: components["schemas"]["ClosingStepResult"][];
         };
+        MarkCustomerEddRequest: {
+            reason: string;
+        };
         MergeCustomersDto: {
             /** Format: int64 */
             primaryId: number;
@@ -15504,6 +18583,47 @@ export interface components {
             addedAt?: string;
             /** Format: date-time */
             expiresAt?: string;
+            active?: boolean;
+        };
+        SuspicionReportRequest: {
+            /** Format: int64 */
+            customerId?: number;
+            customerName?: string;
+            hufAmount?: number;
+            suspicionSigns: string;
+        };
+        CustomerScreeningLogDto: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: int64 */
+            customerId?: number;
+            screeningType?: string;
+            result?: string;
+            details?: string;
+            /** Format: date-time */
+            screenedAt?: string;
+            /** Format: int64 */
+            screenedBy?: number;
+        };
+        CreateCurrencyRequest: {
+            code: string;
+            name: string;
+            symbol?: string;
+            /** Format: int32 */
+            decimalPlaces?: number;
+            /** Format: int32 */
+            displayOrder?: number;
+        };
+        CurrencyDto: {
+            /** Format: int64 */
+            id?: number;
+            code?: string;
+            name?: string;
+            symbol?: string;
+            /** Format: int32 */
+            decimals?: number;
+            /** Format: int32 */
+            displayOrder?: number;
             active?: boolean;
         };
         Contribution: {
@@ -15579,6 +18699,17 @@ export interface components {
             ledConfigImported?: boolean;
             warnings?: string[];
             errors?: string[];
+        };
+        CompetitorRateEntryDto: {
+            /** Format: uuid */
+            competitorId: string;
+            rates: components["schemas"]["CurrencyRateLine"][];
+        };
+        CurrencyRateLine: {
+            /** Format: int64 */
+            currencyId: number;
+            buyRate: number;
+            sellRate: number;
         };
         CreateCompetitionDto: {
             competitionName: string;
@@ -15697,6 +18828,37 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        ClosingMarkDoneRequestDto: {
+            /** Format: uuid */
+            branchId: string;
+            /** Format: date */
+            date: string;
+            /** @enum {string} */
+            type: "DAILY" | "EVENING";
+        };
+        ClosingControlDto: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            branchId?: string;
+            branchCode?: string;
+            branchName?: string;
+            branchCity?: string;
+            /** Format: date */
+            controlDate?: string;
+            dailyClosingDone?: boolean;
+            eveningClosingDone?: boolean;
+            navClosingDone?: boolean;
+            /** Format: date-time */
+            lastTransactionAt?: string;
+            alertLevel?: string;
+            notes?: string;
+            /** Format: int32 */
+            completedCount?: number;
+            /** Format: int32 */
+            requiredCount?: number;
+            missingRecord?: boolean;
+        };
         AlertRequestDto: {
             /** Format: uuid */
             branchId: string;
@@ -15706,6 +18868,7 @@ export interface components {
             title: string;
             content: string;
             urgent?: boolean;
+            requiresAcknowledgment?: boolean;
         };
         CircularDto: {
             /** Format: int64 */
@@ -15716,6 +18879,7 @@ export interface components {
             createdById?: number;
             createdByName?: string;
             urgent?: boolean;
+            requiresAcknowledgment?: boolean;
             acknowledged?: boolean;
             acknowledgedAt?: string;
             createdAt?: string;
@@ -15740,6 +18904,7 @@ export interface components {
             title?: string;
             content?: string;
             urgent?: boolean;
+            requiresAcknowledgment?: boolean;
             /** @enum {string} */
             circularType?: "GENERAL" | "REGULATION" | "RATE_POLICY" | "SECURITY_ALERT" | "INVENTORY" | "HR" | "TECHNICAL" | "BEST_CHANGE" | "ZALOG" | "MANAGEMENT" | "APPOINTMENT" | "NEW_YEAR" | "YEAR_END" | "MONTHLY_SUMMARY" | "VIP_NOTICE" | "AUDIT_NOTICE" | "TRAINING";
             /** @enum {string} */
@@ -15751,6 +18916,39 @@ export interface components {
             /** Format: int32 */
             targetCompanyId?: number;
             registrationNumber?: string;
+        };
+        TransferReconciliationResultDto: {
+            /** Format: date */
+            startDate?: string;
+            /** Format: date */
+            endDate?: string;
+            /** Format: int32 */
+            totalRows?: number;
+            /** Format: int32 */
+            matchedRows?: number;
+            /** Format: int32 */
+            discrepancyRows?: number;
+            /** Format: int32 */
+            notifiedBranches?: number;
+            /** Format: date-time */
+            generatedAt?: string;
+            rows?: components["schemas"]["TransferReconciliationRowDto"][];
+        };
+        TransferReconciliationRowDto: {
+            /** Format: int64 */
+            transferId?: number;
+            transferNumber?: string;
+            /** Format: date */
+            date?: string;
+            fromBranchCode?: string;
+            fromBranchName?: string;
+            toBranchCode?: string;
+            toBranchName?: string;
+            currencyCode?: string;
+            sentAmount?: number;
+            receivedAmount?: number;
+            status?: string;
+            discrepancyNote?: string;
         };
         CashRegisterStornoRequest: {
             /** Format: uuid */
@@ -15811,6 +19009,19 @@ export interface components {
             currencyCode: string;
             amountHuf: number;
         };
+        CashRegisterCommandRequest: {
+            /** Format: uuid */
+            branchId: string;
+            /** @enum {string} */
+            commandType: "DAY_OPEN" | "DAY_CLOSE" | "CURRENCY_LIST_CLEAR" | "CURRENCY_LIST_SET";
+            currencies?: components["schemas"]["CashRegisterCurrencyCommandLine"][];
+        };
+        CashRegisterCurrencyCommandLine: {
+            currencyCode?: string;
+            displayName?: string;
+            cashRegisterKey?: string;
+            rate?: number;
+        };
         DenominationQuantityUpdateRequestDto: {
             denominationId?: string;
             /** Format: int32 */
@@ -15870,7 +19081,7 @@ export interface components {
             reason?: string;
             referenceNumber?: string;
             /** @enum {string} */
-            status?: "REQUESTED" | "APPROVED" | "REJECTED" | "EXPORTING" | "COMPLETED" | "FAILED";
+            status?: "REQUESTED" | "AWAITING_SECOND_APPROVAL" | "APPROVED" | "REJECTED" | "EXPORTING" | "COMPLETED" | "FAILED";
             requestedBy?: string;
             /** Format: date-time */
             createdAt?: string;
@@ -15878,6 +19089,13 @@ export interface components {
             /** Format: date-time */
             approvedAt?: string;
             rejectionReason?: string;
+            rejectedBy?: string;
+            /** Format: date-time */
+            rejectedAt?: string;
+            requiresDualApproval?: boolean;
+            secondApprovedBy?: string;
+            /** Format: date-time */
+            secondApprovedAt?: string;
             exportPath?: string;
             /** Format: int64 */
             exportSizeBytes?: number;
@@ -15931,6 +19149,87 @@ export interface components {
             openingDate: string;
             /** Format: uuid */
             denominationRuleId?: string;
+            shortName?: string;
+            hasAfa?: boolean;
+            hasWu?: boolean;
+            hasMg?: boolean;
+            hasPos?: boolean;
+            closedSaturday?: boolean;
+            closedSunday?: boolean;
+        };
+        CreateSimpleCashierBranchDto: {
+            code: string;
+            name?: string;
+            address: string;
+            city?: string;
+            zipCode?: string;
+            regionCode: string;
+            shortName?: string;
+            phone?: string;
+            /** Format: email */
+            email?: string;
+            bankCode?: string;
+            isVault?: boolean;
+            isActive?: boolean;
+            hasAfa?: boolean;
+            hasWu?: boolean;
+            hasMg?: boolean;
+            hasPos?: boolean;
+            closedSaturday?: boolean;
+            closedSunday?: boolean;
+        };
+        CreateBankOrderRequest: {
+            /** Format: uuid */
+            branchId: string;
+            /** Format: int64 */
+            currencyId: number;
+            amount: number;
+            /** @enum {string} */
+            urgency?: "NORMAL" | "URGENT" | "EMERGENCY";
+            notes?: string;
+        };
+        BankOrderDto: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            branchId?: string;
+            branchCode?: string;
+            branchName?: string;
+            /** Format: int64 */
+            currencyId?: number;
+            currencyCode?: string;
+            amount?: number;
+            /** @enum {string} */
+            status?: "PENDING" | "APPROVED" | "EXECUTED" | "CANCELLED";
+            /** @enum {string} */
+            urgency?: "NORMAL" | "URGENT" | "EMERGENCY";
+            /** Format: int64 */
+            requestedByWorkerId?: number;
+            requestedByWorkerName?: string;
+            /** Format: date-time */
+            requestedAt?: string;
+            /** Format: int64 */
+            approvedByWorkerId?: number;
+            approvedByWorkerName?: string;
+            /** Format: date-time */
+            approvedAt?: string;
+            /** Format: int64 */
+            executedByWorkerId?: number;
+            executedByWorkerName?: string;
+            /** Format: date-time */
+            executedAt?: string;
+            /** Format: int64 */
+            cancelledByWorkerId?: number;
+            /** Format: date-time */
+            cancelledAt?: string;
+            cancellationReason?: string;
+            bankReference?: string;
+            notes?: string;
+        };
+        FetchNowResponse: {
+            /** Format: int32 */
+            savedRates?: number;
+            config?: components["schemas"]["BankApiConfigDto"];
         };
         CreateBackupRequest: {
             /** @enum {string} */
@@ -16004,12 +19303,31 @@ export interface components {
             /** Format: int64 */
             performedByWorkerId?: number;
         };
+        WorkerSetupTokenRequestDto: {
+            companyCode: string;
+            workerCode: string;
+        };
+        WorkerSetupTokenResponseDto: {
+            success?: boolean;
+            message?: string;
+            companyCode?: string;
+            workerCode?: string;
+            workerName?: string;
+            token?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+        };
+        ResetPasswordRequestDto: {
+            token: string;
+            newPassword: string;
+        };
         LoginRequestDto: {
             companyCode: string;
             workerCode: string;
             password: string;
             /** Format: uuid */
             branchId?: string;
+            appMode?: string;
         };
         LoginResponseDto: {
             token?: string;
@@ -16023,14 +19341,59 @@ export interface components {
             permissions?: string[];
             roleSelectionRequired?: boolean;
             passwordChangeRequired?: boolean;
+            mfaRequired?: boolean;
             validAppModes?: string[];
+            centralModules?: string[];
+            vaultWorkerSelectionRequired?: boolean;
+            vaultWorkers?: components["schemas"]["VaultWorkerOptionDto"][];
+            vaultBranchName?: string;
         };
         SelectRoleRequestDto: {
             token: string;
             roleCode: string;
+            appMode?: string;
+        };
+        VaultWorkerSelectRequestDto: {
+            idToken: string;
+            /** Format: int64 */
+            workerId: number;
+            password: string;
+            appMode?: string;
         };
         GoogleLoginRequestDto: {
             idToken: string;
+            appMode?: string;
+            supportsVaultWorkerSelection?: boolean;
+        };
+        ForgotPasswordRequestDto: {
+            /** Format: email */
+            email: string;
+        };
+        WorkerFirstTimeSetupRequestDto: {
+            companyCode: string;
+            workerCode: string;
+            newPassword: string;
+            currentPassword?: string;
+            appMode?: string;
+            setupToken?: string;
+        };
+        WorkerFirstTimeSetupResponseDto: {
+            success?: boolean;
+            message?: string;
+            /** Format: int64 */
+            workerId?: number;
+            companyCode?: string;
+            companyName?: string;
+            workerCode?: string;
+            workerName?: string;
+            workerRole?: string;
+            activeRole?: string;
+            roles?: string[];
+            branchCode?: string;
+            branchName?: string;
+            token?: string;
+            /** Format: int64 */
+            expiresAt?: number;
         };
         BootstrapAdminRequestDto: {
             companyCode: string;
@@ -16157,58 +19520,61 @@ export interface components {
             requiresId?: boolean;
             requiresEnhanced?: boolean;
             blocked?: boolean;
+            rollingWindowExceeded?: boolean;
+            rollingWindowLimit?: number;
+            rollingWindowTotal?: number;
+            /** Format: int32 */
+            rollingWindowDays?: number;
+            requiresManagerApproval?: boolean;
+            managerApprovalReason?: string;
             warnings?: string[];
         };
-        SealNumber: {
-            /** Format: uuid */
-            id?: string;
+        RuleCreateRequest: {
+            ruleName?: string;
+            /** Format: int64 */
+            currencyId?: number;
+            /** @enum {string} */
+            ruleType?: "FIXED" | "AMOUNT_BASED" | "CUSTOMER_TYPE" | "TRANSACTION_TYPE" | "BRANCH_DEFAULT" | "TIME_BASED" | "AVAILABILITY" | "PRIORITY";
+            minAmount?: number;
+            maxAmount?: number;
             /** Format: uuid */
             branchId?: string;
-            sealNumber?: string;
-            /** @enum {string} */
-            sealType?: "OPEN" | "CLOSE" | "TRANSFER";
             /** Format: uuid */
-            sessionId?: string;
+            optimizationId?: string;
+            ruleConfigJson?: string;
+            /** Format: int32 */
+            priority?: number;
+        };
+        DenominationRule: {
+            /** Format: uuid */
+            id?: string;
+            ruleName?: string;
             /** Format: int64 */
-            workerId?: number;
-            note?: string;
+            currencyId?: number;
+            /** @enum {string} */
+            ruleType?: "FIXED" | "AMOUNT_BASED" | "CUSTOMER_TYPE" | "TRANSACTION_TYPE" | "BRANCH_DEFAULT" | "TIME_BASED" | "AVAILABILITY" | "PRIORITY";
+            minAmount?: number;
+            maxAmount?: number;
+            /** Format: uuid */
+            branchId?: string;
+            optimization?: components["schemas"]["DenominationOptimization"];
+            ruleConfigJson?: string;
+            /** Format: int32 */
+            priority?: number;
+            isActive?: boolean;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
-            usedAt?: string;
+            updatedAt?: string;
+            /** Format: int64 */
+            version?: number;
         };
-        GenerateRequest: {
-            branchCode?: string;
-            /** @enum {string} */
-            sealType?: "OPEN" | "CLOSE" | "TRANSFER";
-            /** Format: uuid */
-            sessionId?: string;
+        SetActiveRequest: {
+            active?: boolean;
             note?: string;
         };
-        DataSyncResult: {
-            success?: boolean;
-            message?: string;
-            /** Format: int32 */
-            attemptCount?: number;
-            /** Format: date-time */
-            completedAt?: string;
-            checksum?: string;
-        };
-        BalancedRequest: {
-            currencyCode?: string;
-            amount?: number;
-            availableStock?: {
-                [key: string]: number;
-            };
-        };
-        CalculationResult: {
-            currencyCode?: string;
-            requestedAmount?: number;
-            denominations?: {
-                [key: string]: number;
-            };
-            totalAmount?: number;
-            remainder?: number;
+        UpdateIsVaultRequest: {
+            isVault?: boolean;
         };
         Pageable: {
             /** Format: int32 */
@@ -16218,10 +19584,10 @@ export interface components {
             sort?: string[];
         };
         PageWorkerAttendanceDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["WorkerAttendanceDto"][];
@@ -16239,23 +19605,23 @@ export interface components {
             /** Format: int64 */
             offset?: number;
             sort?: components["schemas"]["SortObject"];
-            unpaged?: boolean;
+            paged?: boolean;
             /** Format: int32 */
             pageNumber?: number;
             /** Format: int32 */
             pageSize?: number;
-            paged?: boolean;
+            unpaged?: boolean;
         };
         SortObject: {
             empty?: boolean;
-            unsorted?: boolean;
             sorted?: boolean;
+            unsorted?: boolean;
         };
         PageWuTransactionDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["WuTransactionDto"][];
@@ -16325,6 +19691,20 @@ export interface components {
             sellRate?: number;
             provider?: string;
         };
+        StocktakeSummary: {
+            /** Format: uuid */
+            sessionId?: string;
+            sessionName?: string;
+            status?: string;
+            /** Format: int32 */
+            totalItems?: number;
+            /** Format: int32 */
+            countedItems?: number;
+            /** Format: int32 */
+            discrepancyItems?: number;
+            totalDiscrepancyHuf?: number;
+            discrepancies?: components["schemas"]["VaultStocktakeItem"][];
+        };
         CurrencyTurnoverDto: {
             currencyCode?: string;
             buyVolume?: number;
@@ -16334,6 +19714,7 @@ export interface components {
             fee?: number;
             /** Format: int32 */
             transactionCount?: number;
+            officialRate?: number;
         };
         TurnoverReportDto: {
             period?: string;
@@ -16404,6 +19785,8 @@ export interface components {
             transactionCount?: number;
             /** Format: int32 */
             branchCount?: number;
+            /** Format: date-time */
+            lastSyncedAt?: string;
         };
         BranchComparisonDto: {
             branchId?: string;
@@ -16467,10 +19850,10 @@ export interface components {
             bankFlowLines?: components["schemas"]["TrbBankFlowLineDto"][];
         };
         PageTransferDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["TransferDto"][];
@@ -16485,10 +19868,10 @@ export interface components {
             empty?: boolean;
         };
         PageTransactionDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["TransactionDto"][];
@@ -16520,11 +19903,21 @@ export interface components {
             /** Format: int64 */
             totalReversalCount?: number;
         };
-        PageTradeDto: {
+        CashierCustomRateQuotaDto: {
             /** Format: int64 */
-            totalElements?: number;
+            used?: number;
+            /** Format: int64 */
+            limit?: number;
+            /** Format: int64 */
+            remaining?: number;
+            /** Format: int64 */
+            minAmountHuf?: number;
+        };
+        PageTradeDto: {
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["TradeDto"][];
@@ -16550,6 +19943,10 @@ export interface components {
                 [key: string]: number;
             };
         };
+        TeaorDto: {
+            code?: string;
+            name?: string;
+        };
         SyncStatusDto: {
             /** Format: uuid */
             branchId?: string;
@@ -16558,10 +19955,10 @@ export interface components {
             };
         };
         PageSyncLogDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["SyncLogDto"][];
@@ -16634,6 +20031,8 @@ export interface components {
             regionName?: string;
             branches?: components["schemas"]["BranchSnapshotDto"][];
             totals?: components["schemas"]["BranchStockTotalsDto"];
+            /** Format: date-time */
+            lastSyncedAt?: string;
         };
         ReservationSummaryDto: {
             currencyCode?: string;
@@ -16661,14 +20060,14 @@ export interface components {
             /** Format: int64 */
             ecommerce?: number;
         };
-        PageShipmentRequest: {
+        PageShipmentRequestResponseDto: {
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
             /** Format: int32 */
-            totalPages?: number;
-            /** Format: int32 */
             size?: number;
-            content?: components["schemas"]["ShipmentRequest"][];
+            content?: components["schemas"]["ShipmentRequestResponseDto"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
@@ -16721,6 +20120,18 @@ export interface components {
             /** Format: int64 */
             activeCount?: number;
         };
+        CurrencyTurnover: {
+            currencyCode?: string;
+            currencyName?: string;
+            buyAmount?: number;
+            sellAmount?: number;
+            buyHuf?: number;
+            sellHuf?: number;
+            /** Format: int32 */
+            buyCount?: number;
+            /** Format: int32 */
+            sellCount?: number;
+        };
         WorkerPerformanceReport: {
             /** Format: int64 */
             workerId?: number;
@@ -16740,10 +20151,19 @@ export interface components {
             sellTransactions?: number;
             /** Format: int32 */
             reversalCount?: number;
+            /** Format: int32 */
+            totalTransactionCount?: number;
+            /** Format: int32 */
+            totalBuyCount?: number;
+            /** Format: int32 */
+            totalSellCount?: number;
             totalBuyHuf?: number;
             totalSellHuf?: number;
             totalTurnoverHuf?: number;
+            totalHandlingFees?: number;
             averageTransactionValue?: number;
+            averageDailyTransactions?: number;
+            currencyTurnovers?: components["schemas"]["CurrencyTurnover"][];
         };
         TransferReport: {
             /** Format: date */
@@ -16797,21 +20217,9 @@ export interface components {
             version?: number;
             /** Format: date-time */
             updatedAt?: string;
-            highBalance?: boolean;
             lowBalance?: boolean;
+            highBalance?: boolean;
             dailyChange?: number;
-        };
-        CurrencyTurnover: {
-            currencyCode?: string;
-            currencyName?: string;
-            buyAmount?: number;
-            sellAmount?: number;
-            buyHuf?: number;
-            sellHuf?: number;
-            /** Format: int32 */
-            buyCount?: number;
-            /** Format: int32 */
-            sellCount?: number;
         };
         DailyClosingReport: {
             /** Format: date */
@@ -16839,6 +20247,71 @@ export interface components {
             cashBalances?: components["schemas"]["CashBalance"][];
             hufDenominations?: components["schemas"]["Denomination"][];
             denominatedTotalHuf?: number;
+        };
+        CashierLine: {
+            branchId?: string;
+            branchCode?: string;
+            branchName?: string;
+            realizedMargin?: number;
+            allocatedRevaluation?: number;
+            totalProfit?: number;
+        };
+        CurrencyReval: {
+            currencyCode?: string;
+            vaultHeldQty?: number;
+            weightedAvgCost?: number;
+            mnbRate?: number;
+            revaluation?: number;
+        };
+        TerritoryReconciliationDto: {
+            /** Format: int32 */
+            territoryId?: number;
+            /** Format: date */
+            fromDate?: string;
+            /** Format: date */
+            toDate?: string;
+            cashiers?: components["schemas"]["CashierLine"][];
+            currencyRevaluations?: components["schemas"]["CurrencyReval"][];
+            territoryRealizedMargin?: number;
+            territoryRevaluation?: number;
+            territoryTotalProfit?: number;
+            reconciliationOk?: boolean;
+        };
+        RegionLineDto: {
+            regionCode?: string;
+            /** Format: int64 */
+            buyCount?: number;
+            /** Format: int64 */
+            sellCount?: number;
+            buyHuf?: number;
+            sellHuf?: number;
+            totalTurnoverHuf?: number;
+            /** Format: int64 */
+            distinctCustomers?: number;
+            /** Format: int64 */
+            activeDays?: number;
+            avgDailyTurnoverHuf?: number;
+            previousTurnoverHuf?: number;
+            trendPercent?: number;
+        };
+        RegionTurnoverReportDto: {
+            yearMonth?: string;
+            previousYearMonth?: string;
+            regions?: components["schemas"]["RegionLineDto"][];
+            totalTurnoverHuf?: number;
+            previousTotalTurnoverHuf?: number;
+            totalTrendPercent?: number;
+        };
+        RecurringCustomerDto: {
+            customerId?: string;
+            customerName?: string;
+            /** Format: int64 */
+            transactionCount?: number;
+            totalHufAmount?: number;
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
         };
         DailySummary: {
             /** Format: date */
@@ -16912,6 +20385,21 @@ export interface components {
             totalHandlingFees?: number;
             branchData?: components["schemas"]["BranchMonthlyData"][];
         };
+        CurrencyLineDto: {
+            currencyCode?: string;
+            currencyName?: string;
+            opening?: number;
+            income?: number;
+            expense?: number;
+            closing?: number;
+        };
+        LiveCashPositionDto: {
+            branchId?: string;
+            /** Format: date */
+            date?: string;
+            lines?: components["schemas"]["CurrencyLineDto"][];
+            handlingFeeHuf?: number;
+        };
         CurrencyFeeData: {
             currencyCode?: string;
             totalFees?: number;
@@ -16927,19 +20415,6 @@ export interface components {
             /** Format: int32 */
             transactionsWithFee?: number;
             feesByCurrency?: components["schemas"]["CurrencyFeeData"][];
-        };
-        CurrencyLineDto: {
-            currencyCode?: string;
-            currencyName?: string;
-            openingStock?: number;
-            closingStock?: number;
-            buyAmount?: number;
-            sellAmount?: number;
-            buyHuf?: number;
-            sellHuf?: number;
-            buyRate?: number;
-            sellRate?: number;
-            settlementRate?: number;
         };
         DailyReportFullDto: {
             reportDate?: string;
@@ -17014,6 +20489,18 @@ export interface components {
             discountRate?: number;
             receiptNumber?: string;
         };
+        DailyBalanceGridRowDto: {
+            currencyCode?: string;
+            openingBalance?: number;
+            purchases?: number;
+            sales?: number;
+            transfersIn?: number;
+            transfersOut?: number;
+            closingBalance?: number;
+            actualStock?: number;
+            surplus?: number;
+            shortage?: number;
+        };
         CurrencyReport: {
             /** Format: int64 */
             currencyId?: number;
@@ -17053,6 +20540,50 @@ export interface components {
             lowDenominationAlerts?: number;
             balances?: components["schemas"]["CashBalance"][];
         };
+        AverageRateReportDto: {
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
+            /** Format: uuid */
+            branchId?: string;
+            branchCode?: string;
+            /** Format: int64 */
+            currencyId?: number;
+            currencyCode?: string;
+            transactionType?: string;
+            /** Format: int64 */
+            transactionCount?: number;
+            totalCurrencyAmount?: number;
+            totalHufAmount?: number;
+            weightedAverageRate?: number;
+        };
+        AverageRateReportResponse: {
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
+            columnGroups?: components["schemas"]["ColumnGroup"][];
+            currencyRows?: components["schemas"]["CurrencyRow"][];
+        };
+        ColumnGroup: {
+            groupCode?: string;
+            groupName?: string;
+            /** @enum {string} */
+            groupType?: "REGION" | "TOTAL" | "BRANCH";
+        };
+        ColumnValues: {
+            buyAvgRate?: number;
+            buySumAmount?: number;
+            sellAvgRate?: number;
+            sellSumAmount?: number;
+        };
+        CurrencyRow: {
+            currencyCode?: string;
+            values?: {
+                [key: string]: components["schemas"]["ColumnValues"];
+            };
+        };
         PollingStatusDto: {
             /** Format: date-time */
             lastPollTime?: string;
@@ -17061,6 +20592,24 @@ export interface components {
             /** Format: int32 */
             lastPollUpdatedCount?: number;
             lastPollSource?: string;
+        };
+        RatePublicationAuditDto: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            templateId?: string;
+            /** Format: uuid */
+            workgroupId?: string;
+            /** Format: int64 */
+            publishedBy?: number;
+            publishedByName?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            /** Format: int32 */
+            affectedBranches?: number;
+            notes?: string;
+            source?: string;
+            clientVersion?: string;
         };
         RateHistoryDto: {
             /** Format: int64 */
@@ -17105,6 +20654,40 @@ export interface components {
             limit1Boundary?: number;
             limit2Boundary?: number;
             limit3Boundary?: number;
+            tileColor?: string;
+            protectionEnabled?: boolean;
+        };
+        CurrencyRate: {
+            /** Format: int64 */
+            currencyId?: number;
+            currencyCode?: string;
+            currencyName?: string;
+            hasRate?: boolean;
+            baseBuyRate?: number;
+            baseSellRate?: number;
+            officialRate?: number;
+            limit1Amount?: number;
+            limit1BuyRate?: number;
+            limit1SellRate?: number;
+            limit2Amount?: number;
+            limit2BuyRate?: number;
+            limit2SellRate?: number;
+            limit3Amount?: number;
+            limit3BuyRate?: number;
+            limit3SellRate?: number;
+            validTime?: string;
+        };
+        TerritoryWorkgroupRateDTO: {
+            /** Format: uuid */
+            workgroupId?: string;
+            workgroupCode?: string;
+            workgroupName?: string;
+            tileColor?: string;
+            branchNames?: string[];
+            limit1Boundary?: number;
+            limit2Boundary?: number;
+            limit3Boundary?: number;
+            currencies?: components["schemas"]["CurrencyRate"][];
         };
         BankRateDTO: {
             /** Format: int64 */
@@ -17140,13 +20723,13 @@ export interface components {
             recordedAt?: string;
             source?: string;
             margin?: number;
-            /** Format: date-time */
-            lastUpdated?: string;
             /**
              * Format: uuid
              * @deprecated
              */
             competitorId?: string;
+            /** Format: date-time */
+            lastUpdated?: string;
         };
         RateCreationResponseDTO: {
             /** Format: int64 */
@@ -17216,6 +20799,7 @@ export interface components {
             name?: string;
             city?: string;
             address?: string;
+            isVault?: boolean;
         };
         ProfitReport: {
             revenue?: number;
@@ -17248,10 +20832,10 @@ export interface components {
             updatedAt?: string;
         };
         PagePoliceRequestDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PoliceRequestDto"][];
@@ -17266,10 +20850,10 @@ export interface components {
             empty?: boolean;
         };
         PageNavClosingDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["NavClosingDto"][];
@@ -17339,10 +20923,10 @@ export interface components {
             openAlerts?: number;
         };
         PageMnbReportDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["MnbReportDto"][];
@@ -17400,6 +20984,9 @@ export interface components {
             totalTransactions?: number;
             currencyLines?: components["schemas"]["MnbCurrencyLineDto"][];
         };
+        MfaStatusResponse: {
+            enabled?: boolean;
+        };
         AuditLog: {
             /** Format: uuid */
             id?: string;
@@ -17422,12 +21009,26 @@ export interface components {
             createdAt?: string;
             entryHash?: string;
             previousHash?: string;
+            /** Format: uuid */
+            eventId?: string;
+            /** Format: date-time */
+            ts?: string;
+            eventType?: string;
+            beforeState?: string;
+            afterState?: string;
+            amount?: number;
+            currency?: string;
+            receiptNumber?: string;
+            traceId?: string;
+            clientContext?: string;
+            signedBy?: string;
+            workerRole?: string;
         };
         PageAuditLog: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["AuditLog"][];
@@ -17440,6 +21041,15 @@ export interface components {
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
+        };
+        LocalRateMakerBootstrapDto: {
+            /** Format: date-time */
+            generatedAt?: string;
+            mode?: string;
+            publishEndpoint?: string;
+            idempotencyRequired?: boolean;
+            overview?: components["schemas"]["RateOverviewDTO"];
+            workgroups?: components["schemas"]["WorkgroupDetailDTO"][];
         };
         LicenseStatusResponse: {
             status?: string;
@@ -17467,11 +21077,29 @@ export interface components {
             lastRefresh?: string;
             lastError?: string;
         };
+        VaultStockRowDto: {
+            currencyCode?: string;
+            currencyName?: string;
+            vaultTerritoryId?: string;
+            /** Format: uuid */
+            branchId?: string;
+            opening?: number;
+            received?: number;
+            issued?: number;
+            closing?: number;
+        };
+        TransferTargetDto: {
+            /** Format: uuid */
+            branchId?: string;
+            code?: string;
+            name?: string;
+            isVault?: boolean;
+        };
         PageInventoryMovementDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["InventoryMovementDto"][];
@@ -17546,7 +21174,136 @@ export interface components {
             status?: "PENDING" | "DISTRIBUTED" | "ACKNOWLEDGED" | "FAILED";
             /** Format: date-time */
             acknowledgedAt?: string;
+            /** Format: date-time */
+            printedAt?: string;
+            /** Format: int64 */
+            printedBy?: number;
             errorMessage?: string;
+        };
+        PendingPrintObligation: {
+            /** Format: uuid */
+            distributionId?: string;
+            /** Format: uuid */
+            masterRateId?: string;
+            currencyCode?: string;
+            /** Format: int32 */
+            versionNumber?: number;
+            baseBuyRate?: number;
+            baseSellRate?: number;
+            officialRate?: number;
+            limit1Amount?: number;
+            limit1BuyRate?: number;
+            limit1SellRate?: number;
+            limit2Amount?: number;
+            limit2BuyRate?: number;
+            limit2SellRate?: number;
+            limit3Amount?: number;
+            limit3BuyRate?: number;
+            limit3SellRate?: number;
+            /** Format: date-time */
+            validFrom?: string;
+            printProofToken?: string;
+        };
+        DailyReport: {
+            /** Format: int64 */
+            branchId?: number;
+            /** Format: date */
+            date?: string;
+            /** Format: int32 */
+            totalTransactionCount?: number;
+            /** Format: int32 */
+            buyCount?: number;
+            /** Format: int32 */
+            sellCount?: number;
+            /** Format: int32 */
+            reversalCount?: number;
+            /** Format: int32 */
+            conversionCount?: number;
+            totalBuyHuf?: number;
+            totalSellHuf?: number;
+            totalHandlingFees?: number;
+            netTurnover?: number;
+            currencyBreakdown?: {
+                [key: string]: number;
+            };
+        };
+        CustomerData: {
+            customerId?: string;
+            customerName?: string;
+            customerAddress?: string;
+            documentNumber?: string;
+            nationality?: string;
+            customerType?: string;
+        };
+        DailyDataPackage: {
+            /** Format: int64 */
+            branchId?: number;
+            /** Format: date */
+            date?: string;
+            transactions?: components["schemas"]["TransactionSummary"][];
+            denominations?: components["schemas"]["DenominationEntry"][];
+            rates?: components["schemas"]["RateSnapshot"][];
+            customers?: components["schemas"]["CustomerData"][];
+            reservations?: components["schemas"]["ReservationData"][];
+            handlingFees?: components["schemas"]["HandlingFeeSummary"];
+            checksum?: string;
+        };
+        DenominationEntry: {
+            currencyCode?: string;
+            denominationType?: string;
+            denominationValue?: number;
+            /** Format: int32 */
+            quantity?: number;
+            totalAmount?: number;
+        };
+        HandlingFeeSummary: {
+            totalHandlingFee?: number;
+            /** Format: int32 */
+            transactionCount?: number;
+            averageFee?: number;
+            maxFee?: number;
+            minFee?: number;
+        };
+        RateSnapshot: {
+            currencyCode?: string;
+            buyRate?: number;
+            sellRate?: number;
+            midRate?: number;
+            source?: string;
+        };
+        ReservationData: {
+            /** Format: int64 */
+            reservationId?: number;
+            customerName?: string;
+            currencyCode?: string;
+            amount?: number;
+            depositAmount?: number;
+            status?: string;
+            /** Format: date */
+            reservationDate?: string;
+            /** Format: date */
+            expiryDate?: string;
+        };
+        TransactionSummary: {
+            /** Format: int64 */
+            transactionId?: number;
+            receiptNumber?: string;
+            transactionType?: string;
+            status?: string;
+            /** Format: date */
+            transactionDate?: string;
+            transactionTime?: string;
+            currencyCode?: string;
+            currencyAmount?: number;
+            exchangeRate?: number;
+            hufAmount?: number;
+            handlingFee?: number;
+            discountAmount?: number;
+            roundingAmount?: number;
+            paymentMethod?: string;
+            customerName?: string;
+            customerDocumentNumber?: string;
+            workerName?: string;
         };
         BranchDailyReportDto: {
             branchCode?: string;
@@ -17635,6 +21392,99 @@ export interface components {
             receivedAt?: number;
             attachments?: components["schemas"]["AttachmentDto"][];
         };
+        DictionaryDto: {
+            /** Format: uuid */
+            id?: string;
+            category?: string;
+            code?: string;
+            name?: string;
+            nameHu?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+        };
+        ClientErrorLog: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            component?: string;
+            version?: string;
+            osInfo?: string;
+            userIdentifier?: string;
+            errorMessage?: string;
+            stackTrace?: string;
+            contextJson?: string;
+            clientIp?: string;
+            userAgent?: string;
+        };
+        PageClientErrorLog: {
+            /** Format: int32 */
+            totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            size?: number;
+            content?: components["schemas"]["ClientErrorLog"][];
+            /** Format: int32 */
+            number?: number;
+            sort?: components["schemas"]["SortObject"];
+            first?: boolean;
+            last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
+            pageable?: components["schemas"]["PageableObject"];
+            empty?: boolean;
+        };
+        AuditLogEntryResponseDto: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            eventId?: string;
+            /** Format: date-time */
+            ts?: string;
+            eventType?: string;
+            action?: string;
+            entityType?: string;
+            entityId?: string;
+            beforeState?: string;
+            afterState?: string;
+            amount?: number;
+            currency?: string;
+            receiptNumber?: string;
+            traceId?: string;
+            clientContext?: string;
+            reason?: string;
+            signedBy?: string;
+            workerRole?: string;
+            /** Format: uuid */
+            companyId?: string;
+            branchName?: string;
+            userName?: string;
+            entryHash?: string;
+            previousHash?: string;
+        };
+        HashChainIntegrityResponseDto: {
+            /** Format: int32 */
+            checkedCount?: number;
+            intact?: boolean;
+            /** Format: uuid */
+            firstBrokenEntryId?: string;
+            message?: string;
+        };
+        ErrorCodeCatalogDto: {
+            version?: string;
+            /** Format: int32 */
+            totalCodes?: number;
+            codes?: components["schemas"]["ErrorCodeEntry"][];
+        };
+        ErrorCodeEntry: {
+            code?: string;
+            name?: string;
+            category?: string;
+            level?: string;
+            userImpact?: string;
+            aiFixHint?: string;
+        };
         DenominationSummary: {
             /** Format: int64 */
             currencyId?: number;
@@ -17649,10 +21499,10 @@ export interface components {
             denominations?: components["schemas"]["Denomination"][];
         };
         PageDecadeReportDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["DecadeReportDto"][];
@@ -17667,10 +21517,10 @@ export interface components {
             empty?: boolean;
         };
         PageDataImportJobDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["DataImportJobDto"][];
@@ -17772,30 +21622,28 @@ export interface components {
             /** Format: int32 */
             rank?: number;
         };
-        CustomerScreeningLogDto: {
+        CompetitorTodayRateDto: {
+            /** Format: int64 */
+            currencyId?: number;
+            currencyCode?: string;
+            buyRate?: number;
+            sellRate?: number;
+        };
+        CompetitorOption: {
             /** Format: uuid */
             id?: string;
-            /** Format: int64 */
-            customerId?: number;
-            screeningType?: string;
-            result?: string;
-            details?: string;
-            /** Format: date-time */
-            screenedAt?: string;
-            /** Format: int64 */
-            screenedBy?: number;
+            name?: string;
+            branchName?: string;
         };
-        CurrencyDto: {
+        CompetitorWatchBootstrapDto: {
+            competitors?: components["schemas"]["CompetitorOption"][];
+            currencies?: components["schemas"]["WatchCurrency"][];
+        };
+        WatchCurrency: {
             /** Format: int64 */
             id?: number;
             code?: string;
             name?: string;
-            symbol?: string;
-            /** Format: int32 */
-            decimals?: number;
-            /** Format: int32 */
-            displayOrder?: number;
-            active?: boolean;
         };
         MonthlyReportFullDto: {
             yearMonth?: string;
@@ -17810,6 +21658,8 @@ export interface components {
             currencyLines?: components["schemas"]["CurrencyLineDto"][];
             totalBuyHuf?: number;
             totalSellHuf?: number;
+            cashTurnoverHuf?: number;
+            cardTurnoverHuf?: number;
             /** Format: int32 */
             transactionCount?: number;
             /** Format: int32 */
@@ -17844,26 +21694,62 @@ export interface components {
             /** Format: int32 */
             closedDays?: number;
         };
-        TransferLineDto: {
-            currencyCode?: string;
-            currencyName?: string;
-            receivedAmount?: number;
-            sentAmount?: number;
-            netAmount?: number;
+        CentralReceivedDataOverviewDto: {
+            /** Format: date */
+            reportDate?: string;
+            /** Format: int32 */
+            totalBranches?: number;
+            /** Format: int32 */
+            receivedReports?: number;
+            /** Format: int32 */
+            submittedReports?: number;
+            /** Format: int32 */
+            missingReports?: number;
+            /** Format: int32 */
+            warningClosings?: number;
+            /** Format: int32 */
+            criticalClosings?: number;
+            /** Format: int32 */
+            totalTransactions?: number;
+            totalBuyHuf?: number;
+            totalSellHuf?: number;
+            totalFeeHuf?: number;
+            totalProfit?: number;
+            /** Format: date-time */
+            generatedAt?: string;
+            /** Format: date-time */
+            lastSyncedAt?: string;
+            rows?: components["schemas"]["CentralReceivedDataRowDto"][];
         };
-        ClosingControlDto: {
-            /** Format: uuid */
-            id?: string;
+        CentralReceivedDataRowDto: {
             /** Format: uuid */
             branchId?: string;
+            branchCode?: string;
+            branchName?: string;
+            branchCity?: string;
             /** Format: date */
-            controlDate?: string;
+            reportDate?: string;
+            dataStatus?: string;
+            /** Format: int64 */
+            dailyReportId?: number;
+            reportReceived?: boolean;
+            reportSubmitted?: boolean;
+            /** Format: date-time */
+            reportCreatedAt?: string;
+            /** Format: date-time */
+            submittedAt?: string;
+            submittedByName?: string;
+            /** Format: int32 */
+            transactionCount?: number;
+            totalBuyHuf?: number;
+            totalSellHuf?: number;
+            totalFeeHuf?: number;
+            totalProfit?: number;
             dailyClosingDone?: boolean;
             eveningClosingDone?: boolean;
             navClosingDone?: boolean;
-            /** Format: date-time */
-            lastTransactionAt?: string;
-            alertLevel?: string;
+            closingAlertLevel?: string;
+            closingControlMissing?: boolean;
             notes?: string;
         };
         CashierKpiRowDto: {
@@ -17996,11 +21882,34 @@ export interface components {
             sourceIp?: string;
             manifestHash?: string;
         };
-        PageBackupRecordResponse: {
+        VaultCounterpartiesDto: {
+            territorialCashiers?: components["schemas"]["BranchDto"][];
+            peerVaults?: components["schemas"]["BranchDto"][];
+            fixedCounterparties?: components["schemas"]["BranchDto"][];
+        };
+        PageBankOrderDto: {
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
             /** Format: int32 */
+            size?: number;
+            content?: components["schemas"]["BankOrderDto"][];
+            /** Format: int32 */
+            number?: number;
+            sort?: components["schemas"]["SortObject"];
+            first?: boolean;
+            last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
+            pageable?: components["schemas"]["PageableObject"];
+            empty?: boolean;
+        };
+        PageBackupRecordResponse: {
+            /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["BackupRecordResponse"][];
@@ -18034,10 +21943,10 @@ export interface components {
             createdAt?: string;
         };
         PageAuditLogEntryDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["AuditLogEntryDto"][];
@@ -18101,6 +22010,20 @@ export interface components {
             thresholdChecks?: number;
             totalAmountHuf?: number;
         };
+        RollingWindowAuditDto: {
+            customerId?: string;
+            customerName?: string;
+            rollingWindowTotalHuf?: number;
+            rollingWindowLimitHuf?: number;
+            exceedPercent?: number;
+            /** Format: date-time */
+            auditAt?: string;
+            /** Format: date */
+            sinceDate?: string;
+            /** Format: int32 */
+            windowDays?: number;
+            highRiskFlag?: boolean;
+        };
         CustomerRiskProfileDto: {
             customerId?: string;
             customerName?: string;
@@ -18115,6 +22038,15 @@ export interface components {
             structuringDetected?: boolean;
             highFrequency?: boolean;
             highVolume?: boolean;
+        };
+        RuleSelectionResult: {
+            /** @enum {string} */
+            strategy?: "GREEDY" | "DYNAMIC" | "MIN_COINS" | "MIN_BANKNOTES" | "MIN_TOTAL" | "CUSTOM" | "BRANCH_SPECIFIC";
+            /** Format: uuid */
+            ruleId?: string;
+            ruleName?: string;
+            optimizationName?: string;
+            source?: string;
         };
         BranchSummaryDto: {
             id?: string;
@@ -18171,111 +22103,52 @@ export interface components {
             lastSyncAt?: string;
             openingHours?: string;
         };
+        BankIntegrationStatusResponse: {
+            mnb?: components["schemas"]["MnbStatus"];
+            raiffeisen?: components["schemas"]["RaiffeisenStatus"];
+            darius?: components["schemas"]["DariusStatus"];
+            /** Format: date-time */
+            checkedAt?: string;
+        };
+        DariusStatus: {
+            currentMonth?: string;
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
+            /** Format: int64 */
+            pendingReportsCount?: number;
+            /** Format: int64 */
+            failedReportsCount?: number;
+            /** Format: int64 */
+            submittedReportsCount?: number;
+            /** Format: date-time */
+            lastSubmittedAt?: string;
+            transportMode?: string;
+        };
+        MnbStatus: {
+            /** Format: int32 */
+            rateCount?: number;
+            lastFetchSuccess?: boolean;
+            /** Format: date */
+            lastFetchDate?: string;
+            schedulerActive?: boolean;
+        };
+        RaiffeisenStatus: {
+            schedulerActive?: boolean;
+            scheduledTime?: string;
+            enabled?: boolean;
+            mode?: string;
+            endpointConfigured?: boolean;
+            lastRunStatus?: string;
+            /** Format: date-time */
+            lastRunTimestamp?: string;
+            lastRunMessage?: string;
+        };
         AuditCheck: {
             name?: string;
             pass?: boolean;
             detail?: string;
-        };
-        DailyReport: {
-            /** Format: int64 */
-            branchId?: number;
-            /** Format: date */
-            date?: string;
-            /** Format: int32 */
-            totalTransactionCount?: number;
-            /** Format: int32 */
-            buyCount?: number;
-            /** Format: int32 */
-            sellCount?: number;
-            /** Format: int32 */
-            reversalCount?: number;
-            /** Format: int32 */
-            conversionCount?: number;
-            totalBuyHuf?: number;
-            totalSellHuf?: number;
-            totalHandlingFees?: number;
-            netTurnover?: number;
-            currencyBreakdown?: {
-                [key: string]: number;
-            };
-        };
-        CustomerData: {
-            customerId?: string;
-            customerName?: string;
-            customerAddress?: string;
-            documentNumber?: string;
-            nationality?: string;
-            customerType?: string;
-        };
-        DailyDataPackage: {
-            /** Format: int64 */
-            branchId?: number;
-            /** Format: date */
-            date?: string;
-            transactions?: components["schemas"]["TransactionSummary"][];
-            denominations?: components["schemas"]["DenominationEntry"][];
-            rates?: components["schemas"]["RateSnapshot"][];
-            customers?: components["schemas"]["CustomerData"][];
-            reservations?: components["schemas"]["ReservationData"][];
-            handlingFees?: components["schemas"]["HandlingFeeSummary"];
-            checksum?: string;
-        };
-        DenominationEntry: {
-            currencyCode?: string;
-            denominationType?: string;
-            denominationValue?: number;
-            /** Format: int32 */
-            quantity?: number;
-            totalAmount?: number;
-        };
-        HandlingFeeSummary: {
-            totalHandlingFee?: number;
-            /** Format: int32 */
-            transactionCount?: number;
-            averageFee?: number;
-            maxFee?: number;
-            minFee?: number;
-        };
-        RateSnapshot: {
-            currencyCode?: string;
-            buyRate?: number;
-            sellRate?: number;
-            midRate?: number;
-            source?: string;
-        };
-        ReservationData: {
-            /** Format: int64 */
-            reservationId?: number;
-            customerName?: string;
-            currencyCode?: string;
-            amount?: number;
-            depositAmount?: number;
-            status?: string;
-            /** Format: date */
-            reservationDate?: string;
-            /** Format: date */
-            expiryDate?: string;
-        };
-        TransactionSummary: {
-            /** Format: int64 */
-            transactionId?: number;
-            receiptNumber?: string;
-            transactionType?: string;
-            status?: string;
-            /** Format: date */
-            transactionDate?: string;
-            transactionTime?: string;
-            currencyCode?: string;
-            currencyAmount?: number;
-            exchangeRate?: number;
-            hufAmount?: number;
-            handlingFee?: number;
-            discountAmount?: number;
-            roundingAmount?: number;
-            paymentMethod?: string;
-            customerName?: string;
-            customerDocumentNumber?: string;
-            workerName?: string;
         };
     };
     responses: never;
@@ -18398,6 +22271,56 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["WorkerDto"];
+                };
+            };
+        };
+    };
+    getOrCreate: {
+        parameters: {
+            query: {
+                branchId: string;
+                date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultClosingChecklistDto"];
+                };
+            };
+        };
+    };
+    updateItems: {
+        parameters: {
+            query: {
+                branchId: string;
+                date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateChecklistItemsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultClosingChecklistDto"];
                 };
             };
         };
@@ -18659,7 +22582,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ShipmentRequest"];
+                    "*/*": components["schemas"]["ShipmentRequestResponseDto"];
                 };
             };
         };
@@ -18685,7 +22608,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ShipmentRequest"];
+                    "*/*": components["schemas"]["ShipmentRequestResponseDto"];
                 };
             };
         };
@@ -18831,6 +22754,26 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["RateWorkgroup"];
                 };
+            };
+        };
+    };
+    deleteWorkgroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -19294,6 +23237,102 @@ export interface operations {
             };
         };
     };
+    getConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workstationCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    upsertConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workstationCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MachineConfigUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    getSheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RateMakerSheetDto"];
+                };
+            };
+        };
+    };
+    putSheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RateMakerSheetUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RateMakerSheetDto"];
+                };
+            };
+        };
+    };
     saveDisplayConfig: {
         parameters: {
             query?: never;
@@ -19318,7 +23357,7 @@ export interface operations {
             };
         };
     };
-    getConfig: {
+    getConfig_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -19362,6 +23401,50 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["LedDisplayConfigDto"];
+                };
+            };
+        };
+    };
+    getConfig_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["HandlingFeeConfigDto"];
+                };
+            };
+        };
+    };
+    updateConfig_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HandlingFeeConfigDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["HandlingFeeConfigDto"];
                 };
             };
         };
@@ -20243,6 +24326,54 @@ export interface operations {
             };
         };
     };
+    get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BankApiConfigDto"];
+                };
+            };
+        };
+    };
+    update_14: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerName: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBankApiConfigRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BankApiConfigDto"];
+                };
+            };
+        };
+    };
     findById_1: {
         parameters: {
             query?: never;
@@ -20265,7 +24396,7 @@ export interface operations {
             };
         };
     };
-    update_14: {
+    update_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -20308,6 +24439,32 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    updateOptimization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OptimizationCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DenominationOptimization"];
+                };
             };
         };
     };
@@ -20429,6 +24586,52 @@ export interface operations {
     };
     list: {
         parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Dto"][];
+                };
+            };
+        };
+    };
+    create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Dto"];
+                };
+            };
+        };
+    };
+    list_1: {
+        parameters: {
             query?: never;
             header?: never;
             path?: never;
@@ -20447,7 +24650,7 @@ export interface operations {
             };
         };
     };
-    create: {
+    create_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -20511,6 +24714,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["WorkerDto"];
+                };
+            };
+        };
+    };
+    unlockLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: number;
+                    };
                 };
             };
         };
@@ -20841,6 +25068,30 @@ export interface operations {
             };
         };
     };
+    useDailyLimit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WuDailyLimitUseRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WuDailyLimitDto"];
+                };
+            };
+        };
+    };
     sendMoney: {
         parameters: {
             query?: never;
@@ -20889,6 +25140,243 @@ export interface operations {
             };
         };
     };
+    requestToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoiceTokenRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VoiceTokenResponseDto"];
+                };
+            };
+        };
+    };
+    list_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultWorkerOptionDto"][];
+                };
+            };
+        };
+    };
+    create_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VaultWorkerCreateRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultWorkerOptionDto"];
+                };
+            };
+        };
+    };
+    list_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultStocktakeSession"][];
+                };
+            };
+        };
+    };
+    createSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultStocktakeSession"];
+                };
+            };
+        };
+    };
+    review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultStocktakeSession"];
+                };
+            };
+        };
+    };
+    close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultStocktakeSession"];
+                };
+            };
+        };
+    };
+    cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultStocktakeSession"];
+                };
+            };
+        };
+    };
+    countItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultStocktakeItem"];
+                };
+            };
+        };
+    };
+    complete: {
+        parameters: {
+            query: {
+                branchId: string;
+                date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteChecklistRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultClosingChecklistDto"];
+                };
+            };
+        };
+    };
     getList: {
         parameters: {
             query?: {
@@ -20912,7 +25400,7 @@ export interface operations {
             };
         };
     };
-    create_1: {
+    create_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -20958,7 +25446,7 @@ export interface operations {
             };
         };
     };
-    list_1: {
+    list_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -20978,7 +25466,7 @@ export interface operations {
             };
         };
     };
-    create_2: {
+    create_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -21169,7 +25657,7 @@ export interface operations {
                 startDate?: string;
                 endDate?: string;
                 status?: "PENDING" | "IN_TRANSIT" | "RECEIVED" | "COMPLETED" | "REJECTED" | "CANCELLED";
-                type?: "CURRENCY" | "CASH" | "HANDLING_FEE" | "VAULT_DEPOSIT" | "VAULT_WITHDRAW" | "CORRECTION" | "OTHER";
+                type?: "CURRENCY" | "CASH" | "HANDLING_FEE" | "VAULT_DEPOSIT" | "VAULT_WITHDRAW" | "CORRECTION" | "OTHER" | "ERB" | "FRB" | "TRB" | "PRB";
                 pageable: components["schemas"]["Pageable"];
             };
             header?: never;
@@ -21189,7 +25677,7 @@ export interface operations {
             };
         };
     };
-    create_3: {
+    create_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -21199,6 +25687,32 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CreateTransferDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TransferDto"];
+                };
+            };
+        };
+    };
+    storno: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StornoRequestDto"];
             };
         };
         responses: {
@@ -21263,7 +25777,7 @@ export interface operations {
             };
         };
     };
-    cancel: {
+    cancel_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -21283,7 +25797,7 @@ export interface operations {
             };
         };
     };
-    list_2: {
+    list_5: {
         parameters: {
             query?: {
                 status?: "PENDING" | "PICKED_UP" | "DELIVERED" | "CONFIRMED";
@@ -21306,7 +25820,7 @@ export interface operations {
             };
         };
     };
-    create_4: {
+    create_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -21354,7 +25868,7 @@ export interface operations {
             };
         };
     };
-    create_5: {
+    create_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -21502,7 +26016,7 @@ export interface operations {
             };
         };
     };
-    complete: {
+    complete_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -21570,6 +26084,50 @@ export interface operations {
             };
         };
     };
+    list_6: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultTerritory"][];
+                };
+            };
+        };
+    };
+    create_8: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VaultTerritoryRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultTerritory"];
+                };
+            };
+        };
+    };
     bulkUpdate: {
         parameters: {
             query?: never;
@@ -21596,7 +26154,7 @@ export interface operations {
             };
         };
     };
-    list_3: {
+    list_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -21616,7 +26174,7 @@ export interface operations {
             };
         };
     };
-    create_6: {
+    create_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -21873,6 +26431,90 @@ export interface operations {
             };
         };
     };
+    verifyPin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    setPin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    clearPin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     requestApproval: {
         parameters: {
             query: {
@@ -21992,26 +26634,6 @@ export interface operations {
             };
         };
     };
-    getPendingStornoApprovals: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["StornoApprovalDto"][];
-                };
-            };
-        };
-    };
     receiveBatch: {
         parameters: {
             query?: never;
@@ -22063,7 +26685,8 @@ export interface operations {
     findAll: {
         parameters: {
             query?: {
-                status?: "DRAFT" | "SUBMITTED" | "APPROVED" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED";
+                status?: "DRAFT" | "SUBMITTED" | "APPROVED" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED" | "REJECTED";
+                branchId?: string;
                 page?: number;
                 size?: number;
             };
@@ -22079,12 +26702,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PageShipmentRequest"];
+                    "*/*": components["schemas"]["PageShipmentRequestResponseDto"];
                 };
             };
         };
     };
-    create_7: {
+    create_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -22103,7 +26726,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ShipmentRequest"];
+                    "*/*": components["schemas"]["ShipmentRequestResponseDto"];
                 };
             };
         };
@@ -22125,7 +26748,31 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ShipmentRequest"];
+                    "*/*": components["schemas"]["ShipmentRequestResponseDto"];
+                };
+            };
+        };
+    };
+    reject_2: {
+        parameters: {
+            query?: {
+                reason?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ShipmentRequestResponseDto"];
                 };
             };
         };
@@ -22147,12 +26794,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ShipmentRequest"];
+                    "*/*": components["schemas"]["ShipmentRequestResponseDto"];
                 };
             };
         };
     };
-    cancel_1: {
+    cancel_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -22169,7 +26816,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ShipmentRequest"];
+                    "*/*": components["schemas"]["ShipmentRequestResponseDto"];
                 };
             };
         };
@@ -22191,7 +26838,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ShipmentRequest"];
+                    "*/*": components["schemas"]["ShipmentRequestResponseDto"];
                 };
             };
         };
@@ -22309,6 +26956,102 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SealTrackingDto"];
+                };
+            };
+        };
+    };
+    markAsUsed: {
+        parameters: {
+            query?: {
+                sessionId?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SealNumber"];
+                };
+            };
+        };
+    };
+    markAsUsed_1: {
+        parameters: {
+            query?: {
+                sessionId?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SealNumber"];
+                };
+            };
+        };
+    };
+    generate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SealNumber"];
+                };
+            };
+        };
+    };
+    generate_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SealNumber"];
                 };
             };
         };
@@ -22486,7 +27229,7 @@ export interface operations {
             };
         };
     };
-    list_4: {
+    list_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -22506,7 +27249,7 @@ export interface operations {
             };
         };
     };
-    create_8: {
+    create_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -22756,6 +27499,30 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Receipt"];
+                };
+            };
+        };
+    };
+    createCancelledTransactionReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelledTransactionReceiptRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
@@ -23112,7 +27879,7 @@ export interface operations {
             };
         };
     };
-    create_9: {
+    create_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -23204,6 +27971,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["RateApprovalDto"];
+                };
+            };
+        };
+    };
+    identifyGoogleSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetupGoogleIdentifyRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SetupGoogleIdentifyResponseDto"];
                 };
             };
         };
@@ -23450,7 +28241,7 @@ export interface operations {
             };
         };
     };
-    list_5: {
+    list_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -23470,7 +28261,7 @@ export interface operations {
             };
         };
     };
-    create_10: {
+    create_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -23518,7 +28309,7 @@ export interface operations {
             };
         };
     };
-    list_6: {
+    list_10: {
         parameters: {
             query: {
                 branchId: string;
@@ -23542,7 +28333,7 @@ export interface operations {
             };
         };
     };
-    create_11: {
+    create_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -23566,7 +28357,7 @@ export interface operations {
             };
         };
     };
-    list_7: {
+    list_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -23586,7 +28377,7 @@ export interface operations {
             };
         };
     };
-    create_12: {
+    create_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -23610,7 +28401,7 @@ export interface operations {
             };
         };
     };
-    list_8: {
+    list_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -23630,7 +28421,7 @@ export interface operations {
             };
         };
     };
-    create_13: {
+    create_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -23698,7 +28489,7 @@ export interface operations {
             };
         };
     };
-    create_14: {
+    create_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -23722,7 +28513,7 @@ export interface operations {
             };
         };
     };
-    list_9: {
+    list_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -24063,6 +28854,147 @@ export interface operations {
             };
         };
     };
+    verifyLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VerifyResponse"];
+                };
+            };
+        };
+    };
+    verifyBackupCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VerifyResponse"];
+                };
+            };
+        };
+    };
+    startEnrollment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EnrollmentResponse"];
+                };
+            };
+        };
+    };
+    completeEnrollment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EnrollmentCompleteResponse"];
+                };
+            };
+        };
+    };
+    adminDisable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workerId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DisableResponse"];
+                };
+            };
+        };
+    };
+    publishPackage: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+                "X-Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocalRatePackageDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LocalRatePublishResponseDto"];
+                };
+            };
+        };
+    };
     activateLicense: {
         parameters: {
             query?: never;
@@ -24245,7 +29177,7 @@ export interface operations {
             };
         };
     };
-    cancel_2: {
+    cancel_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -24525,7 +29457,7 @@ export interface operations {
             };
         };
     };
-    complete_1: {
+    complete_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -24547,7 +29479,7 @@ export interface operations {
             };
         };
     };
-    generate: {
+    generate_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -24617,6 +29549,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["HandlingFeeTransactionDto"];
+                };
+            };
+        };
+    };
+    saveBracketsEndpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HandlingFeeBracketDto"][];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["HandlingFeeBracketDto"][];
                 };
             };
         };
@@ -25040,7 +29996,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcknowledgeRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
@@ -25051,7 +30011,7 @@ export interface operations {
             };
         };
     };
-    update_15: {
+    update_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -25073,6 +30033,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ExchangeRateDisplay"];
+                };
+            };
+        };
+    };
+    sendPackage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                branchId: string;
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DataSyncResult"];
                 };
             };
         };
@@ -25620,6 +30603,150 @@ export interface operations {
             };
         };
     };
+    listVacations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EmployeeVacationDto"][];
+                };
+            };
+        };
+    };
+    addVacation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmployeeVacationDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EmployeeVacationDto"];
+                };
+            };
+        };
+    };
+    listOccupationalHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EmployeeOccupationalHealthDto"][];
+                };
+            };
+        };
+    };
+    addOccupationalHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmployeeOccupationalHealthDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EmployeeOccupationalHealthDto"];
+                };
+            };
+        };
+    };
+    listChildren: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EmployeeChildDto"][];
+                };
+            };
+        };
+    };
+    addChild: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmployeeChildDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EmployeeChildDto"];
+                };
+            };
+        };
+    };
     importEmployees: {
         parameters: {
             query?: never;
@@ -25786,7 +30913,7 @@ export interface operations {
             };
         };
     };
-    list_10: {
+    list_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -25808,7 +30935,7 @@ export interface operations {
             };
         };
     };
-    create_15: {
+    create_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -25832,7 +30959,7 @@ export interface operations {
             };
         };
     };
-    list_11: {
+    list_15: {
         parameters: {
             query?: {
                 entityType?: string;
@@ -25881,6 +31008,74 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["Document"];
+                };
+            };
+        };
+    };
+    list_16: {
+        parameters: {
+            query?: {
+                openOnly?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Dto"][];
+                };
+            };
+        };
+    };
+    create_19: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Dto"];
+                };
+            };
+        };
+    };
+    resolve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Dto"];
                 };
             };
         };
@@ -25941,6 +31136,78 @@ export interface operations {
             };
         };
     };
+    validate: {
+        parameters: {
+            query: {
+                discountPercent: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    reportError_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ErrorReportDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    forwardLog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FrontendLogEntryRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     validateDenomination: {
         parameters: {
             query: {
@@ -25964,7 +31231,55 @@ export interface operations {
             };
         };
     };
-    close: {
+    suggestBalanced: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BalancedRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CalculationResult"];
+                };
+            };
+        };
+    };
+    suggestBalanced_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BalancedRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CalculationResult"];
+                };
+            };
+        };
+    };
+    close_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -25986,7 +31301,7 @@ export interface operations {
             };
         };
     };
-    generate_1: {
+    generate_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -26374,7 +31689,7 @@ export interface operations {
             };
         };
     };
-    generate_2: {
+    generate_4: {
         parameters: {
             query: {
                 date: string;
@@ -26396,7 +31711,7 @@ export interface operations {
             };
         };
     };
-    generate_3: {
+    generate_5: {
         parameters: {
             query: {
                 date: string;
@@ -26595,6 +31910,32 @@ export interface operations {
             };
         };
     };
+    markCustomerEdd: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkCustomerEddRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CustomerDto"];
+                };
+            };
+        };
+    };
     deactivateCustomer: {
         parameters: {
             query?: never;
@@ -26685,6 +32026,30 @@ export interface operations {
             };
         };
     };
+    reportSuspicion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuspicionReportRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CustomerScreeningLogDto"];
+                };
+            };
+        };
+    };
     getAll_1: {
         parameters: {
             query?: never;
@@ -26705,7 +32070,7 @@ export interface operations {
             };
         };
     };
-    create_16: {
+    create_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -26725,6 +32090,50 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CurrencyGroup"];
+                };
+            };
+        };
+    };
+    getAllActiveCurrencies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CurrencyDto"][];
+                };
+            };
+        };
+    };
+    createCurrency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCurrencyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CurrencyDto"];
                 };
             };
         };
@@ -26799,7 +32208,7 @@ export interface operations {
             };
         };
     };
-    create_17: {
+    create_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -26823,7 +32232,29 @@ export interface operations {
             };
         };
     };
-    list_12: {
+    submit_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompetitorRateEntryDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -26843,7 +32274,7 @@ export interface operations {
             };
         };
     };
-    create_18: {
+    create_22: {
         parameters: {
             query?: never;
             header?: never;
@@ -26977,7 +32408,7 @@ export interface operations {
             };
         };
     };
-    create_19: {
+    create_23: {
         parameters: {
             query?: never;
             header?: never;
@@ -27080,7 +32511,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: string;
+                };
+            };
+        };
         responses: {
             /** @description OK */
             200: {
@@ -27157,7 +32594,7 @@ export interface operations {
             };
         };
     };
-    complete_2: {
+    complete_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -27179,7 +32616,7 @@ export interface operations {
             };
         };
     };
-    cancel_3: {
+    cancel_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -27220,6 +32657,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ClosingWizardDto"];
+                };
+            };
+        };
+    };
+    markDone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClosingMarkDoneRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ClosingControlDto"];
                 };
             };
         };
@@ -27266,7 +32727,7 @@ export interface operations {
             };
         };
     };
-    create_20: {
+    create_24: {
         parameters: {
             query?: never;
             header?: never;
@@ -27431,6 +32892,29 @@ export interface operations {
             };
         };
     };
+    run: {
+        parameters: {
+            query: {
+                startDate: string;
+                endDate: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TransferReconciliationResultDto"];
+                };
+            };
+        };
+    };
     printStorno: {
         parameters: {
             query?: never;
@@ -27547,6 +33031,30 @@ export interface operations {
             };
         };
     };
+    executeCommand: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CashRegisterCommandRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CashRegisterEventDto"];
+                };
+            };
+        };
+    };
     closeDay_1: {
         parameters: {
             query: {
@@ -27641,6 +33149,52 @@ export interface operations {
             };
         };
     };
+    initBranchBalances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                branchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    initAllBranchBalances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     adjustBalance: {
         parameters: {
             query?: never;
@@ -27665,7 +33219,7 @@ export interface operations {
             };
         };
     };
-    reject_2: {
+    reject_3: {
         parameters: {
             query: {
                 reason: string;
@@ -27689,7 +33243,7 @@ export interface operations {
             };
         };
     };
-    reject_3: {
+    reject_4: {
         parameters: {
             query: {
                 reason: string;
@@ -27736,6 +33290,50 @@ export interface operations {
         };
     };
     execute_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CameraExportRequest"];
+                };
+            };
+        };
+    };
+    approveSecond: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CameraExportRequest"];
+                };
+            };
+        };
+    };
+    approveSecond_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -27962,6 +33560,7 @@ export interface operations {
                 status?: string;
                 search?: string;
                 activeOnly?: boolean;
+                clientType?: string;
             };
             header?: never;
             path?: never;
@@ -28004,7 +33603,31 @@ export interface operations {
             };
         };
     };
-    list_13: {
+    createSimpleCashier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSimpleCashierBranchDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BranchDto"];
+                };
+            };
+        };
+    };
+    list_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -28024,7 +33647,7 @@ export interface operations {
             };
         };
     };
-    create_21: {
+    create_25: {
         parameters: {
             query?: never;
             header?: never;
@@ -28190,6 +33813,52 @@ export interface operations {
             };
         };
     };
+    list_19: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Dto"][];
+                };
+            };
+        };
+    };
+    create_26: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Dto"];
+                };
+            };
+        };
+    };
     recordCount: {
         parameters: {
             query: {
@@ -28268,6 +33937,152 @@ export interface operations {
             };
         };
     };
+    list_20: {
+        parameters: {
+            query?: {
+                status?: "PENDING" | "APPROVED" | "EXECUTED" | "CANCELLED";
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageBankOrderDto"];
+                };
+            };
+        };
+    };
+    create_27: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBankOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BankOrderDto"];
+                };
+            };
+        };
+    };
+    execute_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BankOrderDto"];
+                };
+            };
+        };
+    };
+    cancel_5: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BankOrderDto"];
+                };
+            };
+        };
+    };
+    approve_8: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BankOrderDto"];
+                };
+            };
+        };
+    };
+    fetchRaiffeisenNow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["FetchNowResponse"];
+                };
+            };
+        };
+    };
     restoreBackup: {
         parameters: {
             query?: never;
@@ -28334,7 +34149,7 @@ export interface operations {
             };
         };
     };
-    create_22: {
+    create_28: {
         parameters: {
             query: {
                 customerId: number;
@@ -28382,7 +34197,7 @@ export interface operations {
             };
         };
     };
-    create_23: {
+    create_29: {
         parameters: {
             query?: {
                 workerId?: number;
@@ -28562,6 +34377,56 @@ export interface operations {
             };
         };
     };
+    issueWorkerSetupToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkerSetupTokenRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkerSetupTokenResponseDto"];
+                };
+            };
+        };
+    };
+    resetPassword_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
     refreshToken: {
         parameters: {
             query?: never;
@@ -28672,6 +34537,30 @@ export interface operations {
             };
         };
     };
+    selectVaultWorker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VaultWorkerSelectRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LoginResponseDto"];
+                };
+            };
+        };
+    };
     googleLogin: {
         parameters: {
             query?: never;
@@ -28691,7 +34580,57 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["LoginResponseDto"];
+                };
+            };
+        };
+    };
+    forgotPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgotPasswordRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    firstTimeWorkerSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkerFirstTimeSetupRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkerFirstTimeSetupResponseDto"];
                 };
             };
         };
@@ -28758,6 +34697,50 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["WorkerAttendanceDto"];
+                };
+            };
+        };
+    };
+    list_21: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Dto"][];
+                };
+            };
+        };
+    };
+    create_30: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Dto"];
                 };
             };
         };
@@ -28856,7 +34839,7 @@ export interface operations {
             };
         };
     };
-    list_14: {
+    list_22: {
         parameters: {
             query?: never;
             header?: never;
@@ -28876,7 +34859,7 @@ export interface operations {
             };
         };
     };
-    create_24: {
+    create_31: {
         parameters: {
             query?: never;
             header?: never;
@@ -28900,7 +34883,7 @@ export interface operations {
             };
         };
     };
-    resolve: {
+    resolve_1: {
         parameters: {
             query: {
                 resolution: string;
@@ -28996,15 +34979,67 @@ export interface operations {
             };
         };
     };
-    markAsUsed: {
+    verifyApprover: {
         parameters: {
-            query?: {
-                sessionId?: string;
-            };
+            query?: never;
             header?: never;
-            path: {
-                id: string;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
             };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    checkApprovalRequired: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    listRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -29015,12 +35050,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["SealNumber"];
+                    "*/*": components["schemas"]["DenominationRule"][];
                 };
             };
         };
     };
-    generate_4: {
+    createRule: {
         parameters: {
             query?: never;
             header?: never;
@@ -29029,7 +35064,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["GenerateRequest"];
+                "application/json": components["schemas"]["RuleCreateRequest"];
             };
         };
         responses: {
@@ -29039,19 +35074,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["SealNumber"];
+                    "*/*": components["schemas"]["DenominationRule"];
                 };
             };
         };
     };
-    sendPackage: {
+    listOptimizations: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                branchId: string;
-                date: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -29062,12 +35094,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["DataSyncResult"];
+                    "*/*": components["schemas"]["DenominationOptimization"][];
                 };
             };
         };
     };
-    suggestBalanced: {
+    createOptimization: {
         parameters: {
             query?: never;
             header?: never;
@@ -29076,7 +35108,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["BalancedRequest"];
+                "application/json": components["schemas"]["OptimizationCreateRequest"];
             };
         };
         responses: {
@@ -29086,7 +35118,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["CalculationResult"];
+                    "*/*": components["schemas"]["DenominationOptimization"];
                 };
             };
         };
@@ -29191,6 +35223,58 @@ export interface operations {
             };
         };
     };
+    setActive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetActiveRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CurrencyDto"];
+                };
+            };
+        };
+    };
+    updateIsVault: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateIsVaultRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BranchDto"];
+                };
+            };
+        };
+    };
     getStatus: {
         parameters: {
             query?: never;
@@ -29271,6 +35355,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["WorkerDto"];
+                };
+            };
+        };
+    };
+    getWorkerDirectory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkerDto"][];
                 };
             };
         };
@@ -29486,6 +35590,28 @@ export interface operations {
             };
         };
     };
+    getDailyLimit: {
+        parameters: {
+            query?: {
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WuDailyLimitDto"];
+                };
+            };
+        };
+    };
     getBalance: {
         parameters: {
             query: {
@@ -29568,6 +35694,50 @@ export interface operations {
                     "*/*": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    get_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultStocktakeSession"];
+                };
+            };
+        };
+    };
+    summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StocktakeSummary"];
                 };
             };
         };
@@ -29682,6 +35852,30 @@ export interface operations {
             };
         };
     };
+    territory: {
+        parameters: {
+            query: {
+                vaultTerritoryId: number;
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TurnoverReportDto"];
+                };
+            };
+        };
+    };
     monthly: {
         parameters: {
             query: {
@@ -29732,7 +35926,30 @@ export interface operations {
     company: {
         parameters: {
             query: {
-                companyId: string;
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TurnoverReportDto"];
+                };
+            };
+        };
+    };
+    branchRange: {
+        parameters: {
+            query: {
+                branchId: string;
                 from: string;
                 to: string;
             };
@@ -30105,6 +36322,28 @@ export interface operations {
             };
         };
     };
+    stornoPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TransferDto"];
+                };
+            };
+        };
+    };
     getPending: {
         parameters: {
             query?: never;
@@ -30235,6 +36474,7 @@ export interface operations {
                 startDate?: string;
                 endDate?: string;
                 type?: "BUY" | "SELL" | "REVERSAL" | "PARTIAL_REFUND" | "CONVERSION" | "TRANSFER_OUT" | "TRANSFER_IN" | "WESTERN_UNION_SEND" | "WESTERN_UNION_RECEIVE" | "MONEYGRAM_SEND" | "MONEYGRAM_RECEIVE" | "VIGNETTE" | "PHONE_TOPUP" | "OTHER";
+                customerOnly?: boolean;
                 pageable: components["schemas"]["Pageable"];
             };
             header?: never;
@@ -30318,6 +36558,26 @@ export interface operations {
             };
         };
     };
+    getCashierRateQuota: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CashierCustomRateQuotaDto"];
+                };
+            };
+        };
+    };
     pending: {
         parameters: {
             query?: {
@@ -30365,11 +36625,13 @@ export interface operations {
             };
         };
     };
-    list_15: {
+    getById_15: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                id: number;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -30380,7 +36642,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["VaultTerritory"][];
+                    "*/*": components["schemas"]["VaultTerritory"];
                 };
             };
         };
@@ -30406,6 +36668,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ProfitSummary"];
+                };
+            };
+        };
+    };
+    search_1: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TeaorDto"][];
                 };
             };
         };
@@ -30677,7 +36961,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                transactionId: number;
+                transactionIdOrReceipt: string;
             };
             cookie?: never;
         };
@@ -30690,6 +36974,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["StornoCheckResultDto"];
+                };
+            };
+        };
+    };
+    getPendingStornoApprovals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StornoApprovalDto"][];
                 };
             };
         };
@@ -30909,6 +37213,134 @@ export interface operations {
             };
         };
     };
+    listUnused: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SealNumber"][];
+                };
+            };
+        };
+    };
+    listUnused_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SealNumber"][];
+                };
+            };
+        };
+    };
+    listToday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SealNumber"][];
+                };
+            };
+        };
+    };
+    listToday_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SealNumber"][];
+                };
+            };
+        };
+    };
+    getNext: {
+        parameters: {
+            query: {
+                branchCode: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
+    getNext_1: {
+        parameters: {
+            query: {
+                branchCode: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
     getTransactionDocuments: {
         parameters: {
             query?: never;
@@ -31058,6 +37490,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ReservationDto"];
+                };
+            };
+        };
+    };
+    getReservationReceipt: {
+        parameters: {
+            query?: {
+                refund?: boolean;
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
                 };
             };
         };
@@ -31219,6 +37675,77 @@ export interface operations {
             };
         };
     };
+    get_2: {
+        parameters: {
+            query: {
+                territoryId: number;
+                yearMonth?: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TerritoryReconciliationDto"];
+                };
+            };
+        };
+    };
+    getRegionTurnover: {
+        parameters: {
+            query: {
+                yearMonth: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RegionTurnoverReportDto"];
+                };
+            };
+        };
+    };
+    generate_6: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                minTransactions?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RecurringCustomerDto"][];
+                };
+            };
+        };
+    };
     getPeriodReport: {
         parameters: {
             query: {
@@ -31307,6 +37834,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": string;
+                };
+            };
+        };
+    };
+    getLivePosition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LiveCashPositionDto"];
                 };
             };
         };
@@ -31448,6 +37995,29 @@ export interface operations {
             };
         };
     };
+    generate_7: {
+        parameters: {
+            query: {
+                branchId: string;
+                date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+        };
+    };
     getDailyClosingReport: {
         parameters: {
             query?: {
@@ -31466,6 +38036,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DailyClosingReport"];
+                };
+            };
+        };
+    };
+    getGrid: {
+        parameters: {
+            query: {
+                date: string;
+                branchId?: string;
+                vaultTerritoryId?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DailyBalanceGridRowDto"][];
                 };
             };
         };
@@ -31511,6 +38105,79 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CashStatusReport"];
+                };
+            };
+        };
+    };
+    generate_8: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                branchId?: string;
+                currencyId?: number;
+                transactionType?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AverageRateReportDto"][];
+                };
+            };
+        };
+    };
+    generatePivot: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                branchId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AverageRateReportResponse"];
+                };
+            };
+        };
+    };
+    export: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
                 };
             };
         };
@@ -31798,10 +38465,21 @@ export interface operations {
             };
         };
     };
-    list_16: {
+    list_23: {
         parameters: {
             query?: {
                 transactionId?: string;
+                from?: string;
+                to?: string;
+                customerName?: string;
+                customerMotherName?: string;
+                customerBirthPlace?: string;
+                customerBirthDate?: string;
+                customerNationality?: string;
+                customerAddress?: string;
+                customerDocumentType?: string;
+                customerDocumentNumber?: string;
+                customerActorName?: string;
             };
             header?: never;
             path?: never;
@@ -31820,7 +38498,7 @@ export interface operations {
             };
         };
     };
-    getById_15: {
+    getById_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -31987,7 +38665,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["RatePublication"][];
+                    "*/*": components["schemas"]["RatePublicationAuditDto"][];
                 };
             };
         };
@@ -32016,10 +38694,10 @@ export interface operations {
     };
     getRateHistory: {
         parameters: {
-            query: {
-                currency: string;
-                from: string;
-                to: string;
+            query?: {
+                currency?: string;
+                from?: string;
+                to?: string;
             };
             header?: never;
             path?: never;
@@ -32077,6 +38755,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["WorkgroupDetailDTO"][];
+                };
+            };
+        };
+    };
+    getTerritoryWorkgroupRates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TerritoryWorkgroupRateDTO"][];
                 };
             };
         };
@@ -32252,6 +38950,7 @@ export interface operations {
     getPublicWorkersByBranch: {
         parameters: {
             query?: {
+                companyCode?: string;
                 branchCode?: string;
             };
             header?: never;
@@ -32275,6 +38974,7 @@ export interface operations {
         parameters: {
             query?: {
                 companyCode?: string;
+                vaultOnly?: boolean;
             };
             header?: never;
             path?: never;
@@ -32289,6 +38989,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PublicBranchDto"][];
+                };
+            };
+        };
+    };
+    getGoogleConfigStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -32390,7 +39112,6 @@ export interface operations {
     company_1: {
         parameters: {
             query: {
-                companyId: string;
                 month: string;
             };
             header?: never;
@@ -32455,7 +39176,7 @@ export interface operations {
             };
         };
     };
-    getById_16: {
+    getById_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -33073,6 +39794,26 @@ export interface operations {
             };
         };
     };
+    status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MfaStatusResponse"];
+                };
+            };
+        };
+    };
     getSystemLogs: {
         parameters: {
             query?: {
@@ -33167,6 +39908,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": string;
+                };
+            };
+        };
+    };
+    bootstrap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LocalRateMakerBootstrapDto"];
                 };
             };
         };
@@ -33319,6 +40080,46 @@ export interface operations {
             };
         };
     };
+    getVaultStock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultStockRowDto"][];
+                };
+            };
+        };
+    };
+    getTransferTargets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TransferTargetDto"][];
+                };
+            };
+        };
+    };
     getAllStock: {
         parameters: {
             query?: never;
@@ -33334,7 +40135,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["CashBalance"][];
+                    "*/*": components["schemas"]["CashBalanceDto"][];
                 };
             };
         };
@@ -33356,7 +40157,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["CashBalance"][];
+                    "*/*": components["schemas"]["CashBalanceDto"][];
                 };
             };
         };
@@ -33610,7 +40411,7 @@ export interface operations {
             };
         };
     };
-    list_17: {
+    list_24: {
         parameters: {
             query?: never;
             header?: never;
@@ -33630,7 +40431,7 @@ export interface operations {
             };
         };
     };
-    getById_17: {
+    getById_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -33694,6 +40495,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["FtpSyncLogDto"][];
+                };
+            };
+        };
+    };
+    getFeatures: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: boolean;
+                    };
                 };
             };
         };
@@ -33899,6 +40722,26 @@ export interface operations {
             };
         };
     };
+    getPendingPrintObligations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PendingPrintObligation"][];
+                };
+            };
+        };
+    };
     getActivePublished: {
         parameters: {
             query?: never;
@@ -33959,6 +40802,52 @@ export interface operations {
                     "*/*": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    getDailyReport_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                branchId: string;
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DailyReport"];
+                };
+            };
+        };
+    };
+    previewPackage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                branchId: string;
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DailyDataPackage"];
                 };
             };
         };
@@ -34110,6 +40999,46 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["BankTransactionResponseDto"][];
+                };
+            };
+        };
+    };
+    exportVacationsCsv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+        };
+    };
+    exportOccupationalHealthCsv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
                 };
             };
         };
@@ -34340,6 +41269,410 @@ export interface operations {
             };
         };
     };
+    resolve_2: {
+        parameters: {
+            query: {
+                hufAmount: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    resolve_3: {
+        parameters: {
+            query: {
+                hufAmount: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    apply: {
+        parameters: {
+            query: {
+                hufAmount: number;
+                originalFee: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    apply_1: {
+        parameters: {
+            query: {
+                hufAmount: number;
+                originalFee: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    listActive_5: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["FeeDiscount"][];
+                };
+            };
+        };
+    };
+    listActive_6: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["FeeDiscount"][];
+                };
+            };
+        };
+    };
+    requiredLevel: {
+        parameters: {
+            query: {
+                discountPercent: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    getByCategory_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DictionaryDto"][];
+                };
+            };
+        };
+    };
+    health: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    listErrors: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageClientErrorLog"];
+                };
+            };
+        };
+    };
+    getError: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ClientErrorLog"];
+                };
+            };
+        };
+    };
+    errorSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    byTrace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                traceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AuditLogEntryResponseDto"][];
+                };
+            };
+        };
+    };
+    recent: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AuditLogEntryResponseDto"][];
+                };
+            };
+        };
+    };
+    recentErrors: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AuditLogEntryResponseDto"][];
+                };
+            };
+        };
+    };
+    verifyHashChain: {
+        parameters: {
+            query?: {
+                lastN?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["HashChainIntegrityResponseDto"];
+                };
+            };
+        };
+    };
+    errorCodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorCodeCatalogDto"];
+                };
+            };
+        };
+    };
+    auditChain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entityType: string;
+                entityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AuditLogEntryResponseDto"][];
+                };
+            };
+        };
+    };
     getDenominationSummary: {
         parameters: {
             query?: never;
@@ -34451,7 +41784,53 @@ export interface operations {
             };
         };
     };
-    list_18: {
+    suggest: {
+        parameters: {
+            query: {
+                currencyCode: string;
+                amount: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CalculationResult"];
+                };
+            };
+        };
+    };
+    suggest_1: {
+        parameters: {
+            query: {
+                currencyCode: string;
+                amount: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CalculationResult"];
+                };
+            };
+        };
+    };
+    list_25: {
         parameters: {
             query: {
                 branchId: string;
@@ -34545,7 +41924,7 @@ export interface operations {
             };
         };
     };
-    getById_18: {
+    getById_19: {
         parameters: {
             query?: never;
             header?: never;
@@ -34567,7 +41946,7 @@ export interface operations {
             };
         };
     };
-    getById_19: {
+    getById_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -35235,26 +42614,6 @@ export interface operations {
             };
         };
     };
-    getAllActiveCurrencies: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["CurrencyDto"][];
-                };
-            };
-        };
-    };
     getCurrencyById: {
         parameters: {
             query?: never;
@@ -35364,7 +42723,7 @@ export interface operations {
             };
         };
     };
-    getById_20: {
+    getById_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -35450,6 +42809,48 @@ export interface operations {
                     "*/*": {
                         [key: string]: components["schemas"]["ConfigBundleDto"];
                     };
+                };
+            };
+        };
+    };
+    getTodayRates: {
+        parameters: {
+            query: {
+                competitorId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CompetitorTodayRateDto"][];
+                };
+            };
+        };
+    };
+    getBootstrap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CompetitorWatchBootstrapDto"];
                 };
             };
         };
@@ -35747,6 +43148,30 @@ export interface operations {
             };
         };
     };
+    acknowledgmentBreakdown: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: number;
+                    };
+                };
+            };
+        };
+    };
     findUnacknowledged: {
         parameters: {
             query?: never;
@@ -35957,6 +43382,28 @@ export interface operations {
             };
         };
     };
+    getStatus_7: {
+        parameters: {
+            query?: {
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CentralReceivedDataOverviewDto"];
+                };
+            };
+        };
+    };
     getWeeklyReport: {
         parameters: {
             query: {
@@ -36001,7 +43448,7 @@ export interface operations {
             };
         };
     };
-    getDailyReport_3: {
+    getDailyReport_4: {
         parameters: {
             query: {
                 date: string;
@@ -36520,7 +43967,7 @@ export interface operations {
             };
         };
     };
-    getById_21: {
+    getById_22: {
         parameters: {
             query?: never;
             header?: never;
@@ -36542,7 +43989,7 @@ export interface operations {
             };
         };
     };
-    getById_22: {
+    getById_23: {
         parameters: {
             query?: never;
             header?: never;
@@ -36716,9 +44163,73 @@ export interface operations {
             };
         };
     };
+    getVaultBranches: {
+        parameters: {
+            query?: {
+                activeOnly?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BranchDto"][];
+                };
+            };
+        };
+    };
+    getVaultCounterparties: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VaultCounterpartiesDto"];
+                };
+            };
+        };
+    };
     getRootBranches: {
         parameters: {
             query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BranchDto"][];
+                };
+            };
+        };
+    };
+    getMyTerritoryBranches: {
+        parameters: {
+            query?: {
+                clientType?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -36758,6 +44269,26 @@ export interface operations {
             };
         };
     };
+    getCashierShipmentTargets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BranchDto"][];
+                };
+            };
+        };
+    };
     listRoots_1: {
         parameters: {
             query?: never;
@@ -36778,7 +44309,7 @@ export interface operations {
             };
         };
     };
-    listActive_5: {
+    listActive_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -36931,6 +44462,48 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["BanknoteInventoryDto"][];
+                };
+            };
+        };
+    };
+    get_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BankOrderDto"];
+                };
+            };
+        };
+    };
+    list_26: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BankApiConfigDto"][];
                 };
             };
         };
@@ -37300,7 +44873,7 @@ export interface operations {
             };
         };
     };
-    getById_23: {
+    getById_24: {
         parameters: {
             query?: never;
             header?: never;
@@ -37364,6 +44937,28 @@ export interface operations {
                     "*/*": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    getRollingWindowAudit: {
+        parameters: {
+            query?: {
+                thresholdHuf?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RollingWindowAuditDto"][];
                 };
             };
         };
@@ -37454,6 +45049,30 @@ export interface operations {
             };
         };
     };
+    previewSelection: {
+        parameters: {
+            query: {
+                branchId: string;
+                currencyId: number;
+                hufAmount: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RuleSelectionResult"];
+                };
+            };
+        };
+    };
     getAllBranchesWithStats: {
         parameters: {
             query?: never;
@@ -37470,6 +45089,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["BranchWithStatsDto"][];
+                };
+            };
+        };
+    };
+    getStatus_8: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BankIntegrationStatusResponse"];
                 };
             };
         };
@@ -37496,77 +45135,12 @@ export interface operations {
             };
         };
     };
-    listUnused: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["SealNumber"][];
-                };
-            };
-        };
-    };
-    listToday: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["SealNumber"][];
-                };
-            };
-        };
-    };
-    getNext: {
-        parameters: {
-            query: {
-                branchCode: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": {
-                        [key: string]: string;
-                    };
-                };
-            };
-        };
-    };
-    getDailyReport_4: {
+    deactivate: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                branchId: string;
-                date: string;
+                id: string;
             };
             cookie?: never;
         };
@@ -37577,128 +45151,11 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "*/*": components["schemas"]["DailyReport"];
-                };
+                content?: never;
             };
         };
     };
-    previewPackage: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                branchId: string;
-                date: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["DailyDataPackage"];
-                };
-            };
-        };
-    };
-    resolve_1: {
-        parameters: {
-            query: {
-                hufAmount: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    apply: {
-        parameters: {
-            query: {
-                hufAmount: number;
-                originalFee: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    listActive_6: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["FeeDiscount"][];
-                };
-            };
-        };
-    };
-    suggest: {
-        parameters: {
-            query: {
-                currencyCode: string;
-                amount: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["CalculationResult"];
-                };
-            };
-        };
-    };
-    cancel_4: {
+    cancel_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -37760,12 +45217,75 @@ export interface operations {
             };
         };
     };
-    cancel_5: {
+    cancel_7: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteVacation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: number;
+                recordId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteOccupationalHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: number;
+                recordId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteChild: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: number;
+                recordId: number;
             };
             cookie?: never;
         };
@@ -37801,6 +45321,66 @@ export interface operations {
         };
     };
     removeRestriction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deactivate_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_16: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteRule: {
         parameters: {
             query?: never;
             header?: never;

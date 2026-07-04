@@ -5,7 +5,9 @@ import hu.puzzleir.valuta.entity.ExchangeRateMaster;
 import hu.puzzleir.valuta.entity.ExchangeRateMaster.MasterRateStatus;
 import hu.puzzleir.valuta.service.ExchangeRateMasterService;
 import hu.puzzleir.valuta.service.ExchangeRateMasterService.CreateMasterRateRequest;
+import hu.puzzleir.valuta.service.ExchangeRateMasterService.PendingPrintObligation;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -129,9 +131,23 @@ public class ExchangeRateMasterController {
      * POST /api/v1/exchange-rate-master/distribution/{distributionId}/acknowledge
      */
     @PostMapping("/distribution/{distributionId}/acknowledge")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<Void> acknowledgeDistribution(
-            @PathVariable UUID distributionId) {
-        masterService.acknowledgeDistribution(distributionId);
+            @PathVariable UUID distributionId,
+            @Valid @RequestBody AcknowledgeRequest request) {
+        masterService.acknowledgeDistribution(distributionId, request.printProofToken());
         return ResponseEntity.ok().build();
     }
+
+    /**
+     * Aktuális branch nyitott árfolyam-nyomtatási kötelezettségei.
+     * GET /api/v1/exchange-rate-master/distribution/pending-print
+     */
+    @GetMapping("/distribution/pending-print")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
+    public ResponseEntity<List<PendingPrintObligation>> getPendingPrintObligations() {
+        return ResponseEntity.ok(masterService.getPendingPrintObligations());
+    }
+
+    public record AcknowledgeRequest(@NotBlank String printProofToken) {}
 }
