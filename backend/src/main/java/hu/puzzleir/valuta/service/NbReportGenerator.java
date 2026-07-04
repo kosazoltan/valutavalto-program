@@ -187,12 +187,12 @@ public class NbReportGenerator {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
-        List<Transfer> outgoing = transferRepository.findByFromBranchIdOrderByCreatedAtDesc(branchId)
+        List<Transfer> outgoing = transferRepository.findByFromBranchIdOrderByCreatedAtDesc(companyId, branchId)
                 .stream()
                 .filter(t -> !t.getTransferDate().isBefore(startDate) && !t.getTransferDate().isAfter(endDate))
                 .collect(Collectors.toList());
 
-        List<Transfer> incoming = transferRepository.findByToBranchIdOrderByCreatedAtDesc(branchId)
+        List<Transfer> incoming = transferRepository.findByToBranchIdOrderByCreatedAtDesc(companyId, branchId)
                 .stream()
                 .filter(t -> !t.getTransferDate().isBefore(startDate) && !t.getTransferDate().isAfter(endDate))
                 .collect(Collectors.toList());

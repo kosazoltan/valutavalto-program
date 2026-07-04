@@ -95,8 +95,8 @@ class SessionOpenServiceTest {
             when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(createCompany()));
             when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(createBranch()));
             when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(createWorker()));
-            when(dailySessionRepository.hasOpenSession(BRANCH_ID)).thenReturn(false);
-            when(dailySessionRepository.findByBranchIdAndSessionDate(eq(BRANCH_ID), any(LocalDate.class)))
+            when(dailySessionRepository.hasOpenSession(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID))).thenReturn(false);
+            when(dailySessionRepository.findByBranchIdAndSessionDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), any(LocalDate.class)))
                     .thenReturn(Optional.empty());
             when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(Collections.emptyList());
             when(dailySessionRepository.save(any(DailySession.class))).thenAnswer(inv -> {
@@ -104,7 +104,7 @@ class SessionOpenServiceTest {
                 ds.setId(1L);
                 return ds;
             });
-            when(dailySessionRepository.findLatest(BRANCH_ID)).thenReturn(Optional.empty());
+            when(dailySessionRepository.findLatest(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID))).thenReturn(Optional.empty());
 
             SessionDataDto result = service.openSession(WORKER_ID, BRANCH_ID);
 
@@ -185,8 +185,8 @@ class SessionOpenServiceTest {
             when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(createCompany()));
             when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(createBranch()));
             when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(createWorker()));
-            when(dailySessionRepository.hasOpenSession(BRANCH_ID)).thenReturn(false);
-            when(dailySessionRepository.findByBranchIdAndSessionDate(eq(BRANCH_ID), any(LocalDate.class)))
+            when(dailySessionRepository.hasOpenSession(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID))).thenReturn(false);
+            when(dailySessionRepository.findByBranchIdAndSessionDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), any(LocalDate.class)))
                     .thenReturn(Optional.empty());
             when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(List.of(eurBalance, usdBalance));
             when(dailySessionRepository.save(any(DailySession.class))).thenAnswer(inv -> {
@@ -194,7 +194,7 @@ class SessionOpenServiceTest {
                 ds.setId(2L);
                 return ds;
             });
-            when(dailySessionRepository.findLatest(BRANCH_ID)).thenReturn(Optional.empty());
+            when(dailySessionRepository.findLatest(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID))).thenReturn(Optional.empty());
 
             SessionDataDto result = service.openSession(WORKER_ID, BRANCH_ID);
 
@@ -210,21 +210,25 @@ class SessionOpenServiceTest {
     @Test
     @DisplayName("validateSessionOpen → open session exists → warning")
     void testValidateSessionOpen_openSession() {
-        DailySession openSession = DailySession.builder()
-                .id(1L)
-                .branch(createBranch())
-                .sessionDate(LocalDate.now().minusDays(1))
-                .status(DailySessionStatus.OPEN)
-                .build();
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
 
-        when(dailySessionRepository.findLatest(BRANCH_ID)).thenReturn(Optional.of(openSession));
-        when(dailySessionRepository.findByBranchIdAndSessionDate(eq(BRANCH_ID), any(LocalDate.class)))
-                .thenReturn(Optional.empty());
-        when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(Collections.emptyList());
+            DailySession openSession = DailySession.builder()
+                    .id(1L)
+                    .branch(createBranch())
+                    .sessionDate(LocalDate.now().minusDays(1))
+                    .status(DailySessionStatus.OPEN)
+                    .build();
 
-        List<String> warnings = service.validateSessionOpen(BRANCH_ID);
+            when(dailySessionRepository.findLatest(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID))).thenReturn(Optional.of(openSession));
+            when(dailySessionRepository.findByBranchIdAndSessionDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), any(LocalDate.class)))
+                    .thenReturn(Optional.empty());
+            when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(Collections.emptyList());
 
-        assertThat(warnings).isNotEmpty();
-        assertThat(warnings).anyMatch(w -> w.contains("nincs lezárva") || w.contains("előző"));
+            List<String> warnings = service.validateSessionOpen(BRANCH_ID);
+
+            assertThat(warnings).isNotEmpty();
+            assertThat(warnings).anyMatch(w -> w.contains("nincs lezárva") || w.contains("előző"));
+        }
     }
 }

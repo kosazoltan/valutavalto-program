@@ -87,10 +87,11 @@ public class MonthlyClosingService {
 
         LocalDate monthStart = ym.atDay(1);
         LocalDate monthEnd = ym.atEndOfMonth();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
 
         // 3. Nyitott napi sessionök ellenőrzése — BLOCK guard
         // Legacy: NAPZAR.DLL — havi zárás előtt minden napi zárásnak meg kell történnie
-        long openSessions = dailySessionRepository.countOpenSessionsInRange(branchId, monthStart, monthEnd);
+        long openSessions = dailySessionRepository.countOpenSessionsInRange(companyId, branchId, monthStart, monthEnd);
         if (openSessions > 0) {
             throw new ValidationException(
                 "Havi zárás nem végezhető el: " + openSessions +

@@ -124,7 +124,7 @@ class DecadeReportServiceTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(makeBranch()));
 
         // Napzárás teljességi ellenőrzés — utolsó nap lezárva
-        when(dailyBalanceRepository.findClosedDates(eq(BRANCH_ID), eq(periodStart), eq(periodEnd)))
+        when(dailyBalanceRepository.findClosedDates(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), eq(periodStart), eq(periodEnd)))
                 .thenReturn(List.of(periodEnd));
 
         // Meglévő dekád: nincs
@@ -142,9 +142,9 @@ class DecadeReportServiceTest {
                 .thenReturn(0L);
 
         // MNB árfolyamok (üres → calculateDecadeProfit befejezi early)
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, periodStart))
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(periodStart)))
                 .thenReturn(List.of(makeHufBalance(periodStart, openingHuf, openingHuf)));
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, periodEnd))
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(periodEnd)))
                 .thenReturn(List.of(makeHufBalance(periodEnd, closingHuf, closingHuf)));
 
         // Forint kontroll tranzakciók
@@ -241,7 +241,7 @@ class DecadeReportServiceTest {
         Branch branch = makeBranch();
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
 
-        when(dailyBalanceRepository.findClosedDates(eq(BRANCH_ID), any(), any()))
+        when(dailyBalanceRepository.findClosedDates(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), any(), any()))
                 .thenReturn(List.of(periodEnd));
 
         when(decadeReportRepository.findByBranchIdAndYearAndDecade(BRANCH_ID, 2026, 1))
@@ -268,9 +268,9 @@ class DecadeReportServiceTest {
         DailyBalance hufBalOpen = makeHufBalance(periodStart, BigDecimal.ZERO, BigDecimal.ZERO);
         DailyBalance hufBalClose = makeHufBalance(periodEnd, BigDecimal.ZERO, BigDecimal.ZERO);
 
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, periodStart))
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(periodStart)))
                 .thenReturn(List.of(hufBalOpen, eurBalance));
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, periodEnd))
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(periodEnd)))
                 .thenReturn(List.of(hufBalClose, eurBalance));
 
         // getRatesForDate(periodStart/periodEnd) üres map-et ad vissza (pl. hétvége)
@@ -355,7 +355,7 @@ class DecadeReportServiceTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(makeBranch()));
 
         // findClosedDates: csak jan 1–9 zárva, jan 10 hiányzik
-        when(dailyBalanceRepository.findClosedDates(eq(BRANCH_ID), eq(periodStart), eq(periodEnd)))
+        when(dailyBalanceRepository.findClosedDates(org.mockito.ArgumentMatchers.eq(COMPANY_ID), eq(BRANCH_ID), eq(periodStart), eq(periodEnd)))
                 .thenReturn(List.of(
                         LocalDate.of(2026, 1, 1),
                         LocalDate.of(2026, 1, 2),

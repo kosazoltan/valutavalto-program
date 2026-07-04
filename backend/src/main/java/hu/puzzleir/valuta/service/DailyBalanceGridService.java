@@ -51,7 +51,7 @@ public class DailyBalanceGridService {
             return List.of();
         }
 
-        List<DailyBalance> balances = dailyBalanceRepository.findByBranchIdsAndDate(branchIds, date);
+        List<DailyBalance> balances = dailyBalanceRepository.findByBranchIdsAndDate(companyId, branchIds, date);
 
         // Valutánkénti aggregálás — több pénztár (cég/terület nézet) soronként összeadódik.
         Map<String, DailyBalanceGridRowDto> byCurrency = new LinkedHashMap<>();

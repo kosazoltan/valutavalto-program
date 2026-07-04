@@ -82,7 +82,7 @@ class DailyBalanceGridServiceTest {
     @DisplayName("pénztár-nézet: a kért iroda sorai valutánként, aggregálás nélkül")
     void branchView_returnsRowsForBranch() {
         when(branchRepository.existsByIdAndCompanyId(BRANCH_A, COMPANY)).thenReturn(true);
-        when(dailyBalanceRepository.findByBranchIdsAndDate(List.of(BRANCH_A), DATE)).thenReturn(List.of(
+        when(dailyBalanceRepository.findByBranchIdsAndDate(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq(List.of(BRANCH_A)), org.mockito.ArgumentMatchers.eq(DATE))).thenReturn(List.of(
                 db(BRANCH_A, "EUR", "100", "50", "30", "10", "5", "125", "125", "0", "0"),
                 db(BRANCH_A, "USD", "200", "0", "0", "0", "0", "200", null, "2", "0")));
 
@@ -106,7 +106,7 @@ class DailyBalanceGridServiceTest {
 
         assertThrows(ResourceNotFoundException.class,
                 () -> service.getGrid(COMPANY, DATE, BRANCH_A, null));
-        verify(dailyBalanceRepository, never()).findByBranchIdsAndDate(any(), any());
+        verify(dailyBalanceRepository, never()).findByBranchIdsAndDate(org.mockito.ArgumentMatchers.any(UUID.class), any(), any());
     }
 
     // ----- Cég/terület-nézet: aggregálás -----
@@ -116,7 +116,7 @@ class DailyBalanceGridServiceTest {
     void companyView_aggregatesAcrossBranches() {
         when(branchRepository.findByCompanyId(COMPANY))
                 .thenReturn(List.of(branch(BRANCH_A, 1), branch(BRANCH_B, 2)));
-        when(dailyBalanceRepository.findByBranchIdsAndDate(List.of(BRANCH_A, BRANCH_B), DATE))
+        when(dailyBalanceRepository.findByBranchIdsAndDate(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq(List.of(BRANCH_A, BRANCH_B)), org.mockito.ArgumentMatchers.eq(DATE)))
                 .thenReturn(List.of(
                         db(BRANCH_A, "EUR", "100", "10", "5", "0", "0", "105", "105", "1", "0"),
                         db(BRANCH_B, "EUR", "200", "20", "10", "0", "0", "210", null, "0", "3")));
@@ -139,13 +139,13 @@ class DailyBalanceGridServiceTest {
     void territoryView_filtersBranchesByTerritory() {
         when(branchRepository.findByCompanyId(COMPANY))
                 .thenReturn(List.of(branch(BRANCH_A, 1), branch(BRANCH_B, 2)));
-        when(dailyBalanceRepository.findByBranchIdsAndDate(eq(List.of(BRANCH_A)), eq(DATE)))
+        when(dailyBalanceRepository.findByBranchIdsAndDate(org.mockito.ArgumentMatchers.any(UUID.class), eq(List.of(BRANCH_A)), eq(DATE)))
                 .thenReturn(List.of(db(BRANCH_A, "EUR", "100", "0", "0", "0", "0", "100", null, "0", "0")));
 
         List<DailyBalanceGridRowDto> rows = service.getGrid(COMPANY, DATE, null, 1);
 
         assertEquals(1, rows.size());
-        verify(dailyBalanceRepository).findByBranchIdsAndDate(List.of(BRANCH_A), DATE);
+        verify(dailyBalanceRepository).findByBranchIdsAndDate(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq(List.of(BRANCH_A)), org.mockito.ArgumentMatchers.eq(DATE));
     }
 
     @Test
@@ -156,14 +156,14 @@ class DailyBalanceGridServiceTest {
         List<DailyBalanceGridRowDto> rows = service.getGrid(COMPANY, DATE, null, 99);
 
         assertTrue(rows.isEmpty());
-        verify(dailyBalanceRepository, never()).findByBranchIdsAndDate(any(), any());
+        verify(dailyBalanceRepository, never()).findByBranchIdsAndDate(org.mockito.ArgumentMatchers.any(UUID.class), any(), any());
     }
 
     @Test
     @DisplayName("FR-8: nincs daily_balance rekord az adott napra → üres lista (nem hiba)")
     void noData_returnsEmptyList() {
         when(branchRepository.existsByIdAndCompanyId(BRANCH_A, COMPANY)).thenReturn(true);
-        when(dailyBalanceRepository.findByBranchIdsAndDate(List.of(BRANCH_A), DATE))
+        when(dailyBalanceRepository.findByBranchIdsAndDate(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq(List.of(BRANCH_A)), org.mockito.ArgumentMatchers.eq(DATE)))
                 .thenReturn(List.of());
 
         assertTrue(service.getGrid(COMPANY, DATE, BRANCH_A, null).isEmpty());
@@ -173,7 +173,7 @@ class DailyBalanceGridServiceTest {
     @DisplayName("valuta-sorrend: a kimenet valutakód szerint rendezett (determinisztikus grid)")
     void rowsSortedByCurrencyCode() {
         when(branchRepository.existsByIdAndCompanyId(BRANCH_A, COMPANY)).thenReturn(true);
-        when(dailyBalanceRepository.findByBranchIdsAndDate(List.of(BRANCH_A), DATE)).thenReturn(List.of(
+        when(dailyBalanceRepository.findByBranchIdsAndDate(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq(List.of(BRANCH_A)), org.mockito.ArgumentMatchers.eq(DATE))).thenReturn(List.of(
                 db(BRANCH_A, "USD", "1", "0", "0", "0", "0", "1", null, "0", "0"),
                 db(BRANCH_A, "CHF", "1", "0", "0", "0", "0", "1", null, "0", "0"),
                 db(BRANCH_A, "EUR", "1", "0", "0", "0", "0", "1", null, "0", "0")));

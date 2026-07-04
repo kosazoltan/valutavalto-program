@@ -833,7 +833,7 @@ public class MnbReportService {
         List<java.util.UUID> allBranchIds = allBranches.stream()
                 .map(Branch::getId)
                 .collect(java.util.stream.Collectors.toList());
-        List<DailyBalance> allBalances = dailyBalanceRepository.findByBranchIdsAndDate(allBranchIds, date);
+        List<DailyBalance> allBalances = dailyBalanceRepository.findByBranchIdsAndDate(companyId, allBranchIds, date);
         List<String> validationErrors = new ArrayList<>();
         int validCount = 0;
         int invalidCount = 0;
@@ -1019,7 +1019,7 @@ public class MnbReportService {
             int totalTxCount = 0;
 
             // Készlet lekérése
-            List<DailyBalance> balances = dailyBalanceRepository.findByBranchIdsAndDate(branchIds, date);
+            List<DailyBalance> balances = dailyBalanceRepository.findByBranchIdsAndDate(company.getId(), branchIds, date);
             Map<String, List<DailyBalance>> balByCurrency = balances.stream()
                     .collect(java.util.stream.Collectors.groupingBy(DailyBalance::getCurrencyCode));
 

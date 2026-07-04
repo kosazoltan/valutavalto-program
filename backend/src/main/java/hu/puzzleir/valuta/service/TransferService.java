@@ -438,25 +438,29 @@ public class TransferService {
 
     @Transactional(readOnly = true)
     public List<TransferDto> getOutgoing(UUID branchId) {
-        return transferRepository.findOutgoingByBranch(branchId)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return transferRepository.findOutgoingByBranch(companyId, branchId)
                 .stream().map(this::toDto).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<TransferDto> getIncoming(UUID branchId) {
-        return transferRepository.findIncomingByBranch(branchId)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return transferRepository.findIncomingByBranch(companyId, branchId)
                 .stream().map(this::toDto).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<TransferDto> search(UUID branchId, LocalDate startDate, LocalDate endDate,
                                      Transfer.TransferStatus status, Transfer.TransferType type, Pageable pageable) {
-        return transferRepository.search(branchId, startDate, endDate, status, type, pageable)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return transferRepository.search(companyId, branchId, startDate, endDate, status, type, pageable)
                 .map(this::toDto);
     }
 
     public long countPending(UUID branchId) {
-        return transferRepository.countPendingByBranch(branchId);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return transferRepository.countPendingByBranch(companyId, branchId);
     }
 
     // --- Counter-transaction logic ---

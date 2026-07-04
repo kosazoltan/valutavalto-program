@@ -197,11 +197,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * Napi forgalom összeg
      */
     @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
-           "WHERE t.branch.id = :branchId " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.branch.id = :branchId " +
            "AND t.transactionDate = :date " +
            "AND t.transactionType = :type " +
            "AND t.status = 'COMPLETED'")
     BigDecimal sumDailyTurnover(
+        @Param("companyId") UUID companyId,
         @Param("branchId") UUID branchId,
         @Param("date") LocalDate date,
         @Param("type") TransactionType type

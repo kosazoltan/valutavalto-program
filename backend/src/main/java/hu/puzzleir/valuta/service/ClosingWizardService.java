@@ -259,15 +259,16 @@ public class ClosingWizardService {
     @Transactional(readOnly = true)
     public List<String> validateOpenTransactions(UUID branchId) {
         List<String> errors = new ArrayList<>();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
 
         // Ellenőrzés: van-e nyitott session
-        if (!dailySessionRepository.hasOpenSession(branchId)) {
+        if (!dailySessionRepository.hasOpenSession(companyId, branchId)) {
             errors.add("Nincs nyitott napi munkamenet!");
             return errors;
         }
 
         // Aktuális session lekérése
-        DailySession currentSession = dailySessionRepository.findLatest(branchId)
+        DailySession currentSession = dailySessionRepository.findLatest(companyId, branchId)
                 .orElse(null);
         if (currentSession != null && currentSession.getStatus() == DailySessionStatus.PENDING_CLOSE) {
             errors.add("A nap zárás alatt van, várjon a folyamat befejezésére!");
@@ -431,7 +432,8 @@ public class ClosingWizardService {
         assertOwnWizard(wizard);
 
         UUID branchId = wizard.getBranch().getId();
-        DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(branchId, LocalDate.now())
+        UUID companyId = wizard.getBranch().getCompany().getId();
+        DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(companyId, branchId, LocalDate.now())
                 .orElse(null);
 
         Map<String, Object> report = new LinkedHashMap<>();

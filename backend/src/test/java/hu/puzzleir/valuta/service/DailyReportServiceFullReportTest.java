@@ -71,7 +71,7 @@ class DailyReportServiceFullReportTest {
         eurBal.setClosingBalance(new BigDecimal("500"));
         eurBal.setPurchases(new BigDecimal("100"));
         eurBal.setSales(new BigDecimal("50"));
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of(eurBal));
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(DATE))).thenReturn(List.of(eurBal));
         when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of());
         when(transactionRepository.findFinanciallyEffectiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         when(denominationBalanceRepository.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
@@ -98,7 +98,7 @@ class DailyReportServiceFullReportTest {
         eurBal.setClosingBalance(new BigDecimal("500"));
         eurBal.setPurchases(new BigDecimal("100"));
         eurBal.setSales(new BigDecimal("50"));
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of(eurBal));
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(DATE))).thenReturn(List.of(eurBal));
 
         ExchangeRate er = new ExchangeRate();
         er.setCurrency(eur);
@@ -123,7 +123,7 @@ class DailyReportServiceFullReportTest {
     void denomination_uses_branchIdAndDate() {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of());
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of());
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(DATE))).thenReturn(List.of());
         when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of());
         when(transactionRepository.findFinanciallyEffectiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
 
@@ -161,7 +161,7 @@ class DailyReportServiceFullReportTest {
     void deDu_turnover_split() {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of());
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of());
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(DATE))).thenReturn(List.of());
         when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of());
         when(denominationBalanceRepository.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         stubSubledger();
@@ -188,7 +188,7 @@ class DailyReportServiceFullReportTest {
     void wuAfa_ecommerce_from_snapshot() {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of());
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of());
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(DATE))).thenReturn(List.of());
         when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of());
         when(transactionRepository.findFinanciallyEffectiveByBranchAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         when(denominationBalanceRepository.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
@@ -233,7 +233,7 @@ class DailyReportServiceFullReportTest {
     void cashier_names() {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of());
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of());
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(DATE))).thenReturn(List.of());
         when(exchangeRateRepository.findActiveByDateAndBranch(any(), eq(DATE), eq(BRANCH_ID))).thenReturn(List.of());
         when(denominationBalanceRepository.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         stubSubledger();
@@ -274,7 +274,7 @@ class DailyReportServiceFullReportTest {
         eur.setCode("EUR");
         eur.setName("Euró");
         when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(eur));
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of());
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(DATE))).thenReturn(List.of());
 
         ExchangeRate er = new ExchangeRate();
         er.setCurrency(eur);
@@ -315,7 +315,7 @@ class DailyReportServiceFullReportTest {
         eurBal.setClosingBalance(new BigDecimal("1000"));
         eurBal.setPurchases(BigDecimal.ZERO);
         eurBal.setSales(BigDecimal.ZERO);
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(BRANCH_ID, DATE)).thenReturn(List.of(eurBal));
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(DATE))).thenReturn(List.of(eurBal));
 
         ExchangeRate er = new ExchangeRate();
         er.setCurrency(eur);

@@ -68,7 +68,7 @@ public class DailySessionService {
         }
 
         // Stale sessionök automatikus lezárása (korábbi napok)
-        List<DailySession> staleSessions = dailySessionRepository.findOpenSessionsByBranch(branchId).stream()
+        List<DailySession> staleSessions = dailySessionRepository.findOpenSessionsByBranch(companyId, branchId).stream()
                 .filter(s -> s.getSessionDate() != null && s.getSessionDate().isBefore(today))
                 .toList();
         for (DailySession stale : staleSessions) {
@@ -80,7 +80,7 @@ public class DailySessionService {
         }
 
         // Ellenőrzés: nincs-e már MAI session
-        Optional<DailySession> existingOpt = dailySessionRepository.findByBranchIdAndSessionDate(branchId, today);
+        Optional<DailySession> existingOpt = dailySessionRepository.findByBranchIdAndSessionDate(companyId, branchId, today);
         if (existingOpt.isPresent()) {
             DailySession existing = existingOpt.get();
 
@@ -118,7 +118,7 @@ public class DailySessionService {
         }
 
         // Ellenőrzés: előző nap le van-e zárva
-        dailySessionRepository.findLatest(branchId).ifPresent(lastSession -> {
+        dailySessionRepository.findLatest(companyId, branchId).ifPresent(lastSession -> {
             if (lastSession.getStatus() == DailySessionStatus.OPEN) {
                 throw new ValidationException("Az előző nap nincs lezárva!");
             }
@@ -134,7 +134,7 @@ public class DailySessionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
 
         // Nyitó egyenleg számítása (HUF)
-        BigDecimal openingBalance = calculateOpeningBalance(branchId);
+        BigDecimal openingBalance = calculateOpeningBalance(companyId, branchId);
 
         // Munkamenet létrehozása
         DailySession session = DailySession.builder()
@@ -164,12 +164,13 @@ public class DailySessionService {
      * Legacy: NAPZAR - cimletezés validálás, adatfeltöltés
      */
     public DailySession closeDay(boolean denominationVerified) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
         Long workerId = SecurityUtils.getCurrentWorkerId();
         LocalDate today = LocalDate.now();
 
         // Aktuális session lekérése
-        DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(branchId, today)
+        DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(companyId, branchId, today)
                 .orElseThrow(() -> new ValidationException("Nincs nyitott napi munkamenet!"));
 
         if (session.getStatus() != DailySessionStatus.OPEN) {
@@ -202,10 +203,11 @@ public class DailySessionService {
      */
     @Transactional(readOnly = true)
     public DailySession getCurrentSession() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
         LocalDate today = LocalDate.now();
 
-        return dailySessionRepository.findByBranchIdAndSessionDateWithDetails(branchId, today)
+        return dailySessionRepository.findByBranchIdAndSessionDateWithDetails(companyId, branchId, today)
                 .filter(s -> s.getStatus() == DailySessionStatus.OPEN)
                 .orElseThrow(() -> new ValidationException("Nincs nyitott napi munkamenet!"));
     }
@@ -215,18 +217,20 @@ public class DailySessionService {
      */
     @Transactional(readOnly = true)
     public boolean hasOpenSession() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
-        return dailySessionRepository.hasOpenSession(branchId);
+        return dailySessionRepository.hasOpenSession(companyId, branchId);
     }
 
     /**
      * Session statisztikák frissítése tranzakció után
      */
     public void updateSessionStats(TransactionType type, BigDecimal hufAmount, BigDecimal handlingFee) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
         LocalDate today = LocalDate.now();
 
-        DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(branchId, today)
+        DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(companyId, branchId, today)
                 .orElseThrow(() -> new ValidationException("Nincs nyitott napi munkamenet!"));
 
         session.addTransaction(type, hufAmount, handlingFee);
@@ -240,10 +244,11 @@ public class DailySessionService {
      */
     @Transactional(readOnly = true)
     public int getDailyReversalCount() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
         LocalDate today = LocalDate.now();
 
-        return dailySessionRepository.findByBranchIdAndSessionDate(branchId, today)
+        return dailySessionRepository.findByBranchIdAndSessionDate(companyId, branchId, today)
                 .map(DailySession::getReversalCount)
                 .orElse(0);
     }
@@ -282,9 +287,10 @@ public class DailySessionService {
      * Legacy: HARDWARE.LEZARTNAP = aktualis datum
      */
     public void closeSession(LocalDate closingDate) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
-        DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(branchId, closingDate)
+        DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(companyId, branchId, closingDate)
                 .orElseThrow(() -> new ValidationException("Nincs munkamenet erre a napra: " + closingDate));
 
         session.setStatus(DailySessionStatus.CLOSED);
@@ -298,9 +304,9 @@ public class DailySessionService {
     /**
      * Nyitó egyenleg számítása
      */
-    private BigDecimal calculateOpeningBalance(UUID branchId) {
+    private BigDecimal calculateOpeningBalance(UUID companyId, UUID branchId) {
         // Legacy-parity: ha van lezart elozo napi session, annak zaro egyenlege lesz a nyito.
-        var latestSessionOpt = dailySessionRepository.findLatest(branchId);
+        var latestSessionOpt = dailySessionRepository.findLatest(companyId, branchId);
         if (latestSessionOpt.isPresent()) {
             DailySession latestSession = latestSessionOpt.get();
             if (latestSession.getStatus() == DailySessionStatus.CLOSED

@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.entity.DailyBalance;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.DailyBalanceRepository;
 import hu.puzzleir.valuta.repository.DailySubledgerSnapshotRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,13 +37,14 @@ public class LiveCashPositionService {
 
     public LiveCashPositionDto getLivePosition(UUID branchId) {
         LocalDate today = LocalDate.now();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
 
         Map<String, String> nameMap = new HashMap<>();
         currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()
                 .forEach(c -> nameMap.put(c.getCode(), c.getName()));
 
         List<LiveCashPositionDto.CurrencyLineDto> lines =
-                dailyBalanceRepository.findByBranchIdAndBalanceDate(branchId, today).stream()
+                dailyBalanceRepository.findByBranchIdAndBalanceDate(companyId, branchId, today).stream()
                         .map(b -> LiveCashPositionDto.CurrencyLineDto.builder()
                                 .currencyCode(b.getCurrencyCode())
                                 .currencyName(nameMap.getOrDefault(b.getCurrencyCode(), b.getCurrencyCode()))
