@@ -1,0 +1,72 @@
+name: Scaleway Standdown (passive)
+
+# EGYSZERI: a Scaleway-t passziv allapotba teszi, miutan a prod visszaallt a
+# Hetznerre (PROD-VERSION-STALE, 2026-07-05). Ket dolgot allit le a Scaleway-n:
+#   1. primary-watchdog.timer/service  -> ne csinaljon UJABB auto-failovert egy
+#      Hetzner-blipnel (a Scaleway PG PROMOTALT, nem streaming standby -> elavult
+#      node-ra failoverelne = veszelyes, amig a HA-t rendesen ujra nem epitjuk).
+#   2. valuta-backend.service -> ne szolgaljon stale 2.28.8 origint IP-n.
+# A PG-t NEM bantja (a promotalt Scaleway PG marad; a teljes streaming-standby
+# rebuild kulon, a scaleway-ha-restore.yml dolga).
+#
+# dry_run=true (default): CSAK allapot (systemctl is-active/is-enabled). Read-only.
+# dry_run=false: stop + disable mindket service-t, majd verifikacio.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'true=csak allapot (read-only), false=tenyleges stop+disable'
+        required: true
+        type: choice
+        default: 'true'
+        options: ['true', 'false']
+
+permissions:
+  contents: read
+
+jobs:
+  standdown:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Set up SSH (Scaleway)
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SCALEWAY_SSH_PRIVATE_KEY }}" > ~/.ssh/scaleway_key
+          chmod 600 ~/.ssh/scaleway_key
+          ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Standdown watchdog + backend on Scaleway
+        env:
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
+            root@${{ secrets.SCALEWAY_SERVER_IP }} \
+            "DRY_RUN='${DRY_RUN}' bash -s" << 'ENDSSH'
+          set +e
+          echo "=== ELOTTE: allapot ==="
+          for u in primary-watchdog.timer primary-watchdog.service valuta-backend.service; do
+            echo "  $u : active=$(systemctl is-active $u 2>/dev/null) enabled=$(systemctl is-enabled $u 2>/dev/null)"
+          done
+          echo "  local 8080 version: $(curl -s --max-time 6 http://localhost:8080/api/v1/version 2>/dev/null || echo '(no 8080)')"
+          echo "  pg_is_in_recovery: $(sudo -u postgres psql -d valuta -tAc 'SELECT pg_is_in_recovery()' 2>/dev/null)"
+          echo ""
+          if [ "$DRY_RUN" != "false" ]; then
+            echo "=== [DRY-RUN] stop+disable KIHAGYVA (primary-watchdog.timer, valuta-backend.service) ==="
+            exit 0
+          fi
+          echo "=== APPLY: watchdog stop+disable ==="
+          systemctl stop primary-watchdog.timer 2>/dev/null; systemctl disable primary-watchdog.timer 2>/dev/null
+          systemctl stop primary-watchdog.service 2>/dev/null; systemctl disable primary-watchdog.service 2>/dev/null
+          echo "=== APPLY: valuta-backend stop+disable ==="
+          systemctl stop valuta-backend.service 2>/dev/null; systemctl disable valuta-backend.service 2>/dev/null
+          sleep 3
+          echo ""
+          echo "=== UTANA: allapot (verify) ==="
+          for u in primary-watchdog.timer primary-watchdog.service valuta-backend.service; do
+            echo "  $u : active=$(systemctl is-active $u 2>/dev/null) enabled=$(systemctl is-enabled $u 2>/dev/null)"
+          done
+          echo "  local 8080 version: $(curl -s --max-time 6 http://localhost:8080/api/v1/version 2>/dev/null || echo '(no 8080 — backend stopped, OK)')"
+          echo "  pg_is_in_recovery (PG erintetlen): $(sudo -u postgres psql -d valuta -tAc 'SELECT pg_is_in_recovery()' 2>/dev/null)"
+          echo "=== Kesz — Scaleway passziv: watchdog OFF, backend OFF, PG erintetlen ==="
+          ENDSSH
