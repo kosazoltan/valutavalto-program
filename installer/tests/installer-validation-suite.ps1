@@ -30,15 +30,44 @@ $global:StartTime = Get-Date
 # --- Konfigurálás ---
 $INSTDIR = "C:\Program Files\Valutavalto Penztar"
 $DATA_DIR = "C:\ProgramData\BestChange"
-$VERSION = "2.1.5"
+
+# X8a fix: verzio dinamikusan a monorepo-gyoker package.json-bol (build-common.ps1
+# helper, ugyanaz, amit a build-installer.ps1:24 hasznal). Hardcode-literal TILOS.
+# $ErrorActionPreference = "Continue" van -> a dot-source + hivas hibajat try/catch-ben
+# kell fail-loudda tenni, kulonben a suite verziotlanul fut tovabb rossz $VERSION-nel.
+try {
+    . (Join-Path (Split-Path -Parent $PSScriptRoot) 'build-common.ps1')
+    $VERSION = Get-VersionFromPackageJson -ScriptRoot (Split-Path -Parent $PSScriptRoot)
+} catch {
+    Write-Host "HIBA: verzio nem olvashato a package.json-bol: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
+
 $PG_PORT = 54320
 $BE_PORT = 8080
 $SVC_PG = "BestChange-PostgreSQL"
 $SVC_BE = "BestChange-Backend"
 $PUBLISHER = "Exclusive Best Change Zrt."
-# NSIS 32-bit installer writes to WOW6432Node on x64 systems
-$REG_APP = "HKLM:\Software\WOW6432Node\BestChange\ValutavaltoPenztar"
-$REG_UNINST = "HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar"
+
+# X8b fix: az NSI SetRegView 64-gyel ir (Penztar-Setup.nsi:1171-1187, v2.3.1
+# Codex P2 #220) -> a nativ 64-bit kulcs az elsodleges. WOW6432Node fallback
+# a v2.3.1 ELOTTI (32-bit view-ba irt) installok validalasahoz. Ha a 64-bit PS
+# nem elerheto, a registry-nezet redirektalodhat -> warn (de nem abort).
+if (-not [Environment]::Is64BitProcess) {
+    Write-Host "WARN: 32-bit PowerShell folyamat - a registry-nezet redirektalodhat, futtasd 64-bit PS-bol!" -ForegroundColor Yellow
+}
+function Resolve-RegPath([string[]]$Candidates) {
+    foreach ($c in $Candidates) { if (Test-Path $c) { return $c } }
+    return $Candidates[0]
+}
+$REG_APP = Resolve-RegPath @(
+    'HKLM:\Software\BestChange\ValutavaltoPenztar',
+    'HKLM:\Software\WOW6432Node\BestChange\ValutavaltoPenztar'
+)
+$REG_UNINST = Resolve-RegPath @(
+    'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar',
+    'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar'
+)
 
 # Installer exe auto-detect
 if (-not $InstallerExe) {
@@ -211,11 +240,15 @@ function Test-FileSystem {
     if (Test-Path "$DATA_DIR\pgsql\data\pg_hba.conf") {
         $hba = Get-Content "$DATA_DIR\pgsql\data\pg_hba.conf" -Raw
         Test-Assert "Security" "valuta_user scram-sha-256" ($hba -match "valuta_user.*scram-sha-256") "pg_hba.conf should have scram-sha-256 for valuta_user"
-        Test-Assert "Security" "postgres localhost trust" ($hba -match "postgres\s+127\.0\.0\.1" -or $hba -match "postgres\s+trust") "postgres local trust"
+        # X8c fix (v7.0 S6-04 hardening tukre, Penztar-Setup.nsi:782-817):
+        # MINDEN user scram-sha-256, trust auth epphogy TILOS a kesz rendszeren.
+        Test-Assert "Security" "postgres scram-sha-256" ($hba -match "postgres.*scram-sha-256") "pg_hba.conf: postgres user is scram-sha-256 (v7.0 S6-04)"
         # Nincs md5 (weak) auth — only in custom lines, not in default comments
         $hbaLines = ($hba -split "`n") | Where-Object { $_ -notmatch "^\s*#" -and $_ -match "\S" }
         $hasMd5 = $hbaLines | Where-Object { $_ -match "\bmd5\b" }
-        Test-Assert "Security" "Nincs md5 auth" ($null -eq $hasMd5) "Csak scram-sha-256 vagy trust"
+        Test-Assert "Security" "Nincs md5 auth" ($null -eq $hasMd5) "Csak scram-sha-256 megengedett (md5 es trust tilos)"
+        $hasTrust = $hbaLines | Where-Object { $_ -match "\btrust\b" }
+        Test-Assert "Security" "Nincs trust auth" ($null -eq $hasTrust) "v7.0: trust sor nem maradhat (NSI fail-closed tukor)"
     }
 
     # 3.6 Temp fájlok NEM maradtak (G2-06 + NSIS best practice)

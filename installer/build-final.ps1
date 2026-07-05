@@ -19,8 +19,26 @@ Assert-X64NodeToolchain
 Write-Host "=== Electron Build ===" -ForegroundColor Cyan
 Set-Location (Join-Path $RepoRoot "penztar-client")
 
-# Set local installer env
-$envContent = "VITE_API_URL=http://localhost:8080/api/v1`nVITE_BRANCH_CODE=EBC`nVITE_COMPANY_ID=1"
+# X9 fix: a build-time .env-be TILOS VITE_API_URL-t irni (v2.5.7 minta,
+# build-installer.ps1:285-305). A Vite inline-olna es localhost:8080-ra
+# race-elne prod helyett. Az URL a .env.production-bol jon (build-installer
+# 0/6 lepes generalja a .env.production.example alapjan).
+# Fail-loud guard: ha a .env.production hianyzik, a Vite ures URL-lel epulne.
+foreach ($envProd in @(
+    (Join-Path $RepoRoot "penztar-client\.env.production"),
+    (Join-Path $RepoRoot "frontend-react\.env.production")
+)) {
+    if (-not (Test-Path $envProd)) {
+        throw "HIANYZO ENV: $envProd - futtasd elobb a build-installer.ps1-t (0/6 env injection lepes generalja), vagy allitsd elo kezzel a .env.production.example alapjan."
+    }
+}
+
+# Set local installer env (build-time .env: csak BRANCH_CODE + COMPANY_ID,
+# a VITE_API_URL-t a .env.production szolgaltatja)
+$envContent = @"
+VITE_BRANCH_CODE=EBC
+VITE_COMPANY_ID=1
+"@
 [System.IO.File]::WriteAllText((Join-Path (Get-Location) ".env.local-installer"), $envContent)
 if (Test-Path ".env") { Copy-Item ".env" ".env.backup" -Force }
 Copy-Item ".env.local-installer" ".env" -Force
