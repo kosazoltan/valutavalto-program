@@ -7,6 +7,8 @@ jobs:
   diag:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
+
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
@@ -14,21 +16,30 @@ jobs:
           chmod 600 ~/.ssh/scaleway_key
           ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: 'READ-ONLY watchdog stderr trace'
+      - name: 'Deploy fixed primary-watchdog.sh to Scaleway + verify exit 0'
         run: |
+          set -euo pipefail
+          DEST=/opt/valutavalto/deploy/hetzner/ha
+          echo "=== upload fresh watchdog script ==="
+          scp -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
+            deploy/hetzner/ha/primary-watchdog.sh \
+            root@${{ secrets.SCALEWAY_SERVER_IP }}:/tmp/primary-watchdog.sh
+
           ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
-            root@${{ secrets.SCALEWAY_SERVER_IP }} \
-            bash -s << 'ENDSSH'
-          set +e
-          WD=/opt/valutavalto/deploy/hetzner/ha/primary-watchdog.sh
-          echo "=== run watchdog with bash -x trace, capture last 40 lines before it exits 1 ==="
-          timeout 30 bash -x "$WD" 2>&1 | tail -40
-          echo "  === exit: ${PIPESTATUS[0]} ==="
-          echo ""
-          echo "=== the config/env block of the script (what does it need?) ==="
-          sed -n '1,60p' "$WD" | grep -nE 'PRIMARY|HEALTH|URL|EMAIL|CF_|CONFIG|source|\.env|MAIL|curl|exit 1|REQUIRE' | head -25
-          echo ""
-          echo "=== is there a watchdog .env / config file it sources? ==="
-          ls -la /opt/valutavalto/deploy/hetzner/ha/*.env /etc/primary-watchdog* 2>/dev/null
-          echo "=== Kesz ==="
+            root@${{ secrets.SCALEWAY_SERVER_IP }} bash -s << ENDSSH
+          set -euo pipefail
+          DEST=$DEST
+          cp /tmp/primary-watchdog.sh "\$DEST/primary-watchdog.sh"
+          chmod +x "\$DEST/primary-watchdog.sh"
+          echo "  installed, perms: \$(ls -la "\$DEST/primary-watchdog.sh" | awk '{print \$1}')"
+          echo "  has the fix (true line)? \$(grep -c '^    true$' "\$DEST/primary-watchdog.sh")"
+          echo "=== reset failed state + trigger one run via the service ==="
+          systemctl reset-failed primary-watchdog.service 2>/dev/null || true
+          systemctl start primary-watchdog.service
+          sleep 3
+          echo "  service result: \$(systemctl show primary-watchdog.service -p ExecMainStatus,Result --value | tr '\n' ' ')"
+          echo "  is-active(timer): \$(systemctl is-active primary-watchdog.timer)"
+          echo "=== manual run must now be exit 0 (primary UP) ==="
+          bash "\$DEST/primary-watchdog.sh"; echo "  manual exit: \$?"
+          echo "  state file: \$(cat /var/lib/primary-watchdog/state 2>/dev/null | tr '\n' ' ')"
           ENDSSH
