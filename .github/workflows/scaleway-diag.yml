@@ -14,23 +14,32 @@ jobs:
           chmod 600 ~/.ssh/scaleway_key
           ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: 'READ-ONLY count(*) data-safety probe'
+      - name: 'READ-ONLY watchdog health + fresh-code + failover-safety probe'
         run: |
-          # KIZAROLAG read-only count(*) + legfrissebb audit sorok. Semmit nem modosit.
           ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
             root@${{ secrets.SCALEWAY_SERVER_IP }} \
             bash -s << 'ENDSSH'
           set +e
-          echo "=== SCALEWAY real count(*) money/movement tables ==="
-          for t in transaction collected_transaction cash_balance daily_session currency_stock transfer transfer_lines vault_transfer shipment_request denomination_balance audit_log closing_wizard receipt employee worker; do
-            echo "$t=$(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM $t" 2>/dev/null)"
-          done
+          echo "=== watchdog timer/service state ==="
+          echo "timer: enabled=$(systemctl is-enabled primary-watchdog.timer 2>/dev/null) active=$(systemctl is-active primary-watchdog.timer 2>/dev/null)"
+          systemctl list-timers primary-watchdog.timer --no-pager 2>/dev/null | grep -iE 'NEXT|primary-watchdog' | head -2
           echo ""
-          echo "=== SCALEWAY newest audit_log rows (id|created_at) ==="
-          sudo -u postgres psql -d valuta -tAc "SELECT id||'|'||created_at FROM audit_log ORDER BY created_at DESC LIMIT 3" 2>/dev/null
+          echo "=== fresh #1318 code present? (cf_apex_ip + FAILBACK_REMIND_SECS markers) ==="
+          WD=/opt/valutavalto/deploy/hetzner/ha/primary-watchdog.sh
+          grep -c 'cf_apex_ip' "$WD" 2>/dev/null | xargs echo "  cf_apex_ip occurrences:"
+          grep -c 'FAILBACK_REMIND_SECS' "$WD" 2>/dev/null | xargs echo "  FAILBACK_REMIND_SECS occurrences:"
+          grep -E '^AUTO_FAILOVER=' "$WD" 2>/dev/null | xargs echo "  config:"
+          echo "  executable? $([ -x "$WD" ] && echo YES || echo 'NO - 203/EXEC risk!')"
           echo ""
-          echo "=== SCALEWAY: any write AFTER backend promote (2026-07-04 15:10)? ==="
-          sudo -u postgres psql -d valuta -tAc "SELECT 'audit_log rows after 2026-07-04 15:10 = '||count(*) FROM audit_log WHERE created_at > '2026-07-04 15:10:00'" 2>/dev/null
-          sudo -u postgres psql -d valuta -tAc "SELECT 'daily_session rows after 2026-07-04 15:10 = '||count(*) FROM daily_session WHERE created_at > '2026-07-04 15:10:00'" 2>/dev/null
+          echo "=== SAFETY: does the watchdog see the Hetzner primary as UP (no false failover)? ==="
+          echo "  public probe:  $(curl -s -o /dev/null -w '%{http_code}' --max-time 12 https://excvaluta.com/api/v1/auth/bootstrap-status)"
+          echo "  origin probe:  $(curl -s -o /dev/null -w '%{http_code}' --max-time 12 --resolve excvaluta.com:443:95.216.191.162 https://excvaluta.com/api/v1/auth/bootstrap-status)"
+          echo "  watchdog state file: $(cat /var/lib/primary-watchdog/state 2>/dev/null | tr '\n' ' ' || echo '(none - clean, no failure counter)')"
+          echo ""
+          echo "=== last watchdog run (journal) ==="
+          journalctl -u primary-watchdog.service -n 8 --no-pager 2>/dev/null | tail -8 || echo "(no runs yet - timer just installed)"
+          echo ""
+          echo "=== standby PG still in recovery (correct for a standby)? ==="
+          sudo -u postgres psql -tAc "SELECT 'pg_is_in_recovery='||pg_is_in_recovery()" 2>/dev/null
           echo "=== Kesz ==="
           ENDSSH
