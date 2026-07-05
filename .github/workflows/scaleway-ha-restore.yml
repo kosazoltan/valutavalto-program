@@ -46,9 +46,35 @@ jobs:
           HETZNER_USER="${HETZNER_USER:-root}"
           HETZNER_TARGET="${HETZNER_USER}@${HETZNER_HOST}"
           SCALEWAY_TARGET="root@${SCALEWAY_HOST}"
-          SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=15)
+          SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=8)
           HETZNER_SSH=(ssh -i ~/.ssh/hetzner_key "${SSH_OPTS[@]}" "$HETZNER_TARGET")
           SCALEWAY_SSH=(ssh -i ~/.ssh/scaleway_key "${SSH_OPTS[@]}" "$SCALEWAY_TARGET")
+
+          SLOT_GUARD_ARMED=0
+          cleanup_orphan_slot() {
+            rc=$?
+            if [ "$rc" -eq 0 ] || [ "$SLOT_GUARD_ARMED" != "1" ]; then
+              exit "$rc"
+            fi
+            echo "=== FAILURE (exit=$rc): dropping orphan standby_slot_0 on Hetzner if inactive ==="
+            "${HETZNER_SSH[@]}" bash -s <<'END_HETZNER_DROP_ORPHAN_SLOT' || echo "WARNING: orphan-slot cleanup failed; drop standby_slot_0 manually if inactive"
+          set -euo pipefail
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "DO \$\$
+          BEGIN
+            IF EXISTS (SELECT 1 FROM pg_replication_slots
+                       WHERE slot_name = 'standby_slot_0' AND NOT active) THEN
+              PERFORM pg_drop_replication_slot('standby_slot_0');
+              RAISE NOTICE 'orphan standby_slot_0 dropped';
+            ELSE
+              RAISE NOTICE 'standby_slot_0 missing or active - not dropped';
+            END IF;
+          END
+          \$\$;"
+          sudo -u postgres psql -c "SELECT slot_name, active, restart_lsn FROM pg_replication_slots WHERE slot_name = 'standby_slot_0';" || true
+          END_HETZNER_DROP_ORPHAN_SLOT
+            exit "$rc"
+          }
+          trap cleanup_orphan_slot EXIT
 
           {
             echo "## Scaleway HA restore"
@@ -145,9 +171,17 @@ jobs:
             exit 0
           fi
 
+          SLOT_GUARD_ARMED=1
           echo "=== Create replication slot if missing (Hetzner) ==="
           "${HETZNER_SSH[@]}" bash -s <<'END_HETZNER_SLOT'
           set -euo pipefail
+          PGDATA_DIR=$(sudo -u postgres psql -tA -c "SHOW data_directory;")
+          WAL_AVAIL_KB=$(df -Pk "$PGDATA_DIR/pg_wal" | awk 'NR==2 {print $4}')
+          echo "[hetzner] pg_wal volume available: ${WAL_AVAIL_KB} KB"
+          if [ "$WAL_AVAIL_KB" -lt 2097152 ]; then
+            echo "ERROR: less than 2GiB free on the pg_wal volume - refusing to create replication slot (a stalled slot would fill the volume and crash the primary)"
+            exit 1
+          fi
           sudo -u postgres psql -v ON_ERROR_STOP=1 -c "DO \$\$
           BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'standby_slot_0') THEN
@@ -228,13 +262,20 @@ jobs:
           pkill -9 -f '/usr/lib/postgresql/16/bin/postgres.*-D /var/lib/postgresql/16/main' 2>/dev/null || true
           DATA_DIR=/var/lib/postgresql/16/main
           test -d "$DATA_DIR"
-          find "$DATA_DIR" -mindepth 1 -delete
 
           echo "[scaleway] pg_basebackup from Hetzner WireGuard address (10.8.0.1)"
           BIN=/usr/lib/postgresql/16/bin
-          sudo -u postgres env PGPASSWORD="$REPLICATION_PASSWORD" "$BIN/pg_basebackup" \
+          run_basebackup() {
+            find "$DATA_DIR" -mindepth 1 -delete
+            sudo -u postgres env PGPASSWORD="$REPLICATION_PASSWORD" PGCONNECT_TIMEOUT=30 "$BIN/pg_basebackup" \
             -d "host=10.8.0.1 port=5432 user=replicator dbname=postgres application_name=scaleway_standby" \
-            -D "$DATA_DIR" -X stream -P -R -S standby_slot_0
+            -D "$DATA_DIR" -X stream -P -R -S standby_slot_0 --max-rate=32M
+          }
+          if ! run_basebackup; then
+            echo "[scaleway] pg_basebackup failed once (transient WG/SSL error?); retrying in 30s"
+            sleep 30
+            run_basebackup
+          fi
           test -f "$DATA_DIR/standby.signal"
           grep -q "standby_slot_0" "$DATA_DIR/postgresql.auto.conf"
           chown -R postgres:postgres "$DATA_DIR"
