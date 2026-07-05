@@ -36,7 +36,8 @@
     "../packages/shared-ipc/src"
   ],
   "files": [
-    "electron/__tests__/ipc-money-channels.types.ts"
+    "electron/__tests__/ipc-money-channels.types.ts",
+    "electron/__tests__/ipc-read-channels.types.ts"
   ],
   "exclude": [
     "electron/__tests__/**",
