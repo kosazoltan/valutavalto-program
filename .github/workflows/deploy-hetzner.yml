@@ -33,6 +33,7 @@ env:
   SERVICE_NAME: valuta-backend.service
   JAR_SYMLINK: valuta-backend-current.jar
   HEALTH_URL: https://excvaluta.com/api/v1/auth/bootstrap-status
+  VERSION_URL: https://excvaluta.com/api/v1/version
 
 jobs:
   build:
@@ -181,20 +182,58 @@ jobs:
             echo "=== Service is active ==="
           ENDSSH
 
-      - name: Health check
+      - name: Health check (ORIGIN-pinned — a deployolt Hetzner hostot méri, nem az edge-et)
         run: |
+          set -euo pipefail
+          ORIGIN_RESOLVE="excvaluta.com:443:${{ secrets.VPS_SERVER_IP }}"
+          JAR_NAME="${{ needs.build.outputs.jar_name }}"
+          DEPLOY_VERSION="${JAR_NAME#valuta-backend-}"; DEPLOY_VERSION="${DEPLOY_VERSION%.jar}"
+          echo "Deployolt verzió: $DEPLOY_VERSION | origin: ${{ secrets.VPS_SERVER_IP }}"
           echo "Waiting for service startup..."
           for i in 1 2 3 4 5 6; do
             sleep 15
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "${{ env.HEALTH_URL }}" || echo 000)
-            echo "Attempt $i: HTTP $STATUS"
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
+              --resolve "$ORIGIN_RESOLVE" "${{ env.HEALTH_URL }}" || echo 000)
+            echo "Attempt $i: origin HTTP $STATUS"
             if [[ "$STATUS" == "200" ]]; then
-              echo "Health check PASSED"
-              exit 0
+              ORIGIN_VERSION=$(curl -s --max-time 15 --resolve "$ORIGIN_RESOLVE" \
+                "${{ env.VERSION_URL }}" | jq -r '.version // empty' || echo "")
+              echo "Origin /version: '${ORIGIN_VERSION:-?}' (elvárt: $DEPLOY_VERSION)"
+              if [[ "$ORIGIN_VERSION" == "$DEPLOY_VERSION" ]]; then
+                echo "Health check PASSED — az új jar ($DEPLOY_VERSION) fut az originen."
+                exit 0
+              fi
+              echo "::error::Origin él (200), de a /version '$ORIGIN_VERSION' != deployolt '$DEPLOY_VERSION' — a symlink/restart nem az új jart szolgálja."
+              exit 1
             fi
           done
-          echo "Health check FAILED after 6 attempts"
+          echo "::error::Health check FAILED — az ORIGIN nem ad 200-at 6 próbálkozás után."
           exit 1
+
+      - name: Edge version drift check (publikus edge vs deployolt — NEM blokkoló)
+        if: always()
+        run: |
+          # Szándékosan NEM 'set -e': ez a step SOHA nem buktathatja a deployt (korai riasztás a célja).
+          JAR_NAME="${{ needs.build.outputs.jar_name }}"
+          DEPLOY_VERSION="${JAR_NAME#valuta-backend-}"; DEPLOY_VERSION="${DEPLOY_VERSION%.jar}"
+          EDGE_VERSION=$(curl -s --max-time 15 "${{ env.VERSION_URL }}" | jq -r '.version // empty' 2>/dev/null || echo "")
+          echo "Edge /version: '${EDGE_VERSION:-UNREACHABLE}' | deployolt: $DEPLOY_VERSION"
+          {
+            echo "## Edge version drift check"
+            echo "- Deployolt (Hetzner origin): \`$DEPLOY_VERSION\`"
+            echo "- Publikus edge (excvaluta.com): \`${EDGE_VERSION:-UNREACHABLE}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$EDGE_VERSION" ]; then
+            echo "::warning::PROD-VERSION-DRIFT? A publikus edge /version NEM olvasható — ellenőrizd, melyik originre mutat a Cloudflare DNS."
+            echo "- ⚠️ Az edge /version nem olvasható — DNS/edge ellenőrzés javasolt." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$EDGE_VERSION" != "$DEPLOY_VERSION" ]; then
+            echo "::warning::PROD-VERSION-DRIFT! A publikus edge $EDGE_VERSION-t szolgál, a frissen deployolt $DEPLOY_VERSION helyett — a Cloudflare DNS valószínűleg NEM a Hetzner originre mutat (lásd 2026-07-05 PROD-VERSION-STALE incidens). Failback: deploy/hetzner/ha/cloudflare-dns-failover.sh"
+            echo "- 🚨 **DRIFT**: az edge NEM a frissen deployolt verziót adja — DNS-failback ellenőrzés KÖTELEZŐ." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- ✅ Edge == deployolt verzió." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit 0
+        # (Nem kell continue-on-error: a step logikailag mindig exit 0.)
 
       - name: Deployment summary
         if: always()

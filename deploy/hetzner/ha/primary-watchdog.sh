@@ -40,6 +40,8 @@ AUTO_FAILOVER="yes"
 FAILOVER_SCRIPT="/opt/valutavalto/deploy/hetzner/ha/failover-to-standby.sh"
 DNS_SCRIPT="/opt/valutavalto/deploy/hetzner/ha/cloudflare-dns-failover.sh"
 CF_ENV_FILE="/etc/primary-watchdog/cf_env"         # CF_API_TOKEN + CF_ZONE_ID (root:600)
+FAILBACK_REMIND_SECS=86400                         # promoted+drift allapotban 24 orankent ismetlo riasztas
+FAILBACK_CMD="( set -a; . $CF_ENV_FILE; set +a; CF_AUTO=1 PRIMARY_IP=$ORIGIN_IP bash $DNS_SCRIPT apply )"
 FAILOVER_LOG="/var/log/primary-watchdog-failover.log"
 # WATCHDOG_DRY_RUN=1 -> a promote-ot CSAK naplozza, nem hajtja vegre (teszteleshez).
 
@@ -56,6 +58,19 @@ send_email() {
          -H "Authorization: Bearer ${key}" -H 'Content-Type: application/json' -d "$payload")"
   if [ "$code" = "200" ] || [ "$code" = "201" ]; then rm -f /tmp/wd_resend.out; return 0; fi
   echo "watchdog: Resend HTTP ${code}: $(cat /tmp/wd_resend.out 2>/dev/null)" >&2; rm -f /tmp/wd_resend.out; return 1
+}
+
+# Kimenet stdout-ra: az apex A rekord content IP-je, vagy ures string ha nem megallapithato.
+# FAIL-OPEN a riasztas fele: ures eredmenyt a hivo drift-kent kezel.
+cf_apex_ip() {
+  [ -f "$CF_ENV_FILE" ] || { echo ""; return 0; }
+  ( set -a; . "$CF_ENV_FILE"; set +a
+    curl -s --max-time 15 -H "Authorization: Bearer $CF_API_TOKEN" \
+      "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records?type=A&name=excvaluta.com" \
+    | python3 -c 'import sys,json
+d=json.load(sys.stdin)
+r=d.get("result") or []
+print(r[0].get("content","") if (d.get("success") and r) else "")' ) 2>/dev/null || echo ""
 }
 
 probe() { curl -s -o /dev/null -w '%{http_code}' --max-time 12 "$1" "${@:2}"; }
@@ -124,17 +139,20 @@ if [ "${1:-}" = "--test" ]; then
 fi
 
 # --- allapot betoltes ---
-fails=0; alerted=0; promoted=0
+fails=0; alerted=0; promoted=0; failback_notified=0
 if [ -f "$STATE_FILE" ]; then
   fails="$(sed -n '1p' "$STATE_FILE" 2>/dev/null | grep -oE '^[0-9]+' || echo 0)"
   grep -q '^alerted=1$'  "$STATE_FILE" 2>/dev/null && alerted=1
   grep -q '^promoted=1$' "$STATE_FILE" 2>/dev/null && promoted=1
 fi
+fb=$(grep -oE '^failback_notified=[0-9]+$' "$STATE_FILE" 2>/dev/null | cut -d= -f2 || true)
+[ -n "$fb" ] && failback_notified="$fb"
 
 save_state() {
   { printf '%s\n' "$fails"
     [ "$alerted" = "1" ]  && echo "alerted=1"
     [ "$promoted" = "1" ] && echo "promoted=1"
+    [ "$failback_notified" != "0" ] && echo "failback_notified=$failback_notified"
   } > "$STATE_FILE"
 }
 
@@ -144,11 +162,28 @@ check_once; status="$STATUS"
 
 if [ "$status" = "up" ]; then
   # ----- UP -----
-  if [ "$alerted" = "1" ] || [ "$promoted" = "1" ]; then
-    send_email "[excvaluta RECOVERED] a primary ujra elerheto" \
-      "Az excvaluta.com ismet HTTP 200 (pub=${LAST_PUB}, origin=${LAST_ORIG}). Ido: $(date -u)$([ "$promoted" = "1" ] && echo ' — MEGJEGYZES: korabban auto-failover tortent, ellenorizd melyik node a primary!')"
+  if [ "$promoted" = "1" ]; then
+    APEX_IP="$(cf_apex_ip)"
+    if [ "$APEX_IP" = "$ORIGIN_IP" ]; then
+      send_email "[excvaluta RECOVERED] failback KESZ — Hetzner a primary" \
+        "A primary ujra elerheto (pub=${LAST_PUB}, origin=${LAST_ORIG}) ES a Cloudflare DNS mar a Hetzner originre ($ORIGIN_IP) mutat. Ido: $(date -u). Ellenorizd, hogy a Scaleway PG nem maradt-e promotalt primary (split-brain runbook)."
+      fails=0; alerted=0; promoted=0; failback_notified=0; save_state
+    else
+      now=$(date +%s)
+      if [ $(( now - failback_notified )) -ge "$FAILBACK_REMIND_SECS" ]; then
+        send_email "[excvaluta FAILBACK SZUKSEGES] a primary el, de a DNS meg a standbyn ragadt" \
+          "A Hetzner primary HELYREALLT (pub=${LAST_PUB}, origin=${LAST_ORIG}), de a Cloudflare apex A rekord jelenleg '${APEX_IP:-NEM MEGALLAPITHATO}' — NEM a Hetzner origin ($ORIGIN_IP). Amig ez igy marad, a publikus forgalom a Scaleway-t (${STANDBY_IP}) eri, es MINDEN deploy ellenere ELAVULT verzio fut publikusan (lasd 2026-07-05 PROD-VERSION-STALE). FAILBACK ELOTT: gyozodj meg rola, hogy a Hetzner DB naprakesz es a Scaleway PG nem streaming-primary (runbook: scaleway-failover-runbook.md). Futtatando parancs a Scaleway-en (root):  ${FAILBACK_CMD}  Ez a riasztas 24 orankent ismetlodik, amig a DNS vissza nem all. Ido: $(date -u)"
+        failback_notified="$now"
+      fi
+      fails=0; save_state   # promoted=1 MEGMARAD; alerted marad ahogy volt
+    fi
+  else
+    if [ "$alerted" = "1" ]; then
+      send_email "[excvaluta RECOVERED] a primary ujra elerheto" \
+        "Az excvaluta.com ismet HTTP 200 (pub=${LAST_PUB}, origin=${LAST_ORIG}). Ido: $(date -u)"
+    fi
+    fails=0; alerted=0; promoted=0; failback_notified=0; save_state
   fi
-  fails=0; alerted=0; promoted=0; save_state
 else
   # ----- DOWN -----
   fails=$(( fails + 1 ))

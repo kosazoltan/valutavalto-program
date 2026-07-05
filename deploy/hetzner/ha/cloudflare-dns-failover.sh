@@ -31,6 +31,7 @@ set -euo pipefail
 DOMAIN="${DOMAIN:-excvaluta.com}"
 ACTION="${1:-status}"
 API="https://api.cloudflare.com/client/v4"
+RECORD_NAMES=("$DOMAIN" "www.$DOMAIN")
 
 : "${CF_API_TOKEN:?CF_API_TOKEN kotelezo (Cloudflare API token, Zone DNS Edit)}"
 : "${CF_ZONE_ID:?CF_ZONE_ID kotelezo (excvaluta.com zone ID)}"
@@ -38,12 +39,10 @@ API="https://api.cloudflare.com/client/v4"
 log() { echo "[cf-failover $(date +%T)] $*"; }
 err() { echo "[cf-failover ERROR] $*" >&2; }
 
-# Lekerdezzuk az A record-ot
-fetch_record() {
-    local result
-    result=$(curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
-        "$API/zones/$CF_ZONE_ID/dns_records?type=A&name=$DOMAIN")
-    echo "$result"
+# Lekerdezzuk a megadott nevu A record-ot.
+fetch_record() {  # $1 = record name (pl. excvaluta.com vagy www.excvaluta.com)
+    curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
+        "$API/zones/$CF_ZONE_ID/dns_records?type=A&name=$1"
 }
 
 extract_field() {
@@ -60,52 +59,49 @@ print(r.get('$1',''))"
 case "$ACTION" in
 
     status)
-        log "=== Aktualis A record: $DOMAIN ==="
-        result=$(fetch_record)
-        echo "$result" | python3 -c "import sys,json
+        log "=== Aktualis A record-ok: ${RECORD_NAMES[*]} ==="
+        for NAME in "${RECORD_NAMES[@]}"; do
+            result=$(fetch_record "$NAME")
+            REC_ID=$(echo "$result" | extract_field id) || { log "FIGYELEM: nincs A rekord: $NAME — kihagyva"; continue; }
+            log "--- $NAME ---"
+            echo "$result" | python3 -c "import sys,json
 d=json.load(sys.stdin)
 if not d.get('success'):
     print('API hiba:', d.get('errors')); sys.exit(1)
-for r in d['result']:
-    print(f\"  ID:      {r['id']}\")
-    print(f\"  Content: {r['content']}\")
-    print(f\"  TTL:     {r['ttl']}s\")
-    print(f\"  Proxied: {r['proxied']}\")
-    print(f\"  Modified: {r['modified_on']}\")"
+r=d['result'][0]
+print(f\"  ID:      {r['id']}\")
+print(f\"  Content: {r['content']}\")
+print(f\"  TTL:     {r['ttl']}s\")
+print(f\"  Proxied: {r['proxied']}\")
+print(f\"  Modified: {r['modified_on']}\")"
+        done
         ;;
 
     prepare)
         log "=== TTL leszallitas 60s-ra (felkeszules failover-re) ==="
-        result=$(fetch_record)
-        REC_ID=$(echo "$result" | extract_field id)
-        CURRENT_IP=$(echo "$result" | extract_field content)
-        CURRENT_TTL=$(echo "$result" | extract_field ttl)
-        log "Record ID: $REC_ID, jelenlegi IP: $CURRENT_IP, TTL: $CURRENT_TTL"
+        for NAME in "${RECORD_NAMES[@]}"; do
+            result=$(fetch_record "$NAME")
+            REC_ID=$(echo "$result" | extract_field id) || { log "FIGYELEM: nincs A rekord: $NAME — kihagyva"; continue; }
+            CURRENT_IP=$(echo "$result" | extract_field content)
+            CURRENT_TTL=$(echo "$result" | extract_field ttl)
+            log "$NAME: Record ID: $REC_ID, jelenlegi IP: $CURRENT_IP, TTL: $CURRENT_TTL"
 
-        if [[ "$CURRENT_TTL" == "60" ]]; then
-            log "TTL mar 60s, nincs valtozas"
-        else
-            curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
-                -H "Content-Type: application/json" \
-                -X PATCH "$API/zones/$CF_ZONE_ID/dns_records/$REC_ID" \
-                -d '{"ttl":60}' | python3 -c "import sys,json; d=json.load(sys.stdin); print('Uj TTL:', d['result']['ttl'] if d.get('success') else 'HIBA')"
-        fi
+            if [[ "$CURRENT_TTL" == "60" ]]; then
+                log "$NAME: TTL mar 60s, nincs valtozas"
+            else
+                curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
+                    -H "Content-Type: application/json" \
+                    -X PATCH "$API/zones/$CF_ZONE_ID/dns_records/$REC_ID" \
+                    -d '{"ttl":60}' | python3 -c "import sys,json; d=json.load(sys.stdin); print('Uj TTL:', d['result']['ttl'] if d.get('success') else 'HIBA')"
+            fi
+        done
         ;;
 
     apply)
         TARGET_IP="${STANDBY_IP:-${PRIMARY_IP:-}}"
         : "${TARGET_IP:?STANDBY_IP vagy PRIMARY_IP kotelezo}"
 
-        log "=== A record atkapcsolas -> $TARGET_IP ==="
-        result=$(fetch_record)
-        REC_ID=$(echo "$result" | extract_field id)
-        OLD_IP=$(echo "$result" | extract_field content)
-        log "Record ID: $REC_ID, regi IP: $OLD_IP -> uj IP: $TARGET_IP"
-
-        if [[ "$OLD_IP" == "$TARGET_IP" ]]; then
-            log "A record mar a celon van, nincs valtozas"
-            exit 0
-        fi
+        log "=== A record-ok atkapcsolasa -> $TARGET_IP (${RECORD_NAMES[*]}) ==="
 
         # Megerositest kerunk (interaktiv). CF_AUTO=1 -> kihagyas (auto-failover, watchdog).
         if [[ "${CF_AUTO:-0}" != "1" ]]; then
@@ -118,24 +114,44 @@ for r in d['result']:
             log "CF_AUTO=1 -> interaktiv megerosites kihagyva (auto-failover)"
         fi
 
-        curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -X PATCH "$API/zones/$CF_ZONE_ID/dns_records/$REC_ID" \
-            -d "{\"content\":\"$TARGET_IP\",\"ttl\":60}" \
-            | python3 -c "import sys,json
+        for NAME in "${RECORD_NAMES[@]}"; do
+            result=$(fetch_record "$NAME")
+            REC_ID=$(echo "$result" | extract_field id) || { log "FIGYELEM: nincs A rekord: $NAME — kihagyva"; continue; }
+            OLD_IP=$(echo "$result" | extract_field content)
+            log "$NAME: Record ID: $REC_ID, regi IP: $OLD_IP -> uj IP: $TARGET_IP"
+
+            if [[ "$OLD_IP" == "$TARGET_IP" ]]; then
+                log "$NAME: A record mar a celon van, nincs valtozas"
+                continue
+            fi
+
+            # Cloudflare PATCH partial-update: a proxied flag automatikusan megorzodik.
+            # Egy rekord CF-hibaja NE allitsa meg a masik rekord feldolgozasat (set -e alatt):
+            # a PATCH-hibat naplozzuk es continue-val a kovetkezo rekordra lepunk (fail-loud, nem nema).
+            if ! curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
+                -H "Content-Type: application/json" \
+                -X PATCH "$API/zones/$CF_ZONE_ID/dns_records/$REC_ID" \
+                -d "{\"content\":\"$TARGET_IP\",\"ttl\":60}" \
+                | python3 -c "import sys,json
 d=json.load(sys.stdin)
 if not d.get('success'):
     print('HIBA:', d.get('errors')); sys.exit(1)
 r=d['result']
 print(f'  Uj IP:    {r[\"content\"]}')
 print(f'  TTL:      {r[\"ttl\"]}s')
-print(f'  Modified: {r[\"modified_on\"]}')"
+print(f'  Modified: {r[\"modified_on\"]}')"; then
+                err "$NAME: A PATCH NEM sikerult (CF API hiba) — a tobbi rekord feldolgozasa folytatodik"
+                continue
+            fi
+        done
 
         log "DNS atkapcsolas KESZ - propagacio ~$(( ${TTL:-60} + 60 ))s alatt"
         log ""
         log "Verifikacio:"
         log "  dig +short $DOMAIN @1.1.1.1"
         log "  dig +short $DOMAIN @8.8.8.8"
+        log "  dig +short www.$DOMAIN @1.1.1.1"
+        log "  dig +short www.$DOMAIN @8.8.8.8"
         log "  curl -s -o /dev/null -w '%{http_code}\\n' https://$DOMAIN/api/v1/auth/bootstrap-status"
         ;;
 
