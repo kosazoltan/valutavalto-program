@@ -397,6 +397,7 @@ jobs:
           mkdir -p "$DEST"
           cp /tmp/primary-watchdog.sh "$DEST/primary-watchdog.sh"
           chmod +x "$DEST/primary-watchdog.sh"
+          chmod +x "$DEST"/*.sh 2>/dev/null || true
           cp /tmp/primary-watchdog.service /etc/systemd/system/primary-watchdog.service
           cp /tmp/primary-watchdog.timer /etc/systemd/system/primary-watchdog.timer
           systemctl daemon-reload

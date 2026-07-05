@@ -72,7 +72,11 @@ if sudo -u postgres psql -c "SELECT pg_is_in_recovery();" | grep -q ' t'; then
 fi
 log "PG promote OK - DB most irhato"
 
-# Replication slot cleanup (most primary lett, nem kell mar standby_slot)
+# Replication slot cleanup — defenzív no-op ezen a node-on.
+# A standby_slot% slotok a RÉGI primary-n (Hetzner) vannak, nem itt.
+# A promote után ez a node új primary, de nem örökli a régi slotokat.
+# A tényleges slot-cleanup a #1319 guard feladata a Hetzner primary-n.
+# Ez a loop biztonsági háló: ha valamiért lennének lokális standby_slot% slotok.
 sudo -u postgres psql -tA -c "SELECT slot_name FROM pg_replication_slots WHERE slot_name LIKE 'standby_slot%';" | while read -r slot; do
     [[ -n "$slot" ]] && sudo -u postgres psql -c "SELECT pg_drop_replication_slot('$slot');" || true
 done

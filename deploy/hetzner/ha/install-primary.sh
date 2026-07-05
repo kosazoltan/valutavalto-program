@@ -53,7 +53,7 @@ declare -A settings=(
     ["max_wal_senders"]="10"
     ["max_replication_slots"]="10"
     ["hot_standby"]="on"
-    ["wal_keep_size"]="2048"
+    ["wal_keep_size"]="256"
 )
 for key in "${!settings[@]}"; do
     if grep -qE "^${key}\s*=" "$PG_CONF"; then
@@ -99,7 +99,7 @@ log "KOVETKEZO LEPESEK a STANDBY VPS-eken:"
 log "  1. SSH mindegyikre (Contabo, Scaleway)"
 log "  2. apt install postgresql-16 (ha nincs)"
 log "  3. Futtasd: PRIMARY_IP=$(hostname -I | awk '{print $1}') \\"
-log "                REPLICATION_PASSWORD='$REPLICATION_PASSWORD' \\"
+log "                REPLICATION_PASSWORD=<REDACTED> \\"
 log "                SLOT_NAME=standby_slot_<N>  \\"
 log "                bash install-standby.sh"
 log ""

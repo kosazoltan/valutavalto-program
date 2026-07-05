@@ -25,6 +25,27 @@ fi
 log "=== PG stop + data wipe ==="
 systemctl stop postgresql@16-main
 DATA_DIR=/var/lib/postgresql/16/main
+
+# --- A1: PRE-FLIGHT GUARD — sosem wipe-olunk primary data dir-t ---
+if sudo -u postgres pg_isready -q 2>/dev/null; then
+    # PG még fut — pg_is_in_recovery() dönt
+    recovery="$(sudo -u postgres psql -tAc 'SELECT pg_is_in_recovery()' 2>/dev/null | tr -d '[:space:]')"
+    if [ "$recovery" = "f" ]; then
+        log "ABORT: pg_is_in_recovery()=f — ez a node PRIMARY! A data wipe LEALLITVA."
+        log "Ha tenyleg standby-t epitesz, bizonyoskodj rola, hogy ez a node standby-e."
+        exit 1
+    fi
+    log "pre-flight OK: pg_is_in_recovery()=$recovery (standby)"
+elif [ -f "$DATA_DIR/standby.signal" ]; then
+    log "pre-flight OK: PG leallitva, standby.signal jelen — korábbi standby"
+else
+    log "FIGYELEM: PG nem fut es nincs standby.signal — ez PRIMARY lehet!"
+    log "Ha ez egy UJ standby-setup (ures/friss PG install), jovahagyas:"
+    log "  STANDBY_SETUP_CONFIRM=1 PRIMARY_IP=... REPLICATION_PASSWORD=... bash install-standby.sh"
+    [ "${STANDBY_SETUP_CONFIRM:-0}" = "1" ] || { log "ABORT: STANDBY_SETUP_CONFIRM=1 hianyzik"; exit 1; }
+    log "STANDBY_SETUP_CONFIRM=1 — folytatod (friss install, kockazatvallalas)"
+fi
+
 find "$DATA_DIR" -mindepth 1 -delete 2>/dev/null || true
 
 log "=== pg_basebackup - klonozas primary-rol (slot: $SLOT_NAME) ==="

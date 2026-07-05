@@ -139,11 +139,12 @@ if [ "${1:-}" = "--test" ]; then
 fi
 
 # --- allapot betoltes ---
-fails=0; alerted=0; promoted=0; failback_notified=0
+fails=0; alerted=0; promoted=0; failback_notified=0; failover_failed=0
 if [ -f "$STATE_FILE" ]; then
   fails="$(sed -n '1p' "$STATE_FILE" 2>/dev/null | grep -oE '^[0-9]+' || echo 0)"
   grep -q '^alerted=1$'  "$STATE_FILE" 2>/dev/null && alerted=1
   grep -q '^promoted=1$' "$STATE_FILE" 2>/dev/null && promoted=1
+  grep -q '^failover_failed=1$' "$STATE_FILE" 2>/dev/null && failover_failed=1
 fi
 fb=$(grep -oE '^failback_notified=[0-9]+$' "$STATE_FILE" 2>/dev/null | cut -d= -f2 || true)
 [ -n "$fb" ] && failback_notified="$fb"
@@ -152,6 +153,7 @@ save_state() {
   { printf '%s\n' "$fails"
     [ "$alerted" = "1" ]  && echo "alerted=1"
     [ "$promoted" = "1" ] && echo "promoted=1"
+    [ "$failover_failed" = "1" ] && echo "failover_failed=1"
     [ "$failback_notified" != "0" ] && echo "failback_notified=$failback_notified"
     # a rovidzart [ ] && ... utolso parancskent 1-et adna -> a compound (es a save_state-tel
     # zarulo script) hibas exit-koddal terne vissza a happy-path-on -> systemd oneshot "failed".
@@ -170,7 +172,7 @@ if [ "$status" = "up" ]; then
     if [ "$APEX_IP" = "$ORIGIN_IP" ]; then
       send_email "[excvaluta RECOVERED] failback KESZ — Hetzner a primary" \
         "A primary ujra elerheto (pub=${LAST_PUB}, origin=${LAST_ORIG}) ES a Cloudflare DNS mar a Hetzner originre ($ORIGIN_IP) mutat. Ido: $(date -u). Ellenorizd, hogy a Scaleway PG nem maradt-e promotalt primary (split-brain runbook)."
-      fails=0; alerted=0; promoted=0; failback_notified=0; save_state
+      fails=0; alerted=0; promoted=0; failback_notified=0; failover_failed=0; save_state
     else
       now=$(date +%s)
       if [ $(( now - failback_notified )) -ge "$FAILBACK_REMIND_SECS" ]; then
@@ -185,7 +187,7 @@ if [ "$status" = "up" ]; then
       send_email "[excvaluta RECOVERED] a primary ujra elerheto" \
         "Az excvaluta.com ismet HTTP 200 (pub=${LAST_PUB}, origin=${LAST_ORIG}). Ido: $(date -u)"
     fi
-    fails=0; alerted=0; promoted=0; failback_notified=0; save_state
+    fails=0; alerted=0; promoted=0; failback_notified=0; failover_failed=0; save_state
   fi
 else
   # ----- DOWN -----
@@ -195,8 +197,18 @@ else
       "A Hetzner primary (excvaluta.com) ${fails} egymast koveto ellenorzesnel NEM elerheto (pub=${LAST_PUB}, origin=${LAST_ORIG}). Ido: $(date -u). $([ "$AUTO_FAILOVER" = yes ] && echo "Ha tartos (${PROMOTE_THRESHOLD} ellenorzes), automatikus failover indul." || echo "Kezi failover: scaleway-failover-runbook.md")"
     alerted=1
   fi
-  if [ "$AUTO_FAILOVER" = "yes" ] && [ "$fails" -ge "$PROMOTE_THRESHOLD" ] && [ "$promoted" = "0" ]; then
-    if do_auto_failover; then promoted=1; fi
+  if [ "$AUTO_FAILOVER" = "yes" ] && [ "$fails" -ge "$PROMOTE_THRESHOLD" ] && [ "$promoted" = "0" ] && [ "$failover_failed" = "0" ]; then
+    if do_auto_failover; then
+      promoted=1
+    else
+      # A6: sikertelen failover — ne probalkozzon ujra percenkent
+      failover_failed=1
+      send_email "[excvaluta AUTO-FAILOVER] SIKERTELEN — kézi beavatkozás kell" \
+        "Az automatikus failover (${fails} bukas után) SIKERTELEN volt. A retry-vihar megállítva. \
+KÉZI beavatkozás szükséges: 1) ellenőrizd a Scaleway standby állapotát, 2) ha a primary helyreállt, \
+töröld a state file-t ($STATE_FILE) a failover_failed flag eltávolításához, 3) runbook: scaleway-failover-runbook.md. \
+Ido: $(date -u)"
+    fi
   fi
   save_state
 fi
