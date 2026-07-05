@@ -30,6 +30,13 @@ DATA_DIR=/var/lib/postgresql/16/main
 if sudo -u postgres pg_isready -q 2>/dev/null; then
     # PG még fut — pg_is_in_recovery() dönt
     recovery="$(sudo -u postgres psql -tAc 'SELECT pg_is_in_recovery()' 2>/dev/null | tr -d '[:space:]')"
+    if [ -z "$recovery" ]; then
+        # HA-AUDIT-A1-EDGE: pg_isready zöld de a psql race/hiba miatt recovery üres.
+        # NE továbbengedjük (false-negative: potenciálisan primary wipe). Fail-safe: ABORT.
+        log "ABORT: pg_is_in_recovery() nem elérhető (psql race/hiba, recovery=''). A data wipe LEALLITVA."
+        log "Ha ez tenyleg standby, inditsd ujra a PG-t es ellenorizd a peer-auth-ot, majd probald ujra."
+        exit 1
+    fi
     if [ "$recovery" = "f" ]; then
         log "ABORT: pg_is_in_recovery()=f — ez a node PRIMARY! A data wipe LEALLITVA."
         log "Ha tenyleg standby-t epitesz, bizonyoskodj rola, hogy ez a node standby-e."
