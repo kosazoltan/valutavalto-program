@@ -10,10 +10,13 @@ const mocks = vi.hoisted(() => ({
   transactionApiSell: vi.fn(),
   toast: {
     success: vi.fn(),
+    info: vi.fn(),
     warning: vi.fn(),
     error: vi.fn(),
   },
   saveAndSyncPendingBuySell: vi.fn(),
+  apiPost: vi.fn(),
+  electronQueueAvailable: false,
   identificationLevel: 'SIMPLE' as 'SIMPLE' | 'SIMPLIFIED' | 'FULL',
   minimumLevel: 'SIMPLE' as 'SIMPLE' | 'SIMPLIFIED' | 'FULL',
   requiresSourceVerification: false,
@@ -87,6 +90,46 @@ vi.mock('../../services/api/index', () => ({
   },
 }))
 
+vi.mock('../../services/api/client', () => ({
+  api: {
+    post: mocks.apiPost,
+  },
+}))
+
+vi.mock('../../stores/authStore', () => ({
+  useAuthStore: (selector?: (state: any) => unknown) => {
+    const worker = {
+      id: 7,
+      workerCode: 'PENZTAR-7',
+      firstName: 'Teszt',
+      lastName: 'Pénztáros',
+      fullName: 'Teszt Pénztáros',
+      role: 'CASHIER',
+      branchId: 'branch-1',
+      branchCode: 'BUD-01',
+      branchName: 'Budapest 01',
+      companyId: 'company-1',
+      companyCode: 'EBC',
+      companyName: 'Exclusive Best Change Zrt.',
+    }
+    const state = { worker, user: worker }
+    return typeof selector === 'function' ? selector(state) : state
+  },
+}))
+
+vi.mock('../../components/auth/AmlApproverModal', () => ({
+  default: (props: any) => props.open ? (
+    <button
+      type="button"
+      data-testid="aml-approve"
+      onClick={() => props.onApproved(42, 'Teszt Vezető')}
+    >
+      AML approve
+    </button>
+  ) : null,
+  toApprovalCustomer: (c: any) => c,
+}))
+
 vi.mock('../../components/ui/toaster', () => ({
   toast: mocks.toast,
 }))
@@ -105,7 +148,7 @@ vi.mock('./hooks/useTransactionRates', () => ({
       { currencyId: 1, currencyCode: 'EUR', currencyName: 'Euró', baseBuyRate: 391.50, baseSellRate: 398.50, active: true, officialRate: 395 },
       { currencyId: 2, currencyCode: 'USD', currencyName: 'US Dollár', baseBuyRate: 358.20, baseSellRate: 365.80, active: true, officialRate: 362 },
     ],
-    electronQueueAvailable: false,
+    electronQueueAvailable: mocks.electronQueueAvailable,
   }),
 }))
 
@@ -200,6 +243,8 @@ describe('TransactionPage', () => {
     mocks.identificationLevel = 'SIMPLE'
     mocks.minimumLevel = 'SIMPLE'
     mocks.requiresSourceVerification = false
+    mocks.electronQueueAvailable = false
+    mocks.apiPost.mockResolvedValue({ data: { requiresApproval: false } })
   })
 
   it('oldal renderelésének ellenőrzése', () => {
@@ -398,6 +443,97 @@ describe('TransactionPage', () => {
         isPep: true,
       }),
     ])
+  })
+
+  it('offline queue mentés FULL AML ügyfélmezőket is továbbít', async () => {
+    mocks.electronQueueAvailable = true
+    mocks.saveAndSyncPendingBuySell.mockResolvedValue({
+      savedIds: [1],
+      syncedCount: 1,
+      pendingCount: 0,
+      allSavedSynced: true,
+      syncErrors: [],
+      localReferenceNumbers: ['P-1'],
+    })
+    const user = userEvent.setup()
+
+    renderTransactionPage()
+
+    await enterForeignAmount(user, '100')
+    await fillAmlCustomer(user)
+    await user.click(screen.getByTestId('tx-save-print'))
+
+    await waitFor(() => {
+      expect(mocks.saveAndSyncPendingBuySell).toHaveBeenCalled()
+    })
+    const entry = mocks.saveAndSyncPendingBuySell.mock.calls[0]![0][0]
+    expect(entry).toEqual(expect.objectContaining({
+      customerIsPep: true,
+      customerPepKind: 'KORMANYFO',
+      sourceOfFunds: 'SAVINGS',
+      customerOnOwnBehalf: false,
+      customerActorName: 'Meghatalmazott Péter',
+      customerActorDocumentNumber: 'P1234567',
+      isLegalEntityCustomer: true,
+      legalEntityName: 'Teszt Kft.',
+    }))
+    expect(typeof entry.beneficialOwnersJson).toBe('string')
+    const owners = JSON.parse(entry.beneficialOwnersJson)
+    expect(owners[0].name).toBe('Tulajdonos Tímea')
+  })
+
+  it('AML approval pre-check jóváhagyást kér és nem indít azonnal BUY mentést', async () => {
+    mocks.apiPost.mockResolvedValue({ data: { requiresApproval: true, reason: 'limit' } })
+    mocks.transactionApiBuy.mockResolvedValue({ receiptNumber: 'RCP-APPROVAL' })
+    const user = userEvent.setup()
+
+    renderTransactionPage()
+    await enterForeignAmount(user, '100')
+    await fillAmlCustomer(user)
+    await user.click(screen.getByTestId('tx-save-print'))
+
+    expect(await screen.findByTestId('aml-approve')).toBeInTheDocument()
+    expect(mocks.transactionApiBuy).not.toHaveBeenCalled()
+  })
+
+  it('AML jóváhagyás után approver és session mezőkkel indít BUY mentést', async () => {
+    mocks.apiPost.mockResolvedValue({ data: { requiresApproval: true, reason: 'limit' } })
+    mocks.transactionApiBuy.mockResolvedValue({ receiptNumber: 'RCP-APPROVAL' })
+    const user = userEvent.setup()
+
+    renderTransactionPage()
+    await enterForeignAmount(user, '100')
+    await fillAmlCustomer(user)
+    await user.click(screen.getByTestId('tx-save-print'))
+    await user.click(await screen.findByTestId('aml-approve'))
+
+    await waitFor(() => {
+      expect(mocks.transactionApiBuy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          approverWorkerId: 42,
+          approvalSessionId: expect.any(String),
+        }),
+      )
+    })
+    const payload = firstBuyPayload()
+    expect(payload.approvalSessionId).not.toBe('')
+    expect(mocks.toast.info).toHaveBeenCalled()
+  })
+
+  it('AML approval pre-check nem nyit modalt ha nem kell jóváhagyás és azonnal ment', async () => {
+    mocks.apiPost.mockResolvedValue({ data: { requiresApproval: false } })
+    mocks.transactionApiBuy.mockResolvedValue({ receiptNumber: 'RCP-NO-APPROVAL' })
+    const user = userEvent.setup()
+
+    renderTransactionPage()
+    await enterForeignAmount(user, '100')
+    await fillAmlCustomer(user)
+    await user.click(screen.getByTestId('tx-save-print'))
+
+    await waitFor(() => {
+      expect(mocks.transactionApiBuy).toHaveBeenCalled()
+    })
+    expect(screen.queryByTestId('aml-approve')).not.toBeInTheDocument()
   })
 
   it('sikeres SELL tranzakció mentésekor API-t meghívja', async () => {
