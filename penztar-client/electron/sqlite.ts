@@ -3,9 +3,21 @@ import path from 'node:path';
 import { app } from 'electron';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import type { PendingConversionInputV2, PendingTransactionInputV2 } from '@valuta/shared-ipc';
+import type {
+  PendingConversionInputV2,
+  PendingHandoverOperationInput,
+  PendingStornoInput,
+  PendingTransactionInputV2,
+  PendingTransferStornoInput,
+} from '@valuta/shared-ipc';
 
-export type { PendingConversionInputV2, PendingTransactionInputV2 };
+export type {
+  PendingConversionInputV2,
+  PendingHandoverOperationInput,
+  PendingStornoInput,
+  PendingTransactionInputV2,
+  PendingTransferStornoInput,
+};
 
 let db: Database | null = null;
 let dbPath = '';
@@ -2399,21 +2411,7 @@ export function markBankTransactionSynced(id: number): void {
   saveDatabase();
 }
 
-export function savePendingStorno(params: {
-  transactionId: number;
-  originalReceiptNumber: string;
-  originalTransactionType: string;
-  currencyCode: string;
-  foreignAmount: number | null;
-  hufAmount: number;
-  exchangeRate: number | null;
-  reason: string;
-  approvalId?: string | null;
-  customExchangeRate?: number | null;
-  paymentMethod?: string | null;
-  customerName?: string | null;
-  customerDocumentNumber?: string | null;
-}): number {
+export function savePendingStorno(params: PendingStornoInput): number {
   if (!db) throw new Error('Database not initialized');
   const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
   const roundFinOrNull = (v: number | null, decimals: number): number | null =>
@@ -2538,11 +2536,7 @@ export interface PendingTransferStornoRow {
  * vissza a készletet a szinkronkor — a penztar-client nem tart külön cash_balance-t (a lokális
  * pozíció a backendről szinkronizálódik), így az offline tranzakció-sztornóval AZONOS minta.
  */
-export function savePendingTransferStorno(params: {
-  transferId: number;
-  transferNumber?: string | null;
-  reason: string;
-}): number {
+export function savePendingTransferStorno(params: PendingTransferStornoInput): number {
   if (!db) throw new Error('Database not initialized');
   const localReferenceNumber = generateLocalReference('LTS');
   const idempotencyKey = crypto.randomUUID();
@@ -2715,15 +2709,7 @@ export function getReassertableBankTransactions(sinceIso: string): PendingBankTr
   return results;
 }
 
-export function savePendingHandoverOperation(params: {
-  operationType: 'GENERATE' | 'PRINT' | 'COMPLETE';
-  sheetId?: string | null;
-  fromCashDeskId?: string | null;
-  toCashDeskId?: string | null;
-  transferDate?: string | null;
-  amounts?: unknown;
-  note?: string | null;
-}): number {
+export function savePendingHandoverOperation(params: PendingHandoverOperationInput): number {
   if (!db) throw new Error('Database not initialized');
 
   const localReferenceNumber = generateLocalReference(

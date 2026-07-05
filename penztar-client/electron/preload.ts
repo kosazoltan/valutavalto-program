@@ -190,21 +190,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
       note,
     ),
 
-  savePendingStorno: (payload: {
-    transactionId: number;
-    originalReceiptNumber: string;
-    originalTransactionType: string;
-    currencyCode: string;
-    foreignAmount: number | null;
-    hufAmount: number;
-    exchangeRate: number | null;
-    reason: string;
-    approvalId?: string | null;
-    customExchangeRate?: number | null;
-    paymentMethod?: string | null;
-    customerName?: string | null;
-    customerDocumentNumber?: string | null;
-  }): Promise<number> =>
+  savePendingStorno: (
+    payload: IpcRequest<'save-pending-storno'>,
+  ): Promise<IpcResponse<'save-pending-storno'>> =>
     ipcRenderer.invoke('save-pending-storno', payload),
 
   getPendingTransactions: (): Promise<Array<{
@@ -308,7 +296,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('get-pending-stornos'),
 
   // Offline átadás-átvétel SZTORNÓ (internetkimaradáskor): a backend fordítja vissza a készletet szinkronkor.
-  savePendingTransferStorno: (payload: { transferId: number; transferNumber?: string | null; reason: string }): Promise<number> =>
+  savePendingTransferStorno: (
+    payload: IpcRequest<'save-pending-transfer-storno'>,
+  ): Promise<IpcResponse<'save-pending-transfer-storno'>> =>
     ipcRenderer.invoke('save-pending-transfer-storno', payload),
   getPendingTransferStornos: (): Promise<Array<{
     id: number;
@@ -491,18 +481,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     actualQuantity: number,
     note: string | null,
     idempotencyKey: string | null,
-  ): Promise<number> =>
-    ipcRenderer.invoke('queue-stocktake-count', itemId, actualQuantity, note, idempotencyKey),
+  ): Promise<IpcResponse<'queue-stocktake-count'>> => {
+    const args: IpcRequest<'queue-stocktake-count'> = [itemId, actualQuantity, note, idempotencyKey];
+    return ipcRenderer.invoke('queue-stocktake-count', ...args);
+  },
 
-  savePendingHandoverOperation: (payload: {
-    operationType: 'GENERATE' | 'PRINT' | 'COMPLETE';
-    sheetId?: string | null;
-    fromCashDeskId?: string | null;
-    toCashDeskId?: string | null;
-    transferDate?: string | null;
-    amounts?: unknown;
-    note?: string | null;
-  }): Promise<number> =>
+  savePendingHandoverOperation: (
+    payload: IpcRequest<'save-pending-handover-operation'>,
+  ): Promise<IpcResponse<'save-pending-handover-operation'>> =>
     ipcRenderer.invoke('save-pending-handover-operation', payload),
 
   getPendingHandoverOperations: (): Promise<Array<{

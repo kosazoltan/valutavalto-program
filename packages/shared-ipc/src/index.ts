@@ -220,6 +220,47 @@ export type SavePendingTransferArgs = [
   lines?: string | null,
 ]
 
+// ---- Pénzmozgás IPC X4/B (2026-07-05): további pénzmozgás/leltár írások ----
+export interface PendingStornoInput {
+  transactionId: number;
+  originalReceiptNumber: string;
+  originalTransactionType: string;
+  currencyCode: string;
+  foreignAmount: number | null;
+  hufAmount: number;
+  exchangeRate: number | null;
+  reason: string;
+  approvalId?: string | null;
+  customExchangeRate?: number | null;
+  paymentMethod?: string | null;
+  customerName?: string | null;
+  customerDocumentNumber?: string | null;
+}
+
+export interface PendingTransferStornoInput {
+  transferId: number;
+  transferNumber?: string | null;
+  reason: string;
+}
+
+export interface PendingHandoverOperationInput {
+  operationType: 'GENERATE' | 'PRINT' | 'COMPLETE';
+  sheetId?: string | null;
+  fromCashDeskId?: string | null;
+  toCashDeskId?: string | null;
+  transferDate?: string | null;
+  amounts?: unknown;
+  note?: string | null;
+}
+
+// Pozicionális wire (Sprint 7.1) — a tuple címkézett, a formátum változatlan.
+export type QueueStocktakeCountArgs = [
+  itemId: string,
+  actualQuantity: number,
+  note: string | null,
+  idempotencyKey: string | null,
+]
+
 // ---- Aggregate contract table ----
 // A router-szintu fel-hasznalas: Record<channel, req/res parja>
 export interface IpcRoutes {
@@ -255,6 +296,22 @@ export interface IpcRoutes {
     request: void
     response: number // syncAll().synced — NEM a teljes SyncResult
   }
+  'save-pending-storno': {
+    request: PendingStornoInput
+    response: number
+  }
+  'save-pending-transfer-storno': {
+    request: PendingTransferStornoInput
+    response: number
+  }
+  'save-pending-handover-operation': {
+    request: PendingHandoverOperationInput
+    response: number
+  }
+  'queue-stocktake-count': {
+    request: QueueStocktakeCountArgs
+    response: number
+  }
 }
 
 // Type helper: kihuzza egy channel request/response tipusat
@@ -271,4 +328,8 @@ export const IPC_CHANNELS = {
   SAVE_PENDING_CONVERSION_V2: 'save-pending-conversion-v2' as const,
   SAVE_PENDING_TRANSFER: 'save-pending-transfer' as const,
   SYNC_OFFLINE: 'sync-offline' as const,
+  SAVE_PENDING_STORNO: 'save-pending-storno' as const,
+  SAVE_PENDING_TRANSFER_STORNO: 'save-pending-transfer-storno' as const,
+  SAVE_PENDING_HANDOVER_OPERATION: 'save-pending-handover-operation' as const,
+  QUEUE_STOCKTAKE_COUNT: 'queue-stocktake-count' as const,
 } satisfies Record<string, keyof IpcRoutes>

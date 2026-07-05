@@ -45,6 +45,9 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   IPC_CHANNELS,
+  type PendingHandoverOperationInput,
+  type PendingStornoInput,
+  type PendingTransferStornoInput,
   type SetupWorkerOption,
   type SetupWorkersRequest,
 } from '@valuta/shared-ipc';
@@ -582,21 +585,7 @@ ipcMain.handle('get-pending-bank-transactions', async (): Promise<ReturnType<typ
   return getPendingBankTransactions();
 });
 
-ipcMain.handle('save-pending-storno', async (_event, payload: {
-  transactionId: number;
-  originalReceiptNumber: string;
-  originalTransactionType: string;
-  currencyCode: string;
-  foreignAmount: number | null;
-  hufAmount: number;
-  exchangeRate: number | null;
-  reason: string;
-  approvalId?: string | null;
-  customExchangeRate?: number | null;
-  paymentMethod?: string | null;
-  customerName?: string | null;
-  customerDocumentNumber?: string | null;
-}): Promise<number> => {
+ipcMain.handle('save-pending-storno', async (_event, payload: PendingStornoInput): Promise<number> => {
   return savePendingStorno(payload);
 });
 
@@ -605,11 +594,7 @@ ipcMain.handle('get-pending-stornos', async (): Promise<ReturnType<typeof getPen
 });
 
 // Offline átadás-átvétel SZTORNÓ (internetkimaradáskor): queue → sync → backend visszafordítás.
-ipcMain.handle('save-pending-transfer-storno', async (_event, payload: {
-  transferId: number;
-  transferNumber?: string | null;
-  reason: string;
-}): Promise<number> => {
+ipcMain.handle('save-pending-transfer-storno', async (_event, payload: PendingTransferStornoInput): Promise<number> => {
   return savePendingTransferStorno(payload);
 });
 
@@ -750,15 +735,7 @@ ipcMain.handle('queue-stocktake-count', async (
   return queueStocktakeCount(itemId, actualQuantity, note, idempotencyKey);
 });
 
-ipcMain.handle('save-pending-handover-operation', async (_event, payload: {
-  operationType: 'GENERATE' | 'PRINT' | 'COMPLETE';
-  sheetId?: string | null;
-  fromCashDeskId?: string | null;
-  toCashDeskId?: string | null;
-  transferDate?: string | null;
-  amounts?: unknown;
-  note?: string | null;
-}): Promise<number> => {
+ipcMain.handle('save-pending-handover-operation', async (_event, payload: PendingHandoverOperationInput): Promise<number> => {
   return savePendingHandoverOperation(payload);
 });
 
