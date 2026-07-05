@@ -79,6 +79,31 @@ A jelenlegi `scaleway-ha-restore.yml` NEM futtatható újra biztonságosan:
 stabil. A HA visszaépítése a maradék #1 (slot-orphan-guard kód) + user-jóváhagyás után,
 pipeline-on. A #2 (kötet-bővítés) KÉSZ.
 
+## ✅ HA VISSZAÉPÍTVE — sync-streaming RPO=0 (07-05, KÉSZ)
+1. Slot-orphan-guard: **PR #1319 MERGED** (`scaleway-ha-restore.yml`): runner-szintű
+   `trap cleanup_orphan_slot EXIT` + `SLOT_GUARD_ARMED` flag, csak inaktív slotot dob,
+   exit-kód-megőrzéssel. Pipeline: Fable→GPT-5.5→GLM APPROVE→holdout 7/7.
+2. Guardolt HA-rebuild lefutott (dry_run zöld → éles): a 8GB kötet + basebackup-retry
+   megoldotta a korábbi SSL EOF-et. Eredmény: **`scaleway_standby streaming/sync`, lag=0,
+   `synchronous_commit=on`**, sync-írásteszt átment. A slot-guard ÉLESBEN bizonyított: a
+   workflow exit=3-kor `active=true` slotot talált → NEM dobta el (I1 invariáns), prod 200.
+3. A workflow `exit=3`-mal zárult, de NEM HA-hiba: a `sync-replication-guard.service`
+   **203/EXEC**-kel crash-loopolt (26926 restart!) — a `sync-replication-guard.sh`-ról
+   HIÁNYZOTT az execute-bit. FIX: `chmod +x` → `active`, restart=0. ⚠️ BACKLOG: a deploy/
+   install-workflow-nak `chmod +x`-elnie kell a HA-scripteket, különben redeploy után újra 203.
+4. Write-block védelem MEGVAN a watchdog nélkül is: a `sync-replication-guard` auto-degradál
+   `synchronous_standby_names=''`-re, ha a standby `DOWN_CYCLES` cikluson át hiányzik →
+   a Hetzner írható marad (`wal_sender_timeout=10s` gyors detektálás).
+
+## ⏸️ primary-watchdog (off-host auto-failover) — SZÁNDÉKOSAN NEM telepítve
+A `scaleway-ha-restore.yml` utolsó lépése (watchdog-install a Scaleway-re) kimaradt az
+exit=3 miatt. NEM telepítettem autonóm módon, mert a MAI teljes incidenst (DNS-misroute,
+hetekig stale prod) pontosan egy watchdog auto-failovere okozta, amit nem követett failback.
+A friss watchdog (#1318) már tartalmazza a 24h-ismétlő DNS-failback-riasztást, de az
+auto-promote+auto-DNS-swap élő prod-kockázat → USER-DÖNTÉS kell (riasztás-only vs teljes
+auto-failover). Következmény: egy TELJES Hetzner-kiesés esetén jelenleg KÉZI a failover a
+Scaleway-re. A sync-HA (RPO=0) viszont él, tehát adatvesztés nincs.
+
 ## Kulcs-tanulságok
 - CF proxied rekord mögött a `dig` a CF edge IP-ket adja; origin-igazsághoz
   `curl --resolve <host>:443:<origin-ip>` VAGY `curl localhost:8080` a boxon.
