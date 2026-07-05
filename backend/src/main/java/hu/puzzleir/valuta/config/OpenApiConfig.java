@@ -8,6 +8,8 @@ import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.oas.models.tags.Tag;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -25,12 +27,18 @@ import java.util.List;
 @Configuration
 public class OpenApiConfig {
 
+    private final ObjectProvider<BuildProperties> buildPropertiesProvider;
+
+    public OpenApiConfig(ObjectProvider<BuildProperties> buildPropertiesProvider) {
+        this.buildPropertiesProvider = buildPropertiesProvider;
+    }
+
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
                         .title("Valutaváltó ERP API")
-                        .version("2.0.0")
+                        .version(resolveVersion())
                         .description("Teljes valutaváltó/pénzváltó ERP rendszer REST API. "
                                 + "Tartalmazza a pénztár, admin, rendszer és szinkronizáció modulokat.")
                         .contact(new Contact()
@@ -51,5 +59,14 @@ public class OpenApiConfig {
                                 .bearerFormat("JWT")
                                 .description("JWT Authentication — Bearer token")))
                 .addSecurityItem(new SecurityRequirement().addList("bearerAuth"));
+    }
+
+    private String resolveVersion() {
+        BuildProperties buildProperties = buildPropertiesProvider.getIfAvailable();
+        String version = buildProperties == null ? null : buildProperties.getVersion();
+        if (version == null || version.isBlank()) {
+            return "dev";
+        }
+        return version;
     }
 }
