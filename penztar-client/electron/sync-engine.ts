@@ -221,6 +221,18 @@ function isAuthStatusError(err: unknown): boolean {
   return err instanceof HttpStatusError && (err.status === 401 || err.status === 403);
 }
 
+function isPermanentRatePrintAckError(err: unknown): boolean {
+  return (
+    err instanceof HttpStatusError &&
+    err.status >= 400 &&
+    err.status < 500 &&
+    err.status !== 401 &&
+    err.status !== 403 &&
+    err.status !== 408 &&
+    err.status !== 429
+  );
+}
+
 /**
  * Multi-tenant sync guard: TRUE when the pending row's recorded company code is
  * provably different from the active session company code. NULL/empty on either
@@ -2088,9 +2100,34 @@ export class SyncEngine {
     db: RatePrintOutboxDb,
   ): Promise<void> {
     const rows = this.readRatePrintOutboxRows(db);
+    let mutated = false;
     for (const row of rows) {
-      await this.acknowledgeRatePrint(serverUrl, token, row.distributionId, row.token);
-      db.run('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [row.distributionId]);
+      try {
+        await this.acknowledgeRatePrint(serverUrl, token, row.distributionId, row.token);
+        db.run('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [row.distributionId]);
+        mutated = true;
+      } catch (err) {
+        if (isAuthStatusError(err)) {
+          throw err;
+        }
+        if (isPermanentRatePrintAckError(err)) {
+          db.run('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [row.distributionId]);
+          mutated = true;
+          log.warn(
+            `[SyncEngine] Rate-print outbox poison sor eldobva: ${row.distributionId}`,
+            err instanceof Error ? err.message : err,
+          );
+          continue;
+        }
+        log.warn(
+          `[SyncEngine] Rate-print outbox flush átmeneti hiba, sor megtartva: ${row.distributionId}`,
+          err instanceof Error ? err.message : err,
+        );
+        break;
+      }
+    }
+    if (mutated) {
+      saveDatabase();
     }
   }
 

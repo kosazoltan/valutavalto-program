@@ -56,8 +56,10 @@ vi.mock('../printer', () => ({
 
 import { SyncEngine } from '../sync-engine';
 import { printReceipt } from '../printer';
+import { deleteConfig } from '../sqlite';
 
 const mockedPrintReceipt = vi.mocked(printReceipt);
+const mockedDeleteConfig = vi.mocked(deleteConfig);
 
 const obligation = {
   distributionId: 'dist-1',
@@ -88,6 +90,16 @@ function jsonResponse(body: unknown, ok = true, status = 200): Response {
     json: vi.fn(async () => body),
   } as unknown as Response;
 }
+
+function outboxRows(values: Array<[string, string, string]>): Array<{
+  columns: string[];
+  values: Array<[string, string, string]>;
+}> {
+  return [{ columns: ['distribution_id', 'token', 'printed_at'], values }];
+}
+
+const pendingPrintUrl =
+  'https://backend.test/api/v1/exchange-rate-master/distribution/pending-print';
 
 describe('SyncEngine — rate print obligations', () => {
   let engine: SyncEngine;
@@ -187,5 +199,163 @@ describe('SyncEngine — rate print obligations', () => {
     expect(dbRun).toHaveBeenCalledWith('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [
       'dist-1',
     ]);
+  });
+});
+
+describe('SyncEngine — rate print outbox poison isolation', () => {
+  let engine: SyncEngine;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbExec.mockReturnValue([]);
+    engine = new SyncEngine();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('poison (400) sor DROP-olódik, a következő valid sor ACK-olódik, a fetch lefut', async () => {
+    dbExec.mockReturnValueOnce(
+      outboxRows([
+        ['dist-poison', 'poison-token', '2026-07-04T09:05:00.000Z'],
+        ['dist-ok', 'ok-token', '2026-07-04T09:06:00.000Z'],
+      ]),
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 400, statusText: 'Bad Request' } as Response)
+      .mockResolvedValueOnce({ ok: true, status: 200, statusText: 'OK' } as Response)
+      .mockResolvedValueOnce(jsonResponse([]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await engine.syncRatePrintObligations();
+
+    expect(dbRun).toHaveBeenCalledWith('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [
+      'dist-poison',
+    ]);
+    expect(dbRun).toHaveBeenCalledWith('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [
+      'dist-ok',
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      pendingPrintUrl,
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('csak poison sor esetén nincs throw a hívóig és a fetch lefut', async () => {
+    dbExec.mockReturnValueOnce(
+      outboxRows([['dist-poison', 'poison-token', '2026-07-04T09:05:00.000Z']]),
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 400, statusText: 'Bad Request' } as Response)
+      .mockResolvedValueOnce(jsonResponse([]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(engine.syncRatePrintObligations()).resolves.toBeUndefined();
+
+    expect(dbRun).toHaveBeenCalledWith('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [
+      'dist-poison',
+    ]);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      pendingPrintUrl,
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(dbRun).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO rate_print_outbox'),
+      expect.any(Array),
+    );
+  });
+
+  it('HTTP 503 esetén a sor megmarad, és a fetch lefut', async () => {
+    dbExec.mockReturnValueOnce(
+      outboxRows([['dist-transient', 'transient-token', '2026-07-04T09:05:00.000Z']]),
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+      } as Response)
+      .mockResolvedValueOnce(jsonResponse([]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await engine.syncRatePrintObligations();
+
+    expect(dbRun).not.toHaveBeenCalledWith('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [
+      'dist-transient',
+    ]);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      pendingPrintUrl,
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('hálózati hiba (TypeError) esetén a sor megmarad, és a fetch lefut', async () => {
+    dbExec.mockReturnValueOnce(
+      outboxRows([['dist-network', 'network-token', '2026-07-04T09:05:00.000Z']]),
+    );
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('network down'))
+      .mockResolvedValueOnce(jsonResponse([]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await engine.syncRatePrintObligations();
+
+    expect(dbRun).not.toHaveBeenCalledWith('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [
+      'dist-network',
+    ]);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      pendingPrintUrl,
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('429 nem poison: a sor megmarad, és a fetch lefut', async () => {
+    dbExec.mockReturnValueOnce(
+      outboxRows([['dist-rate-limited', 'rate-limit-token', '2026-07-04T09:05:00.000Z']]),
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 429, statusText: 'Too Many Requests' } as Response)
+      .mockResolvedValueOnce(jsonResponse([]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await engine.syncRatePrintObligations();
+
+    expect(dbRun).not.toHaveBeenCalledWith('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [
+      'dist-rate-limited',
+    ]);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      pendingPrintUrl,
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('auth-hiba a meglévő külső auth ágon fut: outbox marad, fetch nem fut, token törlődik', async () => {
+    dbExec.mockReturnValueOnce(
+      outboxRows([['dist-auth', 'auth-token', '2026-07-04T09:05:00.000Z']]),
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+
+    await engine.syncRatePrintObligations();
+
+    expect(dbRun).not.toHaveBeenCalledWith('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [
+      'dist-auth',
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mockedDeleteConfig).toHaveBeenCalledWith('auth_token');
   });
 });
