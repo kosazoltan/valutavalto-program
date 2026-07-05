@@ -14,26 +14,21 @@ jobs:
           chmod 600 ~/.ssh/scaleway_key
           ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: 'READ-ONLY watchdog run-result probe'
+      - name: 'READ-ONLY watchdog stderr trace'
         run: |
           ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
             root@${{ secrets.SCALEWAY_SERVER_IP }} \
             bash -s << 'ENDSSH'
           set +e
-          echo "=== last 20 journal lines for the watchdog SERVICE (actual run output) ==="
-          journalctl -u primary-watchdog.service -n 20 --no-pager 2>/dev/null | tail -20
-          echo ""
-          echo "=== is the service oneshot? what is the ExecStart + result of last invocation? ==="
-          systemctl cat primary-watchdog.service 2>/dev/null | grep -viE '^\s*#' | grep -E 'ExecStart|Type='
-          echo "  last result: $(systemctl show primary-watchdog.service -p ExecMainStatus,Result --value 2>/dev/null | tr '\n' ' ')"
-          echo ""
-          echo "=== does the watchdog script run cleanly by hand (dry, no side effects if primary UP)? ==="
           WD=/opt/valutavalto/deploy/hetzner/ha/primary-watchdog.sh
-          head -1 "$WD"; echo "  perms: $(ls -la "$WD" | awk '{print $1}')"
-          echo "--- manual run (primary is UP so it must be a NO-OP path, exit 0) ---"
-          timeout 30 bash "$WD"; echo "  manual exit code: $?"
+          echo "=== run watchdog with bash -x trace, capture last 40 lines before it exits 1 ==="
+          timeout 30 bash -x "$WD" 2>&1 | tail -40
+          echo "  === exit: ${PIPESTATUS[0]} ==="
           echo ""
-          echo "=== state after manual run (failure counter must stay 0) ==="
-          cat /var/lib/primary-watchdog/state 2>/dev/null | tr '\n' ' '; echo ""
+          echo "=== the config/env block of the script (what does it need?) ==="
+          sed -n '1,60p' "$WD" | grep -nE 'PRIMARY|HEALTH|URL|EMAIL|CF_|CONFIG|source|\.env|MAIL|curl|exit 1|REQUIRE' | head -25
+          echo ""
+          echo "=== is there a watchdog .env / config file it sources? ==="
+          ls -la /opt/valutavalto/deploy/hetzner/ha/*.env /etc/primary-watchdog* 2>/dev/null
           echo "=== Kesz ==="
           ENDSSH
