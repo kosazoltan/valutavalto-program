@@ -1,6 +1,9 @@
 import type {
+  PendingHandoverOperationInput,
   PendingConversionInputV2,
+  PendingStornoInput,
   PendingTransactionInputV2,
+  PendingTransferStornoInput,
   SavePendingTransferArgs,
 } from '@valuta/shared-ipc';
 
@@ -128,21 +131,7 @@ export interface ElectronAPI {
     bankReference: string | null,
     note: string | null,
   ): Promise<number>;
-  savePendingStorno(payload: {
-    transactionId: number;
-    originalReceiptNumber: string;
-    originalTransactionType: string;
-    currencyCode: string;
-    foreignAmount: number | null;
-    hufAmount: number;
-    exchangeRate: number | null;
-    reason: string;
-    approvalId?: string | null;
-    customExchangeRate?: number | null;
-    paymentMethod?: string | null;
-    customerName?: string | null;
-    customerDocumentNumber?: string | null;
-  }): Promise<number>;
+  savePendingStorno(payload: PendingStornoInput): Promise<number>;
   getPendingTransactions(): Promise<Array<{
     id: number;
     type: string;
@@ -329,7 +318,7 @@ export interface ElectronAPI {
     seal_number?: string | null;
   }>>;
   /** Offline átadás-átvétel SZTORNÓ (internetkimaradáskor): a backend fordítja vissza a készletet szinkronkor. */
-  savePendingTransferStorno(payload: { transferId: number; transferNumber?: string | null; reason: string }): Promise<number>;
+  savePendingTransferStorno(payload: PendingTransferStornoInput): Promise<number>;
   getPendingTransferStornos(): Promise<Array<{
     id: number;
     transfer_id: number;
@@ -346,15 +335,7 @@ export interface ElectronAPI {
     amount: number,
     note: string | null,
   ): Promise<number>;
-  savePendingHandoverOperation(payload: {
-    operationType: 'GENERATE' | 'PRINT' | 'COMPLETE';
-    sheetId?: string | null;
-    fromCashDeskId?: string | null;
-    toCashDeskId?: string | null;
-    transferDate?: string | null;
-    amounts?: unknown;
-    note?: string | null;
-  }): Promise<number>;
+  savePendingHandoverOperation(payload: PendingHandoverOperationInput): Promise<number>;
   getPendingHandoverOperations(): Promise<Array<{
     id: number;
     operation_type: 'GENERATE' | 'PRINT' | 'COMPLETE';
