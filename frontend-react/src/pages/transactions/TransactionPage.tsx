@@ -22,8 +22,9 @@ import type { CurrencyRate } from './hooks/useTransactionRates'
 import { useIdentificationLevel } from './hooks/useIdentificationLevel'
 import CurrencySelector from './components/CurrencySelector'
 import CurrencySearchInput from './components/CurrencySearchInput'
-import CustomerPanel from './components/LegacyCustomerPanel'
-import type { Customer } from './components/LegacyCustomerPanel'
+import CustomerPanel from './components/CustomerPanel'
+import type { CustomerPanelData } from './components/CustomerPanel'
+import type { AmlCheckResultDto } from '../../services/api/transactions'
 import { useTranslation } from 'react-i18next'
 import { getBandForAmount, isWithinBand, isWithinHardLimit, getHardLimitMessage } from '../../utils/rateBands'
 import RateAuthDialog from './components/RateAuthDialog'
@@ -44,9 +45,10 @@ export default function TransactionPage() {
   const [hufAmount, setHufAmount] = useState('')
   const [lastEdited, setLastEdited] = useState<'foreign' | 'huf'>('foreign')
 
-  // Customer state
-  const [customer, setCustomer] = useState<Customer | null>(null)
-  const [customerAddress, setCustomerAddress] = useState('')
+  // Customer state (managed by CustomerPanel)
+  const customerDataRef = useRef<CustomerPanelData | null>(null)
+  const amlResultRef = useRef<AmlCheckResultDto | null>(null)
+  const [amlBlocked, setAmlBlocked] = useState(false)
 
   // Devizastátusz
   const [foreignStatus, setForeignStatus] = useState<'DOMESTIC' | 'FOREIGN'>('FOREIGN')
@@ -70,7 +72,7 @@ export default function TransactionPage() {
   const { user } = useAuthStore()
 
   // Identification logic
-  const { identificationLevel, requiresSourceVerification } = useIdentificationLevel(hufAmount)
+  const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } = useIdentificationLevel(hufAmount)
 
   // Auto-select first currency when rates load
   useEffect(() => {
@@ -221,8 +223,8 @@ export default function TransactionPage() {
   const handleHufAmountKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault()
-      if (identificationLevel !== 'SIMPLE' && !customer) {
-        const el = document.querySelector<HTMLInputElement>('[data-field="customer-name"]')
+      if (identificationLevel !== 'SIMPLE' && !customerDataRef.current?.name?.trim()) {
+        const el = document.querySelector<HTMLInputElement>('[data-testid="customer-name-input"]')
         el?.focus()
       } else {
         setTimeout(() => document.querySelector<HTMLButtonElement>('[data-action="save"]')?.focus(), 50)
@@ -233,15 +235,16 @@ export default function TransactionPage() {
   async function handleCancel() {
     const foreignNum = parseFloat(foreignAmount.replace(',', '.')) || 0
     const hufNum = parseFloat(hufAmount.replace(/\s/g, '').replace(',', '.')) || 0
-    const hasDraftTransaction = Boolean(foreignAmount || hufAmount || customRate != null || customer)
+    const cd = customerDataRef.current
+    const hasDraftTransaction = Boolean(foreignAmount || hufAmount || customRate != null || cd)
     if (hasDraftTransaction) {
       if (!confirm('Biztosan elveti a tranzakciot?')) return
       try {
         const receipt = await receiptApi.createCancelledTransaction({
           mode: transactionType,
           reason: 'USER_CANCELLED',
-          customerName: customer?.name,
-          customerDocumentNumber: customer?.documentNumber,
+          customerName: cd?.name,
+          customerDocumentNumber: cd?.documentNumber,
           lines: [{
             currencyCode: selectedCurrency?.code,
             foreignAmount: foreignNum > 0 ? foreignNum : undefined,
@@ -271,76 +274,129 @@ export default function TransactionPage() {
       return
     }
 
-    if (identificationLevel !== 'SIMPLE' && !customer) {
-      toast.warning('Azonosítás szükséges', 'Ügyfél azonosítás szükséges ehhez az összeghez!')
+    // Cashier-minta: fokozatos Pmt. azonosítási kapu (:765-789).
+    const cd = customerDataRef.current
+    const aml = amlResultRef.current
+    if (identificationLevel !== 'SIMPLE') {
+      if (!cd?.name?.trim()) {
+        toast.warning('Ügyfél azonosítás kötelező', '100.000 Ft feletti tranzakcióhoz ügyfél azonosítás KÖTELEZŐ!')
+        return
+      }
+      if (identificationLevel === 'SIMPLIFIED' && (!cd?.birthPlace || !cd?.birthDate)) {
+        toast.warning('Egyszerűsített azonosítás hiányos', '100.000 Ft felett születési hely és születési idő is KÖTELEZŐ!')
+        return
+      }
+      if (identificationLevel === 'FULL' && (!cd?.documentNumber?.trim() || !cd?.birthPlace || !cd?.birthDate || !cd?.motherName || !cd?.address)) {
+        toast.warning('Teljes azonosítás kötelező', '300.000 Ft felett teljes ügyféladatsor szükséges (okmányszám, születési hely/idő, anyja neve, lakcím)!')
+        return
+      }
+    }
+    if (aml?.blocked) {
+      toast.error('Tranzakcio blokkolt', 'AML szabalysertes — a tranzakcio nem rogzitheto!')
       return
     }
 
     setIsSubmitting(true)
     try {
-      const customerData = customer ? {
-        ...(customer.id ? { customerId: customer.id } : {}),
-        customerName: customer.name,
-        customerDocumentNumber: customer.documentNumber,
-        customerNationality: customer.nationality,
+      // Cashier-minta: REST AML payload (:880-933), S1-ben approver mezők nélkül.
+      const customerData = cd ? {
+        ...(cd.id ? { customerId: cd.id } : {}),
+        customerName: cd.name || undefined,
+        customerDocumentNumber: cd.documentNumber || undefined,
+        customerDocumentType: cd.documentType || undefined,
+        customerNationality: cd.nationality || undefined,
+        customerBirthPlace: cd.birthPlace || undefined,
+        customerBirthDate: cd.birthDate || undefined,
+        customerMotherName: cd.motherName || undefined,
+        customerAddress: cd.address || undefined,
+        customerIsPep: cd.isPep,
+        sourceOfFunds: cd.sourceOfFunds,
+        sourceOfFundsDocType: cd.sourceOfFundsDocType,
+        sourceOfFundsDocDate: cd.sourceOfFundsDocDate,
+        customerOnOwnBehalf: cd.onOwnBehalf,
+        customerActorName: cd.actorName,
+        customerPepKind: cd.pepKind ?? undefined,
+        customerActorBirthPlace: cd.actorIdentity?.birthPlace,
+        customerActorBirthDate: cd.actorIdentity?.birthDate,
+        customerActorMotherName: cd.actorIdentity?.motherName,
+        customerActorNationality: cd.actorIdentity?.nationality,
+        customerActorDocumentType: cd.actorIdentity?.documentType,
+        customerActorDocumentNumber: cd.actorIdentity?.documentNumber,
+        customerActorAddress: cd.actorIdentity?.address,
+        isLegalEntityCustomer: cd.isLegalEntity ?? undefined,
+        legalEntityName: cd.legalEntityName,
+        legalEntitySeat: cd.legalEntitySeat,
+        legalEntityTaxNumber: cd.legalEntityTaxNumber,
+        legalDeedNumber: cd.legalDeedNumber,
+        beneficialOwners: cd.beneficialOwners?.map(o => ({
+          name: o.name,
+          address: o.address || undefined,
+          birthPlace: o.birthPlace || undefined,
+          birthDate: o.birthDate || undefined,
+          nationality: o.nationality || undefined,
+          residenceAbroad: o.residenceAbroad || undefined,
+          interestNature: o.interestNature || undefined,
+          interestExtent: o.interestExtent || undefined,
+          isPep: o.isPep,
+        })),
       } : {}
 
       const rate = currentRate
 
       if (electronQueueAvailable) {
-              const outcome = await saveAndSyncPendingBuySell([
-                {
-                  type: transactionType,
-                  currencyCode: selectedCurrency.code,
-                  foreignAmount: foreignNum,
-                  hufAmount: hufNum,
-                  roundedHufAmount: roundHuf(hufNum),
-                  rate,
-                  handlingFee: null,
-                  discountPercent: null,
-                  customerIdentifier: customer?.documentNumber ?? null,
-                  customerName: customer?.name ?? null,
-                  customerDocumentNumber: customer?.documentNumber ?? null,
-                  customerAddress: customerAddress || null,
-                  denominations: null,
-                },
-              ])
-      
-              // PR #116: 3-agu toast - sikeres sync / server-error / offline queue
-              if (outcome.allSavedSynced) {
-                toast.success('Tranzakció sikeresen rögzítve!', 'A tétel azonnal szinkronizálva lett.')
-              } else if (outcome.syncErrors && outcome.syncErrors.length > 0) {
-                // Server-oldali hiba (pl. rate mismatch, insufficient balance)
-                const firstError = outcome.syncErrors[0]
-                toast.error('Szinkron hiba - a tranzakció lokálisan mentve, de a szerver elutasitotta', firstError)
-              } else {
-                toast.warning('Offline mentés megtörtént', 'A tranzakció helyi queue-ba került, később szinkronizálódik.')
-              }
-            }
+        const outcome = await saveAndSyncPendingBuySell([
+          {
+            type: transactionType,
+            currencyCode: selectedCurrency.code,
+            foreignAmount: foreignNum,
+            hufAmount: hufNum,
+            roundedHufAmount: roundHuf(hufNum),
+            rate,
+            handlingFee: null,
+            discountPercent: null,
+            customerIdentifier: cd?.documentNumber ?? null,
+            customerName: cd?.name ?? null,
+            customerDocumentNumber: cd?.documentNumber ?? null,
+            customerAddress: cd?.address ?? null,
+            denominations: null,
+          },
+        ])
+
+        // PR #116: 3-agu toast - sikeres sync / server-error / offline queue
+        if (outcome.allSavedSynced) {
+          toast.success('Tranzakció sikeresen rögzítve!', 'A tétel azonnal szinkronizálva lett.')
+        } else if (outcome.syncErrors && outcome.syncErrors.length > 0) {
+          // Server-oldali hiba (pl. rate mismatch, insufficient balance)
+          const firstError = outcome.syncErrors[0]
+          toast.error('Szinkron hiba - a tranzakció lokálisan mentve, de a szerver elutasitotta', firstError)
+        } else {
+          toast.warning('Offline mentés megtörtént', 'A tranzakció helyi queue-ba került, később szinkronizálódik.')
+        }
+      }
       else if (transactionType === 'BUY') {
-                const request: BuyRequest = {
-                  currencyId: parseInt(selectedCurrency.id),
-                  currencyAmount: foreignNum,
-                  customExchangeRate: rate,
-                  foreignStatus,
-                  ...customerData,
-                }
-                const result = await transactionApi.buy(request)
-                setSavedTransaction(result)
-                toast.success('Vétel tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
-              }
+        const request: BuyRequest = {
+          currencyId: parseInt(selectedCurrency.id),
+          currencyAmount: foreignNum,
+          customExchangeRate: rate,
+          foreignStatus,
+          ...customerData,
+        }
+        const result = await transactionApi.buy(request)
+        setSavedTransaction(result)
+        toast.success('Vétel tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
+      }
       else {
-                const request: SellRequest = {
-                  currencyId: parseInt(selectedCurrency.id),
-                  currencyAmount: foreignNum,
-                  customExchangeRate: rate,
-                  foreignStatus,
-                  ...customerData,
-                }
-                const result = await transactionApi.sell(request)
-                setSavedTransaction(result)
-                toast.success('Eladás tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
-              }
+        const request: SellRequest = {
+          currencyId: parseInt(selectedCurrency.id),
+          currencyAmount: foreignNum,
+          customExchangeRate: rate,
+          foreignStatus,
+          ...customerData,
+        }
+        const result = await transactionApi.sell(request)
+        setSavedTransaction(result)
+        toast.success('Eladás tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
+      }
 
       // Don't navigate away — let user print receipt first
     } catch (error: unknown) {
@@ -382,7 +438,7 @@ export default function TransactionPage() {
           </button>
           <button
             onClick={handleSaveAndPrint}
-            disabled={isSubmitting}
+            disabled={isSubmitting || amlBlocked}
             className="form-button-primary flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
             data-action="save"
             data-testid="tx-save-print"
@@ -564,11 +620,16 @@ export default function TransactionPage() {
 
         {/* Right: Customer panel */}
         <CustomerPanel
-          customer={customer}
-          onCustomerChange={setCustomer}
           identificationLevel={identificationLevel}
-          selectedCurrencyCode={selectedCurrency?.code || ''}
-          onCustomerAddressChange={setCustomerAddress}
+          minimumLevel={minimumLevel}
+          onLevelChange={setIdentificationLevel}
+          requiresSourceVerification={requiresSourceVerification}
+          hufTotal={parseFloat(hufAmount.replace(/\s/g, '').replace(',', '.')) || 0}
+          onCustomerReady={(data) => { customerDataRef.current = data }}
+          onAmlResult={(result) => {
+            amlResultRef.current = result
+            setAmlBlocked(result?.blocked ?? false)
+          }}
         />
       </div>
 

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { vi, describe, beforeEach, it, expect } from 'vitest'
@@ -14,7 +14,63 @@ const mocks = vi.hoisted(() => ({
     error: vi.fn(),
   },
   saveAndSyncPendingBuySell: vi.fn(),
+  identificationLevel: 'SIMPLE' as 'SIMPLE' | 'SIMPLIFIED' | 'FULL',
+  minimumLevel: 'SIMPLE' as 'SIMPLE' | 'SIMPLIFIED' | 'FULL',
+  requiresSourceVerification: false,
+  setIdentificationLevel: vi.fn(),
+  fullAmlCustomer: {
+    name: 'Kiss János',
+    documentType: 'ID_CARD',
+    documentNumber: 'SZIG-123456',
+    nationality: 'HU',
+    birthPlace: 'Budapest',
+    birthDate: '1980-01-02',
+    motherName: 'Nagy Anna',
+    address: '1111 Budapest, Teszt utca 1.',
+    isPep: true,
+    pepKind: 'KORMANYFO' as const,
+    sourceOfFunds: 'SAVINGS',
+    sourceOfFundsDocType: 'BANK_STATEMENT',
+    sourceOfFundsDocDate: '2026-01-15',
+    onOwnBehalf: false,
+    actorName: 'Meghatalmazott Péter',
+    actorIdentity: {
+      birthPlace: 'Szeged',
+      birthDate: '1975-03-04',
+      motherName: 'Kovács Éva',
+      nationality: 'HU',
+      documentType: 'PASSPORT',
+      documentNumber: 'P1234567',
+      address: '6720 Szeged, Actor utca 2.',
+    },
+    isLegalEntity: true,
+    legalEntityName: 'Teszt Kft.',
+    legalEntitySeat: '1051 Budapest, Cég utca 3.',
+    legalEntityTaxNumber: '12345678-2-41',
+    legalDeedNumber: 'CÉG-2026/1',
+    beneficialOwners: [{
+      name: 'Tulajdonos Tímea',
+      address: '9021 Győr, Owner utca 4.',
+      birthPlace: 'Győr',
+      birthDate: '1970-05-06',
+      nationality: 'HU',
+      residenceAbroad: 'N',
+      interestNature: 'Tulajdonrész',
+      interestExtent: '75%',
+      isPep: true,
+    }],
+  },
 }))
+
+type CustomerPanelMockProps = {
+  identificationLevel: 'SIMPLE' | 'SIMPLIFIED' | 'FULL'
+  minimumLevel: 'SIMPLE' | 'SIMPLIFIED' | 'FULL'
+  onLevelChange: (level: 'SIMPLE' | 'SIMPLIFIED' | 'FULL') => void
+  requiresSourceVerification: boolean
+  hufTotal: number
+  onCustomerReady: (data: typeof mocks.fullAmlCustomer | null) => void
+  onAmlResult?: (result: { blocked: boolean; warnings: string[] } | null) => void
+}
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
@@ -55,10 +111,10 @@ vi.mock('./hooks/useTransactionRates', () => ({
 
 vi.mock('./hooks/useIdentificationLevel', () => ({
   useIdentificationLevel: () => ({
-    identificationLevel: 'SIMPLE',
-    minimumLevel: 'SIMPLE',
-    setIdentificationLevel: () => {},
-    requiresSourceVerification: false,
+    identificationLevel: mocks.identificationLevel,
+    minimumLevel: mocks.minimumLevel,
+    setIdentificationLevel: mocks.setIdentificationLevel,
+    requiresSourceVerification: mocks.requiresSourceVerification,
   }),
 }))
 
@@ -79,20 +135,34 @@ vi.mock('./components/CurrencySelector', () => ({
   ),
 }))
 
-vi.mock('./components/LegacyCustomerPanel', () => ({
-  default: ({ onCustomerChange }: any) => (
-    <div data-testid="customer-panel">
-      <input
-        type="text"
-        data-field="customer-name"
-        placeholder="Ügyfél"
-        onChange={(e) => onCustomerChange(e.target.value ? {
-          id: undefined,
-          name: e.target.value,
-          documentType: 'Személyi igazolvány',
-          documentNumber: '12345',
-          nationality: 'HU',
-        } : null)}
+vi.mock('./components/CustomerPanel', () => ({
+  default: ({
+    identificationLevel,
+    minimumLevel,
+    onLevelChange,
+    requiresSourceVerification,
+    hufTotal,
+    onCustomerReady,
+    onAmlResult,
+  }: CustomerPanelMockProps) => (
+    <div
+      data-testid="customer-panel"
+      data-level={identificationLevel}
+      data-min-level={minimumLevel}
+      data-source-verification={String(requiresSourceVerification)}
+      data-huf-total={String(hufTotal)}
+    >
+      <button type="button" data-testid="level-full" onClick={() => onLevelChange('FULL')} />
+      <button type="button" data-testid="fill-customer" onClick={() => onCustomerReady(mocks.fullAmlCustomer)} />
+      <button type="button" data-testid="clear-customer" onClick={() => onCustomerReady(null)} />
+      <button type="button" data-testid="aml-block" onClick={() => onAmlResult?.({ blocked: true, warnings: [] })} />
+      <button
+        type="button"
+        data-testid="aml-block-submit"
+        onClick={() => {
+          onAmlResult?.({ blocked: true, warnings: [] })
+          document.querySelector<HTMLButtonElement>('[data-testid="tx-save-print"]')?.click()
+        }}
       />
     </div>
   ),
@@ -106,14 +176,49 @@ function renderTransactionPage() {
   )
 }
 
+async function enterForeignAmount(user: ReturnType<typeof userEvent.setup>, amount: string) {
+  const inputs = screen.getAllByPlaceholderText('0,00')
+  await user.clear(inputs[0]!)
+  await user.type(inputs[0]!, amount)
+}
+
+async function fillAmlCustomer(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByTestId('fill-customer'))
+}
+
+function firstBuyPayload(): Record<string, unknown> {
+  return mocks.transactionApiBuy.mock.calls[0]?.[0] as Record<string, unknown>
+}
+
+function firstSellPayload(): Record<string, unknown> {
+  return mocks.transactionApiSell.mock.calls[0]?.[0] as Record<string, unknown>
+}
+
 describe('TransactionPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.identificationLevel = 'SIMPLE'
+    mocks.minimumLevel = 'SIMPLE'
+    mocks.requiresSourceVerification = false
   })
 
   it('oldal renderelésének ellenőrzése', () => {
     renderTransactionPage()
     expect(screen.getByText('Új tranzakció')).toBeInTheDocument()
+  })
+
+  it('modern CustomerPanel renderel az azonosítási propokkal', () => {
+    mocks.identificationLevel = 'FULL'
+    mocks.minimumLevel = 'SIMPLIFIED'
+    mocks.requiresSourceVerification = true
+
+    renderTransactionPage()
+
+    const panel = screen.getByTestId('customer-panel')
+    expect(panel).toHaveAttribute('data-level', 'FULL')
+    expect(panel).toHaveAttribute('data-min-level', 'SIMPLIFIED')
+    expect(panel).toHaveAttribute('data-source-verification', 'true')
+    expect(screen.getByTestId('level-full')).toBeInTheDocument()
   })
 
   it('deviza választó és tranzakció típus gombok megjelenése', () => {
@@ -205,15 +310,57 @@ describe('TransactionPage', () => {
     )
   })
 
+  it('FULL azonosításnál ügyféladat nélkül nem indít mentést', async () => {
+    mocks.identificationLevel = 'FULL'
+    mocks.minimumLevel = 'FULL'
+    const user = userEvent.setup()
+
+    renderTransactionPage()
+    await enterForeignAmount(user, '100')
+
+    await user.click(screen.getByTestId('tx-save-print'))
+
+    expect(mocks.toast.warning).toHaveBeenCalledWith(
+      'Ügyfél azonosítás kötelező',
+      '100.000 Ft feletti tranzakcióhoz ügyfél azonosítás KÖTELEZŐ!',
+    )
+    expect(mocks.transactionApiBuy).not.toHaveBeenCalled()
+    expect(mocks.transactionApiSell).not.toHaveBeenCalled()
+  })
+
+  it('blokkolt AML eredménnyel tiltja a mentés gombot és nem indít mentést', async () => {
+    mocks.transactionApiBuy.mockResolvedValue({ receiptNumber: 'RCP-AML' })
+    const user = userEvent.setup()
+
+    renderTransactionPage()
+    await enterForeignAmount(user, '100')
+    await fillAmlCustomer(user)
+
+    const saveButton = screen.getByTestId('tx-save-print')
+    fireEvent.click(screen.getByTestId('aml-block-submit'))
+
+    await waitFor(() => {
+      expect(saveButton).toBeDisabled()
+    })
+
+    await waitFor(() => {
+      expect(mocks.toast.error).toHaveBeenCalledWith(
+        'Tranzakcio blokkolt',
+        'AML szabalysertes — a tranzakcio nem rogzitheto!',
+      )
+    })
+    expect(mocks.transactionApiBuy).not.toHaveBeenCalled()
+    expect(mocks.transactionApiSell).not.toHaveBeenCalled()
+  })
+
   it('sikeres BUY tranzakció mentésekor API-t meghívja', async () => {
     mocks.transactionApiBuy.mockResolvedValue({ receiptNumber: 'RCP-001' })
     const user = userEvent.setup()
 
     renderTransactionPage()
 
-    const inputs = screen.getAllByPlaceholderText('0,00')
-    await user.type(inputs[0]!, '100')
-    await user.type(screen.getByPlaceholderText('Ügyfél'), 'Kiss János')
+    await enterForeignAmount(user, '100')
+    await fillAmlCustomer(user)
 
     const saveButton = screen.getByTestId('tx-save-print')
     await user.click(saveButton)
@@ -229,8 +376,28 @@ describe('TransactionPage', () => {
       )
     })
 
-    const payload = mocks.transactionApiBuy.mock.calls[0]?.[0]
+    const payload = firstBuyPayload()
     expect(payload).not.toHaveProperty('customerId')
+    expect(payload).toEqual(expect.objectContaining({
+      customerIsPep: true,
+      customerPepKind: 'KORMANYFO',
+      sourceOfFunds: 'SAVINGS',
+      sourceOfFundsDocType: 'BANK_STATEMENT',
+      sourceOfFundsDocDate: '2026-01-15',
+      customerOnOwnBehalf: false,
+      customerActorName: 'Meghatalmazott Péter',
+      customerActorDocumentNumber: 'P1234567',
+      isLegalEntityCustomer: true,
+      legalEntityName: 'Teszt Kft.',
+      legalEntityTaxNumber: '12345678-2-41',
+    }))
+    expect(payload.beneficialOwners).toEqual([
+      expect.objectContaining({
+        name: 'Tulajdonos Tímea',
+        interestNature: 'Tulajdonrész',
+        isPep: true,
+      }),
+    ])
   })
 
   it('sikeres SELL tranzakció mentésekor API-t meghívja', async () => {
@@ -242,8 +409,8 @@ describe('TransactionPage', () => {
     const sellButton = screen.getByText(/ELADÁS/)
     await user.click(sellButton)
 
-    const inputs = screen.getAllByPlaceholderText('0,00')
-    await user.type(inputs[0]!, '100')
+    await enterForeignAmount(user, '100')
+    await fillAmlCustomer(user)
 
     const saveButton = screen.getByTestId('tx-save-print')
     await user.click(saveButton)
@@ -254,9 +421,25 @@ describe('TransactionPage', () => {
           currencyId: 1,
           currencyAmount: 100,
           customExchangeRate: 398.50,
+          customerIsPep: true,
+          customerPepKind: 'KORMANYFO',
+          sourceOfFunds: 'SAVINGS',
+          customerOnOwnBehalf: false,
+          customerActorName: 'Meghatalmazott Péter',
+          customerActorDocumentNumber: 'P1234567',
+          isLegalEntityCustomer: true,
+          legalEntityName: 'Teszt Kft.',
+          legalEntityTaxNumber: '12345678-2-41',
         }),
       )
     })
+    expect(firstSellPayload().beneficialOwners).toEqual([
+      expect.objectContaining({
+        name: 'Tulajdonos Tímea',
+        interestNature: 'Tulajdonrész',
+        isPep: true,
+      }),
+    ])
   })
 
   it('sikeres mentés után toast success mutatódik', async () => {
