@@ -61,12 +61,23 @@ A jelenlegi `scaleway-ha-restore.yml` NEM futtatható újra biztonságosan:
 1. **Slot-orphan-guard kell a workflow-ba**: ha a basebackup elbukik, a `standby_slot_0`-t
    AZONNAL el kell dobni a Hetzneren (trap/cleanup), különben megismétli a WAL-fault kiesést.
    Ideális: a slot létrehozása CSAK a sikeres basebackup UTÁN, vagy `failsafe` DROP.
-2. **A Hetzner pg_wal 2GB-os titkosított kötete túl kicsi** streaming standbyhez — akár HA
-   nélkül is kockázatos forgalmas napon. Vagy nagyobb kötet, vagy külön pg_wal-mount kell.
+2. **A Hetzner pg_wal 2GB-os titkosított kötete túl kicsi** volt streaming standbyhez.
+   ✅ **MEGOLDVA (07-05):** a kötetet **2GB → 8GB**-ra bővítettem, online, adatvesztés nélkül.
+   Topológia: LUKS2 loopback-fájl `/opt/pgdata-encrypted.img` (a root fs-en, 127G szabad) →
+   `/dev/loop0` → `pgdata-crypt` → ext4. Lépések: `fallocate -l 8G img` → `losetup -c loop0`
+   → `cryptsetup resize pgdata-crypt --key-file /root/.pgdata-luks-key` → `resize2fs`.
+   PITFALL: a LUKS2 resize keyfile NÉLKÜL `No key available with this passphrase`-szel bukik;
+   a nyitó keyfile a `pgdata-luks.service`-ben van (`/root/.pgdata-luks-key`). REBOOT-SAFE:
+   a service `luksOpen <img>`-et hív, ami a teljes 8G fájlból auto-méretezi a loopot; a LUKS
+   data-area + ext4 superblock a lemezen perzisztens. Pre-resize mentés: `pg_dumpall` →
+   `/root/pre-walresize-backup-*.sql` (40MB). Végállapot: 7.9G/7.4G szabad, PG egészséges.
 3. A `deploy-standby` job (if:false) csak a HA-rebuild UTÁN aktiválható.
+4. **wal_keep_size visszaemelése**: jelenleg 256MB (nincs standby). A HA-rebuildkor a 8G
+   kötet már bírná a 2048MB-ot is, de ezt CSAK a guardolt rebuild részeként érdemes.
 
 → **A HA jelenleg NINCS** (Scaleway passzív, watchdog OFF). A prod egyszerűen, egy régióban
-stabil. A HA visszaépítése a fenti 2 kódmunka + user-jóváhagyás után, pipeline-on.
+stabil. A HA visszaépítése a maradék #1 (slot-orphan-guard kód) + user-jóváhagyás után,
+pipeline-on. A #2 (kötet-bővítés) KÉSZ.
 
 ## Kulcs-tanulságok
 - CF proxied rekord mögött a `dig` a CF edge IP-ket adja; origin-igazsághoz
