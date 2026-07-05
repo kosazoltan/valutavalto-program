@@ -312,6 +312,20 @@ export interface IpcRoutes {
     request: QueueStocktakeCountArgs
     response: number
   }
+  // ---- Read/util channelek (X4-minta folytatás, X4-REMAINDER-READ) ----
+  // Pozicionális wire: a request a NYERS invoke-argumentum, nem objektum.
+  'get-pending-transaction-ref-by-id': {
+    request: number // pending tx rowid
+    response: string | null // nyugta-bizonylatszám (SPEND-RETID, PR #1301)
+  }
+  'get-pending-transfer-ref-by-id': {
+    request: number // pending transfer rowid
+    response: string | null
+  }
+  'get-pending-transaction-count': {
+    request: void
+    response: number
+  }
 }
 
 // Type helper: kihuzza egy channel request/response tipusat
@@ -332,4 +346,7 @@ export const IPC_CHANNELS = {
   SAVE_PENDING_TRANSFER_STORNO: 'save-pending-transfer-storno' as const,
   SAVE_PENDING_HANDOVER_OPERATION: 'save-pending-handover-operation' as const,
   QUEUE_STOCKTAKE_COUNT: 'queue-stocktake-count' as const,
+  GET_PENDING_TRANSACTION_REF_BY_ID: 'get-pending-transaction-ref-by-id' as const,
+  GET_PENDING_TRANSFER_REF_BY_ID: 'get-pending-transfer-ref-by-id' as const,
+  GET_PENDING_TRANSACTION_COUNT: 'get-pending-transaction-count' as const,
 } satisfies Record<string, keyof IpcRoutes>
