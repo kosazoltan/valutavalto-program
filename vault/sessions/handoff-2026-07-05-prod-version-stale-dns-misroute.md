@@ -33,13 +33,40 @@ cash_balance=1232, audit_log=236, employee=196…), legfrissebb audit UUID egyez
 - `primary-watchdog.sh`: recovery-ág 24h-ismétlő FAILBACK-SZÜKSÉGES riasztás a pontos
   paranccsal; `promoted=1` csak DNS==ORIGIN_IP esetén nullázódik.
 
-## Hátralévő / követő teendő (user-döntést igényel)
-- **Scaleway warm-standby ÚJRAÉPÍTÉSE**: a Scaleway PG jelenleg PROMOTÁLT
-  (pg_is_in_recovery=f), NEM streaming standby. A teljes HA visszaállításához
-  `scaleway-ha-restore.yml` (pg_basebackup a Hetznerről, NEM rewind) kell — külön,
-  gondos művelet. Amíg ez nincs meg, NINCS élő failover-védelem (a watchdog OFF).
-  → user-döntés: mikor építsük újra a HA-t.
-- A `deploy-hetzner.yml` `deploy-standby` job (if:false) — a HA-rebuild után újraaktiválandó.
+## 🔴 HA-REBUILD MEGKÍSÉRELVE → LEDÖNTÖTTE A PRODOT (07-05, elhárítva)
+A user kérésére elindítottam a `scaleway-ha-restore.yml`-t (dry_run zöld volt), az
+éles rebuild viszont **ledöntötte a Hetzner primaryt**:
+
+**Láncreakció:** a Hetzner pg_wal EGY **külön, csak 2GB-os TITKOSÍTOTT köteten** van
+(`/dev/mapper/pgdata-crypt` → `/mnt/pgdata-encrypted`; a DB maga csak ~70MB). A rebuild
+létrehozta a `standby_slot_0`-t, a basebackup a WG-tunnelen `SSL SYSCALL EOF`-fel
+megszakadt, de **a slot fogyasztó nélkül maradt** → WAL-recycle blokk → a pg_wal
+megtöltötte a 2GB kötetet → **PG crash (No space) → backend dependency-fail → ~90
+iroda offline**.
+
+**Helyreállítás (root@Hetzner, `runuser -u postgres -- psql`, sudo NEM kell):**
+1. A redo-pont (0x75) ELŐTTI 107 WAL-szegmenst átmozgattam `/root/wal_rescue`-be → PG indul.
+2. `SELECT pg_drop_replication_slot('standby_slot_0')` — a WAL-pin megszűnt.
+3. `ALTER SYSTEM SET synchronous_standby_names = ''` + reload — különben nincs standby →
+   minden írás szinkron-ack-re várna = **írhatatlan prod**.
+4. `systemctl restart valuta-backend` → origin 200.
+5. **Latens bomba:** `wal_keep_size=2048MB` egy 2GB köteten → leírtam **256MB**-ra.
+6. Box-takarítás: WAL-rescue törölve, 36G régi JAR (315 db) → 365MB (megtartva current+3).
+   FIGYELEM: a prune törölte a `current.jar` SYMLINK-et is (glob!) → újralétrehoztam.
+
+Végállapot: prod 200/2.28.27, DB in_recovery=f, slots=0, sync='', wal_keep=256.
+
+## ⛔ HA-REBUILD TILOS, amíg ezek nincsenek meg (user-döntés + kódmunka)
+A jelenlegi `scaleway-ha-restore.yml` NEM futtatható újra biztonságosan:
+1. **Slot-orphan-guard kell a workflow-ba**: ha a basebackup elbukik, a `standby_slot_0`-t
+   AZONNAL el kell dobni a Hetzneren (trap/cleanup), különben megismétli a WAL-fault kiesést.
+   Ideális: a slot létrehozása CSAK a sikeres basebackup UTÁN, vagy `failsafe` DROP.
+2. **A Hetzner pg_wal 2GB-os titkosított kötete túl kicsi** streaming standbyhez — akár HA
+   nélkül is kockázatos forgalmas napon. Vagy nagyobb kötet, vagy külön pg_wal-mount kell.
+3. A `deploy-standby` job (if:false) csak a HA-rebuild UTÁN aktiválható.
+
+→ **A HA jelenleg NINCS** (Scaleway passzív, watchdog OFF). A prod egyszerűen, egy régióban
+stabil. A HA visszaépítése a fenti 2 kódmunka + user-jóváhagyás után, pipeline-on.
 
 ## Kulcs-tanulságok
 - CF proxied rekord mögött a `dig` a CF edge IP-ket adja; origin-igazsághoz
