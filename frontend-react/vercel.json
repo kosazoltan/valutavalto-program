@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://valuta-backend-spbx.onrender.com/api/:path*"
+      "destination": "https://excvaluta.com/api/:path*"
     },
     {
       "source": "/((?!api/).*)",
