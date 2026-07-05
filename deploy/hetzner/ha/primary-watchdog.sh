@@ -153,6 +153,9 @@ save_state() {
     [ "$alerted" = "1" ]  && echo "alerted=1"
     [ "$promoted" = "1" ] && echo "promoted=1"
     [ "$failback_notified" != "0" ] && echo "failback_notified=$failback_notified"
+    # a rovidzart [ ] && ... utolso parancskent 1-et adna -> a compound (es a save_state-tel
+    # zarulo script) hibas exit-koddal terne vissza a happy-path-on -> systemd oneshot "failed".
+    true
   } > "$STATE_FILE"
 }
 
