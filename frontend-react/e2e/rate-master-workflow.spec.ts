@@ -130,6 +130,24 @@ async function mockApis(page: Page) {
       })
     }
 
+    if (path.endsWith('/exchange-rate-master/distribution/pending-print') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{
+          distributionId: 'dist-1',
+          masterRateId: 'rate-1',
+          currencyCode: 'EUR',
+          versionNumber: 3,
+          baseBuyRate: 390,
+          baseSellRate: 399,
+          officialRate: 394,
+          validFrom: '2026-07-04T09:00:00',
+          printProofToken: 'proof-token',
+        }]),
+      })
+    }
+
     if (path.endsWith('/exchange-rate-master/distribution/dist-1/acknowledge') && method === 'POST') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
     }
