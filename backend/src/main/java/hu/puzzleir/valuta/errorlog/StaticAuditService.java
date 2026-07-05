@@ -33,8 +33,8 @@ public class StaticAuditService {
             anyFail = true;
         }
 
-        // CHECK 2: Required env vars
-        String[] envVars = {"NEON_DATABASE_URL", "DATABASE_URL", "ERRORLOG_HMAC_SECRET", "JUNIOR_EMAIL_PASSWORD"};
+        // CHECK 2: Env vars (NEON/DATABASE fail-closed; a tobbi CSAK informacios lathatosag)
+        String[] envVars = {"NEON_DATABASE_URL", "DATABASE_URL", "ERRORLOG_HMAC_SECRET", "JUNIOR_EMAIL_PASSWORD", "APP_RATE_PRINT_HMAC_SECRET"};
         // At least one DB var must be set
         boolean dbEnvOk = System.getenv("NEON_DATABASE_URL") != null || System.getenv("DATABASE_URL") != null;
         checks.add(AuditCheck.builder()
@@ -44,7 +44,7 @@ public class StaticAuditService {
             .build());
         if (!dbEnvOk) anyFail = true;
 
-        for (String var : new String[]{"ERRORLOG_HMAC_SECRET", "JUNIOR_EMAIL_PASSWORD"}) {
+        for (String var : new String[]{"ERRORLOG_HMAC_SECRET", "JUNIOR_EMAIL_PASSWORD", "APP_RATE_PRINT_HMAC_SECRET"}) {
             boolean set = System.getenv(var) != null;
             checks.add(AuditCheck.builder().name(var).pass(set).detail(set ? "SET" : "using default").build());
         }
