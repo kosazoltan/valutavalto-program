@@ -1,0 +1,80 @@
+name: Prod DNS Failback (Scaleway -> Hetzner)
+
+# EGYSZERI helyreallito workflow (PROD-VERSION-STALE, 2026-07-05).
+# Egy korabbi auto-failover ota a CF apex+www A-rekord a Scaleway standby-n ragadt
+# (stale 2.28.8-at szolgalt), a Hetzner primary kozben egeszseges es friss (2.28.27).
+# Bizonyitva: nincs csak-Scaleway-n letezo adat (minden count(*) azonos, 0 iras a
+# promote ota). Ez a workflow visszaallitja az apex+www A-rekordot a Hetzner IP-re.
+#
+# dry_run=true (default): CSAK kiolvassa a jelenlegi rekordokat (read-only).
+# dry_run=false: PATCH-eli az apex+www A-rekordot a PRIMARY_IP-re (proxied megorizve).
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'true=csak allapot (read-only), false=tenyleges DNS atkapcsolas'
+        required: true
+        type: choice
+        default: 'true'
+        options: ['true', 'false']
+
+permissions:
+  contents: read
+
+jobs:
+  failback:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+      PRIMARY_IP: '95.216.191.162'
+      DRY_RUN: ${{ github.event.inputs.dry_run }}
+    steps:
+      - name: Failback apex + www A records to Hetzner primary
+        run: |
+          set -euo pipefail
+          API="https://api.cloudflare.com/client/v4"
+          AUTH_H="Authorization: Bearer ${CF_API_TOKEN}"
+          CT_H="Content-Type: application/json"
+
+          for NAME in excvaluta.com www.excvaluta.com; do
+            echo "==================== $NAME ===================="
+            REC=$(curl -s -H "$AUTH_H" -H "$CT_H" "$API/zones/$CF_ZONE_ID/dns_records?type=A&name=$NAME")
+            OK=$(echo "$REC" | jq -r '.success')
+            if [ "$OK" != "true" ]; then
+              echo "  CF API error: $(echo "$REC" | jq -c '.errors')"; exit 1
+            fi
+            COUNT=$(echo "$REC" | jq -r '.result | length')
+            if [ "$COUNT" = "0" ]; then
+              echo "  (no A record for this name — skip)"; continue
+            fi
+            REC_ID=$(echo "$REC" | jq -r '.result[0].id')
+            OLD_IP=$(echo "$REC" | jq -r '.result[0].content')
+            PROXIED=$(echo "$REC" | jq -r '.result[0].proxied')
+            OLD_TTL=$(echo "$REC" | jq -r '.result[0].ttl')
+            echo "  id=$REC_ID content=$OLD_IP proxied=$PROXIED ttl=$OLD_TTL"
+
+            if [ "$OLD_IP" = "$PRIMARY_IP" ]; then
+              echo "  ALREADY on primary ($PRIMARY_IP) — no change."; continue
+            fi
+            if [ "$DRY_RUN" != "false" ]; then
+              echo "  [DRY-RUN] would PATCH $NAME: $OLD_IP -> $PRIMARY_IP (proxied=$PROXIED preserved)"; continue
+            fi
+            echo "  APPLY: $NAME $OLD_IP -> $PRIMARY_IP (proxied=$PROXIED, ttl=60)"
+            BODY=$(jq -nc --arg name "$NAME" --arg ip "$PRIMARY_IP" --argjson proxied "$PROXIED" \
+                   '{type:"A",name:$name,content:$ip,proxied:$proxied,ttl:60}')
+            RESP=$(curl -s -H "$AUTH_H" -H "$CT_H" -X PATCH "$API/zones/$CF_ZONE_ID/dns_records/$REC_ID" -d "$BODY")
+            ROK=$(echo "$RESP" | jq -r '.success')
+            if [ "$ROK" != "true" ]; then
+              echo "  PATCH FAILED: $(echo "$RESP" | jq -c '.errors')"; exit 1
+            fi
+            echo "  -> new content=$(echo "$RESP" | jq -r '.result.content') proxied=$(echo "$RESP" | jq -r '.result.proxied') ttl=$(echo "$RESP" | jq -r '.result.ttl')"
+          done
+
+          echo ""
+          echo "=== Verify through Cloudflare (edge may lag ~60s) ==="
+          for NAME in excvaluta.com www.excvaluta.com; do
+            V=$(curl -s --max-time 12 https://$NAME/api/v1/version || echo '(curl fail)')
+            echo "  $NAME -> $V"
+          done

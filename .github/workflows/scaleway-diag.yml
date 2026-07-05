@@ -14,13 +14,23 @@ jobs:
           chmod 600 ~/.ssh/scaleway_key
           ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Report Current State
+      - name: 'READ-ONLY count(*) data-safety probe'
         run: |
+          # KIZAROLAG read-only count(*) + legfrissebb audit sorok. Semmit nem modosit.
           ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
             root@${{ secrets.SCALEWAY_SERVER_IP }} \
-            "echo '=== Active PG Processes ===' && \
-             ps aux | grep -iE 'postgres|postmaster' || true && \
-             echo '=== PG Status ===' && \
-             systemctl status postgresql* --no-pager || true && \
-             echo '=== Disk Space ===' && \
-             df -h"
+            bash -s << 'ENDSSH'
+          set +e
+          echo "=== SCALEWAY real count(*) money/movement tables ==="
+          for t in transaction collected_transaction cash_balance daily_session currency_stock transfer transfer_lines vault_transfer shipment_request denomination_balance audit_log closing_wizard receipt employee worker; do
+            echo "$t=$(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM $t" 2>/dev/null)"
+          done
+          echo ""
+          echo "=== SCALEWAY newest audit_log rows (id|created_at) ==="
+          sudo -u postgres psql -d valuta -tAc "SELECT id||'|'||created_at FROM audit_log ORDER BY created_at DESC LIMIT 3" 2>/dev/null
+          echo ""
+          echo "=== SCALEWAY: any write AFTER backend promote (2026-07-04 15:10)? ==="
+          sudo -u postgres psql -d valuta -tAc "SELECT 'audit_log rows after 2026-07-04 15:10 = '||count(*) FROM audit_log WHERE created_at > '2026-07-04 15:10:00'" 2>/dev/null
+          sudo -u postgres psql -d valuta -tAc "SELECT 'daily_session rows after 2026-07-04 15:10 = '||count(*) FROM daily_session WHERE created_at > '2026-07-04 15:10:00'" 2>/dev/null
+          echo "=== Kesz ==="
+          ENDSSH
