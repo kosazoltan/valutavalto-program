@@ -388,6 +388,13 @@
                         </exclude>
                     </excludes>
                 </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- JaCoCo: teszt-lefedettség mérése. A `report` XML/HTML riportot a target/site/jacoco alá
