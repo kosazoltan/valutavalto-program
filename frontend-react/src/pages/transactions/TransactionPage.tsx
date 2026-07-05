@@ -11,10 +11,12 @@ import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal } from '../../utils/numberFormat'
 import { receiptApi, transactionApi } from '../../services/api/index'
 import type { BuyRequest, SellRequest, Transaction } from '../../services/api/index'
+import { api } from '../../services/api/client'
 import { roundHuf } from '../../utils/rounding'
 import { toast } from '../../components/ui/toaster'
 import { saveAndSyncPendingBuySell } from '../../utils/electronTransactions'
 import ReceiptPrint from '../../components/ReceiptPrint'
+import AmlApproverModal, { toApprovalCustomer } from '../../components/auth/AmlApproverModal'
 import { useAuthStore } from '../../stores/authStore'
 
 import { useTransactionRates } from './hooks/useTransactionRates'
@@ -48,7 +50,12 @@ export default function TransactionPage() {
   // Customer state (managed by CustomerPanel)
   const customerDataRef = useRef<CustomerPanelData | null>(null)
   const amlResultRef = useRef<AmlCheckResultDto | null>(null)
+  const approverWorkerIdRef = useRef<number | null>(null)
+  const approvalSessionIdRef = useRef<string | null>(null)
+  const amlPrecheckInFlightRef = useRef(false)
   const [amlBlocked, setAmlBlocked] = useState(false)
+  const [showAmlApprover, setShowAmlApprover] = useState(false)
+  const [amlApprovalReason, setAmlApprovalReason] = useState('')
 
   // Devizastátusz
   const [foreignStatus, setForeignStatus] = useState<'DOMESTIC' | 'FOREIGN'>('FOREIGN')
@@ -70,6 +77,7 @@ export default function TransactionPage() {
 
   // Auth store for receipt info
   const { user } = useAuthStore()
+  const worker = useAuthStore(s => s.worker)
 
   // Identification logic
   const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } = useIdentificationLevel(hufAmount)
@@ -264,6 +272,11 @@ export default function TransactionPage() {
     navigate('/transactions')
   }
 
+  const resetAmlApproval = () => {
+    approverWorkerIdRef.current = null
+    approvalSessionIdRef.current = null
+  }
+
   const handleSubmit = async () => {
     if (!selectedCurrency || isSubmitting) return
 
@@ -296,6 +309,31 @@ export default function TransactionPage() {
       return
     }
 
+    if (approverWorkerIdRef.current == null) {
+      if (amlPrecheckInFlightRef.current) return
+      amlPrecheckInFlightRef.current = true
+      try {
+        const checkRes = await api.post('/aml-approval/check-required', {
+          amountHuf: hufNum,
+          customerId: cd?.id || undefined,
+          customerName: cd?.name || undefined,
+          documentNumber: cd?.documentNumber || undefined,
+          currencyCode: selectedCurrency.code,
+          customerNationality: cd?.nationality || undefined,
+        })
+        if (checkRes.data?.requiresApproval) {
+          approvalSessionIdRef.current = crypto.randomUUID()
+          setAmlApprovalReason(typeof checkRes.data?.reason === 'string' ? checkRes.data.reason : '')
+          setShowAmlApprover(true)
+          return
+        }
+      } catch (err) {
+        console.warn('TransactionPage AML approval pre-check hiba (nem blokkolo):', err)
+      } finally {
+        amlPrecheckInFlightRef.current = false
+      }
+    }
+
     setIsSubmitting(true)
     try {
       // Cashier-minta: REST AML payload (:880-933), S1-ben approver mezők nélkül.
@@ -323,6 +361,8 @@ export default function TransactionPage() {
         customerActorDocumentType: cd.actorIdentity?.documentType,
         customerActorDocumentNumber: cd.actorIdentity?.documentNumber,
         customerActorAddress: cd.actorIdentity?.address,
+        approverWorkerId: approverWorkerIdRef.current ?? undefined,
+        approvalSessionId: approvalSessionIdRef.current ?? undefined,
         isLegalEntityCustomer: cd.isLegalEntity ?? undefined,
         legalEntityName: cd.legalEntityName,
         legalEntitySeat: cd.legalEntitySeat,
@@ -344,6 +384,7 @@ export default function TransactionPage() {
       const rate = currentRate
 
       if (electronQueueAvailable) {
+        const actorIdentity = cd?.actorIdentity ?? null
         const outcome = await saveAndSyncPendingBuySell([
           {
             type: transactionType,
@@ -358,6 +399,32 @@ export default function TransactionPage() {
             customerName: cd?.name ?? null,
             customerDocumentNumber: cd?.documentNumber ?? null,
             customerAddress: cd?.address ?? null,
+            foreignStatus,
+            customerBirthPlace: cd?.birthPlace ?? null,
+            customerBirthDate: cd?.birthDate ?? null,
+            customerMotherName: cd?.motherName ?? null,
+            customerNationality: cd?.nationality ?? null,
+            customerDocumentType: cd?.documentType ?? null,
+            sourceOfFunds: cd?.sourceOfFunds ?? null,
+            customerIsPep: cd?.isPep ?? null,
+            customerOnOwnBehalf: cd?.onOwnBehalf ?? null,
+            customerActorName: cd?.actorName ?? null,
+            customerPepKind: cd?.pepKind ?? null,
+            customerActorBirthPlace: actorIdentity?.birthPlace ?? null,
+            customerActorBirthDate: actorIdentity?.birthDate ?? null,
+            customerActorMotherName: actorIdentity?.motherName ?? null,
+            customerActorNationality: actorIdentity?.nationality ?? null,
+            customerActorDocumentType: actorIdentity?.documentType ?? null,
+            customerActorDocumentNumber: actorIdentity?.documentNumber ?? null,
+            customerActorAddress: actorIdentity?.address ?? null,
+            approverWorkerId: approverWorkerIdRef.current,
+            approvalSessionId: approvalSessionIdRef.current,
+            isLegalEntityCustomer: cd?.isLegalEntity ?? null,
+            legalEntityName: cd?.legalEntityName || null,
+            legalEntitySeat: cd?.legalEntitySeat || null,
+            legalEntityTaxNumber: cd?.legalEntityTaxNumber || null,
+            legalDeedNumber: cd?.legalDeedNumber || null,
+            beneficialOwnersJson: cd?.beneficialOwners?.length ? JSON.stringify(cd.beneficialOwners) : null,
             denominations: null,
           },
         ])
@@ -372,6 +439,7 @@ export default function TransactionPage() {
         } else {
           toast.warning('Offline mentés megtörtént', 'A tranzakció helyi queue-ba került, később szinkronizálódik.')
         }
+        resetAmlApproval()
       }
       else if (transactionType === 'BUY') {
         const request: BuyRequest = {
@@ -383,6 +451,7 @@ export default function TransactionPage() {
         }
         const result = await transactionApi.buy(request)
         setSavedTransaction(result)
+        resetAmlApproval()
         toast.success('Vétel tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
       }
       else {
@@ -395,11 +464,13 @@ export default function TransactionPage() {
         }
         const result = await transactionApi.sell(request)
         setSavedTransaction(result)
+        resetAmlApproval()
         toast.success('Eladás tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
       }
 
       // Don't navigate away — let user print receipt first
     } catch (error: unknown) {
+      resetAmlApproval()
       const message = error instanceof Error ? error.message : 'Ismeretlen hiba'
       const axiosError = error as { response?: { data?: { message?: string } } }
       const serverMessage = axiosError?.response?.data?.message
@@ -423,6 +494,9 @@ export default function TransactionPage() {
       )
     }
   }
+
+  const approvalForeignNum = parseFloat(foreignAmount.replace(',', '.')) || 0
+  const approvalHufNum = parseFloat(hufAmount.replace(/\s/g, '').replace(',', '.')) || 0
 
   return (
     <div className="space-y-3">
@@ -647,6 +721,28 @@ export default function TransactionPage() {
         customRate={rateAuthPendingRate}
         currencyCode={selectedCurrency?.code || ''}
         mode={transactionType === 'BUY' ? 'buy' : 'sell'}
+      />
+
+      <AmlApproverModal
+        open={showAmlApprover}
+        currentWorkerId={worker?.id ?? 0}
+        reason={amlApprovalReason}
+        sessionId={approvalSessionIdRef.current ?? ''}
+        customerName={customerDataRef.current?.name ?? undefined}
+        details={{
+          branchCode: worker?.branchCode ?? undefined,
+          branchName: worker?.branchName ?? undefined,
+          totalHuf: approvalHufNum,
+          lines: selectedCurrency ? [{ currencyCode: selectedCurrency.code, amount: approvalForeignNum, rate: currentRate, hufValue: approvalHufNum }] : [],
+          customer: toApprovalCustomer(customerDataRef.current),
+        }}
+        onApproved={(workerId, name) => {
+          approverWorkerIdRef.current = workerId
+          setShowAmlApprover(false)
+          toast.info('AML jóváhagyás megerősítve', `Engedélyező: ${name}`)
+          void handleSubmit()
+        }}
+        onCancel={() => setShowAmlApprover(false)}
       />
 
       {/* Receipt print modal */}
