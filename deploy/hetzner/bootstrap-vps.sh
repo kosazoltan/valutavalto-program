@@ -106,11 +106,12 @@ step_backend_env() {
     log_step "Backend .env inicializalas (DB jelszo, JWT, encryption keys)"
     if [[ ! -f "$BACKEND_ENV_FILE" ]] || ! grep -qE "^DATABASE_PASSWORD=" "$BACKEND_ENV_FILE"; then
         log "Uj .env keszul: $BACKEND_ENV_FILE"
-        local db_pass jwt_secret enc_salt enc_key
+        local db_pass jwt_secret enc_salt enc_key rate_print_secret
         db_pass="$(gen_secret_hex 24)"
         jwt_secret="$(gen_secret_hex 32)"
         enc_salt="$(gen_secret_hex 32)"
         enc_key="$(gen_secret_hex 16)"
+        rate_print_secret="$(gen_secret_hex 32)"
 
         log_warn "FONTOS: uj DATABASE_PASSWORD keszult. Allitsd be a PostgreSQL-ben:"
         log_warn "  sudo -u postgres psql -c \"ALTER USER valuta_user WITH PASSWORD '$db_pass';\""
@@ -130,6 +131,9 @@ JWT_SECRET=$jwt_secret
 APP_JWT_SECRET=$jwt_secret
 ENCRYPTION_SALT=$enc_salt
 ENCRYPTION_KEY=$enc_key
+
+# --- Rate-print Proof-of-Print HMAC (RP-HA) ---
+APP_RATE_PRINT_HMAC_SECRET=$rate_print_secret
 
 # --- CORS / Spring profile ---
 ALLOWED_ORIGINS=https://excvaluta.com,https://www.excvaluta.com

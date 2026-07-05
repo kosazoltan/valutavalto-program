@@ -59,4 +59,24 @@ class RatePrintProofServiceTest {
         assertThat(service.verifyToken("", DISTRIBUTION_ID, BRANCH_ID, MASTER_RATE_ID, COMPANY_ID)).isFalse();
         assertThat(service.verifyToken("   ", DISTRIBUTION_ID, BRANCH_ID, MASTER_RATE_ID, COMPANY_ID)).isFalse();
     }
+
+    @Test
+    @DisplayName("ket instance ugyanazzal a secrettel kereszt-verifikal (HA/restart kontrakt)")
+    void sameSecretInstancesCrossVerify() {
+        RatePrintProofService a = new RatePrintProofService("shared-secret");
+        RatePrintProofService b = new RatePrintProofService("shared-secret");
+
+        String token = a.issueToken(DISTRIBUTION_ID, BRANCH_ID, MASTER_RATE_ID, COMPANY_ID);
+        assertThat(b.verifyToken(token, DISTRIBUTION_ID, BRANCH_ID, MASTER_RATE_ID, COMPANY_ID)).isTrue();
+    }
+
+    @Test
+    @DisplayName("ures secret = processz-lokalis random fallback - instance-ok NEM kereszt-verifikalnak")
+    void blankSecretInstancesDoNotCrossVerify() {
+        RatePrintProofService a = new RatePrintProofService("");
+        RatePrintProofService b = new RatePrintProofService("");
+
+        String token = a.issueToken(DISTRIBUTION_ID, BRANCH_ID, MASTER_RATE_ID, COMPANY_ID);
+        assertThat(b.verifyToken(token, DISTRIBUTION_ID, BRANCH_ID, MASTER_RATE_ID, COMPANY_ID)).isFalse();
+    }
 }
