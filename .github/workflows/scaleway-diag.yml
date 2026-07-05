@@ -24,3 +24,51 @@ jobs:
              systemctl status postgresql* --no-pager || true && \
              echo '=== Disk Space ===' && \
              df -h"
+
+      - name: 'READ-ONLY split-brain probe (DB write-recency + sync config + serving backend)'
+        run: |
+          # KIZAROLAG read-only SELECT/SHOW + systemctl show. Semmit nem modosit.
+          # Cel: eldonteni, ir-e a Scaleway 'valuta' DB-be az irodak forgalma (split-brain),
+          # es miert lognak a COMMIT-ok (synchronous_standby_names ures-e).
+          ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
+            root@${{ secrets.SCALEWAY_SERVER_IP }} \
+            bash -s << 'ENDSSH'
+            set +e
+            echo "=== pg_is_in_recovery (t=standby/read-only, f=writable primary) ==="
+            sudo -u postgres psql -d valuta -tAc "SELECT pg_is_in_recovery()"
+            echo ""
+            echo "=== sync config (miert lognak a COMMIT-ok?) ==="
+            sudo -u postgres psql -d valuta -tAc "SHOW synchronous_standby_names"
+            sudo -u postgres psql -d valuta -tAc "SHOW synchronous_commit"
+            echo ""
+            echo "=== WRITE-RECENCY: mikor irtak utoljara az uzleti tablakba (Scaleway valuta) ==="
+            for q in \
+              "SELECT 'transaction cnt='||count(*)||' max_created='||coalesce(max(created_at)::text,'none') FROM transaction" \
+              "SELECT 'daily_session max_created='||coalesce(max(created_at)::text,'none') FROM daily_session" \
+              "SELECT 'cash_balance max_updated='||coalesce(max(updated_at)::text,'none') FROM cash_balance" \
+              "SELECT 'audit_log cnt='||count(*)||' max_created='||coalesce(max(created_at)::text,'none') FROM audit_log" \
+              "SELECT 'employee cnt='||count(*) FROM employee" \
+              "SELECT 'RUB.is_active='||coalesce((SELECT is_active FROM currency WHERE code='RUB')::text,'n/a')" \
+              "SELECT 'flyway_max=V'||coalesce(max(version::int)::text,'?') FROM flyway_schema_history WHERE success AND version ~ '^[0-9]+\$'" ; do
+              sudo -u postgres psql -d valuta -tAc "$q" 2>&1 | sed -E 's/password[^ ]*/password=***/g'
+            done
+            echo ""
+            echo "=== serving backend on Scaleway (systemd) ==="
+            systemctl is-active valuta-backend.service 2>/dev/null || echo "(no valuta-backend svc)"
+            PID=\$(systemctl show valuta-backend.service -p MainPID --value 2>/dev/null)
+            echo "MainPID=\$PID start=\$(systemctl show valuta-backend.service -p ActiveEnterTimestamp --value 2>/dev/null)"
+            echo "ExecStart=\$(systemctl show valuta-backend.service -p ExecStart --value 2>/dev/null | grep -oE '/[^ ]+\.jar' | head -1)"
+            echo "--- which DB does the Scaleway backend point at (env, masked) ---"
+            if [ -n "\$PID" ] && [ "\$PID" != "0" ]; then
+              sudo tr '\0' '\n' < /proc/\$PID/environ 2>/dev/null \
+                | grep -E '^(DATABASE_URL|NEON_SYNC_ENABLED|DATABASE_USERNAME)=' \
+                | sed -E 's#(://)[^@/]*@#\1***@#g; s/password=[^ ]*/password=***/g'
+            fi
+            echo ""
+            echo "=== local /api/v1/version on Scaleway box ==="
+            curl -s --max-time 8 http://localhost:8080/api/v1/version || echo "(no local 8080)"
+            echo ""
+            echo "=== active client backends (are offices connected HERE right now?) ==="
+            sudo -u postgres psql -d valuta -P pager=off -c "SELECT count(*) conns, state, wait_event_type FROM pg_stat_activity WHERE datname='valuta' AND backend_type='client backend' GROUP BY state, wait_event_type ORDER BY 1 DESC" 2>&1 | head -12
+            echo "=== Kesz — read-only split-brain probe ==="
+          ENDSSH
