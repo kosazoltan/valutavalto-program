@@ -7,8 +7,6 @@ jobs:
   diag:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
@@ -16,30 +14,18 @@ jobs:
           chmod 600 ~/.ssh/scaleway_key
           ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: 'Deploy fixed primary-watchdog.sh to Scaleway + verify exit 0'
+      - name: 'READ-ONLY HA + watchdog health probe'
         run: |
-          set -euo pipefail
-          DEST=/opt/valutavalto/deploy/hetzner/ha
-          echo "=== upload fresh watchdog script ==="
-          scp -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
-            deploy/hetzner/ha/primary-watchdog.sh \
-            root@${{ secrets.SCALEWAY_SERVER_IP }}:/tmp/primary-watchdog.sh
-
           ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
-            root@${{ secrets.SCALEWAY_SERVER_IP }} bash -s << ENDSSH
-          set -euo pipefail
-          DEST=$DEST
-          cp /tmp/primary-watchdog.sh "\$DEST/primary-watchdog.sh"
-          chmod +x "\$DEST/primary-watchdog.sh"
-          echo "  installed, perms: \$(ls -la "\$DEST/primary-watchdog.sh" | awk '{print \$1}')"
-          echo "  has the fix (true line)? \$(grep -c '^    true$' "\$DEST/primary-watchdog.sh")"
-          echo "=== reset failed state + trigger one run via the service ==="
-          systemctl reset-failed primary-watchdog.service 2>/dev/null || true
-          systemctl start primary-watchdog.service
-          sleep 3
-          echo "  service result: \$(systemctl show primary-watchdog.service -p ExecMainStatus,Result --value | tr '\n' ' ')"
-          echo "  is-active(timer): \$(systemctl is-active primary-watchdog.timer)"
-          echo "=== manual run must now be exit 0 (primary UP) ==="
-          bash "\$DEST/primary-watchdog.sh"; echo "  manual exit: \$?"
-          echo "  state file: \$(cat /var/lib/primary-watchdog/state 2>/dev/null | tr '\n' ' ')"
+            root@${{ secrets.SCALEWAY_SERVER_IP }} bash -s << 'ENDSSH'
+          set +e
+          echo "=== watchdog (must be success now, exit 0) ==="
+          echo "  timer active: $(systemctl is-active primary-watchdog.timer)"
+          echo "  service result: $(systemctl show primary-watchdog.service -p Result --value)"
+          echo "  last run exit: $(systemctl show primary-watchdog.service -p ExecMainStatus --value)"
+          echo "  state file: $(cat /var/lib/primary-watchdog/state 2>/dev/null | tr '\n' ' ')"
+          echo ""
+          echo "=== standby PG (must be in recovery = standby, not promoted) ==="
+          sudo -u postgres psql -tAc "SELECT 'pg_is_in_recovery='||pg_is_in_recovery()" 2>/dev/null
+          echo "=== Kesz ==="
           ENDSSH
