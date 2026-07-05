@@ -458,6 +458,7 @@ jobs:
             sudo mkdir -p "$DEST"
             sudo mv /tmp/freeze-watchdog.sh "$DEST/freeze-watchdog.sh"
             sudo chmod +x "$DEST/freeze-watchdog.sh"
+            sudo chmod +x "$DEST"/*.sh 2>/dev/null || true
             sudo mv /tmp/freeze-watchdog.service /etc/systemd/system/freeze-watchdog.service
             sudo mv /tmp/freeze-watchdog.timer  /etc/systemd/system/freeze-watchdog.timer
             sudo systemctl daemon-reload

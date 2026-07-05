@@ -81,7 +81,7 @@ if health_ok; then
 fi
 
 # === NEM EGÉSZSÉGES ===
-DOWN=$((DOWN+1))
+DOWN=$(( ${DOWN:-0} + 1 ))
 log "down-check #$DOWN: $REASON"
 if [ "$DOWN" -lt "$FAIL_THRESHOLD" ]; then
   # tranziens / deploy-ablak — még nem avatkozunk be (csak számolunk)
@@ -94,7 +94,7 @@ if [ "$RCNT" -ge "$MAX_RESTARTS_PER_HOUR" ]; then
   log "rate-limit: már $RCNT auto-restart az elmúlt órában — auto-javítás LEÁLLÍTVA, ember kell"
   send_email "[excvaluta FREEZE-WATCHDOG] RATE-LIMIT — kézi beavatkozás kell" \
     "A Hetzner backend/Postgres fagyott (ok: $REASON), de már $RCNT automatikus újraindítás történt az elmúlt órában. További auto-restart leállítva (flap-védelem). KÉZI beavatkozás szükséges."
-  printf 'down=%s\nconsecfail=%s\nrestarts=%s\n' "$DOWN" "$((CONSEC_FAIL+1))" "$RECENT" > "$STATE_FILE"
+  printf 'down=%s\nconsecfail=%s\nrestarts=%s\n' "$DOWN" "$(( ${CONSEC_FAIL:-0} + 1 ))" "$RECENT" > "$STATE_FILE"
   exit 1
 fi
 
@@ -128,7 +128,7 @@ if [ "$RECOVERED" = "1" ]; then
   exit 0
 fi
 
-NEWCONSEC=$((CONSEC_FAIL+1))
+NEWCONSEC=$(( ${CONSEC_FAIL:-0} + 1 ))
 log "AUTO-RESTART után sem egészséges ($REASON), consecfail=$NEWCONSEC"
 printf 'down=%s\nconsecfail=%s\nrestarts=%s\n' "$DOWN" "$NEWCONSEC" "$NEW_RESTARTS" > "$STATE_FILE"
 if [ "$NEWCONSEC" -ge "$MAX_CONSECUTIVE_FAILURES" ]; then
