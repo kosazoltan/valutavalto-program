@@ -46,28 +46,47 @@ const REFRESH_SKIP_PATHS = ['/auth/login', '/auth/refresh', REFRESH_ENDPOINT]
 // 4. Web production: relatív URL
 let API_BASE_URL = import.meta.env.VITE_API_URL
 
-// v2.5.7 KRITIKUS FIX (race condition gyokerok analysis 2026-05-04 utan):
-// Ha az Electron production buildbe `localhost:*`-os VITE_API_URL kerult be (regi build-installer.ps1
-// bug a 3/6 fazisban), AZONNAL — a SQLite `server_url` async override ELOTT — felulirjuk a hardcoded
-// production URL-re. Ez eliminalja a race condition-t: az elso API hivas (pl. `fetchWorkers`
-// LoginPage-en) mar a HELYES URL-re megy, nem `localhost`-ra.
-// A `production-urls.json` extraResources mar tartalmazza ezt az URL-t — itt build-time string-kent
-// inline-oljuk a kovetkezetesseg miatt.
-const PRODUCTION_API_URL = 'https://excvaluta.com/api/v1'
-if (typeof window !== 'undefined' && window.electronAPI && !import.meta.env.DEV) {
-  if (
-    typeof API_BASE_URL === 'string' &&
-    /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.)/i.test(API_BASE_URL)
-  ) {
-    logger.warn(
-      '[api.client] Electron prod build, de VITE_API_URL localhost-ra mutat:',
-      API_BASE_URL,
-      '-> azonnali felulirasa',
-      PRODUCTION_API_URL,
-      '(race condition prevention)',
-    )
-    API_BASE_URL = PRODUCTION_API_URL
+// v2.28.x guard-bovites (API-URL-ONRENDER): a v2.5.7-es localhost-regex helyett
+// whitelist-alapu host-ellenorzes. Ha az Electron prod buildbe BARMILYEN nem-excvaluta
+// build-time VITE_API_URL kerult (2026-05-04: localhost; 2026-07-05: halott Render-host),
+// azt a SQLite `server_url` async override ELOTT a hardcoded prod URL-re csereljuk,
+// hogy az elso bootstrap-hivas (pl. /auth/refresh-cookie a LoginPage-en) ne menjen
+// idegen hostra. A SQLite override (lentebb) utana is felulirhat — a user-konfiguralt
+// URL nem serul. Egzakt hostname-egyezes (new URL), SOHA nem substring.
+export const PRODUCTION_API_URL = 'https://excvaluta.com/api/v1'
+const ELECTRON_PROD_ALLOWED_HOSTS = new Set(['excvaluta.com', 'www.excvaluta.com'])
+
+export function resolveElectronProdBaseUrl(
+  buildTimeUrl: string | undefined,
+): string | undefined {
+  if (typeof buildTimeUrl !== 'string' || buildTimeUrl.trim().length === 0) {
+    return undefined
   }
+
+  try {
+    const parsed = new URL(buildTimeUrl)
+    if (
+      /^https?:$/.test(parsed.protocol) &&
+      ELECTRON_PROD_ALLOWED_HOSTS.has(parsed.hostname.toLowerCase())
+    ) {
+      return buildTimeUrl
+    }
+  } catch {
+    // parse-hiba -> idegennek tekintjuk (fail-closed)
+  }
+
+  logger.warn(
+    '[api.client] Electron prod build, de a VITE_API_URL nem excvaluta host:',
+    buildTimeUrl,
+    '-> azonnali felulirasa',
+    PRODUCTION_API_URL,
+    '(race condition / stale-host prevention)',
+  )
+  return PRODUCTION_API_URL
+}
+
+if (typeof window !== 'undefined' && window.electronAPI && !import.meta.env.DEV) {
+  API_BASE_URL = resolveElectronProdBaseUrl(API_BASE_URL)
 }
 
 // Electron DEV mode: a Vite dev szerver proxyzza a /api kereseket a backend-re,

@@ -2,7 +2,7 @@
  * Bootstrap Auth + Database Cache E2E Tests
  *
  * Teszteli:
- * 1. Backend health check (Render)
+ * 1. Backend health check (prod)
  * 2. Auth login (PENZTAR_BOOTSTRAP_* credentials)
  * 3. Árfolyam cache (exchange-rates endpoint)
  * 4. Pénztáros törzs (workers)
@@ -17,11 +17,11 @@ import dotenv from 'dotenv'
 // .env fájl betöltése
 dotenv.config()
 
-// Fallback to Render backend if localhost not available
+// Fallback a prod backendre (excvaluta.com), ha nincs env override
 const API_BASE_URL =
   process.env.VITE_API_URL ||
   process.env.API_BASE_URL ||
-  'https://valuta-backend-spbx.onrender.com/api/v1'
+  'https://excvaluta.com/api/v1'
 
 const BOOTSTRAP_COMPANY = process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE || 'EBC'
 const BOOTSTRAP_WORKER = process.env.PENZTAR_BOOTSTRAP_WORKER_CODE || 'BORSI'

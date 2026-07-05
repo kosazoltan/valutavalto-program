@@ -15,7 +15,7 @@ const config: UserConfig & { test: InlineConfig } = {
     port: 3003,
     proxy: {
       '/api': {
-        target: 'https://valuta-backend-spbx.onrender.com',
+        target: 'https://excvaluta.com',
         changeOrigin: true,
       },
     },
