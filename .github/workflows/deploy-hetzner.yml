@@ -120,6 +120,8 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=accept-new \
+              -o ServerAliveInterval=30 \
+              -o ServerAliveCountMax=10 \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
               bash -s << 'ENDSSH'
             set -euo pipefail
@@ -140,12 +142,14 @@ jobs:
             # elbukott "must be owner of table" hibaval — egyes tablak nem a runtime
             # DB_USER (valuta_user) tulajdonaban voltak (V71 postgres-owner-rel jott letre),
             # igy a Flyway ADD COLUMN nem futott le -> backend startup crash -> 502.
-            # Normalizaljuk MINDEN public tabla+sequence tulajdonosat a runtime DB_USER-re
-            # (idempotens; dollar-quote/heredoc NELKUL, hogy a bash/YAML ne torje) MIELOTT
-            # a backend ujrainditva Flyway-t futtat.
+            # Normalizaljuk a NEM runtime-DB_USER tulajdonu public tabla+sequence
+            # objektumokat a DB_USER-re (idempotens: elso futaskor a tortenelmi
+            # postgres-owner maradekot javitja, steady-state-ben az AND ... <> szuro
+            # miatt 0 ALTER = 0 lock; dollar-quote/heredoc NELKUL, hogy a bash/YAML
+            # ne torje) MIELOTT a backend ujrainditva Flyway-t futtat.
             echo "=== Owner-normalizalas: public tablak+sequence-ek -> $DB_USER ==="
-            sudo -u postgres psql -d "$DB_NAME" -tAc "SELECT format('ALTER TABLE public.%I OWNER TO %I;', tablename, '$DB_USER') FROM pg_tables WHERE schemaname='public'" | sudo -u postgres psql -d "$DB_NAME" -v ON_ERROR_STOP=0 || true
-            sudo -u postgres psql -d "$DB_NAME" -tAc "SELECT format('ALTER SEQUENCE public.%I OWNER TO %I;', sequencename, '$DB_USER') FROM pg_sequences WHERE schemaname='public'" | sudo -u postgres psql -d "$DB_NAME" -v ON_ERROR_STOP=0 || true
+            sudo -u postgres psql -d "$DB_NAME" -tAc "SELECT format('ALTER TABLE public.%I OWNER TO %I;', tablename, '$DB_USER') FROM pg_tables WHERE schemaname='public' AND tableowner <> '$DB_USER'" | sudo -u postgres psql -d "$DB_NAME" -v ON_ERROR_STOP=0 || true
+            sudo -u postgres psql -d "$DB_NAME" -tAc "SELECT format('ALTER SEQUENCE public.%I OWNER TO %I;', sequencename, '$DB_USER') FROM pg_sequences WHERE schemaname='public' AND sequenceowner <> '$DB_USER'" | sudo -u postgres psql -d "$DB_NAME" -v ON_ERROR_STOP=0 || true
             echo "=== Repair done ==="
           ENDSSH
 
@@ -153,6 +157,8 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=accept-new \
+              -o ServerAliveInterval=30 \
+              -o ServerAliveCountMax=10 \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
               bash -s << 'ENDSSH'
             set -euo pipefail
