@@ -14,47 +14,23 @@ jobs:
           chmod 600 ~/.ssh/scaleway_key
           ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: 'READ-ONLY split-brain + data-divergence probe'
+      - name: 'READ-ONLY count(*) data-safety probe'
         run: |
-          # KIZAROLAG read-only. Cel: (1) mikor irtak utoljara a Scaleway valuta DB-be,
-          # (2) teljes per-tabla sor-szam pillanatkep (Hetzner-diff-hez), (3) a Scaleway
-          # backend melyik DB-t szolgalja, (4) sync-config (miert lognak a COMMIT-ok).
+          # KIZAROLAG read-only count(*) + legfrissebb audit sorok. Semmit nem modosit.
           ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
             root@${{ secrets.SCALEWAY_SERVER_IP }} \
             bash -s << 'ENDSSH'
           set +e
-          echo "=== pg_is_in_recovery (t=standby, f=promoted/writable) ==="
-          sudo -u postgres psql -d valuta -tAc "SELECT pg_is_in_recovery()"
-          echo "=== sync config ==="
-          sudo -u postgres psql -d valuta -tAc "SHOW synchronous_standby_names"
-          sudo -u postgres psql -d valuta -tAc "SHOW synchronous_commit"
-          echo ""
-          echo "=== WRITE-RECENCY (business tables) ==="
-          for q in \
-            "SELECT 'transaction cnt='||count(*)||' max='||coalesce(max(created_at)::text,'none') FROM transaction" \
-            "SELECT 'daily_session max='||coalesce(max(created_at)::text,'none') FROM daily_session" \
-            "SELECT 'cash_balance max_upd='||coalesce(max(updated_at)::text,'none') FROM cash_balance" \
-            "SELECT 'audit_log cnt='||count(*)||' max='||coalesce(max(created_at)::text,'none') FROM audit_log" \
-            "SELECT 'employee cnt='||count(*) FROM employee" ; do
-            sudo -u postgres psql -d valuta -tAc "$q" 2>&1 | sed -E 's/password[^ ]*/pw=***/g'
+          echo "=== SCALEWAY real count(*) money/movement tables ==="
+          for t in transaction collected_transaction cash_balance daily_session currency_stock transfer transfer_lines vault_transfer shipment_request denomination_balance audit_log closing_wizard receipt employee worker; do
+            echo "$t=$(sudo -u postgres psql -d valuta -tAc "SELECT count(*) FROM $t" 2>/dev/null)"
           done
           echo ""
-          echo "=== FULL per-table row counts (sorted) -> for Hetzner diff ==="
-          sudo -u postgres psql -d valuta -tAc "SELECT relname||'|'||n_live_tup FROM pg_stat_user_tables ORDER BY relname" 2>/dev/null
+          echo "=== SCALEWAY newest audit_log rows (id|created_at) ==="
+          sudo -u postgres psql -d valuta -tAc "SELECT id||'|'||created_at FROM audit_log ORDER BY created_at DESC LIMIT 3" 2>/dev/null
           echo ""
-          echo "=== Scaleway backend service + its DB target ==="
-          systemctl is-active valuta-backend.service 2>/dev/null || echo "(no svc)"
-          SVCPID=$(systemctl show valuta-backend.service -p MainPID --value 2>/dev/null)
-          echo "MainPID=$SVCPID start=$(systemctl show valuta-backend.service -p ActiveEnterTimestamp --value 2>/dev/null)"
-          if [ -n "$SVCPID" ] && [ "$SVCPID" != "0" ]; then
-            sudo tr '\0' '\n' < /proc/$SVCPID/environ 2>/dev/null \
-              | grep -E '^(DATABASE_URL|NEON_SYNC_ENABLED|DATABASE_USERNAME)=' \
-              | sed -E 's#(://)[^@/]*@#\1***@#g; s/password=[^ ]*/pw=***/g'
-          fi
-          echo "--- local /api/v1/version on Scaleway ---"
-          curl -s --max-time 8 http://localhost:8080/api/v1/version 2>/dev/null || echo "(no local 8080)"
-          echo ""
-          echo "=== active client backends right now (offices connected HERE?) ==="
-          sudo -u postgres psql -d valuta -P pager=off -c "SELECT count(*) conns, usename, state FROM pg_stat_activity WHERE datname='valuta' AND backend_type='client backend' GROUP BY usename, state ORDER BY 1 DESC LIMIT 10" 2>&1 | head -12
-          echo "=== Kesz — read-only probe ==="
+          echo "=== SCALEWAY: any write AFTER backend promote (2026-07-04 15:10)? ==="
+          sudo -u postgres psql -d valuta -tAc "SELECT 'audit_log rows after 2026-07-04 15:10 = '||count(*) FROM audit_log WHERE created_at > '2026-07-04 15:10:00'" 2>/dev/null
+          sudo -u postgres psql -d valuta -tAc "SELECT 'daily_session rows after 2026-07-04 15:10 = '||count(*) FROM daily_session WHERE created_at > '2026-07-04 15:10:00'" 2>/dev/null
+          echo "=== Kesz ==="
           ENDSSH
