@@ -191,6 +191,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: penztar-client/package-lock.json
       - run: cd penztar-client && npm ci --legacy-peer-deps
+      # CI-ELECTRON-RACE fix: az Electron binárist determinisztikusan, EGYSZER,
+      # a tesztek ELŐTT töltjük le — különben több vitest-fájl futásidőben,
+      # párhuzamosan próbálja letölteni ("Downloading Electron binary..."), és a
+      # race miatt egy tesztfájl 0 test-tel Failed Suite-ként bukik (flaki).
+      - run: cd penztar-client && node node_modules/electron/install.js
       - run: cd penztar-client && npm run test --if-present
       - run: cd penztar-client && npm run typecheck
       - run: cd penztar-client && npm run check:ipc
