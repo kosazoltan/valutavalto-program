@@ -11,6 +11,7 @@ import hu.puzzleir.valuta.mapper.CashBalanceMapper;
 import hu.puzzleir.valuta.repository.IdempotencyRecordRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.AccessScopeService;
+import hu.puzzleir.valuta.service.AuditLogService;
 import hu.puzzleir.valuta.service.CashBalanceService;
 import hu.puzzleir.valuta.util.IdempotencyGuard;
 import org.junit.jupiter.api.DisplayName;
@@ -42,7 +43,8 @@ class CashBalanceControllerIdempotencyTest {
             cashBalanceService,
             new CashBalanceMapper(),
             mock(AccessScopeService.class),
-            new IdempotencyGuard(idempotencyRecordRepository, new ObjectMapper()));
+            new IdempotencyGuard(idempotencyRecordRepository, new ObjectMapper(),
+                    mock(AuditLogService.class)));
 
     @Test
     @DisplayName("POST /cash-balances/adjust azonos Idempotency-Key esetén cache-elt választ ad és csak egyszer könyvel")

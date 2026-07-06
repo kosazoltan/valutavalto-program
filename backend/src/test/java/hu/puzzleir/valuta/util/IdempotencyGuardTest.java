@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.exception.ConflictException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.IdempotencyRecordRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.AuditLogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,10 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -35,6 +40,8 @@ import static org.mockito.Mockito.when;
  *   <li>(5) korabbi FAILED key -> uj PROCESSING start engedelyezett;</li>
  *   <li>(6) hianyzo idempotencyKey -> no-op (backward compat);</li>
  *   <li>(7) complete()/fail() update-eli a status-t.</li>
+ *   <li>(9)-(10) tulhosszu vagy control-charos kulcs -> 400 DB/audit hivas nelkul;</li>
+ *   <li>(11)-(14) minden COMPLETED cache-hit utvonal IDEMPOTENCY_CACHE_HIT auditot ir.</li>
  * </ul>
  */
 class IdempotencyGuardTest {
@@ -47,13 +54,15 @@ class IdempotencyGuardTest {
 
     private IdempotencyRecordRepository repository;
     private ObjectMapper objectMapper;
+    private AuditLogService auditLogService;
     private IdempotencyGuard guard;
 
     @BeforeEach
     void setUp() {
         repository = Mockito.mock(IdempotencyRecordRepository.class);
         objectMapper = new ObjectMapper();
-        guard = new IdempotencyGuard(repository, objectMapper);
+        auditLogService = Mockito.mock(AuditLogService.class);
+        guard = new IdempotencyGuard(repository, objectMapper, auditLogService);
     }
 
     @Test
@@ -262,6 +271,157 @@ class IdempotencyGuardTest {
         assertThat(rec.getStatus()).isEqualTo(IdempotencyRecord.Status.FAILED);
         assertThat(rec.getCompletedAt()).isNotNull();
         verify(repository, times(1)).save(rec);
+    }
+
+    @Test
+    @DisplayName("(9) 255-nel hosszabb kulcs -> ValidationException, DB-hivas nelkul")
+    void overlongKey_throwsValidation_withoutRepositoryAccess() {
+        String longKey = "k".repeat(300);
+
+        assertThatThrownBy(() ->
+                guard.tryAcquire(longKey, ENDPOINT, new FakeDto("buy", 100), FakeDto.class))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Idempotency-Key");
+        Mockito.verifyNoInteractions(repository, auditLogService);
+    }
+
+    @Test
+    @DisplayName("(10) control karaktert tartalmazo kulcs -> ValidationException")
+    void controlCharKey_throwsValidation() {
+        assertThatThrownBy(() ->
+                guard.tryAcquire("abc\ndef", ENDPOINT, new FakeDto("buy", 100), FakeDto.class))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Idempotency-Key");
+        Mockito.verifyNoInteractions(repository, auditLogService);
+    }
+
+    @Test
+    @DisplayName("(11) COMPLETED cache-hit -> IDEMPOTENCY_CACHE_HIT audit-esemeny irodik")
+    void completedCacheHit_writesAuditEvent() throws Exception {
+        FakeDto cached = new FakeDto("buy", 100);
+        IdempotencyRecord existing = IdempotencyRecord.builder()
+                .companyId(COMPANY_ID).endpoint(ENDPOINT).idempotencyKey(KEY)
+                .requestHash(computeHash(new FakeDto("buy", 100)))
+                .status(IdempotencyRecord.Status.COMPLETED)
+                .responseJson(objectMapper.writeValueAsString(cached))
+                .createdAt(Instant.now().minusSeconds(60))
+                .completedAt(Instant.now().minusSeconds(50))
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(repository.findByCompanyIdAndEndpointAndIdempotencyKey(COMPANY_ID, ENDPOINT, KEY))
+                    .thenReturn(Optional.of(existing));
+
+            guard.tryAcquire(KEY, ENDPOINT, new FakeDto("buy", 100), FakeDto.class);
+
+            verify(auditLogService, times(1)).log(
+                    eq("IDEMPOTENCY_CACHE_HIT"),
+                    eq("IDEMPOTENCY"),
+                    anyString(),
+                    any(),
+                    isNull(),
+                    isNull(),
+                    isNull(),
+                    contains(ENDPOINT),
+                    isNull(),
+                    isNull());
+        }
+    }
+
+    @Test
+    @DisplayName("(12) uj kulcs acquire (nem replay) -> NINCS audit-esemeny")
+    void newKeyAcquire_writesNoAuditEvent() {
+        try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(repository.findByCompanyIdAndEndpointAndIdempotencyKey(COMPANY_ID, ENDPOINT, KEY))
+                    .thenReturn(Optional.empty());
+            when(repository.save(any(IdempotencyRecord.class)))
+                    .thenAnswer(inv -> inv.getArgument(0));
+
+            guard.tryAcquire(KEY, ENDPOINT, new FakeDto("buy", 100), FakeDto.class);
+
+            Mockito.verifyNoInteractions(auditLogService);
+        }
+    }
+
+    @Test
+    @DisplayName("(13) FAILED-lock utani COMPLETED cache-hit -> audit-esemeny ott is irodik")
+    void failedLockPathCompletedCacheHit_writesAuditEvent() throws Exception {
+        FakeDto cached = new FakeDto("buy", 100);
+        IdempotencyRecord failedBeforeLock = IdempotencyRecord.builder()
+                .companyId(COMPANY_ID).endpoint(ENDPOINT).idempotencyKey(KEY)
+                .requestHash(computeHash(new FakeDto("buy", 100)))
+                .status(IdempotencyRecord.Status.FAILED)
+                .createdAt(Instant.now()).expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        IdempotencyRecord nowCompleted = IdempotencyRecord.builder()
+                .companyId(COMPANY_ID).endpoint(ENDPOINT).idempotencyKey(KEY)
+                .requestHash(computeHash(new FakeDto("buy", 100)))
+                .status(IdempotencyRecord.Status.COMPLETED)
+                .responseJson(objectMapper.writeValueAsString(cached))
+                .createdAt(Instant.now()).expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(repository.findByCompanyIdAndEndpointAndIdempotencyKey(COMPANY_ID, ENDPOINT, KEY))
+                    .thenReturn(Optional.of(failedBeforeLock));
+            when(repository.findByCompanyIdAndEndpointAndIdempotencyKeyForUpdate(COMPANY_ID, ENDPOINT, KEY))
+                    .thenReturn(Optional.of(nowCompleted));
+
+            IdempotencyGuard.Acquired<FakeDto> acquired =
+                    guard.tryAcquire(KEY, ENDPOINT, new FakeDto("buy", 100), FakeDto.class);
+
+            assertThat(acquired.cachedResult()).isEqualTo(cached);
+            verify(auditLogService, times(1)).log(
+                    eq("IDEMPOTENCY_CACHE_HIT"),
+                    eq("IDEMPOTENCY"),
+                    anyString(),
+                    any(),
+                    isNull(),
+                    isNull(),
+                    isNull(),
+                    contains(ENDPOINT),
+                    isNull(),
+                    isNull());
+        }
+    }
+
+    @Test
+    @DisplayName("(14) race read-back COMPLETED cache-hit -> audit-esemeny ott is irodik")
+    void racePathCompletedCacheHit_writesAuditEvent() throws Exception {
+        FakeDto cached = new FakeDto("buy", 100);
+        IdempotencyRecord completedByOther = IdempotencyRecord.builder()
+                .companyId(COMPANY_ID).endpoint(ENDPOINT).idempotencyKey(KEY)
+                .requestHash(computeHash(new FakeDto("buy", 100)))
+                .status(IdempotencyRecord.Status.COMPLETED)
+                .responseJson(objectMapper.writeValueAsString(cached))
+                .createdAt(Instant.now()).expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(repository.findByCompanyIdAndEndpointAndIdempotencyKey(COMPANY_ID, ENDPOINT, KEY))
+                    .thenReturn(Optional.empty())
+                    .thenReturn(Optional.of(completedByOther));
+            when(repository.save(any(IdempotencyRecord.class)))
+                    .thenThrow(new org.springframework.dao.DataIntegrityViolationException("dup"));
+
+            IdempotencyGuard.Acquired<FakeDto> acquired =
+                    guard.tryAcquire(KEY, ENDPOINT, new FakeDto("buy", 100), FakeDto.class);
+
+            assertThat(acquired.cachedResult()).isEqualTo(cached);
+            verify(auditLogService, times(1)).log(
+                    eq("IDEMPOTENCY_CACHE_HIT"),
+                    eq("IDEMPOTENCY"),
+                    anyString(),
+                    any(),
+                    isNull(),
+                    isNull(),
+                    isNull(),
+                    contains(ENDPOINT),
+                    isNull(),
+                    isNull());
+        }
     }
 
     private String computeHash(Object o) {
