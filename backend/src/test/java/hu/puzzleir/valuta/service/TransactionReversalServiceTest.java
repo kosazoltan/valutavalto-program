@@ -45,6 +45,7 @@ class TransactionReversalServiceTest {
     @Mock private TransactionOperationHelper helper;
     @Mock private AuditLogService auditLogService;
     @Mock private WacService wacService;
+    @Mock private CustomerRepository customerRepository;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID BRANCH_ID = UUID.randomUUID();
@@ -94,6 +95,8 @@ class TransactionReversalServiceTest {
         // Audit #2 (2026-05-31): a napi sztorno-plafon (3) mindig olvasott az executeReversal-ban.
         // Default 3 minden teszthez; a dedikalt plafon-tesztek explicit ujra beallitjak (LENIENT).
         when(helper.getDailyReversalLimit()).thenReturn(3);
+        lenient().when(customerRepository.findByCustomerCodeAndCompanyId(any(), any()))
+                .thenReturn(Optional.empty());
     }
 
     @Test
@@ -444,6 +447,117 @@ class TransactionReversalServiceTest {
                 .exchangeRate(new BigDecimal("400.00")).hufAmount(new BigDecimal("40000"))
                 .handlingFee(BigDecimal.ZERO).discountPercent(BigDecimal.ZERO).discountAmount(BigDecimal.ZERO)
                 .build();
+    }
+
+    private void stubSuccessfulReversalDependencies() {
+        when(dailySessionService.getDailyReversalCountForUpdate()).thenReturn(0);
+        when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
+            Transaction t = inv.getArgument(0);
+            if (t.getId() == null) t.setId(202L);
+            return t;
+        });
+    }
+
+    @Test
+    @DisplayName("FS-2 sztornó: HIGH ügyfél cashiernél supervisori jóváhagyás nélkül blokkol, mellékhatás előtt")
+    void testStorno_highRiskCustomerWithoutSupervisorApproval_blockedBeforeSideEffects() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            secUtils.when(SecurityUtils::isSupervisorOrAbove).thenReturn(false);
+            stubSuccessfulReversalDependencies();
+            Transaction original = buildTodaySell();
+            original.setCustomerId("C123");
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(original));
+            Customer master = Customer.builder().customerCode("C123").riskRating(CustomerRiskRating.HIGH).build();
+            when(customerRepository.findByCustomerCodeAndCompanyId("C123", COMPANY_ID)).thenReturn(Optional.of(master));
+
+            TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(100L).reason("HIGH sztornó teszt").supervisorApproved(false).build();
+
+            assertThatThrownBy(() -> reversalService.executeReversal(request))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("supervisori jóváhagyás");
+            verify(helper, never()).lockCashBalance(any(), anyLong());
+            verify(transactionRepository, never()).save(any(Transaction.class));
+        }
+    }
+
+    @Test
+    @DisplayName("FS-2 sztornó: HIGH ügyfél szerver-oldali supervisorApproved granttel átmegy")
+    void testStorno_highRiskCustomerWithSupervisorApproval_succeeds() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            secUtils.when(SecurityUtils::isSupervisorOrAbove).thenReturn(false);
+            stubSuccessfulReversalDependencies();
+            Transaction original = buildTodaySell();
+            original.setCustomerId("C123");
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(original));
+            Customer master = Customer.builder().customerCode("C123").riskRating(CustomerRiskRating.HIGH).build();
+            when(customerRepository.findByCustomerCodeAndCompanyId("C123", COMPANY_ID)).thenReturn(Optional.of(master));
+
+            TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(100L).reason("HIGH sztornó teszt").supervisorApproved(true).build();
+
+            Transaction reversal = reversalService.executeReversal(request);
+
+            assertThat(reversal).isNotNull();
+            assertThat(reversal.getTransactionType()).isEqualTo(TransactionType.REVERSAL);
+        }
+    }
+
+    @Test
+    @DisplayName("FS-2 sztornó: LOW ügyfél átmegy")
+    void testStorno_lowRiskCustomer_succeeds() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            secUtils.when(SecurityUtils::isSupervisorOrAbove).thenReturn(false);
+            stubSuccessfulReversalDependencies();
+            Transaction original = buildTodaySell();
+            original.setCustomerId("C123");
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(original));
+            Customer master = Customer.builder().customerCode("C123").riskRating(CustomerRiskRating.LOW).build();
+            when(customerRepository.findByCustomerCodeAndCompanyId("C123", COMPANY_ID)).thenReturn(Optional.of(master));
+
+            TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(100L).reason("LOW sztornó teszt").build();
+
+            Transaction reversal = reversalService.executeReversal(request);
+
+            assertThat(reversal).isNotNull();
+            assertThat(reversal.getTransactionType()).isEqualTo(TransactionType.REVERSAL);
+        }
+    }
+
+    @Test
+    @DisplayName("FS-2 sztornó: null customerId backward-compatible, törzs-lookup nélkül átmegy")
+    void testStorno_nullCustomerIdSkipsHighRiskLookup_succeeds() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            secUtils.when(SecurityUtils::isSupervisorOrAbove).thenReturn(false);
+            stubSuccessfulReversalDependencies();
+            Transaction original = buildTodaySell();
+            original.setCustomerId(null);
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(original));
+
+            TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(100L).reason("Kompat sztornó teszt").build();
+
+            Transaction reversal = reversalService.executeReversal(request);
+
+            assertThat(reversal).isNotNull();
+            verify(customerRepository, never()).findByCustomerCodeAndCompanyId(any(), any());
+        }
     }
 
     @Test

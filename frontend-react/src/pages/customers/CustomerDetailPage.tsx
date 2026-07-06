@@ -32,10 +32,16 @@ export default function CustomerDetailPage() {
   const canMarkEdd = hasRole('SUPERVISOR') || hasRole('MANAGER')
   const canManageRestrictions = hasRole('SUPERVISOR') || hasRole('MANAGER')
   const canMergeCustomers = hasRole('MANAGER') || hasRole('ADMIN')
+  const canSetRiskRating = hasRole('MANAGER') || hasRole('ADMIN')
   const [showEddModal, setShowEddModal] = useState(false)
   const [eddReasonInput, setEddReasonInput] = useState('')
   const [eddSaving, setEddSaving] = useState(false)
   const [eddError, setEddError] = useState<string | null>(null)
+  const [showRiskModal, setShowRiskModal] = useState(false)
+  const [riskInput, setRiskInput] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('LOW')
+  const [riskReasonInput, setRiskReasonInput] = useState('')
+  const [riskSaving, setRiskSaving] = useState(false)
+  const [riskError, setRiskError] = useState<string | null>(null)
   const [restrictions, setRestrictions] = useState<CustomerRestriction[]>([])
   const [screeningLog, setScreeningLog] = useState<CustomerScreeningLog[]>([])
   const [annualTotal, setAnnualTotal] = useState<number | null>(null)
@@ -127,6 +133,26 @@ export default function CustomerDetailPage() {
       logger.error('CustomerDetailPage', 'EDD-jelölés hiba:', err)
     } finally {
       setEddSaving(false)
+    }
+  }
+
+  const handleSetRiskRating = async () => {
+    if (!id || !riskReasonInput.trim()) {
+      setRiskError(t('customers.riskRatingReasonRequired'))
+      return
+    }
+    try {
+      setRiskSaving(true)
+      setRiskError(null)
+      const updated = await customerApi.setRiskRating(Number(id), riskInput, riskReasonInput.trim())
+      setCustomer(updated)
+      setShowRiskModal(false)
+      setRiskReasonInput('')
+    } catch (err) {
+      setRiskError(getErrorMessage(err))
+      logger.error('CustomerDetailPage', 'Kockázati besorolás hiba:', err)
+    } finally {
+      setRiskSaving(false)
     }
   }
 
@@ -317,6 +343,18 @@ export default function CustomerDetailPage() {
     setCustomer(prev => prev ? { ...prev, [field]: value } : prev)
   }
 
+  const currentRiskRating = customer.riskRating || 'LOW'
+  const riskRatingLabels: Record<'LOW' | 'MEDIUM' | 'HIGH', string> = {
+    LOW: t('customers.riskRatingLow'),
+    MEDIUM: t('customers.riskRatingMedium'),
+    HIGH: t('customers.riskRatingHigh'),
+  }
+  const riskRatingClasses: Record<'LOW' | 'MEDIUM' | 'HIGH', string> = {
+    LOW: 'bg-green-100 text-green-700',
+    MEDIUM: 'bg-yellow-100 text-yellow-800',
+    HIGH: 'bg-red-100 text-red-700',
+  }
+
   return (
     <div className="space-y-3 [&_.form-input]:min-w-0 [&_.form-input]:max-w-full [&_.form-input]:w-full">
       {/* Header */}
@@ -340,6 +378,11 @@ export default function CustomerDetailPage() {
                 })}
               </span>
             )}
+            <span className={`text-xs px-2 py-0.5 rounded flex items-center gap-1 ${riskRatingClasses[currentRiskRating]}`}>
+              <ShieldAlert size={12} />
+              <span>{t('customers.riskRatingLabel')}</span>
+              <span>{riskRatingLabels[currentRiskRating]}</span>
+            </span>
           </h1>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -351,6 +394,20 @@ export default function CustomerDetailPage() {
             >
               <ShieldCheck size={16} />
               {t('customers.eddMarkButton')}
+            </button>
+          )}
+          {canSetRiskRating && !isEditing && (
+            <button
+              onClick={() => {
+                setRiskError(null)
+                setRiskInput(currentRiskRating)
+                setShowRiskModal(true)
+              }}
+              className="form-button flex items-center gap-1 text-red-700"
+              title={t('customers.riskRatingDescription')}
+            >
+              <ShieldAlert size={16} />
+              {t('customers.riskRatingButton')}
             </button>
           )}
           <Link
@@ -903,6 +960,66 @@ export default function CustomerDetailPage() {
                 className="form-button-primary"
               >
                 {eddSaving ? t('customers.eddMarkSaving') : t('customers.eddMarkSubmit')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRiskModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="risk-rating-title"
+          onKeyDown={(e) => { if (e.key === 'Escape' && !riskSaving) setShowRiskModal(false) }}
+        >
+          <div className="w-full max-w-md rounded bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b p-4">
+              <h2 id="risk-rating-title" className="text-lg font-semibold flex items-center gap-2">
+                <ShieldAlert size={18} className="text-red-700" />
+                {t('customers.riskRatingTitle')}
+              </h2>
+            </div>
+            <div className="space-y-3 p-4">
+              <p className="text-sm text-gray-600">{t('customers.riskRatingDescription')}</p>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-gray-700">{t('customers.riskRatingLabel')}</span>
+                <select
+                  value={riskInput}
+                  onChange={(e) => setRiskInput(e.target.value as 'LOW' | 'MEDIUM' | 'HIGH')}
+                  className="w-full rounded border px-3 py-2"
+                >
+                  <option value="LOW">{t('customers.riskRatingLow')}</option>
+                  <option value="MEDIUM">{t('customers.riskRatingMedium')}</option>
+                  <option value="HIGH">{t('customers.riskRatingHigh')}</option>
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-gray-700">{t('customers.riskRatingReasonLabel')}</span>
+                <textarea
+                  value={riskReasonInput}
+                  onChange={(e) => setRiskReasonInput(e.target.value)}
+                  rows={3}
+                  maxLength={400}
+                  className="w-full rounded border px-3 py-2"
+                  autoFocus
+                />
+              </label>
+              {riskError && (
+                <div className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-800">{riskError}</div>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t p-4">
+              <button onClick={() => setShowRiskModal(false)} className="form-button" disabled={riskSaving}>
+                {t('customers.riskRatingCancel')}
+              </button>
+              <button
+                onClick={() => void handleSetRiskRating()}
+                disabled={riskSaving || !riskReasonInput.trim()}
+                className="form-button-primary"
+              >
+                {riskSaving ? t('customers.riskRatingSaving') : t('customers.riskRatingSubmit')}
               </button>
             </div>
           </div>

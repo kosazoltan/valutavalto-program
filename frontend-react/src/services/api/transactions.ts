@@ -35,6 +35,7 @@ export interface Customer {
   isVip: boolean
   isPep?: boolean
   notes?: string
+  riskRating?: 'LOW' | 'MEDIUM' | 'HIGH'
   // Megerősített eljárás (EDD, V.2.7 — V309/V310)
   eddUntil?: string
   eddReason?: string
@@ -135,6 +136,11 @@ export const customerApi = {
   /** Pmt. 30.§ (1) manuális EDD-jelölés (V.2.7 c) — supervisor+ jogosultság. */
   markEdd: async (id: number, reason: string): Promise<Customer> => {
     const response = await api.post<Customer>(`/customers/${id}/edd-mark`, { reason })
+    return response.data
+  },
+  /** FS-2 (MNB): kockázati besorolás állítása — MANAGER/ADMIN jogosultság. */
+  setRiskRating: async (id: number, riskRating: 'LOW' | 'MEDIUM' | 'HIGH', reason: string): Promise<Customer> => {
+    const response = await api.post<Customer>(`/customers/${id}/risk-rating`, { riskRating, reason })
     return response.data
   },
   getByDocumentNumber: async (documentNumber: string): Promise<Customer> => {

@@ -37,6 +37,7 @@ public class CustomerController {
     private final CustomerMapper customerMapper;
     private final CustomerStatisticsService customerStatisticsService;
     private final hu.puzzleir.valuta.service.AmlEddService amlEddService;
+    private final hu.puzzleir.valuta.service.CustomerRiskRatingService customerRiskRatingService;
 
     /**
      * Új ügyfél létrehozása
@@ -76,6 +77,21 @@ public class CustomerController {
             @PathVariable Long id,
             @Valid @RequestBody hu.puzzleir.valuta.dto.customer.MarkCustomerEddRequest request) {
         Customer customer = amlEddService.markManualEdd(id, request.getReason());
+        return ResponseEntity.ok(customerMapper.toDto(customer));
+    }
+
+    /**
+     * FS-2 (MNB): ügyfél kockázati besorolásának állítása — compliance-művelet, audit-köteles.
+     *
+     * POST /api/v1/customers/{id}/risk-rating
+     */
+    @PostMapping("/{id}/risk-rating")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<CustomerDto> setRiskRating(
+            @PathVariable Long id,
+            @Valid @RequestBody hu.puzzleir.valuta.dto.customer.SetCustomerRiskRatingRequest request) {
+        Customer customer = customerRiskRatingService.setRiskRating(
+                id, request.getRiskRating(), request.getReason());
         return ResponseEntity.ok(customerMapper.toDto(customer));
     }
 
