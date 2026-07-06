@@ -12,6 +12,8 @@ public class CircularDto {
     private Boolean urgent;
     /** A4 (b9-korlevelek FR-02): kötelező nyugtázás — true esetén blokkolja a tranzakciót, amíg nincs nyugtázva. */
     private Boolean requiresAcknowledgment;
+    /** FS-C (Center FS-1): válaszolható-e a körlevél. */
+    private Boolean allowsReply;
     private Boolean acknowledged;
     private String acknowledgedAt;
     private String createdAt;

@@ -148,6 +148,14 @@ public class Circular {
     private Boolean requiresAcknowledgment = false;
 
     /**
+     * FS-C (Center FS-1): válaszolható-e a körlevél. Default false —
+     * a V342 előtti körlevelek válasz-tiltottak (backward-compat).
+     */
+    @Column(name = "allows_reply", nullable = false)
+    @Builder.Default
+    private Boolean allowsReply = false;
+
+    /**
      * Tudomásul vétel időpontja
      */
     @Column(name = "acknowledged_at")

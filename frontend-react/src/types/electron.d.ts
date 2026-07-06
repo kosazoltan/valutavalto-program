@@ -319,6 +319,8 @@ export interface ElectronAPI {
   }>>;
   /** Offline átadás-átvétel SZTORNÓ (internetkimaradáskor): a backend fordítja vissza a készletet szinkronkor. */
   savePendingTransferStorno(payload: PendingTransferStornoInput): Promise<number>;
+  /** FS-C: körlevél-válasz offline rögzítése — a sync-engine küldi fel. */
+  savePendingCircularReply?(payload: { circularId: number; replyText: string }): Promise<number>;
   getPendingTransferStornos(): Promise<Array<{
     id: number;
     transfer_id: number;

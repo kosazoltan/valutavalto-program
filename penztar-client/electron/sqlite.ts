@@ -8,6 +8,7 @@ import type {
   PendingHandoverOperationInput,
   PendingStornoInput,
   PendingTransactionInputV2,
+  PendingCircularReplyInput,
   PendingTransferStornoInput,
 } from '@valuta/shared-ipc';
 
@@ -16,6 +17,7 @@ export type {
   PendingHandoverOperationInput,
   PendingStornoInput,
   PendingTransactionInputV2,
+  PendingCircularReplyInput,
   PendingTransferStornoInput,
 };
 
@@ -90,6 +92,7 @@ export const OUTBOX_TABLES = [
   'pending_handover_operations',
   'pending_transfers',
   'pending_transfer_stornos',
+  'pending_circular_replies',
   'pending_distributions',
   'pending_collections',
   'pending_stocktake_items',
@@ -115,10 +118,19 @@ export function ensureOutboxCompanyColumns(
   if (!code) return;
 
   for (const table of OUTBOX_TABLES) {
-    database.run(
-      `UPDATE ${table} SET company_code = ? WHERE company_code IS NULL AND synced = 0`,
-      [code],
-    );
+    try {
+      database.run(
+        `UPDATE ${table} SET company_code = ? WHERE company_code IS NULL AND synced = 0`,
+        [code],
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (!message.includes('no such table')) {
+        throw err;
+      }
+      // Partially upgraded/legacy local DBs may not have a newly-added outbox table yet.
+      // Its CREATE TABLE DDL runs later in normal init; no rows exist to backfill now.
+    }
   }
 }
 
@@ -621,6 +633,18 @@ export async function initDatabase(): Promise<void> {
         transfer_number TEXT,
         reason TEXT NOT NULL,
         local_reference_number TEXT,
+        idempotency_key TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+      );
+    `);
+
+    // FS-C: körlevél-válasz outbox (offline is rögzíthető, sync-engine küldi fel).
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_circular_replies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        circular_id INTEGER NOT NULL,
+        reply_text TEXT NOT NULL,
         idempotency_key TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
@@ -2582,6 +2606,50 @@ export function getPendingTransferStornos(): PendingTransferStornoRow[] {
 export function markTransferStornoSynced(id: number): void {
   if (!db) return;
   db.run('UPDATE pending_transfer_stornos SET synced = 1 WHERE id = ?', [id]);
+  saveDatabase();
+}
+
+// ============================================================================
+// Körlevél-válasz outbox (FS-C, Center FS-1)
+// ============================================================================
+
+export interface PendingCircularReplyRow {
+  id: number;
+  circular_id: number;
+  reply_text: string;
+  idempotency_key: string | null;
+  company_code?: string | null;
+  created_at: string;
+  synced: number;
+}
+
+export function savePendingCircularReply(params: PendingCircularReplyInput): number {
+  if (!db) throw new Error('Database not initialized');
+  const idempotencyKey = crypto.randomUUID();
+  db.run(
+    `INSERT INTO pending_circular_replies (circular_id, reply_text, idempotency_key, company_code)
+     VALUES (?, ?, ?, ?)`,
+    [params.circularId, params.replyText.trim(), idempotencyKey, getActiveCompanyCode()],
+  );
+  const insertedId = lastInsertRowId(db);
+  saveDatabase();
+  return insertedId;
+}
+
+export function getPendingCircularReplies(): PendingCircularReplyRow[] {
+  if (!db) return [];
+  const results: PendingCircularReplyRow[] = [];
+  const stmt = db.prepare('SELECT * FROM pending_circular_replies WHERE synced = 0 ORDER BY created_at ASC');
+  while (stmt.step()) {
+    results.push(stmt.getAsObject() as unknown as PendingCircularReplyRow);
+  }
+  stmt.free();
+  return results;
+}
+
+export function markCircularReplySynced(id: number): void {
+  if (!db) return;
+  db.run('UPDATE pending_circular_replies SET synced = 1 WHERE id = ?', [id]);
   saveDatabase();
 }
 

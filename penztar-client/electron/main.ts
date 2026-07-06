@@ -45,6 +45,7 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   IPC_CHANNELS,
+  type PendingCircularReplyInput,
   type PendingHandoverOperationInput,
   type PendingStornoInput,
   type PendingTransferStornoInput,
@@ -65,6 +66,7 @@ import {
   savePendingBankTransaction,
   savePendingStorno,
   savePendingTransferStorno,
+  savePendingCircularReply,
   getPendingTransferStornos,
   getPendingTransactions,
   getPendingTransactionRefById,
@@ -596,6 +598,11 @@ ipcMain.handle('get-pending-stornos', async (): Promise<ReturnType<typeof getPen
 // Offline átadás-átvétel SZTORNÓ (internetkimaradáskor): queue → sync → backend visszafordítás.
 ipcMain.handle('save-pending-transfer-storno', async (_event, payload: PendingTransferStornoInput): Promise<number> => {
   return savePendingTransferStorno(payload);
+});
+
+// FS-C: körlevél-válasz offline outbox (sync-engine küldi a backendre).
+ipcMain.handle('save-pending-circular-reply', async (_event, payload: PendingCircularReplyInput): Promise<number> => {
+  return savePendingCircularReply(payload);
 });
 
 ipcMain.handle('get-pending-transfer-stornos', async (): Promise<ReturnType<typeof getPendingTransferStornos>> => {
