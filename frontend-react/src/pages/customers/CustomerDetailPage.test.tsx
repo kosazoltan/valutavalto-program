@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     getStats: vi.fn(),
     getHistory: vi.fn(),
     markEdd: vi.fn(),
+    setRiskRating: vi.fn(),
     update: vi.fn(),
     merge: vi.fn(),
   },
@@ -151,6 +152,51 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
     renderPage()
     await waitFor(() => expect(mocks.customerApi.getById).toHaveBeenCalled())
     expect(screen.queryByText('EDD-jelölés (Pmt. 30.§)')).not.toBeInTheDocument()
+  })
+
+  it('HIGH kockázati besorolásnál piros badge látszik', async () => {
+    mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER, riskRating: 'HIGH' })
+
+    renderPage()
+
+    expect(await screen.findByText('Magas')).toBeInTheDocument()
+    expect(screen.getByText('Kockázati besorolás')).toBeInTheDocument()
+  })
+
+  it('MANAGER szerepnél a kockázati besorolás állító gomb látszik, CASHIER-nél nem', async () => {
+    setRole('MANAGER')
+    mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER, riskRating: 'LOW' })
+    const { unmount } = renderPage()
+
+    expect(await screen.findByText('Kockázati besorolás állítása')).toBeInTheDocument()
+    unmount()
+
+    vi.clearAllMocks()
+    setRole('CASHIER')
+    mocks.customerControlApi.getRestrictions.mockResolvedValue([])
+    mocks.customerControlApi.getAnnualTotal.mockResolvedValue(0)
+    mocks.customerControlApi.getScreeningLog.mockResolvedValue([])
+    mocks.customerApi.getStats.mockResolvedValue({ customerId: 42, customerName: 'Teszt Elek', totalTransactions: 0, totalVolumeHuf: 0, averageAmount: 0 })
+    mocks.customerApi.getHistory.mockResolvedValue({ customerId: 42, customerName: 'Teszt Elek', totalTransactions: 0, totalVolumeHuf: 0, averageAmount: 0 })
+    mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER, riskRating: 'LOW' })
+    renderPage()
+    await waitFor(() => expect(mocks.customerApi.getById).toHaveBeenCalledWith(42))
+    expect(screen.queryByText('Kockázati besorolás állítása')).not.toBeInTheDocument()
+  })
+
+  it('kockázati besorolás modal submitja meghívja a dedikált endpointot az indokkal', async () => {
+    setRole('MANAGER')
+    mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER, riskRating: 'LOW' })
+    mocks.customerApi.setRiskRating.mockResolvedValue({ ...BASE_CUSTOMER, riskRating: 'HIGH' })
+
+    renderPage()
+    fireEvent.click(await screen.findByText('Kockázati besorolás állítása'))
+    fireEvent.change(await screen.findByLabelText('Kockázati besorolás'), { target: { value: 'HIGH' } })
+    fireEvent.change(screen.getByLabelText('Indok'), { target: { value: 'Compliance döntés' } })
+    fireEvent.click(screen.getByText('Besorolás mentése'))
+
+    await waitFor(() => expect(mocks.customerApi.setRiskRating).toHaveBeenCalledWith(42, 'HIGH', 'Compliance döntés'))
+    expect(await screen.findByText('Magas')).toBeInTheDocument()
   })
 
   it('betölti az ügyfél-ellenőrzés backend adatait az ügyfél részletezőn', async () => {

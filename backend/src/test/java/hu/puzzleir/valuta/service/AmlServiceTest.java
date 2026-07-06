@@ -209,6 +209,130 @@ class AmlServiceTest {
         assertThat(result.getRejectionReason()).contains("KOTELEZO");
     }
 
+    @Test
+    @DisplayName("FS-4: lejárt okmány 300000 Ft-nál fail-closed BLOKK")
+    void testCheckTransaction_expiredDocumentAtIdentificationLimit_rejected() {
+        Customer master = Customer.builder().customerCode("C123").build();
+        master.setDocumentExpiry(LocalDate.now().minusDays(1));
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("300000"), "C123", "Teszt Ügyfél", "AB123456", "EUR", null);
+
+        assertThat(result.isApproved()).isFalse();
+        assertThat(result.getRejectionReason()).contains("lejárt");
+    }
+
+    @Test
+    @DisplayName("FS-4: lejárt okmány 300000 Ft alatt WARN-only, approved marad")
+    void testCheckTransaction_expiredDocumentBelowIdentificationLimit_warnOnly() {
+        Customer master = Customer.builder().customerCode("C123").build();
+        master.setDocumentExpiry(LocalDate.now().minusDays(1));
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("299999"), "C123", "Teszt Ügyfél", "AB123456", "EUR", null);
+
+        assertThat(result.isApproved()).isTrue();
+    }
+
+    @Test
+    @DisplayName("FS-4: érvényes okmány 300000 Ft felett átmegy")
+    void testCheckTransaction_validDocumentAboveIdentificationLimit_approved() {
+        Customer master = Customer.builder().customerCode("C123").build();
+        master.setDocumentExpiry(LocalDate.now().plusDays(1));
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("500000"), "C123", "Teszt Ügyfél", "AB123456", "EUR", null);
+
+        assertThat(result.isApproved()).isTrue();
+    }
+
+    @Test
+    @DisplayName("FS-4: null documentExpiry backward-compatible, átmegy")
+    void testCheckTransaction_nullDocumentExpiryBackwardCompatible_approved() {
+        Customer master = Customer.builder().customerCode("C123").build();
+        master.setDocumentExpiry(null);
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("500000"), "C123", "Teszt Ügyfél", "AB123456", "EUR", null);
+
+        assertThat(result.isApproved()).isTrue();
+    }
+
+    @Test
+    @DisplayName("FS-4/FS-2: ismeretlen customerCode backward-compatible, átmegy")
+    void testCheckTransaction_unknownCustomerBackwardCompatible_approved() {
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.empty());
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("500000"), "C123", "Teszt Ügyfél", "AB123456", "EUR", null);
+
+        assertThat(result.isApproved()).isTrue();
+    }
+
+    @Test
+    @DisplayName("FS-2: HIGH kockázati besorolású ügyfél cashiernél felsővezetői jóváhagyást kér")
+    void testCheckTransaction_highRiskCashier_requiresApproval() {
+        Customer master = Customer.builder().customerCode("C123").build();
+        master.setRiskRating(CustomerRiskRating.HIGH);
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("500000"), "C123", "Teszt Ügyfél", "AB123456", "EUR", null);
+
+        assertThat(result.isRequiresApproval()).isTrue();
+        assertThat(result.getApprovalReason()).contains("Magas kockázati");
+    }
+
+    @Test
+    @DisplayName("FS-2: HIGH kockázati besorolás supervisor kontextusban nem kér külön jóváhagyást")
+    void testCheckTransaction_highRiskSupervisor_noApproval() {
+        hu.puzzleir.valuta.security.WorkerAuthenticationDetails supDetails =
+                new hu.puzzleir.valuta.security.WorkerAuthenticationDetails(2L, TEST_COMPANY_ID, TEST_BRANCH_ID, "SUPERVISOR");
+        TestingAuthenticationToken supAuth = new TestingAuthenticationToken("sup", "pass", "ROLE_SUPERVISOR");
+        supAuth.setDetails(supDetails);
+        SecurityContextHolder.getContext().setAuthentication(supAuth);
+        Customer master = Customer.builder().customerCode("C123").build();
+        master.setRiskRating(CustomerRiskRating.HIGH);
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("500000"), "C123", "Teszt Ügyfél", "AB123456", "EUR", null);
+
+        assertThat(result.isRequiresApproval()).isFalse();
+    }
+
+    @Test
+    @DisplayName("FS-2: LOW és null riskRating nem kér felsővezetői jóváhagyást")
+    void testCheckTransaction_lowAndNullRiskRating_noApproval() {
+        Customer lowMaster = Customer.builder().customerCode("C123").build();
+        lowMaster.setRiskRating(CustomerRiskRating.LOW);
+        Customer nullMaster = Customer.builder().customerCode("C124").build();
+        nullMaster.setRiskRating(null);
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(lowMaster));
+        when(customerRepository.findByCustomerCodeAndCompanyId("C124", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(nullMaster));
+
+        AmlService.AmlBasicCheckResult lowResult = amlService.checkTransaction(
+                new BigDecimal("500000"), "C123", "Teszt Ügyfél", "AB123456", "EUR", null);
+        AmlService.AmlBasicCheckResult nullResult = amlService.checkTransaction(
+                new BigDecimal("500000"), "C124", "Teszt Ügyfél", "AB123456", "EUR", null);
+
+        assertThat(lowResult.isRequiresApproval()).isFalse();
+        assertThat(nullResult.isRequiresApproval()).isFalse();
+    }
+
     // ============ PP-03 IDOR: AML tranzakció-csatolás teszt ============
 
     @Test

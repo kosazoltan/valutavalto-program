@@ -239,6 +239,43 @@ public class AmlService {
                 hufAmount, DETAILED_ID_LIMIT);
         }
 
+        // 2b. Ügyfél-TÖRZS kapuk (FS-A): okmány-lejárat (FS-4) + kézi MNB kockázati
+        // besorolás (FS-2). EGY cég-szűrt lookup fedi mindkettőt (invariáns #1).
+        // Nincs customerId / nincs törzsrekord → kompat-átmenés (classifyTransaction-minta).
+        if (customerId != null && !customerId.isBlank()) {
+            Optional<Customer> masterOpt = customerRepository
+                .findByCustomerCodeAndCompanyId(customerId, SecurityUtils.getCurrentCompanyId());
+            if (masterOpt.isPresent()) {
+                Customer master = masterOpt.get();
+                // FS-4: lejárt okmány — 300E+ fail-closed BLOKK (törvényi), alatta WARN.
+                // NULL documentExpiry = backward-compat átmenés (régi ügyfél-törzs).
+                LocalDate docExpiry = master.getDocumentExpiry();
+                if (docExpiry != null && docExpiry.isBefore(LocalDate.now())) {
+                    if (hufAmount.compareTo(IDENTIFICATION_LIMIT) >= 0) {
+                        log.warn("AML: Lejárt okmány BLOKK — ügyfél: {}, lejárat: {}, összeg: {} Ft",
+                            customerId, docExpiry, hufAmount);
+                        result.approved(false);
+                        result.rejectionReason("Az ügyfél okmánya lejárt (" + docExpiry + ") — "
+                            + IDENTIFICATION_LIMIT.toPlainString() + " Ft feletti tranzakció lejárt "
+                            + "okmánnyal nem hajtható végre! Rögzítse az ügyfél új, érvényes okmányát.");
+                        return result.build();
+                    }
+                    log.warn("AML: Lejárt okmány (lejárat: {}) — {} Ft a {} Ft küszöb alatt, WARN-only. Ügyfél: {}",
+                        docExpiry, hufAmount, IDENTIFICATION_LIMIT.toPlainString(), customerId);
+                }
+                // FS-2: kézi HIGH besorolás → felsővezetői engedélyezési eljárás a meglévő
+                // grant-flow-n (recordSeniorApproval + consumeApprovalGrant). Supervisor-kivétel
+                // a FATF 1/a és éves-limit kapukkal konzisztensen.
+                if (master.getRiskRating() == CustomerRiskRating.HIGH
+                        && !SecurityUtils.isSupervisorOrAbove()) {
+                    result.requiresApproval(true);
+                    result.requiresDetailedId(true);
+                    result.approvalReason("Magas kockázati besorolású ügyfél (MNB fokozat: MAGAS) — "
+                        + "felsővezetői jóváhagyás kötelező a váltáshoz (Pmt. 14/A. § (4)).");
+                }
+            }
+        }
+
         // 3. Eves gongyolesi kontroll (ha van ugyfel azonosito)
         // HIGH FIX: .isBlank() konzisztens validáció (Java 11+)
         if (customerId != null && !customerId.isBlank()) {

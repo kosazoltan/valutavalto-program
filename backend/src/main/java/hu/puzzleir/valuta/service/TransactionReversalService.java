@@ -43,6 +43,7 @@ public class TransactionReversalService {
     private final TransactionOperationHelper helper;
     private final AuditLogService auditLogService;
     private final WacService wacService;
+    private final CustomerRepository customerRepository;
 
     /**
      * Sztorno vegrehajtasa.
@@ -80,6 +81,11 @@ public class TransactionReversalService {
                 "Csak az aznapi tranzakcio sztornozhato — korabbi nap visszamenoleg nem sztornozhato. Tranzakcio datuma: "
                 + original.getTransactionDate());
         }
+
+        // FS-2: kézi HIGH kockázati besorolású ügyfél sztornója engedélyköteles (fail-closed,
+        // mellékhatások — lock/POS/könyvelés — ELŐTT). A supervisorApproved szerver-oldalon
+        // verifikált (StornoService), lásd ReversalRequest javadoc.
+        enforceHighRiskCustomerGate(original, companyId, request);
 
         // Audit #2 (2026-05-31, user-direktiva) — AZNAPI DARABSZAM-szabaly: aznap MAXIMUM
         // `limit` (alapertelmezetten 3) sztorno lehetseges. Lebontva:
@@ -303,8 +309,26 @@ public class TransactionReversalService {
         return savedReversal;
     }
 
+    private void enforceHighRiskCustomerGate(Transaction original, UUID companyId,
+            ReversalRequest request) {
+        String customerCode = original.getCustomerId();
+        if (customerCode == null || customerCode.isBlank()) {
+            return; // nincs ügyfél-kötés — kompat
+        }
+        Customer master = customerRepository
+                .findByCustomerCodeAndCompanyId(customerCode, companyId).orElse(null);
+        if (master == null || master.getRiskRating() != CustomerRiskRating.HIGH) {
+            return;
+        }
+        if (SecurityUtils.isSupervisorOrAbove() || request.isSupervisorApproved()) {
+            return;
+        }
+        throw new ValidationException("Magas kockázati besorolású (MAGAS) ügyfél tranzakciójának "
+                + "sztornójához supervisori jóváhagyás szükséges!");
+    }
+
     /**
-     * Reszleges visszaterites vegrehajtasa.
+     * Reszleges visszaterites vegrehajtasa (csak valuta vasarlasnal).
      */
     public Transaction executePartialRefund(PartialRefundRequest request) {
         helper.validateOpenSession();

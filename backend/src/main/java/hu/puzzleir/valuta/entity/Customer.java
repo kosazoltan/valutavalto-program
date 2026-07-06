@@ -284,6 +284,16 @@ public class Customer {
     private LocalDateTime highRiskSetAt;
 
     /**
+     * MNB kockázati besorolás (FS-2): kézzel állított compliance-fokozat.
+     * HIGH → a pénztári váltás felsővezetői engedélyezési eljáráshoz kötött.
+     * FÜGGETLEN a göngyölés-vezérelte highRiskFlag-től.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "risk_rating", nullable = false, length = 10)
+    @Builder.Default
+    private CustomerRiskRating riskRating = CustomerRiskRating.LOW;
+
+    /**
      * Megerősített eljárás (EDD, V.2.7) 1 éves ablakának vége.
      * Amíg >= mai nap, a tranzakciónál fokozott átvilágítás kötelező (V309).
      */
