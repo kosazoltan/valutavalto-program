@@ -124,13 +124,19 @@ jobs:
           node-version: '20'
 
       - name: Run Claude Code — auto-fix reviewer feedback
+        # CI-INFRA-AUTOFIX (2026-07-06): continue-on-error — ez advisory job (nem
+        # required check); az upstream action belso bugja ("directory mismatch")
+        # es a max-turns kimerules ne fesse pirosra a PR checks listat. A futas
+        # eredmenyet a kotelezo PR comment jelzi igy is.
+        continue-on-error: true
         uses: anthropics/claude-code-action@a9ac9eb3a874922a7e34246afae3914113c6626f # v1 (audit-iter3 P1: pinned to SHA, CodeQL actions/unpinned-tag fix)
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # Allowed bots: Sourcery AI + Codex automatikus trigger-elhet (default: only humans)
           allowed_bots: 'sourcery-ai,chatgpt-codex-connector'
-          # Max 5 iteracio a fixre (token + cost limit)
-          claude_args: --max-turns 10 --model claude-sonnet-4-5
+          # Max 20 iteracio a fixre (CI-INFRA-AUTOFIX 2026-07-06: 10 keves volt —
+          # "Reached maximum number of turns (10)" hard-fail; token/cost limit marad)
+          claude_args: --max-turns 20 --model claude-sonnet-4-5
           prompt: |
             AI code reviewer (Sourcery AI vagy ChatGPT Codex Connector) egy PR-re review-t kuldott.
             Feladatod: automatikusan javitani a talalatokat + commitolni a feature branch-re.
