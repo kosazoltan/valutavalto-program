@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,12 +38,15 @@ class DocumentScannerServiceTest {
     private hu.puzzleir.valuta.repository.CustomerRepository customerRepository;
     @Mock
     private hu.puzzleir.valuta.repository.TransactionRepository transactionRepository;
+    @Mock
+    private SystemParameterService systemParameterService;
 
     private DocumentScannerService service;
 
     @BeforeEach
     void setUp() {
-        service = new DocumentScannerService(scannedDocumentRepository, customerRepository, transactionRepository);
+        service = new DocumentScannerService(scannedDocumentRepository, customerRepository, transactionRepository,
+                systemParameterService);
         ReflectionTestUtils.setField(service, "maxFileSizeBytes", 1024L);
         ReflectionTestUtils.setField(service, "providerActive", true);
     }
@@ -77,6 +81,74 @@ class DocumentScannerServiceTest {
         verify(scannedDocumentRepository).save(captor.capture());
         assertThat(captor.getValue().getMimeType()).isEqualTo("image/png");
         assertThat(captor.getValue().getDocumentType()).isEqualTo(ScannedDocumentType.ID_CARD);
+    }
+
+    @Test
+    @DisplayName("COMPANY_REGISTRY feltöltés: COMPANY_DOC_VALIDITY_DAYS default 30 nappal validUntil-t állít")
+    void saveScannedDocument_companyRegistry_defaultThirtyDays() {
+        when(systemParameterService.getValue("COMPANY_DOC_VALIDITY_DAYS", "30")).thenReturn("30");
+        DocumentScanUploadRequest request = DocumentScanUploadRequest.builder()
+                .documentType("COMPANY_REGISTRY")
+                .build();
+        MockMultipartFile file = new MockMultipartFile("file", "cegjegyzek.pdf", "application/pdf", "abc".getBytes());
+        when(scannedDocumentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.saveScannedDocument(file, request);
+
+        ArgumentCaptor<ScannedDocument> captor = ArgumentCaptor.forClass(ScannedDocument.class);
+        verify(scannedDocumentRepository).save(captor.capture());
+        assertThat(captor.getValue().getValidUntil()).isEqualTo(LocalDate.now().plusDays(30));
+    }
+
+    @Test
+    @DisplayName("COMPANY_REGISTRY feltöltés: konfigurált 10 napos validUntil")
+    void saveScannedDocument_companyRegistry_configuredTenDays() {
+        when(systemParameterService.getValue("COMPANY_DOC_VALIDITY_DAYS", "30")).thenReturn("10");
+        DocumentScanUploadRequest request = DocumentScanUploadRequest.builder()
+                .documentType("COMPANY_REGISTRY")
+                .build();
+        MockMultipartFile file = new MockMultipartFile("file", "cegjegyzek.pdf", "application/pdf", "abc".getBytes());
+        when(scannedDocumentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ScannedDocumentDto result = service.saveScannedDocument(file, request);
+
+        ArgumentCaptor<ScannedDocument> captor = ArgumentCaptor.forClass(ScannedDocument.class);
+        verify(scannedDocumentRepository).save(captor.capture());
+        assertThat(captor.getValue().getValidUntil()).isEqualTo(LocalDate.now().plusDays(10));
+        assertThat(result.getValidUntil()).isEqualTo(LocalDate.now().plusDays(10));
+    }
+
+    @Test
+    @DisplayName("COMPANY_REGISTRY feltöltés: hibás paraméter esetén 30 nap fallback")
+    void saveScannedDocument_companyRegistry_invalidParamFallsBackToThirtyDays() {
+        when(systemParameterService.getValue("COMPANY_DOC_VALIDITY_DAYS", "30")).thenReturn("abc");
+        DocumentScanUploadRequest request = DocumentScanUploadRequest.builder()
+                .documentType("COMPANY_REGISTRY")
+                .build();
+        MockMultipartFile file = new MockMultipartFile("file", "cegjegyzek.pdf", "application/pdf", "abc".getBytes());
+        when(scannedDocumentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.saveScannedDocument(file, request);
+
+        ArgumentCaptor<ScannedDocument> captor = ArgumentCaptor.forClass(ScannedDocument.class);
+        verify(scannedDocumentRepository).save(captor.capture());
+        assertThat(captor.getValue().getValidUntil()).isEqualTo(LocalDate.now().plusDays(30));
+    }
+
+    @Test
+    @DisplayName("ID_CARD feltöltés: validUntil null, érvényessége a Customer mezőkön él")
+    void saveScannedDocument_idCard_validUntilNull() {
+        DocumentScanUploadRequest request = DocumentScanUploadRequest.builder()
+                .documentType("ID_CARD")
+                .build();
+        MockMultipartFile file = new MockMultipartFile("file", "okmany.png", "image/png", "abc".getBytes());
+        when(scannedDocumentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.saveScannedDocument(file, request);
+
+        ArgumentCaptor<ScannedDocument> captor = ArgumentCaptor.forClass(ScannedDocument.class);
+        verify(scannedDocumentRepository).save(captor.capture());
+        assertThat(captor.getValue().getValidUntil()).isNull();
     }
 
     @Test

@@ -6,6 +6,7 @@ import RolePage from './RolePage'
 import UserPage from './UserPage'
 import ReceiptTextSettingsPage from './ReceiptTextSettingsPage'
 import CashierBandSettingsPage from './CashierBandSettingsPage'
+import ValueBandSettingsPage from './ValueBandSettingsPage'
 import BankIntegrationStatusPage from './BankIntegrationStatusPage'
 import MfaEnrollmentPage from './MfaEnrollmentPage'
 import SupervisorPinSettingsPanel from './SupervisorPinSettingsPanel'
@@ -98,6 +99,7 @@ export default function SettingsPage() {
     { id: 'receipt-texts', name: 'Bizonylat szövegek', icon: FileText },
     { id: 'translations', name: 'Fordítások', icon: Languages },
     { id: 'cashier-band', name: 'Pénztárosi sáv', icon: AlertTriangle },
+    { id: 'value-bands', name: 'AML értéksávok', icon: Sliders },
     { id: 'bank-integration', name: 'Bank integráció', icon: Landmark },
     { id: 'mfa', name: 'Kétfaktoros (MFA)', icon: KeyRound },
     { id: 'database', name: 'Adatbázis', icon: Database },
@@ -303,6 +305,10 @@ export default function SettingsPage() {
 
           {activeTab === 'cashier-band' && (
             <CashierBandSettingsPage />
+          )}
+
+          {activeTab === 'value-bands' && (
+            <ValueBandSettingsPage />
           )}
 
           {activeTab === 'bank-integration' && (

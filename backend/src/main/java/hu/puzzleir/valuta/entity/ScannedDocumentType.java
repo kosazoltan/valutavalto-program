@@ -7,5 +7,6 @@ public enum ScannedDocumentType {
     ID_CARD,
     PASSPORT,
     DRIVERS_LICENSE,
+    COMPANY_REGISTRY,
     OTHER
 }

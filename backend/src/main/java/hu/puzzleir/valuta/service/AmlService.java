@@ -11,6 +11,7 @@ import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.AmlReportRepository;
 import hu.puzzleir.valuta.repository.AmlThresholdRepository;
 import hu.puzzleir.valuta.repository.CustomerRepository;
+import hu.puzzleir.valuta.repository.ScannedDocumentRepository;
 import hu.puzzleir.valuta.repository.ShiftedCalendarDayRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -61,6 +62,8 @@ public class AmlService {
     private final ShiftedCalendarDayRepository shiftedCalendarDayRepository;
     private final FatfCountryRiskService fatfCountryRiskService;
     private final SystemParameterService systemParameterService;
+    private final ValueBandService valueBandService;
+    private final ScannedDocumentRepository scannedDocumentRepository;
 
     /** FATF (Pmt./MNB 14/2025 V.2.6) tier-enforcement feature-flag. Default false: a besorolás MINDIG
      *  lefut (warning/láthatóság), de a BLOKKOLÁS/jóváhagyás-kényszer csak a flag bekapcsolásával él. */
@@ -70,11 +73,6 @@ public class AmlService {
      *  vezetői jóváhagyás + megerősített eljárás kötelező. */
     private static final BigDecimal FATF_HIGH_RISK_APPROVAL_THRESHOLD = new BigDecimal("5000000");
 
-    /** Egyszerusitett azonositasi limit (2017. LIII. tv. 7.§) */
-    private static final BigDecimal SIMPLIFIED_IDENTIFICATION_LIMIT = new BigDecimal("100000");
-
-    /** Teljes azonositasi limit (2017. LIII. tv. 7.§) */
-    private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");
 
     /** Eves gongyolesi limit termeszetes szemelyeknel */
     private static final BigDecimal ANNUAL_ROLLING_LIMIT = new BigDecimal("3600000");
@@ -164,6 +162,8 @@ public class AmlService {
                 .build();
         }
 
+        ValueBandService.ValueBands bands = bandsOrDefaults();
+
         AmlBasicCheckResult.AmlBasicCheckResultBuilder result = AmlBasicCheckResult.builder()
             .approved(true)
             .requiresIdentification(false)
@@ -212,22 +212,22 @@ public class AmlService {
             }
         }
 
-        // 1a. Egyszerusitett azonositasi kotelezettseg (100K-300K Ft)
-        if (hufAmount.compareTo(SIMPLIFIED_IDENTIFICATION_LIMIT) >= 0) {
+        // 1a. Egyszerusitett azonositasi kotelezettseg (konfigurált 100K-300K Ft sáv)
+        if (hufAmount.compareTo(bands.simplifiedIdentificationLimitHuf()) >= 0) {
             result.requiresIdentification(true);
 
             if (customerName == null || customerName.isBlank()
                 || documentNumber == null || documentNumber.isBlank()) {
                 result.approved(false);
                 result.rejectionReason(
-                    SIMPLIFIED_IDENTIFICATION_LIMIT.toPlainString()
+                    bands.simplifiedIdentificationLimitHuf().toPlainString()
                     + " Ft feletti tranzakciohoz ugyfel azonositas (nev + igazolvany) KOTELEZO!");
                 return result.build();
             }
         }
 
-        // 1b. Teljes azonositasi kotelezettseg (300K+ Ft)
-        if (hufAmount.compareTo(IDENTIFICATION_LIMIT) >= 0) {
+        // 1b. Teljes azonositasi kotelezettseg (konfigurált 300K+ Ft sáv)
+        if (hufAmount.compareTo(bands.identificationLimitHuf()) >= 0) {
             result.requiresDetailedId(true);
         }
 
@@ -247,22 +247,49 @@ public class AmlService {
                 .findByCustomerCodeAndCompanyId(customerId, SecurityUtils.getCurrentCompanyId());
             if (masterOpt.isPresent()) {
                 Customer master = masterOpt.get();
-                // FS-4: lejárt okmány — 300E+ fail-closed BLOKK (törvényi), alatta WARN.
+                // FS-4: lejárt okmány — konfigurált teljes-azonosítási küszöbtől fail-closed BLOKK, alatta WARN.
                 // NULL documentExpiry = backward-compat átmenés (régi ügyfél-törzs).
                 LocalDate docExpiry = master.getDocumentExpiry();
                 if (docExpiry != null && docExpiry.isBefore(LocalDate.now())) {
-                    if (hufAmount.compareTo(IDENTIFICATION_LIMIT) >= 0) {
+                    if (hufAmount.compareTo(bands.identificationLimitHuf()) >= 0) {
                         log.warn("AML: Lejárt okmány BLOKK — ügyfél: {}, lejárat: {}, összeg: {} Ft",
                             customerId, docExpiry, hufAmount);
                         result.approved(false);
                         result.rejectionReason("Az ügyfél okmánya lejárt (" + docExpiry + ") — "
-                            + IDENTIFICATION_LIMIT.toPlainString() + " Ft feletti tranzakció lejárt "
+                            + bands.identificationLimitHuf().toPlainString() + " Ft feletti tranzakció lejárt "
                             + "okmánnyal nem hajtható végre! Rögzítse az ügyfél új, érvényes okmányát.");
                         return result.build();
                     }
                     log.warn("AML: Lejárt okmány (lejárat: {}) — {} Ft a {} Ft küszöb alatt, WARN-only. Ügyfél: {}",
-                        docExpiry, hufAmount, IDENTIFICATION_LIMIT.toPlainString(), customerId);
+                        docExpiry, hufAmount, bands.identificationLimitHuf().toPlainString(), customerId);
                 }
+
+                // FS-6: jogi személy ügyfélnél a LEGUTOLSÓ cégjegyzék-scan érvényessége dönt.
+                // Nincs scan / validUntil=null (feature előtti) → kompat-átmenés; lejárt →
+                // a konfigurált teljes-azonosítási küszöbtől (>=) fail-closed BLOKK, alatta WARN.
+                if (Boolean.TRUE.equals(master.getIsCompany()) && scannedDocumentRepository != null) {
+                    Optional<ScannedDocument> registryDoc = scannedDocumentRepository
+                        .findFirstByCustomerIdAndDocumentTypeAndIsDeletedFalseOrderByScannedAtDesc(
+                            master.getId(), ScannedDocumentType.COMPANY_REGISTRY);
+                    if (registryDoc.isPresent()) {
+                        LocalDate registryValidUntil = registryDoc.get().getValidUntil();
+                        if (registryValidUntil != null && registryValidUntil.isBefore(LocalDate.now())) {
+                            if (hufAmount.compareTo(bands.identificationLimitHuf()) >= 0) {
+                                log.warn("AML: Lejárt cégjegyzék BLOKK — ügyfél: {}, lejárat: {}, összeg: {} Ft",
+                                    customerId, registryValidUntil, hufAmount);
+                                result.approved(false);
+                                result.rejectionReason("A cégjegyzék-okirat lejárt (" + registryValidUntil
+                                    + ") — " + bands.identificationLimitHuf().toPlainString()
+                                    + " Ft feletti tranzakció lejárt cégjegyzékkel nem hajtható végre! "
+                                    + "Új cégjegyzék scannelése szükséges.");
+                                return result.build();
+                            }
+                            log.warn("AML: Lejárt cégjegyzék (lejárat: {}) — {} Ft a küszöb alatt, WARN-only. Ügyfél: {}",
+                                registryValidUntil, hufAmount, customerId);
+                        }
+                    }
+                }
+
                 // FS-2: kézi HIGH besorolás → felsővezetői engedélyezési eljárás a meglévő
                 // grant-flow-n (recordSeniorApproval + consumeApprovalGrant). Supervisor-kivétel
                 // a FATF 1/a és éves-limit kapukkal konzisztensen.
@@ -339,6 +366,11 @@ public class AmlService {
         return result.build();
     }
 
+    private ValueBandService.ValueBands bandsOrDefaults() {
+        ValueBandService.ValueBands bands = ValueBandService.resolve(valueBandService);
+        return bands != null ? bands : ValueBandService.ValueBands.DEFAULTS;
+    }
+
     /**
      * Ugyfel eves gongyoles lekerese.
      * Legacy: Az ugyfel{evtized}.fdb-bol olvasta az eves osszesitest.
@@ -375,6 +407,7 @@ public class AmlService {
     public CustomerAmlSummary getCustomerSummary(String customerId) {
         BigDecimal annualTotal = getAnnualRollingTotal(customerId);
         BigDecimal dailyTotal = getDailyCustomerTotal(customerId);
+        ValueBandService.ValueBands bands = bandsOrDefaults();
 
         return CustomerAmlSummary.builder()
             .customerId(customerId)
@@ -383,7 +416,7 @@ public class AmlService {
             .annualUsagePercent(annualTotal.multiply(new BigDecimal("100"))
                 .divide(ANNUAL_ROLLING_LIMIT, 1, RoundingMode.HALF_UP))
             .dailyTotal(dailyTotal)
-            .identificationRequired(annualTotal.compareTo(SIMPLIFIED_IDENTIFICATION_LIMIT) >= 0)
+            .identificationRequired(annualTotal.compareTo(bands.simplifiedIdentificationLimitHuf()) >= 0)
             .limitReached(annualTotal.compareTo(ANNUAL_ROLLING_LIMIT) >= 0)
             .build();
     }
@@ -432,8 +465,6 @@ public class AmlService {
     /** Legacy: 50M — kiemelt figyelmet igénylő (TranzTipus 6) */
     private static final BigDecimal THRESHOLD_50M = new BigDecimal("50000000");
 
-    /** Legacy: 10M — fokozott figyelmet igénylő (TranzTipus 5) */
-    private static final BigDecimal THRESHOLD_10M = new BigDecimal("10000000");
 
     /** Legacy: 25M negyedéves (TranzTipus 4) */
     private static final BigDecimal THRESHOLD_25M_QUARTERLY = new BigDecimal("25000000");
@@ -452,12 +483,12 @@ public class AmlService {
      *   if _diff < 8 then _hasforint = _hasforint + _hetiforint
      *   HETIOSSZ mező az ügyfél táblában
      *
-     * FONTOS: A legacy 8 napos ablakot használ (_diff < 8), ezért minusDays(8).
+     * FONTOS: konfigurálható, default 8 — legacy _diff < 8 parity.
      */
     @Transactional(readOnly = true)
     public BigDecimal getWeeklyTotal(String customerId) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        LocalDate sinceDate = LocalDate.now().minusDays(8);
+        LocalDate sinceDate = LocalDate.now().minusDays(bandsOrDefaults().rollingWindowDays());
 
         BigDecimal total = transactionRepository.sumCustomerWeeklyTotal(
             companyId, customerId, sinceDate);
@@ -529,9 +560,10 @@ public class AmlService {
      */
     @Transactional(readOnly = true)
     public int classifyTransaction(String customerId, BigDecimal hufAmount, String currencyCode) {
+        ValueBandService.ValueBands bands = bandsOrDefaults();
         if (customerId == null || customerId.isBlank()) {
             // Névtelen ügyfél — csak összeg alapján
-            return classifyByAmount(hufAmount);
+            return classifyByAmount(hufAmount, bands);
         }
 
         UUID companyId = SecurityUtils.getCurrentCompanyId();
@@ -545,8 +577,8 @@ public class AmlService {
             return 6;
         }
 
-        // TranzTipus 5: >= 10M
-        if (hasforint.compareTo(THRESHOLD_10M) >= 0) {
+        // TranzTipus 5: konfigurált fokozott figyelmi küszöb (default 10M)
+        if (hasforint.compareTo(bands.incomeProofLimitHuf()) >= 0) {
             return 5;
         }
 
@@ -600,11 +632,11 @@ public class AmlService {
     /**
      * Összeg alapú klasszifikáció (névtelen ügyfélnél).
      */
-    private int classifyByAmount(BigDecimal hufAmount) {
+    private int classifyByAmount(BigDecimal hufAmount, ValueBandService.ValueBands bands) {
         if (hufAmount.compareTo(THRESHOLD_50M) >= 0) {
             return 6;
         }
-        if (hufAmount.compareTo(THRESHOLD_10M) >= 0) {
+        if (hufAmount.compareTo(bands.incomeProofLimitHuf()) >= 0) {
             return 5;
         }
         return 0;
@@ -622,6 +654,7 @@ public class AmlService {
      */
     @Transactional(readOnly = true)
     public hu.puzzleir.valuta.dto.aml.AmlCheckResult checkAllThresholds(String customerId, BigDecimal hufAmount, String currencyCode) {
+        ValueBandService.ValueBands bands = bandsOrDefaults();
         List<String> warnings = new ArrayList<>();
         boolean requiresId = false;
         boolean requiresEnhanced = false;
@@ -653,7 +686,8 @@ public class AmlService {
             case 5:
                 requiresId = true;
                 requiresEnhanced = true;
-                warnings.add("FOKOZOTT: Heti göngyölt összeg >= 10.000.000 Ft (" + hasforint.toPlainString() + " Ft)");
+                warnings.add("FOKOZOTT: Heti göngyölt összeg >= " + bands.incomeProofLimitHuf().toPlainString()
+                    + " Ft (" + hasforint.toPlainString() + " Ft)");
                 break;
             case 4:
                 requiresId = true;
@@ -679,14 +713,16 @@ public class AmlService {
                 warnings.add("BLOKKOLVA: Külföldi ügyfél nem kaphat USD-t");
                 break;
             default:
-                // 100K+ egyszerusitett azonositasi kotelezettseg
-                if (hufAmount.compareTo(SIMPLIFIED_IDENTIFICATION_LIMIT) >= 0) {
+                // Konfigurált egyszerusitett azonositasi kotelezettseg
+                if (hufAmount.compareTo(bands.simplifiedIdentificationLimitHuf()) >= 0) {
                     requiresId = true;
-                    if (hufAmount.compareTo(IDENTIFICATION_LIMIT) >= 0) {
+                    if (hufAmount.compareTo(bands.identificationLimitHuf()) >= 0) {
                         requiresEnhanced = true;
-                        warnings.add("Teljes azonosítás szükséges: " + hufAmount.toPlainString() + " Ft >= " + IDENTIFICATION_LIMIT.toPlainString() + " Ft");
+                        warnings.add("Teljes azonosítás szükséges: " + hufAmount.toPlainString() + " Ft >= "
+                            + bands.identificationLimitHuf().toPlainString() + " Ft");
                     } else {
-                        warnings.add("Egyszerűsített azonosítás szükséges: " + hufAmount.toPlainString() + " Ft >= " + SIMPLIFIED_IDENTIFICATION_LIMIT.toPlainString() + " Ft");
+                        warnings.add("Egyszerűsített azonosítás szükséges: " + hufAmount.toPlainString() + " Ft >= "
+                            + bands.simplifiedIdentificationLimitHuf().toPlainString() + " Ft");
                     }
                 }
                 break;
@@ -741,7 +777,7 @@ public class AmlService {
             .rollingWindowExceeded(rollingWindowExceeded)
             .rollingWindowLimit(ROLLING_WINDOW_LIMIT_HUF)
             .rollingWindowTotal(hasforint)
-            .rollingWindowDays(ROLLING_WINDOW_DAYS)
+            .rollingWindowDays(bands.rollingWindowDays())
             .requiresManagerApproval(requiresManagerApproval)
             .managerApprovalReason(managerApprovalReason)
             .warnings(warnings)
@@ -775,10 +811,6 @@ public class AmlService {
      */
     private static final BigDecimal ROLLING_WINDOW_LIMIT_HUF = new BigDecimal("4500000");
 
-    /**
-     * Sprint 5.3 — Rolling window hossza napokban (legacy BIGCTRL: _diff < 8 → minusDays(8)).
-     */
-    private static final int ROLLING_WINDOW_DAYS = 8;
 
     /** Structuring detektálás: limit alatti tranzakciók száma egy napon belül */
     private static final int STRUCTURING_MIN_TRANSACTIONS = 3;
@@ -1096,12 +1128,13 @@ public class AmlService {
             return false;
         }
 
-        // Ha a tranzakciók nagy része az IDENTIFICATION_LIMIT közelében van (80-99% közötti)
-        BigDecimal limitThreshold = IDENTIFICATION_LIMIT.multiply(STRUCTURING_RATIO);
+        BigDecimal identificationLimit = bandsOrDefaults().identificationLimitHuf();
+        // Ha a tranzakciók nagy része az azonosítási limit közelében van (80-99% közötti)
+        BigDecimal limitThreshold = identificationLimit.multiply(STRUCTURING_RATIO);
         long nearLimitCount = dailyTxs.stream()
             .filter(tx -> tx.getHufAmount() != null
                        && tx.getHufAmount().compareTo(limitThreshold) >= 0
-                       && tx.getHufAmount().compareTo(IDENTIFICATION_LIMIT) < 0)
+                       && tx.getHufAmount().compareTo(identificationLimit) < 0)
             .count();
 
         return nearLimitCount >= STRUCTURING_MIN_TRANSACTIONS;
@@ -1311,7 +1344,8 @@ public class AmlService {
     @Transactional(readOnly = true)
     public java.util.List<hu.puzzleir.valuta.dto.aml.RollingWindowAuditDto> getRollingWindowAudit(BigDecimal thresholdHuf) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        LocalDate sinceDate = LocalDate.now().minusDays(ROLLING_WINDOW_DAYS);
+        int rollingWindowDays = bandsOrDefaults().rollingWindowDays();
+        LocalDate sinceDate = LocalDate.now().minusDays(rollingWindowDays);
 
         // Sourcery PR #128 fix (P1 bug_risk): validate threshold > 0 before division.
         BigDecimal threshold = thresholdHuf != null ? thresholdHuf : ROLLING_WINDOW_LIMIT_HUF;
@@ -1353,7 +1387,7 @@ public class AmlService {
                 .exceedPercent(exceedPercent)
                 .auditAt(auditAt)
                 .sinceDate(sinceDate)
-                .windowDays(ROLLING_WINDOW_DAYS)
+                .windowDays(rollingWindowDays)
                 .highRiskFlag(highRiskFlag)
                 .build());
         }

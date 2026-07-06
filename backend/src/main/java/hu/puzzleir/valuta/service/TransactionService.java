@@ -89,6 +89,7 @@ public class TransactionService {
     private final hu.puzzleir.valuta.repository.CircularRepository circularRepository;
     private final TransactionValidationService transactionValidationService;
     private final VaultStockFlowService vaultStockFlowService;
+    private final ValueBandService valueBandService;
 
     // Sztornó limit supervisor nélkül (3 db/nap)
     private static final int DAILY_REVERSAL_LIMIT = 3;
@@ -104,8 +105,6 @@ public class TransactionService {
         }
     }
 
-    // Azonosítás nélküli limit HUF-ban (300.000 Ft - NAV szabályozás)
-    private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");
 
     /** G11: a 10M+ vezetői-jóváhagyás enforcement feature-flag SystemParameter kulcsa. */
     static final String AML_HIGH_VALUE_APPROVAL_PARAM = "AML_HIGH_VALUE_APPROVAL_ENFORCEMENT";
@@ -1140,16 +1139,17 @@ public class TransactionService {
     }
 
     private void validateIdentification(BigDecimal hufAmount, String customerName, String documentNumber) {
-        if (hufAmount.compareTo(IDENTIFICATION_LIMIT) >= 0) {
+        BigDecimal limit = ValueBandService.resolve(valueBandService).identificationLimitHuf();
+        if (hufAmount.compareTo(limit) >= 0) {
             if (customerName == null || customerName.isBlank()) {
                 throw new ValidationException(
                     String.format("%s Ft feletti tranzakcióhoz ügyfél azonosítás kötelező!",
-                        IDENTIFICATION_LIMIT.toPlainString()));
+                        limit.toPlainString()));
             }
             if (documentNumber == null || documentNumber.isBlank()) {
                 throw new ValidationException(
                     String.format("%s Ft feletti tranzakcióhoz igazolvány szám kötelező!",
-                        IDENTIFICATION_LIMIT.toPlainString()));
+                        limit.toPlainString()));
             }
         }
     }

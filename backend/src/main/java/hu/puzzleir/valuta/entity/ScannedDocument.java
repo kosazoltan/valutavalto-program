@@ -5,6 +5,7 @@ import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -57,6 +58,10 @@ public class ScannedDocument {
 
     @Column(length = 500)
     private String notes;
+
+    /** FS-6: cégjegyzék-okirat érvényességének vége (feltöltés + COMPANY_DOC_VALIDITY_DAYS nap). */
+    @Column(name = "valid_until")
+    private LocalDate validUntil;
 
     @Column(name = "is_deleted", nullable = false)
     @Builder.Default

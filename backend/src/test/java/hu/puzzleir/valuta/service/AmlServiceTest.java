@@ -59,6 +59,12 @@ class AmlServiceTest {
     @Mock
     private SystemParameterService systemParameterService;
 
+    @Mock
+    private ValueBandService valueBandService;
+
+    @Mock
+    private ScannedDocumentRepository scannedDocumentRepository;
+
     private static final UUID TEST_COMPANY_ID = UUID.randomUUID();
     private static final UUID TEST_BRANCH_ID = UUID.randomUUID();
 
@@ -264,6 +270,195 @@ class AmlServiceTest {
                 new BigDecimal("500000"), "C123", "Teszt Ügyfél", "AB123456", "EUR", null);
 
         assertThat(result.isApproved()).isTrue();
+    }
+
+    @Test
+    @DisplayName("FS-8/FS-4: lejárt okmány a konfigurált teljes azonosítási küszöböt használja")
+    void testCheckTransaction_expiredDocument_usesConfiguredLimit() {
+        when(valueBandService.getEffectiveBands()).thenReturn(new ValueBandService.ValueBands(
+                new BigDecimal("100000"), new BigDecimal("200000"), new BigDecimal("10000000"), 8));
+        Customer master = Customer.builder().customerCode("C123").build();
+        master.setDocumentExpiry(LocalDate.now().minusDays(1));
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("250000"), "C123", "Teszt Ügyfél", "AB123456", "EUR", null);
+
+        assertThat(result.isApproved()).isFalse();
+        assertThat(result.getRejectionReason()).contains("200000");
+    }
+
+    @Test
+    @DisplayName("FS-8/FS-4: konfigurált teljes küszöb alatt lejárt okmány csak WARN-only")
+    void testCheckTransaction_expiredDocument_belowConfiguredLimit_warnOnly() {
+        when(valueBandService.getEffectiveBands()).thenReturn(new ValueBandService.ValueBands(
+                new BigDecimal("100000"), new BigDecimal("200000"), new BigDecimal("10000000"), 8));
+        Customer master = Customer.builder().customerCode("C123").build();
+        master.setDocumentExpiry(LocalDate.now().minusDays(1));
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("199999"), "C123", "Teszt Ügyfél", "AB123456", "EUR", null);
+
+        assertThat(result.isApproved()).isTrue();
+    }
+
+    @Test
+    @DisplayName("FS-8: egyszerűsített azonosítási küszöb konfigurált értékről jön")
+    void testCheckTransaction_simplifiedLimit_configured() {
+        when(valueBandService.getEffectiveBands()).thenReturn(new ValueBandService.ValueBands(
+                new BigDecimal("150000"), new BigDecimal("300000"), new BigDecimal("10000000"), 8));
+
+        AmlService.AmlBasicCheckResult below = amlService.checkTransaction(
+                new BigDecimal("149999"), null, null, null, "EUR", null);
+        AmlService.AmlBasicCheckResult atLimit = amlService.checkTransaction(
+                new BigDecimal("150000"), null, null, null, "EUR", null);
+
+        assertThat(below.isApproved()).isTrue();
+        assertThat(below.isRequiresIdentification()).isFalse();
+        assertThat(atLimit.isApproved()).isFalse();
+        assertThat(atLimit.getRejectionReason()).contains("150000");
+    }
+
+    @Test
+    @DisplayName("FS-8: null ValueBands esetén DEFAULTS élnek, nem lazul a lejárt-okmány kapu")
+    void testCheckTransaction_nullBands_defaultsApply() {
+        when(valueBandService.getEffectiveBands()).thenReturn(null);
+        Customer master = Customer.builder().customerCode("C123").build();
+        master.setDocumentExpiry(LocalDate.now().minusDays(1));
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("300000"), "C123", "Teszt Ügyfél", "AB123456", "EUR", null);
+
+        assertThat(result.isApproved()).isFalse();
+        assertThat(result.getRejectionReason()).contains("300000");
+    }
+
+    @Test
+    @DisplayName("FS-6: jogi személy lejárt legutolsó cégjegyzékkel 300000 Ft-nál BLOKK")
+    void testCheckTransaction_companyExpiredRegistryAtLimit_rejected() {
+        Customer master = Customer.builder().id(42L).customerCode("C123").isCompany(true).build();
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+        when(scannedDocumentRepository.findFirstByCustomerIdAndDocumentTypeAndIsDeletedFalseOrderByScannedAtDesc(
+                42L, ScannedDocumentType.COMPANY_REGISTRY))
+                .thenReturn(Optional.of(ScannedDocument.builder()
+                        .validUntil(LocalDate.now().minusDays(1))
+                        .build()));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("300000"), "C123", "Teszt Kft.", "12345678-2-42", "EUR", null);
+
+        assertThat(result.isApproved()).isFalse();
+        assertThat(result.getRejectionReason()).contains("cégjegyzék");
+    }
+
+    @Test
+    @DisplayName("FS-6: jogi személy lejárt cégjegyzékkel küszöb alatt WARN-only")
+    void testCheckTransaction_companyExpiredRegistryBelowLimit_warnOnly() {
+        Customer master = Customer.builder().id(42L).customerCode("C123").isCompany(true).build();
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+        when(scannedDocumentRepository.findFirstByCustomerIdAndDocumentTypeAndIsDeletedFalseOrderByScannedAtDesc(
+                42L, ScannedDocumentType.COMPANY_REGISTRY))
+                .thenReturn(Optional.of(ScannedDocument.builder()
+                        .validUntil(LocalDate.now().minusDays(1))
+                        .build()));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("299999"), "C123", "Teszt Kft.", "12345678-2-42", "EUR", null);
+
+        assertThat(result.isApproved()).isTrue();
+    }
+
+    @Test
+    @DisplayName("FS-6: újabb érvényes cégjegyzék feloldja a korábbi lejáratot")
+    void testCheckTransaction_companyLatestValidRegistry_approved() {
+        Customer master = Customer.builder().id(42L).customerCode("C123").isCompany(true).build();
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+        when(scannedDocumentRepository.findFirstByCustomerIdAndDocumentTypeAndIsDeletedFalseOrderByScannedAtDesc(
+                42L, ScannedDocumentType.COMPANY_REGISTRY))
+                .thenReturn(Optional.of(ScannedDocument.builder()
+                        .validUntil(LocalDate.now().plusDays(1))
+                        .build()));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("500000"), "C123", "Teszt Kft.", "12345678-2-42", "EUR", null);
+
+        assertThat(result.isApproved()).isTrue();
+    }
+
+    @Test
+    @DisplayName("FS-6: cégjegyzék dokumentum hiánya backward-compatible átmegy")
+    void testCheckTransaction_companyNoRegistryDoc_approved() {
+        Customer master = Customer.builder().id(42L).customerCode("C123").isCompany(true).build();
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+        when(scannedDocumentRepository.findFirstByCustomerIdAndDocumentTypeAndIsDeletedFalseOrderByScannedAtDesc(
+                42L, ScannedDocumentType.COMPANY_REGISTRY))
+                .thenReturn(Optional.empty());
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("500000"), "C123", "Teszt Kft.", "12345678-2-42", "EUR", null);
+
+        assertThat(result.isApproved()).isTrue();
+    }
+
+    @Test
+    @DisplayName("FS-6: validUntil=null cégjegyzék feature előtti scan, átmegy")
+    void testCheckTransaction_companyRegistryNullValidUntil_approved() {
+        Customer master = Customer.builder().id(42L).customerCode("C123").isCompany(true).build();
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+        when(scannedDocumentRepository.findFirstByCustomerIdAndDocumentTypeAndIsDeletedFalseOrderByScannedAtDesc(
+                42L, ScannedDocumentType.COMPANY_REGISTRY))
+                .thenReturn(Optional.of(ScannedDocument.builder().validUntil(null).build()));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("500000"), "C123", "Teszt Kft.", "12345678-2-42", "EUR", null);
+
+        assertThat(result.isApproved()).isTrue();
+    }
+
+    @Test
+    @DisplayName("FS-6: természetes személynél cégjegyzék-finder nem hívódik")
+    void testCheckTransaction_naturalPerson_registryFinderNotCalled() {
+        Customer master = Customer.builder().id(42L).customerCode("C123").isCompany(false).build();
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("500000"), "C123", "Teszt Ügyfél", "AB123456", "EUR", null);
+
+        assertThat(result.isApproved()).isTrue();
+        verify(scannedDocumentRepository, never())
+                .findFirstByCustomerIdAndDocumentTypeAndIsDeletedFalseOrderByScannedAtDesc(any(), any());
+    }
+
+    @Test
+    @DisplayName("FS-6: cégjegyzék blokk is a konfigurált teljes azonosítási küszöböt használja")
+    void testCheckTransaction_companyExpiredRegistry_usesConfiguredLimit() {
+        when(valueBandService.getEffectiveBands()).thenReturn(new ValueBandService.ValueBands(
+                new BigDecimal("100000"), new BigDecimal("200000"), new BigDecimal("10000000"), 8));
+        Customer master = Customer.builder().id(42L).customerCode("C123").isCompany(true).build();
+        when(customerRepository.findByCustomerCodeAndCompanyId("C123", TEST_COMPANY_ID))
+                .thenReturn(Optional.of(master));
+        when(scannedDocumentRepository.findFirstByCustomerIdAndDocumentTypeAndIsDeletedFalseOrderByScannedAtDesc(
+                42L, ScannedDocumentType.COMPANY_REGISTRY))
+                .thenReturn(Optional.of(ScannedDocument.builder()
+                        .validUntil(LocalDate.now().minusDays(1))
+                        .build()));
+
+        AmlService.AmlBasicCheckResult result = amlService.checkTransaction(
+                new BigDecimal("250000"), "C123", "Teszt Kft.", "12345678-2-42", "EUR", null);
+
+        assertThat(result.isApproved()).isFalse();
+        assertThat(result.getRejectionReason()).contains("200000").contains("cégjegyzék");
     }
 
     @Test

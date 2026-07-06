@@ -16,7 +16,7 @@ public class DocumentScanUploadRequest {
     private Long customerId;
     private Long transactionId;
 
-    @Pattern(regexp = "ID_CARD|PASSPORT|DRIVERS_LICENSE|OTHER", message = "Érvénytelen dokumentum típus")
+    @Pattern(regexp = "ID_CARD|PASSPORT|DRIVERS_LICENSE|COMPANY_REGISTRY|OTHER", message = "Érvénytelen dokumentum típus")
     @Builder.Default
     private String documentType = "OTHER";
 

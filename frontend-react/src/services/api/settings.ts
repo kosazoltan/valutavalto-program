@@ -1009,9 +1009,10 @@ export interface ScannedDocument {
   scannedBy?: number | null
   scannedAt: string
   notes?: string | null
+  validUntil?: string | null
 }
 export interface DocumentScannerUploadRequest {
-  documentType?: 'ID_CARD' | 'PASSPORT' | 'DRIVERS_LICENSE' | 'OTHER'
+  documentType?: 'ID_CARD' | 'PASSPORT' | 'DRIVERS_LICENSE' | 'COMPANY_REGISTRY' | 'OTHER'
   customerId?: number
   transactionId?: number
   notes?: string
@@ -1062,6 +1063,41 @@ export const documentScannerApi = {
   ).data,
   deleteScannedDocument: async (id: string): Promise<void> => {
     await api.delete(`/scanned-documents/${id}`)
+  },
+}
+
+// ================== VALUE BAND (AML ÉRTÉKSÁV) API ==================
+
+export interface ValueBandConfig {
+  id: string
+  simplifiedIdentificationLimitHuf: number
+  identificationLimitHuf: number
+  incomeProofLimitHuf: number
+  rollingWindowDays: number
+  effectiveFrom: string
+  createdBy?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface ValueBandConfigRequest {
+  simplifiedIdentificationLimitHuf: number
+  identificationLimitHuf: number
+  incomeProofLimitHuf: number
+  rollingWindowDays: number
+  effectiveFrom: string
+}
+
+export const valueBandApi = {
+  list: async (): Promise<ValueBandConfig[]> => (await api.get<ValueBandConfig[]>('/value-bands')).data,
+  create: async (req: ValueBandConfigRequest): Promise<ValueBandConfig> => (
+    await api.post<ValueBandConfig>('/value-bands', req)
+  ).data,
+  update: async (id: string, req: ValueBandConfigRequest): Promise<ValueBandConfig> => (
+    await api.put<ValueBandConfig>(`/value-bands/${id}`, req)
+  ).data,
+  remove: async (id: string): Promise<void> => {
+    await api.delete(`/value-bands/${id}`)
   },
 }
 

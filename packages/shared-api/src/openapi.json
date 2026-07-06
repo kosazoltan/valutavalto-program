@@ -7,7 +7,7 @@
       "name": "PuzzleIR",
       "email": "info@puzzleir.hu"
     },
-    "version": "2.0.0"
+    "version": "2.28.29"
   },
   "servers": [
     {
@@ -341,6 +341,69 @@
         }
       }
     },
+    "/api/v1/value-bands/{id}": {
+      "put": {
+        "tags": [
+          "value-band-controller"
+        ],
+        "operationId": "update_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateValueBandConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValueBandConfig"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "value-band-controller"
+        ],
+        "operationId": "delete_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/users/{id}": {
       "get": {
         "tags": [
@@ -375,7 +438,7 @@
         "tags": [
           "user-controller"
         ],
-        "operationId": "update_1",
+        "operationId": "update_2",
         "parameters": [
           {
             "name": "id",
@@ -414,7 +477,7 @@
         "tags": [
           "user-controller"
         ],
-        "operationId": "delete_1",
+        "operationId": "delete_2",
         "parameters": [
           {
             "name": "id",
@@ -617,7 +680,7 @@
         "tags": [
           "system-parameter-controller"
         ],
-        "operationId": "update_2",
+        "operationId": "update_3",
         "parameters": [
           {
             "name": "id",
@@ -659,7 +722,7 @@
         "tags": [
           "system-parameter-controller"
         ],
-        "operationId": "delete_2",
+        "operationId": "delete_3",
         "parameters": [
           {
             "name": "id",
@@ -712,7 +775,7 @@
         "tags": [
           "shipment-controller"
         ],
-        "operationId": "update_3",
+        "operationId": "update_4",
         "parameters": [
           {
             "name": "id",
@@ -814,7 +877,7 @@
         "tags": [
           "role-controller"
         ],
-        "operationId": "update_4",
+        "operationId": "update_5",
         "parameters": [
           {
             "name": "id",
@@ -854,7 +917,7 @@
         "tags": [
           "role-controller"
         ],
-        "operationId": "delete_3",
+        "operationId": "delete_4",
         "parameters": [
           {
             "name": "id",
@@ -1248,7 +1311,7 @@
         "tags": [
           "permission-controller"
         ],
-        "operationId": "update_5",
+        "operationId": "update_6",
         "parameters": [
           {
             "name": "id",
@@ -1288,7 +1351,7 @@
         "tags": [
           "permission-controller"
         ],
-        "operationId": "delete_4",
+        "operationId": "delete_5",
         "parameters": [
           {
             "name": "id",
@@ -1341,7 +1404,7 @@
         "tags": [
           "own-company-controller"
         ],
-        "operationId": "update_6",
+        "operationId": "update_7",
         "parameters": [
           {
             "name": "id",
@@ -1380,7 +1443,7 @@
         "tags": [
           "own-company-controller"
         ],
-        "operationId": "delete_5",
+        "operationId": "delete_6",
         "parameters": [
           {
             "name": "id",
@@ -1433,7 +1496,7 @@
         "tags": [
           "organization-controller"
         ],
-        "operationId": "update_7",
+        "operationId": "update_8",
         "parameters": [
           {
             "name": "id",
@@ -1472,7 +1535,7 @@
         "tags": [
           "organization-controller"
         ],
-        "operationId": "delete_6",
+        "operationId": "delete_7",
         "parameters": [
           {
             "name": "id",
@@ -1525,7 +1588,7 @@
         "tags": [
           "organizational-system-parameter-controller"
         ],
-        "operationId": "update_8",
+        "operationId": "update_9",
         "parameters": [
           {
             "name": "id",
@@ -1564,7 +1627,7 @@
         "tags": [
           "organizational-system-parameter-controller"
         ],
-        "operationId": "delete_7",
+        "operationId": "delete_8",
         "parameters": [
           {
             "name": "id",
@@ -2159,7 +2222,7 @@
         "tags": [
           "email-account-controller"
         ],
-        "operationId": "update_9",
+        "operationId": "update_10",
         "parameters": [
           {
             "name": "id",
@@ -2198,7 +2261,7 @@
         "tags": [
           "email-account-controller"
         ],
-        "operationId": "delete_8",
+        "operationId": "delete_9",
         "parameters": [
           {
             "name": "id",
@@ -2458,7 +2521,7 @@
         "tags": [
           "currency-group-controller"
         ],
-        "operationId": "update_10",
+        "operationId": "update_11",
         "parameters": [
           {
             "name": "id",
@@ -2497,7 +2560,7 @@
         "tags": [
           "currency-group-controller"
         ],
-        "operationId": "delete_9",
+        "operationId": "delete_10",
         "parameters": [
           {
             "name": "id",
@@ -2550,7 +2613,7 @@
         "tags": [
           "competitor-controller"
         ],
-        "operationId": "update_11",
+        "operationId": "update_12",
         "parameters": [
           {
             "name": "id",
@@ -2589,7 +2652,7 @@
         "tags": [
           "competitor-controller"
         ],
-        "operationId": "delete_10",
+        "operationId": "delete_11",
         "parameters": [
           {
             "name": "id",
@@ -2642,7 +2705,7 @@
         "tags": [
           "commission-rate-controller"
         ],
-        "operationId": "update_12",
+        "operationId": "update_13",
         "parameters": [
           {
             "name": "id",
@@ -2681,7 +2744,7 @@
         "tags": [
           "commission-rate-controller"
         ],
-        "operationId": "delete_11",
+        "operationId": "delete_12",
         "parameters": [
           {
             "name": "id",
@@ -2875,7 +2938,7 @@
         "tags": [
           "branch-group-controller"
         ],
-        "operationId": "update_13",
+        "operationId": "update_14",
         "parameters": [
           {
             "name": "id",
@@ -2914,7 +2977,7 @@
         "tags": [
           "branch-group-controller"
         ],
-        "operationId": "delete_12",
+        "operationId": "delete_13",
         "parameters": [
           {
             "name": "id",
@@ -3141,7 +3204,7 @@
         "tags": [
           "bank-api-config-controller"
         ],
-        "operationId": "update_14",
+        "operationId": "update_15",
         "parameters": [
           {
             "name": "providerName",
@@ -3210,7 +3273,7 @@
         "tags": [
           "authorized-representative-controller"
         ],
-        "operationId": "update_15",
+        "operationId": "update_16",
         "parameters": [
           {
             "name": "id",
@@ -3249,7 +3312,7 @@
         "tags": [
           "authorized-representative-controller"
         ],
-        "operationId": "delete_13",
+        "operationId": "delete_14",
         "parameters": [
           {
             "name": "id",
@@ -4653,12 +4716,63 @@
         }
       }
     },
+    "/api/v1/value-bands": {
+      "get": {
+        "tags": [
+          "value-band-controller"
+        ],
+        "operationId": "list_4",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ValueBandConfig"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "value-band-controller"
+        ],
+        "operationId": "create_4",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateValueBandConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValueBandConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users": {
       "get": {
         "tags": [
           "user-controller"
         ],
-        "operationId": "list_4",
+        "operationId": "list_5",
         "responses": {
           "200": {
             "description": "OK",
@@ -4679,7 +4793,7 @@
         "tags": [
           "user-controller"
         ],
-        "operationId": "create_4",
+        "operationId": "create_5",
         "requestBody": {
           "content": {
             "application/json": {
@@ -5013,7 +5127,7 @@
         "tags": [
           "transfer-controller"
         ],
-        "operationId": "create_5",
+        "operationId": "create_6",
         "requestBody": {
           "content": {
             "application/json": {
@@ -5188,7 +5302,7 @@
         "tags": [
           "transfer-document-controller"
         ],
-        "operationId": "list_5",
+        "operationId": "list_6",
         "parameters": [
           {
             "name": "status",
@@ -5234,7 +5348,7 @@
         "tags": [
           "transfer-document-controller"
         ],
-        "operationId": "create_6",
+        "operationId": "create_7",
         "requestBody": {
           "content": {
             "application/json": {
@@ -5304,7 +5418,7 @@
         "tags": [
           "transaction-banknote-controller"
         ],
-        "operationId": "create_7",
+        "operationId": "create_8",
         "parameters": [
           {
             "name": "transactionId",
@@ -5597,7 +5711,7 @@
         "tags": [
           "vault-territory-controller"
         ],
-        "operationId": "list_6",
+        "operationId": "list_7",
         "responses": {
           "200": {
             "description": "OK",
@@ -5618,7 +5732,7 @@
         "tags": [
           "vault-territory-controller"
         ],
-        "operationId": "create_8",
+        "operationId": "create_9",
         "requestBody": {
           "content": {
             "application/json": {
@@ -5681,7 +5795,7 @@
         "tags": [
           "system-parameter-controller"
         ],
-        "operationId": "list_7",
+        "operationId": "list_8",
         "responses": {
           "200": {
             "description": "OK",
@@ -5702,7 +5816,7 @@
         "tags": [
           "system-parameter-controller"
         ],
-        "operationId": "create_9",
+        "operationId": "create_10",
         "requestBody": {
           "content": {
             "application/json": {
@@ -6460,7 +6574,7 @@
         "tags": [
           "shipment-controller"
         ],
-        "operationId": "create_10",
+        "operationId": "create_11",
         "requestBody": {
           "content": {
             "application/json": {
@@ -7238,7 +7352,7 @@
         "tags": [
           "role-controller"
         ],
-        "operationId": "list_8",
+        "operationId": "list_9",
         "responses": {
           "200": {
             "description": "OK",
@@ -7259,7 +7373,7 @@
         "tags": [
           "role-controller"
         ],
-        "operationId": "create_11",
+        "operationId": "create_12",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8120,7 +8234,7 @@
         "tags": [
           "rate-category-controller"
         ],
-        "operationId": "create_12",
+        "operationId": "create_13",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8625,7 +8739,7 @@
         "tags": [
           "permission-controller"
         ],
-        "operationId": "list_9",
+        "operationId": "list_10",
         "responses": {
           "200": {
             "description": "OK",
@@ -8646,7 +8760,7 @@
         "tags": [
           "permission-controller"
         ],
-        "operationId": "create_13",
+        "operationId": "create_14",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8708,7 +8822,7 @@
         "tags": [
           "packaging-controller"
         ],
-        "operationId": "list_10",
+        "operationId": "list_11",
         "parameters": [
           {
             "name": "branchId",
@@ -8758,7 +8872,7 @@
         "tags": [
           "packaging-controller"
         ],
-        "operationId": "create_14",
+        "operationId": "create_15",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8788,7 +8902,7 @@
         "tags": [
           "own-company-controller"
         ],
-        "operationId": "list_11",
+        "operationId": "list_12",
         "responses": {
           "200": {
             "description": "OK",
@@ -8809,7 +8923,7 @@
         "tags": [
           "own-company-controller"
         ],
-        "operationId": "create_15",
+        "operationId": "create_16",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8839,7 +8953,7 @@
         "tags": [
           "organization-controller"
         ],
-        "operationId": "list_12",
+        "operationId": "list_13",
         "responses": {
           "200": {
             "description": "OK",
@@ -8860,7 +8974,7 @@
         "tags": [
           "organization-controller"
         ],
-        "operationId": "create_16",
+        "operationId": "create_17",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8953,7 +9067,7 @@
         "tags": [
           "organizational-system-parameter-controller"
         ],
-        "operationId": "create_17",
+        "operationId": "create_18",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8983,7 +9097,7 @@
         "tags": [
           "notification-controller"
         ],
-        "operationId": "list_13",
+        "operationId": "list_14",
         "responses": {
           "200": {
             "description": "OK",
@@ -11017,7 +11131,7 @@
         "tags": [
           "exchange-rate-display-controller"
         ],
-        "operationId": "update_16",
+        "operationId": "update_17",
         "parameters": [
           {
             "name": "displayId",
@@ -12294,7 +12408,7 @@
         "tags": [
           "email-account-controller"
         ],
-        "operationId": "list_14",
+        "operationId": "list_15",
         "responses": {
           "200": {
             "description": "OK",
@@ -12318,7 +12432,7 @@
         "tags": [
           "email-account-controller"
         ],
-        "operationId": "create_18",
+        "operationId": "create_19",
         "requestBody": {
           "content": {
             "application/json": {
@@ -12348,7 +12462,7 @@
         "tags": [
           "document-storage-controller"
         ],
-        "operationId": "list_15",
+        "operationId": "list_16",
         "parameters": [
           {
             "name": "entityType",
@@ -12445,7 +12559,7 @@
         "tags": [
           "document-shortage-controller"
         ],
-        "operationId": "list_16",
+        "operationId": "list_17",
         "parameters": [
           {
             "name": "openOnly",
@@ -12477,7 +12591,7 @@
         "tags": [
           "document-shortage-controller"
         ],
-        "operationId": "create_19",
+        "operationId": "create_20",
         "requestBody": {
           "content": {
             "application/json": {
@@ -13656,6 +13770,47 @@
         }
       }
     },
+    "/api/v1/customers/{id}/risk-rating": {
+      "post": {
+        "tags": [
+          "customer-controller"
+        ],
+        "operationId": "setRiskRating",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCustomerRiskRatingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/customers/{id}/edd-mark": {
       "post": {
         "tags": [
@@ -13872,7 +14027,7 @@
         "tags": [
           "currency-group-controller"
         ],
-        "operationId": "create_20",
+        "operationId": "create_21",
         "requestBody": {
           "content": {
             "application/json": {
@@ -14067,7 +14222,7 @@
         "tags": [
           "competitor-controller"
         ],
-        "operationId": "create_21",
+        "operationId": "create_22",
         "requestBody": {
           "content": {
             "application/json": {
@@ -14120,7 +14275,7 @@
         "tags": [
           "competition-controller"
         ],
-        "operationId": "list_17",
+        "operationId": "list_18",
         "responses": {
           "200": {
             "description": "OK",
@@ -14141,7 +14296,7 @@
         "tags": [
           "competition-controller"
         ],
-        "operationId": "create_22",
+        "operationId": "create_23",
         "requestBody": {
           "content": {
             "application/json": {
@@ -14338,7 +14493,7 @@
         "tags": [
           "commission-rate-controller"
         ],
-        "operationId": "create_23",
+        "operationId": "create_24",
         "requestBody": {
           "content": {
             "application/json": {
@@ -14800,7 +14955,7 @@
         "tags": [
           "circular-controller"
         ],
-        "operationId": "create_24",
+        "operationId": "create_25",
         "requestBody": {
           "content": {
             "application/json": {
@@ -16173,7 +16328,7 @@
         "tags": [
           "branch-group-controller"
         ],
-        "operationId": "list_18",
+        "operationId": "list_19",
         "responses": {
           "200": {
             "description": "OK",
@@ -16194,7 +16349,7 @@
         "tags": [
           "branch-group-controller"
         ],
-        "operationId": "create_25",
+        "operationId": "create_26",
         "requestBody": {
           "content": {
             "application/json": {
@@ -16408,7 +16563,7 @@
         "tags": [
           "bank-controller"
         ],
-        "operationId": "list_19",
+        "operationId": "list_20",
         "parameters": [
           {
             "name": "q",
@@ -16439,7 +16594,7 @@
         "tags": [
           "bank-controller"
         ],
-        "operationId": "create_26",
+        "operationId": "create_27",
         "requestBody": {
           "content": {
             "application/json": {
@@ -16639,7 +16794,7 @@
         "tags": [
           "bank-order-controller"
         ],
-        "operationId": "list_20",
+        "operationId": "list_21",
         "parameters": [
           {
             "name": "status",
@@ -16693,7 +16848,7 @@
         "tags": [
           "bank-order-controller"
         ],
-        "operationId": "create_27",
+        "operationId": "create_28",
         "requestBody": {
           "content": {
             "application/json": {
@@ -16947,7 +17102,7 @@
         "tags": [
           "authorized-representative-controller"
         ],
-        "operationId": "create_28",
+        "operationId": "create_29",
         "parameters": [
           {
             "name": "customerId",
@@ -17020,7 +17175,7 @@
         "tags": [
           "authorization-controller"
         ],
-        "operationId": "create_29",
+        "operationId": "create_30",
         "parameters": [
           {
             "name": "representativeId",
@@ -17742,7 +17897,7 @@
         "tags": [
           "arfolyam-internet-link-controller"
         ],
-        "operationId": "list_21",
+        "operationId": "list_22",
         "responses": {
           "200": {
             "description": "OK",
@@ -17763,7 +17918,7 @@
         "tags": [
           "arfolyam-internet-link-controller"
         ],
-        "operationId": "create_30",
+        "operationId": "create_31",
         "requestBody": {
           "content": {
             "application/json": {
@@ -17909,7 +18064,7 @@
         "tags": [
           "anonymous-report-controller"
         ],
-        "operationId": "list_22",
+        "operationId": "list_23",
         "responses": {
           "200": {
             "description": "OK",
@@ -17930,7 +18085,7 @@
         "tags": [
           "anonymous-report-controller"
         ],
-        "operationId": "create_31",
+        "operationId": "create_32",
         "requestBody": {
           "content": {
             "application/json": {
@@ -19292,6 +19447,26 @@
                   "items": {
                     "$ref": "#/components/schemas/VatRefundTransactionDto"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/value-bands/effective": {
+      "get": {
+        "tags": [
+          "value-band-controller"
+        ],
+        "operationId": "effective",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValueBands"
                 }
               }
             }
@@ -23534,7 +23709,7 @@
         "tags": [
           "receipt-controller"
         ],
-        "operationId": "list_23",
+        "operationId": "list_24",
         "parameters": [
           {
             "name": "transactionId",
@@ -26553,7 +26728,7 @@
         "tags": [
           "handover-sheet-controller"
         ],
-        "operationId": "list_24",
+        "operationId": "list_25",
         "responses": {
           "200": {
             "description": "OK",
@@ -28619,7 +28794,7 @@
         "tags": [
           "decade-report-controller"
         ],
-        "operationId": "list_25",
+        "operationId": "list_26",
         "parameters": [
           {
             "name": "branchId",
@@ -32586,7 +32761,7 @@
         "tags": [
           "bank-api-config-controller"
         ],
-        "operationId": "list_26",
+        "operationId": "list_27",
         "responses": {
           "200": {
             "description": "OK",
@@ -33796,7 +33971,7 @@
         "tags": [
           "packaging-controller"
         ],
-        "operationId": "delete_14",
+        "operationId": "delete_15",
         "parameters": [
           {
             "name": "id",
@@ -33943,7 +34118,7 @@
         "tags": [
           "document-storage-controller"
         ],
-        "operationId": "delete_15",
+        "operationId": "delete_16",
         "parameters": [
           {
             "name": "id",
@@ -34015,7 +34190,7 @@
         "tags": [
           "arfolyam-internet-link-controller"
         ],
-        "operationId": "delete_16",
+        "operationId": "delete_17",
         "parameters": [
           {
             "name": "id",
@@ -34312,6 +34487,72 @@
           "completedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateValueBandConfigRequest": {
+        "type": "object",
+        "properties": {
+          "simplifiedIdentificationLimitHuf": {
+            "type": "number"
+          },
+          "identificationLimitHuf": {
+            "type": "number"
+          },
+          "incomeProofLimitHuf": {
+            "type": "number"
+          },
+          "rollingWindowDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "effectiveFrom",
+          "identificationLimitHuf",
+          "incomeProofLimitHuf",
+          "rollingWindowDays",
+          "simplifiedIdentificationLimitHuf"
+        ]
+      },
+      "ValueBandConfig": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "simplifiedIdentificationLimitHuf": {
+            "type": "number"
+          },
+          "identificationLimitHuf": {
+            "type": "number"
+          },
+          "incomeProofLimitHuf": {
+            "type": "number"
+          },
+          "rollingWindowDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date"
+          },
+          "createdBy": {
+            "type": "string"
           },
           "createdAt": {
             "type": "string",
@@ -36940,6 +37181,14 @@
           "notes": {
             "type": "string"
           },
+          "riskRating": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ]
+          },
           "eddUntil": {
             "type": "string",
             "format": "date"
@@ -38449,6 +38698,14 @@
             "type": "string",
             "format": "date-time"
           },
+          "riskRating": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ]
+          },
           "eddUntil": {
             "type": "string",
             "format": "date"
@@ -38775,6 +39032,10 @@
             "type": "integer",
             "format": "int64"
           },
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "companyId": {
             "type": "string",
             "format": "uuid"
@@ -38782,10 +39043,6 @@
           "territoryId": {
             "type": "integer",
             "format": "int32"
-          },
-          "branchId": {
-            "type": "string",
-            "format": "uuid"
           }
         }
       },
@@ -41071,7 +41328,7 @@
           },
           "documentType": {
             "type": "string",
-            "pattern": "ID_CARD|PASSPORT|DRIVERS_LICENSE|OTHER"
+            "pattern": "ID_CARD|PASSPORT|DRIVERS_LICENSE|COMPANY_REGISTRY|OTHER"
           },
           "notes": {
             "type": "string",
@@ -41121,6 +41378,10 @@
           },
           "notes": {
             "type": "string"
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date"
           }
         }
       },
@@ -45776,6 +46037,28 @@
           }
         }
       },
+      "SetCustomerRiskRatingRequest": {
+        "type": "object",
+        "properties": {
+          "riskRating": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 400,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "reason",
+          "riskRating"
+        ]
+      },
       "MarkCustomerEddRequest": {
         "type": "object",
         "properties": {
@@ -48793,12 +49076,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -48815,6 +49092,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -48838,16 +49121,16 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "paged": {
-            "type": "boolean"
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
           },
           "pageNumber": {
             "type": "integer",
             "format": "int32"
           },
-          "pageSize": {
-            "type": "integer",
-            "format": "int32"
+          "paged": {
+            "type": "boolean"
           },
           "unpaged": {
             "type": "boolean"
@@ -48879,12 +49162,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -48901,6 +49178,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -49085,6 +49368,24 @@
             "items": {
               "$ref": "#/components/schemas/VaultStocktakeItem"
             }
+          }
+        }
+      },
+      "ValueBands": {
+        "type": "object",
+        "properties": {
+          "simplifiedIdentificationLimitHuf": {
+            "type": "number"
+          },
+          "identificationLimitHuf": {
+            "type": "number"
+          },
+          "incomeProofLimitHuf": {
+            "type": "number"
+          },
+          "rollingWindowDays": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -49500,12 +49801,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -49522,6 +49817,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -49546,12 +49847,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -49568,6 +49863,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -49656,12 +49957,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -49678,6 +49973,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -49755,12 +50056,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -49777,6 +50072,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -50034,12 +50335,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -50056,6 +50351,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -50413,14 +50714,14 @@
             "type": "string",
             "format": "date-time"
           },
-          "highBalance": {
-            "type": "boolean"
-          },
           "lowBalance": {
             "type": "boolean"
           },
           "dailyChange": {
             "type": "number"
+          },
+          "highBalance": {
+            "type": "boolean"
           }
         }
       },
@@ -51724,11 +52025,11 @@
             "type": "string",
             "format": "date-time"
           },
-          "bankBuyRate": {
+          "bankSellRate": {
             "type": "number",
             "deprecated": true
           },
-          "bankSellRate": {
+          "bankBuyRate": {
             "type": "number",
             "deprecated": true
           }
@@ -52064,12 +52365,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -52086,6 +52381,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -52110,12 +52411,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -52132,6 +52427,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -52297,12 +52598,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -52319,6 +52614,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -52576,12 +52877,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -52598,6 +52893,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -52760,12 +53061,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -52782,6 +53077,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -53612,12 +53913,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -53634,6 +53929,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -53826,12 +54127,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -53848,6 +54143,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -53872,12 +54173,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -53894,6 +54189,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -54656,10 +54957,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "highBalance": {
+          "lowBalance": {
             "type": "boolean"
           },
-          "lowBalance": {
+          "highBalance": {
             "type": "boolean"
           }
         }
@@ -54850,12 +55151,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -54872,6 +55167,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -54896,12 +55197,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -54918,6 +55213,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",
@@ -54994,12 +55295,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -55016,6 +55311,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "numberOfElements": {
             "type": "integer",

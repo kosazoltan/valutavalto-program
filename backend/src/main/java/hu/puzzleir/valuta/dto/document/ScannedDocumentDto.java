@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.dto.document;
 
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -18,4 +19,5 @@ public class ScannedDocumentDto {
     private Long scannedBy;
     private LocalDateTime scannedAt;
     private String notes;
+    private LocalDate validUntil;
 }
