@@ -243,6 +243,12 @@ export interface PendingTransferStornoInput {
   reason: string;
 }
 
+// FS-C (Center FS-1): körlevél-válasz offline outbox.
+export interface PendingCircularReplyInput {
+  circularId: number;
+  replyText: string;
+}
+
 export interface PendingHandoverOperationInput {
   operationType: 'GENERATE' | 'PRINT' | 'COMPLETE';
   sheetId?: string | null;
@@ -304,6 +310,10 @@ export interface IpcRoutes {
     request: PendingTransferStornoInput
     response: number
   }
+  'save-pending-circular-reply': {
+    request: PendingCircularReplyInput
+    response: number
+  }
   'save-pending-handover-operation': {
     request: PendingHandoverOperationInput
     response: number
@@ -344,6 +354,7 @@ export const IPC_CHANNELS = {
   SYNC_OFFLINE: 'sync-offline' as const,
   SAVE_PENDING_STORNO: 'save-pending-storno' as const,
   SAVE_PENDING_TRANSFER_STORNO: 'save-pending-transfer-storno' as const,
+  SAVE_PENDING_CIRCULAR_REPLY: 'save-pending-circular-reply' as const,
   SAVE_PENDING_HANDOVER_OPERATION: 'save-pending-handover-operation' as const,
   QUEUE_STOCKTAKE_COUNT: 'queue-stocktake-count' as const,
   GET_PENDING_TRANSACTION_REF_BY_ID: 'get-pending-transaction-ref-by-id' as const,

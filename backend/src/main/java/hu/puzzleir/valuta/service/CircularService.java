@@ -35,6 +35,7 @@ public class CircularService {
 
     private final CircularRepository circularRepository;
     private final CircularAcknowledgmentRepository acknowledgmentRepository;
+    private final CircularReplyRepository replyRepository;
     private final CircularSequenceRepository sequenceRepository;
     private final WorkerRepository workerRepository;
 
@@ -74,6 +75,7 @@ public class CircularService {
                 .companyId(SecurityUtils.getCurrentCompanyId())
                 .urgent(dto.getUrgent() != null ? dto.getUrgent() : false)
                 .requiresAcknowledgment(dto.getRequiresAcknowledgment() != null && dto.getRequiresAcknowledgment())
+                .allowsReply(dto.getAllowsReply() != null && dto.getAllowsReply())
                 .build();
 
         circular = circularRepository.save(circular);
@@ -161,6 +163,7 @@ public class CircularService {
                 .urgent(priority == CircularType.CircularPriority.URGENT
                         || (dto.getUrgent() != null && dto.getUrgent()))
                 .requiresAcknowledgment(dto.getRequiresAcknowledgment() != null && dto.getRequiresAcknowledgment())
+                .allowsReply(dto.getAllowsReply() != null && dto.getAllowsReply())
                 .targetBranchId(targetBranchId)
                 .targetCompanyId(targetCompanyId)
                 .registrationNumber(registrationNumber)
@@ -234,6 +237,64 @@ public class CircularService {
 
         log.info("Körlevél nyugtázva: circularId={}, workerId={}, szerepkör={}", circularId, workerId, ackRole);
         return toDto(circular);
+    }
+
+    // ============ FS-C: KÉTIRÁNYÚ VÁLASZ ============
+
+    /** FS-C (Center FS-1): pénztárosi válasz — csak allowsReply=true körlevélre. */
+    @Transactional(rollbackFor = Exception.class)
+    public CircularReplyDto reply(Long circularId, String replyText) {
+        Circular circular = findOrThrow(circularId); // cég-szűrt (IDOR F-6)
+
+        if (!Boolean.TRUE.equals(circular.getAllowsReply())) {
+            throw new ValidationException("Erre a körlevélre nem küldhető válasz!");
+        }
+        String text = replyText == null ? "" : replyText.trim();
+        if (text.isEmpty()) {
+            throw new ValidationException("A válasz szövege nem lehet üres!");
+        }
+        if (text.length() > 4000) {
+            throw new ValidationException("A válasz legfeljebb 4000 karakter lehet!");
+        }
+
+        CircularReply reply = CircularReply.builder()
+                .circular(circular)
+                .workerId(SecurityUtils.getCurrentWorkerId())
+                .companyId(SecurityUtils.getCurrentCompanyId())
+                .branchId(SecurityUtils.getCurrentBranchIdOrNull())
+                .replyText(text)
+                .createdAt(LocalDateTime.now())
+                .build();
+        reply = replyRepository.save(reply);
+
+        log.info("Körlevél-válasz rögzítve: circularId={}, workerId={}", circularId,
+                reply.getWorkerId());
+        return toReplyDto(reply, circularId);
+    }
+
+    /** FS-C: a körlevél válaszai (center-nézet) — cég-szűrt. */
+    @Transactional(readOnly = true)
+    public List<CircularReplyDto> getReplies(Long circularId) {
+        findOrThrow(circularId); // 404 cross-tenant/nem létező esetén
+        return replyRepository
+                .findByCircularIdAndCompanyId(circularId, SecurityUtils.getCurrentCompanyId())
+                .stream()
+                .map(r -> toReplyDto(r, circularId))
+                .collect(Collectors.toList());
+    }
+
+    private CircularReplyDto toReplyDto(CircularReply r, Long circularId) {
+        String workerName = workerRepository.findById(r.getWorkerId())
+                .map(Worker::getName).orElse(null);
+        return CircularReplyDto.builder()
+                .id(r.getId())
+                .circularId(circularId)
+                .workerId(r.getWorkerId())
+                .workerName(workerName)
+                .branchId(r.getBranchId() != null ? r.getBranchId().toString() : null)
+                .replyText(r.getReplyText())
+                .createdAt(r.getCreatedAt() != null ? r.getCreatedAt().toString() : null)
+                .build();
     }
 
     /**
@@ -509,6 +570,7 @@ public class CircularService {
                 .createdByName(c.getCreatedBy().getName())
                 .urgent(c.getUrgent())
                 .requiresAcknowledgment(c.getRequiresAcknowledgment())
+                .allowsReply(Boolean.TRUE.equals(c.getAllowsReply()))
                 .acknowledged(isAcknowledgedByCurrentWorker || Boolean.TRUE.equals(c.getAcknowledged()))
                 .acknowledgedAt(c.getAcknowledgedAt() != null ? c.getAcknowledgedAt().toString() : null)
                 .createdAt(c.getCreatedAt() != null ? c.getCreatedAt().toString() : null)

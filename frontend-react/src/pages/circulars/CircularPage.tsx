@@ -4,6 +4,7 @@ import { api } from '@/services/api/index'
 import { safeArray } from '@/utils/safeArray'
 import { toast } from '../../components/ui/toaster'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { getElectronAPI } from '../../utils/electron'
 
 interface Circular {
   id: number
@@ -12,6 +13,7 @@ interface Circular {
   createdByName?: string
   urgent?: boolean
   requiresAcknowledgment?: boolean
+  allowsReply?: boolean
   acknowledged?: boolean
   createdAt?: string
   circularType?: string
@@ -41,6 +43,16 @@ interface AcknowledgmentStatus {
   title?: string
   totalAcknowledged?: number
   acknowledgments?: Array<{ workerId?: number; acknowledgedAt?: string }>
+}
+
+interface CircularReply {
+  id: number
+  circularId?: number
+  workerId?: number
+  workerName?: string
+  branchId?: string
+  replyText: string
+  createdAt?: string
 }
 
 type CircularTab = string
@@ -97,6 +109,7 @@ const emptyForm = {
   content: '',
   urgent: false,
   requiresAcknowledgment: false,
+  allowsReply: false,
 }
 
 function documentNumber(circular: Circular): string {
@@ -121,6 +134,8 @@ export default function CircularPage() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [acknowledgmentStatus, setAcknowledgmentStatus] = useState<AcknowledgmentStatus | null>(null)
   const [acknowledgmentBreakdown, setAcknowledgmentBreakdown] = useState<Record<string, number>>({})
+  const [replies, setReplies] = useState<CircularReply[]>([])
+  const [replyText, setReplyText] = useState('')
   const [formData, setFormData] = useState(emptyForm)
   const [typeOptions, setTypeOptions] = useState<CircularTypeOption[]>([])
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
@@ -248,6 +263,8 @@ export default function CircularPage() {
     setDetailLoading(true)
     setAcknowledgmentStatus(null)
     setAcknowledgmentBreakdown({})
+    setReplies([])
+    setReplyText('')
 
     try {
       const detailResponse = await api.get<Circular>(`/circulars/${circular.id}`)
@@ -256,9 +273,10 @@ export default function CircularPage() {
       toast.error('Körlevél részlet betöltési hiba', getErrorMessage(err))
     }
 
-    const [statusResult, breakdownResult] = await Promise.allSettled([
+    const [statusResult, breakdownResult, repliesResult] = await Promise.allSettled([
       api.get<AcknowledgmentStatus>(`/circulars/${circular.id}/acknowledgment-status`),
       api.get<Record<string, number>>(`/circulars/${circular.id}/acknowledgment-breakdown`),
+      api.get<CircularReply[]>(`/circulars/${circular.id}/replies`),
     ])
 
     if (statusResult.status === 'fulfilled') {
@@ -267,9 +285,36 @@ export default function CircularPage() {
     if (breakdownResult.status === 'fulfilled') {
       setAcknowledgmentBreakdown(breakdownResult.value.data ?? {})
     }
+    if (repliesResult.status === 'fulfilled') {
+      setReplies(safeArray<CircularReply>(repliesResult.value.data))
+    }
 
     setDetailLoading(false)
   }, [])
+
+  const handleSendReply = useCallback(async (circular: Circular) => {
+    const text = replyText.trim()
+    if (!text) return
+    try {
+      const electronAPI = getElectronAPI()
+      if (electronAPI && typeof electronAPI.savePendingCircularReply === 'function') {
+        // Electron (pénztár): offline-first outbox + azonnali flush-kísérlet.
+        await electronAPI.savePendingCircularReply({ circularId: circular.id, replyText: text })
+        void electronAPI.syncOffline()
+        toast.success('Válasz rögzítve', 'A válasz szinkronizálásra ütemezve a központ felé.')
+      } else {
+        // Web (center) vagy régi Electron-main: közvetlen POST.
+        const response = await api.post<CircularReply>(`/circulars/${circular.id}/reply`, { replyText: text })
+        if (response.data?.replyText) {
+          setReplies((current) => [...current, response.data])
+        }
+        toast.success('Válasz elküldve')
+      }
+      setReplyText('')
+    } catch (err) {
+      toast.error('Válasz küldési hiba', getErrorMessage(err))
+    }
+  }, [replyText])
 
   const handleArchive = useCallback(async (id: number) => {
     if (!window.confirm('Biztosan archiválja a dokumentumot?')) return
@@ -335,6 +380,7 @@ export default function CircularPage() {
         content: formData.content,
         urgent: formData.urgent,
         requiresAcknowledgment: formData.requiresAcknowledgment,
+        allowsReply: formData.allowsReply,
       }
       const useSimpleCreate = formData.circularType === 'GENERAL' && !attachmentFile
       const response = useSimpleCreate
@@ -615,6 +661,13 @@ export default function CircularPage() {
                   Tranzakció-blokkoló
                 </label>
               </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-600">Válasz engedélyezése</label>
+                <label htmlFor="circular-allows-reply" className="flex h-[38px] items-center gap-2 rounded border px-3 text-sm">
+                  <input id="circular-allows-reply" type="checkbox" checked={formData.allowsReply} onChange={(e) => setFormData({ ...formData, allowsReply: e.target.checked })} />
+                  Kétirányú válasz
+                </label>
+              </div>
               <div className="col-span-2">
                 <label htmlFor="circular-content" className="mb-1 block text-xs font-semibold text-slate-600">Tartalom</label>
                 <textarea id="circular-content" className="h-56 w-full rounded border px-3 py-2 text-sm" value={formData.content} onChange={(e) => setFormData({ ...formData, content: e.target.value })} required />
@@ -683,6 +736,41 @@ export default function CircularPage() {
                     ))}
                   </div>
                 )}
+              </section>
+            )}
+            {selectedCircular.allowsReply && (
+              <section className="mt-3 rounded border border-slate-200 bg-white p-3 text-sm" data-testid="circular-reply-section">
+                <div className="mb-2 text-xs font-semibold uppercase text-slate-500">Válaszok</div>
+                {replies.length > 0 && (
+                  <div className="mb-3 space-y-2">
+                    {replies.map((reply) => (
+                      <div key={reply.id} className="rounded border border-slate-100 bg-slate-50 px-3 py-2">
+                        <div className="text-xs text-slate-500">
+                          {reply.workerName ?? `Dolgozó #${reply.workerId ?? '?'}`} · {formatDate(reply.createdAt)}
+                        </div>
+                        <div className="mt-1 whitespace-pre-wrap text-sm text-slate-900">{reply.replyText}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <textarea
+                    value={replyText}
+                    onChange={(event) => setReplyText(event.target.value)}
+                    maxLength={4000}
+                    placeholder="Válasz a központnak..."
+                    className="h-20 min-w-0 flex-1 rounded border border-slate-300 px-3 py-2 text-sm"
+                    data-testid="circular-reply-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleSendReply(selectedCircular)}
+                    disabled={!replyText.trim()}
+                    className="self-end rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Küldés
+                  </button>
+                </div>
               </section>
             )}
             {selectedCircular.attachmentFilename && (

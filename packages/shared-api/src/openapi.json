@@ -14980,6 +14980,48 @@
         }
       }
     },
+    "/api/v1/circulars/{id}/reply": {
+      "post": {
+        "tags": [
+          "circular-controller"
+        ],
+        "summary": "Pénztárosi válasz küldése a körlevélre (allowsReply=true esetén)",
+        "operationId": "reply",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCircularReplyDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircularReplyDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/circulars/{id}/attachment": {
       "get": {
         "tags": [
@@ -30814,6 +30856,41 @@
         }
       }
     },
+    "/api/v1/circulars/{id}/replies": {
+      "get": {
+        "tags": [
+          "circular-controller"
+        ],
+        "summary": "A körlevél pénztárosi válaszai (center-nézet)",
+        "operationId": "getReplies",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CircularReplyDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/circulars/{id}/acknowledgment-status": {
       "get": {
         "tags": [
@@ -39032,10 +39109,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "branchId": {
-            "type": "string",
-            "format": "uuid"
-          },
           "companyId": {
             "type": "string",
             "format": "uuid"
@@ -39043,6 +39116,10 @@
           "territoryId": {
             "type": "integer",
             "format": "int32"
+          },
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -46913,6 +46990,9 @@
           },
           "requiresAcknowledgment": {
             "type": "boolean"
+          },
+          "allowsReply": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -46944,6 +47024,9 @@
             "type": "boolean"
           },
           "requiresAcknowledgment": {
+            "type": "boolean"
+          },
+          "allowsReply": {
             "type": "boolean"
           },
           "acknowledged": {
@@ -46999,6 +47082,48 @@
           }
         }
       },
+      "CreateCircularReplyDto": {
+        "type": "object",
+        "properties": {
+          "replyText": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "replyText"
+        ]
+      },
+      "CircularReplyDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "circularId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "workerId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "workerName": {
+            "type": "string"
+          },
+          "branchId": {
+            "type": "string"
+          },
+          "replyText": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        }
+      },
       "TypedCircularRequest": {
         "type": "object",
         "properties": {
@@ -47012,6 +47137,9 @@
             "type": "boolean"
           },
           "requiresAcknowledgment": {
+            "type": "boolean"
+          },
+          "allowsReply": {
             "type": "boolean"
           },
           "circularType": {
@@ -49068,13 +49196,13 @@
       "PageWorkerAttendanceDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -49121,16 +49249,16 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "pageSize": {
-            "type": "integer",
-            "format": "int32"
+          "paged": {
+            "type": "boolean"
           },
           "pageNumber": {
             "type": "integer",
             "format": "int32"
           },
-          "paged": {
-            "type": "boolean"
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
           },
           "unpaged": {
             "type": "boolean"
@@ -49154,13 +49282,13 @@
       "PageWuTransactionDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -49793,13 +49921,13 @@
       "PageTransferDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -49839,13 +49967,13 @@
       "PageTransactionDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -49949,13 +50077,13 @@
       "PageTradeDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -50048,13 +50176,13 @@
       "PageSyncLogDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -50327,13 +50455,13 @@
       "PageShipmentRequestResponseDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -50714,14 +50842,14 @@
             "type": "string",
             "format": "date-time"
           },
+          "highBalance": {
+            "type": "boolean"
+          },
           "lowBalance": {
             "type": "boolean"
           },
           "dailyChange": {
             "type": "number"
-          },
-          "highBalance": {
-            "type": "boolean"
           }
         }
       },
@@ -52021,10 +52149,6 @@
           "source": {
             "type": "string"
           },
-          "lastUpdated": {
-            "type": "string",
-            "format": "date-time"
-          },
           "bankSellRate": {
             "type": "number",
             "deprecated": true
@@ -52032,6 +52156,10 @@
           "bankBuyRate": {
             "type": "number",
             "deprecated": true
+          },
+          "lastUpdated": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -52357,13 +52485,13 @@
       "PagePoliceRequestDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -52403,13 +52531,13 @@
       "PageNavClosingDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -52590,13 +52718,13 @@
       "PageMnbReportDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -52869,13 +52997,13 @@
       "PageAuditLog": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -53053,13 +53181,13 @@
       "PageInventoryMovementDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -53905,13 +54033,13 @@
       "PageClientErrorLog": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -54119,13 +54247,13 @@
       "PageDecadeReportDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -54165,13 +54293,13 @@
       "PageDataImportJobDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -54957,10 +55085,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "lowBalance": {
+          "highBalance": {
             "type": "boolean"
           },
-          "highBalance": {
+          "lowBalance": {
             "type": "boolean"
           }
         }
@@ -55143,13 +55271,13 @@
       "PageBankOrderDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -55189,13 +55317,13 @@
       "PageBackupRecordResponse": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -55287,13 +55415,13 @@
       "PageAuditLogEntryDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",

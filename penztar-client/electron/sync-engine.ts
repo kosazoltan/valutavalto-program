@@ -37,6 +37,8 @@ import {
   markTransferSynced,
   getPendingTransferStornos,
   markTransferStornoSynced,
+  getPendingCircularReplies,
+  markCircularReplySynced,
   getPendingCollections,
   markCollectionSynced,
   getPendingStocktakeItems,
@@ -785,6 +787,7 @@ export class SyncEngine {
         await this.syncRates();
         await this.syncRatePrintObligations();
         await this.syncCirculars();
+        await this.syncCircularReplies();
         // 3. Értéktár szinkronizáció
         await this.syncDistributions();
         await this.syncTransfers();
@@ -2417,6 +2420,64 @@ export class SyncEngine {
       }
     } catch (err) {
       log.warn('[SyncEngine] Transfer sync hiba:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  /**
+   * FS-C: körlevél-válaszok felszinkronizálása (outbox → POST /circulars/{id}/reply).
+   * A 409 (idempotency-replay/conflict) és az üzleti validációs hiba (pl. a körlevél
+   * időközben válasz-tiltott lett) "elvégzettnek" számít — nem akasztja a queue-t.
+   */
+  async syncCircularReplies(): Promise<void> {
+    try {
+      const pending = getPendingCircularReplies();
+      if (pending.length === 0) return;
+
+      const serverUrl = this.getActiveServerUrl();
+      if (!serverUrl) return;
+      const token = this.getAuthToken();
+      if (!token) return;
+      const sessionCompanyCode = getConfig('bootstrap_company_code');
+
+      for (const reply of pending) {
+        const mismatchMessage = standaloneCompanyMismatchMessage(
+          'CIRCULAR_REPLY',
+          reply.id,
+          reply.company_code,
+          sessionCompanyCode,
+        );
+        if (mismatchMessage) continue;
+        try {
+          await httpPost(
+            `${serverUrl}/circulars/${reply.circular_id}/reply`,
+            { replyText: reply.reply_text },
+            token,
+            reply.idempotency_key ?? undefined,
+          );
+          markCircularReplySynced(reply.id);
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          if (errorMsg.includes('409')) {
+            markCircularReplySynced(reply.id);
+            log.info(`[SyncEngine] Körlevél-válasz #${reply.id} már a szerveren → synced.`);
+            continue;
+          }
+          if (isAuthStatusError(err)) {
+            this.clearStoredAuthToken();
+            log.warn('[SyncEngine] Körlevél-válasz auth hiba (401/403), ciklus leállítva.');
+            break;
+          }
+          if (this.isBusinessValidationError(errorMsg)) {
+            markCircularReplySynced(reply.id);
+            log.warn(`[SyncEngine] Körlevél-válasz #${reply.id} elvetve (business error): ${errorMsg}`);
+            continue;
+          }
+          log.warn(`[SyncEngine] Körlevél-válasz #${reply.id} sync hiba:`, errorMsg);
+          break; // hálózati hiba → később újra
+        }
+      }
+    } catch (err) {
+      log.warn('[SyncEngine] Körlevél-válasz sync hiba:', err instanceof Error ? err.message : err);
     }
   }
 

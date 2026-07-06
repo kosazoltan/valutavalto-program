@@ -5620,6 +5620,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/circulars/{id}/reply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pénztárosi válasz küldése a körlevélre (allowsReply=true esetén) */
+        post: operations["reply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/circulars/{id}/attachment": {
         parameters: {
             query?: never;
@@ -12759,6 +12776,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/circulars/{id}/replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A körlevél pénztárosi válaszai (center-nézet) */
+        get: operations["getReplies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/circulars/{id}/acknowledgment-status": {
         parameters: {
             query?: never;
@@ -16219,11 +16253,11 @@ export interface components {
             /** Format: int64 */
             version?: number;
             /** Format: uuid */
-            branchId?: string;
-            /** Format: uuid */
             companyId?: string;
             /** Format: int32 */
             territoryId?: number;
+            /** Format: uuid */
+            branchId?: string;
         };
         CountItemRequest: {
             /** Format: int32 */
@@ -18974,6 +19008,7 @@ export interface components {
             content: string;
             urgent?: boolean;
             requiresAcknowledgment?: boolean;
+            allowsReply?: boolean;
         };
         CircularDto: {
             /** Format: int64 */
@@ -18985,6 +19020,7 @@ export interface components {
             createdByName?: string;
             urgent?: boolean;
             requiresAcknowledgment?: boolean;
+            allowsReply?: boolean;
             acknowledged?: boolean;
             acknowledgedAt?: string;
             createdAt?: string;
@@ -19005,11 +19041,27 @@ export interface components {
             /** Format: int64 */
             acknowledgmentCount?: number;
         };
+        CreateCircularReplyDto: {
+            replyText: string;
+        };
+        CircularReplyDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            circularId?: number;
+            /** Format: int64 */
+            workerId?: number;
+            workerName?: string;
+            branchId?: string;
+            replyText?: string;
+            createdAt?: string;
+        };
         TypedCircularRequest: {
             title?: string;
             content?: string;
             urgent?: boolean;
             requiresAcknowledgment?: boolean;
+            allowsReply?: boolean;
             /** @enum {string} */
             circularType?: "GENERAL" | "REGULATION" | "RATE_POLICY" | "SECURITY_ALERT" | "INVENTORY" | "HR" | "TECHNICAL" | "BEST_CHANGE" | "ZALOG" | "MANAGEMENT" | "APPOINTMENT" | "NEW_YEAR" | "YEAR_END" | "MONTHLY_SUMMARY" | "VIP_NOTICE" | "AUDIT_NOTICE" | "TRAINING";
             /** @enum {string} */
@@ -19689,10 +19741,10 @@ export interface components {
             sort?: string[];
         };
         PageWorkerAttendanceDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["WorkerAttendanceDto"][];
@@ -19710,11 +19762,11 @@ export interface components {
             /** Format: int64 */
             offset?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            pageSize?: number;
+            paged?: boolean;
             /** Format: int32 */
             pageNumber?: number;
-            paged?: boolean;
+            /** Format: int32 */
+            pageSize?: number;
             unpaged?: boolean;
         };
         SortObject: {
@@ -19723,10 +19775,10 @@ export interface components {
             unsorted?: boolean;
         };
         PageWuTransactionDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["WuTransactionDto"][];
@@ -19962,10 +20014,10 @@ export interface components {
             bankFlowLines?: components["schemas"]["TrbBankFlowLineDto"][];
         };
         PageTransferDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["TransferDto"][];
@@ -19980,10 +20032,10 @@ export interface components {
             empty?: boolean;
         };
         PageTransactionDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["TransactionDto"][];
@@ -20026,10 +20078,10 @@ export interface components {
             minAmountHuf?: number;
         };
         PageTradeDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["TradeDto"][];
@@ -20067,10 +20119,10 @@ export interface components {
             };
         };
         PageSyncLogDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["SyncLogDto"][];
@@ -20173,10 +20225,10 @@ export interface components {
             ecommerce?: number;
         };
         PageShipmentRequestResponseDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["ShipmentRequestResponseDto"][];
@@ -20329,9 +20381,9 @@ export interface components {
             version?: number;
             /** Format: date-time */
             updatedAt?: string;
+            highBalance?: boolean;
             lowBalance?: boolean;
             dailyChange?: number;
-            highBalance?: boolean;
         };
         DailyClosingReport: {
             /** Format: date */
@@ -20815,12 +20867,12 @@ export interface components {
             /** Format: date-time */
             validFrom?: string;
             source?: string;
-            /** Format: date-time */
-            lastUpdated?: string;
             /** @deprecated */
             bankSellRate?: number;
             /** @deprecated */
             bankBuyRate?: number;
+            /** Format: date-time */
+            lastUpdated?: string;
         };
         CompetitorRateDTO: {
             /** Format: uuid */
@@ -20944,10 +20996,10 @@ export interface components {
             updatedAt?: string;
         };
         PagePoliceRequestDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PoliceRequestDto"][];
@@ -20962,10 +21014,10 @@ export interface components {
             empty?: boolean;
         };
         PageNavClosingDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["NavClosingDto"][];
@@ -21035,10 +21087,10 @@ export interface components {
             openAlerts?: number;
         };
         PageMnbReportDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["MnbReportDto"][];
@@ -21137,10 +21189,10 @@ export interface components {
             workerRole?: string;
         };
         PageAuditLog: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["AuditLog"][];
@@ -21208,10 +21260,10 @@ export interface components {
             isVault?: boolean;
         };
         PageInventoryMovementDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["InventoryMovementDto"][];
@@ -21530,10 +21582,10 @@ export interface components {
             userAgent?: string;
         };
         PageClientErrorLog: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["ClientErrorLog"][];
@@ -21611,10 +21663,10 @@ export interface components {
             denominations?: components["schemas"]["Denomination"][];
         };
         PageDecadeReportDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["DecadeReportDto"][];
@@ -21629,10 +21681,10 @@ export interface components {
             empty?: boolean;
         };
         PageDataImportJobDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["DataImportJobDto"][];
@@ -21935,8 +21987,8 @@ export interface components {
             maxBalance?: number;
             /** Format: date-time */
             lastTransactionAt?: string;
-            lowBalance?: boolean;
             highBalance?: boolean;
+            lowBalance?: boolean;
         };
         DetailedCashPosition: {
             /** Format: uuid */
@@ -22000,10 +22052,10 @@ export interface components {
             fixedCounterparties?: components["schemas"]["BranchDto"][];
         };
         PageBankOrderDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["BankOrderDto"][];
@@ -22018,10 +22070,10 @@ export interface components {
             empty?: boolean;
         };
         PageBackupRecordResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["BackupRecordResponse"][];
@@ -22055,10 +22107,10 @@ export interface components {
             createdAt?: string;
         };
         PageAuditLogEntryDto: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["AuditLogEntryDto"][];
@@ -32979,6 +33031,32 @@ export interface operations {
             };
         };
     };
+    reply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCircularReplyDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CircularReplyDto"];
+                };
+            };
+        };
+    };
     downloadAttachment: {
         parameters: {
             query?: never;
@@ -43368,6 +43446,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CircularDto"];
+                };
+            };
+        };
+    };
+    getReplies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CircularReplyDto"][];
                 };
             };
         };

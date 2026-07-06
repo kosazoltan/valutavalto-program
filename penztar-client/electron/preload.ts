@@ -300,6 +300,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     payload: IpcRequest<'save-pending-transfer-storno'>,
   ): Promise<IpcResponse<'save-pending-transfer-storno'>> =>
     ipcRenderer.invoke('save-pending-transfer-storno', payload),
+  // FS-C: körlevél-válasz offline rögzítése (a sync-engine küldi fel a centernek).
+  savePendingCircularReply: (
+    payload: IpcRequest<'save-pending-circular-reply'>,
+  ): Promise<IpcResponse<'save-pending-circular-reply'>> =>
+    ipcRenderer.invoke('save-pending-circular-reply', payload),
   getPendingTransferStornos: (): Promise<Array<{
     id: number;
     transfer_id: number;

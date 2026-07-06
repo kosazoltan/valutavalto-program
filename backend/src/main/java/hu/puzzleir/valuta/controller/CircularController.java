@@ -4,8 +4,10 @@ import hu.puzzleir.valuta.dto.circular.*;
 import hu.puzzleir.valuta.entity.CircularType;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
 import hu.puzzleir.valuta.service.CircularService;
+import hu.puzzleir.valuta.util.IdempotencyGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -16,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -36,6 +39,8 @@ import java.util.UUID;
 public class CircularController {
 
     private final CircularService circularService;
+    private final IdempotencyGuard idempotencyGuard;
+    private static final String ENDPOINT_REPLY_PREFIX = "POST /api/v1/circulars/";
 
     @GetMapping
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
@@ -117,6 +122,7 @@ public class CircularController {
         // A4 (b9-korlevelek FR-02): a tranzakció-blokkoló (kötelező nyugtázás) flag átvezetése,
         // különben a /circulars/typed úton mindig false-ra mentődne (codex P2).
         dto.setRequiresAcknowledgment(request.requiresAcknowledgment());
+        dto.setAllowsReply(request.allowsReply());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(circularService.createTyped(
@@ -143,6 +149,39 @@ public class CircularController {
     @Operation(summary = "Körlevél nyugtázása az aktuális dolgozóval (per-worker)")
     public ResponseEntity<CircularDto> acknowledgeByWorker(@PathVariable Long id) {
         return ResponseEntity.ok(circularService.acknowledgeByWorker(id));
+    }
+
+    // ============ FS-C: KÉTIRÁNYÚ VÁLASZ (Center FS-1) ============
+
+    @PostMapping("/{id}/reply")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @Operation(summary = "Pénztárosi válasz küldése a körlevélre (allowsReply=true esetén)")
+    public ResponseEntity<CircularReplyDto> reply(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateCircularReplyDto dto,
+            HttpServletRequest request) {
+        String idempotencyKey = resolveIdempotencyKey(request);
+        String endpoint = ENDPOINT_REPLY_PREFIX + id + "/reply";
+        IdempotencyGuard.Acquired<CircularReplyDto> acquired =
+                idempotencyGuard.tryAcquire(idempotencyKey, endpoint, dto, CircularReplyDto.class);
+        if (acquired.cachedResult() != null) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(acquired.cachedResult());
+        }
+        try {
+            CircularReplyDto result = circularService.reply(id, dto.getReplyText());
+            idempotencyGuard.complete(acquired, result);
+            return ResponseEntity.status(HttpStatus.CREATED).body(result);
+        } catch (Exception e) {
+            idempotencyGuard.fail(acquired);
+            throw e;
+        }
+    }
+
+    @GetMapping("/{id}/replies")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @Operation(summary = "A körlevél pénztárosi válaszai (center-nézet)")
+    public ResponseEntity<List<CircularReplyDto>> getReplies(@PathVariable Long id) {
+        return ResponseEntity.ok(circularService.getReplies(id));
     }
 
     @GetMapping("/my-unacknowledged")
@@ -234,6 +273,7 @@ public class CircularController {
         String content,
         Boolean urgent,
         Boolean requiresAcknowledgment,
+        Boolean allowsReply,
         CircularType circularType,
         CircularType.CircularTarget target,
         CircularType.CircularPriority priority,
@@ -249,5 +289,13 @@ public class CircularController {
             return details.getWorkerId();
         }
         throw new hu.puzzleir.valuta.exception.ValidationException("Hitelesítés szükséges!");
+    }
+
+    private String resolveIdempotencyKey(HttpServletRequest request) {
+        String key = request.getHeader("Idempotency-Key");
+        if (StringUtils.hasText(key)) {
+            return key;
+        }
+        return request.getHeader("X-Idempotency-Key");
     }
 }
