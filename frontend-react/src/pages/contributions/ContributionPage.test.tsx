@@ -140,6 +140,6 @@ describe('ContributionPage backend contract', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Részletek' }))
 
     await waitFor(() => expect(mockGetById).toHaveBeenCalledWith('contribution-1'))
-    expect(screen.getByTestId('contribution-detail-panel')).toHaveTextContent('Backend részletszámítás')
+    expect(await screen.findByTestId('contribution-detail-panel')).toHaveTextContent('Backend részletszámítás')
   })
 })
