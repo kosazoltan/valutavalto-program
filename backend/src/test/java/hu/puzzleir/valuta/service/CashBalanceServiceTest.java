@@ -37,6 +37,7 @@ class CashBalanceServiceTest {
     @Mock private CompanyRepository companyRepository;
     @Mock private BranchRepository branchRepository;
     @Mock private ExchangeRateRepository exchangeRateRepository;
+    @Mock private AuditLogService auditLogService;
     @InjectMocks private CashBalanceService service;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();
@@ -291,16 +292,18 @@ class CashBalanceServiceTest {
     }
 
     @Test
-    @DisplayName("adjustBalance — incoming feltöltés növeli az egyenleget és ment")
-    void adjustBalance_incoming_addsAndSaves() {
+    @DisplayName("adjustBalance — incoming feltöltés növeli az egyenleget és auditál")
+    void adjustBalance_incoming_addsSavesAndAudits() {
         Currency eur = Currency.builder().id(4L).code("EUR").build();
-        Branch branch = Branch.builder().id(BRANCH_ID).build();
+        Branch branch = Branch.builder().id(BRANCH_ID).name("Teszt iroda").build();
         CashBalance balance = CashBalance.builder()
-                .currency(eur).branch(branch).currentBalance(new BigDecimal("1000")).build();
+                .id(10L).currency(eur).branch(branch).currentBalance(new BigDecimal("1000")).build();
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
             su.when(SecurityUtils::isManagerOrAbove).thenReturn(true);
+            su.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
+            su.when(SecurityUtils::getCurrentWorkerCode).thenReturn("MGR001");
             when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 4L))
                     .thenReturn(Optional.of(balance));
             when(cashBalanceRepository.save(any(CashBalance.class))).thenAnswer(i -> i.getArgument(0));
@@ -311,20 +314,36 @@ class CashBalanceServiceTest {
 
             assertThat(result.getCurrentBalance()).isEqualByComparingTo("1250");
             verify(cashBalanceRepository).save(balance);
+            verify(auditLogService).logWithDetails(
+                    eq("CASH_BALANCE_ADJUST"),
+                    eq("CASH_BALANCE"),
+                    eq("10"),
+                    eq("42"),
+                    eq("MGR001"),
+                    eq(BRANCH_ID.toString()),
+                    eq("Teszt iroda"),
+                    eq("1000"),
+                    eq("1250"),
+                    argThat(message -> message.contains("feltöltés")
+                            && message.contains("250")
+                            && message.contains("EUR")),
+                    isNull());
         }
     }
 
     @Test
-    @DisplayName("adjustBalance — kimenő levonás elég készlettel csökkenti az egyenleget")
-    void adjustBalance_outgoing_sufficient_subtracts() {
+    @DisplayName("adjustBalance — kimenő levonás elég készlettel csökkenti az egyenleget és auditál")
+    void adjustBalance_outgoing_sufficient_subtractsAndAudits() {
         Currency eur = Currency.builder().id(4L).code("EUR").build();
-        Branch branch = Branch.builder().id(BRANCH_ID).build();
+        Branch branch = Branch.builder().id(BRANCH_ID).name("Teszt iroda").build();
         CashBalance balance = CashBalance.builder()
-                .currency(eur).branch(branch).currentBalance(new BigDecimal("1000")).build();
+                .id(11L).currency(eur).branch(branch).currentBalance(new BigDecimal("1000")).build();
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
             su.when(SecurityUtils::isManagerOrAbove).thenReturn(true);
+            su.when(SecurityUtils::getCurrentWorkerId).thenReturn(43L);
+            su.when(SecurityUtils::getCurrentWorkerCode).thenReturn("MGR002");
             when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 4L))
                     .thenReturn(Optional.of(balance));
             when(cashBalanceRepository.save(any(CashBalance.class))).thenAnswer(i -> i.getArgument(0));
@@ -335,6 +354,20 @@ class CashBalanceServiceTest {
 
             assertThat(result.getCurrentBalance()).isEqualByComparingTo("700");
             verify(cashBalanceRepository).save(balance);
+            verify(auditLogService).logWithDetails(
+                    eq("CASH_BALANCE_ADJUST"),
+                    eq("CASH_BALANCE"),
+                    eq("11"),
+                    eq("43"),
+                    eq("MGR002"),
+                    eq(BRANCH_ID.toString()),
+                    eq("Teszt iroda"),
+                    eq("1000"),
+                    eq("700"),
+                    argThat(message -> message.contains("levonás")
+                            && message.contains("300")
+                            && message.contains("EUR")),
+                    isNull());
         }
     }
 

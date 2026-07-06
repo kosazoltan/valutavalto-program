@@ -6,11 +6,14 @@ import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.mapper.CashBalanceMapper;
 import hu.puzzleir.valuta.service.AccessScopeService;
 import hu.puzzleir.valuta.service.CashBalanceService;
+import hu.puzzleir.valuta.util.IdempotencyGuard;
 import hu.puzzleir.valuta.util.OptimisticLockRetry;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,6 +35,9 @@ public class CashBalanceController {
     private final CashBalanceService cashBalanceService;
     private final CashBalanceMapper cashBalanceMapper;
     private final AccessScopeService accessScopeService;
+    private final IdempotencyGuard idempotencyGuard;
+
+    private static final String ENDPOINT_ADJUST = "cash-balances/adjust";
 
     /**
      * Aktuális iroda egyenlegei
@@ -128,11 +134,34 @@ public class CashBalanceController {
      */
     @PostMapping("/adjust")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<CashBalanceDto> adjustBalance(@Valid @RequestBody AdjustBalanceDto dto) {
-        CashBalance balance = OptimisticLockRetry.execute(
-                () -> cashBalanceService.adjustBalance(cashBalanceMapper.toServiceRequest(dto)),
-                "adjustBalance");
-        return ResponseEntity.ok(cashBalanceMapper.toDto(balance));
+    public ResponseEntity<CashBalanceDto> adjustBalance(
+            @Valid @RequestBody AdjustBalanceDto dto,
+            HttpServletRequest request) {
+        String idempotencyKey = resolveIdempotencyKey(request);
+        IdempotencyGuard.Acquired<CashBalanceDto> acquired =
+                idempotencyGuard.tryAcquire(idempotencyKey, ENDPOINT_ADJUST, dto, CashBalanceDto.class);
+        if (acquired.cachedResult() != null) {
+            return ResponseEntity.ok(acquired.cachedResult());
+        }
+        try {
+            CashBalance balance = OptimisticLockRetry.execute(
+                    () -> cashBalanceService.adjustBalance(cashBalanceMapper.toServiceRequest(dto)),
+                    "adjustBalance");
+            CashBalanceDto result = cashBalanceMapper.toDto(balance);
+            idempotencyGuard.complete(acquired, result);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            idempotencyGuard.fail(acquired);
+            throw e;
+        }
+    }
+
+    private String resolveIdempotencyKey(HttpServletRequest request) {
+        String key = request.getHeader("Idempotency-Key");
+        if (StringUtils.hasText(key)) {
+            return key;
+        }
+        return request.getHeader("X-Idempotency-Key");
     }
 
     /**

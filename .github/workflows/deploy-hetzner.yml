@@ -175,6 +175,16 @@ jobs:
             # Az elozo deploy fail-elt: FileNotFoundException /var/log/valuta-backend/...
             mkdir -p "$DEPLOY/logs"
             chown -R ${{ env.VPS_USER_OWNER }}:${{ env.VPS_USER_OWNER }} "$DEPLOY/logs"
+            ENV_FILE="$DEPLOY/.env"
+            if ! grep -qE '^APP_RATE_PRINT_HMAC_SECRET=.+$' "$ENV_FILE"; then
+              echo "::error::APP_RATE_PRINT_HMAC_SECRET hianyzik vagy ures a $ENV_FILE fajlban; APP_RATE_PRINT_HMAC_SECRET_REQUIRED=true nem kapcsolhato be biztonsagosan."
+              exit 1
+            fi
+            if ! grep -qE '^APP_RATE_PRINT_HMAC_SECRET_REQUIRED=' "$ENV_FILE"; then
+              printf '\n# RP-HA guarded fail-fast (2026-07-06): prodon kotelezo stabil secret.\nAPP_RATE_PRINT_HMAC_SECRET_REQUIRED=true\n' >> "$ENV_FILE"
+              chown root:${{ env.VPS_USER_OWNER }} "$ENV_FILE" || true
+              chmod 640 "$ENV_FILE" || true
+            fi
             echo "=== Restarting ${{ env.SERVICE_NAME }} ==="
             systemctl restart ${{ env.SERVICE_NAME }}
             sleep 15

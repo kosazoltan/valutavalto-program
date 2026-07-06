@@ -120,7 +120,8 @@ public class EmailAccountController {
     }
 
     private void requireAdminRole(WorkerAuthenticationDetails details) {
-        if (!ADMIN_ROLES.contains(details.getActiveRole())) {
+        String activeRole = details.getActiveRole();
+        if (activeRole == null || !ADMIN_ROLES.contains(activeRole)) {
             throw new ValidationException("Email fiók kezelés csak CHIEF_VAULT, REGIONAL_MGR vagy DIRECTOR jogosultsággal lehetséges!");
         }
     }

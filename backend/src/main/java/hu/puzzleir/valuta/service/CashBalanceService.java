@@ -51,6 +51,7 @@ public class CashBalanceService {
     private final CompanyRepository companyRepository;
     private final BranchRepository branchRepository;
     private final ExchangeRateRepository exchangeRateRepository;
+    private final AuditLogService auditLogService;
 
     /**
      * Aktuális iroda összes egyenlegének lekérése
@@ -317,11 +318,44 @@ public class CashBalanceService {
         }
 
         CashBalance saved = cashBalanceRepository.save(balance);
+        auditCashBalanceAdjust(saved, oldBalance, request);
         // #865: a controller (POST /adjust) a session lezárása UTÁN mappel DTO-ra (OSIV=false) →
         // a lazy branch/currency proxyt itt, a tranzakción belül inicializáljuk a LazyInit 500 ellen.
         org.hibernate.Hibernate.initialize(saved.getBranch());
         org.hibernate.Hibernate.initialize(saved.getCurrency());
         return saved;
+    }
+
+    private void auditCashBalanceAdjust(CashBalance saved, BigDecimal oldBalance, AdjustBalanceRequest request) {
+        BigDecimal newBalance = saved.getCurrentBalance();
+        String direction = request.isIncoming() ? "feltöltés" : "levonás";
+        String currencyCode = saved.getCurrency() != null && saved.getCurrency().getCode() != null
+                ? saved.getCurrency().getCode()
+                : String.valueOf(request.getCurrencyId());
+        String message = String.format("Kassza %s: %s %s (%s -> %s)",
+                direction,
+                request.getAmount().toPlainString(),
+                currencyCode,
+                oldBalance.toPlainString(),
+                newBalance.toPlainString());
+        if (request.getReason() != null && !request.getReason().isBlank()) {
+            message = message + "; indok: " + request.getReason();
+        }
+
+        auditLogService.logWithDetails(
+                "CASH_BALANCE_ADJUST",
+                "CASH_BALANCE",
+                saved.getId() != null ? saved.getId().toString() : null,
+                SecurityUtils.getCurrentWorkerId().toString(),
+                SecurityUtils.getCurrentWorkerCode(),
+                saved.getBranch() != null && saved.getBranch().getId() != null
+                        ? saved.getBranch().getId().toString()
+                        : SecurityUtils.getCurrentBranchId().toString(),
+                saved.getBranch() != null ? saved.getBranch().getName() : null,
+                oldBalance.toPlainString(),
+                newBalance.toPlainString(),
+                message,
+                null);
     }
 
     /**
