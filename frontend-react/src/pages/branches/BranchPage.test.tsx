@@ -175,6 +175,6 @@ describe('BranchPage — FK-020 Pénztár Törzs Adatbázis lista', () => {
     await waitFor(() => {
       expect(mockBranchGetByCode).toHaveBeenCalledWith('BR027')
     })
-    expect(screen.getByTestId('branch-code-result')).toHaveTextContent('Backend kód találat')
+    expect(await screen.findByTestId('branch-code-result')).toHaveTextContent('Backend kód találat')
   })
 })
