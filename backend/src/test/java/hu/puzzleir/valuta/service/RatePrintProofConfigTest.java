@@ -33,4 +33,29 @@ class RatePrintProofConfigTest {
 
         assertThat(env.getProperty("app.rate-print.hmac-secret")).isEmpty();
     }
+
+    @Test
+    @DisplayName("app.rate-print.hmac-secret-required az APP_RATE_PRINT_HMAC_SECRET_REQUIRED env-ből oldódik fel")
+    void ratePrintSecretRequiredResolvesFromEnvVar() throws Exception {
+        StandardEnvironment env = new StandardEnvironment();
+        env.getPropertySources().addFirst(
+                new MockPropertySource("fake-env")
+                        .withProperty("APP_RATE_PRINT_HMAC_SECRET_REQUIRED", "true"));
+        env.getPropertySources().addLast(
+                new ResourcePropertySource("classpath:application.properties"));
+
+        assertThat(env.getProperty("app.rate-print.hmac-secret-required", Boolean.class))
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("env nélkül a required flag false defaultra oldódik")
+    void ratePrintSecretRequiredDefaultsToFalseWithoutEnv() throws Exception {
+        StandardEnvironment env = new StandardEnvironment();
+        env.getPropertySources().addLast(
+                new ResourcePropertySource("classpath:application.properties"));
+
+        assertThat(env.getProperty("app.rate-print.hmac-secret-required", Boolean.class))
+                .isFalse();
+    }
 }

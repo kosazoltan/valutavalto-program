@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RatePrintProofServiceTest {
 
@@ -15,7 +16,7 @@ class RatePrintProofServiceTest {
     private static final UUID MASTER_RATE_ID = UUID.fromString("44444444-4444-4444-4444-444444444444");
     private static final UUID COMPANY_ID = UUID.fromString("55555555-5555-5555-5555-555555555555");
 
-    private final RatePrintProofService service = new RatePrintProofService("test-secret");
+    private final RatePrintProofService service = new RatePrintProofService("test-secret", false);
 
     @Test
     @DisplayName("issueToken determinisztikus és hex HMAC token")
@@ -63,8 +64,8 @@ class RatePrintProofServiceTest {
     @Test
     @DisplayName("ket instance ugyanazzal a secrettel kereszt-verifikal (HA/restart kontrakt)")
     void sameSecretInstancesCrossVerify() {
-        RatePrintProofService a = new RatePrintProofService("shared-secret");
-        RatePrintProofService b = new RatePrintProofService("shared-secret");
+        RatePrintProofService a = new RatePrintProofService("shared-secret", true);
+        RatePrintProofService b = new RatePrintProofService("shared-secret", true);
 
         String token = a.issueToken(DISTRIBUTION_ID, BRANCH_ID, MASTER_RATE_ID, COMPANY_ID);
         assertThat(b.verifyToken(token, DISTRIBUTION_ID, BRANCH_ID, MASTER_RATE_ID, COMPANY_ID)).isTrue();
@@ -73,10 +74,30 @@ class RatePrintProofServiceTest {
     @Test
     @DisplayName("ures secret = processz-lokalis random fallback - instance-ok NEM kereszt-verifikalnak")
     void blankSecretInstancesDoNotCrossVerify() {
-        RatePrintProofService a = new RatePrintProofService("");
-        RatePrintProofService b = new RatePrintProofService("");
+        RatePrintProofService a = new RatePrintProofService("", false);
+        RatePrintProofService b = new RatePrintProofService("", false);
 
         String token = a.issueToken(DISTRIBUTION_ID, BRANCH_ID, MASTER_RATE_ID, COMPANY_ID);
         assertThat(b.verifyToken(token, DISTRIBUTION_ID, BRANCH_ID, MASTER_RATE_ID, COMPANY_ID)).isFalse();
+    }
+
+    @Test
+    @DisplayName("ures secret + required flag = fail-fast env-var nevvel")
+    void blankSecretWithRequiredFlagFailsFast() {
+        assertThatThrownBy(() -> new RatePrintProofService("", true))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("APP_RATE_PRINT_HMAC_SECRET")
+                .hasMessageContaining("APP_RATE_PRINT_HMAC_SECRET_REQUIRED=true");
+    }
+
+    @Test
+    @DisplayName("ures secret + required=false megtartja a dev random fallbackot")
+    void blankSecretWithRequiredFlagDisabledKeepsRandomFallback() {
+        RatePrintProofService fallback = new RatePrintProofService("", false);
+
+        String token = fallback.issueToken(DISTRIBUTION_ID, BRANCH_ID, MASTER_RATE_ID, COMPANY_ID);
+
+        assertThat(token).matches("[0-9a-f]{64}");
+        assertThat(fallback.verifyToken(token, DISTRIBUTION_ID, BRANCH_ID, MASTER_RATE_ID, COMPANY_ID)).isTrue();
     }
 }

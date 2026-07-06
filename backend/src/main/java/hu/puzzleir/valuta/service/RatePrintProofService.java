@@ -22,8 +22,15 @@ public class RatePrintProofService {
 
     private final String hmacSecret;
 
-    public RatePrintProofService(@Value("${app.rate-print.hmac-secret:}") String hmacSecret) {
+    public RatePrintProofService(
+            @Value("${app.rate-print.hmac-secret:}") String hmacSecret,
+            @Value("${app.rate-print.hmac-secret-required:false}") boolean secretRequired) {
         if (hmacSecret == null || hmacSecret.isBlank()) {
+            if (secretRequired) {
+                throw new IllegalStateException(
+                        "app.rate-print.hmac-secret kotelezo (APP_RATE_PRINT_HMAC_SECRET env), "
+                                + "de nincs beallitva — fail-fast (APP_RATE_PRINT_HMAC_SECRET_REQUIRED=true).");
+            }
             this.hmacSecret = UUID.randomUUID().toString();
             log.warn("app.rate-print.hmac-secret nincs beallitva; processz-lokalis rate-print HMAC secret generálva");
         } else {
