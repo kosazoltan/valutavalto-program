@@ -57,11 +57,17 @@
 ; post-copy verifikacio. Silent (/S) modban a MessageBox kimarad, az Abort NEM
 ; (ugyanaz a minta, mint a Penztar.exe-check, PR #698).
 !macro VerifyElectronFile RELPATH
-    IfFileExists "$INSTDIR\${RELPATH}" electron_file_ok_${__LINE__} 0
+    ; v2.28.28 fix: relativ ugras named label helyett. A korabbi
+    ; `electron_file_ok_${__LINE__}` label az NSIS 3.x-ben tobbszoros
+    ; `!insertmacro` beszurasnal `.N` uniquifiert kapott a JUMP-oldalon, de a
+    ; label-definicio nem — igy `could not resolve label "electron_file_ok_443.1"`
+    ; compile-hibaval elszallt a release-build. A +4 relativ ugras insertion-safe.
+    ; Utasitas-szamlalas: 0=IfFileExists, +1=IfSilent, +2=MessageBox, +3=Abort,
+    ; +4=elso utasitas a makro UTAN.
+    IfFileExists "$INSTDIR\${RELPATH}" +4 0
         IfSilent +2 0
         MessageBox MB_OK|MB_ICONSTOP "TELEPITÉS SIKERTELEN!$\r$\n$\r$\nEgy kritikus programfájl hiányzik a következő helyről:$\r$\n$INSTDIR\${RELPATH}$\r$\n$\r$\nValószínű ok: az AV (ESET, Windows Defender) blokkolta a fájl másolását. Megoldás:$\r$\n1. Kapcsolja ki az ESET-et 10 percre (Setup > Pause protection)$\r$\n2. Indítsa újra a telepítőt ($EXEFILE)$\r$\n3. Indítsa újra az ESET-et$\r$\n$\r$\nKérem jelezze a fejlesztőnek (Kósa Zoltán)."
         Abort "Electron resource file missing: ${RELPATH} — install aborted"
-    electron_file_ok_${__LINE__}:
 !macroend
 
 ; =============================================================================
