@@ -158,7 +158,7 @@
         <dependency>
             <groupId>com.nimbusds</groupId>
             <artifactId>nimbus-jose-jwt</artifactId>
-            <version>10.3</version>
+            <version>10.9.1</version>
         </dependency>
         
         <!-- SpringDoc OpenAPI / Swagger UI - 2.8.17 marad (Spring Boot 3.5 kompat)
