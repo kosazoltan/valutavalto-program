@@ -176,6 +176,16 @@ jobs:
             mkdir -p "$DEPLOY/logs"
             chown -R ${{ env.VPS_USER_OWNER }}:${{ env.VPS_USER_OWNER }} "$DEPLOY/logs"
             ENV_FILE="$DEPLOY/.env"
+            # RP-HA (2026-07-06): a #1307 kezi ops-lepese (RATE-PRINT-SECRET.md) a meglevo
+            # prodon nem futott le -> a deploy auto-provisionalja (idempotens; a
+            # bootstrap-vps.sh gen_secret_hex mintaja). Csak akkor general, ha hianyzik.
+            if ! grep -qE '^APP_RATE_PRINT_HMAC_SECRET=.+$' "$ENV_FILE"; then
+              printf '\n# RP-HA stabil HMAC secret (auto-provisioned by deploy, 2026-07-06)\nAPP_RATE_PRINT_HMAC_SECRET=%s\n' "$(openssl rand -hex 32)" >> "$ENV_FILE"
+              chown root:${{ env.VPS_USER_OWNER }} "$ENV_FILE" || true
+              chmod 640 "$ENV_FILE" || true
+              echo "APP_RATE_PRINT_HMAC_SECRET auto-provisioned"
+            fi
+            # Fail-closed orseg: ha a fenti utan SINCS ertekes secret, allj le.
             if ! grep -qE '^APP_RATE_PRINT_HMAC_SECRET=.+$' "$ENV_FILE"; then
               echo "::error::APP_RATE_PRINT_HMAC_SECRET hianyzik vagy ures a $ENV_FILE fajlban; APP_RATE_PRINT_HMAC_SECRET_REQUIRED=true nem kapcsolhato be biztonsagosan."
               exit 1
