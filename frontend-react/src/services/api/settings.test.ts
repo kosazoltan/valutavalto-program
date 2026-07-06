@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { adminCompanyApi, branchApi, cameraExportApi, commissionCalculationApi, documentScannerApi, handlingFeeConfigApi, handlingFeeTransactionApi, mfaAdminApi, navIntegrationApi, notificationApi, ownCompanyApi, posTerminalApi, supervisorPinApi, synchronizationApi, systemParameterApi, turnoverApi, workerCommissionApi } from './settings'
+import { adminCompanyApi, branchApi, cameraExportApi, commissionCalculationApi, documentScannerApi, handlingFeeConfigApi, handlingFeeTransactionApi, mfaAdminApi, navIntegrationApi, notificationApi, ownCompanyApi, posTerminalApi, supervisorPinApi, synchronizationApi, systemParameterApi, turnoverApi, valueBandApi, workerCommissionApi } from './settings'
 import { api } from './client'
 
 vi.mock('./client', () => {
@@ -316,6 +316,56 @@ describe('documentScannerApi backend contract', () => {
     await documentScannerApi.deleteScannedDocument('scan-1')
 
     expect(mockApi.delete).toHaveBeenCalledWith('/scanned-documents/scan-1')
+  })
+})
+
+describe('valueBandApi backend contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockApi.get.mockResolvedValue({ data: [] })
+    mockApi.post.mockResolvedValue({ data: { id: 'vb-1' } })
+    mockApi.put.mockResolvedValue({ data: { id: 'vb-1' } })
+    mockApi.delete.mockResolvedValue({ data: undefined })
+  })
+
+  it('list calls GET /value-bands', async () => {
+    await valueBandApi.list()
+
+    expect(mockApi.get).toHaveBeenCalledWith('/value-bands')
+  })
+
+  it('create calls POST /value-bands with payload', async () => {
+    const req = {
+      simplifiedIdentificationLimitHuf: 100000,
+      identificationLimitHuf: 300000,
+      incomeProofLimitHuf: 10000000,
+      rollingWindowDays: 8,
+      effectiveFrom: '2026-07-10',
+    }
+
+    await valueBandApi.create(req)
+
+    expect(mockApi.post).toHaveBeenCalledWith('/value-bands', req)
+  })
+
+  it('update calls PUT /value-bands/{id}', async () => {
+    const req = {
+      simplifiedIdentificationLimitHuf: 100000,
+      identificationLimitHuf: 300000,
+      incomeProofLimitHuf: 10000000,
+      rollingWindowDays: 8,
+      effectiveFrom: '2026-07-10',
+    }
+
+    await valueBandApi.update('vb-1', req)
+
+    expect(mockApi.put).toHaveBeenCalledWith('/value-bands/vb-1', req)
+  })
+
+  it('remove calls DELETE /value-bands/{id}', async () => {
+    await valueBandApi.remove('vb-1')
+
+    expect(mockApi.delete).toHaveBeenCalledWith('/value-bands/vb-1')
   })
 })
 

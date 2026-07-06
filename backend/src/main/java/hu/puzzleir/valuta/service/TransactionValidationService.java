@@ -39,6 +39,7 @@ public class TransactionValidationService {
 
     private final TransactionRepository transactionRepository;
     private final SystemParameterService systemParameterService;
+    private final ValueBandService valueBandService;
 
     // === KONSTANSOK (Legacy: VASARLAS.DLL) ===
 
@@ -48,8 +49,6 @@ public class TransactionValidationService {
     /** EUR érme/bankjegy szétválasztási határ (Legacy: EuKontrol) */
     private static final BigDecimal EUR_COIN_LIMIT = new BigDecimal("50");
 
-    /** Azonosítás nélküli tranzakció HUF limit (NAV szabályozás) */
-    private static final BigDecimal IDENTIFICATION_THRESHOLD = new BigDecimal("300000");
 
     /**
      * Supervisor szintek bitmask értékei.
@@ -197,18 +196,21 @@ public class TransactionValidationService {
     public void validateIdentificationRequired(Transaction transaction) {
         if (transaction.getHufAmount() == null) return;
 
-        if (transaction.getHufAmount().abs().compareTo(IDENTIFICATION_THRESHOLD) > 0) {
+        BigDecimal limit = ValueBandService.resolve(valueBandService).identificationLimitHuf();
+        if (transaction.getHufAmount().abs().compareTo(limit) > 0) {
             // Ügyfél adatok kötelezőek
             if (transaction.getCustomerId() == null || transaction.getCustomerId().isBlank()) {
                 throw new ValidationException(
-                    String.format("300.000 Ft feletti tranzakcióhoz (%s Ft) kötelező az ügyfél azonosítás!",
-                        transaction.getHufAmount()));
+                    String.format("%s Ft feletti tranzakcióhoz (%s Ft) kötelező az ügyfél azonosítás!",
+                        limit.toPlainString(), transaction.getHufAmount()));
             }
             if (transaction.getCustomerName() == null || transaction.getCustomerName().isBlank()) {
-                throw new ValidationException("Ügyfél neve kötelező 300.000 Ft feletti tranzakcióhoz!");
+                throw new ValidationException("Ügyfél neve kötelező " + limit.toPlainString()
+                        + " Ft feletti tranzakcióhoz!");
             }
             if (transaction.getCustomerDocumentNumber() == null || transaction.getCustomerDocumentNumber().isBlank()) {
-                throw new ValidationException("Személyazonosító okmány száma kötelező 300.000 Ft feletti tranzakcióhoz!");
+                throw new ValidationException("Személyazonosító okmány száma kötelező " + limit.toPlainString()
+                        + " Ft feletti tranzakcióhoz!");
             }
         }
     }

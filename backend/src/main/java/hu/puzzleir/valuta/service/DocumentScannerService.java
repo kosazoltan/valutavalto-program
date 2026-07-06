@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -43,6 +44,7 @@ public class DocumentScannerService {
     private final ScannedDocumentRepository scannedDocumentRepository;
     private final CustomerRepository customerRepository;
     private final TransactionRepository transactionRepository;
+    private final SystemParameterService systemParameterService;
 
     @Value("${document.scanner.max-size-bytes:10485760}")
     private long maxFileSizeBytes;
@@ -97,6 +99,7 @@ public class DocumentScannerService {
                 .scannedBy(getCurrentWorkerId())
                 .scannedAt(LocalDateTime.now())
                 .notes(request.getNotes())
+                .validUntil(resolveValidUntil(type))
                 .build();
 
         doc = scannedDocumentRepository.save(doc);
@@ -237,6 +240,27 @@ public class DocumentScannerService {
                 .scannedBy(d.getScannedBy())
                 .scannedAt(d.getScannedAt())
                 .notes(d.getNotes())
+                .validUntil(d.getValidUntil())
                 .build();
+    }
+
+    /** FS-6: cégjegyzék-scanhez lejárat; más típus érvényessége a Customer okmány-mezőin él. */
+    private LocalDate resolveValidUntil(ScannedDocumentType type) {
+        if (type != ScannedDocumentType.COMPANY_REGISTRY) {
+            return null;
+        }
+        int days = 30;
+        try {
+            if (systemParameterService != null) {
+                days = Integer.parseInt(
+                        systemParameterService.getValue("COMPANY_DOC_VALIDITY_DAYS", "30").trim());
+            }
+        } catch (Exception e) {
+            log.warn("COMPANY_DOC_VALIDITY_DAYS nem értelmezhető, default 30 nap: {}", e.getMessage());
+        }
+        if (days < 1) {
+            days = 30;
+        }
+        return LocalDate.now().plusDays(days);
     }
 }

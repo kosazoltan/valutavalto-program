@@ -37,6 +37,7 @@ public class TransactionOperationHelper {
     // (e service-t nem teljesen mockoló) tesztek nem törnek; a circularRepository CSAK enforce=true ágon.
     private final SystemParameterService systemParameterService;
     private final hu.puzzleir.valuta.repository.CircularRepository circularRepository;
+    private final ValueBandService valueBandService;
 
     private static final VVLogger VV_LOG = VVLogger.of(TransactionOperationHelper.class);
 
@@ -44,8 +45,6 @@ public class TransactionOperationHelper {
     // Az utolso (limit-edik) supervisori jovahagyast igenyel; a plafon felett supervisorral sem.
     private static final int DAILY_REVERSAL_LIMIT = 3;
 
-    // Azonositas nelkuli limit HUF-ban (300.000 Ft - NAV szabalyozas)
-    private static final BigDecimal IDENTIFICATION_LIMIT = new BigDecimal("300000");
 
     // Max tetelsorok szama bizonylaton (Legacy: BLOKKTETEL limit)
     private static final int MAX_TRANSACTION_LINES = 6;
@@ -220,16 +219,17 @@ public class TransactionOperationHelper {
      * Ugyfel azonositas ellenorzese.
      */
     public void validateIdentification(BigDecimal hufAmount, String customerName, String documentNumber) {
-        if (hufAmount.compareTo(IDENTIFICATION_LIMIT) >= 0) {
+        BigDecimal limit = getIdentificationLimit();
+        if (hufAmount.compareTo(limit) >= 0) {
             if (customerName == null || customerName.isBlank()) {
                 throw new ValidationException(
                     String.format("%s Ft feletti tranzakciohoz ugyfel azonositas kotelezony!",
-                        IDENTIFICATION_LIMIT.toPlainString()));
+                        limit.toPlainString()));
             }
             if (documentNumber == null || documentNumber.isBlank()) {
                 throw new ValidationException(
                     String.format("%s Ft feletti tranzakciohoz igazolvany szam kotelezony!",
-                        IDENTIFICATION_LIMIT.toPlainString()));
+                        limit.toPlainString()));
             }
         }
     }
@@ -377,6 +377,6 @@ public class TransactionOperationHelper {
      * Azonositas nelkuli limit HUF-ban.
      */
     public BigDecimal getIdentificationLimit() {
-        return IDENTIFICATION_LIMIT;
+        return ValueBandService.resolve(valueBandService).identificationLimitHuf();
     }
 }

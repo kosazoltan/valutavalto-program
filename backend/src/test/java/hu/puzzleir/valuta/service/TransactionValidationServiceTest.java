@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -24,6 +25,7 @@ class TransactionValidationServiceTest {
 
     @Mock private TransactionRepository transactionRepository;
     @Mock private SystemParameterService systemParameterService;
+    @Mock private ValueBandService valueBandService;
     @InjectMocks private TransactionValidationService service;
 
     private static TransactionLine line(String code, boolean active) {
@@ -102,5 +104,37 @@ class TransactionValidationServiceTest {
         assertThatCode(() -> service.validateCurrencyExchangeable(
                 Currency.builder().code("EUR").active(true).build())).doesNotThrowAnyException();
         assertThatCode(() -> service.validateCurrencyExchangeable((Currency) null)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("validateIdentificationRequired — konfigurált 200000 Ft küszöb felett azonosítást kér")
+    void validateIdentificationRequired_usesConfiguredLimit() {
+        org.mockito.Mockito.when(valueBandService.getEffectiveBands()).thenReturn(new ValueBandService.ValueBands(
+                new BigDecimal("100000"), new BigDecimal("200000"), new BigDecimal("10000000"), 8));
+        Transaction tx = Transaction.builder()
+                .hufAmount(new BigDecimal("200001"))
+                .build();
+
+        assertThatThrownBy(() -> service.validateIdentificationRequired(tx))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("200000")
+                .hasMessageContaining("200001");
+    }
+
+    @Test
+    @DisplayName("validateIdentificationRequired — null ValueBands esetén default 300000 Ft paritás marad")
+    void validateIdentificationRequired_nullBands_defaultsApply() {
+        org.mockito.Mockito.when(valueBandService.getEffectiveBands()).thenReturn(null);
+        Transaction belowDefault = Transaction.builder()
+                .hufAmount(new BigDecimal("200001"))
+                .build();
+        Transaction aboveDefault = Transaction.builder()
+                .hufAmount(new BigDecimal("300001"))
+                .build();
+
+        assertThatCode(() -> service.validateIdentificationRequired(belowDefault)).doesNotThrowAnyException();
+        assertThatThrownBy(() -> service.validateIdentificationRequired(aboveDefault))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("300000");
     }
 }
