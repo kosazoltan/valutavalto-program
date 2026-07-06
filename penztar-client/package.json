@@ -43,9 +43,9 @@
     "shx": "^0.4.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.62.1",
-    "vite": "^8.1.2",
+    "vite": "^8.1.3",
     "vite-plugin-electron": "^1.1.0",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   },
   "overrides": {
     "rimraf": "^5.0.10",
