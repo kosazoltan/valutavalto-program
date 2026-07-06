@@ -71,7 +71,7 @@ public class ExchangeRateMapper {
      */
     public CurrentRateDto toCurrentRateDto(ExchangeRate entity) {
         String currencyCode = entity.getCurrency() != null ? entity.getCurrency().getCode() : null;
-        int unit = UNIT_100_CURRENCIES.contains(currencyCode) ? 100 : 1;
+        int unit = currencyCode != null && UNIT_100_CURRENCIES.contains(currencyCode) ? 100 : 1;
 
         String updatedAt = null;
         if (entity.getCreatedAt() != null) {
