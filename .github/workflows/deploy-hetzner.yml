@@ -449,16 +449,14 @@ jobs:
 
   # 2026-06-05: Scaleway warm standby JAR-szinkron. ELOTTE a standby orokke 2.5.49-en
   # ragadt (a deploy csak Hetznert frissitette) -> egy 10 oras Hetzner-outage alatt a
-  # tartalek elavult koddal NEM tudta volna atvenni a forgalmat. Mostantol minden sikeres
-  # DEPRECATED (2026-06-16): a Hetzner↔Scaleway streaming-HA KIVEZETVE (Local-First konszolidáció).
-  # A Scaleway standby postgres leállítva, a replikációs slot (standby_slot_0) eltávolítva,
-  # synchronous_standby_names='' (a primary nem vár senkire). Ez a warm-standby JAR-szinkron job
-  # ezért INAKTÍV (if: false) — a leállított standbyn a pg_is_in_recovery() check amúgy is buktatná
-  # minden deployt. Új védvonal: lokális primary + Neon-backup (~5 perc RPO) + napi B2 + kliens-outbox
-  # + on-host freeze-watchdog. Visszafordítás: lásd vault/operations/scaleway-failover-runbook.md.
+  # tartalek elavult koddal NEM tudta volna atvenni a forgalmat.
+  # AKTÍV (2026-07-06 user-mandátum): a #1319 scaleway-ha-restore ujraepitette a
+  # Hetzner↔Scaleway streaming-HA-t; a standby hot modban, friss backenddel kell fusson
+  # minden sikeres Hetzner backend deploy utan. A split-brain guard tovabbra is ved:
+  # promote-olt standby-n (pg_is_in_recovery() != 't') ez a job ABORT-al.
   deploy-standby:
-    name: Sync JAR to Scaleway standby (warm) [DEPRECATED — HA kivezetve]
-    if: false
+    name: Sync JAR to Scaleway standby (hot)
+    if: ${{ !cancelled() && needs.deploy.result == 'success' }}
     runs-on: ubuntu-latest
     needs: [build, deploy]
     timeout-minutes: 10
@@ -512,6 +510,8 @@ jobs:
             # 4) restart a meglevo warm .env-vel (SPRING_FLYWAY_ENABLED=false, read-only).
             #    NEM modositjuk az env-et — a Flyway tiltva marad (read-only replikan nem futhat).
             echo "=== Restarting standby valuta-backend (warm) ==="
+            systemctl enable valuta-backend.service
+            systemctl reset-failed valuta-backend.service 2>/dev/null || true
             systemctl restart valuta-backend.service
             # 5) health — a standby lassabban all fel (read-only replikan ~30s)
             for i in 1 2 3 4 5 6 7 8 9 10; do
@@ -535,8 +535,18 @@ jobs:
       - name: Standby summary
         if: always()
         run: |
-          echo "## Scaleway standby sync (warm)" >> $GITHUB_STEP_SUMMARY
+          STANDBY_VERSION="UNREACHABLE"
+          if [ -f ~/.ssh/scaleway_key ]; then
+            STANDBY_VERSION=$(ssh -i ~/.ssh/scaleway_key \
+              -o StrictHostKeyChecking=accept-new \
+              -o ConnectTimeout=10 \
+              "root@${{ secrets.SCALEWAY_SERVER_IP }}" \
+              "curl -s --max-time 8 http://localhost:8080/api/v1/version || true" 2>/dev/null || true)
+          fi
+          [ -n "$STANDBY_VERSION" ] || STANDBY_VERSION="UNREACHABLE"
+          echo "## Scaleway standby sync (hot)" >> $GITHUB_STEP_SUMMARY
           echo "- **Standby:** ${{ secrets.SCALEWAY_SERVER_IP }} (read-only, Flyway off)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Standby localhost /version:** \`$STANDBY_VERSION\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Result:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
           if [ "${{ job.status }}" != "success" ]; then
             echo "- ⚠️ A standby NEM frissult — failover eseten elavult kod indulna. Kezi beavatkozas kell." >> $GITHUB_STEP_SUMMARY
