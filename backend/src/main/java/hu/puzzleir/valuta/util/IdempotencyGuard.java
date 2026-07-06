@@ -8,6 +8,7 @@ import hu.puzzleir.valuta.exception.ConflictException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.IdempotencyRecordRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -55,6 +56,8 @@ import java.util.UUID;
  *   <li>multi-instance: DB-szintű unique constraint a `(company_id, endpoint, idempotency_key)`-en.</li>
  *   <li>restart-bizots: DB-perzisztens, nem in-memory.</li>
  *   <li>payload binding: SHA-256 a request body-ra; `key + payload-mismatch -> 409 Conflict`.</li>
+ *   <li>kulcs-validacio: max 255 karakter, nyomtathato ASCII; ervenytelen kulcs -> 400 (IDEM-KEYLEN).</li>
+ *   <li>replay-audit: cache-elt COMPLETED valasz kiszolgalasa IDEMPOTENCY_CACHE_HIT audit-esemenyt ir (IDEM-CACHEHIT-AUDIT).</li>
  *   <li>TTL cleanup: `IdempotencyCleanupJob` orankent torli a lejart entry-ket.</li>
  * </ul>
  */
@@ -64,9 +67,12 @@ import java.util.UUID;
 public class IdempotencyGuard {
 
     private static final Duration DEFAULT_TTL = Duration.ofHours(24);
+    /** A DB-oszlop limitje: idempotency_record.idempotency_key VARCHAR(255) (IdempotencyRecord.java:50). */
+    private static final int MAX_KEY_LENGTH = 255;
 
     private final IdempotencyRecordRepository repository;
     private final ObjectMapper objectMapper;
+    private final AuditLogService auditLogService;
 
     /**
      * Sikeres lookup vagy ujonnan acquire-olt rekord.
@@ -99,6 +105,7 @@ public class IdempotencyGuard {
             // Backward compat: no key -> no protection
             return new Acquired<>(null, null, resultType);
         }
+        validateKey(idempotencyKey);
         if (endpoint == null || endpoint.isBlank()) {
             throw new IllegalArgumentException("endpoint kotelezo");
         }
@@ -122,6 +129,7 @@ public class IdempotencyGuard {
                     T cached = deserializeResponse(rec.getResponseJson(), resultType);
                     log.info("Idempotency hit: endpoint={} keyHash={} (cached COMPLETED)",
                             endpoint, hashKeyForLog(idempotencyKey));
+                    auditCacheHit(endpoint, idempotencyKey);
                     yield new Acquired<>(rec, cached, resultType);
                 }
                 case PROCESSING -> {
@@ -155,6 +163,7 @@ public class IdempotencyGuard {
                                     "Idempotency-Key reuse with different request payload");
                         }
                         T cached = deserializeResponse(locked.getResponseJson(), resultType);
+                        auditCacheHit(endpoint, idempotencyKey);
                         yield new Acquired<>(locked, cached, resultType);
                     }
                     // Status == FAILED, mi nyertuk a lock-ot. Atallitjuk PROCESSING-re.
@@ -193,9 +202,11 @@ public class IdempotencyGuard {
                 throw new ValidationException(
                         "A keres feldolgozas alatt all. Kerjuk ne kuldje el ujra!");
             }
-            T cached = rec.getStatus() == IdempotencyRecord.Status.COMPLETED
-                    ? deserializeResponse(rec.getResponseJson(), resultType)
-                    : null;
+            T cached = null;
+            if (rec.getStatus() == IdempotencyRecord.Status.COMPLETED) {
+                cached = deserializeResponse(rec.getResponseJson(), resultType);
+                auditCacheHit(endpoint, idempotencyKey);
+            }
             return new Acquired<>(rec, cached, resultType);
         }
     }
@@ -219,6 +230,26 @@ public class IdempotencyGuard {
         rec.setStatus(IdempotencyRecord.Status.FAILED);
         rec.setCompletedAt(Instant.now());
         repository.save(rec);
+    }
+
+    /**
+     * Aspect-advisory IDEM-KEYLEN (2026-07-06): hossz- es charset-validacio.
+     * Fail-closed: ervenytelen kulcs = 400, NEM csendes no-protection (a csendes eldobas
+     * dupla-submitnal a vedelem elveszteset jelentene). A nyers kulcs a hibauzenetbe
+     * SOHA nem kerul be (klienskontrollalt, akar tobb KB, log-injection vektor).
+     */
+    private static void validateKey(String key) {
+        if (key.length() > MAX_KEY_LENGTH) {
+            throw new ValidationException(
+                    "Ervenytelen Idempotency-Key: legfeljebb " + MAX_KEY_LENGTH + " karakter lehet");
+        }
+        for (int i = 0; i < key.length(); i++) {
+            char c = key.charAt(i);
+            if (c < 0x20 || c > 0x7E) {
+                throw new ValidationException(
+                        "Ervenytelen Idempotency-Key: csak nyomtathato ASCII karakterek engedelyezettek");
+            }
+        }
     }
 
     private String computeRequestHash(Object requestBody) {
@@ -247,6 +278,37 @@ public class IdempotencyGuard {
             return objectMapper.writeValueAsString(result);
         } catch (JacksonException e) {
             throw new IllegalStateException("Idempotency response serialize failed", e);
+        }
+    }
+
+    /**
+     * Aspect-advisory IDEM-CACHEHIT-AUDIT (2026-07-06): replay-esemeny audit-nyomvonala.
+     * MINDEN cache-elt COMPLETED valasz kiszolgalasakor hivodik (fo COMPLETED ag,
+     * FAILED-lock utani double-check, konkurens-insert race read-back). Sima REQUIRED
+     * propagacio: a tryAcquire REQUIRES_NEW tranzakciojaval egyutt commitol (a cache-hit
+     * agon nincs penzmozgas-rollback-kockazat). A nyers kulcs nem kerul audit-mezobe.
+     */
+    private void auditCacheHit(String endpoint, String idempotencyKey) {
+        String keyHash = hashKeyForLog(idempotencyKey);
+        auditLogService.log(
+                "IDEMPOTENCY_CACHE_HIT",
+                "IDEMPOTENCY",
+                keyHash,
+                resolveWorkerCode(),
+                null, null, null,
+                "Idempotencia cache-hit (replay): endpoint=" + endpoint + " keyHash=" + keyHash,
+                null, null);
+    }
+
+    /**
+     * Defenziv: a cache-hit idejen mar van auth-kontextus (getCurrentCompanyId korabban
+     * lefutott), de a principal-cast/hianyzo details eseten inkabb null userId, mint 500.
+     */
+    private static String resolveWorkerCode() {
+        try {
+            return SecurityUtils.getCurrentWorkerCode();
+        } catch (Exception e) {
+            return null;
         }
     }
 
