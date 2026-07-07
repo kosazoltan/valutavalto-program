@@ -22,13 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.imageio.ImageIO;
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -55,12 +48,6 @@ public class DocumentScannerService {
 
     /** FS-5: képpár-feltöltésnél engedélyezett MIME típusok (okmány-fénykép — PDF nem). */
     private static final Set<String> PAIR_MIME_TYPES = Set.of("image/jpeg", "image/png");
-
-    /** FS-5: thumbnail maximális oldalmérete (leghosszabb oldal ≤ 256px). */
-    private static final int THUMBNAIL_MAX_PX = 256;
-
-    /** FS-5: forráskép maximális oldalmérete — dekompresziós-bomba védelem (ImageIO megbízhatatlan bájton). */
-    private static final int MAX_SOURCE_PX = 8000;
 
     private final ScannedDocumentRepository scannedDocumentRepository;
     private final CustomerRepository customerRepository;
@@ -418,35 +405,7 @@ public class DocumentScannerService {
      * Nem dekódolható kép → ValidationException. Headless szerveren működik (ImageIO, nincs display szükség).
      */
     private byte[] createThumbnail(byte[] imageBytes) {
-        try {
-            BufferedImage src = ImageIO.read(new ByteArrayInputStream(imageBytes));
-            if (src == null) {
-                throw new ValidationException("A kép nem dekódolható");
-            }
-            if (src.getWidth() > MAX_SOURCE_PX || src.getHeight() > MAX_SOURCE_PX) {
-                throw new ValidationException("A kép felbontása túl nagy");
-            }
-            int w = src.getWidth();
-            int h = src.getHeight();
-            double scale = Math.min(1.0, (double) THUMBNAIL_MAX_PX / Math.max(w, h));
-            int tw = Math.max(1, (int) Math.round(w * scale));
-            int th = Math.max(1, (int) Math.round(h * scale));
-            BufferedImage thumb = new BufferedImage(tw, th, BufferedImage.TYPE_INT_RGB);
-            Graphics2D g = thumb.createGraphics();
-            g.setColor(Color.WHITE);
-            g.fillRect(0, 0, tw, th);
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g.drawImage(src, 0, 0, tw, th, null);
-            g.dispose();
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            ImageIO.write(thumb, "jpg", out);
-            return out.toByteArray();
-        } catch (IOException e) {
-            throw new BusinessException(
-                    "A kép feldolgozása sikertelen",
-                    "IMAGE_PROCESSING_ERROR",
-                    HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        return ImageThumbnailUtil.createThumbnail(imageBytes);
     }
 
     private ScannedDocumentImage buildImage(UUID docId, DocumentSide side, MultipartFile f,
