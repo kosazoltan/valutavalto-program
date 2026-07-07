@@ -5,7 +5,7 @@ import { useFKeyHotkey } from '../../hooks/useFKeyHotkey'
 import { AlertTriangle } from 'lucide-react'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
-import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi, receiptApi, handlingFeeConfigApi, discountThresholdApi } from '../../services/api/index'
+import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi, receiptApi, handlingFeeConfigApi, discountThresholdApi, incomeSourceDocApi } from '../../services/api/index'
 import type { HandlingFeeConfig } from '../../services/api/index'
 import { computeHandlingFee } from '../../utils/handlingFee'
 import { api } from '../../services/api/client'
@@ -35,6 +35,8 @@ import type { AmlCheckResultDto } from '../../services/api/transactions'
 import { useTranslation } from 'react-i18next'
 import { getBandForAmount, isWithinBand, isWithinHardLimit, getHardLimitMessage } from '../../utils/rateBands'
 import RateAuthDialog from './components/RateAuthDialog'
+import { getErrorMessage } from '../../utils/errorHandling'
+import IncomeSourceDocCapture from '../../components/documents/IncomeSourceDocCapture'
 
 /**
  * Penztaros Eladas/Vetel kepernyoje — 6 soros valuta tabla.
@@ -69,6 +71,14 @@ interface TransactionRow {
    * Tetel-szinten valaszthato, bizonylaton tetelenkent megjelenik.
    */
   foreignStatus: ForeignStatus
+}
+
+interface IncomeProofEmailPayload {
+  imageBase64: string
+  mimeType: 'image/jpeg'
+  transactionRef?: string
+  customerName?: string
+  hufAmount?: number
 }
 
 const emptyRow = (): TransactionRow => ({
@@ -141,6 +151,13 @@ export default function CashierTransactionPage() {
   // EXCMD b9-korlevelek FR-03: gyanú-bejelentés (SAR) modal
   const [showSuspicionModal, setShowSuspicionModal] = useState(false)
   const amlResultRef = useRef<AmlCheckResultDto | null>(null)
+  const incomeProofBase64Ref = useRef<string | null>(null)
+  const [incomeProofRequired, setIncomeProofRequired] = useState(false)
+  const [showIncomeProofModal, setShowIncomeProofModal] = useState(false)
+  const [showIncomeProofSendModal, setShowIncomeProofSendModal] = useState(false)
+  const [incomeProofSending, setIncomeProofSending] = useState(false)
+  const [incomeProofSendError, setIncomeProofSendError] = useState<string | null>(null)
+  const [incomeProofPendingPayload, setIncomeProofPendingPayload] = useState<IncomeProofEmailPayload | null>(null)
 
   // Fees
   const [handlingFee, setHandlingFee] = useState(0)
@@ -655,6 +672,49 @@ export default function CashierTransactionPage() {
     [exchangeRates, mode]
   )
 
+  const sendIncomeProofEmail = useCallback(async (payload: IncomeProofEmailPayload) => {
+    setIncomeProofPendingPayload(payload)
+    setIncomeProofSendError(null)
+    setShowIncomeProofSendModal(true)
+    setIncomeProofSending(true)
+    try {
+      await incomeSourceDocApi.sendEmail(payload)
+      incomeProofBase64Ref.current = null
+      setIncomeProofPendingPayload(null)
+      setShowIncomeProofSendModal(false)
+      toast.success(t('incomeProof.kuldesSikeres'))
+    } catch (err) {
+      const message = getErrorMessage(err)
+      logger.error('CashierTransactionPage', 'Income proof email send failed:', message)
+      setIncomeProofSendError(message)
+    } finally {
+      setIncomeProofSending(false)
+    }
+  }, [t])
+
+  const cancelIncomeProofEmail = useCallback(async () => {
+    const transactionRef = incomeProofPendingPayload?.transactionRef
+    try {
+      await recordLocalAuditEvent({
+        entityType: 'income_proof',
+        eventType: 'INCOME_PROOF_EMAIL_UNFULFILLED',
+        payload: {
+          workerCode: useAuthStore.getState().worker?.workerCode ?? 'unknown',
+          hufTotal: incomeProofPendingPayload?.hufAmount ?? total,
+          transactionRef,
+          reason: 'küldés sikertelen, pénztáros megszakította',
+        },
+        status: 'degraded',
+      })
+    } catch (err) {
+      logger.warn('CashierTransactionPage', 'Income proof audit write failed:', getErrorMessage(err))
+    }
+    incomeProofBase64Ref.current = null
+    setIncomeProofPendingPayload(null)
+    setIncomeProofSendError(null)
+    setShowIncomeProofSendModal(false)
+  }, [incomeProofPendingPayload, total])
+
   const handleSubmit = useCallback(async () => {
     // Codex P1 #586 iter-6: double-submit guard a REF-en olvas (NEM a state-en), igy az
     // useCallback memoizalt closure-ja is friss erteket lat. setIsSubmitting state-tukor
@@ -786,6 +846,23 @@ export default function CashierTransactionPage() {
     if (aml?.blocked) {
       toast.error('Tranzakcio blokkolt', 'AML szabalysertes — a tranzakcio nem rogzitheto!')
       return
+    }
+
+    if (mode === 'buy' && !incomeProofBase64Ref.current) {
+      try {
+        const check = await incomeSourceDocApi.checkRequired(total, cd?.id ? String(cd.id) : undefined, filledRows[0]?.currencyCode)
+        if (check.required && !incomeProofBase64Ref.current) {
+          setIncomeProofRequired(true)
+          setShowIncomeProofModal(true)
+          return
+        }
+      } catch (err) {
+        logger.warn('CashierTransactionPage', 'Income proof required-check hiba:', getErrorMessage(err))
+        if (total >= 10_000_000) {
+          toast.error(t('incomeProof.offlineBlokk'))
+          return
+        }
+      }
     }
 
     // AML felsovezetoi jovahagyas pre-check (2026-06-04): ha a backend szerint a tranzakcio
@@ -1075,16 +1152,18 @@ export default function CashierTransactionPage() {
           )
         }
 
+        const now = new Date()
+        const outcomeReceipts = outcome.localReferenceNumbers ?? []
+        const primaryReceiptRef = outcomeReceipts[0] ?? `P-${now.getTime()}-0`
+
         // Build receipt(s) (Electron)
         if (isElectron()) {
-          const now = new Date()
           // 2026-06-04 (audit-fix): a TÉNYLEGES, rögzített szigorú helyi sorszámok (a mentett
           // pending-sorok local_reference_number-jei, savedIds-szel azonos sorrendben). A
           // korábbi kód egy NEM LÉTEZŐ `receiptNumbers` mezőre castolt → mindig fabrikált
           // `P-<timestamp>` került a bizonylatra, ami EGYETLEN rögzített tranzakcióval sem
           // egyezett (audit-probléma). Most a valós sorszámot bélyegezzük; ha hiányzik (régi
           // telepítő / null), fallback a fabrikált számra.
-          const outcomeReceipts = outcome.localReferenceNumbers ?? []
           const receiptHeader = {
             type: mode === 'buy' ? 'buy' as const : 'sell' as const,
             companyType: ((worker?.companyCode ?? '').startsWith('EXP') ? 'EXPRESSZ' : 'BEST_CHANGE') as 'BEST_CHANGE' | 'EXPRESSZ',
@@ -1121,7 +1200,7 @@ export default function CashierTransactionPage() {
             )
             const receipt: PrintReceiptData = {
               ...receiptHeader,
-              receiptNumber: outcomeReceipts[0] ?? `P-${now.getTime()}-0`,
+              receiptNumber: primaryReceiptRef,
               hufAmount: totalPayable,
               roundedHufAmount: totalPayable,
               roundingDiff: 0,
@@ -1142,7 +1221,7 @@ export default function CashierTransactionPage() {
             // Egysoros bizonylat: változatlan viselkedés (egy sor → egy bizonylat egy számmal).
             const receipts: PrintReceiptData[] = filledRows.map((row, idx) => ({
               ...receiptHeader,
-              receiptNumber: outcomeReceipts[idx] ?? `P-${now.getTime()}-${idx}`,
+              receiptNumber: idx === 0 ? primaryReceiptRef : outcomeReceipts[idx] ?? `P-${now.getTime()}-${idx}`,
               currencyCode: row.currencyCode,
               foreignAmount: parseFloat(row.quantity) || 0,
               rate: row.exchangeRate,
@@ -1157,6 +1236,15 @@ export default function CashierTransactionPage() {
               openReceiptModal(receipts[0])
             }
           }
+        }
+        if (incomeProofBase64Ref.current) {
+          void sendIncomeProofEmail({
+            imageBase64: incomeProofBase64Ref.current,
+            mimeType: 'image/jpeg',
+            transactionRef: primaryReceiptRef,
+            customerName: cd?.name,
+            hufAmount: total,
+          })
         }
       } else {
         const now = new Date()
@@ -1247,6 +1335,15 @@ export default function CashierTransactionPage() {
           }
           receiptQueueRef.current = []
           openReceiptModal(receipt)
+          if (incomeProofBase64Ref.current) {
+            void sendIncomeProofEmail({
+              imageBase64: incomeProofBase64Ref.current,
+              mimeType: 'image/jpeg',
+              transactionRef: result.receiptNumber,
+              customerName: cd?.name,
+              hufAmount: total,
+            })
+          }
         } else {
           // Egysoros REST út: VÁLTOZATLAN viselkedés (egy sor → egy kérés → egy bizonylat).
           const receiptNumbers: string[] = []
@@ -1292,6 +1389,7 @@ export default function CashierTransactionPage() {
           }
 
           toast.success('Bizonylat(ok) sikeresen készítve!', `${filledRows.length} tétel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat számok: ${receiptNumbers.join(', ')}`)
+          const primaryReceiptRef = receiptNumbers[0]
 
           // Build receipt queue for all lines (API path)
           if (filledRows.length > 0 && receiptNumbers.length > 0) {
@@ -1312,6 +1410,15 @@ export default function CashierTransactionPage() {
               openReceiptModal(receipts[0])
             }
           }
+          if (incomeProofBase64Ref.current && primaryReceiptRef) {
+            void sendIncomeProofEmail({
+              imageBase64: incomeProofBase64Ref.current,
+              mimeType: 'image/jpeg',
+              transactionRef: primaryReceiptRef,
+              customerName: cd?.name,
+              hufAmount: total,
+            })
+          }
         }
       }
 
@@ -1321,6 +1428,9 @@ export default function CashierTransactionPage() {
       setActiveField('currency')
       customerDataRef.current = null
       amlResultRef.current = null
+      incomeProofBase64Ref.current = null
+      setShowIncomeProofModal(false)
+      setIncomeProofRequired(false)
       // AML jovahagyas: a kovetkezo tranzakcio friss jovahagyas-allapotrol induljon.
       approverWorkerIdRef.current = null
       approvalSessionIdRef.current = null
@@ -1352,7 +1462,7 @@ export default function CashierTransactionPage() {
     } finally {
       setIsSubmitting(false)
     }
-  }, [rows, mode, total, handlingFee, discount, identificationLevel, sessionOpen, electronQueueAvailable, worker?.branchCode, worker?.companyCode, worker?.fullName, openReceiptModal])
+  }, [rows, mode, total, handlingFee, discount, identificationLevel, sessionOpen, electronQueueAvailable, worker?.branchCode, worker?.companyCode, worker?.fullName, openReceiptModal, sendIncomeProofEmail, t])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, rowIdx: number, field: 'currency' | 'rate' | 'quantity') => {
@@ -1457,6 +1567,9 @@ export default function CashierTransactionPage() {
     setCardNumber('')
     customerDataRef.current = null
     amlResultRef.current = null
+    incomeProofBase64Ref.current = null
+    setShowIncomeProofModal(false)
+    setIncomeProofRequired(false)
     // Codex P2 + Copilot P2 #579 follow-up: cancel-elt tranzakcio → ref-ek tisztítás
     // (abandoned rows NE számítsanak a local effectiveRemaining-be a kovetkezo
     // tranzakcio során).
@@ -1922,6 +2035,63 @@ export default function CashierTransactionPage() {
         currencyCode={rows[rateAuthRow]?.currencyCode || ''}
         mode={mode}
       />
+
+      {showIncomeProofModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" data-testid="income-proof-capture-modal">
+          <div className="w-full max-w-2xl rounded-xl bg-white p-4 shadow-2xl dark:bg-gray-800">
+            <h3 className="mb-2 text-lg font-bold text-gray-900 dark:text-white">{t('incomeProof.cim')}</h3>
+            {incomeProofRequired && <p className="mb-3 text-sm text-red-700 dark:text-red-300">{t('incomeProof.kotelezo')}</p>}
+            <IncomeSourceDocCapture
+              onCaptured={(base64) => {
+                incomeProofBase64Ref.current = base64
+                setShowIncomeProofModal(false)
+                setIncomeProofRequired(false)
+                void handleSubmit()
+              }}
+              onClear={() => { incomeProofBase64Ref.current = null }}
+            />
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                className="form-button"
+                onClick={() => {
+                  setShowIncomeProofModal(false)
+                  setIncomeProofRequired(false)
+                  incomeProofBase64Ref.current = null
+                }}
+              >
+                {t('incomeProof.megsem')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showIncomeProofSendModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" data-testid="income-proof-send-modal">
+          <div className="w-full max-w-md rounded-xl bg-white p-4 shadow-2xl dark:bg-gray-800">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('incomeProof.kuldes')}</h3>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{t('incomeProof.nemTarolodik')}</p>
+            {incomeProofSending && <p className="mt-3 text-sm text-gray-700 dark:text-gray-200">{t('incomeProof.kuldes')}</p>}
+            {incomeProofSendError && (
+              <div className="mt-3 space-y-3">
+                <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{t('incomeProof.kuldesHiba')} {incomeProofSendError}</p>
+                <div className="flex justify-end gap-2">
+                  <button type="button" className="form-button" onClick={() => { void cancelIncomeProofEmail() }}>{t('incomeProof.megsem')}</button>
+                  <button
+                    type="button"
+                    className="form-button-primary"
+                    disabled={!incomeProofPendingPayload || incomeProofSending}
+                    onClick={() => { if (incomeProofPendingPayload) void sendIncomeProofEmail(incomeProofPendingPayload) }}
+                  >
+                    {t('incomeProof.ujra')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* RECEIPT PREVIEW MODAL */}
       <ReceiptPreviewModal
