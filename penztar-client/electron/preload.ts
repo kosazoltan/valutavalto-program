@@ -305,6 +305,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     payload: IpcRequest<'save-pending-circular-reply'>,
   ): Promise<IpcResponse<'save-pending-circular-reply'>> =>
     ipcRenderer.invoke('save-pending-circular-reply', payload),
+  // FS-5: okmány-képpár feltöltési outbox (scan → center, törlés nyugtázás után).
+  queueScannedDocument: (
+    payload: IpcRequest<'queue-scanned-document'>,
+  ): Promise<IpcResponse<'queue-scanned-document'>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.QUEUE_SCANNED_DOCUMENT, payload),
   getPendingTransferStornos: (): Promise<Array<{
     id: number;
     transfer_id: number;

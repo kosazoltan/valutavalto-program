@@ -4,6 +4,7 @@ import type {
   PendingStornoInput,
   PendingTransactionInputV2,
   PendingTransferStornoInput,
+  QueueScannedDocumentInput,
   SavePendingTransferArgs,
 } from '@valuta/shared-ipc';
 
@@ -467,9 +468,12 @@ export interface ElectronAPI {
     transactionId: string,
     documentType: 'szemelyi' | 'utlevel' | 'jogositvany' | 'egyeb',
     imageBase64: string,
+    side?: 'front' | 'back',
   ): Promise<{ path: string; encrypted: boolean }>;
   scanGetDocument(filepath: string): Promise<string>;
   scanListDocuments(transactionId: string): Promise<string[]>;
+  // FS-5: okmány-képpár feltöltési outbox (scan → center, törlés nyugtázás után).
+  queueScannedDocument(payload: QueueScannedDocumentInput): Promise<number>;
 
   // --- Secure Token Storage (DPAPI/Keychain titkositott) ---
   secureStoreToken?(token: string): Promise<boolean>;

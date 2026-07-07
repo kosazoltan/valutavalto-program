@@ -651,6 +651,23 @@ export async function initDatabase(): Promise<void> {
       );
     `);
 
+    // FS-5: okmány-képpár feltöltési outbox (scan a pénztáron → center, törlés nyugtázás után).
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_scanned_documents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        document_type TEXT NOT NULL,
+        front_path TEXT NOT NULL,
+        back_path TEXT NOT NULL,
+        notes TEXT,
+        idempotency_key TEXT,
+        company_code TEXT,
+        sync_error TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        synced INTEGER DEFAULT 0
+      );
+    `);
+
     // NGM 23/2014 szigoru szamadasu helyi bizonylat-sorszamozo
     // Formatum: {prefix}{branchCode3}{seq6} (pl. V039000042)
     // Per-branch + per-prefix, folyamatos sorszam az elso indulas ota.
@@ -2650,6 +2667,77 @@ export function getPendingCircularReplies(): PendingCircularReplyRow[] {
 export function markCircularReplySynced(id: number): void {
   if (!db) return;
   db.run('UPDATE pending_circular_replies SET synced = 1 WHERE id = ?', [id]);
+  saveDatabase();
+}
+
+// ============================================================================
+// Okmány-képpár outbox (FS-5, Center FS-1)
+// ============================================================================
+
+export interface PendingScannedDocumentRow {
+  id: number;
+  customer_id: number;
+  document_type: string;
+  front_path: string;
+  back_path: string;
+  notes: string | null;
+  idempotency_key: string | null;
+  company_code: string | null;
+  sync_error: string | null;
+  created_at: string;
+  synced: number;
+}
+
+export function savePendingScannedDocument(params: {
+  customerId: number;
+  documentType: string;
+  frontPath: string;
+  backPath: string;
+  notes?: string | null;
+}): number {
+  if (!db) throw new Error('Database not initialized');
+  const idempotencyKey = crypto.randomUUID();
+  db.run(
+    `INSERT INTO pending_scanned_documents
+       (customer_id, document_type, front_path, back_path, notes, idempotency_key, company_code)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      params.customerId,
+      params.documentType,
+      params.frontPath,
+      params.backPath,
+      params.notes ?? null,
+      idempotencyKey,
+      getActiveCompanyCode(),
+    ],
+  );
+  const insertedId = lastInsertRowId(db);
+  saveDatabase();
+  return insertedId;
+}
+
+export function getPendingScannedDocuments(): PendingScannedDocumentRow[] {
+  if (!db) return [];
+  const results: PendingScannedDocumentRow[] = [];
+  const stmt = db.prepare(
+    'SELECT * FROM pending_scanned_documents WHERE synced = 0 ORDER BY created_at ASC',
+  );
+  while (stmt.step()) {
+    results.push(stmt.getAsObject() as unknown as PendingScannedDocumentRow);
+  }
+  stmt.free();
+  return results;
+}
+
+export function markScannedDocumentSynced(id: number): void {
+  if (!db) return;
+  db.run('UPDATE pending_scanned_documents SET synced = 1 WHERE id = ?', [id]);
+  saveDatabase();
+}
+
+export function markScannedDocumentSyncError(id: number, errorMsg: string): void {
+  if (!db) return;
+  db.run('UPDATE pending_scanned_documents SET sync_error = ? WHERE id = ?', [errorMsg, id]);
   saveDatabase();
 }
 

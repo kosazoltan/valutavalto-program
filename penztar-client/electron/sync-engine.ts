@@ -46,6 +46,9 @@ import {
   markStocktakeItemError,
   getPendingHandoverOperations,
   markHandoverOperationSynced,
+  getPendingScannedDocuments,
+  markScannedDocumentSynced,
+  markScannedDocumentSyncError,
   saveCachedBranchStatus,
   saveCachedCashDesk,
   saveCachedWorker,
@@ -55,6 +58,7 @@ import {
   type PendingStornoRow,
   type PendingTransactionRow,
 } from './sqlite';
+import { readDecryptedScan, deleteScanFiles } from './scanner';
 import { safeStorage } from 'electron';
 import log from 'electron-log';
 import type { Database, SqlValue } from 'sql.js';
@@ -353,6 +357,42 @@ async function httpPost<T>(
     return response.json() as Promise<T>;
   } catch (err) {
     log.error('[SyncEngine] httpPost failed:', { url, err });
+    throw err;
+  }
+}
+
+async function httpPostMultipart(
+  url: string,
+  body: FormData,
+  token: string | null,
+  idempotencyKey?: string,
+): Promise<Response> {
+  try {
+    const headers: Record<string, string> = {
+      'Idempotency-Key': idempotencyKey ?? crypto.randomUUID(),
+    };
+    const companyCode = getConfig('bootstrap_company_code')?.trim();
+    if (companyCode) {
+      headers['X-Company-Code'] = companyCode;
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body,
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    if (!response.ok) {
+      throw new HttpStatusError(response.status, response.statusText);
+    }
+
+    return response;
+  } catch (err) {
+    log.error('[SyncEngine] httpPostMultipart failed:', { url, err });
     throw err;
   }
 }
@@ -788,6 +828,8 @@ export class SyncEngine {
         await this.syncRatePrintObligations();
         await this.syncCirculars();
         await this.syncCircularReplies();
+        // FS-5: okmány-képpár feltöltése a centerbe + helyi fájl törlés nyugtázás után.
+        await this.syncScannedDocuments();
         // 3. Értéktár szinkronizáció
         await this.syncDistributions();
         await this.syncTransfers();
@@ -2478,6 +2520,79 @@ export class SyncEngine {
       }
     } catch (err) {
       log.warn('[SyncEngine] Körlevél-válasz sync hiba:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  // FS-5: helyi dokumentumtípus → szerver-oldali enum leképezés.
+  private static readonly DOC_TYPE_MAP: Record<string, string> = {
+    szemelyi: 'ID_CARD',
+    utlevel: 'PASSPORT',
+    jogositvany: 'DRIVERS_LICENSE',
+    egyeb: 'OTHER',
+  };
+
+  /**
+   * FS-5: okmány-képpár feltöltése a centerbe + helyi titkosított scan-fájlok
+   * törlése SIKERES center-nyugtázás után (fail-closed: sikertelen feltöltésnél
+   * SEMMI nem törlődik; a sor synced=1 PERZISZTÁLÁSA után jön csak a fájltörlés).
+   */
+  async syncScannedDocuments(): Promise<void> {
+    try {
+      const pending = getPendingScannedDocuments();
+      if (pending.length === 0) return;
+
+      const serverUrl = this.getActiveServerUrl();
+      if (!serverUrl) return;
+      const token = this.getAuthToken();
+      if (!token) return;
+      const sessionCompanyCode = getConfig('bootstrap_company_code');
+
+      for (const doc of pending) {
+        const mismatchMessage = standaloneCompanyMismatchMessage(
+          'SCANNED_DOC',
+          doc.id,
+          doc.company_code,
+          sessionCompanyCode,
+        );
+        if (mismatchMessage) continue;
+        try {
+          const form = new FormData();
+          const frontBytes = new Uint8Array(readDecryptedScan(doc.front_path));
+          const backBytes = new Uint8Array(readDecryptedScan(doc.back_path));
+          form.append('front', new Blob([frontBytes], { type: 'image/png' }), 'front.png');
+          form.append('back', new Blob([backBytes], { type: 'image/png' }), 'back.png');
+          form.append('documentType', SyncEngine.DOC_TYPE_MAP[doc.document_type] ?? 'OTHER');
+          form.append('customerId', String(doc.customer_id));
+          if (doc.notes) form.append('notes', doc.notes);
+          await httpPostMultipart(
+            `${serverUrl}/scanned-documents/upload-pair`,
+            form,
+            token,
+            doc.idempotency_key ?? undefined,
+          );
+          // FAIL-CLOSED sorrend: előbb a synced-jelölés PERZISZTÁLVA, utána fájltörlés.
+          markScannedDocumentSynced(doc.id);
+          deleteScanFiles(doc.front_path);
+          deleteScanFiles(doc.back_path);
+          log.info(`[SyncEngine] Okmány-scan #${doc.id} feltöltve a centerbe, helyi fájlok törölve.`);
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          if (isAuthStatusError(err)) {
+            log.warn('[SyncEngine] Okmány-scan auth hiba (401/403), ciklus leállítva.');
+            break;
+          }
+          if (this.isBusinessValidationError(errorMsg)) {
+            markScannedDocumentSyncError(doc.id, errorMsg);
+            log.warn(`[SyncEngine] Okmány-scan #${doc.id} üzleti hiba: ${errorMsg}`);
+            continue;
+          }
+          markScannedDocumentSyncError(doc.id, errorMsg);
+          log.warn(`[SyncEngine] Okmány-scan #${doc.id} sync hiba:`, errorMsg);
+          break; // hálózati hiba → később újra
+        }
+      }
+    } catch (err) {
+      log.warn('[SyncEngine] Okmány-scan sync hiba:', err instanceof Error ? err.message : err);
     }
   }
 
