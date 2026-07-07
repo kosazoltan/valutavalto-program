@@ -127,7 +127,7 @@ export default function CustomerDetailPage() {
       setVersionsLoading(true)
       setVersionError(null)
       const nextVersions = await customerApi.getVersions(customerId)
-      setVersions(nextVersions)
+      setVersions(Array.isArray(nextVersions) ? nextVersions : [])
       setSelectedVersion(null)
     } catch (err) {
       setVersionError(getErrorMessage(err))
