@@ -19,6 +19,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
+import DocumentPairCapture from '../../components/documents/DocumentPairCapture'
 
 export default function CustomerDetailPage() {
   const { t } = useTranslation()
@@ -991,6 +992,11 @@ export default function CustomerDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* FS-5: Okmány szkennelés (elő/hátlap) + regisztrált okmányok megtekintése — csak ismert szerver-id-nél */}
+        {customer && id && Number(id) > 0 && (
+          <DocumentPairCapture customerId={Number(id)} />
+        )}
 
         {/* Contact Info */}
         <div className="form-panel">

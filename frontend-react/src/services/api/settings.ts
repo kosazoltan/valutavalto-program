@@ -1010,6 +1010,8 @@ export interface ScannedDocument {
   scannedAt: string
   notes?: string | null
   validUntil?: string | null
+  hasFrontImage?: boolean | null
+  hasBackImage?: boolean | null
 }
 export interface DocumentScannerUploadRequest {
   documentType?: 'ID_CARD' | 'PASSPORT' | 'DRIVERS_LICENSE' | 'COMPANY_REGISTRY' | 'OTHER'
@@ -1064,6 +1066,25 @@ export const documentScannerApi = {
   deleteScannedDocument: async (id: string): Promise<void> => {
     await api.delete(`/scanned-documents/${id}`)
   },
+  uploadScannedDocumentPair: async (front: File, back: File, request: DocumentScannerUploadRequest = {}): Promise<ScannedDocument> => {
+    const formData = new FormData()
+    formData.append('front', front)
+    formData.append('back', back)
+    formData.append('documentType', request.documentType ?? 'OTHER')
+    if (request.customerId != null) formData.append('customerId', String(request.customerId))
+    if (request.transactionId != null) formData.append('transactionId', String(request.transactionId))
+    if (request.notes) formData.append('notes', request.notes)
+    return (await api.post<ScannedDocument>('/scanned-documents/upload-pair', formData)).data
+  },
+  getThumbnail: async (id: string, side: 'FRONT' | 'BACK'): Promise<Blob> => (
+    await api.get(`/scanned-documents/${id}/image/${side}/thumbnail`, { responseType: 'blob' })
+  ).data,
+  issueViewGrant: async (id: string, approverWorkerId: number, pin: string): Promise<void> => {
+    await api.post(`/scanned-documents/${id}/view-grant`, { approverWorkerId, pin })
+  },
+  getFullImage: async (id: string, side: 'FRONT' | 'BACK'): Promise<Blob> => (
+    await api.get(`/scanned-documents/${id}/image/${side}/full`, { responseType: 'blob' })
+  ).data,
 }
 
 // ================== VALUE BAND (AML ÉRTÉKSÁV) API ==================
