@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Settings, Building, Users, Printer, Database, Bell, Shield, Palette, Sliders, Loader2, FileText, AlertTriangle, Landmark, KeyRound, Languages } from 'lucide-react'
+import { Settings, Building, Users, Printer, Database, Bell, Shield, Palette, Sliders, Loader2, FileText, AlertTriangle, Landmark, KeyRound, Languages, Mail } from 'lucide-react'
 import SystemParameterPage from './SystemParameterPage'
 import PermissionPage from './PermissionPage'
 import RolePage from './RolePage'
@@ -7,6 +7,7 @@ import UserPage from './UserPage'
 import ReceiptTextSettingsPage from './ReceiptTextSettingsPage'
 import CashierBandSettingsPage from './CashierBandSettingsPage'
 import ValueBandSettingsPage from './ValueBandSettingsPage'
+import IncomeProofRecipientsPanel from './IncomeProofRecipientsPanel'
 import BankIntegrationStatusPage from './BankIntegrationStatusPage'
 import MfaEnrollmentPage from './MfaEnrollmentPage'
 import SupervisorPinSettingsPanel from './SupervisorPinSettingsPanel'
@@ -100,6 +101,7 @@ export default function SettingsPage() {
     { id: 'translations', name: 'Fordítások', icon: Languages },
     { id: 'cashier-band', name: 'Pénztárosi sáv', icon: AlertTriangle },
     { id: 'value-bands', name: 'AML értéksávok', icon: Sliders },
+    { id: 'income-proof-recipients', name: 'Jövedelemig. címzettek', icon: Mail },
     { id: 'bank-integration', name: 'Bank integráció', icon: Landmark },
     { id: 'mfa', name: 'Kétfaktoros (MFA)', icon: KeyRound },
     { id: 'database', name: 'Adatbázis', icon: Database },
@@ -309,6 +311,10 @@ export default function SettingsPage() {
 
           {activeTab === 'value-bands' && (
             <ValueBandSettingsPage />
+          )}
+
+          {activeTab === 'income-proof-recipients' && (
+            <IncomeProofRecipientsPanel />
           )}
 
           {activeTab === 'bank-integration' && (
