@@ -6,6 +6,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '@/utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import DocumentImagePair from '../../components/documents/DocumentImagePair'
 
 const FILE_TYPE_ICONS: Record<string, typeof File> = {
   pdf: FileText,
@@ -58,6 +59,7 @@ export default function DocumentStoragePage() {
   const [scannedLoading, setScannedLoading] = useState(false)
   const [scannedDocumentType, setScannedDocumentType] = useState<(typeof SCANNED_DOCUMENT_TYPES)[number]['value']>('OTHER')
   const [scannedNotes, setScannedNotes] = useState('')
+  const [imagePairDoc, setImagePairDoc] = useState<ScannedDocument | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scannerScanInputRef = useRef<HTMLInputElement>(null)
   const scannerUploadInputRef = useRef<HTMLInputElement>(null)
@@ -466,15 +468,28 @@ export default function DocumentStoragePage() {
                   </p>
                   {doc.notes && <p className="text-sm text-gray-600">{doc.notes}</p>}
                 </div>
-                <button
-                  type="button"
-                  className="form-button justify-center text-red-600"
-                  onClick={() => void handleDeleteScannedDocument(doc.id)}
-                  disabled={scannedLoading}
-                >
-                  <Trash2 size={14} />
-                  Törlés
-                </button>
+                <div className="flex gap-2">
+                  {(doc.hasFrontImage || doc.hasBackImage) && (
+                    <button
+                      type="button"
+                      className="form-button justify-center"
+                      onClick={() => setImagePairDoc(doc)}
+                      disabled={scannedLoading}
+                    >
+                      <Image size={14} />
+                      {t('documents.okmanyKepek')}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="form-button justify-center text-red-600"
+                    onClick={() => void handleDeleteScannedDocument(doc.id)}
+                    disabled={scannedLoading}
+                  >
+                    <Trash2 size={14} />
+                    Törlés
+                  </button>
+                </div>
               </article>
             ))
           )}
@@ -604,6 +619,23 @@ export default function DocumentStoragePage() {
             ) : (
               <img src={previewUrl} alt={previewName} className="max-w-full max-h-[70vh] object-contain" />
             )}
+          </div>
+        </div>
+      )}
+
+      {/* FS-5: okmány képpár (thumbnail + nagyítás-engedély) */}
+      {imagePairDoc && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setImagePairDoc(null)}>
+          <div className="bg-white rounded-lg p-4 max-w-2xl max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-semibold">{t('documents.okmanyKepek')}</h3>
+              <button onClick={() => setImagePairDoc(null)} className="form-button text-xs">{t('common.close')}</button>
+            </div>
+            <DocumentImagePair
+              documentId={imagePairDoc.id}
+              hasFront={!!imagePairDoc.hasFrontImage}
+              hasBack={!!imagePairDoc.hasBackImage}
+            />
           </div>
         </div>
       )}
