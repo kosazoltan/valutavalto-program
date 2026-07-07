@@ -892,6 +892,18 @@
     "okmanyRegisztraltDokumentumok": "Regisztrált okmányok",
     "okmanyCaptureTipus": "Dokumentum típusa"
   },
+  "incomeProof": {
+    "cim": "Jövedelemforrás-igazolás (10M+ vétel)",
+    "kotelezo": "10M Ft feletti vételhez jövedelemforrás-igazolás beküldése kötelező.",
+    "capture": "Felvétel készítése",
+    "kuldes": "Jövedelemforrás-igazolás küldése…",
+    "kuldesSikeres": "Jövedelemforrás-igazolás elküldve",
+    "kuldesHiba": "A jövedelemforrás-igazolás beküldése sikertelen.",
+    "ujra": "Újra",
+    "megsem": "Mégse",
+    "offlineBlokk": "Online kapcsolat szükséges a jövedelemforrás-igazolás beküldéséhez — 10M feletti vétel offline nem rögzíthető.",
+    "nemTarolodik": "A dokumentum a rendszerben nem tárolódik — emailben kerül a compliance-hez."
+  },
   "email": {
     "alapertelmezett": "Alapértelmezett",
     "emailBeallitasok": "Email beállítások",
