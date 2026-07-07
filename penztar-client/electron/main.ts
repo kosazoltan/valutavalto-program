@@ -49,6 +49,7 @@ import {
   type PendingHandoverOperationInput,
   type PendingStornoInput,
   type PendingTransferStornoInput,
+  type QueueScannedDocumentInput,
   type SetupWorkerOption,
   type SetupWorkersRequest,
 } from '@valuta/shared-ipc';
@@ -67,6 +68,7 @@ import {
   savePendingStorno,
   savePendingTransferStorno,
   savePendingCircularReply,
+  savePendingScannedDocument,
   getPendingTransferStornos,
   getPendingTransactions,
   getPendingTransactionRefById,
@@ -103,7 +105,8 @@ import { printReceipt, type PrintReceiptData, PRINTER_CONFIG_KEY, SERIAL_PORT_CO
 import { syncEngine } from './sync-engine';
 import { registerCameraHandlers } from './camera';
 import { registerVideoManagerHandlers } from './video-manager';
-import { registerScannerHandlers } from './scanner';
+import { registerScannerHandlers, SCAN_DIR } from './scanner';
+import { assertInsideBase, validateDocumentType } from './path-guard';
 import { registerUpdaterHandlers } from './updater';
 import { performGoogleOAuthFlow, performGoogleOAuthFlowWithBackendLogin, performPasswordLoginMainProcess, GoogleOAuthFailedException } from './google-oauth';
 import { initErrorReporter, reportError, setUserIdentifier } from './error-reporter';
@@ -603,6 +606,17 @@ ipcMain.handle('save-pending-transfer-storno', async (_event, payload: PendingTr
 // FS-C: körlevél-válasz offline outbox (sync-engine küldi a backendre).
 ipcMain.handle('save-pending-circular-reply', async (_event, payload: PendingCircularReplyInput): Promise<number> => {
   return savePendingCircularReply(payload);
+});
+
+// FS-5: okmány-képpár feltöltési outbox (scan → center, törlés nyugtázás után).
+ipcMain.handle(IPC_CHANNELS.QUEUE_SCANNED_DOCUMENT, async (_event, input: QueueScannedDocumentInput): Promise<number> => {
+  if (!Number.isInteger(input.customerId) || input.customerId <= 0) {
+    throw new Error('Invalid customerId');
+  }
+  validateDocumentType(input.documentType);
+  assertInsideBase(input.frontPath, SCAN_DIR, 'frontPath');
+  assertInsideBase(input.backPath, SCAN_DIR, 'backPath');
+  return savePendingScannedDocument(input);
 });
 
 ipcMain.handle('get-pending-transfer-stornos', async (): Promise<ReturnType<typeof getPendingTransferStornos>> => {

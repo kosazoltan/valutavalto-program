@@ -4,7 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { assertInsideBase, validateDocumentType, type DocumentType } from './path-guard';
 
-const SCAN_DIR = 'C:/valuta/scan';
+export const SCAN_DIR = 'C:/valuta/scan';
 const ENCRYPTION_KEY_FILE = 'C:/valuta/.scan_key';
 
 function sanitizeId(id: string): string {
@@ -73,22 +73,27 @@ export function registerScannerHandlers(): void {
     transactionId: string,
     documentType: string,
     imageBase64: string,
+    side?: 'front' | 'back',
   ): Promise<{ path: string; encrypted: boolean }> => {
     // Audit P0.9: runtime allowlist a documentType-ra (TS-tipus a runtime-on
     // semmit nem garantal, az IPC bemenet untrusted).
     const safeDocumentType: DocumentType = validateDocumentType(documentType);
+    // FS-5: side runtime-validálás (undefined OK a régi hívók miatt).
+    if (side !== undefined && side !== 'front' && side !== 'back') {
+      throw new Error('Invalid side: ' + side);
+    }
     const buffer = Buffer.from(imageBase64, 'base64');
     const { encrypted, iv, tag } = encrypt(buffer);
     const date = new Date().toISOString().slice(0, 10);
     const safeId = sanitizeId(transactionId);
     const dir = path.join(SCAN_DIR, date, safeId);
     fs.mkdirSync(dir, { recursive: true });
-    const filename = `${safeDocumentType}_${Date.now()}.enc`;
+    const filename = `${safeDocumentType}_${side ?? 'front'}_${Date.now()}.enc`;
     const filepath = path.join(dir, filename);
     fs.writeFileSync(filepath, encrypted);
     fs.writeFileSync(
       `${filepath}.meta`,
-      JSON.stringify({ iv, tag, documentType: safeDocumentType, timestamp: new Date().toISOString() }),
+      JSON.stringify({ iv, tag, documentType: safeDocumentType, side: side ?? 'front', timestamp: new Date().toISOString() }),
     );
     return { path: filepath, encrypted: true };
   });
@@ -127,4 +132,20 @@ export function registerScannerHandlers(): void {
     }
     return results;
   });
+}
+
+/** FS-5 sync: titkosított scan-fájl beolvasása és dekriptálása. A path-guard kötelező. */
+export function readDecryptedScan(filepath: string): Buffer {
+  const resolved = assertInsideBase(filepath, SCAN_DIR, 'scan filepath');
+  const encrypted = fs.readFileSync(resolved);
+  const meta = JSON.parse(fs.readFileSync(`${resolved}.meta`, 'utf8')) as { iv: string; tag: string };
+  return decrypt(encrypted, meta.iv, meta.tag);
+}
+
+/** FS-5 sync: scan-fájl + meta törlése SIKERES center-nyugtázás után. Best-effort. */
+export function deleteScanFiles(filepath: string): void {
+  const resolved = assertInsideBase(filepath, SCAN_DIR, 'scan filepath');
+  for (const p of [resolved, `${resolved}.meta`]) {
+    try { fs.unlinkSync(p); } catch { /* orphan-fájl: log a hívóban, dupla-upload nincs */ }
+  }
 }

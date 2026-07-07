@@ -249,6 +249,15 @@ export interface PendingCircularReplyInput {
   replyText: string;
 }
 
+// FS-5: okmány-képpár feltöltési outbox (scan a pénztáron → center, törlés nyugtázás után).
+export interface QueueScannedDocumentInput {
+  customerId: number;            // SZERVER-oldali customer id
+  documentType: 'szemelyi' | 'utlevel' | 'jogositvany' | 'egyeb';
+  frontPath: string;             // scan-save-document visszaadott path
+  backPath: string;
+  notes?: string | null;
+}
+
 export interface PendingHandoverOperationInput {
   operationType: 'GENERATE' | 'PRINT' | 'COMPLETE';
   sheetId?: string | null;
@@ -322,6 +331,10 @@ export interface IpcRoutes {
     request: QueueStocktakeCountArgs
     response: number
   }
+  'queue-scanned-document': {
+    request: QueueScannedDocumentInput
+    response: number
+  }
   // ---- Read/util channelek (X4-minta folytatás, X4-REMAINDER-READ) ----
   // Pozicionális wire: a request a NYERS invoke-argumentum, nem objektum.
   'get-pending-transaction-ref-by-id': {
@@ -357,6 +370,7 @@ export const IPC_CHANNELS = {
   SAVE_PENDING_CIRCULAR_REPLY: 'save-pending-circular-reply' as const,
   SAVE_PENDING_HANDOVER_OPERATION: 'save-pending-handover-operation' as const,
   QUEUE_STOCKTAKE_COUNT: 'queue-stocktake-count' as const,
+  QUEUE_SCANNED_DOCUMENT: 'queue-scanned-document' as const,
   GET_PENDING_TRANSACTION_REF_BY_ID: 'get-pending-transaction-ref-by-id' as const,
   GET_PENDING_TRANSFER_REF_BY_ID: 'get-pending-transfer-ref-by-id' as const,
   GET_PENDING_TRANSACTION_COUNT: 'get-pending-transaction-count' as const,
