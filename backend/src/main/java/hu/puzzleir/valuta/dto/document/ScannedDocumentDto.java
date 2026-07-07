@@ -20,4 +20,9 @@ public class ScannedDocumentDto {
     private LocalDateTime scannedAt;
     private String notes;
     private LocalDate validUntil;
+
+    /** FS-5: van-e előlap-kép (side=FRONT) a dokumentumhoz. */
+    private Boolean hasFrontImage;
+    /** FS-5: van-e hátlap-kép (side=BACK) a dokumentumhoz. */
+    private Boolean hasBackImage;
 }
