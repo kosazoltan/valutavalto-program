@@ -36,6 +36,9 @@ export interface Customer {
   isPep?: boolean
   notes?: string
   riskRating?: 'LOW' | 'MEDIUM' | 'HIGH'
+  reviewStatus?: 'PENDING_REVIEW' | 'REVIEWED'
+  reviewedBy?: string
+  reviewedAt?: string
   // Megerősített eljárás (EDD, V.2.7 — V309/V310)
   eddUntil?: string
   eddReason?: string
@@ -63,6 +66,14 @@ export interface CustomerStats {
   firstVisit?: string | null
   lastVisit?: string | null
   preferredCurrency?: string | null
+}
+
+export interface CustomerVersion {
+  versionNo: number
+  changedBy?: string
+  changedAt: string
+  changeSource: 'CASHIER' | 'COMPLIANCE'
+  snapshot?: string
 }
 
 export interface CustomerCreateRequest {
@@ -141,6 +152,22 @@ export const customerApi = {
   /** FS-2 (MNB): kockázati besorolás állítása — MANAGER/ADMIN jogosultság. */
   setRiskRating: async (id: number, riskRating: 'LOW' | 'MEDIUM' | 'HIGH', reason: string): Promise<Customer> => {
     const response = await api.post<Customer>(`/customers/${id}/risk-rating`, { riskRating, reason })
+    return response.data
+  },
+  review: async (id: number): Promise<Customer> => {
+    const response = await api.post<Customer>(`/customers/${id}/review`)
+    return response.data
+  },
+  getPendingReview: async (): Promise<Customer[]> => {
+    const response = await api.get<Customer[]>('/customers/pending-review')
+    return response.data
+  },
+  getVersions: async (id: number): Promise<CustomerVersion[]> => {
+    const response = await api.get<CustomerVersion[]>(`/customers/${id}/versions`)
+    return response.data
+  },
+  getVersion: async (id: number, versionNo: number): Promise<CustomerVersion> => {
+    const response = await api.get<CustomerVersion>(`/customers/${id}/versions/${versionNo}`)
     return response.data
   },
   getByDocumentNumber: async (documentNumber: string): Promise<Customer> => {

@@ -294,6 +294,21 @@ public class Customer {
     private CustomerRiskRating riskRating = CustomerRiskRating.LOW;
 
     /**
+     * FS-3 (D2): compliance "Átnézve" workflow. Meglévő/legacy rekord default
+     * REVIEWED (terv T4) — PENDING_REVIEW-t kizárólag a service-útvonal állít.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "review_status", nullable = false, length = 20)
+    @Builder.Default
+    private ReviewStatus reviewStatus = ReviewStatus.REVIEWED;
+
+    @Column(name = "reviewed_by", length = 80)
+    private String reviewedBy;
+
+    @Column(name = "reviewed_at")
+    private LocalDateTime reviewedAt;
+
+    /**
      * Megerősített eljárás (EDD, V.2.7) 1 éves ablakának vége.
      * Amíg >= mai nap, a tranzakciónál fokozott átvilágítás kötelező (V309).
      */

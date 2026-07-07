@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.repository;
 
 import hu.puzzleir.valuta.entity.Customer;
+import hu.puzzleir.valuta.entity.ReviewStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -76,6 +77,9 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
      * Aktív ügyfelek
      */
     List<Customer> findByCompanyIdAndActiveTrue(UUID companyId);
+
+    /** FS-3 (D2): átnézésre váró ügyfelek — companyId-szűrt (invariáns #1). */
+    List<Customer> findByCompanyIdAndReviewStatusOrderByUpdatedAtDesc(UUID companyId, ReviewStatus reviewStatus);
 
     /**
      * Keresés név alapján (rendőrségi adatkéréshez) — company szűréssel

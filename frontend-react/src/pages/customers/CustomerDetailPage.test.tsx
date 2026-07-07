@@ -14,6 +14,9 @@ const mocks = vi.hoisted(() => ({
     getHistory: vi.fn(),
     markEdd: vi.fn(),
     setRiskRating: vi.fn(),
+    review: vi.fn(),
+    getVersions: vi.fn(),
+    getVersion: vi.fn(),
     update: vi.fn(),
     merge: vi.fn(),
   },
@@ -114,6 +117,14 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
       highVolume: false,
     })
     mocks.amlApi.structuringCheck.mockResolvedValue({ customerId: '42', structuringDetected: false })
+    mocks.customerApi.getVersions.mockResolvedValue([])
+    mocks.customerApi.getVersion.mockResolvedValue({
+      versionNo: 1,
+      changedBy: 'W1',
+      changedAt: '2026-07-06T10:00:00',
+      changeSource: 'CASHIER',
+      snapshot: '{"name":"Teszt Elek"}',
+    })
   })
 
   it('aktív EDD-ablaknál piros badge látszik a lejárattal', async () => {
@@ -377,5 +388,49 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
 
     await waitFor(() => expect(mocks.customerApi.getById).toHaveBeenCalledWith(42))
     expect(screen.queryByTestId('customer-merge-panel')).not.toBeInTheDocument()
+  })
+
+  it('PENDING_REVIEW ügyfélnél látszik az Átnézésre vár badge és az Átnézve gomb', async () => {
+    mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER, reviewStatus: 'PENDING_REVIEW' })
+
+    renderPage()
+
+    expect(await screen.findByText('Átnézésre vár')).toBeInTheDocument()
+    expect(screen.getByText('Átnézve')).toBeInTheDocument()
+  })
+
+  it('Átnézve gomb kattintás review API-t hív és REVIEWED badge-re frissít', async () => {
+    mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER, reviewStatus: 'PENDING_REVIEW' })
+    mocks.customerApi.review.mockResolvedValue({ ...BASE_CUSTOMER, reviewStatus: 'REVIEWED', reviewedBy: 'W7' })
+
+    renderPage()
+    fireEvent.click(await screen.findByText('Átnézve'))
+
+    await waitFor(() => expect(mocks.customerApi.review).toHaveBeenCalledWith(42))
+    expect(await screen.findByText('Átnézve: W7')).toBeInTheDocument()
+  })
+
+  it('REVIEWED ügyfélnél az Átnézve gomb nem látszik', async () => {
+    mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER, reviewStatus: 'REVIEWED', reviewedBy: 'W7' })
+
+    renderPage()
+
+    expect(await screen.findByText('Átnézve: W7')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Átnézve' })).not.toBeInTheDocument()
+  })
+
+  it('kirendereli a verziótörténet metaadatait', async () => {
+    mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER, reviewStatus: 'REVIEWED' })
+    mocks.customerApi.getVersions.mockResolvedValue([
+      { versionNo: 2, changedBy: 'W2', changedAt: '2026-07-06T12:00:00', changeSource: 'COMPLIANCE' },
+      { versionNo: 1, changedBy: 'W1', changedAt: '2026-07-06T10:00:00', changeSource: 'CASHIER' },
+    ])
+
+    renderPage()
+
+    expect(await screen.findByText('Verziótörténet')).toBeInTheDocument()
+    expect(screen.getByText('v2')).toBeInTheDocument()
+    expect(screen.getByText('W2')).toBeInTheDocument()
+    expect(screen.getByText('COMPLIANCE')).toBeInTheDocument()
   })
 })

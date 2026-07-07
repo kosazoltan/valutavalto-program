@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.service.CompanyAdminService;
+import hu.puzzleir.valuta.service.CompanyVersionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,8 +56,15 @@ class CompanyAdminControllerSecurityWebMvcTest {
         }
 
         @Bean
-        CompanyAdminController companyAdminController(CompanyAdminService companyAdminService) {
-            return new CompanyAdminController(companyAdminService);
+        CompanyVersionService companyVersionService() {
+            return mock(CompanyVersionService.class);
+        }
+
+        @Bean
+        CompanyAdminController companyAdminController(
+                CompanyAdminService companyAdminService,
+                CompanyVersionService companyVersionService) {
+            return new CompanyAdminController(companyAdminService, companyVersionService);
         }
     }
 

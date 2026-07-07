@@ -13811,6 +13811,37 @@
         }
       }
     },
+    "/api/v1/customers/{id}/review": {
+      "post": {
+        "tags": [
+          "customer-controller"
+        ],
+        "operationId": "reviewCustomer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/customers/{id}/edd-mark": {
       "post": {
         "tags": [
@@ -29602,6 +29633,80 @@
         }
       }
     },
+    "/api/v1/customers/{id}/versions": {
+      "get": {
+        "tags": [
+          "customer-controller"
+        ],
+        "operationId": "getCustomerVersions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerVersionDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customers/{id}/versions/{versionNo}": {
+      "get": {
+        "tags": [
+          "customer-controller"
+        ],
+        "operationId": "getCustomerVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "versionNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerVersionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/customers/{id}/stats": {
       "get": {
         "tags": [
@@ -29783,6 +29888,29 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customers/pending-review": {
+      "get": {
+        "tags": [
+          "customer-controller"
+        ],
+        "operationId": "getPendingReviewCustomers",
         "responses": {
           "200": {
             "description": "OK",
@@ -33888,6 +34016,80 @@
         }
       }
     },
+    "/api/v1/admin/companies/{id}/versions": {
+      "get": {
+        "tags": [
+          "company-admin-controller"
+        ],
+        "operationId": "getCompanyVersions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerVersionDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/companies/{id}/versions/{versionNo}": {
+      "get": {
+        "tags": [
+          "company-admin-controller"
+        ],
+        "operationId": "getCompanyVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "versionNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerVersionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/branches": {
       "get": {
         "tags": [
@@ -34889,6 +35091,20 @@
           },
           "isActive": {
             "type": "boolean"
+          },
+          "reviewStatus": {
+            "type": "string",
+            "enum": [
+              "PENDING_REVIEW",
+              "REVIEWED"
+            ]
+          },
+          "reviewedBy": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time"
           },
           "createdAt": {
             "type": "string",
@@ -37266,6 +37482,20 @@
               "HIGH"
             ]
           },
+          "reviewStatus": {
+            "type": "string",
+            "enum": [
+              "PENDING_REVIEW",
+              "REVIEWED"
+            ]
+          },
+          "reviewedBy": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "eddUntil": {
             "type": "string",
             "format": "date"
@@ -38783,6 +39013,20 @@
               "HIGH"
             ]
           },
+          "reviewStatus": {
+            "type": "string",
+            "enum": [
+              "PENDING_REVIEW",
+              "REVIEWED"
+            ]
+          },
+          "reviewedBy": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "eddUntil": {
             "type": "string",
             "format": "date"
@@ -39109,6 +39353,10 @@
             "type": "integer",
             "format": "int64"
           },
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "companyId": {
             "type": "string",
             "format": "uuid"
@@ -39116,10 +39364,6 @@
           "territoryId": {
             "type": "integer",
             "format": "int32"
-          },
-          "branchId": {
-            "type": "string",
-            "format": "uuid"
           }
         }
       },
@@ -50842,14 +51086,14 @@
             "type": "string",
             "format": "date-time"
           },
-          "highBalance": {
-            "type": "boolean"
+          "dailyChange": {
+            "type": "number"
           },
           "lowBalance": {
             "type": "boolean"
           },
-          "dailyChange": {
-            "type": "number"
+          "highBalance": {
+            "type": "boolean"
           }
         }
       },
@@ -52149,6 +52393,10 @@
           "source": {
             "type": "string"
           },
+          "lastUpdated": {
+            "type": "string",
+            "format": "date-time"
+          },
           "bankSellRate": {
             "type": "number",
             "deprecated": true
@@ -52156,10 +52404,6 @@
           "bankBuyRate": {
             "type": "number",
             "deprecated": true
-          },
-          "lastUpdated": {
-            "type": "string",
-            "format": "date-time"
           }
         }
       },
@@ -54500,6 +54744,28 @@
           },
           "ecommerceDenominationOk": {
             "type": "boolean"
+          }
+        }
+      },
+      "CustomerVersionDto": {
+        "type": "object",
+        "properties": {
+          "versionNo": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "changedBy": {
+            "type": "string"
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "changeSource": {
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
           }
         }
       },
