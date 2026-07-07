@@ -3,7 +3,11 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.dto.admin.*;
+import hu.puzzleir.valuta.dto.customer.CustomerVersionDto;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.service.CompanyAdminService;
+import hu.puzzleir.valuta.service.CompanyVersionService;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +27,7 @@ import java.util.UUID;
 public class CompanyAdminController {
 
     private final CompanyAdminService companyAdminService;
+    private final CompanyVersionService companyVersionService;
 
     /**
      * Cég részletes adatai.
@@ -43,6 +48,44 @@ public class CompanyAdminController {
             @Valid @RequestBody CompanyUpdateDto dto) {
         companyAdminService.updateCompany(id, dto);
         return ResponseEntity.ok().build();
+    }
+
+    /** FS-3 (D1): cég verziótörténet. Same-tenant guard (invariáns #1, fail-closed). */
+    @GetMapping("/companies/{id}/versions")
+    public ResponseEntity<List<CustomerVersionDto>> getCompanyVersions(@PathVariable UUID id) {
+        requireSameTenant(id);
+        List<CustomerVersionDto> dtos = companyVersionService.listVersions(id).stream()
+                .map(v -> CustomerVersionDto.builder()
+                        .versionNo(v.getVersionNo())
+                        .changedBy(v.getChangedBy())
+                        .changedAt(v.getChangedAt())
+                        .changeSource(v.getChangeSource().name())
+                        .build())
+                .toList();
+        return ResponseEntity.ok(dtos);
+    }
+
+    /** FS-3 (D1): egy konkrét cégállapot megtekintése snapshot JSON-nal. */
+    @GetMapping("/companies/{id}/versions/{versionNo}")
+    public ResponseEntity<CustomerVersionDto> getCompanyVersion(
+            @PathVariable UUID id,
+            @PathVariable Long versionNo) {
+        requireSameTenant(id);
+        return companyVersionService.getVersion(id, versionNo)
+                .map(v -> ResponseEntity.ok(CustomerVersionDto.builder()
+                        .versionNo(v.getVersionNo())
+                        .changedBy(v.getChangedBy())
+                        .changedAt(v.getChangedAt())
+                        .changeSource(v.getChangeSource().name())
+                        .snapshot(v.getSnapshot())
+                        .build()))
+                .orElseThrow(() -> new ResourceNotFoundException("Verzió nem található: " + versionNo));
+    }
+
+    private void requireSameTenant(UUID id) {
+        if (!SecurityUtils.getCurrentCompanyId().equals(id)) {
+            throw new ResourceNotFoundException("Cég nem található: " + id);
+        }
     }
 
     /**

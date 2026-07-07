@@ -5,7 +5,9 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.entity.Customer;
+import hu.puzzleir.valuta.entity.DataChangeSource;
 import hu.puzzleir.valuta.entity.DocumentType;
+import hu.puzzleir.valuta.entity.ReviewStatus;
 import hu.puzzleir.valuta.repository.CustomerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,12 +37,14 @@ public class CustomerService {
 
     private final CustomerRepository customerRepository;
     private final CompanyRepository companyRepository;
+    private final CustomerVersionService customerVersionService;
 
     /**
      * Ügyfél létrehozása
      */
     public Customer createCustomer(CreateCustomerRequest request) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
+        DataChangeSource source = customerVersionService.currentChangeSource();
 
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Company nem található"));
@@ -91,9 +96,16 @@ public class CustomerService {
                 .isPep(request.getIsPep() != null && request.getIsPep())
                 .notes(request.getNotes())
                 .active(true)
+                .reviewStatus(source == DataChangeSource.COMPLIANCE
+                        ? ReviewStatus.REVIEWED : ReviewStatus.PENDING_REVIEW)
+                .reviewedBy(source == DataChangeSource.COMPLIANCE
+                        ? SecurityUtils.getCurrentWorkerCode() : null)
+                .reviewedAt(source == DataChangeSource.COMPLIANCE
+                        ? LocalDateTime.now() : null)
                 .build();
 
         Customer saved = customerRepository.save(customer);
+        customerVersionService.recordVersion(saved, source);
         log.info("Új ügyfél létrehozva: {} - {}", saved.getCustomerCode(), saved.getName());
 
         return saved;
@@ -135,10 +147,30 @@ public class CustomerService {
         if (request.getIsPep() != null) customer.setIsPep(request.getIsPep());
         if (request.getNotes() != null) customer.setNotes(request.getNotes());
 
+        DataChangeSource source = customerVersionService.currentChangeSource();
+        boolean changed = customerVersionService.hasDataChanged(customer);
+        if (changed) {
+            applyReviewStatus(customer, source);
+        }
         Customer saved = customerRepository.save(customer);
+        if (changed) {
+            customerVersionService.recordVersion(saved, source);
+        }
         log.info("Ügyfél módosítva: {} - {}", saved.getCustomerCode(), saved.getName());
 
         return saved;
+    }
+
+    private void applyReviewStatus(Customer customer, DataChangeSource source) {
+        if (source == DataChangeSource.COMPLIANCE) {
+            customer.setReviewStatus(ReviewStatus.REVIEWED);
+            customer.setReviewedBy(SecurityUtils.getCurrentWorkerCode());
+            customer.setReviewedAt(LocalDateTime.now());
+        } else {
+            customer.setReviewStatus(ReviewStatus.PENDING_REVIEW);
+            customer.setReviewedBy(null);
+            customer.setReviewedAt(null);
+        }
     }
 
     /**

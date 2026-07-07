@@ -2,6 +2,8 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Customer;
+import hu.puzzleir.valuta.entity.DataChangeSource;
+import hu.puzzleir.valuta.entity.ReviewStatus;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.CompanyRepository;
@@ -28,6 +30,7 @@ class CustomerServiceTest {
 
     @Mock private CustomerRepository customerRepository;
     @Mock private CompanyRepository companyRepository;
+    @Mock private CustomerVersionService customerVersionService;
     @InjectMocks private CustomerService service;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
@@ -46,6 +49,7 @@ class CustomerServiceTest {
             when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
             when(customerRepository.findByDocumentNumberAndCompanyId("123456AB", COMPANY_ID))
                     .thenReturn(Optional.empty());
+            when(customerVersionService.currentChangeSource()).thenReturn(DataChangeSource.CASHIER);
             when(customerRepository.save(any())).thenAnswer(inv -> {
                 Customer c = inv.getArgument(0);
                 c.setId(1L);
@@ -57,6 +61,7 @@ class CustomerServiceTest {
             assertThat(result.getName()).isEqualTo("Teszt Ugyfel");
             assertThat(result.getActive()).isTrue();
             verify(customerRepository).save(any());
+            verify(customerVersionService).recordVersion(result, DataChangeSource.CASHIER);
         }
     }
 
@@ -77,6 +82,7 @@ class CustomerServiceTest {
             when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
             when(customerRepository.findByDocumentNumberAndCompanyId("CEG-001", COMPANY_ID))
                     .thenReturn(Optional.empty());
+            when(customerVersionService.currentChangeSource()).thenReturn(DataChangeSource.CASHIER);
             when(customerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             Customer result = service.createCustomer(request);
@@ -100,6 +106,7 @@ class CustomerServiceTest {
             when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
             when(customerRepository.findByDocumentNumberAndCompanyId("PEP-001", COMPANY_ID))
                     .thenReturn(Optional.empty());
+            when(customerVersionService.currentChangeSource()).thenReturn(DataChangeSource.CASHIER);
             when(customerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             Customer result = service.createCustomer(request);
@@ -130,6 +137,120 @@ class CustomerServiceTest {
                     .as("duplikalt doc# eseten a letezo customer-t kell visszaadni, NEM exception")
                     .isNotNull()
                     .extracting(Customer::getId).isEqualTo(99L);
+        }
+    }
+
+    @Test
+    void createCustomer_cashierSource_pendingReview_andVersionRecorded() {
+        Company company = Company.builder().id(COMPANY_ID).build();
+        CustomerService.CreateCustomerRequest request = new CustomerService.CreateCustomerRequest();
+        request.setName("Pénztári Ugyfel");
+        request.setDocumentNumber("PEND-001");
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(customerRepository.findByDocumentNumberAndCompanyId("PEND-001", COMPANY_ID))
+                    .thenReturn(Optional.empty());
+            when(customerVersionService.currentChangeSource()).thenReturn(DataChangeSource.CASHIER);
+            when(customerRepository.save(any())).thenAnswer(inv -> {
+                Customer c = inv.getArgument(0);
+                c.setId(10L);
+                return c;
+            });
+
+            Customer result = service.createCustomer(request);
+
+            assertThat(result.getReviewStatus()).isEqualTo(ReviewStatus.PENDING_REVIEW);
+            assertThat(result.getReviewedBy()).isNull();
+            assertThat(result.getReviewedAt()).isNull();
+            verify(customerVersionService).recordVersion(result, DataChangeSource.CASHIER);
+        }
+    }
+
+    @Test
+    void createCustomer_complianceSource_autoReviewed() {
+        Company company = Company.builder().id(COMPANY_ID).build();
+        CustomerService.CreateCustomerRequest request = new CustomerService.CreateCustomerRequest();
+        request.setName("Compliance Ugyfel");
+        request.setDocumentNumber("REV-001");
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            su.when(SecurityUtils::getCurrentWorkerCode).thenReturn("W1");
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(customerRepository.findByDocumentNumberAndCompanyId("REV-001", COMPANY_ID))
+                    .thenReturn(Optional.empty());
+            when(customerVersionService.currentChangeSource()).thenReturn(DataChangeSource.COMPLIANCE);
+            when(customerRepository.save(any())).thenAnswer(inv -> {
+                Customer c = inv.getArgument(0);
+                c.setId(11L);
+                return c;
+            });
+
+            Customer result = service.createCustomer(request);
+
+            assertThat(result.getReviewStatus()).isEqualTo(ReviewStatus.REVIEWED);
+            assertThat(result.getReviewedBy()).isEqualTo("W1");
+            assertThat(result.getReviewedAt()).isNotNull();
+            verify(customerVersionService).recordVersion(result, DataChangeSource.COMPLIANCE);
+        }
+    }
+
+    @Test
+    void updateCustomer_dataChanged_flipsToPendingAndRecordsVersion() {
+        Customer customer = Customer.builder()
+                .id(42L)
+                .name("Régi Név")
+                .customerCode("C42")
+                .reviewStatus(ReviewStatus.REVIEWED)
+                .reviewedBy("WOLD")
+                .company(Company.builder().id(COMPANY_ID).build())
+                .build();
+        CustomerService.UpdateCustomerRequest request = new CustomerService.UpdateCustomerRequest();
+        request.setName("Új Név");
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(customerRepository.findById(42L)).thenReturn(Optional.of(customer));
+            when(customerVersionService.currentChangeSource()).thenReturn(DataChangeSource.CASHIER);
+            when(customerVersionService.hasDataChanged(customer)).thenReturn(true);
+            when(customerRepository.save(customer)).thenReturn(customer);
+
+            Customer result = service.updateCustomer(42L, request);
+
+            assertThat(result.getReviewStatus()).isEqualTo(ReviewStatus.PENDING_REVIEW);
+            assertThat(result.getReviewedBy()).isNull();
+            assertThat(result.getReviewedAt()).isNull();
+            verify(customerVersionService).recordVersion(result, DataChangeSource.CASHIER);
+        }
+    }
+
+    @Test
+    void updateCustomer_noDataChange_keepsStatusAndNoVersion() {
+        Customer customer = Customer.builder()
+                .id(42L)
+                .name("Régi Név")
+                .customerCode("C42")
+                .reviewStatus(ReviewStatus.REVIEWED)
+                .reviewedBy("WOLD")
+                .company(Company.builder().id(COMPANY_ID).build())
+                .build();
+        CustomerService.UpdateCustomerRequest request = new CustomerService.UpdateCustomerRequest();
+        request.setName("Régi Név");
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(customerRepository.findById(42L)).thenReturn(Optional.of(customer));
+            when(customerVersionService.currentChangeSource()).thenReturn(DataChangeSource.CASHIER);
+            when(customerVersionService.hasDataChanged(customer)).thenReturn(false);
+            when(customerRepository.save(customer)).thenReturn(customer);
+
+            Customer result = service.updateCustomer(42L, request);
+
+            assertThat(result.getReviewStatus()).isEqualTo(ReviewStatus.REVIEWED);
+            assertThat(result.getReviewedBy()).isEqualTo("WOLD");
+            verify(customerVersionService, never()).recordVersion(any(), any());
         }
     }
 

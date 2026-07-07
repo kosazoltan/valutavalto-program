@@ -4,11 +4,14 @@ import hu.puzzleir.valuta.dto.customer.CreateCustomerDto;
 import hu.puzzleir.valuta.dto.customer.CustomerDto;
 import hu.puzzleir.valuta.dto.customer.CustomerRankingDto;
 import hu.puzzleir.valuta.dto.customer.CustomerStatsDto;
+import hu.puzzleir.valuta.dto.customer.CustomerVersionDto;
 import hu.puzzleir.valuta.dto.customer.MergeCustomersDto;
 import hu.puzzleir.valuta.entity.Customer;
 import hu.puzzleir.valuta.mapper.CustomerMapper;
+import hu.puzzleir.valuta.service.CustomerReviewService;
 import hu.puzzleir.valuta.service.CustomerService;
 import hu.puzzleir.valuta.service.CustomerStatisticsService;
+import hu.puzzleir.valuta.service.CustomerVersionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -38,6 +41,8 @@ public class CustomerController {
     private final CustomerStatisticsService customerStatisticsService;
     private final hu.puzzleir.valuta.service.AmlEddService amlEddService;
     private final hu.puzzleir.valuta.service.CustomerRiskRatingService customerRiskRatingService;
+    private final CustomerReviewService customerReviewService;
+    private final CustomerVersionService customerVersionService;
 
     /**
      * Új ügyfél létrehozása
@@ -93,6 +98,70 @@ public class CustomerController {
         Customer customer = customerRiskRatingService.setRiskRating(
                 id, request.getRiskRating(), request.getReason());
         return ResponseEntity.ok(customerMapper.toDto(customer));
+    }
+
+    /**
+     * FS-3 (D2): compliance "Átnézve" jóváhagyás. Jogosultak: terv T5.
+     * POST /api/v1/customers/{id}/review
+     */
+    @PostMapping("/{id}/review")
+    @PreAuthorize("hasAnyRole('COMPLIANCE', 'COMPLIANCE_OFFICER', 'ADMIN')")
+    public ResponseEntity<CustomerDto> reviewCustomer(@PathVariable Long id) {
+        return ResponseEntity.ok(customerMapper.toDto(customerReviewService.review(id)));
+    }
+
+    /**
+     * FS-3 (D2): átnézésre váró ügyfelek (FS-12 dashboard alapja).
+     * GET /api/v1/customers/pending-review
+     */
+    @GetMapping("/pending-review")
+    @PreAuthorize("hasAnyRole('COMPLIANCE', 'COMPLIANCE_OFFICER', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<List<CustomerDto>> getPendingReviewCustomers() {
+        return ResponseEntity.ok(customerReviewService.getPendingReview().stream()
+                .map(customerMapper::toDto).collect(Collectors.toList()));
+    }
+
+    /**
+     * FS-3 (D1): verziótörténet (metaadatok). Tenant-guard: findById dob 404-et
+     * idegen tenant ügyfelére, a lista-query companyId-szűrt (dupla védelem).
+     * GET /api/v1/customers/{id}/versions
+     */
+    @GetMapping("/{id}/versions")
+    @PreAuthorize("hasAnyRole('COMPLIANCE', 'COMPLIANCE_OFFICER', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<List<CustomerVersionDto>> getCustomerVersions(@PathVariable Long id) {
+        Customer customer = customerService.findById(id); // tenant-guard (404 idegen tenantra)
+        List<CustomerVersionDto> dtos = customerVersionService
+                .listVersions(customer.getId(), customer.getCompany().getId()).stream()
+                .map(v -> CustomerVersionDto.builder()
+                        .versionNo(v.getVersionNo())
+                        .changedBy(v.getChangedBy())
+                        .changedAt(v.getChangedAt())
+                        .changeSource(v.getChangeSource().name())
+                        .build())
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+
+    /**
+     * FS-3 (D1): egy konkrét korábbi állapot megtekintése (snapshot JSON-nal).
+     * GET /api/v1/customers/{id}/versions/{versionNo}
+     */
+    @GetMapping("/{id}/versions/{versionNo}")
+    @PreAuthorize("hasAnyRole('COMPLIANCE', 'COMPLIANCE_OFFICER', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<CustomerVersionDto> getCustomerVersion(
+            @PathVariable Long id, @PathVariable Long versionNo) {
+        Customer customer = customerService.findById(id);
+        return customerVersionService
+                .getVersion(customer.getId(), versionNo, customer.getCompany().getId())
+                .map(v -> ResponseEntity.ok(CustomerVersionDto.builder()
+                        .versionNo(v.getVersionNo())
+                        .changedBy(v.getChangedBy())
+                        .changedAt(v.getChangedAt())
+                        .changeSource(v.getChangeSource().name())
+                        .snapshot(v.getSnapshot())
+                        .build()))
+                .orElseThrow(() -> new hu.puzzleir.valuta.exception.ResourceNotFoundException(
+                        "Verzió nem található: " + versionNo));
     }
 
     /**

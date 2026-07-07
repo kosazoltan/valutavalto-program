@@ -2,6 +2,8 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.DataChangeSource;
+import hu.puzzleir.valuta.entity.ReviewStatus;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,6 +34,7 @@ public class CompanyAdminService {
     private final BranchRepository branchRepository;
     private final WorkerRepository workerRepository;
     private final SyncLogRepository syncLogRepository;
+    private final CompanyVersionService companyVersionService;
 
     /**
      * Cég részletes adatainak lekérése.
@@ -85,8 +89,19 @@ public class CompanyAdminService {
         if (dto.getPhone() != null) company.setPhone(dto.getPhone());
         if (dto.getEmail() != null) company.setEmail(dto.getEmail());
 
+        boolean changed = companyVersionService.hasDataChanged(company);
+        if (changed) {
+            company.setReviewStatus(ReviewStatus.REVIEWED);
+            company.setReviewedBy(SecurityUtils.getCurrentWorkerCode());
+            company.setReviewedAt(LocalDateTime.now());
+        }
+        Company saved = companyRepository.save(company);
+        if (changed) {
+            companyVersionService.recordVersion(saved,
+                    SecurityUtils.isComplianceSide() ? DataChangeSource.COMPLIANCE : DataChangeSource.CASHIER);
+        }
         log.info("Cég adatok frissítve: id={}, name={}", companyId, company.getName());
-        return companyRepository.save(company);
+        return saved;
     }
 
     /**

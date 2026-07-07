@@ -49,6 +49,9 @@ public class CustomerMapper {
                 .isPep(entity.getIsPep())
                 .notes(entity.getNotes())
                 .riskRating(entity.getRiskRating())
+                .reviewStatus(entity.getReviewStatus())
+                .reviewedBy(entity.getReviewedBy())
+                .reviewedAt(entity.getReviewedAt())
                 .eddUntil(entity.getEddUntil())
                 .eddReason(entity.getEddReason())
                 // Sourcery review: entity-helper (nem service-statikus) — a zóna az EDD-kör

@@ -48,6 +48,20 @@ public class Company {
     @Builder.Default
     private Boolean isActive = true;
 
+    /**
+     * FS-3 (D2): compliance "Átnézve" workflow. Meglévő/legacy rekord default REVIEWED.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "review_status", nullable = false, length = 20)
+    @Builder.Default
+    private ReviewStatus reviewStatus = ReviewStatus.REVIEWED;
+
+    @Column(name = "reviewed_by", length = 80)
+    private String reviewedBy;
+
+    @Column(name = "reviewed_at")
+    private LocalDateTime reviewedAt;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

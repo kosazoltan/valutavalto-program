@@ -149,6 +149,7 @@ async function mockCustomerApis(page: Page) {
         highVolume: false,
       },
       '/api/v1/aml/structuring-check/42': { customerId: '42', structuringDetected: false },
+      '/api/v1/customers/42/versions': [],
     }
 
     const body = bodyByPath[path] ?? { content: [], data: [], total: 0 }

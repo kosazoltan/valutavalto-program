@@ -95,6 +95,14 @@ public class SecurityUtils {
         return "ADMIN".equals(getCurrentRole());
     }
 
+    /** FS-3 (terv T5): a bejelentkezett szerep compliance-oldali-e. */
+    public static boolean isComplianceSide() {
+        String role = getCurrentRole();
+        return "COMPLIANCE".equals(role)
+                || "COMPLIANCE_OFFICER".equals(role)
+                || "ADMIN".equals(role);
+    }
+
     /**
      * Van-e legalább MANAGER jog?
      */

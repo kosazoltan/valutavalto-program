@@ -5156,6 +5156,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customers/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reviewCustomer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customers/{id}/edd-mark": {
         parameters: {
             query?: never;
@@ -12184,6 +12200,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customers/{id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCustomerVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customers/{id}/versions/{versionNo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCustomerVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customers/{id}/stats": {
         parameters: {
             query?: never;
@@ -12256,6 +12304,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["searchCustomers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customers/pending-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPendingReviewCustomers"];
         put?: never;
         post?: never;
         delete?: never;
@@ -14218,6 +14282,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/companies/{id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCompanyVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/companies/{id}/versions/{versionNo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCompanyVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/branches": {
         parameters: {
             query?: never;
@@ -14685,6 +14781,11 @@ export interface components {
             phone?: string;
             email?: string;
             isActive?: boolean;
+            /** @enum {string} */
+            reviewStatus?: "PENDING_REVIEW" | "REVIEWED";
+            reviewedBy?: string;
+            /** Format: date-time */
+            reviewedAt?: string;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
@@ -15582,6 +15683,11 @@ export interface components {
             notes?: string;
             /** @enum {string} */
             riskRating?: "LOW" | "MEDIUM" | "HIGH";
+            /** @enum {string} */
+            reviewStatus?: "PENDING_REVIEW" | "REVIEWED";
+            reviewedBy?: string;
+            /** Format: date-time */
+            reviewedAt?: string;
             /** Format: date */
             eddUntil?: string;
             eddReason?: string;
@@ -16132,6 +16238,11 @@ export interface components {
             highRiskSetAt?: string;
             /** @enum {string} */
             riskRating?: "LOW" | "MEDIUM" | "HIGH";
+            /** @enum {string} */
+            reviewStatus?: "PENDING_REVIEW" | "REVIEWED";
+            reviewedBy?: string;
+            /** Format: date-time */
+            reviewedAt?: string;
             /** Format: date */
             eddUntil?: string;
             eddReason?: string;
@@ -16253,11 +16364,11 @@ export interface components {
             /** Format: int64 */
             version?: number;
             /** Format: uuid */
+            branchId?: string;
+            /** Format: uuid */
             companyId?: string;
             /** Format: int32 */
             territoryId?: number;
-            /** Format: uuid */
-            branchId?: string;
         };
         CountItemRequest: {
             /** Format: int32 */
@@ -20381,9 +20492,9 @@ export interface components {
             version?: number;
             /** Format: date-time */
             updatedAt?: string;
-            highBalance?: boolean;
-            lowBalance?: boolean;
             dailyChange?: number;
+            lowBalance?: boolean;
+            highBalance?: boolean;
         };
         DailyClosingReport: {
             /** Format: date */
@@ -20867,12 +20978,12 @@ export interface components {
             /** Format: date-time */
             validFrom?: string;
             source?: string;
+            /** Format: date-time */
+            lastUpdated?: string;
             /** @deprecated */
             bankSellRate?: number;
             /** @deprecated */
             bankBuyRate?: number;
-            /** Format: date-time */
-            lastUpdated?: string;
         };
         CompetitorRateDTO: {
             /** Format: uuid */
@@ -21761,6 +21872,15 @@ export interface components {
             westernUnionDenominationOk?: boolean;
             vatDenominationOk?: boolean;
             ecommerceDenominationOk?: boolean;
+        };
+        CustomerVersionDto: {
+            /** Format: int64 */
+            versionNo?: number;
+            changedBy?: string;
+            /** Format: date-time */
+            changedAt?: string;
+            changeSource?: string;
+            snapshot?: string;
         };
         CustomerStatsDto: {
             /** Format: int64 */
@@ -32178,6 +32298,28 @@ export interface operations {
                 "application/json": components["schemas"]["SetCustomerRiskRatingRequest"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CustomerDto"];
+                };
+            };
+        };
+    };
+    reviewCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
@@ -42627,6 +42769,51 @@ export interface operations {
             };
         };
     };
+    getCustomerVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CustomerVersionDto"][];
+                };
+            };
+        };
+    };
+    getCustomerVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                versionNo: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CustomerVersionDto"];
+                };
+            };
+        };
+    };
     getCustomerStats: {
         parameters: {
             query?: never;
@@ -42724,6 +42911,26 @@ export interface operations {
             query: {
                 name: string;
             };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CustomerDto"][];
+                };
+            };
+        };
+    };
+    getPendingReviewCustomers: {
+        parameters: {
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -45417,6 +45624,51 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["RuleSelectionResult"];
+                };
+            };
+        };
+    };
+    getCompanyVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CustomerVersionDto"][];
+                };
+            };
+        };
+    };
+    getCompanyVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                versionNo: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CustomerVersionDto"];
                 };
             };
         };

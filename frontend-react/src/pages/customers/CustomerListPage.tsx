@@ -16,6 +16,7 @@ export default function CustomerListPage() {
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [customerCodeSearch, setCustomerCodeSearch] = useState('')
+  const [pendingOnly, setPendingOnly] = useState(false)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [highlights, setHighlights] = useState<CustomerHighlights>({ vip: [], frequent: [], top: [] })
   const [highlightsLoading, setHighlightsLoading] = useState(false)
@@ -26,9 +27,11 @@ export default function CustomerListPage() {
     try {
       setLoading(true)
       setError(null)
-      const data = search.trim()
-        ? await customerApi.search(search.trim())
-        : await customerApi.getActive()
+      const data = pendingOnly
+        ? await customerApi.getPendingReview()
+        : search.trim()
+          ? await customerApi.search(search.trim())
+          : await customerApi.getActive()
       setCustomers(data)
     } catch (err) {
       const msg = getErrorMessage(err)
@@ -37,7 +40,7 @@ export default function CustomerListPage() {
     } finally {
       setLoading(false)
     }
-  }, [search])
+  }, [pendingOnly, search])
 
   useEffect(() => {
     const timer = setTimeout(() => { void loadCustomers() }, search ? 400 : 0)
@@ -99,6 +102,10 @@ export default function CustomerListPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handlePendingReviewFilter = () => {
+    setPendingOnly(true)
   }
 
   const handleCustomerCodeSearch = async () => {
@@ -167,6 +174,24 @@ export default function CustomerListPage() {
               <Search size={16} />
             </button>
           </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => handlePendingReviewFilter()}
+            className={`form-button ${pendingOnly ? 'border-amber-300 bg-amber-50 text-amber-800' : ''}`}
+          >
+            Átnézésre váró
+          </button>
+          {pendingOnly && (
+            <button
+              type="button"
+              onClick={() => { setPendingOnly(false); void loadCustomers() }}
+              className="form-button"
+            >
+              Összes aktív
+            </button>
+          )}
         </div>
       </div>
 
@@ -251,6 +276,9 @@ export default function CustomerListPage() {
                   <td className="font-semibold">
                     {c.name}
                     {c.isVip && <span className="ml-1 text-xs bg-yellow-100 text-yellow-700 px-1 rounded">VIP</span>}
+                    {c.reviewStatus === 'PENDING_REVIEW' && (
+                      <span className="ml-1 text-xs bg-amber-100 text-amber-800 px-1 rounded">Átnézésre vár</span>
+                    )}
                   </td>
                   <td className="font-mono text-sm">{c.customerCode || '-'}</td>
                   <td>{c.birthDate ? new Date(c.birthDate).toLocaleDateString('hu-HU') : '-'}</td>

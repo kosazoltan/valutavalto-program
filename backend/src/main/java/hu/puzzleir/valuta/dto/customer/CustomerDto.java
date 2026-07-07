@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.dto.customer;
 
 import hu.puzzleir.valuta.entity.DocumentType;
 import hu.puzzleir.valuta.entity.CustomerRiskRating;
+import hu.puzzleir.valuta.entity.ReviewStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -66,6 +67,11 @@ public class CustomerDto {
     private String notes;
     // MNB kockázati besorolás (FS-2)
     private CustomerRiskRating riskRating;
+
+    // Compliance "Átnézve" workflow (FS-3)
+    private ReviewStatus reviewStatus;
+    private String reviewedBy;
+    private LocalDateTime reviewedAt;
 
     // Megerősített eljárás (EDD, V.2.7 — V309/V310)
     private LocalDate eddUntil;

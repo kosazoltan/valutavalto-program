@@ -46,6 +46,7 @@ const mockGetByCode = vi.fn()
 const mockGetVip = vi.fn()
 const mockGetFrequent = vi.fn()
 const mockGetTop = vi.fn()
+const mockGetPendingReview = vi.fn()
 const mockDeactivate = vi.fn()
 const mockActivate = vi.fn()
 
@@ -58,6 +59,7 @@ vi.mock('../../services/api/transactions', () => ({
     getVip: (...args: unknown[]) => mockGetVip(...args),
     getFrequent: (...args: unknown[]) => mockGetFrequent(...args),
     getTop: (...args: unknown[]) => mockGetTop(...args),
+    getPendingReview: (...args: unknown[]) => mockGetPendingReview(...args),
     deactivate: (...args: unknown[]) => mockDeactivate(...args),
     activate: (...args: unknown[]) => mockActivate(...args),
   },
@@ -93,6 +95,9 @@ describe('CustomerListPage', () => {
     ])
     mockGetTop.mockResolvedValue([
       { customerId: 4, customerName: 'Top Lista Ügyfél', transactionCount: 7, totalVolumeHuf: 3100000, rank: 1 },
+    ])
+    mockGetPendingReview.mockResolvedValue([
+      { ...mockCustomers[0], id: 9, name: 'Átnézendő Ügyfél', reviewStatus: 'PENDING_REVIEW' },
     ])
     mockDeactivate.mockResolvedValue(undefined)
     mockActivate.mockResolvedValue(undefined)
@@ -370,5 +375,31 @@ describe('CustomerListPage', () => {
       expect(screen.getByText('Nagy Péter')).toBeInTheDocument()
       expect(screen.queryByText('Kiss János')).not.toBeInTheDocument()
     })
+  })
+
+  it('Átnézésre váró szűrő a pending-review endpointot hívja és badge-et jelenít meg', async () => {
+    renderCustomerListPage()
+    await waitFor(() => expect(screen.getByText('Kiss János')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Átnézésre váró' }))
+
+    await waitFor(() => expect(mockGetPendingReview).toHaveBeenCalled())
+    expect(await screen.findByText('Átnézendő Ügyfél')).toBeInTheDocument()
+    expect(screen.getByText('Átnézésre vár')).toBeInTheDocument()
+  })
+
+  it('pending szűrő után az Összes aktív visszatölti az aktív ügyfeleket', async () => {
+    renderCustomerListPage()
+    await waitFor(() => expect(screen.getByText('Kiss János')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Átnézésre váró' }))
+    expect(await screen.findByText('Átnézendő Ügyfél')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Összes aktív' }))
+
+    await waitFor(() => expect(mockGetActive).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText('Kiss János')).toBeInTheDocument()
   })
 })

@@ -12,6 +12,7 @@ import {
   CustomerRestriction,
   CustomerScreeningLog,
   CustomerStats,
+  CustomerVersion,
 } from '../../services/api/transactions'
 import { amlApi, CustomerRiskProfile } from '../../services/api/aml'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -42,6 +43,11 @@ export default function CustomerDetailPage() {
   const [riskReasonInput, setRiskReasonInput] = useState('')
   const [riskSaving, setRiskSaving] = useState(false)
   const [riskError, setRiskError] = useState<string | null>(null)
+  const [reviewSaving, setReviewSaving] = useState(false)
+  const [versions, setVersions] = useState<CustomerVersion[]>([])
+  const [selectedVersion, setSelectedVersion] = useState<CustomerVersion | null>(null)
+  const [versionsLoading, setVersionsLoading] = useState(false)
+  const [versionError, setVersionError] = useState<string | null>(null)
   const [restrictions, setRestrictions] = useState<CustomerRestriction[]>([])
   const [screeningLog, setScreeningLog] = useState<CustomerScreeningLog[]>([])
   const [annualTotal, setAnnualTotal] = useState<number | null>(null)
@@ -116,6 +122,21 @@ export default function CustomerDetailPage() {
     }
   }, [])
 
+  const loadVersionHistory = useCallback(async (customerId: number) => {
+    try {
+      setVersionsLoading(true)
+      setVersionError(null)
+      const nextVersions = await customerApi.getVersions(customerId)
+      setVersions(Array.isArray(nextVersions) ? nextVersions : [])
+      setSelectedVersion(null)
+    } catch (err) {
+      setVersionError(getErrorMessage(err))
+      logger.error('CustomerDetailPage', 'Customer version history load failed:', err)
+    } finally {
+      setVersionsLoading(false)
+    }
+  }, [])
+
   const handleMarkEdd = async () => {
     if (!id || !eddReasonInput.trim()) {
       setEddError(t('customers.eddMarkReasonRequired'))
@@ -156,6 +177,34 @@ export default function CustomerDetailPage() {
     }
   }
 
+  const handleReviewCustomer = async () => {
+    if (!id) return
+    try {
+      setReviewSaving(true)
+      setError(null)
+      const updated = await customerApi.review(Number(id))
+      setCustomer(updated)
+      await loadVersionHistory(Number(id))
+    } catch (err) {
+      setError(getErrorMessage(err))
+      logger.error('CustomerDetailPage', 'Átnézés hiba:', err)
+    } finally {
+      setReviewSaving(false)
+    }
+  }
+
+  const handleSelectVersion = async (versionNo: number) => {
+    if (!id) return
+    try {
+      setVersionError(null)
+      const version = await customerApi.getVersion(Number(id), versionNo)
+      setSelectedVersion(version)
+    } catch (err) {
+      setVersionError(getErrorMessage(err))
+      logger.error('CustomerDetailPage', 'Customer version load failed:', err)
+    }
+  }
+
   useEffect(() => {
     if (!id) return
     const load = async () => {
@@ -167,6 +216,7 @@ export default function CustomerDetailPage() {
         setCustomer(data)
         void loadControlData(numericId)
         void loadCustomerStats(numericId)
+        void loadVersionHistory(numericId)
       } catch (err) {
         setError(getErrorMessage(err))
         logger.error('CustomerDetailPage', 'Failed to load customer:', err)
@@ -175,7 +225,7 @@ export default function CustomerDetailPage() {
       }
     }
     void load()
-  }, [id, loadControlData, loadCustomerStats])
+  }, [id, loadControlData, loadCustomerStats, loadVersionHistory])
 
   const handleSave = async () => {
     if (!customer || !id) return
@@ -304,6 +354,16 @@ export default function CustomerDetailPage() {
     value ? new Date(value).toLocaleDateString('hu-HU') : '-'
   )
 
+  const selectedVersionEntries = (() => {
+    if (!selectedVersion?.snapshot) return [] as [string, unknown][]
+    try {
+      const parsed = JSON.parse(selectedVersion.snapshot) as Record<string, unknown>
+      return Object.entries(parsed)
+    } catch {
+      return [['snapshot', selectedVersion.snapshot]] as [string, unknown][]
+    }
+  })()
+
   const restrictionTypeLabel = (value: string) => ({
     BLOCKED: 'Tiltott',
     SUSPICIOUS: 'Gyanús',
@@ -378,6 +438,18 @@ export default function CustomerDetailPage() {
                 })}
               </span>
             )}
+            {customer.reviewStatus === 'PENDING_REVIEW' && (
+              <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded flex items-center gap-1">
+                <ShieldAlert size={12} />
+                Átnézésre vár
+              </span>
+            )}
+            {customer.reviewStatus === 'REVIEWED' && (
+              <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded flex items-center gap-1">
+                <ShieldCheck size={12} />
+                Átnézve{customer.reviewedBy ? `: ${customer.reviewedBy}` : ''}
+              </span>
+            )}
             <span className={`text-xs px-2 py-0.5 rounded flex items-center gap-1 ${riskRatingClasses[currentRiskRating]}`}>
               <ShieldAlert size={12} />
               <span>{t('customers.riskRatingLabel')}</span>
@@ -386,6 +458,16 @@ export default function CustomerDetailPage() {
           </h1>
         </div>
         <div className="flex flex-wrap gap-2">
+          {customer.reviewStatus === 'PENDING_REVIEW' && !isEditing && (
+            <button
+              onClick={() => void handleReviewCustomer()}
+              disabled={reviewSaving}
+              className="form-button flex items-center gap-1 text-emerald-700"
+            >
+              <ShieldCheck size={16} />
+              Átnézve
+            </button>
+          )}
           {canMarkEdd && !isEditing && (
             <button
               onClick={() => { setEddError(null); setShowEddModal(true) }}
@@ -821,6 +903,65 @@ export default function CustomerDetailPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Version History */}
+        <div className="form-panel lg:col-span-3" data-testid="customer-version-history">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="section-title flex items-center gap-2">
+              <FileText size={16} />
+              Verziótörténet
+            </h2>
+            {versionsLoading && (
+              <span className="flex items-center gap-1 text-sm text-gray-500">
+                <Loader2 size={14} className="animate-spin" />
+                Betöltés...
+              </span>
+            )}
+          </div>
+          {versionError && (
+            <div className="mb-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+              {versionError}
+            </div>
+          )}
+          {versions.length === 0 ? (
+            <div className="text-sm text-gray-500">Nincs verziótörténet.</div>
+          ) : (
+            <div className="overflow-hidden rounded border border-gray-200">
+              <div className="divide-y divide-gray-100">
+                {versions.map((version) => (
+                  <button
+                    key={version.versionNo}
+                    type="button"
+                    onClick={() => void handleSelectVersion(version.versionNo)}
+                    className="grid w-full grid-cols-4 gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+                  >
+                    <span className="font-semibold text-gray-900">v{version.versionNo}</span>
+                    <span>{version.changedBy || '-'}</span>
+                    <span>{version.changeSource}</span>
+                    <span>{formatDateTime(version.changedAt)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {selectedVersionEntries.length > 0 && (
+            <div className="mt-3 overflow-hidden rounded border border-gray-200">
+              <div className="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">
+                v{selectedVersion?.versionNo} snapshot
+              </div>
+              <table className="data-grid w-full text-sm">
+                <tbody>
+                  {selectedVersionEntries.map(([key, value]) => (
+                    <tr key={key}>
+                      <td className="font-mono text-xs text-gray-600">{key}</td>
+                      <td>{value == null ? '-' : String(value)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Document Info */}
