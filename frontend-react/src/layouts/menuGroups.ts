@@ -15,6 +15,7 @@ import {
   Package,
   ClipboardCheck,
   Building2,
+  Banknote,
   MonitorCheck,
   Smartphone,
 } from 'lucide-react'
@@ -111,6 +112,8 @@ export const menuGroups: MenuGroup[] = [
       { path: '/cashdesk/denominations', label: 'Címletezés', icon: FileText },
       // EXCMD b5 FR-KC-05: zárási címletezések választó-menüje.
       { path: '/closing/denominations-menu', label: 'Címletezés – zárások', icon: FileText },
+      // FS-9 S3: aktív címletképek read-only nézegetője (hamis bankjegy ellenőrzés).
+      { path: '/denomination-images', label: 'Címletképek (valuta)', icon: Banknote },
       { path: '/customers', label: 'Ügyfelek', icon: Users },
       { path: '/transit', label: 'Úton lévő csomagok', icon: ArrowLeftRight },
       { path: '/closing/wizard', label: 'Napzárás', icon: FileText },

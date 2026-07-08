@@ -101,4 +101,17 @@ describe('currencyDenominationImageApi', () => {
     )
     expect(result.active).toBe(false)
   })
+
+  it('getImage_returns_blob_via_responseType_blob', async () => {
+    const blob = new Blob(['full'], { type: 'image/jpeg' })
+    mockApi.get.mockResolvedValue({ data: blob })
+    const result = await currencyDenominationImageApi.getImage(
+      '11111111-2222-3333-4444-555555555555',
+    )
+    expect(mockApi.get).toHaveBeenCalledWith(
+      '/currency-denomination-images/11111111-2222-3333-4444-555555555555/image',
+      { responseType: 'blob' },
+    )
+    expect(result).toBe(blob)
+  })
 })

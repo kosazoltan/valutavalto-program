@@ -316,6 +316,12 @@ export const currencyDenominationImageApi = {
     })
     return response.data
   },
+  getImage: async (id: string): Promise<Blob> => {
+    const response = await api.get<Blob>(`/currency-denomination-images/${id}/image`, {
+      responseType: 'blob',
+    })
+    return response.data
+  },
   setActive: async (id: string, active: boolean): Promise<CurrencyDenominationImageDto> => {
     const response = await api.put<CurrencyDenominationImageDto>(
       `/currency-denomination-images/${id}/active`,
