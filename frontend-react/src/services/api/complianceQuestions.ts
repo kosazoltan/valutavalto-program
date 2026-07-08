@@ -25,6 +25,22 @@ export interface UpdateComplianceQuestionRequest {
   displayOrder?: number | null
 }
 
+export interface CreateQuestionAnswerRequest {
+  customerId: number
+  transactionId?: number | null
+  answerText: string
+}
+
+export interface CustomerQuestionAnswerDto {
+  id: string
+  questionId: string
+  customerId: number
+  transactionId: number | null
+  answerText: string
+  answeredByWorkerCode: string | null
+  answeredAt: string
+}
+
 function assertValidDisplayOrder(value: number | null | undefined): void {
   if (value == null) return
   if (!Number.isInteger(value) || value <= 0) {
@@ -53,6 +69,11 @@ function assertValidCreate(req: CreateComplianceQuestionRequest): void {
 export const complianceQuestionApi = {
   list: async (): Promise<ComplianceQuestionDto[]> => {
     const response = await api.get<ComplianceQuestionDto[]>('/compliance-questions')
+    return response.data
+  },
+
+  listActive: async (): Promise<ComplianceQuestionDto[]> => {
+    const response = await api.get<ComplianceQuestionDto[]>('/compliance-questions/active')
     return response.data
   },
 
@@ -86,6 +107,26 @@ export const complianceQuestionApi = {
     const response = await api.put<ComplianceQuestionDto>(`/compliance-questions/${id}/active`, {
       active,
     })
+    return response.data
+  },
+
+  submitAnswer: async (
+    questionId: string,
+    req: CreateQuestionAnswerRequest,
+    idempotencyKey?: string,
+  ): Promise<CustomerQuestionAnswerDto> => {
+    if (!req.answerText.trim()) {
+      throw new Error('A válasz szövege kötelező')
+    }
+    const response = await api.post<CustomerQuestionAnswerDto>(
+      `/compliance-questions/${questionId}/answers`,
+      {
+        customerId: req.customerId,
+        transactionId: req.transactionId ?? null,
+        answerText: req.answerText.trim(),
+      },
+      idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : undefined,
+    )
     return response.data
   },
 }

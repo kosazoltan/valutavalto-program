@@ -559,6 +559,16 @@
     "standardEllenorzes": "Standard ellenőrzés",
     "ugyfelAKuszobFolott": "Ügyfél a küszöb fölött"
   },
+  "complianceQuestions": {
+    "cim": "Compliance kérdések",
+    "igen": "Igen",
+    "leiras": "Tedd fel az ügyfélnek — a válasz az ügyfélhez rögzül.",
+    "mentesSikertelen": "Compliance-válasz mentése sikertelen",
+    "nem": "Nem",
+    "rogzit": "Rögzít",
+    "rogzitve": "Rögzítve",
+    "valaszPlaceholder": "Válasz…"
+  },
   "components": {
     "UjVerzioErkezettMentsdAMunkadMajdInditsdUjraAProgramot": "🔄 Új verzió érkezett! Mentsd a munkád, majd indítsd újra a programot.",
     "aBackend": "A backend",

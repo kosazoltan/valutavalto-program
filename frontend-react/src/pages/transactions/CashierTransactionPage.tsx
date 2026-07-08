@@ -37,6 +37,7 @@ import { getBandForAmount, isWithinBand, isWithinHardLimit, getHardLimitMessage 
 import RateAuthDialog from './components/RateAuthDialog'
 import { getErrorMessage } from '../../utils/errorHandling'
 import IncomeSourceDocCapture from '../../components/documents/IncomeSourceDocCapture'
+import ComplianceQuestionsBlock from './components/ComplianceQuestionsBlock'
 
 /**
  * Penztaros Eladas/Vetel kepernyoje — 6 soros valuta tabla.
@@ -148,6 +149,9 @@ export default function CashierTransactionPage() {
 
   // Customer state (managed by CustomerPanel)
   const customerDataRef = useRef<CustomerPanelData | null>(null)
+  // FS-10 S3: compliance-kérdés blokk — CSAK mentett (id-s) ügyfélnél él.
+  // A ref nem triggerel renderet, ezért a customerId-t state-ben tükrözzük.
+  const [complianceCustomerId, setComplianceCustomerId] = useState<number | null>(null)
   // EXCMD b9-korlevelek FR-03: gyanú-bejelentés (SAR) modal
   const [showSuspicionModal, setShowSuspicionModal] = useState(false)
   const amlResultRef = useRef<AmlCheckResultDto | null>(null)
@@ -1427,6 +1431,7 @@ export default function CashierTransactionPage() {
       setActiveRow(0)
       setActiveField('currency')
       customerDataRef.current = null
+      setComplianceCustomerId(null)
       amlResultRef.current = null
       incomeProofBase64Ref.current = null
       setShowIncomeProofModal(false)
@@ -1566,6 +1571,7 @@ export default function CashierTransactionPage() {
     setFeeOverrideReason('')
     setCardNumber('')
     customerDataRef.current = null
+    setComplianceCustomerId(null)
     amlResultRef.current = null
     incomeProofBase64Ref.current = null
     setShowIncomeProofModal(false)
@@ -1985,9 +1991,18 @@ export default function CashierTransactionPage() {
               onLevelChange={setIdentificationLevel}
               requiresSourceVerification={requiresSourceVerification}
               hufTotal={total}
-              onCustomerReady={(data) => { customerDataRef.current = data }}
+              onCustomerReady={(data) => {
+                customerDataRef.current = data
+                setComplianceCustomerId(data?.id ?? null)
+              }}
               onAmlResult={(result) => { amlResultRef.current = result }}
             />
+
+            {/* FS-10 S3: center-ben rögzített compliance-kérdések — nem blokkoló,
+                a válasz az ügyfélhez kötve rögzül (transactionId nélkül). */}
+            {complianceCustomerId != null && (
+              <ComplianceQuestionsBlock key={complianceCustomerId} customerId={complianceCustomerId} />
+            )}
 
             {/* Veglegestes gomb */}
             <button
