@@ -54,6 +54,7 @@ const VaultStocktakeDetailPage = lazy(
 )
 const ComplianceDashboardPage = lazy(() => import('./pages/compliance/ComplianceDashboardPage'))
 const DocumentShortagePage = lazy(() => import('./pages/compliance/DocumentShortagePage'))
+const ComplianceQuestionsPage = lazy(() => import('./pages/compliance/ComplianceQuestionsPage'))
 const TransactionPage = lazy(() => import('./pages/transactions/TransactionPage'))
 const TransactionListPage = lazy(() => import('./pages/transactions/TransactionListPage'))
 const ConversionPage = lazy(() => import('./pages/transactions/ConversionPage'))
@@ -627,6 +628,14 @@ export default function App() {
                   }
                 />
                 <Route path="/compliance/document-shortages" element={<DocumentShortagePage />} />
+                <Route
+                  path="/compliance/questions"
+                  element={
+                    <MenuRoleGate path="/compliance/questions">
+                      <ComplianceQuestionsPage />
+                    </MenuRoleGate>
+                  }
+                />
 
                 {/* Cashier (penztaros) routes */}
                 <Route path="/cashier" element={<CashierMainMenu />} />
