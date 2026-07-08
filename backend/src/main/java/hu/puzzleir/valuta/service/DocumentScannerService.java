@@ -112,8 +112,8 @@ public class DocumentScannerService {
                 .build();
 
         doc = scannedDocumentRepository.save(doc);
-        log.info("Dokumentum feltöltve: id={}, customerId={}, transactionId={}, type={}",
-                doc.getId(), doc.getCustomerId(), doc.getTransactionId(), doc.getDocumentType());
+        log.info("Dokumentum feltöltve: id={}, transactionId={}, type={}",
+                doc.getId(), doc.getTransactionId(), doc.getDocumentType());
         return toDto(doc);
     }
 
@@ -179,8 +179,8 @@ public class DocumentScannerService {
                 buildImage(doc.getId(), DocumentSide.FRONT, front, frontBytes, frontThumb));
         scannedDocumentImageRepository.save(
                 buildImage(doc.getId(), DocumentSide.BACK, back, backBytes, backThumb));
-        log.info("Okmány-képpár mentve: id={}, customerId={}, transactionId={}, type={}",
-                doc.getId(), doc.getCustomerId(), doc.getTransactionId(), doc.getDocumentType());
+        log.info("Okmány-képpár mentve: id={}, transactionId={}, type={}",
+                doc.getId(), doc.getTransactionId(), doc.getDocumentType());
         return toDto(doc, true, true);
     }
 
