@@ -97,4 +97,7 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
      * előtt ezzel validáljuk, hogy az ügyfél a hívó cégéhez tartozik-e.
      */
     boolean existsByIdAndCompany_Id(Long id, UUID companyId);
+
+    /** FS-10 S1: cég-scope-olt létezés-ellenőrzés a válasz-rögzítés fail-closed guardjához. */
+    boolean existsByIdAndCompanyId(Long id, UUID companyId);
 }
