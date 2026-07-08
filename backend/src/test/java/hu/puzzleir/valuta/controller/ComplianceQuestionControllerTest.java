@@ -25,6 +25,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -170,6 +171,31 @@ class ComplianceQuestionControllerTest {
                 .active(true)
                 .createdByWorkerCode("W-001")
                 .build();
+    }
+
+    @Test
+    @DisplayName("submitAnswer: insert-race DIVE után egyszeri retry — 201, complete, nincs fail")
+    void submitAnswer_insertRace_retriesOnceAndSucceeds() throws Exception {
+        CustomerQuestionAnswerDto answer = answerDto("YES");
+        IdempotencyGuard.Acquired<CustomerQuestionAnswerDto> acquired =
+                new IdempotencyGuard.Acquired<>(null, null, CustomerQuestionAnswerDto.class);
+        when(idempotencyGuard.tryAcquire(eq("test-key-1"), eq(ANSWER_ENDPOINT),
+                any(CreateQuestionAnswerDto.class), eq(CustomerQuestionAnswerDto.class)))
+                .thenReturn(acquired);
+        when(service.submitAnswer(eq(QUESTION_ID), any(CreateQuestionAnswerDto.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("ux_cqa_company_question_customer_tx"))
+                .thenReturn(answer);
+
+        mockMvc.perform(post("/api/v1/compliance-questions/{id}/answers", QUESTION_ID)
+                        .header("Idempotency-Key", "test-key-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"customerId\":42,\"answerText\":\"yes\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(ANSWER_ID.toString()));
+
+        verify(service, times(2)).submitAnswer(eq(QUESTION_ID), any(CreateQuestionAnswerDto.class));
+        verify(idempotencyGuard).complete(any(), eq(answer));
+        verify(idempotencyGuard, never()).fail(any());
     }
 
     private static CustomerQuestionAnswerDto answerDto(String answerText) {
