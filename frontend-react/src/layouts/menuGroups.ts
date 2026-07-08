@@ -261,6 +261,7 @@ export const menuGroups: MenuGroup[] = [
       { path: '/sanction', label: 'Szankciós lista (AML)', icon: ShieldAlert },
       { path: '/seal-tracking', label: 'Plomba nyilvántartás', icon: Shield },
       { path: '/compliance', label: 'Compliance Dashboard', icon: ClipboardCheck },
+      { path: '/compliance/questions', label: 'Compliance kérdések', icon: ClipboardCheck },
     ],
   },
   {
