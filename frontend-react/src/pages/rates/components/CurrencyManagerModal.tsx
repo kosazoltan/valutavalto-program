@@ -5,6 +5,7 @@ import { logger } from '../../../utils/logger'
 import { currencyApi } from '../../../services/api/exchange-rates'
 import { getErrorMessage } from '../../../utils/errorHandling'
 import type { Currency } from '../../../services/api/exchange-rates'
+import CurrencyDenominationImagesPanel from './CurrencyDenominationImagesPanel'
 
 /**
  * V238 (2026-05-19) — Currency Manager modal.
@@ -493,6 +494,10 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="mt-2" data-testid="currency-manager-denomination-panel">
+            <CurrencyDenominationImagesPanel currency={selectedCurrencyDetail} />
           </div>
 
           <p className="text-xs text-gray-500 dark:text-gray-400">
