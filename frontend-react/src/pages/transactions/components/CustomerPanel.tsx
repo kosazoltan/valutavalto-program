@@ -195,6 +195,9 @@ export default function CustomerPanel({
   const [showResults, setShowResults] = useState(false)
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [selectedCustomer, setSelectedCustomer] = useState<ApiCustomer | null>(null)
+  // TD9: az auto-propagate effekt utoljára propagált payloadjának szerializált alakja.
+  // null = még nem propagált, vagy a selectedCustomer-fázis resetelte (restart-garancia).
+  const lastAutoPropagatedRef = useRef<string | null>(null)
 
   // Form fields
   const [customerName, setCustomerName] = useState('')
@@ -699,29 +702,41 @@ export default function CustomerPanel({
   // Auto-propagate form data so the transaction can proceed even without explicit save.
   // SIMPLE mode: only nationality; SIMPLIFIED/FULL: all filled fields.
   useEffect(() => {
-    if (selectedCustomer) return
-    if (identificationLevel === 'SIMPLE') {
-      onCustomerReady({
-        name: '',
-        documentType: '',
-        documentNumber: '',
-        nationality: customerNationality,
-      })
-    } else {
-      onCustomerReady({
-        name: customerName.trim(),
-        documentType: customerDocType,
-        documentNumber: customerDocNumber.trim(),
-        nationality: customerNationality,
-        birthPlace: customerBirthPlace.trim() || undefined,
-        birthDate: customerBirthDate || undefined,
-        birthName: customerBirthName.trim() || undefined,
-        motherName: customerMotherName.trim() || undefined,
-        address: customerAddress.trim() || undefined,
-        residence: customerResidence.trim() || undefined,
-        addressCardNumber: customerAddressCardNumber.trim() || undefined,
-      })
+    if (selectedCustomer) {
+      // TD9: kiválasztott ügyfélnél nincs auto-propagate; a ref reset garantálja,
+      // hogy clear után az effekt akkor is újra propagál, ha a payload megegyezik
+      // a kiválasztás előtti utolsóval.
+      lastAutoPropagatedRef.current = null
+      return
     }
+    const payload: CustomerPanelData =
+      identificationLevel === 'SIMPLE'
+        ? {
+            name: '',
+            documentType: '',
+            documentNumber: '',
+            nationality: customerNationality,
+          }
+        : {
+            name: customerName.trim(),
+            documentType: customerDocType,
+            documentNumber: customerDocNumber.trim(),
+            nationality: customerNationality,
+            birthPlace: customerBirthPlace.trim() || undefined,
+            birthDate: customerBirthDate || undefined,
+            birthName: customerBirthName.trim() || undefined,
+            motherName: customerMotherName.trim() || undefined,
+            address: customerAddress.trim() || undefined,
+            residence: customerResidence.trim() || undefined,
+            addressCardNumber: customerAddressCardNumber.trim() || undefined,
+          }
+    // TD9 change-guard: idempotens re-render / trim-ekvivalens state-változás
+    // ne triggereljen redundáns onCustomerReady-t. A kulcssorrend literál-fix,
+    // az undefined mezőket a JSON.stringify kihagyja → stabil kanonikus alak.
+    const serialized = JSON.stringify(payload)
+    if (serialized === lastAutoPropagatedRef.current) return
+    lastAutoPropagatedRef.current = serialized
+    onCustomerReady(payload)
   }, [
     identificationLevel,
     customerNationality,
