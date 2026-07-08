@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { AxiosError } from 'axios'
 import CurrencyManagerModal, { computeNextDisplayOrder } from './CurrencyManagerModal'
-import { currencyApi } from '../../../services/api/exchange-rates'
+import { currencyApi, currencyDenominationImageApi } from '../../../services/api/exchange-rates'
 import { toast } from '../../../components/ui/toaster'
 import type { Currency } from '../../../services/api/exchange-rates'
 
@@ -13,6 +13,12 @@ vi.mock('../../../services/api/exchange-rates', () => ({
     getById: vi.fn(),
     search: vi.fn(),
     create: vi.fn(),
+    setActive: vi.fn(),
+  },
+  currencyDenominationImageApi: {
+    list: vi.fn().mockResolvedValue([]),
+    upload: vi.fn(),
+    getThumbnail: vi.fn(),
     setActive: vi.fn(),
   },
 }))
@@ -54,6 +60,7 @@ describe('FK04 (FR-8) — CurrencyManagerModal', () => {
     vi.mocked(currencyApi.search).mockResolvedValue([cur('EUR', 1)])
     vi.mocked(currencyApi.getByCode).mockResolvedValue(cur('EUR', 1))
     vi.mocked(currencyApi.getById).mockResolvedValue(cur('EUR', 1))
+    vi.mocked(currencyDenominationImageApi.list).mockResolvedValue([])
   })
 
   it('az "Új valuta" form a max(displayOrder)+1 defaulttal nyílik (nem 99-cel)', async () => {
@@ -132,5 +139,20 @@ describe('FK04 (FR-8) — CurrencyManagerModal', () => {
     await waitFor(() => expect(vi.mocked(currencyApi.getByCode)).toHaveBeenCalledWith('EUR'))
     expect(await screen.findByTestId('currency-manager-detail')).toHaveTextContent('Backend EUR ID detail')
     expect(screen.getByTestId('currency-manager-code-check')).toHaveTextContent('Kód-ellenőrzés: EUR / #2')
+  })
+
+  it('címletképek panel megjelenik ha ki van jelölve valuta', async () => {
+    vi.mocked(currencyApi.getAll).mockResolvedValue([cur('EUR', 1)])
+    vi.mocked(currencyApi.getById).mockResolvedValue(cur('EUR', 1))
+    vi.mocked(currencyApi.getByCode).mockResolvedValue(cur('EUR', 1))
+
+    render(<CurrencyManagerModal isOpen onClose={() => {}} />)
+    await screen.findByText('EUR valuta')
+
+    fireEvent.click(screen.getByTestId('detail-EUR'))
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('denomination-image-upload-button')).toBeInTheDocument(),
+    )
   })
 })

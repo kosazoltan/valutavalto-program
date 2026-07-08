@@ -242,6 +242,89 @@ export const currencyApi = {
   },
 }
 
+// ================== CURRENCY DENOMINATION IMAGES API (FS-9 S2) ==================
+
+export type CurrencyDenominationType = 'BANKNOTE' | 'COIN'
+export type CurrencyDenominationSide = 'FRONT' | 'BACK'
+
+export interface CurrencyDenominationImageDto {
+  id: string
+  currencyId: number
+  faceValue: number
+  denominationType: CurrencyDenominationType | string
+  side: CurrencyDenominationSide | string
+  mimeType: string
+  fileSizeBytes: number
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CurrencyDenominationImageUploadRequest {
+  currencyId: number
+  faceValue: number
+  denominationType: CurrencyDenominationType
+  side: CurrencyDenominationSide
+  file: File
+}
+
+function assertValidCurrencyDenominationUpload(req: CurrencyDenominationImageUploadRequest): void {
+  if (!Number.isFinite(req.currencyId) || req.currencyId <= 0) {
+    throw new Error('Valuta kiválasztása kötelező')
+  }
+  if (!Number.isFinite(req.faceValue) || req.faceValue <= 0) {
+    throw new Error('A címlet értékének pozitív számnak kell lennie')
+  }
+  if (req.denominationType !== 'BANKNOTE' && req.denominationType !== 'COIN') {
+    throw new Error('Érvénytelen címlet típus')
+  }
+  if (req.side !== 'FRONT' && req.side !== 'BACK') {
+    throw new Error('Érvénytelen oldal')
+  }
+  if (req.file.type !== 'image/jpeg' && req.file.type !== 'image/png') {
+    throw new Error('Csak JPEG vagy PNG kép tölthető fel')
+  }
+}
+
+export const currencyDenominationImageApi = {
+  list: async (currencyId?: number): Promise<CurrencyDenominationImageDto[]> => {
+    const response = await api.get<CurrencyDenominationImageDto[]>('/currency-denomination-images', {
+      params: currencyId != null ? { currencyId } : {},
+    })
+    return response.data
+  },
+  upload: async (
+    req: CurrencyDenominationImageUploadRequest,
+  ): Promise<CurrencyDenominationImageDto> => {
+    assertValidCurrencyDenominationUpload(req)
+    const formData = new FormData()
+    formData.append('currencyId', String(req.currencyId))
+    formData.append('faceValue', String(req.faceValue))
+    formData.append('denominationType', req.denominationType)
+    formData.append('side', req.side)
+    formData.append('file', req.file)
+    const response = await api.post<CurrencyDenominationImageDto>(
+      '/currency-denomination-images/upload',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    )
+    return response.data
+  },
+  getThumbnail: async (id: string): Promise<Blob> => {
+    const response = await api.get<Blob>(`/currency-denomination-images/${id}/thumbnail`, {
+      responseType: 'blob',
+    })
+    return response.data
+  },
+  setActive: async (id: string, active: boolean): Promise<CurrencyDenominationImageDto> => {
+    const response = await api.put<CurrencyDenominationImageDto>(
+      `/currency-denomination-images/${id}/active`,
+      { active },
+    )
+    return response.data
+  },
+}
+
 // ================== RATE CREATION API ==================
 
 export interface BankRateDTO {
