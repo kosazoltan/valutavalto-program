@@ -3,12 +3,14 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.SystemParameter;
 import hu.puzzleir.valuta.repository.SystemParameterRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -22,8 +24,25 @@ public class SystemParameterService {
     public List<SystemParameter> listActive() { return repo.findByIsActiveTrue(); }
     public List<SystemParameter> listByCategory(String cat) { return repo.findByCategory(cat); }
 
+    /**
+     * TD7: effektív paraméter-lookup. Cég-kontextusban először a cég-specifikus sor
+     * (parameter_key + company_id), hiányában a globális (company_id IS NULL).
+     * Kontextus nélkül (scheduler/startup/async: getCurrentCompanyIdOrNull() == null)
+     * közvetlenül a globális sor.
+     */
+    private Optional<SystemParameter> findEffective(String key) {
+        UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
+        if (companyId != null) {
+            Optional<SystemParameter> scoped = repo.findByParameterKeyAndCompanyId(key, companyId);
+            if (scoped.isPresent()) {
+                return scoped;
+            }
+        }
+        return repo.findByParameterKeyAndCompanyIdIsNull(key);
+    }
+
     public SystemParameter getByKey(String key) {
-        return repo.findByParameterKey(key)
+        return findEffective(key)
                 .orElseThrow(() -> new ResourceNotFoundException("Paraméter nem található: " + key));
     }
 
@@ -41,7 +60,7 @@ public class SystemParameterService {
      */
     public String getValue(String key, String defaultValue) {
         try {
-            SystemParameter p = repo.findByParameterKey(key).orElse(null);
+            SystemParameter p = findEffective(key).orElse(null);
             if (p == null || p.getParameterValue() == null || p.getParameterValue().isBlank()) {
                 return defaultValue;
             }
@@ -57,7 +76,7 @@ public class SystemParameterService {
 
     @Transactional(rollbackFor = Exception.class)
     public SystemParameter upsert(String key, String value, String category, String description) {
-        return repo.findByParameterKey(key)
+        return repo.findByParameterKeyAndCompanyIdIsNull(key)
                 .map(p -> {
                     p.setParameterValue(value);
                     if (description != null) p.setDescription(description);

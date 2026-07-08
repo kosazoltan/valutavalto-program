@@ -18,8 +18,16 @@ public class SystemParameter {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "parameter_key", nullable = false, unique = true, length = 100)
+    @Column(name = "parameter_key", nullable = false, length = 100)
     private String parameterKey;
+
+    /**
+     * TD7: opcionális cég-scope. NULL = globális default (minden cég + scheduler ezt
+     * kapja fallbackként). Nem FK (V39/V77 típus-drift tanulság, V347 precedens):
+     * a parciális unique indexek védenek (V348).
+     */
+    @Column(name = "company_id")
+    private UUID companyId;
 
     @Column(name = "parameter_value", nullable = false, columnDefinition = "TEXT")
     private String parameterValue;

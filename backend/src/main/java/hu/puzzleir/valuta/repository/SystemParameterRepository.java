@@ -11,6 +11,8 @@ import java.util.UUID;
 @Repository
 public interface SystemParameterRepository extends JpaRepository<SystemParameter, UUID> {
     Optional<SystemParameter> findByParameterKey(String key);
+    Optional<SystemParameter> findByParameterKeyAndCompanyId(String key, UUID companyId);
+    Optional<SystemParameter> findByParameterKeyAndCompanyIdIsNull(String key);
     List<SystemParameter> findByIsActiveTrue();
     List<SystemParameter> findByCategory(String category);
 }
