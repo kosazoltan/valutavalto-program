@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -96,7 +97,20 @@ public class ComplianceQuestionController {
             return ResponseEntity.status(HttpStatus.CREATED).body(acquired.cachedResult());
         }
         try {
-            CustomerQuestionAnswerDto result = service.submitAnswer(id, dto);
+            CustomerQuestionAnswerDto result;
+            try {
+                result = service.submitAnswer(id, dto);
+            } catch (DataIntegrityViolationException race) {
+                // TD6 (CQA-UPSERT-RACE): két EGYIDEJŰ első válasz azonos (company, question,
+                // customer, tx) upsert-kulcsra, de KÜLÖNBÖZŐ Idempotency-Key-jel → a vesztes
+                // INSERT a V347 parciális unique indexen bukik, a tranzakciója visszagördül
+                // (flush-hiba után a tx rollback-only, service-en belül nem javítható).
+                // EGYSZERI retry ÚJ tranzakcióban: a re-read már megtalálja a győztes sort,
+                // és a meglévő UPDATE-ág last-writer-wins-szel fejezi be az upsertet —
+                // azonosan a szekvenciális kétszeri POST szemantikájával. Ha a retry is
+                // elszáll (elvi lehetetlen: válasz-sort semmi nem töröl), a hiba propagál.
+                result = service.submitAnswer(id, dto);
+            }
             idempotencyGuard.complete(acquired, result);
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
         } catch (Exception e) {

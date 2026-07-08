@@ -123,16 +123,32 @@ public class ComplianceQuestionService {
                         companyId, questionId, dto.getCustomerId())
                 : answerRepository.findByCompanyIdAndQuestionIdAndCustomerIdAndTransactionId(
                         companyId, questionId, dto.getCustomerId(), dto.getTransactionId()))
-                .orElseGet(() -> CustomerQuestionAnswer.builder()
-                        .companyId(companyId)
-                        .questionId(questionId)
-                        .customerId(dto.getCustomerId())
-                        .transactionId(dto.getTransactionId())
-                        .build());
+                .orElse(null);
+        boolean isNew = answer == null;
+        if (isNew) {
+            answer = CustomerQuestionAnswer.builder()
+                    .companyId(companyId)
+                    .questionId(questionId)
+                    .customerId(dto.getCustomerId())
+                    .transactionId(dto.getTransactionId())
+                    .build();
+        }
         answer.setAnswerText(answerText);
         answer.setAnsweredByWorkerCode(SecurityUtils.getCurrentWorkerCode());
         answer.setAnsweredAt(LocalDateTime.now());
         answer = answerRepository.save(answer);
+        if (isNew) {
+            // TD6 (CQA-UPSERT-RACE): explicit flush, hogy két EGYIDEJŰ első válasz
+            // (azonos upsert-kulcs, KÜLÖNBÖZŐ Idempotency-Key) versenyénél a V347
+            // parciális unique index sértése MÉG A METÓDUSON BELÜL,
+            // DataIntegrityViolationException-ként dobódjon — commit-flushnál
+            // TransactionSystemException lenne, amit a hívó nem ismerne fel.
+            // A DIVE-ot itt szándékosan NEM kapjuk el: flush-hiba után a Hibernate a
+            // tranzakciót rollback-only-ra jelöli, ugyanebben a tranzakcióban javító írás
+            // már nem lehetséges. A helyreállítást (re-read + last-writer-wins update)
+            // a ComplianceQuestionController egyszeri retry-ja végzi ÚJ tranzakcióban.
+            answerRepository.flush();
+        }
         log.info("Compliance-válasz rögzítve: questionId={}, answerId={}", questionId, answer.getId());
         return toDto(answer);
     }

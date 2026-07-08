@@ -22,6 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -366,6 +368,56 @@ class ComplianceQuestionServiceTest {
         }
 
         verify(answerRepository).findByCompanyIdAndCustomerIdOrderByAnsweredAtDesc(COMPANY_ID, CUSTOMER_ID);
+    }
+
+    @Test
+    @DisplayName("submitAnswer: insert-race — a flush DIVE-ja változatlanul propagál (a controller-retry kapja el)")
+    void submitAnswer_insertRace_propagatesDataIntegrityViolation() {
+        ComplianceQuestion question = question(ComplianceQuestionType.FREE_TEXT, true);
+        when(questionRepository.findByIdAndCompanyId(QUESTION_ID, COMPANY_ID)).thenReturn(Optional.of(question));
+        when(customerRepository.existsByIdAndCompanyId(CUSTOMER_ID, COMPANY_ID)).thenReturn(true);
+        when(answerRepository.findByCompanyIdAndQuestionIdAndCustomerIdAndTransactionIdIsNull(
+                COMPANY_ID, QUESTION_ID, CUSTOMER_ID)).thenReturn(Optional.empty());
+        when(answerRepository.save(any(CustomerQuestionAnswer.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        DataIntegrityViolationException dive =
+                new DataIntegrityViolationException("ux_cqa_company_question_customer_notx");
+        doThrow(dive).when(answerRepository).flush();
+
+        try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("W-001");
+
+            assertThatThrownBy(() -> service.submitAnswer(QUESTION_ID, CreateQuestionAnswerDto.builder()
+                    .customerId(CUSTOMER_ID)
+                    .answerText("válasz")
+                    .build()))
+                    .isSameAs(dive);
+        }
+    }
+
+    @Test
+    @DisplayName("submitAnswer: meglévő sor UPDATE-ága nem flush-ol (ott nincs insert-race)")
+    void submitAnswer_existingAnswer_noExplicitFlush() {
+        ComplianceQuestion question = question(ComplianceQuestionType.FREE_TEXT, true);
+        CustomerQuestionAnswer existing = answer("régi", TRANSACTION_ID);
+        when(questionRepository.findByIdAndCompanyId(QUESTION_ID, COMPANY_ID)).thenReturn(Optional.of(question));
+        when(customerRepository.existsByIdAndCompanyId(CUSTOMER_ID, COMPANY_ID)).thenReturn(true);
+        when(answerRepository.findByCompanyIdAndQuestionIdAndCustomerIdAndTransactionId(
+                COMPANY_ID, QUESTION_ID, CUSTOMER_ID, TRANSACTION_ID)).thenReturn(Optional.of(existing));
+        when(answerRepository.save(any(CustomerQuestionAnswer.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("W-002");
+
+            service.submitAnswer(QUESTION_ID, CreateQuestionAnswerDto.builder()
+                    .customerId(CUSTOMER_ID)
+                    .transactionId(TRANSACTION_ID)
+                    .answerText("új")
+                    .build());
+        }
+
+        verify(answerRepository, never()).flush();
     }
 
     private static ComplianceQuestion question(ComplianceQuestionType type, boolean active) {
