@@ -91,4 +91,42 @@ describe('complianceQuestionApi', () => {
     })
     expect(result.active).toBe(false)
   })
+
+  it('listActive_calls_get_active_endpoint', async () => {
+    mockApi.get.mockResolvedValue({ data: [dto] })
+    const result = await complianceQuestionApi.listActive()
+    expect(mockApi.get).toHaveBeenCalledWith('/compliance-questions/active')
+    expect(result).toEqual([dto])
+  })
+
+  it('submitAnswer_posts_trimmed_body_with_idempotency_key', async () => {
+    const answer = {
+      id: 'a1',
+      questionId: dto.id,
+      customerId: 42,
+      transactionId: null,
+      answerText: 'Igen',
+      answeredByWorkerCode: 'FZS',
+      answeredAt: '2026-07-08T11:00:00',
+    }
+    mockApi.post.mockResolvedValue({ data: answer })
+    const result = await complianceQuestionApi.submitAnswer(
+      dto.id,
+      { customerId: 42, answerText: '  Igen  ' },
+      'idem-key-1',
+    )
+    expect(mockApi.post).toHaveBeenCalledWith(
+      `/compliance-questions/${dto.id}/answers`,
+      { customerId: 42, transactionId: null, answerText: 'Igen' },
+      { headers: { 'Idempotency-Key': 'idem-key-1' } },
+    )
+    expect(result).toEqual(answer)
+  })
+
+  it('submitAnswer_rejects_blank_answer_without_network_call', async () => {
+    await expect(
+      complianceQuestionApi.submitAnswer(dto.id, { customerId: 42, answerText: '   ' }),
+    ).rejects.toThrow('A válasz szövege kötelező')
+    expect(mockApi.post).not.toHaveBeenCalled()
+  })
 })

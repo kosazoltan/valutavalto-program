@@ -132,7 +132,14 @@ describe('ReceiptPage backend detail contract', () => {
       expect(mocks.receiptList).toHaveBeenCalled()
     })
 
-    await user.type(await screen.findByLabelText('Zárás azonosító'), 'closing-1')
+    const closingIdInput = await screen.findByLabelText('Zárás azonosító')
+    await user.type(closingIdInput, 'closing-1')
+    // Flaky-hardening (FE-FLAKY-SWEEP): teljes-suite parhuzamos terheles alatt a
+    // userEvent.type utolso karaktere a klikk-handler ertekolvasasa elott meg nem
+    // biztos hogy committolt (race: 'closing-' erkezett 'closing-1' helyett). A
+    // klikk ELOTT bevarjuk hogy az input a TELJES erteket tukrozze — nem gyengit
+    // egyetlen asszertot sem, csak a valos state-et varja meg.
+    await waitFor(() => expect(closingIdInput).toHaveValue('closing-1'))
     await user.click(await screen.findByTestId('receipt-closing-pdf-download'))
 
     await waitFor(() => {
