@@ -29,7 +29,7 @@ async function mockDenominationApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,31 +52,91 @@ async function mockDenominationApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     const bodies: Record<string, unknown> = {
-      '/api/v1/currencies': [
-        { id: 1, code: 'EUR', name: 'Euró', decimals: 2, active: true },
-      ],
+      '/api/v1/currencies': [{ id: 1, code: 'EUR', name: 'Euró', decimals: 2, active: true }],
       '/api/v1/denominations/currency/1': [
-        { id: 10, currencyId: 1, currencyCode: 'EUR', faceValue: 50, denominationType: 'BANKNOTE', active: true },
-        { id: 11, currencyId: 1, currencyCode: 'EUR', faceValue: 20, denominationType: 'BANKNOTE', active: true },
+        {
+          id: 10,
+          currencyId: 1,
+          currencyCode: 'EUR',
+          faceValue: 50,
+          denominationType: 'BANKNOTE',
+          active: true,
+        },
+        {
+          id: 11,
+          currencyId: 1,
+          currencyCode: 'EUR',
+          faceValue: 20,
+          denominationType: 'BANKNOTE',
+          active: true,
+        },
       ],
       '/api/v1/denominations': [
-        { id: 10, currencyId: 1, currencyCode: 'EUR', faceValue: 50, denominationType: 'BANKNOTE', quantity: 0, active: true },
-        { id: 11, currencyId: 1, currencyCode: 'EUR', faceValue: 20, denominationType: 'BANKNOTE', quantity: 0, active: true },
+        {
+          id: 10,
+          currencyId: 1,
+          currencyCode: 'EUR',
+          faceValue: 50,
+          denominationType: 'BANKNOTE',
+          quantity: 0,
+          active: true,
+        },
+        {
+          id: 11,
+          currencyId: 1,
+          currencyCode: 'EUR',
+          faceValue: 20,
+          denominationType: 'BANKNOTE',
+          quantity: 0,
+          active: true,
+        },
       ],
       '/api/v1/denominations/code/EUR': [
-        { id: 10, currencyId: 1, currencyCode: 'EUR', faceValue: 50, denominationType: 'BANKNOTE', quantity: 0, active: true },
-        { id: 11, currencyId: 1, currencyCode: 'EUR', faceValue: 20, denominationType: 'BANKNOTE', quantity: 0, active: true },
+        {
+          id: 10,
+          currencyId: 1,
+          currencyCode: 'EUR',
+          faceValue: 50,
+          denominationType: 'BANKNOTE',
+          quantity: 0,
+          active: true,
+        },
+        {
+          id: 11,
+          currencyId: 1,
+          currencyCode: 'EUR',
+          faceValue: 20,
+          denominationType: 'BANKNOTE',
+          quantity: 0,
+          active: true,
+        },
       ],
       '/api/v1/denominations/alerts/low-stock': [
-        { id: 11, currencyId: 1, currencyCode: 'EUR', faceValue: 20, denominationType: 'BANKNOTE', quantity: 1, active: true },
+        {
+          id: 11,
+          currencyId: 1,
+          currencyCode: 'EUR',
+          faceValue: 20,
+          denominationType: 'BANKNOTE',
+          quantity: 1,
+          active: true,
+        },
       ],
       '/api/v1/denominations/summary/1': {
         currencyId: 1,
@@ -102,7 +162,11 @@ async function mockDenominationApis(page: Page) {
 
     const body = bodies[path]
     if (body !== undefined) {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(body),
+      })
     }
 
     if (path.endsWith('/denominations/optimal-change') && method === 'GET') {
@@ -142,26 +206,33 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('címletezés mobil viewporton használja az összes címlet és total endpointokat', async ({ page }) => {
+test('címletezés mobil viewporton használja az összes címlet és total endpointokat', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockDenominationApis(page)
   await login(page)
 
-  const allRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/cash-desks/cashdesk-1/denominations'
+  const allRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/cash-desks/cashdesk-1/denominations',
   )
-  const totalRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/cash-desks/cashdesk-1/denominations/currency/1/total'
+  const totalRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname ===
+        '/api/v1/cash-desks/cashdesk-1/denominations/currency/1/total',
   )
-  const lowStockRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/denominations/alerts/low-stock'
+  const lowStockRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/denominations/alerts/low-stock',
   )
-  const codeRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/denominations/code/EUR'
+  const codeRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/denominations/code/EUR',
   )
   await page.goto('/cashdesk/denominations', { waitUntil: 'domcontentloaded' })
   await allRequest
@@ -176,30 +247,33 @@ test('címletezés mobil viewporton használja az összes címlet és total endp
   await expect(page.getByText('Kód ellenőrzés:')).toBeVisible()
   await expect(page.getByText('50 EUR')).toBeVisible()
 
-  const optimalRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/denominations/optimal-change'
-    && new URL(request.url()).searchParams.get('amount') === '130'
+  const optimalRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/denominations/optimal-change' &&
+      new URL(request.url()).searchParams.get('amount') === '130',
   )
   await page.getByPlaceholder('Összeg EUR').fill('130')
   await page.getByRole('button', { name: /Optimális visszajáró/ }).click()
   await optimalRequest
   await expect(page.getByText(/50,00 x 2/)).toBeVisible()
 
-  const validateRequest = page.waitForRequest(request => {
+  const validateRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'POST'
-      && url.pathname === '/api/v1/denominations/validate'
-      && url.searchParams.get('currencyId') === '1'
-      && url.searchParams.get('expectedBalance') === '120'
+    return (
+      request.method() === 'POST' &&
+      url.pathname === '/api/v1/denominations/validate' &&
+      url.searchParams.get('currencyId') === '1' &&
+      url.searchParams.get('expectedBalance') === '120'
+    )
   })
   await page.getByPlaceholder('Elvárt egyenleg EUR').fill('120')
   await page.getByRole('button', { name: 'Validálás' }).click()
   await validateRequest
   await expect(page.getByText('Címletezés rendben: 120,00 EUR.')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

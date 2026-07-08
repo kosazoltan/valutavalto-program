@@ -99,20 +99,40 @@ export const authApi = {
     await api.post('/auth/logout')
   },
   refreshCookie,
-  selectRole: async (data: { token: string; roleCode: string; appMode?: string }): Promise<LoginResponse> => {
+  selectRole: async (data: {
+    token: string
+    roleCode: string
+    appMode?: string
+  }): Promise<LoginResponse> => {
     const response = await api.post<LoginResponse>('/auth/login/select-role', data)
     return response.data
   },
-  verifyMfa: async (token: string, code: string, tokenType = 'Bearer'): Promise<MfaVerifyResponse> => {
-    const response = await api.post<MfaVerifyResponse>('/mfa/verify', { code }, {
-      headers: { Authorization: `${tokenType} ${token}` },
-    })
+  verifyMfa: async (
+    token: string,
+    code: string,
+    tokenType = 'Bearer',
+  ): Promise<MfaVerifyResponse> => {
+    const response = await api.post<MfaVerifyResponse>(
+      '/mfa/verify',
+      { code },
+      {
+        headers: { Authorization: `${tokenType} ${token}` },
+      },
+    )
     return response.data
   },
-  verifyMfaBackup: async (token: string, code: string, tokenType = 'Bearer'): Promise<MfaVerifyResponse> => {
-    const response = await api.post<MfaVerifyResponse>('/mfa/verify-backup', { code }, {
-      headers: { Authorization: `${tokenType} ${token}` },
-    })
+  verifyMfaBackup: async (
+    token: string,
+    code: string,
+    tokenType = 'Bearer',
+  ): Promise<MfaVerifyResponse> => {
+    const response = await api.post<MfaVerifyResponse>(
+      '/mfa/verify-backup',
+      { code },
+      {
+        headers: { Authorization: `${tokenType} ${token}` },
+      },
+    )
     return response.data
   },
   /**
@@ -121,16 +141,21 @@ export const authApi = {
    * csak email-ben megy ki.
    */
   forgotPassword: async (email: string): Promise<{ message: string; token?: string }> => {
-    const response = await api.post<{ message: string; token?: string }>('/auth/forgot-password', { email })
+    const response = await api.post<{ message: string; token?: string }>('/auth/forgot-password', {
+      email,
+    })
     return response.data
   },
   /**
    * v2.3.0: Uj jelszo beallitas reset token + uj jelszo alapjan.
    */
   resetPassword: async (token: string, newPassword: string): Promise<{ message: string }> => {
-    const response = await api.post<{ message: string }>('/auth/reset-password', { token, newPassword })
+    const response = await api.post<{ message: string }>('/auth/reset-password', {
+      token,
+      newPassword,
+    })
     return response.data
-  }
+  },
 }
 
 /**

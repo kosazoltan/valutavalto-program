@@ -35,8 +35,7 @@ export const INSTALL_STEPS: InstallStep[] = [
   {
     step_number: 2,
     title: 'Bemutatkozas',
-    instructions:
-      'Tokeletes! Eloszor is mondd meg, hogy hivnak es melyik EBC fiokban dolgozol.',
+    instructions: 'Tokeletes! Eloszor is mondd meg, hogy hivnak es melyik EBC fiokban dolgozol.',
   },
   {
     step_number: 3,

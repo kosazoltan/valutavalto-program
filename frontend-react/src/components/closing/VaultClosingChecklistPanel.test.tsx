@@ -93,9 +93,7 @@ describe('VaultClosingChecklistPanel', () => {
     await waitFor(() => expect(mocks.getOrCreate).toHaveBeenCalledWith(BRANCH_ID, DATE))
 
     // Az 1. tétel szövege megjelenik (findBy: bevárja a betöltés utáni renderét)
-    expect(
-      await screen.findByText(/Minden pénztár készlete feltöltve/),
-    ).toBeInTheDocument()
+    expect(await screen.findByText(/Minden pénztár készlete feltöltve/)).toBeInTheDocument()
 
     // "Zárás véglegesítése" gomb látható (még nincs completedAt)
     expect(screen.getByText('Zárás véglegesítése')).toBeInTheDocument()
@@ -110,7 +108,9 @@ describe('VaultClosingChecklistPanel', () => {
     await waitFor(() => expect(mocks.getOrCreate).toHaveBeenCalled())
 
     // Kattintás az 1. tételre (findBy: bevárja a betöltés utáni renderét)
-    const firstItemButton = await screen.findByRole('button', { name: /Minden pénztár készlete feltöltve/ })
+    const firstItemButton = await screen.findByRole('button', {
+      name: /Minden pénztár készlete feltöltve/,
+    })
     await userEvent.click(firstItemButton)
 
     await waitFor(() =>

@@ -95,10 +95,14 @@ export default function DiscountLevelEditor() {
         <select
           className="border rounded px-3 py-2 text-sm"
           value={selectedWorkgroup}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedWorkgroup(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+            setSelectedWorkgroup(e.target.value)
+          }
         >
           {workgroups.map((wg) => (
-            <option key={wg.id} value={wg.id}>{wg.name} ({wg.code})</option>
+            <option key={wg.id} value={wg.id}>
+              {wg.name} ({wg.code})
+            </option>
           ))}
         </select>
         <button
@@ -121,7 +125,9 @@ export default function DiscountLevelEditor() {
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   type="number"
                   value={editing.level}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, level: parseInt(e.target.value, 10) || 1 })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setEditing({ ...editing, level: parseInt(e.target.value, 10) || 1 })
+                  }
                   min={1}
                   max={3}
                 />
@@ -131,24 +137,34 @@ export default function DiscountLevelEditor() {
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.name}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, name: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setEditing({ ...editing, name: e.target.value })
+                  }
                   placeholder="pl. VIP"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">{t('ratemanagement.veteliKedvezmeny')}</label>
+                <label className="text-sm font-medium">
+                  {t('ratemanagement.veteliKedvezmeny')}
+                </label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.buyDiscountPercent}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, buyDiscountPercent: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setEditing({ ...editing, buyDiscountPercent: e.target.value })
+                  }
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">{t('ratemanagement.eladasiKedvezmeny')}</label>
+                <label className="text-sm font-medium">
+                  {t('ratemanagement.eladasiKedvezmeny')}
+                </label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.sellDiscountPercent}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, sellDiscountPercent: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setEditing({ ...editing, sellDiscountPercent: e.target.value })
+                  }
                 />
               </div>
             </div>
@@ -174,23 +190,35 @@ export default function DiscountLevelEditor() {
       {loading ? (
         <p>Betöltés...</p>
       ) : discounts.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">{t('ratemanagement.nincsKedvezmenySzintMax3SzintAdhatoHozza')}</div>
+        <div className="text-center py-8 text-muted-foreground">
+          {t('ratemanagement.nincsKedvezmenySzintMax3SzintAdhatoHozza')}
+        </div>
       ) : (
         <div className="space-y-2">
           {discounts.map((d) => (
             <div key={d.id} className="rounded-lg border bg-card shadow-sm">
               <div className="p-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-transparent">{t('ratemanagement.szint')}{d.level}</span>
+                  <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-transparent">
+                    {t('ratemanagement.szint')}
+                    {d.level}
+                  </span>
                   <span className="font-medium">{d.name}</span>
                   <span className="text-sm text-muted-foreground">
-                    {t('ratemanagement.vetel')}{d.buyDiscountPercent}{t('ratemanagement.eladas')}{d.sellDiscountPercent}%
+                    {t('ratemanagement.vetel')}
+                    {d.buyDiscountPercent}
+                    {t('ratemanagement.eladas')}
+                    {d.sellDiscountPercent}%
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    d.active ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
-                  }`}>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      d.active
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-secondary-foreground'
+                    }`}
+                  >
                     {d.active ? 'Aktív' : 'Inaktív'}
                   </span>
                   <button

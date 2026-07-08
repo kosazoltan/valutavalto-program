@@ -23,7 +23,13 @@ const mocks = vi.hoisted(() => ({
   // Szerver publikált master ráta: A=400, E=390, F=410 — a merge ezekkel írna felül
   listActivePublished: vi.fn(() =>
     Promise.resolve([
-      { currencyCode: 'EUR', currencyId: 1, officialRate: 400, baseBuyRate: 390, baseSellRate: 410 },
+      {
+        currencyCode: 'EUR',
+        currencyId: 1,
+        officialRate: 400,
+        baseBuyRate: 390,
+        baseSellRate: 410,
+      },
     ]),
   ),
   mnbList: vi.fn(() => Promise.resolve([])),
@@ -65,9 +71,17 @@ vi.mock('../../services/api/arfolyamInternetLinks', () => ({
 }))
 
 const EUR_ROW = {
-  currency: 'EUR', settlement: 400, otp: 0, helper: 0,
-  weakMultiBuy: 395, weakMultiSell: 405, crossRate: 0, wholesale: 0,
-  crossBase: null, crossSettlement: 0, settlementManual: false,
+  currency: 'EUR',
+  settlement: 400,
+  otp: 0,
+  helper: 0,
+  weakMultiBuy: 395,
+  weakMultiSell: 405,
+  crossRate: 0,
+  wholesale: 0,
+  crossBase: null,
+  crossSettlement: 0,
+  settlementManual: false,
 }
 
 function seedStorage(rows: unknown[]) {
@@ -82,10 +96,18 @@ async function importPage() {
 // Kétállapotú cella: Enter (startEdit) → F2 → change → Enter (commit)
 async function editCell(cellId: string, value: string) {
   const cell = document.getElementById(cellId) as HTMLInputElement
-  await act(async () => { fireEvent.keyDown(cell, { key: 'Enter' }) })
-  await act(async () => { fireEvent.keyDown(cell, { key: 'F2' }) })
-  await act(async () => { fireEvent.change(cell, { target: { value } }) })
-  await act(async () => { fireEvent.keyDown(cell, { key: 'Enter' }) })
+  await act(async () => {
+    fireEvent.keyDown(cell, { key: 'Enter' })
+  })
+  await act(async () => {
+    fireEvent.keyDown(cell, { key: 'F2' })
+  })
+  await act(async () => {
+    fireEvent.change(cell, { target: { value } })
+  })
+  await act(async () => {
+    fireEvent.keyDown(cell, { key: 'Enter' })
+  })
 }
 
 describe('FK07-fix — Főlap remount-kori felülírás ONLINE módban', () => {
@@ -170,7 +192,9 @@ describe('FK07-fix — Főlap remount-kori felülírás ONLINE módban', () => {
 
     // sikeres szétküldés (publishAllWorkgroups teljes siker)
     const btn = screen.getByTestId('dispatch-rates-button')
-    await act(async () => { fireEvent.click(btn) })
+    await act(async () => {
+      fireEvent.click(btn)
+    })
     await waitFor(() => {
       expect(mocks.publishAllWorkgroups).toHaveBeenCalled()
       const flags = JSON.parse(localStorage.getItem(LOCAL_EDIT_STORAGE_KEY) || '{}')

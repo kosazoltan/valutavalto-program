@@ -22,11 +22,13 @@ vi.mock('react-router-dom', async () => {
 })
 
 vi.mock('../../stores/authStore', () => ({
-  useAuthStore: (selector: (state: {
-    login: typeof mocks.loginStore
-    selectRole: typeof mocks.selectRoleStore
-    logout: typeof mocks.logoutStore
-  }) => unknown) =>
+  useAuthStore: (
+    selector: (state: {
+      login: typeof mocks.loginStore
+      selectRole: typeof mocks.selectRoleStore
+      logout: typeof mocks.logoutStore
+    }) => unknown,
+  ) =>
     selector({
       login: mocks.loginStore,
       selectRole: mocks.selectRoleStore,
@@ -125,11 +127,7 @@ describe('LoginPage RBAC Whitelist', () => {
   })
 
   describe('szerver módban (full) — blokkolt role-ok', () => {
-    it.each([
-      'CASHIER',
-      'INTERN',
-      'VIEWER',
-    ])('%s role blokkolva hibaüzenettel', async (role) => {
+    it.each(['CASHIER', 'INTERN', 'VIEWER'])('%s role blokkolva hibaüzenettel', async (role) => {
       mocks.authLogin.mockResolvedValue(makeLoginResponse(role))
       const user = userEvent.setup()
 

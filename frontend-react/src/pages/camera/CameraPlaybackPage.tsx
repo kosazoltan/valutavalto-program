@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Search, PlayCircle, Calendar, FileVideo } from 'lucide-react'
 import { api, branchApi, type BranchInfo } from '../../services/api/index'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
 const isElectron = () => !!window.electronAPI
@@ -63,7 +63,8 @@ export default function CameraPlaybackPage() {
 
   useEffect(() => {
     if (isElectron()) return
-    branchApi.listActive()
+    branchApi
+      .listActive()
       .then(setBranches)
       .catch((err) => logger.error('CameraPlaybackPage', 'Iroda lista betöltése sikertelen:', err))
   }, [])
@@ -133,7 +134,9 @@ export default function CameraPlaybackPage() {
     setServerRecordings([])
     setLocalRecordings([])
     try {
-      const res = await api.get<CameraTransactionLink[]>(`/camera/recordings/by-receipt/${encodeURIComponent(value)}`)
+      const res = await api.get<CameraTransactionLink[]>(
+        `/camera/recordings/by-receipt/${encodeURIComponent(value)}`,
+      )
       setTransactionLinks(res.data ?? [])
     } catch (err) {
       logger.error('CameraPlaybackPage', 'Bizonylat szerinti kamera keresés sikertelen:', err)
@@ -153,7 +156,9 @@ export default function CameraPlaybackPage() {
     setServerRecordings([])
     setLocalRecordings([])
     try {
-      const res = await api.get<CameraTransactionLink[]>(`/camera/recordings/by-transaction/${encodeURIComponent(value)}`)
+      const res = await api.get<CameraTransactionLink[]>(
+        `/camera/recordings/by-transaction/${encodeURIComponent(value)}`,
+      )
       setTransactionLinks(res.data ?? [])
     } catch (err) {
       logger.error('CameraPlaybackPage', 'Tranzakció szerinti kamera keresés sikertelen:', err)
@@ -186,14 +191,17 @@ export default function CameraPlaybackPage() {
     return new Date(dateStr).toLocaleString('hu-HU')
   }
 
-  const hasResults = localRecordings.length > 0 || serverRecordings.length > 0 || transactionLinks.length > 0
+  const hasResults =
+    localRecordings.length > 0 || serverRecordings.length > 0 || transactionLinks.length > 0
 
   return (
     <div className="space-y-3">
       <h1 className="text-lg font-bold flex items-center gap-2">
         <PlayCircle className="h-6 w-6" />
         {t('camera.felvetelVisszajatszas')}
-        {isElectron() && <span className="text-sm font-normal text-muted-foreground">{t('camera.lokalis')}</span>}
+        {isElectron() && (
+          <span className="text-sm font-normal text-muted-foreground">{t('camera.lokalis')}</span>
+        )}
       </h1>
 
       {/* Search controls */}
@@ -212,13 +220,17 @@ export default function CameraPlaybackPage() {
                 <select
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={branchId}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBranchId(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setBranchId(e.target.value)
+                  }
                   aria-label={t('camera.iroda')}
                   data-testid="camera-playback-branch"
                 >
                   <option value="">{t('camera.valasszonIrodat')}</option>
                   {branches.map((branch) => (
-                    <option key={branch.id} value={branch.id}>{branch.code} -- {branch.name}</option>
+                    <option key={branch.id} value={branch.id}>
+                      {branch.code} -- {branch.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -330,21 +342,30 @@ export default function CameraPlaybackPage() {
           <div className="p-4 pb-2">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <FileVideo className="h-5 w-5" />
-              {t('camera.lokalisFelvetelek')}{localRecordings.length})
+              {t('camera.lokalisFelvetelek')}
+              {localRecordings.length})
             </h3>
           </div>
           <div className="p-4">
             <div className="space-y-2">
               {localRecordings.map((rec) => (
-                <div key={rec.transactionId} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div
+                  key={rec.transactionId}
+                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                >
                   <div className="space-y-1">
-                    <p className="font-medium">{t('camera.tranzakcio')}{rec.transactionId}</p>
+                    <p className="font-medium">
+                      {t('camera.tranzakcio')}
+                      {rec.transactionId}
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       {rec.date} -- {formatDate(rec.createdAt)}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <p className="text-sm text-muted-foreground">{formatFileSize(rec.fileSizeBytes)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatFileSize(rec.fileSizeBytes)}
+                    </p>
                     <button
                       className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
                       onClick={() => playLocalFile(rec.filePath)}
@@ -366,7 +387,8 @@ export default function CameraPlaybackPage() {
           <div className="p-4 pb-2">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <FileVideo className="h-5 w-5" />
-              {t('camera.szerverenTaroltFelvetelek')}{serverRecordings.length})
+              {t('camera.szerverenTaroltFelvetelek')}
+              {serverRecordings.length})
             </h3>
           </div>
           <div className="p-4">
@@ -382,9 +404,13 @@ export default function CameraPlaybackPage() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{rec.cameraId}</span>
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        rec.status === 'COMPLETED' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
-                      }`}>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          rec.status === 'COMPLETED'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground'
+                        }`}
+                      >
                         {rec.status}
                       </span>
                     </div>
@@ -394,7 +420,9 @@ export default function CameraPlaybackPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm">{formatFileSize(rec.fileSizeBytes)}</p>
-                    <p className="text-xs text-muted-foreground">{rec.linkedTransactions} {t('camera.tranzakcio')}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {rec.linkedTransactions} {t('camera.tranzakcio')}
+                    </p>
                   </div>
                 </button>
               ))}
@@ -424,7 +452,9 @@ export default function CameraPlaybackPage() {
                   data-testid={`camera-linked-recording-${link.id}`}
                 >
                   <div className="space-y-1">
-                    <p className="font-medium">{link.receiptNumber ?? link.transactionId ?? link.id}</p>
+                    <p className="font-medium">
+                      {link.receiptNumber ?? link.transactionId ?? link.id}
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       {formatDate(link.transactionTime ?? null)}
                       {link.frameOffsetSeconds != null ? ` +${link.frameOffsetSeconds}s` : ''}
@@ -457,7 +487,9 @@ export default function CameraPlaybackPage() {
             </div>
             <div>
               <div className="text-muted-foreground">{t('camera.hozzaferesiNaplobejegyzesek')}</div>
-              <div className="font-semibold" data-testid="camera-access-log-count">{accessLogs.length}</div>
+              <div className="font-semibold" data-testid="camera-access-log-count">
+                {accessLogs.length}
+              </div>
             </div>
           </div>
         </div>

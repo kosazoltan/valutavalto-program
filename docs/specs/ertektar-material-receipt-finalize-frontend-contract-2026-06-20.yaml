@@ -1,33 +1,33 @@
-contract: "TreasuryDashboard -> POST /api/v1/ertektar/receipts/{id}/finalize"
-date: "2026-06-20"
-status: "IMPLEMENTED_FROM_EXISTING_BACKEND_CONTRACT"
+contract: 'TreasuryDashboard -> POST /api/v1/ertektar/receipts/{id}/finalize'
+date: '2026-06-20'
+status: 'IMPLEMENTED_FROM_EXISTING_BACKEND_CONTRACT'
 
 preconditions:
-  - "The material receipt row is loaded from the backend via ertektarApi.getReceipts/getReceiptsByType."
-  - "The receipt id and status are backend-provided values."
-  - "The user confirms the state-changing action before the POST request is sent."
-  - "Backend authorization and DRAFT-only state validation remain authoritative."
+  - 'The material receipt row is loaded from the backend via ertektarApi.getReceipts/getReceiptsByType.'
+  - 'The receipt id and status are backend-provided values.'
+  - 'The user confirms the state-changing action before the POST request is sent.'
+  - 'Backend authorization and DRAFT-only state validation remain authoritative.'
 
 postconditions:
-  - "On finalize success, the frontend reloads dashboard data from backend sources."
-  - "On failure, the existing dashboard error panel shows a factual error message."
+  - 'On finalize success, the frontend reloads dashboard data from backend sources.'
+  - 'On failure, the existing dashboard error panel shows a factual error message.'
 
 invariants:
-  - "The frontend never applies receipt stock movements locally."
-  - "The frontend never fabricates FINALIZED status after POST; it reloads server state."
-  - "Existing read/list behavior for transfers, receipts and corrections remains available."
+  - 'The frontend never applies receipt stock movements locally.'
+  - 'The frontend never fabricates FINALIZED status after POST; it reloads server state.'
+  - 'Existing read/list behavior for transfers, receipts and corrections remains available.'
 
 error_contracts:
-  - "User cancels confirmation -> no POST request."
-  - "Backend rejects authorization or non-DRAFT state -> no local success state is fabricated; error state is set."
-  - "Non-DRAFT receipts do not render finalize action buttons."
+  - 'User cancels confirmation -> no POST request.'
+  - 'Backend rejects authorization or non-DRAFT state -> no local success state is fabricated; error state is set.'
+  - 'Non-DRAFT receipts do not render finalize action buttons.'
 
 behavioral:
-  - "DRAFT receipt renders finalize action."
-  - "Finalize button calls ertektarApi.finalizeReceipt(id)."
-  - "Button is disabled while the same receipt action is in flight."
+  - 'DRAFT receipt renders finalize action.'
+  - 'Finalize button calls ertektarApi.finalizeReceipt(id).'
+  - 'Button is disabled while the same receipt action is in flight.'
 
 derived_tests:
-  - "TreasuryDashboard calls finalizeReceipt for a DRAFT material receipt after confirmation."
-  - "TreasuryDashboard does not call finalizeReceipt when confirmation is cancelled."
-  - "Playwright verifies visible desktop and mobile render paths without horizontal overflow and observes the POST request."
+  - 'TreasuryDashboard calls finalizeReceipt for a DRAFT material receipt after confirmation.'
+  - 'TreasuryDashboard does not call finalizeReceipt when confirmation is cancelled.'
+  - 'Playwright verifies visible desktop and mobile render paths without horizontal overflow and observes the POST request.'

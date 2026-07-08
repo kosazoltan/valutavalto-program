@@ -88,7 +88,9 @@ describe('useGridNavigation', () => {
       expect(result.current.activeCell).toEqual({ row: 1, col: 2 })
       expect(result.current.editing).toBe(false)
 
-      const focused = container.querySelector<HTMLInputElement>('[data-grid-row="1"][data-grid-col="2"]')
+      const focused = container.querySelector<HTMLInputElement>(
+        '[data-grid-row="1"][data-grid-col="2"]',
+      )
       expect(document.activeElement).toBe(focused)
     })
 
@@ -105,7 +107,9 @@ describe('useGridNavigation', () => {
       })
 
       expect(result.current.editing).toBe(true)
-      const input = container.querySelector<HTMLInputElement>('[data-grid-row="0"][data-grid-col="0"]')
+      const input = container.querySelector<HTMLInputElement>(
+        '[data-grid-row="0"][data-grid-col="0"]',
+      )
       expect(document.activeElement).toBe(input)
     })
 
@@ -208,7 +212,9 @@ describe('useGridNavigation', () => {
     })
 
     it('FK03 FR-5: arrow_key_does_not_set_editing_true — nyilas lépés után sincs szerkesztő mód (editOnFocus=false)', () => {
-      const { result } = renderHook(() => useGridNavigation({ rows: 3, cols: 3, editOnFocus: false }))
+      const { result } = renderHook(() =>
+        useGridNavigation({ rows: 3, cols: 3, editOnFocus: false }),
+      )
 
       Object.defineProperty(result.current.containerRef, 'current', {
         writable: true,
@@ -225,7 +231,9 @@ describe('useGridNavigation', () => {
     })
 
     it('FK03 FR-5: escape_sets_isEscaping_ref_before_blur — az onBlur megkülönböztetheti az Escape-blurt', () => {
-      const { result } = renderHook(() => useGridNavigation({ rows: 3, cols: 3, editOnFocus: false }))
+      const { result } = renderHook(() =>
+        useGridNavigation({ rows: 3, cols: 3, editOnFocus: false }),
+      )
 
       Object.defineProperty(result.current.containerRef, 'current', {
         writable: true,
@@ -234,8 +242,12 @@ describe('useGridNavigation', () => {
 
       // Blur-pillanatban olvassuk a ref-et — pontosan így használja a RateGrid onBlur-ja.
       let refAtBlur: boolean | null = null
-      const input = container.querySelector<HTMLInputElement>('[data-grid-row="1"][data-grid-col="1"]')!
-      input.addEventListener('blur', () => { refAtBlur = result.current.isEscapingRef.current })
+      const input = container.querySelector<HTMLInputElement>(
+        '[data-grid-row="1"][data-grid-col="1"]',
+      )!
+      input.addEventListener('blur', () => {
+        refAtBlur = result.current.isEscapingRef.current
+      })
 
       act(() => {
         result.current.focusCell(1, 1, true)

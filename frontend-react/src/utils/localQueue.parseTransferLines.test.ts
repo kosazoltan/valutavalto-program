@@ -23,7 +23,9 @@ describe('parseTransferLines', () => {
 
   it('régi (kód nélküli) sorok is átmennek — currencyCode undefined', () => {
     const raw = JSON.stringify([{ currencyId: 1, amount: 100 }])
-    expect(parseTransferLines(raw)).toEqual([{ currencyId: 1, amount: 100, currencyCode: undefined }])
+    expect(parseTransferLines(raw)).toEqual([
+      { currencyId: 1, amount: 100, currencyCode: undefined },
+    ])
   })
 
   it('hiányzó / üres / hibás JSON → undefined (nem dob)', () => {
@@ -41,6 +43,8 @@ describe('parseTransferLines', () => {
       { currencyId: 'rossz', amount: 5 },
       { amount: 7 },
     ])
-    expect(parseTransferLines(raw)).toEqual([{ currencyId: 1, amount: 100, currencyCode: undefined }])
+    expect(parseTransferLines(raw)).toEqual([
+      { currencyId: 1, amount: 100, currencyCode: undefined },
+    ])
   })
 })

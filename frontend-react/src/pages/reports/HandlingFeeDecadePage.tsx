@@ -224,7 +224,9 @@ export default function HandlingFeeDecadePage() {
 
       <div className="bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="hf-from">{t('reports.handlingFeeDecade.from')}</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="hf-from">
+            {t('reports.handlingFeeDecade.from')}
+          </label>
           <input
             id="hf-from"
             type="date"
@@ -234,7 +236,9 @@ export default function HandlingFeeDecadePage() {
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="hf-to">{t('reports.handlingFeeDecade.to')}</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="hf-to">
+            {t('reports.handlingFeeDecade.to')}
+          </label>
           <input
             id="hf-to"
             type="date"
@@ -244,7 +248,9 @@ export default function HandlingFeeDecadePage() {
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="hf-branch">{t('reports.handlingFeeDecade.branch')}</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="hf-branch">
+            {t('reports.handlingFeeDecade.branch')}
+          </label>
           <select
             id="hf-branch"
             value={branchId}
@@ -267,7 +273,9 @@ export default function HandlingFeeDecadePage() {
             className="form-button-primary flex items-center gap-2"
           >
             <Search className="h-4 w-4" />
-            {loading ? t('reports.handlingFeeDecade.loading') : t('reports.handlingFeeDecade.submit')}
+            {loading
+              ? t('reports.handlingFeeDecade.loading')
+              : t('reports.handlingFeeDecade.submit')}
           </button>
           <button
             type="button"
@@ -283,32 +291,48 @@ export default function HandlingFeeDecadePage() {
       </div>
 
       {loading && (
-        <div className="text-center text-sm text-gray-500 py-8">{t('reports.handlingFeeDecade.loading')}</div>
+        <div className="text-center text-sm text-gray-500 py-8">
+          {t('reports.handlingFeeDecade.loading')}
+        </div>
       )}
 
       {!loading && report && (
         <div className="space-y-4">
           <div className="bg-white rounded shadow p-4 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
             <div>
-              <div className="text-gray-500 text-xs">{t('reports.handlingFeeDecade.summary.period')}</div>
+              <div className="text-gray-500 text-xs">
+                {t('reports.handlingFeeDecade.summary.period')}
+              </div>
               <div className="font-semibold">
                 {report.dateFrom} - {report.dateTo}
               </div>
             </div>
             <div>
-              <div className="text-gray-500 text-xs">{t('reports.handlingFeeDecade.summary.transactions')}</div>
+              <div className="text-gray-500 text-xs">
+                {t('reports.handlingFeeDecade.summary.transactions')}
+              </div>
               <div className="font-semibold">{report.transactionCount ?? 0}</div>
             </div>
             <div>
-              <div className="text-gray-500 text-xs">{t('reports.handlingFeeDecade.summary.grossFee')}</div>
-              <div className="font-mono font-semibold">{formatHuf(toNum(report.totalGrossFee))}</div>
+              <div className="text-gray-500 text-xs">
+                {t('reports.handlingFeeDecade.summary.grossFee')}
+              </div>
+              <div className="font-mono font-semibold">
+                {formatHuf(toNum(report.totalGrossFee))}
+              </div>
             </div>
             <div>
-              <div className="text-gray-500 text-xs">{t('reports.handlingFeeDecade.summary.discount')}</div>
-              <div className="font-mono font-semibold">{formatHuf(toNum(report.totalDiscount))}</div>
+              <div className="text-gray-500 text-xs">
+                {t('reports.handlingFeeDecade.summary.discount')}
+              </div>
+              <div className="font-mono font-semibold">
+                {formatHuf(toNum(report.totalDiscount))}
+              </div>
             </div>
             <div>
-              <div className="text-gray-500 text-xs">{t('reports.handlingFeeDecade.summary.netFee')}</div>
+              <div className="text-gray-500 text-xs">
+                {t('reports.handlingFeeDecade.summary.netFee')}
+              </div>
               <div className="font-mono font-semibold text-green-700">
                 {formatHuf(toNum(report.totalNetFee))}
               </div>
@@ -323,15 +347,33 @@ export default function HandlingFeeDecadePage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.decade')}</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.transactions')}</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.cashCount')}</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.cardCount')}</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.grossFee')}</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.discount')}</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.netFee')}</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.cashNetFee')}</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.handlingFeeDecade.table.cardNetFee')}</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                      {t('reports.handlingFeeDecade.table.decade')}
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      {t('reports.handlingFeeDecade.table.transactions')}
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      {t('reports.handlingFeeDecade.table.cashCount')}
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      {t('reports.handlingFeeDecade.table.cardCount')}
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      {t('reports.handlingFeeDecade.table.grossFee')}
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      {t('reports.handlingFeeDecade.table.discount')}
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      {t('reports.handlingFeeDecade.table.netFee')}
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      {t('reports.handlingFeeDecade.table.cashNetFee')}
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      {t('reports.handlingFeeDecade.table.cardNetFee')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -348,13 +390,21 @@ export default function HandlingFeeDecadePage() {
                       <td className="px-4 py-2 text-right text-sm font-mono">{r.count}</td>
                       <td className="px-4 py-2 text-right text-sm font-mono">{r.cashCount}</td>
                       <td className="px-4 py-2 text-right text-sm font-mono">{r.cardCount}</td>
-                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">{formatHuf(r.grossFee)}</td>
-                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">{formatHuf(r.discount)}</td>
+                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">
+                        {formatHuf(r.grossFee)}
+                      </td>
+                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">
+                        {formatHuf(r.discount)}
+                      </td>
                       <td className="px-4 py-2 text-right text-sm font-mono font-semibold text-green-700 whitespace-nowrap">
                         {formatHuf(r.netFee)}
                       </td>
-                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">{formatHuf(r.cashNetFee)}</td>
-                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">{formatHuf(r.cardNetFee)}</td>
+                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">
+                        {formatHuf(r.cashNetFee)}
+                      </td>
+                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">
+                        {formatHuf(r.cardNetFee)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

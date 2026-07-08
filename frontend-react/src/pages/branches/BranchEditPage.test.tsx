@@ -87,9 +87,7 @@ describe('BranchEditPage — FK-022 Iroda adatainak szerkesztése', () => {
       }
       if (path === '/branches/b-1/children') {
         return Promise.resolve({
-          data: [
-            { id: 'child-1', code: 'BR028', name: 'Szeged Árkád' },
-          ],
+          data: [{ id: 'child-1', code: 'BR028', name: 'Szeged Árkád' }],
         })
       }
       if (path === '/admin/branches/b-1') {
@@ -174,11 +172,14 @@ describe('BranchEditPage — FK-022 Iroda adatainak szerkesztése', () => {
     fireEvent.click(screen.getByRole('button', { name: /Mentés/ }))
 
     await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1))
-    expect(mockUpdate).toHaveBeenCalledWith('b-1', expect.objectContaining({
-      name: 'Új Név',
-      hasWu: true,
-      isActive: true,
-    }))
+    expect(mockUpdate).toHaveBeenCalledWith(
+      'b-1',
+      expect.objectContaining({
+        name: 'Új Név',
+        hasWu: true,
+        isActive: true,
+      }),
+    )
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/admin/branches'))
   })
 
@@ -258,7 +259,9 @@ describe('BranchEditPage — FK-022 Iroda adatainak szerkesztése', () => {
     fireEvent.change(screen.getByLabelText(/Terület \/ Régió/), { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: /Mentés/ }))
 
-    await waitFor(() => expect(screen.getByText(/területi besorolás megadása kötelező/)).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText(/területi besorolás megadása kötelező/)).toBeInTheDocument(),
+    )
     expect(mockUpdate).not.toHaveBeenCalled()
   })
 

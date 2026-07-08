@@ -14,8 +14,11 @@
  * paritás: # + 2 jegyű csoportszám (legalább 01) + 'M' (munkacsoport-lap).
  */
 export function currentFunctionCode(legacyGroupNumber: number | null | undefined): string {
-  const n = typeof legacyGroupNumber === 'number' && Number.isFinite(legacyGroupNumber) && legacyGroupNumber > 0
-    ? Math.trunc(legacyGroupNumber)
-    : 1
+  const n =
+    typeof legacyGroupNumber === 'number' &&
+    Number.isFinite(legacyGroupNumber) &&
+    legacyGroupNumber > 0
+      ? Math.trunc(legacyGroupNumber)
+      : 1
   return `#${String(n).padStart(2, '0')}M`
 }

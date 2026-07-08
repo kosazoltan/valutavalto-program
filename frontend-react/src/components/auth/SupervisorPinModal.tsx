@@ -29,7 +29,13 @@ interface Props {
 
 const PIN_LENGTH = 6 // max 6, de 4 is engedélyezett
 
-export default function SupervisorPinModal({ open, workerId, workerLabel, onSuccess, onCancel }: Props) {
+export default function SupervisorPinModal({
+  open,
+  workerId,
+  workerLabel,
+  onSuccess,
+  onCancel,
+}: Props) {
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)

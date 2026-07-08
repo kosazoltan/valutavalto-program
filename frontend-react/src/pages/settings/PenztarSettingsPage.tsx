@@ -3,11 +3,21 @@ import { useNavigate } from 'react-router-dom'
 import { Settings as SettingsIcon, Save, X, Lock } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
 import {
-  loadPenztarSettings, savePenztarSettings, isValidServerIp, clampFrequency,
-  clampFutofenyDarab, clampFutofenySebesseg, clampComPort,
-  FREQUENCY_MIN, FREQUENCY_MAX,
-  type PenztarSettings, type MachineRole, type DisplayColor, type PrinterPort,
-  type HandlingFeeMode, type FutofenyMode,
+  loadPenztarSettings,
+  savePenztarSettings,
+  isValidServerIp,
+  clampFrequency,
+  clampFutofenyDarab,
+  clampFutofenySebesseg,
+  clampComPort,
+  FREQUENCY_MIN,
+  FREQUENCY_MAX,
+  type PenztarSettings,
+  type MachineRole,
+  type DisplayColor,
+  type PrinterPort,
+  type HandlingFeeMode,
+  type FutofenyMode,
 } from './penztarSettings'
 import { machineConfigApi, resolveWorkstationCode } from '../../services/api/machineConfig'
 
@@ -70,7 +80,9 @@ export default function PenztarSettingsPage() {
       }
     }
     void loadFromBackend()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // FR-06: Jelszó-módosítás inline modal state
@@ -108,14 +120,20 @@ export default function PenztarSettingsPage() {
     }
     // FR-11: COM-portok egyediség-ellenőrzése (spec FR-11 validáció)
     if (s.futofenyDarab >= 2 && s.futofenyCom1 === s.futofenyCom2) {
-      toast.error('COM-port ütközés', 'Az első és második futófénytábla COM-portja nem lehet azonos.')
+      toast.error(
+        'COM-port ütközés',
+        'Az első és második futófénytábla COM-portja nem lehet azonos.',
+      )
       return
     }
 
     // 1. réteg: localStorage
     const ok = savePenztarSettings(s)
     if (!ok) {
-      toast.error('Mentési hiba', 'A beállítások mentése nem sikerült (böngésző tárhely / privát mód).')
+      toast.error(
+        'Mentési hiba',
+        'A beállítások mentése nem sikerült (böngésző tárhely / privát mód).',
+      )
       return
     }
 
@@ -155,18 +173,30 @@ export default function PenztarSettingsPage() {
     setNewPassword('')
     setConfirmPassword('')
     setShowPasswordModal(false)
-    toast.success('Jelszó beállítva', 'Az új jelszó a "Rögzítés és kilépés" gombra mentődik el a szerverre.')
+    toast.success(
+      'Jelszó beállítva',
+      'Az új jelszó a "Rögzítés és kilépés" gombra mentődik el a szerverre.',
+    )
   }
 
   const radioGroup = <T extends string>(
-    name: string, label: string, value: T, options: Array<{ v: T; label: string }>, onChange: (v: T) => void,
+    name: string,
+    label: string,
+    value: T,
+    options: Array<{ v: T; label: string }>,
+    onChange: (v: T) => void,
   ) => (
     <div>
       <div className="form-label">{label}</div>
       <div className="flex flex-wrap gap-3">
         {options.map((o) => (
           <label key={o.v} className="flex items-center gap-1 text-sm">
-            <input type="radio" name={name} checked={value === o.v} onChange={() => onChange(o.v)} />
+            <input
+              type="radio"
+              name={name}
+              checked={value === o.v}
+              onChange={() => onChange(o.v)}
+            />
             {o.label}
           </label>
         ))}
@@ -177,7 +207,10 @@ export default function PenztarSettingsPage() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-bold flex items-center gap-2"><SettingsIcon />Pénztárgép beállítások</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <SettingsIcon />
+          Pénztárgép beállítások
+        </h1>
         <div className="form-panel text-sm text-muted-foreground">Beállítások betöltése...</div>
       </div>
     )
@@ -185,23 +218,36 @@ export default function PenztarSettingsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold flex items-center gap-2"><SettingsIcon />Pénztárgép beállítások</h1>
+      <h1 className="text-xl font-bold flex items-center gap-2">
+        <SettingsIcon />
+        Pénztárgép beállítások
+      </h1>
 
       {/* FR-02 + FR-03: Alapfunkció és Alkalmazások */}
       <div className="form-panel space-y-3">
         <h2 className="section-title">Alapfunkció</h2>
-        {radioGroup<MachineRole>('machineRole', 'A gép szerepe', s.machineRole, [
-          { v: 'PENZTARI', label: 'Pénztári gép' },
-          { v: 'ERTEKTARI', label: 'Értéktári gép' },
-          { v: 'AFAS', label: 'ÁFÁS gép' },
-        ], (v) => set('machineRole', v))}
+        {radioGroup<MachineRole>(
+          'machineRole',
+          'A gép szerepe',
+          s.machineRole,
+          [
+            { v: 'PENZTARI', label: 'Pénztári gép' },
+            { v: 'ERTEKTARI', label: 'Értéktári gép' },
+            { v: 'AFAS', label: 'ÁFÁS gép' },
+          ],
+          (v) => set('machineRole', v),
+        )}
 
         <div>
           <div className="form-label">Engedélyezett alkalmazások</div>
           <div className="flex flex-wrap gap-3">
             {APP_OPTIONS.map((app) => (
               <label key={app} className="flex items-center gap-1 text-sm">
-                <input type="checkbox" checked={s.applications.includes(app)} onChange={() => toggleApp(app)} />
+                <input
+                  type="checkbox"
+                  checked={s.applications.includes(app)}
+                  onChange={() => toggleApp(app)}
+                />
                 {app.replace(/_/g, ' ')}
               </label>
             ))}
@@ -212,11 +258,23 @@ export default function PenztarSettingsPage() {
       {/* FR-04 + FR-13: Kijelző és reklám */}
       <div className="form-panel space-y-3">
         <h2 className="section-title">Kijelző és reklám</h2>
-        {radioGroup<DisplayColor>('displayColor', 'Árfolyam-kijelző színe', s.displayColor, [
-          { v: 'ZOLD', label: 'Zöld' }, { v: 'SARGA', label: 'Sárga' }, { v: 'PIROS', label: 'Piros' },
-        ], (v) => set('displayColor', v))}
+        {radioGroup<DisplayColor>(
+          'displayColor',
+          'Árfolyam-kijelző színe',
+          s.displayColor,
+          [
+            { v: 'ZOLD', label: 'Zöld' },
+            { v: 'SARGA', label: 'Sárga' },
+            { v: 'PIROS', label: 'Piros' },
+          ],
+          (v) => set('displayColor', v),
+        )}
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={s.adOnDisplay} onChange={(e) => set('adOnDisplay', e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={s.adOnDisplay}
+            onChange={(e) => set('adOnDisplay', e.target.checked)}
+          />
           Reklám a kijelzőn
         </label>
       </div>
@@ -230,8 +288,12 @@ export default function PenztarSettingsPage() {
             {[0, 1, 2, 3].map((i) => (
               <span key={i} className="flex items-center gap-1">
                 <input
-                  className="form-input w-16 text-center" type="number" min={0} max={255}
-                  value={s.serverIp[i]} onChange={(e) => setOctet(i, e.target.value)}
+                  className="form-input w-16 text-center"
+                  type="number"
+                  min={0}
+                  max={255}
+                  value={s.serverIp[i]}
+                  onChange={(e) => setOctet(i, e.target.value)}
                 />
                 {i < 3 && <span>.</span>}
               </span>
@@ -239,9 +301,15 @@ export default function PenztarSettingsPage() {
           </div>
         </div>
         <div>
-          <label className="form-label" htmlFor="freq">Adatküldés gyakorisága: {s.dataSendFrequencyMin} perc</label>
+          <label className="form-label" htmlFor="freq">
+            Adatküldés gyakorisága: {s.dataSendFrequencyMin} perc
+          </label>
           <input
-            id="freq" type="range" min={FREQUENCY_MIN} max={FREQUENCY_MAX} value={s.dataSendFrequencyMin}
+            id="freq"
+            type="range"
+            min={FREQUENCY_MIN}
+            max={FREQUENCY_MAX}
+            value={s.dataSendFrequencyMin}
             onChange={(e) => set('dataSendFrequencyMin', clampFrequency(Number(e.target.value)))}
             className="w-full"
           />
@@ -270,7 +338,8 @@ export default function PenztarSettingsPage() {
               className="form-button flex items-center gap-1 text-sm"
               onClick={() => setShowPasswordModal(true)}
             >
-              <Lock size={14} />Jelszó módosítás
+              <Lock size={14} />
+              Jelszó módosítás
             </button>
             {pendingPassword && (
               <span className="text-xs text-green-600">
@@ -292,9 +361,9 @@ export default function PenztarSettingsPage() {
           <div className="font-medium">Értéktár e-mail és szombati nyitvatartás</div>
           <div>
             Ezek a beállítások a <strong>Pénztár Törzs</strong> iroda-adataiban szerkeszthetők
-            (Branch entitás, V293: email + closed_saturday mezők).
-            A jelenlegi értékek: e-mail: <em>{s.dailyReportEmail || '(nem megadott)'}</em>,
-            szombat: <em>{s.saturdayOpen ? 'nyitva' : 'zárva'}</em>.
+            (Branch entitás, V293: email + closed_saturday mezők). A jelenlegi értékek: e-mail:{' '}
+            <em>{s.dailyReportEmail || '(nem megadott)'}</em>, szombat:{' '}
+            <em>{s.saturdayOpen ? 'nyitva' : 'zárva'}</em>.
           </div>
         </div>
       </div>
@@ -313,7 +382,10 @@ export default function PenztarSettingsPage() {
               Futófénytáblák száma: {s.futofenyDarab}
             </label>
             <input
-              id="futofenyDarab" type="number" min={0} max={10}
+              id="futofenyDarab"
+              type="number"
+              min={0}
+              max={10}
               className="form-input w-20"
               value={s.futofenyDarab}
               onChange={(e) => set('futofenyDarab', clampFutofenyDarab(e.target.value))}
@@ -324,7 +396,10 @@ export default function PenztarSettingsPage() {
               1. tábla COM-portja
             </label>
             <input
-              id="com1" type="number" min={1} max={255}
+              id="com1"
+              type="number"
+              min={1}
+              max={255}
               className="form-input w-20"
               value={s.futofenyCom1}
               disabled={s.futofenyDarab === 0}
@@ -336,7 +411,10 @@ export default function PenztarSettingsPage() {
               2. tábla COM-portja
             </label>
             <input
-              id="com2" type="number" min={1} max={255}
+              id="com2"
+              type="number"
+              min={1}
+              max={255}
               className="form-input w-20"
               value={s.futofenyCom2}
               disabled={s.futofenyDarab < 2}
@@ -345,20 +423,34 @@ export default function PenztarSettingsPage() {
           </div>
         </div>
 
-        {radioGroup<FutofenyMode>('futofenyMod', 'Megjelenítési mód', s.futofenyMod, [
-          { v: 'ARFOLYAM', label: 'Csak árfolyam-kijelzés' },
-          { v: 'SZOVEG', label: 'Csak szöveg kijelzése' },
-          { v: 'VALTAKOZO', label: 'Váltakozó (nappal szöveg / éjjel árfolyam)' },
-        ], (v) => set('futofenyMod', v))}
+        {radioGroup<FutofenyMode>(
+          'futofenyMod',
+          'Megjelenítési mód',
+          s.futofenyMod,
+          [
+            { v: 'ARFOLYAM', label: 'Csak árfolyam-kijelzés' },
+            { v: 'SZOVEG', label: 'Csak szöveg kijelzése' },
+            { v: 'VALTAKOZO', label: 'Váltakozó (nappal szöveg / éjjel árfolyam)' },
+          ],
+          (v) => set('futofenyMod', v),
+        )}
 
         <div>
           <label className="form-label" htmlFor="futofenySebesseg">
-            Futófény sebessége: <span className="font-medium">{s.futofenySebesseg <= 3 ? 'Lassú' : s.futofenySebesseg >= 8 ? 'Gyors' : 'Közepes'}</span> ({s.futofenySebesseg})
+            Futófény sebessége:{' '}
+            <span className="font-medium">
+              {s.futofenySebesseg <= 3 ? 'Lassú' : s.futofenySebesseg >= 8 ? 'Gyors' : 'Közepes'}
+            </span>{' '}
+            ({s.futofenySebesseg})
           </label>
           <div className="flex items-center gap-2">
             <span className="text-xs">Lassú</span>
             <input
-              id="futofenySebesseg" type="range" min={1} max={10} value={s.futofenySebesseg}
+              id="futofenySebesseg"
+              type="range"
+              min={1}
+              max={10}
+              value={s.futofenySebesseg}
               onChange={(e) => set('futofenySebesseg', clampFutofenySebesseg(e.target.value))}
               className="flex-1"
             />
@@ -383,30 +475,61 @@ export default function PenztarSettingsPage() {
       {/* FR-08, FR-09, FR-10, FR-12: Eszközök és fizetés */}
       <div className="form-panel space-y-3">
         <h2 className="section-title">Eszközök és fizetés</h2>
-        {radioGroup<PrinterPort>('printerPort', 'Nyomtató típusa', s.printerPort, [
-          { v: 'LPT1', label: 'LPT1 portra csatlakoztatva' }, { v: 'USB', label: 'USB portra csatlakoztatva' },
-        ], (v) => set('printerPort', v))}
+        {radioGroup<PrinterPort>(
+          'printerPort',
+          'Nyomtató típusa',
+          s.printerPort,
+          [
+            { v: 'LPT1', label: 'LPT1 portra csatlakoztatva' },
+            { v: 'USB', label: 'USB portra csatlakoztatva' },
+          ],
+          (v) => set('printerPort', v),
+        )}
         <div>
-          <label className="form-label" htmlFor="scanner">Szkenner driver</label>
-          <input id="scanner" className="form-input w-full" placeholder="pl. WIA-CanoScan Lide 120"
-            value={s.scannerDriver} onChange={(e) => set('scannerDriver', e.target.value)} />
+          <label className="form-label" htmlFor="scanner">
+            Szkenner driver
+          </label>
+          <input
+            id="scanner"
+            className="form-input w-full"
+            placeholder="pl. WIA-CanoScan Lide 120"
+            value={s.scannerDriver}
+            onChange={(e) => set('scannerDriver', e.target.value)}
+          />
         </div>
-        {radioGroup<HandlingFeeMode>('handlingFee', 'Kezelési költség', s.handlingFeeMode, [
-          { v: 'NINCS', label: 'Nincs' }, { v: 'EZRELEKES', label: 'Ezrelékes' }, { v: 'SAVOS', label: 'Sávos' },
-        ], (v) => set('handlingFeeMode', v))}
+        {radioGroup<HandlingFeeMode>(
+          'handlingFee',
+          'Kezelési költség',
+          s.handlingFeeMode,
+          [
+            { v: 'NINCS', label: 'Nincs' },
+            { v: 'EZRELEKES', label: 'Ezrelékes' },
+            { v: 'SAVOS', label: 'Sávos' },
+          ],
+          (v) => set('handlingFeeMode', v),
+        )}
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={s.cardPaymentEnabled} onChange={(e) => set('cardPaymentEnabled', e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={s.cardPaymentEnabled}
+            onChange={(e) => set('cardPaymentEnabled', e.target.checked)}
+          />
           Bankkártyás fizetés engedélyezve
         </label>
       </div>
 
       {/* Akciógombok */}
       <div className="flex gap-2">
-        <button onClick={() => void handleSave()} className="form-button-primary flex items-center gap-1">
-          <Save size={16} />Rögzítés és kilépés
+        <button
+          onClick={() => void handleSave()}
+          className="form-button-primary flex items-center gap-1"
+        >
+          <Save size={16} />
+          Rögzítés és kilépés
         </button>
         <button onClick={() => navigate(-1)} className="form-button flex items-center gap-1">
-          <X size={16} />Kilépés módosítás nélkül
+          <X size={16} />
+          Kilépés módosítás nélkül
         </button>
       </div>
 
@@ -414,9 +537,14 @@ export default function PenztarSettingsPage() {
       {showPasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-background rounded-lg shadow-lg p-6 space-y-4 w-full max-w-sm">
-            <h3 className="font-semibold flex items-center gap-2"><Lock size={16} />Napi-jelentés jelszó módosítása</h3>
+            <h3 className="font-semibold flex items-center gap-2">
+              <Lock size={16} />
+              Napi-jelentés jelszó módosítása
+            </h3>
             <div className="space-y-2">
-              <label className="form-label" htmlFor="newPwd">Új jelszó</label>
+              <label className="form-label" htmlFor="newPwd">
+                Új jelszó
+              </label>
               <input
                 id="newPwd"
                 type="password"
@@ -428,7 +556,9 @@ export default function PenztarSettingsPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="form-label" htmlFor="confirmPwd">Jelszó megerősítése</label>
+              <label className="form-label" htmlFor="confirmPwd">
+                Jelszó megerősítése
+              </label>
               <input
                 id="confirmPwd"
                 type="password"

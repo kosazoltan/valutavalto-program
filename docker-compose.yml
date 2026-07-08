@@ -15,11 +15,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-valuta_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-valuta_pass}
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - valuta-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U valuta_user -d valuta"]
+      test: ['CMD-SHELL', 'pg_isready -U valuta_user -d valuta']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -33,7 +33,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@valuta.local}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
     ports:
-      - "5050:80"
+      - '5050:80'
     depends_on:
       postgres:
         condition: service_healthy

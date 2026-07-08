@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Users, Plus, Eye, AlertCircle, Loader2, ArrowLeft } from 'lucide-react'
-import { authorizedRepresentativeApi, AuthorizedRepresentative } from '../../services/api/transactions'
+import {
+  authorizedRepresentativeApi,
+  AuthorizedRepresentative,
+} from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
@@ -37,7 +40,8 @@ export default function RepresentativeListPage() {
   }, [customerId, loadRepresentatives])
 
   const customerName = representatives.length > 0 ? representatives[0]?.customerName : undefined
-  const detailPath = (rep: AuthorizedRepresentative) => `/customers/${rep.customerId}/representatives/${rep.id}`
+  const detailPath = (rep: AuthorizedRepresentative) =>
+    `/customers/${rep.customerId}/representatives/${rep.id}`
 
   return (
     <div className="space-y-4">
@@ -51,7 +55,9 @@ export default function RepresentativeListPage() {
           <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <Users />
             {t('customers.meghatalmazottak')}
-            {customerName && <span className="text-base font-normal text-gray-500">— {customerName}</span>}
+            {customerName && (
+              <span className="text-base font-normal text-gray-500">— {customerName}</span>
+            )}
           </h1>
         </div>
         {isCustomerScoped && (
@@ -87,17 +93,24 @@ export default function RepresentativeListPage() {
         <div className="form-panel">
           <div className="space-y-3 md:hidden">
             {representatives.map((rep) => (
-              <article key={rep.id} className="rounded border border-gray-200 bg-white p-3 shadow-sm">
+              <article
+                key={rep.id}
+                className="rounded border border-gray-200 bg-white p-3 shadow-sm"
+              >
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-lg font-bold text-gray-900">{rep.fullName}</p>
                     {!isCustomerScoped && (
-                      <p className="text-sm text-gray-500">Ügyfél ID: <span className="font-mono">{rep.customerId}</span></p>
+                      <p className="text-sm text-gray-500">
+                        Ügyfél ID: <span className="font-mono">{rep.customerId}</span>
+                      </p>
                     )}
                   </div>
-                  <span className={`px-2 py-1 text-xs rounded ${
-                    rep.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                  }`}>
+                  <span
+                    className={`px-2 py-1 text-xs rounded ${
+                      rep.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                    }`}
+                  >
                     {rep.isActive ? 'Aktív' : 'Inaktív'}
                   </span>
                 </div>
@@ -117,8 +130,14 @@ export default function RepresentativeListPage() {
                   <div>
                     <dt className="text-gray-500">{t('rates.ervenyes')}</dt>
                     <dd className="text-gray-900">
-                      {rep.authorizationStart ? new Date(rep.authorizationStart).toLocaleDateString('hu-HU') : '-'}
-                      {rep.authorizationEnd ? ` — ${new Date(rep.authorizationEnd).toLocaleDateString('hu-HU')}` : rep.authorizationStart ? ' — ∞' : ''}
+                      {rep.authorizationStart
+                        ? new Date(rep.authorizationStart).toLocaleDateString('hu-HU')
+                        : '-'}
+                      {rep.authorizationEnd
+                        ? ` — ${new Date(rep.authorizationEnd).toLocaleDateString('hu-HU')}`
+                        : rep.authorizationStart
+                          ? ' — ∞'
+                          : ''}
                     </dd>
                   </div>
                 </dl>
@@ -135,55 +154,61 @@ export default function RepresentativeListPage() {
           </div>
 
           <div className="hidden overflow-x-auto md:block">
-          <table className="data-grid w-full">
-            <thead>
-              <tr>
-                <th>{t('common.name')}</th>
-                {!isCustomerScoped && <th>Ügyfél ID</th>}
-                <th>{t('common.documentNumber')}</th>
-                <th>{t('customers.okmanyTipus')}</th>
-                <th>{t('display.kapcsolat')}</th>
-                <th>{t('rates.ervenyes')}</th>
-                <th>{t('common.status')}</th>
-                <th className="w-24">{t('common.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {representatives.map((rep) => (
-                <tr key={rep.id}>
-                  <td className="font-semibold">{rep.fullName}</td>
-                  {!isCustomerScoped && <td className="font-mono text-sm">{rep.customerId}</td>}
-                  <td className="font-mono text-sm">{rep.documentNumber || '-'}</td>
-                  <td>{rep.documentTypeDid || '-'}</td>
-                  <td>{rep.relationshipDid || '-'}</td>
-                  <td className="text-sm text-gray-600">
-                    {rep.authorizationStart ? new Date(rep.authorizationStart).toLocaleDateString('hu-HU') : '-'}
-                    {rep.authorizationEnd ? ` — ${new Date(rep.authorizationEnd).toLocaleDateString('hu-HU')}` : rep.authorizationStart ? ' — ∞' : ''}
-                  </td>
-                  <td>
-                    <span className={`px-2 py-1 text-xs rounded ${
-                      rep.isActive
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-700'
-                    }`}>
-                      {rep.isActive ? 'Aktív' : 'Inaktív'}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => navigate(detailPath(rep))}
-                        className="toolbar-button"
-                        title="Részletek"
-                      >
-                        <Eye size={14} />
-                      </button>
-                    </div>
-                  </td>
+            <table className="data-grid w-full">
+              <thead>
+                <tr>
+                  <th>{t('common.name')}</th>
+                  {!isCustomerScoped && <th>Ügyfél ID</th>}
+                  <th>{t('common.documentNumber')}</th>
+                  <th>{t('customers.okmanyTipus')}</th>
+                  <th>{t('display.kapcsolat')}</th>
+                  <th>{t('rates.ervenyes')}</th>
+                  <th>{t('common.status')}</th>
+                  <th className="w-24">{t('common.actions')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {representatives.map((rep) => (
+                  <tr key={rep.id}>
+                    <td className="font-semibold">{rep.fullName}</td>
+                    {!isCustomerScoped && <td className="font-mono text-sm">{rep.customerId}</td>}
+                    <td className="font-mono text-sm">{rep.documentNumber || '-'}</td>
+                    <td>{rep.documentTypeDid || '-'}</td>
+                    <td>{rep.relationshipDid || '-'}</td>
+                    <td className="text-sm text-gray-600">
+                      {rep.authorizationStart
+                        ? new Date(rep.authorizationStart).toLocaleDateString('hu-HU')
+                        : '-'}
+                      {rep.authorizationEnd
+                        ? ` — ${new Date(rep.authorizationEnd).toLocaleDateString('hu-HU')}`
+                        : rep.authorizationStart
+                          ? ' — ∞'
+                          : ''}
+                    </td>
+                    <td>
+                      <span
+                        className={`px-2 py-1 text-xs rounded ${
+                          rep.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {rep.isActive ? 'Aktív' : 'Inaktív'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => navigate(detailPath(rep))}
+                          className="toolbar-button"
+                          title="Részletek"
+                        >
+                          <Eye size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

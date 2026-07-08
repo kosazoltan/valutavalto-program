@@ -38,34 +38,61 @@ export default function BookingExportPage() {
     try {
       const r = await api.get<BranchDto[]>('/branches')
       setBranches(Array.isArray(r.data) ? r.data : [])
-      setBranchId(prev => prev ? prev : workerBranchId)
+      setBranchId((prev) => (prev ? prev : workerBranchId))
     } catch (err) {
       logger.warn('BookingExportPage', 'Branch load failed', err)
     }
   }, [workerBranchId])
 
-  useEffect(() => { void loadBranches() }, [loadBranches])
+  useEffect(() => {
+    void loadBranches()
+  }, [loadBranches])
 
-  async function downloadCsv(path: '/booking/daily' | '/booking/monthly' | '/booking/inventory', params: Record<string, string>, filename: string) {
-    if (!branchId) { setError('Valassz penztari egyseget (branch)'); return }
+  async function downloadCsv(
+    path: '/booking/daily' | '/booking/monthly' | '/booking/inventory',
+    params: Record<string, string>,
+    filename: string,
+  ) {
+    if (!branchId) {
+      setError('Valassz penztari egyseget (branch)')
+      return
+    }
     try {
-      setBusy(path); setError(null); setInfo(null)
-      const response = path === '/booking/daily'
-        ? await api.get('/booking/daily', { params: { branchId, ...params }, responseType: 'blob' })
-        : path === '/booking/monthly'
-        ? await api.get('/booking/monthly', { params: { branchId, ...params }, responseType: 'blob' })
-        : await api.get('/booking/inventory', { params: { branchId, ...params }, responseType: 'blob' })
+      setBusy(path)
+      setError(null)
+      setInfo(null)
+      const response =
+        path === '/booking/daily'
+          ? await api.get('/booking/daily', {
+              params: { branchId, ...params },
+              responseType: 'blob',
+            })
+          : path === '/booking/monthly'
+            ? await api.get('/booking/monthly', {
+                params: { branchId, ...params },
+                responseType: 'blob',
+              })
+            : await api.get('/booking/inventory', {
+                params: { branchId, ...params },
+                responseType: 'blob',
+              })
       const blob = new Blob([response.data as BlobPart], { type: 'text/csv;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove()
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
       URL.revokeObjectURL(url)
       setInfo('Letoltes: ' + filename)
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('BookingExportPage', 'Export error: ' + path, err)
       setError(msg)
-    } finally { setBusy(null) }
+    } finally {
+      setBusy(null)
+    }
   }
 
   return (
@@ -80,20 +107,37 @@ export default function BookingExportPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-white rounded shadow p-4">
         <div>
           <label className="block text-xs text-gray-500 mb-1">{t('export.penztariEgyseg')}</label>
-          <select value={branchId} onChange={(e) => setBranchId(e.target.value)} className="form-input w-full">
+          <select
+            value={branchId}
+            onChange={(e) => setBranchId(e.target.value)}
+            className="form-input w-full"
+          >
             <option value="">{t('export.valassz')}</option>
             {branches.map((b) => (
-              <option key={b.id} value={b.id}>{b.name}{b.code ? ' (' + b.code + ')' : ''}</option>
+              <option key={b.id} value={b.id}>
+                {b.name}
+                {b.code ? ' (' + b.code + ')' : ''}
+              </option>
             ))}
           </select>
         </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1">{t('export.datumNapiKeszlet')}</label>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="form-input w-full" />
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="form-input w-full"
+          />
         </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1">{t('export.honapHavi')}</label>
-          <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="form-input w-full" />
+          <input
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            className="form-input w-full"
+          />
         </div>
       </div>
 
@@ -104,33 +148,44 @@ export default function BookingExportPage() {
         </div>
       )}
       {info && (
-        <div className="bg-green-50 text-green-700 border border-green-200 rounded p-2 text-sm">{info}</div>
+        <div className="bg-green-50 text-green-700 border border-green-200 rounded p-2 text-sm">
+          {info}
+        </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <button
-          onClick={() => void downloadCsv('/booking/daily', { date }, 'konyveles-napi-' + date + '.csv')}
+          onClick={() =>
+            void downloadCsv('/booking/daily', { date }, 'konyveles-napi-' + date + '.csv')
+          }
           disabled={busy !== null}
           className="form-button-primary flex items-center justify-center gap-2 py-4"
         >
           <Download className="h-5 w-5" />
-          {t('export.napiExport')}{date})
+          {t('export.napiExport')}
+          {date})
         </button>
         <button
-          onClick={() => void downloadCsv('/booking/monthly', { month }, 'konyveles-havi-' + month + '.csv')}
+          onClick={() =>
+            void downloadCsv('/booking/monthly', { month }, 'konyveles-havi-' + month + '.csv')
+          }
           disabled={busy !== null}
           className="form-button-primary flex items-center justify-center gap-2 py-4"
         >
           <Download className="h-5 w-5" />
-          {t('export.haviExport')}{month})
+          {t('export.haviExport')}
+          {month})
         </button>
         <button
-          onClick={() => void downloadCsv('/booking/inventory', { date }, 'keszlet-' + date + '.csv')}
+          onClick={() =>
+            void downloadCsv('/booking/inventory', { date }, 'keszlet-' + date + '.csv')
+          }
           disabled={busy !== null}
           className="form-button-primary flex items-center justify-center gap-2 py-4"
         >
           <Download className="h-5 w-5" />
-          {t('export.keszletExport')}{date})
+          {t('export.keszletExport')}
+          {date})
         </button>
       </div>
 

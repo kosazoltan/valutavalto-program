@@ -277,7 +277,8 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'territory-reconciliation',
         title: 'Területi reconciliation',
-        description: 'Értéktári átértékelés lecsorgatása a pénztárakra; terület = Σ pénztári haszon',
+        description:
+          'Értéktári átértékelés lecsorgatása a pénztárakra; terület = Σ pénztári haszon',
         route: '/reports/territory-reconciliation',
         status: 'ready',
         icon: Scale,
@@ -317,12 +318,16 @@ export default function CentralWorkstationPage() {
   const hasCanonicalRole = useAuthStore((state) => state.hasCanonicalRole)
   const hasRole = useAuthStore((state) => state.hasRole)
 
-  const visibleGroups = useMemo(() => CENTRAL_MODULE_GROUPS
-    .map((group) => ({
-      ...group,
-      modules: group.modules.filter((module) => canSeeModule(module, centralModules, hasCanonicalRole, hasRole)),
-    }))
-    .filter((group) => group.modules.length > 0), [centralModules, hasCanonicalRole, hasRole])
+  const visibleGroups = useMemo(
+    () =>
+      CENTRAL_MODULE_GROUPS.map((group) => ({
+        ...group,
+        modules: group.modules.filter((module) =>
+          canSeeModule(module, centralModules, hasCanonicalRole, hasRole),
+        ),
+      })).filter((group) => group.modules.length > 0),
+    [centralModules, hasCanonicalRole, hasRole],
+  )
 
   const moduleCount = visibleGroups.reduce((sum, group) => sum + group.modules.length, 0)
   const readyCount = visibleGroups.reduce(
@@ -338,12 +343,18 @@ export default function CentralWorkstationPage() {
             <LayoutDashboard className="h-5 w-5 text-slate-700" />
             <div>
               <h1 className="text-lg font-semibold text-slate-900">Központi irányítóközpont</h1>
-              <div className="text-xs text-slate-500">Felügyelet, riportok és törzsadat-kezelés</div>
+              <div className="text-xs text-slate-500">
+                Felügyelet, riportok és törzsadat-kezelés
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs">
-            <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-700">{moduleCount} modul</span>
-            <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">{readyCount} üzemkész</span>
+            <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-700">
+              {moduleCount} modul
+            </span>
+            <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">
+              {readyCount} üzemkész
+            </span>
           </div>
         </div>
       </div>
@@ -367,11 +378,15 @@ export default function CentralWorkstationPage() {
                       </span>
                       <span className="text-sm font-semibold text-slate-900">{module.title}</span>
                     </div>
-                    <span className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${statusClass[module.status]}`}>
+                    <span
+                      className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${statusClass[module.status]}`}
+                    >
                       {statusLabel[module.status]}
                     </span>
                   </div>
-                  <div className="mt-2 text-[11px] leading-4 text-slate-500">{module.description}</div>
+                  <div className="mt-2 text-[11px] leading-4 text-slate-500">
+                    {module.description}
+                  </div>
                 </button>
               ))}
             </div>

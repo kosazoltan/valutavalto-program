@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Clock, Play, Square } from 'lucide-react'
 import { cashDeskBreakApi, CashDeskBreak, cashDeskApi, CashDesk } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
 export default function CashDeskBreakPage() {
@@ -24,7 +24,7 @@ export default function CashDeskBreakPage() {
         cashDeskBreakApi.getActive(selectedCashDeskId).catch(() => null),
       ])
       setBreaks(data)
-      setActiveBreak(active ?? data.find(b => !b.breakEnd && b.isActive) ?? null)
+      setActiveBreak(active ?? data.find((b) => !b.breakEnd && b.isActive) ?? null)
     } catch (err) {
       logger.error('CashDeskBreakPage', 'Szünetek betöltési hiba:', err)
       setError('Hiba a szünetek betöltésekor')
@@ -107,9 +107,15 @@ export default function CashDeskBreakPage() {
       <div className="form-panel space-y-4">
         <div>
           <label className="form-label">{t('branch.branch')}</label>
-          <select className="form-input" value={selectedCashDeskId} onChange={(e) => setSelectedCashDeskId(e.target.value)}>
-            {cashDesks.map(cd => (
-              <option key={cd.id} value={cd.id}>{cd.name}</option>
+          <select
+            className="form-input"
+            value={selectedCashDeskId}
+            onChange={(e) => setSelectedCashDeskId(e.target.value)}
+          >
+            {cashDesks.map((cd) => (
+              <option key={cd.id} value={cd.id}>
+                {cd.name}
+              </option>
             ))}
           </select>
         </div>
@@ -119,9 +125,19 @@ export default function CashDeskBreakPage() {
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="font-bold text-yellow-800">{t('cashdesk.aktivSzunet')}</h3>
-                <p className="text-sm text-yellow-600">{t('cashdesk.kezdes')}{new Date(activeBreak.breakStart).toLocaleString('hu-HU')}</p>
-                <p className="text-sm text-yellow-600">{t('cashdesk.tipus')}{activeBreak.breakType}</p>
-                {activeBreak.reason && <p className="text-sm text-yellow-600">{t('cashdesk.ok')} {activeBreak.reason}</p>}
+                <p className="text-sm text-yellow-600">
+                  {t('cashdesk.kezdes')}
+                  {new Date(activeBreak.breakStart).toLocaleString('hu-HU')}
+                </p>
+                <p className="text-sm text-yellow-600">
+                  {t('cashdesk.tipus')}
+                  {activeBreak.breakType}
+                </p>
+                {activeBreak.reason && (
+                  <p className="text-sm text-yellow-600">
+                    {t('cashdesk.ok')} {activeBreak.reason}
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => handleEndBreak(activeBreak.id)}
@@ -156,7 +172,11 @@ export default function CashDeskBreakPage() {
           </thead>
           <tbody>
             {breaks.length === 0 ? (
-              <tr><td colSpan={5} className="text-center text-gray-500 py-4">{t('cashdesk.nincsSzunet')}</td></tr>
+              <tr>
+                <td colSpan={5} className="text-center text-gray-500 py-4">
+                  {t('cashdesk.nincsSzunet')}
+                </td>
+              </tr>
             ) : (
               breaks.map((b) => (
                 <tr key={b.id}>
@@ -166,11 +186,9 @@ export default function CashDeskBreakPage() {
                   <td>{b.reason || '-'}</td>
                   <td>
                     {!b.breakEnd && (
-                      <button
-                        onClick={() => handleEndBreak(b.id)}
-                        className="form-button text-xs"
-                      >
-                        <Square size={12} />{t('archiving.befejezes')}
+                      <button onClick={() => handleEndBreak(b.id)} className="form-button text-xs">
+                        <Square size={12} />
+                        {t('archiving.befejezes')}
                       </button>
                     )}
                   </td>
@@ -183,4 +201,3 @@ export default function CashDeskBreakPage() {
     </div>
   )
 }
-

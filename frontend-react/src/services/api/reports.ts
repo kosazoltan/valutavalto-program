@@ -122,19 +122,27 @@ export const reportApi = {
   },
   getPeriod: async (startDate: string, endDate: string): Promise<PeriodReport> => {
     const response = await api.get<PeriodReport>('/reports/period', {
-      params: { startDate, endDate }
+      params: { startDate, endDate },
     })
     return response.data
   },
-  getWorkerPerformance: async (workerId: number, startDate: string, endDate: string): Promise<WorkerPerformanceReport> => {
+  getWorkerPerformance: async (
+    workerId: number,
+    startDate: string,
+    endDate: string,
+  ): Promise<WorkerPerformanceReport> => {
     const response = await api.get<WorkerPerformanceReport>(`/reports/worker/${workerId}`, {
-      params: { startDate, endDate }
+      params: { startDate, endDate },
     })
     return response.data
   },
-  getCurrencyReport: async (currencyId: number, startDate: string, endDate: string): Promise<CurrencyReport> => {
+  getCurrencyReport: async (
+    currencyId: number,
+    startDate: string,
+    endDate: string,
+  ): Promise<CurrencyReport> => {
     const response = await api.get<CurrencyReport>(`/reports/currency/${currencyId}`, {
-      params: { startDate, endDate }
+      params: { startDate, endDate },
     })
     return response.data
   },
@@ -187,7 +195,7 @@ export const reportApi = {
       responseType: 'blob',
     })
     return response.data as Blob
-  }
+  },
 }
 
 // ================== NAV REPORT API ==================
@@ -264,7 +272,9 @@ export const navReportApi = {
   },
   /** Jelenthető tranzakciók tételes listája. Backend: GET /api/v1/nav-reports/reportable?date */
   getReportable: async (date: string): Promise<NavReportableTransaction[]> => {
-    const response = await api.get<NavReportableTransaction[]>('/nav-reports/reportable', { params: { date } })
+    const response = await api.get<NavReportableTransaction[]>('/nav-reports/reportable', {
+      params: { date },
+    })
     return response.data
   },
   /** NAV CSV export. Backend: GET /api/v1/nav-reports/csv?date → text/csv. */
@@ -273,7 +283,12 @@ export const navReportApi = {
     return response.data as Blob
   },
   /** NAV zárások listája. Backend: GET /api/v1/nav/closings */
-  listClosings: async (params?: { dateFrom?: string; dateTo?: string; page?: number; size?: number }): Promise<NavClosing[]> => {
+  listClosings: async (params?: {
+    dateFrom?: string
+    dateTo?: string
+    page?: number
+    size?: number
+  }): Promise<NavClosing[]> => {
     const response = await api.get<PageResponse<NavClosing> | NavClosing[]>('/nav/closings', {
       params: {
         page: params?.page ?? 0,
@@ -283,7 +298,7 @@ export const navReportApi = {
       },
     })
     const payload = response.data
-    return Array.isArray(payload) ? payload : payload.content ?? []
+    return Array.isArray(payload) ? payload : (payload.content ?? [])
   },
   /** NAV zárás napi összesítő. Backend: GET /api/v1/nav/closings/{id}/summary */
   getClosingSummary: async (id: string): Promise<NavClosingSummary> => {
@@ -291,14 +306,26 @@ export const navReportApi = {
     return response.data
   },
   /** NAV záró összeg validálása. Backend: POST /api/v1/nav/closings/validate-amount */
-  validateNavAmount: async (branchId: string, date: string, navAmount: number): Promise<NavClosingValidationResult> => {
-    const response = await api.post<NavClosingValidationResult>('/nav/closings/validate-amount', null, {
-      params: { branchId, date, navAmount },
-    })
+  validateNavAmount: async (
+    branchId: string,
+    date: string,
+    navAmount: number,
+  ): Promise<NavClosingValidationResult> => {
+    const response = await api.post<NavClosingValidationResult>(
+      '/nav/closings/validate-amount',
+      null,
+      {
+        params: { branchId, date, navAmount },
+      },
+    )
     return response.data
   },
   /** NAV zárási eltérés jóváhagyása. Backend: POST /api/v1/nav/closings/{id}/approve-discrepancy */
-  approveDiscrepancy: async (closingId: string, navAmount: number, justification: string): Promise<void> => {
+  approveDiscrepancy: async (
+    closingId: string,
+    navAmount: number,
+    justification: string,
+  ): Promise<void> => {
     await api.post<void>(`/nav/closings/${closingId}/approve-discrepancy`, null, {
       params: { navAmount, justification },
     })
@@ -326,17 +353,26 @@ export const navReportApi = {
 export const centralReportApi = {
   /** Napi konszolidált riport CSV. Backend: GET /api/v1/central-reports/daily?date=YYYY-MM-DD */
   daily: async (date: string): Promise<Blob> => {
-    const response = await api.get('/central-reports/daily', { params: { date }, responseType: 'blob' })
+    const response = await api.get('/central-reports/daily', {
+      params: { date },
+      responseType: 'blob',
+    })
     return response.data as Blob
   },
   /** Heti riport CSV. Backend: GET /api/v1/central-reports/weekly?weekStart=YYYY-MM-DD */
   weekly: async (weekStart: string): Promise<Blob> => {
-    const response = await api.get('/central-reports/weekly', { params: { weekStart }, responseType: 'blob' })
+    const response = await api.get('/central-reports/weekly', {
+      params: { weekStart },
+      responseType: 'blob',
+    })
     return response.data as Blob
   },
   /** Havi riport CSV. Backend: GET /api/v1/central-reports/monthly?month=YYYY-MM */
   monthly: async (month: string): Promise<Blob> => {
-    const response = await api.get('/central-reports/monthly', { params: { month }, responseType: 'blob' })
+    const response = await api.get('/central-reports/monthly', {
+      params: { month },
+      responseType: 'blob',
+    })
     return response.data as Blob
   },
 }
@@ -432,10 +468,16 @@ export const averageRateApi = {
    * CHANGE ZRT" összesítő (branchId=null), vagy 1 fiók. Vétel és Eladás párhuzamosan.
    * Backend: GET /api/v1/reports/average-rate/pivot?from&to[&branchId]
    */
-  getPivot: async (from: string, to: string, branchId?: string): Promise<AverageRatePivotResponse> => {
+  getPivot: async (
+    from: string,
+    to: string,
+    branchId?: string,
+  ): Promise<AverageRatePivotResponse> => {
     const params: Record<string, string> = { from, to }
     if (branchId) params.branchId = branchId
-    const response = await api.get<AverageRatePivotResponse>('/reports/average-rate/pivot', { params })
+    const response = await api.get<AverageRatePivotResponse>('/reports/average-rate/pivot', {
+      params,
+    })
     return response.data
   },
 
@@ -506,7 +548,11 @@ export const recurringCustomerApi = {
    * Visszatérő ügyfelek (>= minTransactions tranzakció az időszakban).
    * Backend: GET /api/v1/reports/recurring-customers?from&to&minTransactions
    */
-  getRecurring: async (from: string, to: string, minTransactions = 3): Promise<RecurringCustomer[]> => {
+  getRecurring: async (
+    from: string,
+    to: string,
+    minTransactions = 3,
+  ): Promise<RecurringCustomer[]> => {
     const response = await api.get<RecurringCustomer[]>('/reports/recurring-customers', {
       params: { from, to, minTransactions },
     })
@@ -534,43 +580,73 @@ export interface ReceiptListReport {
 }
 
 export const reportExtendedApi = {
-  getTransactionList: async (branchId: string | undefined, startDate: string, endDate: string): Promise<TransactionListReport> => {
+  getTransactionList: async (
+    branchId: string | undefined,
+    startDate: string,
+    endDate: string,
+  ): Promise<TransactionListReport> => {
     const params: Record<string, string> = { startDate, endDate }
     if (branchId) params.branchId = branchId
-    const response = await api.get<TransactionListReport>('/reports-extended/transaction-list', { params })
+    const response = await api.get<TransactionListReport>('/reports-extended/transaction-list', {
+      params,
+    })
     return response.data
   },
-  getReceiptList: async (branchId: string | undefined, startDate: string, endDate: string): Promise<ReceiptListReport> => {
+  getReceiptList: async (
+    branchId: string | undefined,
+    startDate: string,
+    endDate: string,
+  ): Promise<ReceiptListReport> => {
     const params: Record<string, string> = { startDate, endDate }
     if (branchId) params.branchId = branchId
     const response = await api.get<ReceiptListReport>('/reports-extended/receipt-list', { params })
     return response.data
   },
-  getFeeSummary: async (branchId: string | undefined, startDate: string, endDate: string): Promise<unknown> => {
+  getFeeSummary: async (
+    branchId: string | undefined,
+    startDate: string,
+    endDate: string,
+  ): Promise<unknown> => {
     const params: Record<string, string> = { startDate, endDate }
     if (branchId) params.branchId = branchId
     const response = await api.get('/reports-extended/fee-summary', { params })
     return response.data
   },
-  getMonthlyInventory: async (branchId: string | undefined, year: number, month: number): Promise<unknown> => {
+  getMonthlyInventory: async (
+    branchId: string | undefined,
+    year: number,
+    month: number,
+  ): Promise<unknown> => {
     const params: Record<string, string | number> = { year, month }
     if (branchId) params.branchId = branchId
     const response = await api.get('/reports-extended/monthly-inventory', { params })
     return response.data
   },
-  getMonthlyTurnover: async (branchId: string | undefined, year: number, month: number): Promise<unknown> => {
+  getMonthlyTurnover: async (
+    branchId: string | undefined,
+    year: number,
+    month: number,
+  ): Promise<unknown> => {
     const params: Record<string, string | number> = { year, month }
     if (branchId) params.branchId = branchId
     const response = await api.get('/reports-extended/monthly-turnover', { params })
     return response.data
   },
-  getMonthlyTransfers: async (branchId: string | undefined, year: number, month: number): Promise<unknown> => {
+  getMonthlyTransfers: async (
+    branchId: string | undefined,
+    year: number,
+    month: number,
+  ): Promise<unknown> => {
     const params: Record<string, string | number> = { year, month }
     if (branchId) params.branchId = branchId
     const response = await api.get('/reports-extended/monthly-transfers', { params })
     return response.data
   },
-  getHandlingCost: async (branchId: string | undefined, startDate: string, endDate: string): Promise<unknown> => {
+  getHandlingCost: async (
+    branchId: string | undefined,
+    startDate: string,
+    endDate: string,
+  ): Promise<unknown> => {
     const params: Record<string, string> = { startDate, endDate }
     if (branchId) params.branchId = branchId
     const response = await api.get('/reports-extended/handling-cost', { params })
@@ -578,28 +654,36 @@ export const reportExtendedApi = {
   },
   getDailyCashDesk: async (cashDeskId: string, date: string): Promise<unknown> => {
     const response = await api.get('/reports-extended/daily-cash-desk', {
-      params: { cashDeskId, date }
+      params: { cashDeskId, date },
     })
     return response.data
   },
   getCurrentCashDeskStatus: async (cashDeskId: string): Promise<unknown> => {
     const response = await api.get('/reports-extended/current-cash-desk-status', {
-      params: { cashDeskId }
+      params: { cashDeskId },
     })
     return response.data
   },
-  getSuspiciousTransactions: async (branchId: string | undefined, startDate: string, endDate: string): Promise<unknown> => {
+  getSuspiciousTransactions: async (
+    branchId: string | undefined,
+    startDate: string,
+    endDate: string,
+  ): Promise<unknown> => {
     const params: Record<string, string> = { startDate, endDate }
     if (branchId) params.branchId = branchId
     const response = await api.get('/reports-extended/suspicious-transactions', { params })
     return response.data
   },
-  getCardTransactionFees: async (branchId: string | undefined, startDate: string, endDate: string): Promise<unknown> => {
+  getCardTransactionFees: async (
+    branchId: string | undefined,
+    startDate: string,
+    endDate: string,
+  ): Promise<unknown> => {
     const params: Record<string, string> = { startDate, endDate }
     if (branchId) params.branchId = branchId
     const response = await api.get('/reports-extended/card-transaction-fees', { params })
     return response.data
-  }
+  },
 }
 
 // ================== LOGGING API ==================
@@ -623,25 +707,49 @@ export interface AuditLog {
 }
 
 export const loggingApi = {
-  getSystemLogs: async (from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
+  getSystemLogs: async (
+    from?: string,
+    to?: string,
+    page = 0,
+    size = 50,
+  ): Promise<{ content: AuditLog[]; totalElements: number }> => {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get('/logs/system', { params, _preservePaged: true } as Record<string, unknown>)
+    const response = await api.get('/logs/system', { params, _preservePaged: true } as Record<
+      string,
+      unknown
+    >)
     return response.data
   },
-  getPosLogs: async (from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
+  getPosLogs: async (
+    from?: string,
+    to?: string,
+    page = 0,
+    size = 50,
+  ): Promise<{ content: AuditLog[]; totalElements: number }> => {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get('/logs/pos', { params, _preservePaged: true } as Record<string, unknown>)
+    const response = await api.get('/logs/pos', { params, _preservePaged: true } as Record<
+      string,
+      unknown
+    >)
     return response.data
   },
-  getNavLogs: async (from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
+  getNavLogs: async (
+    from?: string,
+    to?: string,
+    page = 0,
+    size = 50,
+  ): Promise<{ content: AuditLog[]; totalElements: number }> => {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get('/logs/nav', { params, _preservePaged: true } as Record<string, unknown>)
+    const response = await api.get('/logs/nav', { params, _preservePaged: true } as Record<
+      string,
+      unknown
+    >)
     return response.data
   },
   exportToCsv: async (from?: string, to?: string): Promise<Blob> => {
@@ -650,7 +758,7 @@ export const loggingApi = {
     if (to) params.to = to
     const response = await api.get('/logs/export', { params, responseType: 'blob' })
     return response.data
-  }
+  },
 }
 
 // ================== AUDIT LOG API (érzékeny műveletek) ==================
@@ -679,14 +787,26 @@ export const auditLogApi = {
     if (entityType) params.entityType = entityType
     if (action) params.action = action
     if (keyword) params.keyword = keyword
-    const response = await api.get('/audit/search', { params, _preservePaged: true } as Record<string, unknown>)
+    const response = await api.get('/audit/search', { params, _preservePaged: true } as Record<
+      string,
+      unknown
+    >)
     return response.data
   },
-  getByBranch: async (branchId: string, from?: string, to?: string, page = 0, size = 50): Promise<{ content: AuditLog[]; totalElements: number }> => {
+  getByBranch: async (
+    branchId: string,
+    from?: string,
+    to?: string,
+    page = 0,
+    size = 50,
+  ): Promise<{ content: AuditLog[]; totalElements: number }> => {
     const params: Record<string, string | number> = { page, size }
     if (from) params.from = from
     if (to) params.to = to
-    const response = await api.get(`/audit/branch/${branchId}`, { params, _preservePaged: true } as Record<string, unknown>)
+    const response = await api.get(`/audit/branch/${branchId}`, {
+      params,
+      _preservePaged: true,
+    } as Record<string, unknown>)
     return response.data
   },
   exportCsv: async (dateFrom?: string, dateTo?: string): Promise<Blob> => {
@@ -727,51 +847,88 @@ export const anonymousReportApi = {
   },
   assign: async (id: string, assignedToId: string): Promise<AnonymousReport> => {
     const response = await api.post<AnonymousReport>(`/anonymous-reports/${id}/assign`, null, {
-      params: { assignedToId }
+      params: { assignedToId },
     })
     return response.data
   },
   resolve: async (id: string, resolution: string): Promise<AnonymousReport> => {
     const response = await api.post<AnonymousReport>(`/anonymous-reports/${id}/resolve`, null, {
-      params: { resolution }
+      params: { resolution },
     })
     return response.data
-  }
+  },
 }
 
 // ================== DARIUS ===
 
 export interface DariusReportLine {
-  id: string; branchId: string; branchCode: string; currencyCode: string
-  buyCount: number; buyCurrencyAmount: number; buyHufAmount: number
-  sellCount: number; sellCurrencyAmount: number; sellHufAmount: number
-  avgBuyRate: number; avgSellRate: number; handlingFeeHuf: number
+  id: string
+  branchId: string
+  branchCode: string
+  currencyCode: string
+  buyCount: number
+  buyCurrencyAmount: number
+  buyHufAmount: number
+  sellCount: number
+  sellCurrencyAmount: number
+  sellHufAmount: number
+  avgBuyRate: number
+  avgSellRate: number
+  handlingFeeHuf: number
 }
 export interface DariusDailyReport {
-  id: string; reportDate: string; status: string; companyId: string
-  totalBuyHuf: number; totalSellHuf: number; totalHandlingFeeHuf: number
-  transactionCount: number; branchCount: number
-  payloadHash?: string; payloadFormat?: string
-  submittedAt?: string; submittedBy?: string; ackReference?: string; ackAt?: string
-  errorMessage?: string; retryCount: number; maxRetries: number; nextRetryAt?: string
-  approvedBy?: string; approvedAt?: string; notes?: string
+  id: string
+  reportDate: string
+  status: string
+  companyId: string
+  totalBuyHuf: number
+  totalSellHuf: number
+  totalHandlingFeeHuf: number
+  transactionCount: number
+  branchCount: number
+  payloadHash?: string
+  payloadFormat?: string
+  submittedAt?: string
+  submittedBy?: string
+  ackReference?: string
+  ackAt?: string
+  errorMessage?: string
+  retryCount: number
+  maxRetries: number
+  nextRetryAt?: string
+  approvedBy?: string
+  approvedAt?: string
+  notes?: string
   lines?: DariusReportLine[]
 }
 export interface DariusMonthlyDto {
-  year: number; month: number; totalReports: number
-  acknowledgedCount: number; failedCount: number; pendingCount: number
-  totalBuyHuf: number; totalSellHuf: number; totalHandlingFeeHuf: number
-  totalTransactionCount: number; dailyReports: DariusDailyReport[]
+  year: number
+  month: number
+  totalReports: number
+  acknowledgedCount: number
+  failedCount: number
+  pendingCount: number
+  totalBuyHuf: number
+  totalSellHuf: number
+  totalHandlingFeeHuf: number
+  totalTransactionCount: number
+  dailyReports: DariusDailyReport[]
 }
 export const dariusApi = {
   generate: (date: string) => api.post<DariusDailyReport>(`/darius/generate?date=${date}`),
   approve: (id: string) => api.post<DariusDailyReport>(`/darius/${id}/approve`),
   submit: (id: string) => api.post<DariusDailyReport>(`/darius/${id}/submit`),
-  acknowledge: (id: string, ref: string) => api.post<DariusDailyReport>(`/darius/${id}/acknowledge?ackReference=${encodeURIComponent(ref)}`),
+  acknowledge: (id: string, ref: string) =>
+    api.post<DariusDailyReport>(
+      `/darius/${id}/acknowledge?ackReference=${encodeURIComponent(ref)}`,
+    ),
   retryFailed: () => api.post<DariusDailyReport[]>('/darius/retry-failed'),
   getById: (id: string) => api.get<DariusDailyReport>(`/darius/${id}`),
   getByDate: (date: string) => api.get<DariusDailyReport>(`/darius/by-date?date=${date}`),
-  getRange: (from: string, to: string) => api.get<DariusDailyReport[]>(`/darius/range?startDate=${from}&endDate=${to}`),
-  getMonthly: (year: number, month: number) => api.get<DariusMonthlyDto>(`/darius/monthly?year=${year}&month=${month}`),
-  getMissingDates: (from: string, to: string) => api.get<string[]>(`/darius/missing-dates?startDate=${from}&endDate=${to}`),
+  getRange: (from: string, to: string) =>
+    api.get<DariusDailyReport[]>(`/darius/range?startDate=${from}&endDate=${to}`),
+  getMonthly: (year: number, month: number) =>
+    api.get<DariusMonthlyDto>(`/darius/monthly?year=${year}&month=${month}`),
+  getMissingDates: (from: string, to: string) =>
+    api.get<string[]>(`/darius/missing-dates?startDate=${from}&endDate=${to}`),
 }

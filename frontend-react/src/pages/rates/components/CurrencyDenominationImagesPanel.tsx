@@ -35,7 +35,9 @@ function getSideLabel(side: string): string {
   return side
 }
 
-export default function CurrencyDenominationImagesPanel({ currency }: CurrencyDenominationImagesPanelProps) {
+export default function CurrencyDenominationImagesPanel({
+  currency,
+}: CurrencyDenominationImagesPanelProps) {
   const [images, setImages] = useState<CurrencyDenominationImageDto[]>([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -53,47 +55,58 @@ export default function CurrencyDenominationImagesPanel({ currency }: CurrencyDe
 
   const revokeAll = useCallback(() => {
     for (const url of urlsRef.current) {
-      try { URL.revokeObjectURL(url) } catch { /* best-effort */ }
+      try {
+        URL.revokeObjectURL(url)
+      } catch {
+        /* best-effort */
+      }
     }
     urlsRef.current = []
   }, [])
 
-  const refresh = useCallback(async (currencyId: number) => {
-    const requestVersion = ++requestVersionRef.current
-    setLoading(true)
-    try {
-      const list = await currencyDenominationImageApi.list(currencyId)
-      if (requestVersion !== requestVersionRef.current) return
+  const refresh = useCallback(
+    async (currencyId: number) => {
+      const requestVersion = ++requestVersionRef.current
+      setLoading(true)
+      try {
+        const list = await currencyDenominationImageApi.list(currencyId)
+        if (requestVersion !== requestVersionRef.current) return
 
-      revokeAll()
-      setThumbUrls({})
-      setImages(list)
+        revokeAll()
+        setThumbUrls({})
+        setImages(list)
 
-      const entries = await Promise.all(
-        list.map(async (image): Promise<readonly [string, string] | null> => {
-          const blob = await currencyDenominationImageApi.getThumbnail(image.id)
-          if (requestVersion !== requestVersionRef.current) return null
-          const url = URL.createObjectURL(blob)
-          urlsRef.current.push(url)
-          return [image.id, url] as const
-        }),
-      )
+        const entries = await Promise.all(
+          list.map(async (image): Promise<readonly [string, string] | null> => {
+            const blob = await currencyDenominationImageApi.getThumbnail(image.id)
+            if (requestVersion !== requestVersionRef.current) return null
+            const url = URL.createObjectURL(blob)
+            urlsRef.current.push(url)
+            return [image.id, url] as const
+          }),
+        )
 
-      if (requestVersion !== requestVersionRef.current) return
-      const nextThumbUrls: Record<string, string> = {}
-      for (const entry of entries) {
-        if (entry != null) nextThumbUrls[entry[0]] = entry[1]
+        if (requestVersion !== requestVersionRef.current) return
+        const nextThumbUrls: Record<string, string> = {}
+        for (const entry of entries) {
+          if (entry != null) nextThumbUrls[entry[0]] = entry[1]
+        }
+        setThumbUrls(nextThumbUrls)
+      } catch (err) {
+        if (requestVersion === requestVersionRef.current) {
+          logger.error(
+            'CurrencyDenominationImagesPanel',
+            'list/thumbnail failed',
+            getErrorMessage(err),
+          )
+          toast.error('Hiba', getErrorMessage(err))
+        }
+      } finally {
+        if (requestVersion === requestVersionRef.current) setLoading(false)
       }
-      setThumbUrls(nextThumbUrls)
-    } catch (err) {
-      if (requestVersion === requestVersionRef.current) {
-        logger.error('CurrencyDenominationImagesPanel', 'list/thumbnail failed', getErrorMessage(err))
-        toast.error('Hiba', getErrorMessage(err))
-      }
-    } finally {
-      if (requestVersion === requestVersionRef.current) setLoading(false)
-    }
-  }, [revokeAll])
+    },
+    [revokeAll],
+  )
 
   useEffect(() => {
     if (!currency) {
@@ -156,23 +169,26 @@ export default function CurrencyDenominationImagesPanel({ currency }: CurrencyDe
     }
   }, [canUpload, currency, denominationType, file, numericFaceValue, refresh, side])
 
-  const handleToggleActive = useCallback(async (image: CurrencyDenominationImageDto) => {
-    if (!currency || togglingIdRef.current) return
+  const handleToggleActive = useCallback(
+    async (image: CurrencyDenominationImageDto) => {
+      if (!currency || togglingIdRef.current) return
 
-    togglingIdRef.current = image.id
-    setTogglingId(image.id)
-    try {
-      await currencyDenominationImageApi.setActive(image.id, !image.active)
-      toast.success('Sikeres', image.active ? 'Címletkép inaktiválva' : 'Címletkép aktiválva')
-      await refresh(currency.id)
-    } catch (err) {
-      logger.error('CurrencyDenominationImagesPanel', 'setActive failed', getErrorMessage(err))
-      toast.error('Hiba', getErrorMessage(err))
-    } finally {
-      togglingIdRef.current = null
-      setTogglingId(null)
-    }
-  }, [currency, refresh])
+      togglingIdRef.current = image.id
+      setTogglingId(image.id)
+      try {
+        await currencyDenominationImageApi.setActive(image.id, !image.active)
+        toast.success('Sikeres', image.active ? 'Címletkép inaktiválva' : 'Címletkép aktiválva')
+        await refresh(currency.id)
+      } catch (err) {
+        logger.error('CurrencyDenominationImagesPanel', 'setActive failed', getErrorMessage(err))
+        toast.error('Hiba', getErrorMessage(err))
+      } finally {
+        togglingIdRef.current = null
+        setTogglingId(null)
+      }
+    },
+    [currency, refresh],
+  )
 
   if (!currency) {
     return (
@@ -190,7 +206,9 @@ export default function CurrencyDenominationImagesPanel({ currency }: CurrencyDe
       <div className="flex items-center justify-between gap-2">
         <div>
           <div className="text-sm font-semibold">Címletképek — {currency.code}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">JPEG/PNG elő- és hátoldali képek kezelése</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            JPEG/PNG elő- és hátoldali képek kezelése
+          </div>
         </div>
         {loading && <span className="text-xs text-gray-500">Betöltés...</span>}
       </div>
@@ -212,7 +230,9 @@ export default function CurrencyDenominationImagesPanel({ currency }: CurrencyDe
           <label className="text-xs block mb-0.5">Típus *</label>
           <select
             value={denominationType}
-            onChange={(event) => setDenominationType(event.target.value as CurrencyDenominationType)}
+            onChange={(event) =>
+              setDenominationType(event.target.value as CurrencyDenominationType)
+            }
             className="form-input w-full"
             data-testid="denomination-type"
           >
@@ -281,7 +301,8 @@ export default function CurrencyDenominationImagesPanel({ currency }: CurrencyDe
             )}
             <div className="space-y-1">
               <div className="font-semibold">
-                {image.faceValue} {currency.code} — {getTypeLabel(image.denominationType)} / {getSideLabel(image.side)}
+                {image.faceValue} {currency.code} — {getTypeLabel(image.denominationType)} /{' '}
+                {getSideLabel(image.side)}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 {image.mimeType} · {formatFileSize(image.fileSizeBytes)}

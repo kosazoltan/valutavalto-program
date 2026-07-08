@@ -4,10 +4,7 @@ import path from 'path';
 export default defineConfig({
   test: {
     globals: true,
-    include: [
-      'src/**/*.test.{ts,tsx}',
-      'electron/__tests__/**/*.test.ts',
-    ],
+    include: ['src/**/*.test.{ts,tsx}', 'electron/__tests__/**/*.test.ts'],
     environmentMatchGlobs: [
       ['electron/__tests__/**', 'node'],
       ['src/**', 'jsdom'],

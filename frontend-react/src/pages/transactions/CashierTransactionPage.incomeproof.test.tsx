@@ -49,7 +49,13 @@ vi.mock('../../services/api/client', () => ({
 
 vi.mock('../../stores/authStore', () => {
   const state = {
-    worker: { id: 9, fullName: 'Fabulya Zsuzsanna', branchCode: 'BR076', companyCode: 'EBC', workerCode: 'FZS' },
+    worker: {
+      id: 9,
+      fullName: 'Fabulya Zsuzsanna',
+      branchCode: 'BR076',
+      companyCode: 'EBC',
+      workerCode: 'FZS',
+    },
     hasCanonicalRole: () => false,
   }
   const useAuthStore = Object.assign(
@@ -79,13 +85,22 @@ vi.mock('../../components/cashier/HotkeyBar', () => ({ HotkeyBar: () => null }))
 vi.mock('../../components/documents/IncomeSourceDocCapture', () => ({
   default: ({ onCaptured, onClear }: { onCaptured(base64: string): void; onClear(): void }) => (
     <div>
-      <button type="button" onClick={() => onCaptured('bm9uLWVtcHR5LWltYWdl')}>mock-income-proof-capture</button>
-      <button type="button" onClick={onClear}>mock-income-proof-clear</button>
+      <button type="button" onClick={() => onCaptured('bm9uLWVtcHR5LWltYWdl')}>
+        mock-income-proof-capture
+      </button>
+      <button type="button" onClick={onClear}>
+        mock-income-proof-clear
+      </button>
     </div>
   ),
 }))
 vi.mock('../../components/cashier/CurrencyAutocomplete', () => ({
-  CurrencyAutocomplete: ({ rates, value, onChange, 'data-testid': testId }: {
+  CurrencyAutocomplete: ({
+    rates,
+    value,
+    onChange,
+    'data-testid': testId,
+  }: {
     rates: Array<{ currencyCode: string }>
     value: string
     onChange: (code: string, rate: unknown) => void
@@ -138,7 +153,12 @@ describe('CashierTransactionPage — jövedelemforrás-igazolás 10M+ vétel', (
     vi.clearAllMocks()
     mocks.dailySessionIsOpen.mockResolvedValue(true)
     mocks.exchangeRateList.mockResolvedValue([EUR_RATE])
-    mocks.getCashierRateQuota.mockResolvedValue({ limit: 5, used: 0, remaining: 5, minAmountHuf: 400000 })
+    mocks.getCashierRateQuota.mockResolvedValue({
+      limit: 5,
+      used: 0,
+      remaining: 5,
+      minAmountHuf: 400000,
+    })
     mocks.cashBalanceList.mockResolvedValue([{ currencyCode: 'HUF', currentBalance: 20_000_000 }])
     mocks.apiGet.mockResolvedValue({ data: { canApprove: true } })
     mocks.apiPost.mockResolvedValue({ data: { requiresApproval: false } })
@@ -169,7 +189,9 @@ describe('CashierTransactionPage — jövedelemforrás-igazolás 10M+ vétel', (
     const modal = await screen.findByTestId('income-proof-capture-modal')
     fireEvent.click(within(modal).getByRole('button', { name: 'Mégse' }))
 
-    await waitFor(() => expect(screen.queryByTestId('income-proof-capture-modal')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByTestId('income-proof-capture-modal')).not.toBeInTheDocument(),
+    )
     expect(mocks.buy).not.toHaveBeenCalled()
     expect(mocks.sendEmail).not.toHaveBeenCalled()
   })
@@ -181,12 +203,14 @@ describe('CashierTransactionPage — jövedelemforrás-igazolás 10M+ vétel', (
 
     await waitFor(() => expect(mocks.buy).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(mocks.sendEmail).toHaveBeenCalledTimes(1))
-    expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
-      imageBase64: 'bm9uLWVtcHR5LWltYWdl',
-      mimeType: 'image/jpeg',
-      transactionRef: 'V076100001',
-      hufAmount: 12_000_260,
-    }))
+    expect(mocks.sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        imageBase64: 'bm9uLWVtcHR5LWltYWdl',
+        mimeType: 'image/jpeg',
+        transactionRef: 'V076100001',
+        hufAmount: 12_000_260,
+      }),
+    )
   })
 
   it('email-küldés hibánál retry UI látszik, Mégse auditot ír kép nélkül', async () => {
@@ -200,11 +224,15 @@ describe('CashierTransactionPage — jövedelemforrás-igazolás 10M+ vétel', (
 
     fireEvent.click(within(sendModal).getByRole('button', { name: 'Mégse' }))
 
-    await waitFor(() => expect(mocks.recordLocalAuditEvent).toHaveBeenCalledWith(expect.objectContaining({
-      entityType: 'income_proof',
-      eventType: 'INCOME_PROOF_EMAIL_UNFULFILLED',
-      status: 'degraded',
-    })))
+    await waitFor(() =>
+      expect(mocks.recordLocalAuditEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityType: 'income_proof',
+          eventType: 'INCOME_PROOF_EMAIL_UNFULFILLED',
+          status: 'degraded',
+        }),
+      ),
+    )
     const auditPayload = mocks.recordLocalAuditEvent.mock.calls[0]![0].payload
     expect(auditPayload).toMatchObject({
       workerCode: 'FZS',

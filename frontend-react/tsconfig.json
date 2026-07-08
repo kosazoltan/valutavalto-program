@@ -2,11 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
@@ -21,22 +17,12 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@valuta/shared-api": [
-        "../packages/shared-api/src/index.ts"
-      ],
-      "@valuta/shared-ipc": [
-        "../packages/shared-ipc/src/index.ts"
-      ]
+      "@/*": ["./src/*"],
+      "@valuta/shared-api": ["../packages/shared-api/src/index.ts"],
+      "@valuta/shared-ipc": ["../packages/shared-ipc/src/index.ts"]
     }
   },
-  "include": [
-    "src",
-    "../packages/shared-api/src",
-    "../packages/shared-ipc/src"
-  ],
+  "include": ["src", "../packages/shared-api/src", "../packages/shared-ipc/src"],
   "references": [
     {
       "path": "./tsconfig.node.json"

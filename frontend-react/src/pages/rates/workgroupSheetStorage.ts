@@ -11,7 +11,11 @@
  * Minden függvény defenzív: hibás/hiányzó localStorage esetén üres szerkezetet ad (nem dob).
  */
 
-import { WORKGROUP_FORMULA_STORAGE_PREFIX, type Sheet0Values, type WgValues } from './workgroupSheetFormula'
+import {
+  WORKGROUP_FORMULA_STORAGE_PREFIX,
+  type Sheet0Values,
+  type WgValues,
+} from './workgroupSheetFormula'
 
 /** A 0-s lap (MainRateSheetPage) localStorage kulcsa — A–I oszlop-források. */
 const SHEET0_STORAGE_KEY = 'arfolyamkeszito.mainSheet.v1'
@@ -30,10 +34,12 @@ export interface RateMakerSheetSnapshot {
 }
 
 function isRateMakerStorageKey(key: string): boolean {
-  return RATE_MAKER_STORAGE_PREFIXES.some(prefix => key.startsWith(prefix))
+  return RATE_MAKER_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))
 }
 
-export function exportRateMakerSheetSnapshot(storage: Storage = localStorage): RateMakerSheetSnapshot {
+export function exportRateMakerSheetSnapshot(
+  storage: Storage = localStorage,
+): RateMakerSheetSnapshot {
   const entries: Record<string, string> = {}
   for (let i = 0; i < storage.length; i += 1) {
     const key = storage.key(i)
@@ -44,10 +50,18 @@ export function exportRateMakerSheetSnapshot(storage: Storage = localStorage): R
   return { version: 1, savedAt: new Date().toISOString(), entries }
 }
 
-export function importRateMakerSheetSnapshot(sheetJson: string, storage: Storage = localStorage): number {
+export function importRateMakerSheetSnapshot(
+  sheetJson: string,
+  storage: Storage = localStorage,
+): number {
   try {
     const parsed = JSON.parse(sheetJson) as Partial<RateMakerSheetSnapshot>
-    if (parsed.version !== 1 || !parsed.entries || typeof parsed.entries !== 'object' || Array.isArray(parsed.entries)) {
+    if (
+      parsed.version !== 1 ||
+      !parsed.entries ||
+      typeof parsed.entries !== 'object' ||
+      Array.isArray(parsed.entries)
+    ) {
       return 0
     }
     let imported = 0
@@ -98,7 +112,8 @@ export function loadSheet0ByCurrency(storage: Storage = localStorage): Map<strin
     const rows = JSON.parse(raw) as RawSheet0Row[]
     if (!Array.isArray(rows)) return map
     for (const r of rows) {
-      if (r && typeof r.currency === 'string') map.set(r.currency.toUpperCase(), sheet0RowToValues(r))
+      if (r && typeof r.currency === 'string')
+        map.set(r.currency.toUpperCase(), sheet0RowToValues(r))
     }
   } catch {
     /* defenzív: hibás JSON → üres map */
@@ -117,7 +132,10 @@ const formulaKey = (groupId: string): string => `${WORKGROUP_FORMULA_STORAGE_PRE
 const ratesKey = (groupId: string): string => `arfolyamkeszito.workgroupSheet.rates.v1.${groupId}`
 
 /** Egy csoport fix (nem-formulás) rátaértékei (kulcs = `${currencyId}.${field}`). */
-export function loadGroupRateValues(groupId: string, storage: Storage = localStorage): Record<string, string> {
+export function loadGroupRateValues(
+  groupId: string,
+  storage: Storage = localStorage,
+): Record<string, string> {
   try {
     const raw = storage.getItem(ratesKey(groupId))
     if (!raw) return {}
@@ -128,7 +146,11 @@ export function loadGroupRateValues(groupId: string, storage: Storage = localSto
   }
 }
 
-export function saveGroupRateValues(groupId: string, values: Record<string, string>, storage: Storage = localStorage): void {
+export function saveGroupRateValues(
+  groupId: string,
+  values: Record<string, string>,
+  storage: Storage = localStorage,
+): void {
   try {
     // Üres store → a kulcs ELTÁVOLÍTÁSA (Copilot): nem hagyunk „{}" entryt, és a publikálás-utáni
     // „overlay-törlés" szemantikailag is helyes (a betöltés ezután {}-t ad, a szerver lesz az authority).
@@ -153,7 +175,10 @@ export function saveGroupRateValues(groupId: string, values: Record<string, stri
  */
 interface RateMakerLocalFirstApi {
   // A handler hiba esetén `{ ok: false, error }`-t is adhat (Copilot review) — a hívó best-effort, nem dob.
-  saveGroupRateValues?: (payload: { groupId: string; values: Record<string, string> }) => Promise<{ ok: boolean; error?: string }>
+  saveGroupRateValues?: (payload: {
+    groupId: string
+    values: Record<string, string>
+  }) => Promise<{ ok: boolean; error?: string }>
   getGroupRateValues?: (groupId: string) => Promise<unknown>
 }
 
@@ -174,11 +199,16 @@ export function isGroupRateOfflineDbAvailable(): boolean {
 }
 
 /** Fire-and-forget: a csoport fix rátaértékeit az Electron SQLite-ba is elmenti (best-effort, nem dob). */
-export function saveGroupRateValuesToOfflineDb(groupId: string, values: Record<string, string>): void {
+export function saveGroupRateValuesToOfflineDb(
+  groupId: string,
+  values: Record<string, string>,
+): void {
   const lf = getLocalFirstApi()
   if (!lf?.saveGroupRateValues) return
   try {
-    void lf.saveGroupRateValues({ groupId, values }).catch(() => { /* best-effort: a localStorage út él */ })
+    void lf.saveGroupRateValues({ groupId, values }).catch(() => {
+      /* best-effort: a localStorage út él */
+    })
   } catch {
     /* nem-Electron / IPC-hiba → a szinkron localStorage út tovább működik */
   }
@@ -191,7 +221,8 @@ export function saveGroupRateValuesToOfflineDb(groupId: string, values: Record<s
  * (ott a localStorage az autoritás). FK02-D / Codex P2.
  */
 export async function saveGroupRateValuesToOfflineDbAwait(
-  groupId: string, values: Record<string, string>,
+  groupId: string,
+  values: Record<string, string>,
 ): Promise<{ ok: boolean }> {
   const lf = getLocalFirstApi()
   if (!lf?.saveGroupRateValues) return { ok: true }
@@ -204,7 +235,9 @@ export async function saveGroupRateValuesToOfflineDbAwait(
 }
 
 /** Az Electron SQLite-ból tölti a csoport fix rátaértékeit (üres, ha nincs Electron vagy nincs adat). */
-export async function loadGroupRateValuesFromOfflineDb(groupId: string): Promise<Record<string, string>> {
+export async function loadGroupRateValuesFromOfflineDb(
+  groupId: string,
+): Promise<Record<string, string>> {
   const lf = getLocalFirstApi()
   if (!lf?.getGroupRateValues) return {}
   try {
@@ -234,7 +267,10 @@ export function persistGroupRateValues(groupId: string, values: Record<string, s
 }
 
 /** Egy csoport képletei (kulcs = `${currencyId}.${field}`). */
-export function loadGroupFormulas(groupId: string, storage: Storage = localStorage): Record<string, string> {
+export function loadGroupFormulas(
+  groupId: string,
+  storage: Storage = localStorage,
+): Record<string, string> {
   try {
     const raw = storage.getItem(formulaKey(groupId))
     if (!raw) return {}
@@ -245,7 +281,11 @@ export function loadGroupFormulas(groupId: string, storage: Storage = localStora
   }
 }
 
-export function saveGroupFormulas(groupId: string, formulas: Record<string, string>, storage: Storage = localStorage): void {
+export function saveGroupFormulas(
+  groupId: string,
+  formulas: Record<string, string>,
+  storage: Storage = localStorage,
+): void {
   try {
     storage.setItem(formulaKey(groupId), JSON.stringify(formulas))
   } catch {
@@ -256,7 +296,9 @@ export function saveGroupFormulas(groupId: string, formulas: Record<string, stri
 /** Az összes csoport persistált J–S érték-pillanatképe: csoportsorszám → (valutakód → J–S). */
 type ValuesStore = Record<string, Record<string, WgValues>>
 
-export function loadAllGroupValueSnapshots(storage: Storage = localStorage): Map<number, Map<string, WgValues>> {
+export function loadAllGroupValueSnapshots(
+  storage: Storage = localStorage,
+): Map<number, Map<string, WgValues>> {
   const out = new Map<number, Map<string, WgValues>>()
   try {
     const raw = storage.getItem(WORKGROUP_VALUES_STORAGE_KEY)

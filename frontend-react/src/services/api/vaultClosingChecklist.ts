@@ -72,11 +72,9 @@ export const vaultClosingChecklistApi = {
     date: string,
     req: CompleteChecklistRequest,
   ): Promise<VaultClosingChecklistDto> => {
-    const res = await api.post<VaultClosingChecklistDto>(
-      '/vault-closing-checklist/complete',
-      req,
-      { params: { branchId, date } },
-    )
+    const res = await api.post<VaultClosingChecklistDto>('/vault-closing-checklist/complete', req, {
+      params: { branchId, date },
+    })
     return res.data
   },
 }

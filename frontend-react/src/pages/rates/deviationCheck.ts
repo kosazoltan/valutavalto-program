@@ -18,5 +18,8 @@ const DEVIATION_EPSILON = 1e-9
  */
 export function isSignificantDeviation(oldVal: number | null, newVal: number | null): boolean {
   if (oldVal === null || newVal === null || oldVal === 0) return false
-  return Math.abs(newVal - oldVal) / Math.abs(oldVal) >= SIGNIFICANT_DEVIATION_THRESHOLD - DEVIATION_EPSILON
+  return (
+    Math.abs(newVal - oldVal) / Math.abs(oldVal) >=
+    SIGNIFICANT_DEVIATION_THRESHOLD - DEVIATION_EPSILON
+  )
 }

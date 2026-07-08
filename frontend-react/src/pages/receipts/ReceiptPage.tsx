@@ -1,5 +1,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Receipt as ReceiptIcon, Search, Printer, Eye, Clock, ChevronDown, ChevronRight, X, Download } from 'lucide-react'
+import {
+  Receipt as ReceiptIcon,
+  Search,
+  Printer,
+  Eye,
+  Clock,
+  ChevronDown,
+  ChevronRight,
+  X,
+  Download,
+} from 'lucide-react'
 import { receiptApi, Receipt } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
@@ -13,7 +23,7 @@ import {
   type PendingReceiptDraft,
 } from '../../utils/localQueue'
 import { isElectron } from '../../utils/electron'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 import type { PrintReceiptData, TransactionReceiptLine } from '../../types/receipt'
 import type { Worker } from '../../stores/authStore'
@@ -38,7 +48,8 @@ const RECEIPT_TYPE_LABELS: Record<string, string> = {
   PHONE_TOPUP: 'Telefon feltöltés',
   OTHER: 'Egyéb',
 }
-export const receiptTypeLabel = (code?: string): string => (code ? (RECEIPT_TYPE_LABELS[code.toUpperCase()] ?? code) : '—')
+export const receiptTypeLabel = (code?: string): string =>
+  code ? (RECEIPT_TYPE_LABELS[code.toUpperCase()] ?? code) : '—'
 
 // A helyi (offline) bizonylat-vázlatok receiptData.type-ja PrintJobType (kisbetűs: 'buy'/'sell'/'conversion'/
 // 'storno' — ld. localQueue.ts), NEM a TransactionType enum-név. A típus-szűrőnek a vázlat-listára is hatnia
@@ -81,7 +92,9 @@ export const approverRoleLabel = (role?: string): string =>
 const HUF_FORMATTER = new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 0 })
 /** HUF összeg hu-HU formázása (pl. "10 000 000"); üres érték → "—". */
 export const formatHuf = (hufAmount?: number | null): string =>
-  typeof hufAmount === 'number' && Number.isFinite(hufAmount) ? HUF_FORMATTER.format(hufAmount) : '—'
+  typeof hufAmount === 'number' && Number.isFinite(hufAmount)
+    ? HUF_FORMATTER.format(hufAmount)
+    : '—'
 
 function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob)
@@ -145,7 +158,10 @@ export function isCancelledTransactionReceipt(receipt: Receipt): boolean {
   return (receipt.receiptType ?? '').toUpperCase() === 'CANCELLED_TRANSACTION'
 }
 
-export function buildCancelledTransactionPrintData(receipt: Receipt, worker: Worker | null): PrintReceiptData | null {
+export function buildCancelledTransactionPrintData(
+  receipt: Receipt,
+  worker: Worker | null,
+): PrintReceiptData | null {
   if (!isCancelledTransactionReceipt(receipt)) return null
 
   const content = safeJsonRecord(receipt.content) as CancelledReceiptContent | null
@@ -159,7 +175,12 @@ export function buildCancelledTransactionPrintData(receipt: Receipt, worker: Wor
           const foreignAmount = finiteNumber(line.foreignAmount)
           const rate = finiteNumber(line.rate)
           const hufAmount = finiteNumber(line.hufAmount)
-          if (!currencyCode || foreignAmount === undefined || rate === undefined || hufAmount === undefined) {
+          if (
+            !currencyCode ||
+            foreignAmount === undefined ||
+            rate === undefined ||
+            hufAmount === undefined
+          ) {
             return null
           }
           return { currencyCode, foreignAmount, rate, hufAmount }
@@ -188,7 +209,8 @@ export function buildCancelledTransactionPrintData(receipt: Receipt, worker: Wor
     hufAmount: totalHuf,
     roundedHufAmount: totalHuf,
     customerName: optionalString(content.customerName) ?? receipt.customerName,
-    customerDocNumber: optionalString(content.customerDocumentNumber) ?? receipt.customerDocumentNumber,
+    customerDocNumber:
+      optionalString(content.customerDocumentNumber) ?? receipt.customerDocumentNumber,
     transactionLines: lines,
     stornoReason: reason,
     note: `${CANCELLED_TRANSACTION_NOTE} Mód: ${optionalString(content.mode) ?? '—'}.`,
@@ -290,9 +312,9 @@ export function draftMatchesFilters(
   const lowered = searchTerm.toLowerCase()
   if (!lowered) return true
   return (
-    draft.referenceNumber.toLowerCase().includes(lowered)
-    || draft.title.toLowerCase().includes(lowered)
-    || (draft.receiptData.customerName?.toLowerCase().includes(lowered) ?? false)
+    draft.referenceNumber.toLowerCase().includes(lowered) ||
+    draft.title.toLowerCase().includes(lowered) ||
+    (draft.receiptData.customerName?.toLowerCase().includes(lowered) ?? false)
   )
 }
 
@@ -318,7 +340,10 @@ export const CUSTOMER_FILTER_FIELDS: { key: keyof Receipt; labelKey: string }[] 
  * EXCMD b5b FR-BSZUR-03: a bizonylat megfelel-e az ÖSSZES (nem üres) ügyfél-adatlap szűrőnek.
  * Részleges egyezés (LIKE), kis/nagybetű-érzéketlen — a spec szerint. Üres szűrőmező → nem szűkít.
  */
-export const matchesCustomerFilters = (receipt: Receipt, filters: Record<string, string>): boolean => {
+export const matchesCustomerFilters = (
+  receipt: Receipt,
+  filters: Record<string, string>,
+): boolean => {
   for (const { key } of CUSTOMER_FILTER_FIELDS) {
     const needle = (filters[key] ?? '').trim().toLowerCase()
     if (!needle) continue
@@ -360,7 +385,9 @@ export default function ReceiptPage() {
   // csonkolás ELŐTT), de a gépeléskénti refetch elkerülésére debounce-oljuk (400 ms). A kliens-oldali
   // matchesCustomerFilters azonnali visszajelzést ad a már betöltött listán, a backend pótolja a >500-as
   // egyezéseket.
-  const [debouncedCustomerFilters, setDebouncedCustomerFilters] = useState<Record<string, string>>({})
+  const [debouncedCustomerFilters, setDebouncedCustomerFilters] = useState<Record<string, string>>(
+    {},
+  )
   useEffect(() => {
     const id = setTimeout(() => setDebouncedCustomerFilters(customerFilters), 400)
     return () => clearTimeout(id)
@@ -403,7 +430,7 @@ export default function ReceiptPage() {
 
   const filteredReceipts = useMemo(() => {
     const term = searchTerm.toLowerCase()
-    return receipts.filter(r => {
+    return receipts.filter((r) => {
       // EXCMD b5b FR-BSZUR-02: hatókör/időszak-szűrő (a bizonylat issueDate-je alapján).
       if (!matchesPeriod(r.issueDate, periodMode, periodMonth, periodFrom, periodTo)) return false
       // EXCMD b5b FR-BSZUR-01 (opció 2): "csak ügyfeles" — NEM receiptType-ra szűr, hanem ügyfél-jelenlétre.
@@ -421,7 +448,16 @@ export default function ReceiptPage() {
         r.navReceiptNumber?.toLowerCase().includes(term)
       )
     })
-  }, [receipts, searchTerm, typeFilter, periodMode, periodMonth, periodFrom, periodTo, customerFilters])
+  }, [
+    receipts,
+    searchTerm,
+    typeFilter,
+    periodMode,
+    periodMonth,
+    periodFrom,
+    periodTo,
+    customerFilters,
+  ])
 
   const handlePrint = async (receipt: Receipt): Promise<void> => {
     try {
@@ -452,19 +488,22 @@ export default function ReceiptPage() {
     }
   }
 
-  const openReceiptDetails = useCallback(async (receipt: Receipt): Promise<void> => {
-    setDetailLoadingId(receipt.id)
-    try {
-      const detailed = await receiptApi.getById(receipt.id)
-      setSelectedReceipt(detailed)
-    } catch (err) {
-      const errorMessage = getErrorMessage(err)
-      toast.error(t('receipts.detailLoadError'), errorMessage)
-      logger.error('ReceiptPage', 'Failed to load receipt details:', err)
-    } finally {
-      setDetailLoadingId(null)
-    }
-  }, [t])
+  const openReceiptDetails = useCallback(
+    async (receipt: Receipt): Promise<void> => {
+      setDetailLoadingId(receipt.id)
+      try {
+        const detailed = await receiptApi.getById(receipt.id)
+        setSelectedReceipt(detailed)
+      } catch (err) {
+        const errorMessage = getErrorMessage(err)
+        toast.error(t('receipts.detailLoadError'), errorMessage)
+        logger.error('ReceiptPage', 'Failed to load receipt details:', err)
+      } finally {
+        setDetailLoadingId(null)
+      }
+    },
+    [t],
+  )
 
   const downloadClosingPdf = useCallback(async (): Promise<void> => {
     const closingId = closingPdfId.trim()
@@ -510,18 +549,65 @@ export default function ReceiptPage() {
   // keresőszó a helyi vázlat-listára is hat (közös helper: draftMatchesFilters).
   // FR-BSZUR-03: ha részletes ügyfél-adatlap szűrő aktív, a helyi vázlat-/újranyomtatás-listák
   // (amelyeknek nincs dúsított adatlap-mezőjük) NEM jeleníthetők meg — különben szűretlenül látszanának.
-  const customerFilterActive = useMemo(() => hasActiveCustomerFilter(customerFilters), [customerFilters])
+  const customerFilterActive = useMemo(
+    () => hasActiveCustomerFilter(customerFilters),
+    [customerFilters],
+  )
 
   const filteredDrafts = useMemo(
-    () => (customerFilterActive ? [] : localDrafts.filter((draft) => draftMatchesFilters(draft, typeFilter, searchTerm, periodMode, periodMonth, periodFrom, periodTo))),
-    [localDrafts, searchTerm, typeFilter, periodMode, periodMonth, periodFrom, periodTo, customerFilterActive],
+    () =>
+      customerFilterActive
+        ? []
+        : localDrafts.filter((draft) =>
+            draftMatchesFilters(
+              draft,
+              typeFilter,
+              searchTerm,
+              periodMode,
+              periodMonth,
+              periodFrom,
+              periodTo,
+            ),
+          ),
+    [
+      localDrafts,
+      searchTerm,
+      typeFilter,
+      periodMode,
+      periodMonth,
+      periodFrom,
+      periodTo,
+      customerFilterActive,
+    ],
   )
 
   // Fizikai újranyomtatás (Codex P2 #1035): a szinkronizált, újranyomtatható helyi bizonylatokra
   // ugyanaz a szűrés hat, mint a vázlat-listára (ugyanaz a draftMatchesFilters helper, periódussal).
   const filteredReprintable = useMemo(
-    () => (customerFilterActive ? [] : reprintable.filter((item) => draftMatchesFilters(item, typeFilter, searchTerm, periodMode, periodMonth, periodFrom, periodTo))),
-    [reprintable, searchTerm, typeFilter, periodMode, periodMonth, periodFrom, periodTo, customerFilterActive],
+    () =>
+      customerFilterActive
+        ? []
+        : reprintable.filter((item) =>
+            draftMatchesFilters(
+              item,
+              typeFilter,
+              searchTerm,
+              periodMode,
+              periodMonth,
+              periodFrom,
+              periodTo,
+            ),
+          ),
+    [
+      reprintable,
+      searchTerm,
+      typeFilter,
+      periodMode,
+      periodMonth,
+      periodFrom,
+      periodTo,
+      customerFilterActive,
+    ],
   )
 
   if (loading) {
@@ -540,7 +626,9 @@ export default function ReceiptPage() {
       <div className="form-panel">
         <div className="mb-3 flex flex-wrap items-end gap-2 border-b pb-3">
           <div className="min-w-[220px]">
-            <label className="form-label" htmlFor="closing-pdf-id">Zárás azonosító</label>
+            <label className="form-label" htmlFor="closing-pdf-id">
+              Zárás azonosító
+            </label>
             <input
               id="closing-pdf-id"
               type="text"
@@ -565,14 +653,27 @@ export default function ReceiptPage() {
           <div className="flex-1 min-w-[200px]">
             <label className="form-label">{t('common.search')}</label>
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-              <input type="text" className="form-input pl-8" placeholder="Bizonylatszám..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <Search
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={16}
+              />
+              <input
+                type="text"
+                className="form-input pl-8"
+                placeholder="Bizonylatszám..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
           {/* EXCMD b5b FR-BSZUR-01: bizonylattípus-szűrő (egyszerre egy aktív; ALL = szűrés kikapcsolva). */}
           <div className="min-w-[200px]">
             <label className="form-label">{t('receipts.filter.type')}</label>
-            <select className="form-input" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+            <select
+              className="form-input"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+            >
               {/* A backend Receipt.receiptType = TransactionType.name() — az enum-nevekre szűrünk (verifikálva:
                   ReceiptService:166, TransactionType.java). A "csak ügyfeles" (FR-BSZUR-01 opció 2) NEM
                   TransactionType: az ügyfél-jelenlétre (customerName kitöltött) szűr, ezért külön, spec. értékkel. */}
@@ -584,12 +685,16 @@ export default function ReceiptPage() {
               <option value="TRANSFER_OUT">{t('receipts.filter.transferOutOnly')}</option>
               <option value="TRANSFER_IN">{t('receipts.filter.transferInOnly')}</option>
               <option value="REVERSAL">{t('receipts.filter.reversalOnly')}</option>
-              <option value="CANCELLED_TRANSACTION">{t('receipts.filter.cancelledTransactionOnly')}</option>
+              <option value="CANCELLED_TRANSACTION">
+                {t('receipts.filter.cancelledTransactionOnly')}
+              </option>
             </select>
           </div>
           {/* EXCMD b5b FR-BSZUR-02: hatókör/időszak-választó (összes / hónap / egyéni dátumtartomány). */}
           <div className="min-w-[180px]">
-            <label className="form-label" htmlFor="receipt-period-mode">{t('receipts.filter.period')}</label>
+            <label className="form-label" htmlFor="receipt-period-mode">
+              {t('receipts.filter.period')}
+            </label>
             <select
               id="receipt-period-mode"
               className="form-input"
@@ -603,7 +708,9 @@ export default function ReceiptPage() {
           </div>
           {periodMode === 'MONTH' && (
             <div className="min-w-[160px]">
-              <label className="form-label" htmlFor="receipt-period-month">{t('receipts.filter.month')}</label>
+              <label className="form-label" htmlFor="receipt-period-month">
+                {t('receipts.filter.month')}
+              </label>
               <input
                 id="receipt-period-month"
                 type="month"
@@ -616,7 +723,9 @@ export default function ReceiptPage() {
           {periodMode === 'CUSTOM' && (
             <>
               <div className="min-w-[150px]">
-                <label className="form-label" htmlFor="receipt-period-from">{t('receipts.filter.dateFrom')}</label>
+                <label className="form-label" htmlFor="receipt-period-from">
+                  {t('receipts.filter.dateFrom')}
+                </label>
                 <input
                   id="receipt-period-from"
                   type="date"
@@ -627,7 +736,9 @@ export default function ReceiptPage() {
                 />
               </div>
               <div className="min-w-[150px]">
-                <label className="form-label" htmlFor="receipt-period-to">{t('receipts.filter.dateTo')}</label>
+                <label className="form-label" htmlFor="receipt-period-to">
+                  {t('receipts.filter.dateTo')}
+                </label>
                 <input
                   id="receipt-period-to"
                   type="date"
@@ -652,7 +763,10 @@ export default function ReceiptPage() {
             {t('receipts.filter.customerPanel')}
             {customerFilterActive && (
               <>
-                <span className="inline-block w-2 h-2 rounded-full bg-blue-500" aria-hidden="true" />
+                <span
+                  className="inline-block w-2 h-2 rounded-full bg-blue-500"
+                  aria-hidden="true"
+                />
                 <span className="sr-only">{t('receipts.filter.customerActive')}</span>
               </>
             )}
@@ -663,13 +777,17 @@ export default function ReceiptPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {CUSTOMER_FILTER_FIELDS.map(({ key, labelKey }) => (
                   <div key={key}>
-                    <label className="form-label" htmlFor={`receipt-cf-${key}`}>{t(labelKey)}</label>
+                    <label className="form-label" htmlFor={`receipt-cf-${key}`}>
+                      {t(labelKey)}
+                    </label>
                     <input
                       id={`receipt-cf-${key}`}
                       type="text"
                       className="form-input"
                       value={customerFilters[key] ?? ''}
-                      onChange={(e) => setCustomerFilters((prev) => ({ ...prev, [key]: e.target.value }))}
+                      onChange={(e) =>
+                        setCustomerFilters((prev) => ({ ...prev, [key]: e.target.value }))
+                      }
                     />
                   </div>
                 ))}
@@ -680,7 +798,8 @@ export default function ReceiptPage() {
                   className="form-button text-xs mt-2 flex items-center gap-1"
                   onClick={() => setCustomerFilters({})}
                 >
-                  <X size={12} />{t('receipts.filter.clearCustomer')}
+                  <X size={12} />
+                  {t('receipts.filter.clearCustomer')}
                 </button>
               )}
             </div>
@@ -695,11 +814,19 @@ export default function ReceiptPage() {
             <h2 className="text-lg font-bold">{t('receipts.helyiFuggoBizonylatok')}</h2>
           </div>
           <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            {t('receipts.ezekABizonylatokHelyilegVeglegesSzigoruSzamadasuSorszammalRendelkeznekNgm232014ASzerverSzinkronFolyamatbanVanASorszamNemFogMegvaltozniCsakASzerverOldaliAuditNaploEgeszulKi')}
+            {t(
+              'receipts.ezekABizonylatokHelyilegVeglegesSzigoruSzamadasuSorszammalRendelkeznekNgm232014ASzerverSzinkronFolyamatbanVanASorszamNemFogMegvaltozniCsakASzerverOldaliAuditNaploEgeszulKi',
+            )}
           </div>
           <table className="data-grid w-full">
             <thead>
-              <tr><th>{t('receipts.helyiReferencia')}</th><th>{t('common.type')}</th><th>{t('common.createdAt')}</th><th>{t('common.status2')}</th><th>{t('common.actions')}</th></tr>
+              <tr>
+                <th>{t('receipts.helyiReferencia')}</th>
+                <th>{t('common.type')}</th>
+                <th>{t('common.createdAt')}</th>
+                <th>{t('common.status2')}</th>
+                <th>{t('common.actions')}</th>
+              </tr>
             </thead>
             <tbody>
               {filteredDrafts.map((draft) => (
@@ -707,11 +834,25 @@ export default function ReceiptPage() {
                   <td className="font-mono">{draft.referenceNumber}</td>
                   <td>{draft.title}</td>
                   <td>{new Date(draft.createdAt).toLocaleString('hu-HU')}</td>
-                  <td><span className="badge badge-yellow">{draft.statusLabel}</span></td>
+                  <td>
+                    <span className="badge badge-yellow">{draft.statusLabel}</span>
+                  </td>
                   <td>
                     <div className="flex gap-2">
-                      <button onClick={() => setSelectedDraft(draft)} className="form-button text-xs"><Eye size={12} />{t('closing.elonezet')}</button>
-                      <button onClick={() => setSelectedDraft(draft)} className="form-button text-xs"><Printer size={12} />{t('receipts.vazlatNyomtatas')}</button>
+                      <button
+                        onClick={() => setSelectedDraft(draft)}
+                        className="form-button text-xs"
+                      >
+                        <Eye size={12} />
+                        {t('closing.elonezet')}
+                      </button>
+                      <button
+                        onClick={() => setSelectedDraft(draft)}
+                        className="form-button text-xs"
+                      >
+                        <Printer size={12} />
+                        {t('receipts.vazlatNyomtatas')}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -734,7 +875,13 @@ export default function ReceiptPage() {
           </div>
           <table className="data-grid w-full">
             <thead>
-              <tr><th>{t('receipts.helyiReferencia')}</th><th>{t('common.type')}</th><th>{t('common.createdAt')}</th><th>{t('common.status2')}</th><th>{t('common.actions')}</th></tr>
+              <tr>
+                <th>{t('receipts.helyiReferencia')}</th>
+                <th>{t('common.type')}</th>
+                <th>{t('common.createdAt')}</th>
+                <th>{t('common.status2')}</th>
+                <th>{t('common.actions')}</th>
+              </tr>
             </thead>
             <tbody>
               {filteredReprintable.map((item) => (
@@ -742,11 +889,22 @@ export default function ReceiptPage() {
                   <td className="font-mono">{item.referenceNumber}</td>
                   <td>{item.title}</td>
                   <td>{new Date(item.createdAt).toLocaleString('hu-HU')}</td>
-                  <td><span className="badge badge-blue">{item.statusLabel}</span></td>
+                  <td>
+                    <span className="badge badge-blue">{item.statusLabel}</span>
+                  </td>
                   <td>
                     <div className="flex gap-2">
-                      <button onClick={() => setSelectedDraft(item)} className="form-button text-xs"><Eye size={12} />{t('closing.elonezet')}</button>
-                      <button onClick={() => reprintDraft(item)} className="form-button text-xs"><Printer size={12} />{t('receipts.reprintAction')}</button>
+                      <button
+                        onClick={() => setSelectedDraft(item)}
+                        className="form-button text-xs"
+                      >
+                        <Eye size={12} />
+                        {t('closing.elonezet')}
+                      </button>
+                      <button onClick={() => reprintDraft(item)} className="form-button text-xs">
+                        <Printer size={12} />
+                        {t('receipts.reprintAction')}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -760,11 +918,24 @@ export default function ReceiptPage() {
         <table className="data-grid w-full">
           <thead>
             {/* EXCMD b5b: Ügyfél (FR-BSZUR-02) + Összeg/AML-jelölő (FR-BSZUR-05) oszlopok. */}
-            <tr><th>{t('cashier.receiptNumber')}</th><th>{t('receipts.navBizonylatszam')}</th><th>{t('common.type')}</th><th>{t('receipts.ugyfel')}</th><th>{t('receipts.osszegFt')}</th><th>{t('cashier.issueDate')}</th><th>{t('cashier.printed')}</th><th>{t('common.actions')}</th></tr>
+            <tr>
+              <th>{t('cashier.receiptNumber')}</th>
+              <th>{t('receipts.navBizonylatszam')}</th>
+              <th>{t('common.type')}</th>
+              <th>{t('receipts.ugyfel')}</th>
+              <th>{t('receipts.osszegFt')}</th>
+              <th>{t('cashier.issueDate')}</th>
+              <th>{t('cashier.printed')}</th>
+              <th>{t('common.actions')}</th>
+            </tr>
           </thead>
           <tbody>
             {filteredReceipts.length === 0 ? (
-              <tr><td colSpan={8} className="text-center text-gray-500 py-4">{t('common.noResult')}</td></tr>
+              <tr>
+                <td colSpan={8} className="text-center text-gray-500 py-4">
+                  {t('common.noResult')}
+                </td>
+              </tr>
             ) : (
               filteredReceipts.map((r) => (
                 <tr key={r.id}>
@@ -776,7 +947,9 @@ export default function ReceiptPage() {
                   <td className="text-right whitespace-nowrap">
                     {formatHuf(r.hufAmount)}
                     {isAmlThresholdExceeded(r.hufAmount) && (
-                      <span className="badge badge-red ml-2" title={t('receipts.amlBadgeTitle')}>{t('receipts.amlBadgeText')}</span>
+                      <span className="badge badge-red ml-2" title={t('receipts.amlBadgeTitle')}>
+                        {t('receipts.amlBadgeText')}
+                      </span>
                     )}
                     {/* EXCMD b5b FR-BSZUR-05 (V312): ENGEDÉLYEZŐ-jelölő — tooltip: név (beosztás) */}
                     {r.approvedByName && (
@@ -789,7 +962,11 @@ export default function ReceiptPage() {
                     )}
                   </td>
                   <td>{new Date(r.issueDate).toLocaleDateString('hu-HU')}</td>
-                  <td><span className={`badge ${r.isPrinted ? 'badge-green' : 'badge-yellow'}`}>{r.isPrinted ? 'Igen' : 'Nem'}</span></td>
+                  <td>
+                    <span className={`badge ${r.isPrinted ? 'badge-green' : 'badge-yellow'}`}>
+                      {r.isPrinted ? 'Igen' : 'Nem'}
+                    </span>
+                  </td>
                   <td>
                     <div className="flex gap-2">
                       <button
@@ -797,9 +974,15 @@ export default function ReceiptPage() {
                         className="form-button text-xs"
                         disabled={detailLoadingId === r.id}
                       >
-                        <Eye size={12} />{t('common.details')}
+                        <Eye size={12} />
+                        {t('common.details')}
                       </button>
-                      {!r.isPrinted && <button onClick={() => handlePrint(r)} className="form-button text-xs"><Printer size={12} />{t('common.print')}</button>}
+                      {!r.isPrinted && (
+                        <button onClick={() => handlePrint(r)} className="form-button text-xs">
+                          <Printer size={12} />
+                          {t('common.print')}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -814,18 +997,34 @@ export default function ReceiptPage() {
           <div className="bg-white rounded-lg p-4 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">{t('receipts.bizonylatReszletek')}</h2>
-              <button onClick={() => setSelectedReceipt(null)} className="text-gray-500">X</button>
+              <button onClick={() => setSelectedReceipt(null)} className="text-gray-500">
+                X
+              </button>
             </div>
             <div className="space-y-2">
-              <div><strong>{t('receipts.bizonylatszam')}</strong> {selectedReceipt.receiptNumber}</div>
-              <div><strong>{t('receipts.navBizonylatszam2')}</strong> {selectedReceipt.navReceiptNumber || '-'}</div>
-              <div><strong>{t('cashdesk.tipus')}</strong> {receiptTypeLabel(selectedReceipt.receiptType)}</div>
-              {/* EXCMD b5b: ügyfél (FR-BSZUR-02) + összeg/AML-jelölő (FR-BSZUR-05), csak olvasható szűrési segédadat. */}
-              <div><strong>{t('receipts.ugyfelLabel')}</strong> {hasCustomer(selectedReceipt.customerName) ? selectedReceipt.customerName : '—'}</div>
               <div>
-                <strong>{t('receipts.osszegFtLabel')}</strong> {formatHuf(selectedReceipt.hufAmount)}
+                <strong>{t('receipts.bizonylatszam')}</strong> {selectedReceipt.receiptNumber}
+              </div>
+              <div>
+                <strong>{t('receipts.navBizonylatszam2')}</strong>{' '}
+                {selectedReceipt.navReceiptNumber || '-'}
+              </div>
+              <div>
+                <strong>{t('cashdesk.tipus')}</strong>{' '}
+                {receiptTypeLabel(selectedReceipt.receiptType)}
+              </div>
+              {/* EXCMD b5b: ügyfél (FR-BSZUR-02) + összeg/AML-jelölő (FR-BSZUR-05), csak olvasható szűrési segédadat. */}
+              <div>
+                <strong>{t('receipts.ugyfelLabel')}</strong>{' '}
+                {hasCustomer(selectedReceipt.customerName) ? selectedReceipt.customerName : '—'}
+              </div>
+              <div>
+                <strong>{t('receipts.osszegFtLabel')}</strong>{' '}
+                {formatHuf(selectedReceipt.hufAmount)}
                 {isAmlThresholdExceeded(selectedReceipt.hufAmount) && (
-                  <span className="badge badge-red ml-2" title={t('receipts.amlBadgeTitle')}>{t('receipts.amlBadgeText')}</span>
+                  <span className="badge badge-red ml-2" title={t('receipts.amlBadgeTitle')}>
+                    {t('receipts.amlBadgeText')}
+                  </span>
                 )}
               </div>
               {/* EXCMD b5b FR-BSZUR-05 (V312): ENGEDÉLYEZŐ neve + beosztása (csak olvasható, AML-audit). */}
@@ -835,8 +1034,14 @@ export default function ReceiptPage() {
                   ? `${selectedReceipt.approvedByName}${selectedReceipt.approvedByRole ? ` (${approverRoleLabel(selectedReceipt.approvedByRole)})` : ''}`
                   : '—'}
               </div>
-              <div><strong>{t('receipts.kiadasDatuma')}</strong> {new Date(selectedReceipt.issueDate).toLocaleString('hu-HU')}</div>
-              <div><strong>{t('receipts.nyomtatva')}</strong> {selectedReceipt.isPrinted ? 'Igen' : 'Nem'}</div>
+              <div>
+                <strong>{t('receipts.kiadasDatuma')}</strong>{' '}
+                {new Date(selectedReceipt.issueDate).toLocaleString('hu-HU')}
+              </div>
+              <div>
+                <strong>{t('receipts.nyomtatva')}</strong>{' '}
+                {selectedReceipt.isPrinted ? 'Igen' : 'Nem'}
+              </div>
               {selectedReceipt.content && (
                 <div className="mt-4 p-4 bg-gray-50 rounded">
                   <strong>{t('receipts.tartalom')}</strong>
@@ -857,9 +1062,9 @@ export default function ReceiptPage() {
         printLabel={selectedDraft?.reprint ? 'Újranyomtatás' : undefined}
         statusMessage={
           selectedDraft?.reprint
-            // Fizikai újranyomtatás (Codex P2 #1035): a bizonylat már szinkronizált — ez nem új
-            // kiállítás, csak a meglévő (azonos sorszámú) bizonylat ismételt fizikai nyomtatása.
-            ? 'Már szinkronizált bizonylat fizikai újranyomtatása — a sorszám és a tartalom változatlan (pl. papírelakadás utáni ismételt nyomtatás).'
+            ? // Fizikai újranyomtatás (Codex P2 #1035): a bizonylat már szinkronizált — ez nem új
+              // kiállítás, csak a meglévő (azonos sorszámú) bizonylat ismételt fizikai nyomtatása.
+              'Már szinkronizált bizonylat fizikai újranyomtatása — a sorszám és a tartalom változatlan (pl. papírelakadás utáni ismételt nyomtatás).'
             : 'Szigorú számadású bizonylat — helyileg már véglegesítve, lezárva. Szerver-szinkron függőben (auditnapló kiegészítése).'
         }
         onPrint={async () => {
@@ -881,4 +1086,3 @@ export default function ReceiptPage() {
     </div>
   )
 }
-

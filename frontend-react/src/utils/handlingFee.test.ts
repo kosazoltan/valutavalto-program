@@ -7,12 +7,22 @@ import type { HandlingFeeConfig } from '../services/api/settings'
  * HandlingFeeService (PER_MILLE/BRACKET) + HandlingFeeCalculator (roundToFive) számításával.
  */
 const perMille = (rate: number, max: number | null = null): HandlingFeeConfig => ({
-  feeType: 'PER_MILLE', perMilleRate: rate, perMilleMaxAmount: max, brackets: [],
+  feeType: 'PER_MILLE',
+  perMilleRate: rate,
+  perMilleMaxAmount: max,
+  brackets: [],
 })
 
 const bracket = (rows: Array<[number, number, number]>): HandlingFeeConfig => ({
-  feeType: 'BRACKET', perMilleRate: 0, perMilleMaxAmount: null,
-  brackets: rows.map(([bracketOrder, upperLimit, feeAmount]) => ({ bracketOrder, upperLimit, feeAmount, active: true })),
+  feeType: 'BRACKET',
+  perMilleRate: 0,
+  perMilleMaxAmount: null,
+  brackets: rows.map(([bracketOrder, upperLimit, feeAmount]) => ({
+    bracketOrder,
+    upperLimit,
+    feeAmount,
+    active: true,
+  })),
 })
 
 describe('computeHandlingFee — PER_MILLE (backend-paritás)', () => {
@@ -57,7 +67,12 @@ describe('computeHandlingFee — BRACKET (backend-paritás)', () => {
 
   it('inaktív sávok kiszűrve; üres sávtábla → 0 (backend-paritás)', () => {
     const withInactive = bracket([[1, 50000, 200]])
-    withInactive.brackets.push({ bracketOrder: 2, upperLimit: 999999999, feeAmount: 7777, active: false })
+    withInactive.brackets.push({
+      bracketOrder: 2,
+      upperLimit: 999999999,
+      feeAmount: 7777,
+      active: false,
+    })
     expect(computeHandlingFee(100000, withInactive)).toBe(200) // utolsó AKTÍV sáv díja
     expect(computeHandlingFee(100000, bracket([]))).toBe(0)
   })
@@ -65,7 +80,14 @@ describe('computeHandlingFee — BRACKET (backend-paritás)', () => {
 
 describe('computeHandlingFee — szélek', () => {
   it('NONE → 0; null konfig → null (nincs tükör-számítás); 0/negatív összeg → 0', () => {
-    expect(computeHandlingFee(100000, { feeType: 'NONE', perMilleRate: 0, perMilleMaxAmount: null, brackets: [] })).toBe(0)
+    expect(
+      computeHandlingFee(100000, {
+        feeType: 'NONE',
+        perMilleRate: 0,
+        perMilleMaxAmount: null,
+        brackets: [],
+      }),
+    ).toBe(0)
     expect(computeHandlingFee(100000, null)).toBeNull()
     expect(computeHandlingFee(0, perMille(3))).toBe(0)
     expect(computeHandlingFee(-5, perMille(3))).toBe(0)

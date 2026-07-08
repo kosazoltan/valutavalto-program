@@ -53,7 +53,7 @@ export interface MarkdownExportOptions {
 
 export function renderIssueAsMarkdown(
   issue: IssueRecord,
-  options: MarkdownExportOptions = {}
+  options: MarkdownExportOptions = {},
 ): string {
   const { includeMetadata = true } = options
   const lines: string[] = []
@@ -87,8 +87,8 @@ export function renderIssueAsMarkdown(
   lines.push(
     listBlock(
       'Mellékletek',
-      issue.attachments.map((a) => `${a.description} (\`${a.ref}\`)`)
-    )
+      issue.attachments.map((a) => `${a.description} (\`${a.ref}\`)`),
+    ),
   )
   lines.push(listBlock('Gyors-jegyzetek', issue.quickNotes))
 
@@ -101,7 +101,10 @@ export function renderIssueAsMarkdown(
     lines.push('')
   }
 
-  return lines.filter((l) => l !== undefined).join('\n').replace(/\n{3,}/g, '\n\n')
+  return lines
+    .filter((l) => l !== undefined)
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
 }
 
 /**

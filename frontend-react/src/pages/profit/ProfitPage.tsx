@@ -52,8 +52,7 @@ type ReportMode =
   | 'wac-territory'
 
 type LoadedReport =
-  | { kind: 'classic'; data: ProfitReport }
-  | { kind: 'wac'; data: WacProfitSummary }
+  { kind: 'classic'; data: ProfitReport } | { kind: 'wac'; data: WacProfitSummary }
 
 const reportModeLabels: Record<ReportMode, string> = {
   'company-monthly': 'Cég havi',
@@ -96,7 +95,8 @@ export default function ProfitPage() {
 
   const loadData = useCallback(async () => {
     const branchId = worker?.branchId
-    const needsBranch = mode === 'branch-daily' || mode === 'branch-monthly' || mode === 'wac-branch'
+    const needsBranch =
+      mode === 'branch-daily' || mode === 'branch-monthly' || mode === 'wac-branch'
     if (needsBranch && !branchId) {
       setError('Nincs bejelentkezett fiók (branchId hiányzik) - a fiók riport nem tölthető.')
       setLoading(false)
@@ -114,19 +114,30 @@ export default function ProfitPage() {
       setLoading(true)
       setError(null)
       if (mode === 'branch-daily') {
-        const response = await api.get<ProfitReport>('/profit/daily', { params: { branchId, date } })
+        const response = await api.get<ProfitReport>('/profit/daily', {
+          params: { branchId, date },
+        })
         setReport({ kind: 'classic', data: response.data ?? {} })
       } else if (mode === 'branch-monthly') {
-        const response = await api.get<ProfitReport>('/profit/monthly', { params: { branchId, month } })
+        const response = await api.get<ProfitReport>('/profit/monthly', {
+          params: { branchId, month },
+        })
         setReport({ kind: 'classic', data: response.data ?? {} })
       } else if (mode === 'wac-company') {
-        const response = await api.get<WacProfitSummary>('/profit/summary', { params: { from, to } })
+        const response = await api.get<WacProfitSummary>('/profit/summary', {
+          params: { from, to },
+        })
         setReport({ kind: 'wac', data: response.data ?? {} })
       } else if (mode === 'wac-branch') {
-        const response = await api.get<WacProfitSummary>(`/profit/branch/${branchId}`, { params: { from, to } })
+        const response = await api.get<WacProfitSummary>(`/profit/branch/${branchId}`, {
+          params: { from, to },
+        })
         setReport({ kind: 'wac', data: response.data ?? {} })
       } else if (mode === 'wac-territory') {
-        const response = await api.get<WacProfitSummary>(`/profit/territory/${territoryId.trim()}`, { params: { from, to } })
+        const response = await api.get<WacProfitSummary>(
+          `/profit/territory/${territoryId.trim()}`,
+          { params: { from, to } },
+        )
         setReport({ kind: 'wac', data: response.data ?? {} })
       } else {
         const response = await api.get<ProfitReport>('/profit/company', { params: { month } })
@@ -168,7 +179,9 @@ export default function ProfitPage() {
       <div className="rounded border border-gray-200 bg-white p-3">
         <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_2fr]">
           <div>
-            <label htmlFor="profit-mode" className="form-label">Riport típusa</label>
+            <label htmlFor="profit-mode" className="form-label">
+              Riport típusa
+            </label>
             <select
               id="profit-mode"
               value={mode}
@@ -176,14 +189,18 @@ export default function ProfitPage() {
               className="form-input w-full"
             >
               {Object.entries(reportModeLabels).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+                <option key={value} value={value}>
+                  {label}
+                </option>
               ))}
             </select>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {(mode === 'company-monthly' || mode === 'branch-monthly') && (
               <div>
-                <label htmlFor="profit-month" className="form-label">Hónap</label>
+                <label htmlFor="profit-month" className="form-label">
+                  Hónap
+                </label>
                 <input
                   id="profit-month"
                   type="month"
@@ -195,7 +212,9 @@ export default function ProfitPage() {
             )}
             {mode === 'branch-daily' && (
               <div>
-                <label htmlFor="profit-date" className="form-label">Nap</label>
+                <label htmlFor="profit-date" className="form-label">
+                  Nap
+                </label>
                 <input
                   id="profit-date"
                   type="date"
@@ -208,7 +227,9 @@ export default function ProfitPage() {
             {(mode === 'wac-company' || mode === 'wac-branch' || mode === 'wac-territory') && (
               <>
                 <div>
-                  <label htmlFor="profit-from" className="form-label">Kezdete</label>
+                  <label htmlFor="profit-from" className="form-label">
+                    Kezdete
+                  </label>
                   <input
                     id="profit-from"
                     type="date"
@@ -218,7 +239,9 @@ export default function ProfitPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="profit-to" className="form-label">Vége</label>
+                  <label htmlFor="profit-to" className="form-label">
+                    Vége
+                  </label>
                   <input
                     id="profit-to"
                     type="date"
@@ -231,7 +254,9 @@ export default function ProfitPage() {
             )}
             {mode === 'wac-territory' && (
               <div>
-                <label htmlFor="profit-territory" className="form-label">Terület ID</label>
+                <label htmlFor="profit-territory" className="form-label">
+                  Terület ID
+                </label>
                 <input
                   id="profit-territory"
                   type="number"
@@ -268,8 +293,12 @@ export default function ProfitPage() {
           <div className="text-xl font-mono">{formatHuf(classicReport?.grossProfit)}</div>
         </div>
         <div className="bg-white rounded shadow p-3">
-          <div className="text-xs text-gray-500">{wacReport ? 'WAC összhaszon' : t('profit.nettoHaszon')}</div>
-          <div className="text-xl font-mono">{formatHuf(wacReport?.totalProfit ?? classicReport?.netProfit)}</div>
+          <div className="text-xs text-gray-500">
+            {wacReport ? 'WAC összhaszon' : t('profit.nettoHaszon')}
+          </div>
+          <div className="text-xl font-mono">
+            {formatHuf(wacReport?.totalProfit ?? classicReport?.netProfit)}
+          </div>
         </div>
       </div>
 
@@ -295,50 +324,89 @@ export default function ProfitPage() {
           <thead className="bg-gray-50">
             {wacReport ? (
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.deviza')}</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('profit.haszon')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                  {t('common.deviza')}
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                  {t('profit.haszon')}
+                </th>
               </tr>
             ) : (
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.deviza')}</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('darius.vetelDb')}</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('darius.eladasDb')}</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('profit.vetelHuf')}</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('profit.eladasHuf')}</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('profit.haszon')}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                  {t('common.deviza')}
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                  {t('darius.vetelDb')}
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                  {t('darius.eladasDb')}
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                  {t('profit.vetelHuf')}
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                  {t('profit.eladasHuf')}
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                  {t('profit.haszon')}
+                </th>
               </tr>
             )}
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={wacReport ? 2 : 6} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
+              <tr>
+                <td
+                  colSpan={wacReport ? 2 : 6}
+                  className="px-4 py-8 text-center text-sm text-gray-500"
+                >
+                  Betöltés...
+                </td>
+              </tr>
             ) : wacReport ? (
               wacRows.length === 0 ? (
-                <tr><td colSpan={2} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-              ) : wacRows.map(([currency, profit]) => (
-                <tr key={currency} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm">{currency}</td>
-                  <td className="px-4 py-3 text-right text-sm font-mono">{formatHuf(profit)}</td>
+                <tr>
+                  <td colSpan={2} className="px-4 py-8 text-center text-sm text-gray-500">
+                    {t('common.noData')}
+                  </td>
+                </tr>
+              ) : (
+                wacRows.map(([currency, profit]) => (
+                  <tr key={currency} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm">{currency}</td>
+                    <td className="px-4 py-3 text-right text-sm font-mono">{formatHuf(profit)}</td>
+                  </tr>
+                ))
+              )
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('common.noData')}
+                </td>
+              </tr>
+            ) : (
+              rows.map((r, i) => (
+                <tr
+                  key={`${r.currencyCode ?? r.currency ?? 'idx'}-${i}`}
+                  className="hover:bg-gray-50"
+                >
+                  <td className="px-4 py-3 text-sm">{r.currencyCode ?? r.currency ?? '-'}</td>
+                  <td className="px-4 py-3 text-right text-sm font-mono">{r.buyCount ?? '-'}</td>
+                  <td className="px-4 py-3 text-right text-sm font-mono">{r.sellCount ?? '-'}</td>
+                  <td className="px-4 py-3 text-right text-sm font-mono">{formatHuf(r.buyHuf)}</td>
+                  <td className="px-4 py-3 text-right text-sm font-mono">{formatHuf(r.sellHuf)}</td>
+                  <td className="px-4 py-3 text-right text-sm font-mono">{formatHuf(r.profit)}</td>
                 </tr>
               ))
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-            ) : rows.map((r, i) => (
-              <tr key={`${r.currencyCode ?? r.currency ?? 'idx'}-${i}`} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{r.currencyCode ?? r.currency ?? '-'}</td>
-                <td className="px-4 py-3 text-right text-sm font-mono">{r.buyCount ?? '-'}</td>
-                <td className="px-4 py-3 text-right text-sm font-mono">{r.sellCount ?? '-'}</td>
-                <td className="px-4 py-3 text-right text-sm font-mono">{formatHuf(r.buyHuf)}</td>
-                <td className="px-4 py-3 text-right text-sm font-mono">{formatHuf(r.sellHuf)}</td>
-                <td className="px-4 py-3 text-right text-sm font-mono">{formatHuf(r.profit)}</td>
-              </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="text-sm text-gray-500">
-        {t('decade.tranzakciok')}{classicReport?.totalTransactions ?? wacReport?.transactionCount ?? 0}
+        {t('decade.tranzakciok')}
+        {classicReport?.totalTransactions ?? wacReport?.transactionCount ?? 0}
       </div>
     </div>
   )

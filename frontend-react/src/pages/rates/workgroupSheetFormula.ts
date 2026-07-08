@@ -30,11 +30,11 @@ export const WORKGROUP_FORMULA_STORAGE_PREFIX = 'arfolyamkeszito.workgroupSheet.
  * `D` / `!D<KÓD>` érvénytelen hivatkozás, nem ad numerikus értéket (Codex FK-03 P2).
  */
 export const SHEET0_COLS = ['A', 'B', 'C', 'E', 'F', 'G', 'H', 'I'] as const
-export type Sheet0Col = typeof SHEET0_COLS[number]
+export type Sheet0Col = (typeof SHEET0_COLS)[number]
 
 /** A munkacsoport-lap hivatkozható oszlopai (J–S). A K (ISO kód) nem ad numerikus értéket. */
 export const WG_COLS = ['J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S'] as const
-export type WgCol = typeof WG_COLS[number]
+export type WgCol = (typeof WG_COLS)[number]
 
 export type Sheet0Values = Partial<Record<Sheet0Col, number>>
 export type WgValues = Partial<Record<WgCol, number>>
@@ -110,10 +110,25 @@ function tokenize(input: string): Token[] {
   const isDigit = (c: string | undefined): boolean => c !== undefined && c >= '0' && c <= '9'
   while (i < s.length) {
     const ch = s[i]!
-    if (ch === ' ' || ch === '\t') { i++; continue }
-    if (ch === '+' || ch === '-' || ch === '*' || ch === '/') { tokens.push({ kind: 'op', op: ch }); i++; continue }
-    if (ch === '(') { tokens.push({ kind: 'lparen' }); i++; continue }
-    if (ch === ')') { tokens.push({ kind: 'rparen' }); i++; continue }
+    if (ch === ' ' || ch === '\t') {
+      i++
+      continue
+    }
+    if (ch === '+' || ch === '-' || ch === '*' || ch === '/') {
+      tokens.push({ kind: 'op', op: ch })
+      i++
+      continue
+    }
+    if (ch === '(') {
+      tokens.push({ kind: 'lparen' })
+      i++
+      continue
+    }
+    if (ch === ')') {
+      tokens.push({ kind: 'rparen' })
+      i++
+      continue
+    }
     // szám — egész vagy vezető-tizedes (magyar `,97` / `.97`) operandus is (Codex P2)
     if (isDigit(ch) || ((ch === ',' || ch === '.') && isDigit(s[i + 1]))) {
       let j = i + 1
@@ -131,7 +146,9 @@ function tokenize(input: string): Token[] {
       const isSheet0 = !!colCh && isSheet0Col(colCh)
       const isWg = !!colCh && isWgCol(colCh) && colCh !== 'K' // a K (ISO kód) nem hivatkozható
       if (!colCh || (!isSheet0 && !isWg)) {
-        throw new TokenizeError(`Érvénytelen kereszt-hivatkozás (oszlop A–I vagy J–S; a D/K kód kizárva): ${s.slice(i, i + 2)}`)
+        throw new TokenizeError(
+          `Érvénytelen kereszt-hivatkozás (oszlop A–I vagy J–S; a D/K kód kizárva): ${s.slice(i, i + 2)}`,
+        )
       }
       let j = i + 2
       while (j < s.length && /[A-Za-z0-9]/.test(s[j]!)) j++
@@ -144,12 +161,18 @@ function tokenize(input: string): Token[] {
     }
     // kereszt-munkacsoport: #<NN kétjegyű><oszlop J–S>
     if (ch === '#') {
-      const d1 = s[i + 1], d2 = s[i + 2], colCh = s[i + 3]?.toUpperCase()
+      const d1 = s[i + 1],
+        d2 = s[i + 2],
+        colCh = s[i + 3]?.toUpperCase()
       if (!isDigit(d1) || !isDigit(d2)) {
-        throw new TokenizeError(`Érvénytelen csoport-hivatkozás (kétjegyű szám kell): ${s.slice(i, i + 3)}`)
+        throw new TokenizeError(
+          `Érvénytelen csoport-hivatkozás (kétjegyű szám kell): ${s.slice(i, i + 3)}`,
+        )
       }
       if (colCh && isDigit(colCh)) {
-        throw new TokenizeError(`A csoport-hivatkozás kétjegyű sorszámot vár (#NN<oszlop>): ${s.slice(i, i + 4)}`)
+        throw new TokenizeError(
+          `A csoport-hivatkozás kétjegyű sorszámot vár (#NN<oszlop>): ${s.slice(i, i + 4)}`,
+        )
       }
       if (!colCh || !isWgCol(colCh)) {
         throw new TokenizeError(`Érvénytelen csoport-oszlop (J–S): ${s.slice(i, i + 4)}`)
@@ -163,7 +186,9 @@ function tokenize(input: string): Token[] {
       const up = ch.toUpperCase()
       const nextCh = s[i + 1]
       if (nextCh && /[A-Za-z]/.test(nextCh)) {
-        throw new TokenizeError(`Ismeretlen azonosító (másik valutát '!' előzze meg): ${s.slice(i)}`)
+        throw new TokenizeError(
+          `Ismeretlen azonosító (másik valutát '!' előzze meg): ${s.slice(i)}`,
+        )
       }
       if (isSheet0Col(up)) tokens.push({ kind: 'sheet0Self', col: up })
       else if (isWgCol(up)) tokens.push({ kind: 'wgSelf', col: up })
@@ -177,32 +202,39 @@ function tokenize(input: string): Token[] {
 }
 
 function resolveRef(
-  token: Extract<Token, { kind: 'sheet0Self' | 'sheet0Cross' | 'wgSelf' | 'wgCross' | 'wgCrossCurrency' }>,
+  token: Extract<
+    Token,
+    { kind: 'sheet0Self' | 'sheet0Cross' | 'wgSelf' | 'wgCross' | 'wgCrossCurrency' }
+  >,
   ctx: WorkgroupFormulaContext,
 ): number {
   switch (token.kind) {
     case 'sheet0Self': {
       const v = ctx.sheet0Self[token.col]
-      if (v === undefined || v === null) throw new ParseError(`Nincs érték a 0-s lap ${token.col} oszlopában`)
+      if (v === undefined || v === null)
+        throw new ParseError(`Nincs érték a 0-s lap ${token.col} oszlopában`)
       return v
     }
     case 'sheet0Cross': {
       const row = ctx.sheet0ByCurrency.get(token.currency)
       if (!row) throw new ParseError(`Ismeretlen valuta: ${token.currency}`)
       const v = row[token.col]
-      if (v === undefined || v === null) throw new ParseError(`Nincs érték: !${token.col}${token.currency}`)
+      if (v === undefined || v === null)
+        throw new ParseError(`Nincs érték: !${token.col}${token.currency}`)
       return v
     }
     case 'wgSelf': {
       if (token.col === 'K') throw new ParseError('A K oszlop (ISO kód) nem hivatkozható')
       const v = ctx.workgroupSelf[token.col]
-      if (v === undefined || v === null) throw new ParseError(`Nincs érték a(z) ${token.col} oszlopban`)
+      if (v === undefined || v === null)
+        throw new ParseError(`Nincs érték a(z) ${token.col} oszlopban`)
       return v
     }
     case 'wgCross': {
       if (token.col === 'K') throw new ParseError('A K oszlop (ISO kód) nem hivatkozható')
       const row = ctx.workgroupsByNumber.get(token.group)
-      if (!row) throw new ParseError(`Ismeretlen munkacsoport: #${String(token.group).padStart(2, '0')}`)
+      if (!row)
+        throw new ParseError(`Ismeretlen munkacsoport: #${String(token.group).padStart(2, '0')}`)
       const v = row[token.col]
       if (v === undefined || v === null) {
         throw new ParseError(`Nincs érték: #${String(token.group).padStart(2, '0')}${token.col}`)
@@ -215,7 +247,8 @@ function resolveRef(
       const row = ctx.workgroupByCurrency?.get(token.currency)
       if (!row) throw new ParseError(`Ismeretlen valuta a csoportban: ${token.currency}`)
       const v = row[token.col]
-      if (v === undefined || v === null) throw new ParseError(`Nincs érték: !${token.col}${token.currency}`)
+      if (v === undefined || v === null)
+        throw new ParseError(`Nincs érték: !${token.col}${token.currency}`)
       return v
     }
   }
@@ -254,12 +287,27 @@ function evalTokens(tokens: Token[], ctx: WorkgroupFormulaContext): number {
   function parseFactor(): number {
     const t = peek()
     if (!t) throw new ParseError('Váratlan képlet-vég')
-    if (t.kind === 'op' && t.op === '-') { next(); return -parseFactor() }
-    if (t.kind === 'op' && t.op === '+') { next(); return parseFactor() }
-    if (t.kind === 'num') { next(); return t.value }
-    if (t.kind === 'sheet0Self' || t.kind === 'sheet0Cross' || t.kind === 'wgSelf'
-        || t.kind === 'wgCross' || t.kind === 'wgCrossCurrency') {
-      next(); return resolveRef(t, ctx)
+    if (t.kind === 'op' && t.op === '-') {
+      next()
+      return -parseFactor()
+    }
+    if (t.kind === 'op' && t.op === '+') {
+      next()
+      return parseFactor()
+    }
+    if (t.kind === 'num') {
+      next()
+      return t.value
+    }
+    if (
+      t.kind === 'sheet0Self' ||
+      t.kind === 'sheet0Cross' ||
+      t.kind === 'wgSelf' ||
+      t.kind === 'wgCross' ||
+      t.kind === 'wgCrossCurrency'
+    ) {
+      next()
+      return resolveRef(t, ctx)
     }
     if (t.kind === 'lparen') {
       next()
@@ -303,9 +351,14 @@ export function evaluateWorkgroupFormula(
   try {
     const tokens = tokenize(formula)
     if (tokens.length === 0) return { error: 'Üres képlet' }
-    if (opts?.allowSheet0Shorthand === false
-        && tokens.some(t => t.kind === 'sheet0Self' && SHEET0_SHORTHAND_COLS.has(t.col))) {
-      return { error: 'VV-VALID-004: a 0-s lap rövidített hivatkozása (E/F/C) csak a vételi (L) és eladási (M) oszlopban érvényes' }
+    if (
+      opts?.allowSheet0Shorthand === false &&
+      tokens.some((t) => t.kind === 'sheet0Self' && SHEET0_SHORTHAND_COLS.has(t.col))
+    ) {
+      return {
+        error:
+          'VV-VALID-004: a 0-s lap rövidített hivatkozása (E/F/C) csak a vételi (L) és eladási (M) oszlopban érvényes',
+      }
     }
     const value = evalTokens(tokens, ctx)
     if (!Number.isFinite(value)) return { error: 'Nem véges eredmény' }
@@ -358,10 +411,12 @@ export function extractWorkgroupDependencies(formula: string): WorkgroupFormulaR
   const refs: WorkgroupFormulaRef[] = []
   for (const t of tokens) {
     if (t.kind === 'sheet0Self') refs.push({ kind: 'sheet0Self', col: t.col })
-    else if (t.kind === 'sheet0Cross') refs.push({ kind: 'sheet0Cross', currency: t.currency, col: t.col })
+    else if (t.kind === 'sheet0Cross')
+      refs.push({ kind: 'sheet0Cross', currency: t.currency, col: t.col })
     else if (t.kind === 'wgSelf') refs.push({ kind: 'wgSelf', col: t.col })
     else if (t.kind === 'wgCross') refs.push({ kind: 'wgCross', group: t.group, col: t.col })
-    else if (t.kind === 'wgCrossCurrency') refs.push({ kind: 'wgCrossCurrency', currency: t.currency, col: t.col })
+    else if (t.kind === 'wgCrossCurrency')
+      refs.push({ kind: 'wgCrossCurrency', currency: t.currency, col: t.col })
   }
   return refs
 }

@@ -50,7 +50,7 @@ async function mockTradeApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -73,22 +73,40 @@ async function mockTradeApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path === '/api/v1/trades/pending' && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([trade]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([trade]),
+      })
     }
 
     if (path === '/api/v1/trades/history' && method === 'GET') {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ content: [{ ...trade, status: 'COMPLETED' }], totalElements: 1, totalPages: 1, size: 20, number: 0 }),
+        body: JSON.stringify({
+          content: [{ ...trade, status: 'COMPLETED' }],
+          totalElements: 1,
+          totalPages: 1,
+          size: 20,
+          number: 0,
+        }),
       })
     }
 
@@ -105,14 +123,26 @@ async function mockTradeApis(page: Page) {
     }
 
     if (path === '/api/v1/trades/propose' && method === 'POST') {
-      return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(trade) })
+      return route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify(trade),
+      })
     }
 
     if (path === `/api/v1/trades/${trade.id}/accept` && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...trade, status: 'ACCEPTED' }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...trade, status: 'ACCEPTED' }),
+      })
     }
 
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [], data: [] }) })
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ content: [], data: [] }),
+    })
   })
 }
 
@@ -140,8 +170,8 @@ test('irodaközi trade mobil nézet beköti a trades backend szerződést', asyn
   await page.getByLabel('Összeg').fill('2500')
   await page.getByLabel('Árfolyam').fill('351.25')
   await page.getByLabel('Megjegyzés').fill('Mobil ajánlat')
-  const proposeRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().endsWith('/api/v1/trades/propose')
+  const proposeRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().endsWith('/api/v1/trades/propose'),
   )
   await page.getByRole('button', { name: /Ajánlat létrehozása/i }).click()
   const request = await proposeRequest
@@ -154,14 +184,18 @@ test('irodaközi trade mobil nézet beköti a trades backend szerződést', asyn
     notes: 'Mobil ajánlat',
   })
 
-  const acceptRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().endsWith(`/api/v1/trades/${trade.id}/accept`)
+  const acceptRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().endsWith(`/api/v1/trades/${trade.id}/accept`),
   )
-  await page.getByRole('button', { name: /Elfogadás/i }).first().click()
+  await page
+    .getByRole('button', { name: /Elfogadás/i })
+    .first()
+    .click()
   await acceptRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

@@ -5,35 +5,35 @@
  * Böngészőben null-t ad vissza.
  */
 
-import { useState } from 'react';
-import { isElectron } from '@/utils/electron';
+import { useState } from 'react'
+import { isElectron } from '@/utils/electron'
 import { useTranslation } from 'react-i18next'
 
 export default function CameraExport() {
   const { t } = useTranslation()
-  const [dateFrom, setDateFrom] = useState(() => new Date().toISOString().slice(0, 10));
-  const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
-  const [message, setMessage] = useState('');
+  const [dateFrom, setDateFrom] = useState(() => new Date().toISOString().slice(0, 10))
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10))
+  const [message, setMessage] = useState('')
 
   // Guard: only render in Electron
-  if (!isElectron()) return null;
+  if (!isElectron()) return null
 
   const handleExport = async () => {
-    setMessage('');
+    setMessage('')
     if (!window.electronAPI?.cameraExportToUsb) {
-      setMessage('Export nem elérhető (Electron IPC)');
-      return;
+      setMessage('Export nem elérhető (Electron IPC)')
+      return
     }
 
     try {
-      const result = await window.electronAPI.cameraExportToUsb(dateFrom, dateTo);
-      setMessage(result.success
-        ? `${result.exported} fájl exportálva`
-        : result.error ?? 'Ismeretlen hiba');
+      const result = await window.electronAPI.cameraExportToUsb(dateFrom, dateTo)
+      setMessage(
+        result.success ? `${result.exported} fájl exportálva` : (result.error ?? 'Ismeretlen hiba'),
+      )
     } catch (err) {
-      setMessage('Export hiba: ' + (err instanceof Error ? err.message : 'Ismeretlen hiba'));
+      setMessage('Export hiba: ' + (err instanceof Error ? err.message : 'Ismeretlen hiba'))
     }
-  };
+  }
 
   return (
     <div className="space-y-3 rounded-xl border bg-white p-4 shadow-sm">
@@ -68,5 +68,5 @@ export default function CameraExport() {
       </div>
       {message && <p className="text-sm text-gray-600">{message}</p>}
     </div>
-  );
+  )
 }

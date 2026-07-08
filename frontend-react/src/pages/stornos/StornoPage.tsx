@@ -1,7 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { AlertCircle, CheckCircle, XCircle, ArrowLeft, Save } from 'lucide-react'
-import { stornoApi, transactionApi, StornoRequest, StornoCheckResult, StornoApproval, Transaction } from '../../services/api/index'
+import {
+  stornoApi,
+  transactionApi,
+  StornoRequest,
+  StornoCheckResult,
+  StornoApproval,
+  Transaction,
+} from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import {
@@ -31,7 +38,7 @@ export default function StornoPage() {
   const [approval, setApproval] = useState<StornoApproval | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const [reason, setReason] = useState('')
   // FK-penztar-batch D.1 (2026-06-12, user-kérés): az „Egyedi árfolyam" és „Fizetési mód"
   // mezők ELTÁVOLÍTVA — csak az indok marad. A paymentMethodDid a backenden HALOTT mező
@@ -60,12 +67,12 @@ export default function StornoPage() {
 
   const checkStorno = useCallback(async (): Promise<void> => {
     if (!id || !workerId) return
-    
+
     try {
       setLoading(true)
       const result = await stornoApi.check(id)
       setCheckResult(result)
-      
+
       // Ha engedély szükséges, betöltjük az engedélykérést
       if (result.requiresApproval) {
         /** Megjegyzés: pending approval betöltés terve készíthető külön PR-ben. */
@@ -177,9 +184,11 @@ export default function StornoPage() {
         // D.2: bizonylat-előnézet a localQueue buildStornoReceiptData mezőkiosztása
         // szerint — offline a helyi referencia-szám szerepel (sync utáni reprint a
         // Bizonylatok oldalról a végleges sorszámmal elérhető).
-        setSuccessMessage(outcome.allSavedSynced
-          ? 'Sztornó helyileg rögzítve és azonnal szinkronizálva'
-          : 'Sztornó helyileg rögzítve. A feltöltés az Electron queue-ból folytatódik.')
+        setSuccessMessage(
+          outcome.allSavedSynced
+            ? 'Sztornó helyileg rögzítve és azonnal szinkronizálva'
+            : 'Sztornó helyileg rögzítve. A feltöltés az Electron queue-ból folytatódik.',
+        )
         setReceiptData({
           ...receiptBase,
           receiptNumber: outcome.localReferenceNumbers?.[0] ?? `LOCAL-STORNO-${transaction.id}`,
@@ -222,10 +231,7 @@ export default function StornoPage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/transactions')}
-          className="toolbar-button"
-        >
+        <button onClick={() => navigate('/transactions')} className="toolbar-button">
           <ArrowLeft size={16} />
         </button>
         <h1 className="text-xl font-bold text-gray-800">{t('cashier.storno')}</h1>
@@ -247,16 +253,24 @@ export default function StornoPage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="form-label">{t('statistics.tranzakcioSzam')}</label>
-            <div className="form-input bg-gray-50">{transaction.receiptNumber || transaction.id}</div>
+            <div className="form-input bg-gray-50">
+              {transaction.receiptNumber || transaction.id}
+            </div>
           </div>
           <div>
             <label className="form-label">{t('common.date')}</label>
-            <div className="form-input bg-gray-50">{new Date(transaction.createdAt).toLocaleString('hu-HU')}</div>
+            <div className="form-input bg-gray-50">
+              {new Date(transaction.createdAt).toLocaleString('hu-HU')}
+            </div>
           </div>
           <div>
             <label className="form-label">{t('common.type')}</label>
             <div className="form-input bg-gray-50">
-              {transaction.transactionType === 'BUY' ? 'Vétel' : transaction.transactionType === 'SELL' ? 'Eladás' : transaction.transactionType}
+              {transaction.transactionType === 'BUY'
+                ? 'Vétel'
+                : transaction.transactionType === 'SELL'
+                  ? 'Eladás'
+                  : transaction.transactionType}
             </div>
           </div>
           <div>
@@ -289,7 +303,9 @@ export default function StornoPage() {
       </div>
 
       {/* Storno Check Result */}
-      <div className={`form-panel ${checkResult.requiresApproval ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'}`}>
+      <div
+        className={`form-panel ${checkResult.requiresApproval ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'}`}
+      >
         <div className="flex items-start gap-3">
           {checkResult.requiresApproval ? (
             <AlertCircle className="text-yellow-600 mt-0.5" size={20} />
@@ -302,7 +318,8 @@ export default function StornoPage() {
             </h3>
             <p className="text-sm text-gray-700 mb-2">{checkResult.message}</p>
             <p className="text-sm text-gray-600">
-              {t('stornos.napiSztornokSzama')}<strong>{checkResult.dailyStornoCount}</strong>
+              {t('stornos.napiSztornokSzama')}
+              <strong>{checkResult.dailyStornoCount}</strong>
             </p>
           </div>
         </div>
@@ -336,11 +353,15 @@ export default function StornoPage() {
 
       {/* Approval Status */}
       {approval && (
-        <div className={`form-panel ${
-          approval.approvalStatusCode === 'APPROVED' ? 'bg-green-50 border-green-200' :
-          approval.approvalStatusCode === 'REJECTED' ? 'bg-red-50 border-red-200' :
-          'bg-yellow-50 border-yellow-200'
-        }`}>
+        <div
+          className={`form-panel ${
+            approval.approvalStatusCode === 'APPROVED'
+              ? 'bg-green-50 border-green-200'
+              : approval.approvalStatusCode === 'REJECTED'
+                ? 'bg-red-50 border-red-200'
+                : 'bg-yellow-50 border-yellow-200'
+          }`}
+        >
           <div className="flex items-start gap-3">
             {approval.approvalStatusCode === 'APPROVED' ? (
               <CheckCircle className="text-green-600 mt-0.5" size={20} />
@@ -351,9 +372,11 @@ export default function StornoPage() {
             )}
             <div className="flex-1">
               <h3 className="font-semibold mb-1">
-                {approval.approvalStatusCode === 'APPROVED' ? 'Engedélyezve' :
-                 approval.approvalStatusCode === 'REJECTED' ? 'Elutasítva' :
-                 'Várakozik jóváhagyásra'}
+                {approval.approvalStatusCode === 'APPROVED'
+                  ? 'Engedélyezve'
+                  : approval.approvalStatusCode === 'REJECTED'
+                    ? 'Elutasítva'
+                    : 'Várakozik jóváhagyásra'}
               </h3>
               {approval.requestReason && (
                 <p className="text-sm text-gray-700 mb-2">
@@ -366,15 +389,16 @@ export default function StornoPage() {
                 </p>
               )}
               {/* Egyszemélyes iroda: telefonos supervisor-PIN jóváhagyás a PENDING kéréshez */}
-              {approval.approvalStatusCode !== 'APPROVED' && approval.approvalStatusCode !== 'REJECTED' && (
-                <button
-                  onClick={() => setShowPinApproval(true)}
-                  className="form-button-primary mt-2"
-                  disabled={loading}
-                >
-                  Telefonos jóváhagyás (supervisor PIN)
-                </button>
-              )}
+              {approval.approvalStatusCode !== 'APPROVED' &&
+                approval.approvalStatusCode !== 'REJECTED' && (
+                  <button
+                    onClick={() => setShowPinApproval(true)}
+                    className="form-button-primary mt-2"
+                    disabled={loading}
+                  >
+                    Telefonos jóváhagyás (supervisor PIN)
+                  </button>
+                )}
             </div>
           </div>
         </div>
@@ -461,19 +485,24 @@ export default function StornoPage() {
               'Nyomtatás nem elérhető',
               isElectron()
                 ? 'Electron preload/electronAPI wiring sikertelen — indítsa újra a klienst.'
-                : 'Webes módban nincs nyomtatás. Telepítse az Electron klienst.'
+                : 'Webes módban nincs nyomtatás. Telepítse az Electron klienst.',
             )
             throw new Error('printReceipt nem elérhető')
           }
           try {
             const success = await window.electronAPI.printReceipt(JSON.stringify(receiptData))
             if (!success) {
-              toast.error('Nyomtatás sikertelen',
+              toast.error(
+                'Nyomtatás sikertelen',
                 'A nyomtató offline / nincs konfigurálva / papír kifogyott. ' +
-                'Beállítások > Nyomtatás → ellenőrizze a soros port + nyomtató nevet.')
+                  'Beállítások > Nyomtatás → ellenőrizze a soros port + nyomtató nevet.',
+              )
               throw new Error('Nyomtatás sikertelen')
             }
-            toast.success('Nyomtatás elindítva', `Sztornó bizonylat: ${receiptData.receiptNumber ?? '—'}`)
+            toast.success(
+              'Nyomtatás elindítva',
+              `Sztornó bizonylat: ${receiptData.receiptNumber ?? '—'}`,
+            )
           } catch (err) {
             if (!(err instanceof Error && err.message === 'Nyomtatás sikertelen')) {
               const msg = err instanceof Error ? err.message : 'Ismeretlen hiba'
@@ -487,4 +516,3 @@ export default function StornoPage() {
     </div>
   )
 }
-

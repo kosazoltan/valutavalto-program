@@ -14,7 +14,13 @@ export default function DocumentShortagePage() {
   const [openOnly, setOpenOnly] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [form, setForm] = useState({ missingDocument: '', customerName: '', branchCode: '', receiptNumber: '', note: '' })
+  const [form, setForm] = useState({
+    missingDocument: '',
+    customerName: '',
+    branchCode: '',
+    receiptNumber: '',
+    note: '',
+  })
 
   const load = useCallback(async (open: boolean) => {
     try {
@@ -29,10 +35,15 @@ export default function DocumentShortagePage() {
     }
   }, [])
 
-  useEffect(() => { void load(openOnly) }, [load, openOnly])
+  useEffect(() => {
+    void load(openOnly)
+  }, [load, openOnly])
 
   const add = async () => {
-    if (!form.missingDocument.trim()) { setError('A hiányzó okmány megnevezése kötelező.'); return }
+    if (!form.missingDocument.trim()) {
+      setError('A hiányzó okmány megnevezése kötelező.')
+      return
+    }
     try {
       await documentShortageApi.create({
         missingDocument: form.missingDocument.trim(),
@@ -41,7 +52,13 @@ export default function DocumentShortagePage() {
         receiptNumber: form.receiptNumber.trim() || undefined,
         note: form.note.trim() || undefined,
       })
-      setForm({ missingDocument: '', customerName: '', branchCode: '', receiptNumber: '', note: '' })
+      setForm({
+        missingDocument: '',
+        customerName: '',
+        branchCode: '',
+        receiptNumber: '',
+        note: '',
+      })
       await load(openOnly)
     } catch (err) {
       setError(getErrorMessage(err))
@@ -65,7 +82,11 @@ export default function DocumentShortagePage() {
         </h1>
         <div className="flex items-center gap-2">
           <label className="text-sm flex items-center gap-1">
-            <input type="checkbox" checked={openOnly} onChange={e => setOpenOnly(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={openOnly}
+              onChange={(e) => setOpenOnly(e.target.checked)}
+            />
             Csak nyitott
           </label>
           <button onClick={() => void load(openOnly)} className="form-button p-2" title="Frissítés">
@@ -79,26 +100,42 @@ export default function DocumentShortagePage() {
       <div className="grid grid-cols-12 gap-2 items-end">
         <div className="col-span-3">
           <label className="form-label required">Hiányzó okmány</label>
-          <input className="form-input" value={form.missingDocument}
-            onChange={e => setForm(f => ({ ...f, missingDocument: e.target.value }))} placeholder="pl. Lakcímkártya" />
+          <input
+            className="form-input"
+            value={form.missingDocument}
+            onChange={(e) => setForm((f) => ({ ...f, missingDocument: e.target.value }))}
+            placeholder="pl. Lakcímkártya"
+          />
         </div>
         <div className="col-span-3">
           <label className="form-label">Ügyfél</label>
-          <input className="form-input" value={form.customerName}
-            onChange={e => setForm(f => ({ ...f, customerName: e.target.value }))} />
+          <input
+            className="form-input"
+            value={form.customerName}
+            onChange={(e) => setForm((f) => ({ ...f, customerName: e.target.value }))}
+          />
         </div>
         <div className="col-span-2">
           <label className="form-label">Iroda kód</label>
-          <input className="form-input" value={form.branchCode}
-            onChange={e => setForm(f => ({ ...f, branchCode: e.target.value }))} />
+          <input
+            className="form-input"
+            value={form.branchCode}
+            onChange={(e) => setForm((f) => ({ ...f, branchCode: e.target.value }))}
+          />
         </div>
         <div className="col-span-2">
           <label className="form-label">Bizonylatszám</label>
-          <input className="form-input" value={form.receiptNumber}
-            onChange={e => setForm(f => ({ ...f, receiptNumber: e.target.value }))} />
+          <input
+            className="form-input"
+            value={form.receiptNumber}
+            onChange={(e) => setForm((f) => ({ ...f, receiptNumber: e.target.value }))}
+          />
         </div>
         <div className="col-span-2">
-          <button onClick={() => void add()} className="form-button-primary flex items-center gap-1 w-full justify-center">
+          <button
+            onClick={() => void add()}
+            className="form-button-primary flex items-center gap-1 w-full justify-center"
+          >
             <Plus className="h-4 w-4" /> Rögzít
           </button>
         </div>
@@ -108,35 +145,58 @@ export default function DocumentShortagePage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Rögzítve</th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Iroda</th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Ügyfél</th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Bizonylat</th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Hiányzó okmány</th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Állapot</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                Rögzítve
+              </th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                Iroda
+              </th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                Ügyfél
+              </th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                Bizonylat
+              </th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                Hiányzó okmány
+              </th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                Állapot
+              </th>
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {items.length === 0 && (
-              <tr><td colSpan={7} className="px-3 py-4 text-center text-gray-400">Nincs tétel.</td></tr>
+              <tr>
+                <td colSpan={7} className="px-3 py-4 text-center text-gray-400">
+                  Nincs tétel.
+                </td>
+              </tr>
             )}
-            {items.map(it => (
+            {items.map((it) => (
               <tr key={it.id}>
-                <td className="px-3 py-2 text-sm">{it.recordedAt?.slice(0, 16).replace('T', ' ')}</td>
+                <td className="px-3 py-2 text-sm">
+                  {it.recordedAt?.slice(0, 16).replace('T', ' ')}
+                </td>
                 <td className="px-3 py-2 text-sm font-mono">{it.branchCode}</td>
                 <td className="px-3 py-2 text-sm">{it.customerName}</td>
                 <td className="px-3 py-2 text-sm font-mono">{it.receiptNumber}</td>
                 <td className="px-3 py-2 text-sm">{it.missingDocument}</td>
                 <td className="px-3 py-2 text-sm">
-                  {it.resolvedAt
-                    ? <span className="text-green-600">Pótolva ({it.resolvedAt.slice(0, 10)})</span>
-                    : <span className="text-orange-600">Nyitott</span>}
+                  {it.resolvedAt ? (
+                    <span className="text-green-600">Pótolva ({it.resolvedAt.slice(0, 10)})</span>
+                  ) : (
+                    <span className="text-orange-600">Nyitott</span>
+                  )}
                 </td>
                 <td className="px-3 py-2 text-right">
                   {!it.resolvedAt && (
-                    <button onClick={() => void resolve(it.id)}
-                      className="text-green-600 hover:text-green-800 flex items-center gap-1 text-sm" title="Pótolva">
+                    <button
+                      onClick={() => void resolve(it.id)}
+                      className="text-green-600 hover:text-green-800 flex items-center gap-1 text-sm"
+                      title="Pótolva"
+                    >
                       <Check className="h-4 w-4" /> Pótolva
                     </button>
                   )}

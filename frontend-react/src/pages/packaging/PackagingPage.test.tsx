@@ -32,16 +32,18 @@ vi.mock('../../utils/logger', () => ({
 
 const branches = [{ id: 'branch-1', code: 'BUD01', name: 'Budapest 01' }]
 const currencies = [{ id: 1, code: 'EUR', name: 'Euró', decimals: 2, active: true }]
-const records = [{
-  id: 'pack-1',
-  branchId: 'branch-1',
-  currencyCode: 'EUR',
-  packagingDate: '2026-06-18',
-  bundleCount: 2,
-  denomination: 100,
-  bundleSize: 100,
-  notes: 'Teszt',
-}]
+const records = [
+  {
+    id: 'pack-1',
+    branchId: 'branch-1',
+    currencyCode: 'EUR',
+    packagingDate: '2026-06-18',
+    bundleCount: 2,
+    denomination: 100,
+    bundleSize: 100,
+    notes: 'Teszt',
+  },
+]
 
 describe('PackagingPage backend contract', () => {
   beforeEach(() => {
@@ -77,14 +79,16 @@ describe('PackagingPage backend contract', () => {
     await user.click(screen.getByTestId('packaging-create'))
 
     await waitFor(() => {
-      expect(mocks.packagingCreate).toHaveBeenCalledWith(expect.objectContaining({
-        branchId: 'branch-1',
-        currencyCode: 'EUR',
-        bundleCount: 3,
-        denomination: 200,
-        bundleSize: 100,
-        notes: 'Új rekord',
-      }))
+      expect(mocks.packagingCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          branchId: 'branch-1',
+          currencyCode: 'EUR',
+          bundleCount: 3,
+          denomination: 200,
+          bundleSize: 100,
+          notes: 'Új rekord',
+        }),
+      )
     })
   })
 

@@ -19,8 +19,8 @@ import {
 import { NumberInput } from '../../components/NumberInput'
 import { toast } from '../../components/ui/toaster'
 import { formatInteger, formatDecimal } from '../../utils/numberFormat'
-import { logger } from '../../utils/logger';
-import { useAuthStore } from '../../stores/authStore';
+import { logger } from '../../utils/logger'
+import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
 import { getErrorMessage } from '../../utils/errorHandling'
 
@@ -29,8 +29,25 @@ interface DenominationQuantityUpdateRequest {
   quantity: number
 }
 
-const STRATEGY_OPTIONS: OptimizationStrategy[] = ['GREEDY', 'DYNAMIC', 'MIN_COINS', 'MIN_BANKNOTES', 'MIN_TOTAL', 'CUSTOM', 'BRANCH_SPECIFIC']
-const RULE_TYPE_OPTIONS: DenominationRuleType[] = ['FIXED', 'AMOUNT_BASED', 'CUSTOMER_TYPE', 'TRANSACTION_TYPE', 'BRANCH_DEFAULT', 'TIME_BASED', 'AVAILABILITY', 'PRIORITY']
+const STRATEGY_OPTIONS: OptimizationStrategy[] = [
+  'GREEDY',
+  'DYNAMIC',
+  'MIN_COINS',
+  'MIN_BANKNOTES',
+  'MIN_TOTAL',
+  'CUSTOM',
+  'BRANCH_SPECIFIC',
+]
+const RULE_TYPE_OPTIONS: DenominationRuleType[] = [
+  'FIXED',
+  'AMOUNT_BASED',
+  'CUSTOMER_TYPE',
+  'TRANSACTION_TYPE',
+  'BRANCH_DEFAULT',
+  'TIME_BASED',
+  'AVAILABILITY',
+  'PRIORITY',
+]
 const DENOMINATION_CONFIG_ROLES = new Set(['ADMIN', 'MANAGER', 'MAIN_TREASURY'])
 const denominationSummaryLabels = {
   saved: 'Mentett:',
@@ -48,15 +65,21 @@ const denominationSummaryLabels = {
 
 export default function DenominationPage() {
   const { t } = useTranslation()
-  const worker = useAuthStore((s: { worker: { branchId: string; role?: string } | null }) => s.worker)
+  const worker = useAuthStore(
+    (s: { worker: { branchId: string; role?: string } | null }) => s.worker,
+  )
   const activeRole = useAuthStore((s: { activeRole?: string | null }) => s.activeRole)
   const selectedCashDeskId = worker?.branchId ?? ''
-  const canManageDenominationConfig = DENOMINATION_CONFIG_ROLES.has(activeRole ?? worker?.role ?? '')
+  const canManageDenominationConfig = DENOMINATION_CONFIG_ROLES.has(
+    activeRole ?? worker?.role ?? '',
+  )
   const [currencies, setCurrencies] = useState<Currency[]>([])
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<number | null>(null)
   const [denominations, setDenominations] = useState<Denomination[]>([])
   const [denominationBalances, setDenominationBalances] = useState<DenominationBalanceDTO[]>([])
-  const [allDenominationBalances, setAllDenominationBalances] = useState<DenominationBalanceDTO[]>([])
+  const [allDenominationBalances, setAllDenominationBalances] = useState<DenominationBalanceDTO[]>(
+    [],
+  )
   const [serverCalculatedTotal, setServerCalculatedTotal] = useState<number | null>(null)
   const [allMasterDenominations, setAllMasterDenominations] = useState<Denomination[]>([])
   const [lowStockDenominations, setLowStockDenominations] = useState<Denomination[]>([])
@@ -104,9 +127,10 @@ export default function DenominationPage() {
   // Copilot #1109: az összesítő DERIVÁLT érték a szerkesztett darabszámokból — state-ként
   // tartva versenyhelyzetes/elcsúszó újraszámításokra volt érzékeny.
   const calculatedTotal = useMemo(
-    () => denominations
-      .filter(d => d.currencyId === selectedCurrencyId)
-      .reduce((sum, d) => sum + d.faceValue * (editingQuantities[d.id] ?? 0), 0),
+    () =>
+      denominations
+        .filter((d) => d.currencyId === selectedCurrencyId)
+        .reduce((sum, d) => sum + d.faceValue * (editingQuantities[d.id] ?? 0), 0),
     [denominations, selectedCurrencyId, editingQuantities],
   )
 
@@ -119,17 +143,26 @@ export default function DenominationPage() {
     if (!selectedCashDeskId || !selectedCurrencyId) return
     setLoading(true)
     try {
-      const selectedCurrencyCode = currencies.find(c => c.id === selectedCurrencyId)?.code
-      const [denoms, allBalances, balances, persistedTotal, allMaster, lowStock, summary, byCode] = await Promise.all([
-        denominationApi.getByCurrencyId(selectedCurrencyId),
-        denominationBalanceApi.getCashDeskDenominations(selectedCashDeskId),
-        denominationBalanceApi.getCashDeskDenominationsByCurrency(selectedCashDeskId, String(selectedCurrencyId)),
-        denominationBalanceApi.calculateTotalFromDenominations(selectedCashDeskId, String(selectedCurrencyId)),
-        denominationApi.list(),
-        denominationApi.getLowStockAlerts(),
-        denominationApi.getSummary(selectedCurrencyId),
-        selectedCurrencyCode ? denominationApi.getByCurrencyCode(selectedCurrencyCode) : Promise.resolve([] as Denomination[]),
-      ])
+      const selectedCurrencyCode = currencies.find((c) => c.id === selectedCurrencyId)?.code
+      const [denoms, allBalances, balances, persistedTotal, allMaster, lowStock, summary, byCode] =
+        await Promise.all([
+          denominationApi.getByCurrencyId(selectedCurrencyId),
+          denominationBalanceApi.getCashDeskDenominations(selectedCashDeskId),
+          denominationBalanceApi.getCashDeskDenominationsByCurrency(
+            selectedCashDeskId,
+            String(selectedCurrencyId),
+          ),
+          denominationBalanceApi.calculateTotalFromDenominations(
+            selectedCashDeskId,
+            String(selectedCurrencyId),
+          ),
+          denominationApi.list(),
+          denominationApi.getLowStockAlerts(),
+          denominationApi.getSummary(selectedCurrencyId),
+          selectedCurrencyCode
+            ? denominationApi.getByCurrencyCode(selectedCurrencyCode)
+            : Promise.resolve([] as Denomination[]),
+        ])
       setDenominations(denoms)
       setAllDenominationBalances(allBalances)
       setDenominationBalances(balances)
@@ -142,8 +175,10 @@ export default function DenominationPage() {
       // Egyetlen, determinisztikus state-írás: minden címlet 0, felülírva a mentettekkel.
       // (Az összesítő ebből DERIVÁLT useMemo — külön nem kell beállítani.)
       const quantities: Record<number, number> = {}
-      denoms.forEach((d: Denomination) => { quantities[d.id] = 0 })
-      balances.forEach(balance => {
+      denoms.forEach((d: Denomination) => {
+        quantities[d.id] = 0
+      })
+      balances.forEach((balance) => {
         quantities[Number(balance.denominationId)] = balance.quantity
       })
       setEditingQuantities(quantities)
@@ -188,7 +223,7 @@ export default function DenominationPage() {
     // Copilot #1109: funkcionális update — gyors egymás utáni input-eseményeknél a
     // spread-es minta a stale snapshot miatt frissítést veszíthetne. Az összesítő
     // derivált érték (useMemo), külön újraszámítás nem kell.
-    setEditingQuantities(prev => ({ ...prev, [denominationId]: quantity }))
+    setEditingQuantities((prev) => ({ ...prev, [denominationId]: quantity }))
   }
 
   const loadOptimizationConfig = async () => {
@@ -219,18 +254,22 @@ export default function DenominationPage() {
     setSuggestionLoading(true)
     setSuggestionMessage(null)
     try {
-      const currentDenominations = denominations.filter(d => d.currencyId === selectedCurrencyId && d.active)
+      const currentDenominations = denominations.filter(
+        (d) => d.currencyId === selectedCurrencyId && d.active,
+      )
       const suggestion = suggestionUsesStock
         ? await denominationCalculatorApi.suggestBalanced({
-          currencyCode: selectedCurrencyCode,
-          amount,
-          availableStock: Object.fromEntries(
-            currentDenominations.map((d) => [String(d.faceValue), editingQuantities[d.id] ?? 0]),
-          ),
-        })
+            currencyCode: selectedCurrencyCode,
+            amount,
+            availableStock: Object.fromEntries(
+              currentDenominations.map((d) => [String(d.faceValue), editingQuantities[d.id] ?? 0]),
+            ),
+          })
         : await denominationCalculatorApi.suggest(selectedCurrencyCode, amount)
       const nextQuantities: Record<number, number> = {}
-      currentDenominations.forEach((d) => { nextQuantities[d.id] = 0 })
+      currentDenominations.forEach((d) => {
+        nextQuantities[d.id] = 0
+      })
 
       const unmatched: string[] = []
       Object.entries(suggestion.denominations).forEach(([faceValue, quantity]) => {
@@ -242,15 +281,19 @@ export default function DenominationPage() {
         }
       })
 
-      setEditingQuantities(prev => ({ ...prev, ...nextQuantities }))
+      setEditingQuantities((prev) => ({ ...prev, ...nextQuantities }))
       const details: string[] = []
       if (Number(suggestion.remainder) > 0) {
-        details.push(`maradék: ${formatDecimal(Number(suggestion.remainder), 2, 2)} ${selectedCurrencyCode}`)
+        details.push(
+          `maradék: ${formatDecimal(Number(suggestion.remainder), 2, 2)} ${selectedCurrencyCode}`,
+        )
       }
       if (unmatched.length > 0) {
         details.push(`nem ismert címlet: ${unmatched.join(', ')}`)
       }
-      const prefix = suggestionUsesStock ? 'Készletfigyelő címletjavaslat alkalmazva' : 'Címletjavaslat alkalmazva'
+      const prefix = suggestionUsesStock
+        ? 'Készletfigyelő címletjavaslat alkalmazva'
+        : 'Címletjavaslat alkalmazva'
       setSuggestionMessage(details.length > 0 ? `${prefix}, ${details.join('; ')}.` : `${prefix}.`)
     } catch (error) {
       logger.error('DenominationPage', 'Címletjavaslat sikertelen:', error)
@@ -273,7 +316,9 @@ export default function DenominationPage() {
     try {
       const result = await denominationApi.getOptimalChange(selectedCurrencyId, amount)
       setOptimalChange(result)
-      setOptimalChangeMessage(Object.keys(result).length === 0 ? denominationSummaryLabels.noOptimalChange : null)
+      setOptimalChangeMessage(
+        Object.keys(result).length === 0 ? denominationSummaryLabels.noOptimalChange : null,
+      )
     } catch (error) {
       logger.error('DenominationPage', 'Optimális visszajáró számítás sikertelen:', error)
       setOptimalChange(null)
@@ -363,7 +408,10 @@ export default function DenominationPage() {
 
   const handleSaveOptimizationConfig = async () => {
     if (!canManageDenominationConfig) {
-      toast.warning('Nincs jogosultság', 'A címletezési stratégiák módosításához vezetői jogosultság szükséges.')
+      toast.warning(
+        'Nincs jogosultság',
+        'A címletezési stratégiák módosításához vezetői jogosultság szükséges.',
+      )
       return
     }
     const name = optimizationForm.name.trim()
@@ -402,17 +450,27 @@ export default function DenominationPage() {
 
   const handleCreateRuleConfig = async () => {
     if (!canManageDenominationConfig) {
-      toast.warning('Nincs jogosultság', 'A címletezési szabályok módosításához vezetői jogosultság szükséges.')
+      toast.warning(
+        'Nincs jogosultság',
+        'A címletezési szabályok módosításához vezetői jogosultság szükséges.',
+      )
       return
     }
     if (!selectedCurrencyId || !ruleForm.optimizationId || !ruleForm.ruleName.trim()) {
       toast.warning('Hiányzó szabályadat', 'Valuta, stratégia és szabálynév kötelező.')
       return
     }
-    const minAmount = ruleForm.minAmount.trim() ? Number(ruleForm.minAmount.replace(/\s/g, '').replace(',', '.')) : null
-    const maxAmount = ruleForm.maxAmount.trim() ? Number(ruleForm.maxAmount.replace(/\s/g, '').replace(',', '.')) : null
+    const minAmount = ruleForm.minAmount.trim()
+      ? Number(ruleForm.minAmount.replace(/\s/g, '').replace(',', '.'))
+      : null
+    const maxAmount = ruleForm.maxAmount.trim()
+      ? Number(ruleForm.maxAmount.replace(/\s/g, '').replace(',', '.'))
+      : null
     const priority = ruleForm.priority.trim() ? Number.parseInt(ruleForm.priority, 10) : 100
-    if ((minAmount !== null && !Number.isFinite(minAmount)) || (maxAmount !== null && !Number.isFinite(maxAmount))) {
+    if (
+      (minAmount !== null && !Number.isFinite(minAmount)) ||
+      (maxAmount !== null && !Number.isFinite(maxAmount))
+    ) {
       toast.warning('Hibás összeghatár', 'Az összeghatárok csak számok lehetnek.')
       return
     }
@@ -431,7 +489,7 @@ export default function DenominationPage() {
         priority: Number.isFinite(priority) ? priority : 100,
       })
       toast.success('Címletezési szabály létrehozva')
-      setRuleForm(prev => ({ ...prev, ruleName: '', minAmount: '', maxAmount: '' }))
+      setRuleForm((prev) => ({ ...prev, ruleName: '', minAmount: '', maxAmount: '' }))
       await loadOptimizationConfig()
     } catch (error) {
       logger.error('DenominationPage', 'Címletezési szabály létrehozása sikertelen:', error)
@@ -443,7 +501,10 @@ export default function DenominationPage() {
 
   const handleDeleteRuleConfig = async (ruleId: string) => {
     if (!canManageDenominationConfig) {
-      toast.warning('Nincs jogosultság', 'A címletezési szabály törléséhez vezetői jogosultság szükséges.')
+      toast.warning(
+        'Nincs jogosultság',
+        'A címletezési szabály törléséhez vezetői jogosultság szükséges.',
+      )
       return
     }
     setConfigSaving(true)
@@ -470,12 +531,13 @@ export default function DenominationPage() {
       // címlet 0-ra állítása (korábbi érték törlése) sosem perzisztálódott.
       // Csak az aktuálisan kiválasztott valuta címleteit küldjük.
       const currentIds = new Set(
-        denominations.filter(d => d.currencyId === selectedCurrencyId).map(d => d.id))
+        denominations.filter((d) => d.currencyId === selectedCurrencyId).map((d) => d.id),
+      )
       const updates: DenominationQuantityUpdateRequest[] = Object.entries(editingQuantities)
         .filter(([id]) => currentIds.has(Number(id)))
         .map(([denominationId, quantity]) => ({
           denominationId,
-          quantity
+          quantity,
         }))
 
       await denominationBalanceApi.setDenominationQuantities(selectedCashDeskId, updates)
@@ -487,9 +549,10 @@ export default function DenominationPage() {
     }
   }
 
-  const selectedCurrency = currencies.find(c => c.id === selectedCurrencyId)
+  const selectedCurrency = currencies.find((c) => c.id === selectedCurrencyId)
   const selectedCurrencySavedBalanceCount = denominationBalances.length
-  const serverTotalDiff = serverCalculatedTotal === null ? null : calculatedTotal - serverCalculatedTotal
+  const serverTotalDiff =
+    serverCalculatedTotal === null ? null : calculatedTotal - serverCalculatedTotal
   const defaultOptimization = optimizations.find((opt) => opt.isDefault)
   const activeRuleCount = rules.filter((rule) => rule.isActive !== false).length
   const visibleRules = rules
@@ -532,31 +595,48 @@ export default function DenominationPage() {
                 </span>
               </div>
               <div className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600">
-                {denominationSummaryLabels.saved} <span className="font-mono font-semibold text-gray-900">
-                  {serverCalculatedTotal === null ? '-' : formatDecimal(serverCalculatedTotal, 2, 2)}
-                </span> {selectedCurrency.code}
+                {denominationSummaryLabels.saved}{' '}
+                <span className="font-mono font-semibold text-gray-900">
+                  {serverCalculatedTotal === null
+                    ? '-'
+                    : formatDecimal(serverCalculatedTotal, 2, 2)}
+                </span>{' '}
+                {selectedCurrency.code}
               </div>
               <div className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600">
-                {denominationSummaryLabels.rows} <span className="font-semibold text-gray-900">{selectedCurrencySavedBalanceCount}</span>
+                {denominationSummaryLabels.rows}{' '}
+                <span className="font-semibold text-gray-900">
+                  {selectedCurrencySavedBalanceCount}
+                </span>
                 <span className="text-gray-400"> {denominationSummaryLabels.separator} </span>
-                <span className="font-semibold text-gray-900">{allDenominationBalances.length}</span>
+                <span className="font-semibold text-gray-900">
+                  {allDenominationBalances.length}
+                </span>
               </div>
               {serverTotalDiff !== null && serverTotalDiff !== 0 && (
                 <div className="px-3 py-1 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-                  {denominationSummaryLabels.difference} <span className="font-mono font-semibold">{formatDecimal(serverTotalDiff, 2, 2)}</span> {selectedCurrency.code}
+                  {denominationSummaryLabels.difference}{' '}
+                  <span className="font-mono font-semibold">
+                    {formatDecimal(serverTotalDiff, 2, 2)}
+                  </span>{' '}
+                  {selectedCurrency.code}
                 </div>
               )}
               <div className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600">
-                {denominationSummaryLabels.masterRows} <span className="font-semibold text-gray-900">{allMasterDenominations.length}</span>
+                {denominationSummaryLabels.masterRows}{' '}
+                <span className="font-semibold text-gray-900">{allMasterDenominations.length}</span>
               </div>
               <div className="px-3 py-1 bg-orange-50 border border-orange-200 rounded-lg text-xs text-orange-800">
-                {denominationSummaryLabels.lowStock} <span className="font-semibold">{lowStockDenominations.length}</span>
+                {denominationSummaryLabels.lowStock}{' '}
+                <span className="font-semibold">{lowStockDenominations.length}</span>
               </div>
               {denominationSummary && (
                 <div className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600">
-                  {denominationSummaryLabels.currencySummary} <span className="font-mono font-semibold text-gray-900">
+                  {denominationSummaryLabels.currencySummary}{' '}
+                  <span className="font-mono font-semibold text-gray-900">
                     {formatDecimal(denominationSummary.totalValue, 2, 2)}
-                  </span> {denominationSummary.currencyCode}
+                  </span>{' '}
+                  {denominationSummary.currencyCode}
                   <span className="text-gray-400"> · </span>
                   <span className="font-semibold text-gray-900">
                     {denominationSummary.banknoteCount}/{denominationSummary.coinCount}
@@ -564,7 +644,8 @@ export default function DenominationPage() {
                 </div>
               )}
               <div className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600">
-                {denominationSummaryLabels.codeCheck} <span className="font-semibold text-gray-900">{codeDenominations.length}</span>
+                {denominationSummaryLabels.codeCheck}{' '}
+                <span className="font-semibold text-gray-900">{codeDenominations.length}</span>
               </div>
             </div>
           )}
@@ -632,15 +713,18 @@ export default function DenominationPage() {
               />
               Készletfigyelő algoritmus az aktuális darabszámokkal
             </label>
-            {suggestionMessage && (
-              <p className="mt-1 text-xs text-gray-600">{suggestionMessage}</p>
-            )}
+            {suggestionMessage && <p className="mt-1 text-xs text-gray-600">{suggestionMessage}</p>}
             {optimalChange && Object.keys(optimalChange).length > 0 && (
               <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
-                <span className="font-semibold">{denominationSummaryLabels.optimalChangeTitle}</span>{' '}
+                <span className="font-semibold">
+                  {denominationSummaryLabels.optimalChangeTitle}
+                </span>{' '}
                 {Object.entries(optimalChange)
                   .sort(([a], [b]) => Number(b) - Number(a))
-                  .map(([faceValue, quantity]) => `${formatDecimal(Number(faceValue), 2, 2)} x ${quantity}`)
+                  .map(
+                    ([faceValue, quantity]) =>
+                      `${formatDecimal(Number(faceValue), 2, 2)} x ${quantity}`,
+                  )
                   .join(', ')}
               </div>
             )}
@@ -649,7 +733,8 @@ export default function DenominationPage() {
             )}
           </div>
           <p className="text-xs text-gray-500 md:max-w-xs">
-            A javaslat a backend címletkalkulátorából érkezik, majd a betöltött címletsorok darabszámait tölti.
+            A javaslat a backend címletkalkulátorából érkezik, majd a betöltött címletsorok
+            darabszámait tölti.
           </p>
         </div>
       )}
@@ -678,12 +763,11 @@ export default function DenominationPage() {
                 Validálás
               </button>
             </div>
-            {validationMessage && (
-              <p className="mt-1 text-xs text-gray-600">{validationMessage}</p>
-            )}
+            {validationMessage && <p className="mt-1 text-xs text-gray-600">{validationMessage}</p>}
           </div>
           <p className="text-xs text-gray-500 md:max-w-xs">
-            Az ellenőrzés a backend címletvalidálását hívja az aktuális valuta és a megadott elvárt egyenleg alapján.
+            Az ellenőrzés a backend címletvalidálását hívja az aktuális valuta és a megadott elvárt
+            egyenleg alapján.
           </p>
         </div>
       )}
@@ -695,7 +779,8 @@ export default function DenominationPage() {
               <h2 className="text-sm font-bold text-gray-800">Címletezési szabálymotor</h2>
               {optimizationError ? (
                 <p className="mt-1 text-xs text-amber-700">
-                  A szabálymotor admin API nem elérhető ehhez a felhasználóhoz vagy a backend nem válaszolt.
+                  A szabálymotor admin API nem elérhető ehhez a felhasználóhoz vagy a backend nem
+                  válaszolt.
                 </p>
               ) : (
                 <>
@@ -706,10 +791,15 @@ export default function DenominationPage() {
                   </div>
                   <div className="mt-3 space-y-2">
                     {visibleRules.length === 0 ? (
-                      <p className="text-xs text-gray-500">Nincs aktív címletezési szabály; a backend fallback stratégiát használ.</p>
+                      <p className="text-xs text-gray-500">
+                        Nincs aktív címletezési szabály; a backend fallback stratégiát használ.
+                      </p>
                     ) : (
                       visibleRules.map((rule) => (
-                        <div key={rule.id} className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs">
+                        <div
+                          key={rule.id}
+                          className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs"
+                        >
                           <div className="flex items-start justify-between gap-2">
                             <div className="font-semibold text-gray-900">{rule.ruleName}</div>
                             {canManageDenominationConfig && (
@@ -724,7 +814,8 @@ export default function DenominationPage() {
                             )}
                           </div>
                           <div className="mt-0.5 text-gray-600">
-                            {rule.ruleType} · prioritás {rule.priority} · {rule.optimization?.name ?? 'nincs stratégianév'}
+                            {rule.ruleType} · prioritás {rule.priority} ·{' '}
+                            {rule.optimization?.name ?? 'nincs stratégianév'}
                           </div>
                         </div>
                       ))
@@ -742,40 +833,87 @@ export default function DenominationPage() {
                         >
                           <option value="">Új stratégia</option>
                           {optimizations.map((opt) => (
-                            <option key={opt.id} value={opt.id}>{opt.name}</option>
+                            <option key={opt.id} value={opt.id}>
+                              {opt.name}
+                            </option>
                           ))}
                         </select>
                         <input
                           className="form-input mt-2 w-full"
                           value={optimizationForm.name}
-                          onChange={(event) => setOptimizationForm(prev => ({ ...prev, name: event.target.value }))}
+                          onChange={(event) =>
+                            setOptimizationForm((prev) => ({ ...prev, name: event.target.value }))
+                          }
                           placeholder="Stratégianév"
                         />
                         <select
                           className="form-input mt-2 w-full"
                           value={optimizationForm.strategy}
-                          onChange={(event) => setOptimizationForm(prev => ({ ...prev, strategy: event.target.value as OptimizationStrategy }))}
+                          onChange={(event) =>
+                            setOptimizationForm((prev) => ({
+                              ...prev,
+                              strategy: event.target.value as OptimizationStrategy,
+                            }))
+                          }
                           aria-label="Optimalizációs algoritmus"
                         >
                           {STRATEGY_OPTIONS.map((strategy) => (
-                            <option key={strategy} value={strategy}>{strategy}</option>
+                            <option key={strategy} value={strategy}>
+                              {strategy}
+                            </option>
                           ))}
                         </select>
                         <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
                           <label className="flex items-center gap-2">
-                            <input type="checkbox" checked={optimizationForm.isDefault} onChange={(event) => setOptimizationForm(prev => ({ ...prev, isDefault: event.target.checked }))} />
+                            <input
+                              type="checkbox"
+                              checked={optimizationForm.isDefault}
+                              onChange={(event) =>
+                                setOptimizationForm((prev) => ({
+                                  ...prev,
+                                  isDefault: event.target.checked,
+                                }))
+                              }
+                            />
                             Alapértelmezett
                           </label>
                           <label className="flex items-center gap-2">
-                            <input type="checkbox" checked={optimizationForm.minTotalCount} onChange={(event) => setOptimizationForm(prev => ({ ...prev, minTotalCount: event.target.checked }))} />
+                            <input
+                              type="checkbox"
+                              checked={optimizationForm.minTotalCount}
+                              onChange={(event) =>
+                                setOptimizationForm((prev) => ({
+                                  ...prev,
+                                  minTotalCount: event.target.checked,
+                                }))
+                              }
+                            />
                             Min. darabszám
                           </label>
                           <label className="flex items-center gap-2">
-                            <input type="checkbox" checked={optimizationForm.minBanknotes} onChange={(event) => setOptimizationForm(prev => ({ ...prev, minBanknotes: event.target.checked }))} />
+                            <input
+                              type="checkbox"
+                              checked={optimizationForm.minBanknotes}
+                              onChange={(event) =>
+                                setOptimizationForm((prev) => ({
+                                  ...prev,
+                                  minBanknotes: event.target.checked,
+                                }))
+                              }
+                            />
                             Min. bankjegy
                           </label>
                           <label className="flex items-center gap-2">
-                            <input type="checkbox" checked={optimizationForm.minCoins} onChange={(event) => setOptimizationForm(prev => ({ ...prev, minCoins: event.target.checked }))} />
+                            <input
+                              type="checkbox"
+                              checked={optimizationForm.minCoins}
+                              onChange={(event) =>
+                                setOptimizationForm((prev) => ({
+                                  ...prev,
+                                  minCoins: event.target.checked,
+                                }))
+                              }
+                            />
                             Min. érme
                           </label>
                         </div>
@@ -794,47 +932,66 @@ export default function DenominationPage() {
                         <input
                           className="form-input mt-2 w-full"
                           value={ruleForm.ruleName}
-                          onChange={(event) => setRuleForm(prev => ({ ...prev, ruleName: event.target.value }))}
+                          onChange={(event) =>
+                            setRuleForm((prev) => ({ ...prev, ruleName: event.target.value }))
+                          }
                           placeholder="Szabálynév"
                         />
                         <select
                           className="form-input mt-2 w-full"
                           value={ruleForm.optimizationId}
-                          onChange={(event) => setRuleForm(prev => ({ ...prev, optimizationId: event.target.value }))}
+                          onChange={(event) =>
+                            setRuleForm((prev) => ({ ...prev, optimizationId: event.target.value }))
+                          }
                           aria-label="Szabály stratégiája"
                         >
                           <option value="">Válassz stratégiát</option>
                           {optimizations.map((opt) => (
-                            <option key={opt.id} value={opt.id}>{opt.name}</option>
+                            <option key={opt.id} value={opt.id}>
+                              {opt.name}
+                            </option>
                           ))}
                         </select>
                         <div className="mt-2 grid gap-2 sm:grid-cols-2">
                           <select
                             className="form-input w-full"
                             value={ruleForm.ruleType}
-                            onChange={(event) => setRuleForm(prev => ({ ...prev, ruleType: event.target.value as DenominationRuleType }))}
+                            onChange={(event) =>
+                              setRuleForm((prev) => ({
+                                ...prev,
+                                ruleType: event.target.value as DenominationRuleType,
+                              }))
+                            }
                             aria-label="Szabály típusa"
                           >
                             {RULE_TYPE_OPTIONS.map((ruleType) => (
-                              <option key={ruleType} value={ruleType}>{ruleType}</option>
+                              <option key={ruleType} value={ruleType}>
+                                {ruleType}
+                              </option>
                             ))}
                           </select>
                           <input
                             className="form-input w-full"
                             value={ruleForm.priority}
-                            onChange={(event) => setRuleForm(prev => ({ ...prev, priority: event.target.value }))}
+                            onChange={(event) =>
+                              setRuleForm((prev) => ({ ...prev, priority: event.target.value }))
+                            }
                             placeholder="Prioritás"
                           />
                           <input
                             className="form-input w-full"
                             value={ruleForm.minAmount}
-                            onChange={(event) => setRuleForm(prev => ({ ...prev, minAmount: event.target.value }))}
+                            onChange={(event) =>
+                              setRuleForm((prev) => ({ ...prev, minAmount: event.target.value }))
+                            }
                             placeholder="Min. HUF"
                           />
                           <input
                             className="form-input w-full"
                             value={ruleForm.maxAmount}
-                            onChange={(event) => setRuleForm(prev => ({ ...prev, maxAmount: event.target.value }))}
+                            onChange={(event) =>
+                              setRuleForm((prev) => ({ ...prev, maxAmount: event.target.value }))
+                            }
                             placeholder="Max. HUF"
                           />
                         </div>
@@ -842,7 +999,12 @@ export default function DenominationPage() {
                           <input
                             type="checkbox"
                             checked={ruleForm.branchScoped}
-                            onChange={(event) => setRuleForm(prev => ({ ...prev, branchScoped: event.target.checked }))}
+                            onChange={(event) =>
+                              setRuleForm((prev) => ({
+                                ...prev,
+                                branchScoped: event.target.checked,
+                              }))
+                            }
                           />
                           Csak a bejelentkezett fiókra
                         </label>
@@ -884,10 +1046,19 @@ export default function DenominationPage() {
               </div>
               {previewResult && (
                 <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
-                  <div><span className="font-semibold">Forrás:</span> {previewResult.source}</div>
-                  <div><span className="font-semibold">Stratégia:</span> {previewResult.strategy}</div>
-                  <div><span className="font-semibold">Optimalizáció:</span> {previewResult.optimizationName ?? '-'}</div>
-                  <div><span className="font-semibold">Szabály:</span> {previewResult.ruleName ?? '-'}</div>
+                  <div>
+                    <span className="font-semibold">Forrás:</span> {previewResult.source}
+                  </div>
+                  <div>
+                    <span className="font-semibold">Stratégia:</span> {previewResult.strategy}
+                  </div>
+                  <div>
+                    <span className="font-semibold">Optimalizáció:</span>{' '}
+                    {previewResult.optimizationName ?? '-'}
+                  </div>
+                  <div>
+                    <span className="font-semibold">Szabály:</span> {previewResult.ruleName ?? '-'}
+                  </div>
                 </div>
               )}
               {previewMessage && <p className="mt-2 text-xs text-amber-700">{previewMessage}</p>}
@@ -911,7 +1082,7 @@ export default function DenominationPage() {
               </thead>
               <tbody>
                 {denominations
-                  .filter(d => d.currencyId === selectedCurrencyId && d.active)
+                  .filter((d) => d.currencyId === selectedCurrencyId && d.active)
                   .sort((a, b) => b.faceValue - a.faceValue)
                   .map((denomination) => {
                     const quantity = editingQuantities[denomination.id] || 0
@@ -952,7 +1123,9 @@ export default function DenominationPage() {
               </tbody>
               <tfoot className="bg-gray-50 font-bold">
                 <tr>
-                  <td colSpan={3} className="text-right pr-4">{t('cashdesk.osszesen2')}</td>
+                  <td colSpan={3} className="text-right pr-4">
+                    {t('cashdesk.osszesen2')}
+                  </td>
                   <td className="text-right">
                     <span className="font-mono text-base text-blue-600">
                       {formatDecimal(calculatedTotal, 2, 2)} {selectedCurrency?.code}
@@ -982,7 +1155,9 @@ function StatusBox({ label, value }: { label: string; value: string | number }) 
   return (
     <div className="rounded-md bg-gray-50 p-2">
       <div className="text-xs text-gray-500">{label}</div>
-      <div className="mt-0.5 truncate font-semibold text-gray-900" title={String(value)}>{value}</div>
+      <div className="mt-0.5 truncate font-semibold text-gray-900" title={String(value)}>
+        {value}
+      </div>
     </div>
   )
 }

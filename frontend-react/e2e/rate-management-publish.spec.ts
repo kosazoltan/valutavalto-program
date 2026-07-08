@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,18 +52,34 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/rate-management/workgroups') && method === 'GET') {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ id: 'workgroup-1', name: 'Belvárosi csoport', code: 'BEL', legacyGroupNumber: 1, active: true }]),
+        body: JSON.stringify([
+          {
+            id: 'workgroup-1',
+            name: 'Belvárosi csoport',
+            code: 'BEL',
+            legacyGroupNumber: 1,
+            active: true,
+          },
+        ]),
       })
     }
 
@@ -79,27 +95,29 @@ async function mockApis(page: Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{
-          id: 'template-1',
-          currencyId: 1,
-          workgroupId: 'workgroup-1',
-          baseBuyRate: '390.00',
-          baseSellRate: '399.00',
-          buySpread: '1.00',
-          sellSpread: '1.00',
-          officialRate: '394.00',
-          limit1Amount: '100000',
-          limit1BuyRate: '391.00',
-          limit1SellRate: '400.00',
-          limit2Amount: '500000',
-          limit2BuyRate: '392.00',
-          limit2SellRate: '401.00',
-          limit3Amount: '1000000',
-          limit3BuyRate: '393.00',
-          limit3SellRate: '402.00',
-          roundingRule: 5,
-          status: 'DRAFT',
-        }]),
+        body: JSON.stringify([
+          {
+            id: 'template-1',
+            currencyId: 1,
+            workgroupId: 'workgroup-1',
+            baseBuyRate: '390.00',
+            baseSellRate: '399.00',
+            buySpread: '1.00',
+            sellSpread: '1.00',
+            officialRate: '394.00',
+            limit1Amount: '100000',
+            limit1BuyRate: '391.00',
+            limit1SellRate: '400.00',
+            limit2Amount: '500000',
+            limit2BuyRate: '392.00',
+            limit2SellRate: '401.00',
+            limit3Amount: '1000000',
+            limit3BuyRate: '393.00',
+            limit3SellRate: '402.00',
+            roundingRule: 5,
+            status: 'DRAFT',
+          },
+        ]),
       })
     }
 
@@ -107,7 +125,11 @@ async function mockApis(page: Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ id: 'publication-1', workgroupId: 'workgroup-1', affectedBranches: 1 }),
+        body: JSON.stringify({
+          id: 'publication-1',
+          workgroupId: 'workgroup-1',
+          affectedBranches: 1,
+        }),
       })
     }
 
@@ -125,7 +147,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('rate-management sablonok tab batch publish backend szerződésre köt mobil viewporton', async ({ page }) => {
+test('rate-management sablonok tab batch publish backend szerződésre köt mobil viewporton', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -135,19 +159,21 @@ test('rate-management sablonok tab batch publish backend szerződésre köt mobi
   await expect(page.getByText(/Vétel: 390\.00/)).toBeVisible()
   await page.getByLabel('Publikálási megjegyzés').fill('Mobil batch publikálás')
 
-  const publishRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/rate-management/publish')
+  const publishRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/rate-management/publish'),
   )
   await page.getByTestId('rate-management-publish-batch').click()
   await publishRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
 
-test('/rates/groups a valós rate-management munkacsoport UI-t rendereli mobil viewporton', async ({ page }) => {
+test('/rates/groups a valós rate-management munkacsoport UI-t rendereli mobil viewporton', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -157,8 +183,8 @@ test('/rates/groups a valós rate-management munkacsoport UI-t rendereli mobil v
   await expect(page.getByText('Belvárosi csoport')).toBeVisible()
   await expect(page.getByText(/nincs azonos szerződésű backend/i)).toHaveCount(0)
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

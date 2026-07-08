@@ -14,7 +14,12 @@ import {
 import { useHotkeys } from 'react-hotkeys-hook'
 import { ertektarApi, currencyApi, bankApi } from '../../services/api/index'
 import { resolveDefaultBankName } from './bankDefaults'
-import type { BankTransaction, BankTransactionRequest, Currency, BankInfo } from '../../services/api/index'
+import type {
+  BankTransaction,
+  BankTransactionRequest,
+  Currency,
+  BankInfo,
+} from '../../services/api/index'
 import { formatInteger, formatDateTime, currencyColorClass } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
 import {
@@ -58,7 +63,9 @@ export default function BankTransactions() {
       const [txDataRaw, currDataRaw, localPending] = await Promise.all([
         ertektarApi.getBankTransactions().catch(() => []),
         currencyApi.list().catch(() => []),
-        electronQueueAvailable ? getLocalPendingBankTransactions() : Promise.resolve([] as BankTransaction[]),
+        electronQueueAvailable
+          ? getLocalPendingBankTransactions()
+          : Promise.resolve([] as BankTransaction[]),
       ])
       const txData = safeArray<BankTransaction>(txDataRaw)
       const currData = safeArray<Currency>(currDataRaw)
@@ -92,45 +99,51 @@ export default function BankTransactions() {
     void loadBanks()
   }, [loadBanks])
 
-  const handleCreateBank = useCallback(async (event: React.FormEvent) => {
-    event.preventDefault()
-    const name = bankMasterName.trim()
-    if (!name) {
-      setBankMasterError('Banknév megadása kötelező.')
-      return
-    }
-    setBankMasterSaving(true)
-    setBankMasterError(null)
-    try {
-      await bankApi.create({
-        name,
-        regionCode: bankMasterRegionCode.trim() || undefined,
-      })
-      setBankMasterName('')
-      setBankMasterRegionCode('')
-      await loadBanks()
-    } catch (err) {
-      logger.error('BankTransactions', 'Bank master create error:', err)
-      setBankMasterError('A bank felvétele sikertelen.')
-    } finally {
-      setBankMasterSaving(false)
-    }
-  }, [bankMasterName, bankMasterRegionCode, loadBanks])
+  const handleCreateBank = useCallback(
+    async (event: React.FormEvent) => {
+      event.preventDefault()
+      const name = bankMasterName.trim()
+      if (!name) {
+        setBankMasterError('Banknév megadása kötelező.')
+        return
+      }
+      setBankMasterSaving(true)
+      setBankMasterError(null)
+      try {
+        await bankApi.create({
+          name,
+          regionCode: bankMasterRegionCode.trim() || undefined,
+        })
+        setBankMasterName('')
+        setBankMasterRegionCode('')
+        await loadBanks()
+      } catch (err) {
+        logger.error('BankTransactions', 'Bank master create error:', err)
+        setBankMasterError('A bank felvétele sikertelen.')
+      } finally {
+        setBankMasterSaving(false)
+      }
+    },
+    [bankMasterName, bankMasterRegionCode, loadBanks],
+  )
 
-  const handleDeactivateBank = useCallback(async (bank: BankInfo) => {
-    if (!confirm(`Biztosan deaktiválja ezt a bankot: ${bank.name}?`)) return
-    setBankMasterSaving(true)
-    setBankMasterError(null)
-    try {
-      await bankApi.deactivate(bank.id)
-      await loadBanks()
-    } catch (err) {
-      logger.error('BankTransactions', 'Bank master deactivate error:', err)
-      setBankMasterError('A bank deaktiválása sikertelen.')
-    } finally {
-      setBankMasterSaving(false)
-    }
-  }, [loadBanks])
+  const handleDeactivateBank = useCallback(
+    async (bank: BankInfo) => {
+      if (!confirm(`Biztosan deaktiválja ezt a bankot: ${bank.name}?`)) return
+      setBankMasterSaving(true)
+      setBankMasterError(null)
+      try {
+        await bankApi.deactivate(bank.id)
+        await loadBanks()
+      } catch (err) {
+        logger.error('BankTransactions', 'Bank master deactivate error:', err)
+        setBankMasterError('A bank deaktiválása sikertelen.')
+      } finally {
+        setBankMasterSaving(false)
+      }
+    },
+    [loadBanks],
+  )
 
   // Üzleti szabály: az értéktárak kizárólag a Raiffeisennel szerződnek → a banki átadás
   // célja minden esetben a Raiffeisen. A kollégának ne kelljen választania: legyen ez az
@@ -145,12 +158,19 @@ export default function BankTransactions() {
   // majd amikor megjön a törzs (pl. pontos „RAIFFEISEN BANK Zrt." név), frissítjük — DE csak ha
   // a mező üres VAGY még a korábbi auto-default-ot tartalmazza (kézi felülírást megőrzünk).
   useEffect(() => {
-    setBankName(prev => (!prev || prev === autoAppliedBankRef.current ? defaultBankName : prev))
+    setBankName((prev) => (!prev || prev === autoAppliedBankRef.current ? defaultBankName : prev))
     autoAppliedBankRef.current = defaultBankName
   }, [defaultBankName])
 
   useHotkeys('n', () => setShowNewModal(true), { enableOnFormTags: false })
-  useHotkeys('escape', () => { setShowNewModal(false); setShowDetailModal(null) }, { enableOnFormTags: true })
+  useHotkeys(
+    'escape',
+    () => {
+      setShowNewModal(false)
+      setShowDetailModal(null)
+    },
+    { enableOnFormTags: true },
+  )
 
   const resetForm = useCallback(() => {
     setCurrencyCode('')
@@ -161,83 +181,103 @@ export default function BankTransactions() {
     setNote('')
   }, [defaultBankName])
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!currencyCode || !amount || !exchangeRate) return
-    setSubmitting(true)
-    try {
-      const computedHufAmount = (parseFloat(amount) * parseFloat(exchangeRate)) || 0
-      // Üzleti szabály: a banki átadás célja minden esetben a Raiffeisen → ha a mezőt
-      // kiürítették, a default (Raiffeisen) megy ki, sose üres/undefined bankName.
-      const effectiveBankName = bankName.trim() || defaultBankName
-      const request: BankTransactionRequest = {
-        transactionType: txType,
-        currencyCode,
-        amount: parseFloat(amount),
-        exchangeRate: parseFloat(exchangeRate),
-        bankName: effectiveBankName,
-        bankReference: bankRef || undefined,
-        note: note || undefined,
-      }
-
-      if (electronQueueAvailable) {
-        await saveAndSyncPendingBankTransaction({
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      if (!currencyCode || !amount || !exchangeRate) return
+      setSubmitting(true)
+      try {
+        const computedHufAmount = parseFloat(amount) * parseFloat(exchangeRate) || 0
+        // Üzleti szabály: a banki átadás célja minden esetben a Raiffeisen → ha a mezőt
+        // kiürítették, a default (Raiffeisen) megy ki, sose üres/undefined bankName.
+        const effectiveBankName = bankName.trim() || defaultBankName
+        const request: BankTransactionRequest = {
           transactionType: txType,
           currencyCode,
           amount: parseFloat(amount),
           exchangeRate: parseFloat(exchangeRate),
-          hufAmount: computedHufAmount,
-          vaultTerritoryId: null,
           bankName: effectiveBankName,
-          bankReference: bankRef || null,
-          note: note || null,
-        })
-      } else {
-        await ertektarApi.createBankTransaction(request)
+          bankReference: bankRef || undefined,
+          note: note || undefined,
+        }
+
+        if (electronQueueAvailable) {
+          await saveAndSyncPendingBankTransaction({
+            transactionType: txType,
+            currencyCode,
+            amount: parseFloat(amount),
+            exchangeRate: parseFloat(exchangeRate),
+            hufAmount: computedHufAmount,
+            vaultTerritoryId: null,
+            bankName: effectiveBankName,
+            bankReference: bankRef || null,
+            note: note || null,
+          })
+        } else {
+          await ertektarApi.createBankTransaction(request)
+        }
+
+        setShowNewModal(false)
+        resetForm()
+        void fetchData()
+      } catch (err) {
+        logger.error('BankTransactions', 'Create bank transaction error:', err)
+      } finally {
+        setSubmitting(false)
       }
+    },
+    [
+      txType,
+      currencyCode,
+      amount,
+      exchangeRate,
+      bankName,
+      defaultBankName,
+      bankRef,
+      note,
+      fetchData,
+      electronQueueAvailable,
+      resetForm,
+    ],
+  )
 
-      setShowNewModal(false)
-      resetForm()
-      void fetchData()
-    } catch (err) {
-      logger.error('BankTransactions', 'Create bank transaction error:', err)
-    } finally {
-      setSubmitting(false)
-    }
-  }, [txType, currencyCode, amount, exchangeRate, bankName, defaultBankName, bankRef, note, fetchData, electronQueueAvailable, resetForm])
+  const handleConfirmReceived = useCallback(
+    async (id: number) => {
+      setWorkflowSubmitting(true)
+      try {
+        const updated = await ertektarApi.confirmBankTransactionReceived(id)
+        setShowDetailModal(updated)
+        void fetchData()
+      } catch (err) {
+        logger.error('BankTransactions', 'confirmReceived error:', err)
+      } finally {
+        setWorkflowSubmitting(false)
+      }
+    },
+    [fetchData],
+  )
 
-  const handleConfirmReceived = useCallback(async (id: number) => {
-    setWorkflowSubmitting(true)
-    try {
-      const updated = await ertektarApi.confirmBankTransactionReceived(id)
-      setShowDetailModal(updated)
-      void fetchData()
-    } catch (err) {
-      logger.error('BankTransactions', 'confirmReceived error:', err)
-    } finally {
-      setWorkflowSubmitting(false)
-    }
-  }, [fetchData])
+  const handleConfirmPaid = useCallback(
+    async (id: number) => {
+      setWorkflowSubmitting(true)
+      try {
+        const updated = await ertektarApi.confirmBankTransactionPaid(id)
+        setShowDetailModal(updated)
+        void fetchData()
+      } catch (err) {
+        logger.error('BankTransactions', 'confirmPaid error:', err)
+      } finally {
+        setWorkflowSubmitting(false)
+      }
+    },
+    [fetchData],
+  )
 
-  const handleConfirmPaid = useCallback(async (id: number) => {
-    setWorkflowSubmitting(true)
-    try {
-      const updated = await ertektarApi.confirmBankTransactionPaid(id)
-      setShowDetailModal(updated)
-      void fetchData()
-    } catch (err) {
-      logger.error('BankTransactions', 'confirmPaid error:', err)
-    } finally {
-      setWorkflowSubmitting(false)
-    }
-  }, [fetchData])
+  const hufAmount =
+    amount && exchangeRate ? (parseFloat(amount) * parseFloat(exchangeRate)).toFixed(0) : ''
 
-  const hufAmount = amount && exchangeRate
-    ? (parseFloat(amount) * parseFloat(exchangeRate)).toFixed(0)
-    : ''
-
-  const filtered = transactions.filter(t =>
-    typeFilter === 'all' || t.transactionType === typeFilter
+  const filtered = transactions.filter(
+    (t) => typeFilter === 'all' || t.transactionType === typeFilter,
   )
 
   if (loading) return <TableSkeleton rows={6} cols={7} />
@@ -249,10 +289,14 @@ export default function BankTransactions() {
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold text-secondary-900">{t('treasury.bankiTranzakciok')}</h1>
           <span className="badge badge-blue">
-            <TrendingUp size={12} />{t('darius.vetel')}{transactions.filter(t => t.transactionType === 'BUY').length}
+            <TrendingUp size={12} />
+            {t('darius.vetel')}
+            {transactions.filter((t) => t.transactionType === 'BUY').length}
           </span>
           <span className="badge badge-orange">
-            <TrendingDown size={12} />{t('darius.eladas')}{transactions.filter(t => t.transactionType === 'SELL').length}
+            <TrendingDown size={12} />
+            {t('darius.eladas')}
+            {transactions.filter((t) => t.transactionType === 'SELL').length}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -304,27 +348,25 @@ export default function BankTransactions() {
               <tr key={tx.id}>
                 <td className="font-mono text-xs">#{tx.id}</td>
                 <td>
-                  <span className={`badge ${tx.transactionType === 'BUY' ? 'badge-blue' : 'badge-orange'}`}>
+                  <span
+                    className={`badge ${tx.transactionType === 'BUY' ? 'badge-blue' : 'badge-orange'}`}
+                  >
                     {tx.transactionType === 'BUY' ? 'Vétel' : 'Eladás'}
                   </span>
                 </td>
                 <td className={`font-bold ${currencyColorClass(tx.currencyCode)}`}>
                   {tx.currencyCode}
                 </td>
-                <td className="text-right font-mono font-semibold">
-                  {formatInteger(tx.amount)}
-                </td>
-                <td className="text-right font-mono text-xs">
-                  {tx.exchangeRate?.toFixed(2)}
-                </td>
+                <td className="text-right font-mono font-semibold">{formatInteger(tx.amount)}</td>
+                <td className="text-right font-mono text-xs">{tx.exchangeRate?.toFixed(2)}</td>
                 <td className="text-right font-mono font-semibold">
                   {formatInteger(tx.hufAmount)} {t('common.ft')}
                 </td>
-                <td className="text-xs text-secondary-600">
-                  {tx.bankName || '-'}
-                </td>
+                <td className="text-xs text-secondary-600">{tx.bankName || '-'}</td>
                 <td>
-                  <span className={`badge ${tx.status === 'COMPLETED' ? 'badge-green' : 'badge-yellow'}`}>
+                  <span
+                    className={`badge ${tx.status === 'COMPLETED' ? 'badge-green' : 'badge-yellow'}`}
+                  >
                     {tx.status === 'COMPLETED' ? 'Teljesitett' : tx.status}
                   </span>
                 </td>
@@ -347,9 +389,15 @@ export default function BankTransactions() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-secondary-900">Bank-törzs</h2>
-            <p className="text-xs text-secondary-500">Banki átadás-átvétel célbankjai, területi szűréssel.</p>
+            <p className="text-xs text-secondary-500">
+              Banki átadás-átvétel célbankjai, területi szűréssel.
+            </p>
           </div>
-          <button type="button" onClick={() => void loadBanks()} className="form-button h-8 text-xs">
+          <button
+            type="button"
+            onClick={() => void loadBanks()}
+            className="form-button h-8 text-xs"
+          >
             <RefreshCw size={14} />
             Frissít
           </button>
@@ -361,7 +409,10 @@ export default function BankTransactions() {
           </div>
         )}
 
-        <form onSubmit={(event) => void handleCreateBank(event)} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_10rem_auto]">
+        <form
+          onSubmit={(event) => void handleCreateBank(event)}
+          className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_10rem_auto]"
+        >
           <label className="block text-sm">
             <span className="mb-1 block text-xs font-semibold text-secondary-600">Bank neve</span>
             <input
@@ -380,7 +431,11 @@ export default function BankTransactions() {
               placeholder="20"
             />
           </label>
-          <button type="submit" disabled={bankMasterSaving} className="form-button-primary self-end">
+          <button
+            type="submit"
+            disabled={bankMasterSaving}
+            className="form-button-primary self-end"
+          >
             <Plus size={16} />
             Felvétel
           </button>
@@ -398,7 +453,9 @@ export default function BankTransactions() {
             <tbody>
               {banks.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="py-4 text-center text-sm text-secondary-400">Nincs bank-törzs adat.</td>
+                  <td colSpan={3} className="py-4 text-center text-sm text-secondary-400">
+                    Nincs bank-törzs adat.
+                  </td>
                 </tr>
               )}
               {banks.map((bank) => (
@@ -425,8 +482,14 @@ export default function BankTransactions() {
 
       {/* New Transaction Modal */}
       {showNewModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowNewModal(false)}>
-          <div className="bg-white rounded-lg shadow-xl p-4 max-w-lg w-full mx-4" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"
+          onClick={() => setShowNewModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl p-4 max-w-lg w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-xl font-bold text-secondary-900 mb-3 flex items-center gap-2">
               <Building2 size={24} className="text-primary-600" />
               {t('treasury.ujBankiTranzakcio')}
@@ -443,7 +506,10 @@ export default function BankTransactions() {
                       : 'border-secondary-200 hover:border-secondary-400'
                   }`}
                 >
-                  <TrendingUp size={20} className={txType === 'BUY' ? 'text-blue-600' : 'text-secondary-400'} />
+                  <TrendingUp
+                    size={20}
+                    className={txType === 'BUY' ? 'text-blue-600' : 'text-secondary-400'}
+                  />
                   <div className="text-left">
                     <div className="font-semibold">{t('cashier.buy')}</div>
                     <div className="text-xs text-secondary-500">{t('treasury.bankbolValuta')}</div>
@@ -458,7 +524,10 @@ export default function BankTransactions() {
                       : 'border-secondary-200 hover:border-secondary-400'
                   }`}
                 >
-                  <TrendingDown size={20} className={txType === 'SELL' ? 'text-orange-600' : 'text-secondary-400'} />
+                  <TrendingDown
+                    size={20}
+                    className={txType === 'SELL' ? 'text-orange-600' : 'text-secondary-400'}
+                  />
                   <div className="text-left">
                     <div className="font-semibold">{t('cashier.sell')}</div>
                     <div className="text-xs text-secondary-500">{t('treasury.banknakValuta')}</div>
@@ -472,13 +541,17 @@ export default function BankTransactions() {
                 <select
                   className="form-input w-full"
                   value={currencyCode}
-                  onChange={e => setCurrencyCode(e.target.value)}
+                  onChange={(e) => setCurrencyCode(e.target.value)}
                   required
                 >
                   <option value="">{t('treasury.valasszValutat')}</option>
-                  {currencies.filter(c => c.code !== 'HUF').map(c => (
-                    <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
-                  ))}
+                  {currencies
+                    .filter((c) => c.code !== 'HUF')
+                    .map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code} — {c.name}
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -491,7 +564,7 @@ export default function BankTransactions() {
                     className="form-input w-full font-mono"
                     placeholder="0"
                     value={amount}
-                    onChange={e => setAmount(e.target.value)}
+                    onChange={(e) => setAmount(e.target.value)}
                     required
                     min="0.01"
                     step="0.01"
@@ -504,7 +577,7 @@ export default function BankTransactions() {
                     className="form-input w-full font-mono"
                     placeholder="0.00"
                     value={exchangeRate}
-                    onChange={e => setExchangeRate(e.target.value)}
+                    onChange={(e) => setExchangeRate(e.target.value)}
                     required
                     min="0.0001"
                     step="0.0001"
@@ -535,10 +608,10 @@ export default function BankTransactions() {
                     className="form-input w-full"
                     placeholder="Raiffeisen Bank"
                     value={bankName}
-                    onChange={e => setBankName(e.target.value)}
+                    onChange={(e) => setBankName(e.target.value)}
                   />
                   <datalist id="bank-master-list">
-                    {banks.map(b => (
+                    {banks.map((b) => (
                       <option key={b.id} value={b.name} />
                     ))}
                   </datalist>
@@ -550,7 +623,7 @@ export default function BankTransactions() {
                     className="form-input w-full"
                     placeholder="Referenciaszam"
                     value={bankRef}
-                    onChange={e => setBankRef(e.target.value)}
+                    onChange={(e) => setBankRef(e.target.value)}
                   />
                 </div>
               </div>
@@ -561,13 +634,17 @@ export default function BankTransactions() {
                 <textarea
                   className="form-input w-full min-h-[60px]"
                   value={note}
-                  onChange={e => setNote(e.target.value)}
+                  onChange={(e) => setNote(e.target.value)}
                 />
               </div>
 
               {/* Buttons */}
               <div className="flex justify-end gap-3 pt-4 border-t">
-                <button type="button" className="form-button" onClick={() => setShowNewModal(false)}>
+                <button
+                  type="button"
+                  className="form-button"
+                  onClick={() => setShowNewModal(false)}
+                >
                   {t('common.cancel')}
                 </button>
                 <button type="submit" className="form-button-primary" disabled={submitting}>
@@ -582,35 +659,61 @@ export default function BankTransactions() {
 
       {/* Detail Modal */}
       {showDetailModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowDetailModal(null)}>
-          <div className="bg-white rounded-lg shadow-xl p-4 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"
+          onClick={() => setShowDetailModal(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl p-4 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-xl font-bold text-secondary-900 mb-4">
-              {t('treasury.tranzakcio')}{showDetailModal.id}
+              {t('treasury.tranzakcio')}
+              {showDetailModal.id}
             </h2>
             <div className="space-y-2 text-sm">
-              <Row label="Típus" value={showDetailModal.transactionType === 'BUY' ? 'Banki vétel' : 'Banki eladás'} />
+              <Row
+                label="Típus"
+                value={showDetailModal.transactionType === 'BUY' ? 'Banki vétel' : 'Banki eladás'}
+              />
               <Row label="Valuta" value={showDetailModal.currencyCode} />
               <Row label="Mennyiség" value={formatInteger(showDetailModal.amount)} mono />
               <Row label="Árfolyam" value={showDetailModal.exchangeRate?.toFixed(4)} mono />
-              <Row label="HUF érték" value={`${formatInteger(showDetailModal.hufAmount)} Ft`} mono />
+              <Row
+                label="HUF érték"
+                value={`${formatInteger(showDetailModal.hufAmount)} Ft`}
+                mono
+              />
               <Row label="Bank" value={showDetailModal.bankName || '-'} />
               <Row label="Ref." value={showDetailModal.bankReference || '-'} />
               <Row label="Státusz" value={showDetailModal.status} />
               <Row label="Dátum" value={formatDateTime(showDetailModal.createdAt)} />
-              {showDetailModal.receivedAt && <Row label="Deviza beerkezett" value={formatDateTime(showDetailModal.receivedAt)} />}
-              {showDetailModal.paidAt && <Row label="HUF atutalva" value={formatDateTime(showDetailModal.paidAt)} />}
-              {showDetailModal.completedAt && <Row label="Teljesitve" value={formatDateTime(showDetailModal.completedAt)} />}
+              {showDetailModal.receivedAt && (
+                <Row label="Deviza beerkezett" value={formatDateTime(showDetailModal.receivedAt)} />
+              )}
+              {showDetailModal.paidAt && (
+                <Row label="HUF atutalva" value={formatDateTime(showDetailModal.paidAt)} />
+              )}
+              {showDetailModal.completedAt && (
+                <Row label="Teljesitve" value={formatDateTime(showDetailModal.completedAt)} />
+              )}
               {showDetailModal.note && <Row label="Megjegyzes" value={showDetailModal.note} />}
             </div>
 
             {/* Workflow gombok — csak amig nem COMPLETED */}
             {showDetailModal.status !== 'COMPLETED' && (
               <div className="mt-4 space-y-2 border-t pt-4">
-                <div className="text-xs font-semibold text-secondary-600 mb-2">{t('treasury.workflowLepesek')}</div>
+                <div className="text-xs font-semibold text-secondary-600 mb-2">
+                  {t('treasury.workflowLepesek')}
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    className={showDetailModal.receivedAt ? 'form-button cursor-default opacity-60' : 'form-button-primary'}
+                    className={
+                      showDetailModal.receivedAt
+                        ? 'form-button cursor-default opacity-60'
+                        : 'form-button-primary'
+                    }
                     disabled={!!showDetailModal.receivedAt || workflowSubmitting}
                     onClick={() => void handleConfirmReceived(showDetailModal.id)}
                   >
@@ -619,7 +722,11 @@ export default function BankTransactions() {
                   </button>
                   <button
                     type="button"
-                    className={showDetailModal.paidAt ? 'form-button cursor-default opacity-60' : 'form-button-primary'}
+                    className={
+                      showDetailModal.paidAt
+                        ? 'form-button cursor-default opacity-60'
+                        : 'form-button-primary'
+                    }
                     disabled={!!showDetailModal.paidAt || workflowSubmitting}
                     onClick={() => void handleConfirmPaid(showDetailModal.id)}
                   >
@@ -628,12 +735,17 @@ export default function BankTransactions() {
                   </button>
                 </div>
                 <div className="text-xs text-secondary-500">
-                  {t('treasury.haMindketOldalMegerositveATranzakcioAutomatikusanCompletedAllapotbaKerul')}
+                  {t(
+                    'treasury.haMindketOldalMegerositveATranzakcioAutomatikusanCompletedAllapotbaKerul',
+                  )}
                 </div>
               </div>
             )}
 
-            <button onClick={() => setShowDetailModal(null)} className="form-button-primary w-full mt-6">
+            <button
+              onClick={() => setShowDetailModal(null)}
+              className="form-button-primary w-full mt-6"
+            >
               {t('components.bezaras')}
             </button>
           </div>

@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path === '/api/v1/customers/code/U000001' && method === 'GET') {
@@ -138,7 +146,13 @@ async function mockApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { customerId: 5, customerName: 'Gyakori Ügyfél', transactionCount: 9, totalVolumeHuf: 2200000, rank: 1 },
+          {
+            customerId: 5,
+            customerName: 'Gyakori Ügyfél',
+            transactionCount: 9,
+            totalVolumeHuf: 2200000,
+            rank: 1,
+          },
         ]),
       })
     }
@@ -148,7 +162,13 @@ async function mockApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { customerId: 6, customerName: 'Top Ügyfél', transactionCount: 11, totalVolumeHuf: 5400000, rank: 1 },
+          {
+            customerId: 6,
+            customerName: 'Top Ügyfél',
+            transactionCount: 11,
+            totalVolumeHuf: 5400000,
+            rank: 1,
+          },
         ]),
       })
     }
@@ -191,19 +211,25 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('ügyfél lista mobil nézetben ügyfélkód alapján backend detail lookupot használ', async ({ page }) => {
+test('ügyfél lista mobil nézetben ügyfélkód alapján backend detail lookupot használ', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
 
-  const vipRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/vip'
+  const vipRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/vip',
   )
-  const frequentRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/frequent'
+  const frequentRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/customers/frequent',
   )
-  const topRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/top'
+  const topRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/top',
   )
   await page.goto('/customers', { waitUntil: 'domcontentloaded' })
   await Promise.all([vipRequest, frequentRequest, topRequest])
@@ -214,8 +240,10 @@ test('ügyfél lista mobil nézetben ügyfélkód alapján backend detail lookup
   await expect(page.getByText('Gyakori Ügyfél')).toBeVisible()
   await expect(page.getByText('Top Ügyfél')).toBeVisible()
 
-  const codeRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/code/U000001'
+  const codeRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/customers/code/U000001',
   )
   await page.getByPlaceholder('Ügyfélkód pontos keresése...').fill('U000001')
   await page.getByRole('button', { name: 'Ügyfélkód keresés' }).click()
@@ -225,23 +253,26 @@ test('ügyfél lista mobil nézetben ügyfélkód alapján backend detail lookup
   await expect(page.getByText('U000001')).toBeVisible()
   await expect(page.getByText('Inaktív')).toBeVisible()
 
-  const activateRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && new URL(request.url()).pathname === '/api/v1/customers/1/activate'
+  const activateRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/customers/1/activate',
   )
-  page.once('dialog', dialog => dialog.accept())
+  page.once('dialog', (dialog) => dialog.accept())
   await page.getByTitle('Aktiválás').click()
   await activateRequest
 
-  const nameRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/search'
+  const nameRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/search',
   )
   await page.getByPlaceholder('Keresés név vagy okmányszám alapján...').fill('Backend')
   await page.getByRole('button', { name: 'Név szerinti keresés' }).click()
   await nameRequest
   await expect(page.getByText('Backend Név Ügyfél')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

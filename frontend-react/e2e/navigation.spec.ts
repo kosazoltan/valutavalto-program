@@ -32,7 +32,7 @@ async function loginAndSetupMocks(page: Page) {
     permissions: ['TRADE_EXECUTE', 'TRADE_STORNO', 'RATE_READ', 'CUSTOMER_READ'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -81,7 +81,9 @@ async function loginAndSetupMocks(page: Page) {
 
 test('dashboard elérhető bejelentkezés után', async ({ page }) => {
   await loginAndSetupMocks(page)
-  await expect(page.getByRole('heading', { name: /Irányítópult|Központi irányítóközpont/i })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: /Irányítópult|Központi irányítóközpont/i }),
+  ).toBeVisible()
 })
 
 test('menü linkek navigálhatók', async ({ page }) => {
@@ -105,7 +107,9 @@ test('menü linkek navigálhatók', async ({ page }) => {
 test('logout elérhető', async ({ page }) => {
   await loginAndSetupMocks(page)
 
-  await expect(page.getByRole('heading', { name: /Irányítópult|Központi irányítóközpont/i })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: /Irányítópult|Központi irányítóközpont/i }),
+  ).toBeVisible()
 
   const logoutButton = page.getByRole('button', { name: /kijelentkezés|logout|kilépés/i })
   const userMenu = page.getByRole('button', { name: /admin|menü|user|profil/i })

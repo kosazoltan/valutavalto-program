@@ -3,13 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const BASE_URL = 'http://127.0.0.1:3000';
-const ROUTES = [
-  '/dashboard',
-  '/transactions',
-  '/rates/creation',
-  '/cashdesk',
-  '/reports',
-];
+const ROUTES = ['/dashboard', '/transactions', '/rates/creation', '/cashdesk', '/reports'];
 
 const artifactsDir = path.resolve('playwright-artifacts');
 fs.mkdirSync(artifactsDir, { recursive: true });
@@ -63,7 +57,10 @@ for (const route of ROUTES) {
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1000);
   const bodyText = ((await page.textContent('body')) || '').replace(/\s+/g, ' ').trim();
-  const screenshotPath = path.join(artifactsDir, `kosa-${route.replaceAll('/', '_') || 'root'}.png`);
+  const screenshotPath = path.join(
+    artifactsDir,
+    `kosa-${route.replaceAll('/', '_') || 'root'}.png`,
+  );
   await page.screenshot({ path: screenshotPath, fullPage: true });
 
   const result = {

@@ -651,7 +651,9 @@ describe('MobileOverviewPage', () => {
     expect(mocks.apiGet).toHaveBeenCalledWith('/supervisor/params')
     expect(mocks.apiGet).toHaveBeenCalledWith('/sync/restore/status')
     expect(mocks.apiGet).toHaveBeenCalledWith('/year-opening/status')
-    expect(mocks.apiGet).toHaveBeenCalledWith('/western-union/balance', { params: { branchId: 'branch-1' } })
+    expect(mocks.apiGet).toHaveBeenCalledWith('/western-union/balance', {
+      params: { branchId: 'branch-1' },
+    })
     expect(mocks.apiGet).toHaveBeenCalledWith('/western-union/daily-report', {
       params: { branchId: 'branch-1', date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) },
     })
@@ -673,7 +675,12 @@ describe('MobileOverviewPage', () => {
       params: { date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) },
     })
     expect(mocks.apiGet).toHaveBeenCalledWith('/nav/closings', {
-      params: { page: 0, size: 5, dateFrom: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), dateTo: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) },
+      params: {
+        page: 0,
+        size: 5,
+        dateFrom: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        dateTo: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      },
     })
     expect(mocks.apiGet).toHaveBeenCalledWith('/western-union-stub/rates')
     expect(mocks.getDetailedPosition).toHaveBeenCalled()
@@ -691,10 +698,23 @@ describe('MobileOverviewPage', () => {
     expect(mocks.notificationGetUnread).toHaveBeenCalled()
     expect(mocks.notificationUnreadCount).toHaveBeenCalled()
     expect(screen.getByText('branch-offline')).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: /Új ügyfél/i }).some((link) => link.getAttribute('href') === '/customers/new')).toBe(true)
-    expect(screen.getByRole('link', { name: /AML ellenőrzés/i })).toHaveAttribute('href', '/compliance')
-    expect(screen.getByRole('link', { name: /Értéktári készlet/i })).toHaveAttribute('href', '/inventory')
-    expect(screen.getByRole('link', { name: /Zárás beérkezés/i })).toHaveAttribute('href', '/central/closing-control')
+    expect(
+      screen
+        .getAllByRole('link', { name: /Új ügyfél/i })
+        .some((link) => link.getAttribute('href') === '/customers/new'),
+    ).toBe(true)
+    expect(screen.getByRole('link', { name: /AML ellenőrzés/i })).toHaveAttribute(
+      'href',
+      '/compliance',
+    )
+    expect(screen.getByRole('link', { name: /Értéktári készlet/i })).toHaveAttribute(
+      'href',
+      '/inventory',
+    )
+    expect(screen.getByRole('link', { name: /Zárás beérkezés/i })).toHaveAttribute(
+      'href',
+      '/central/closing-control',
+    )
     expect(screen.getByText('Restore tranzakció')).toBeInTheDocument()
     expect(screen.getByText('WU USD')).toBeInTheDocument()
     expect(screen.getByText('Napi jelentés')).toBeInTheDocument()
@@ -710,16 +730,28 @@ describe('MobileOverviewPage', () => {
     renderPage()
 
     const cashierArea = await screen.findByTestId('mobile-work-area-cashier')
-    expect(within(cashierArea).getByRole('link', { name: /Vétel \/ eladás/i })).toHaveAttribute('href', '/transactions/cashier')
-    expect(within(cashierArea).getByRole('link', { name: /Címletezés/i })).toHaveAttribute('href', '/cashdesk/denominations')
+    expect(within(cashierArea).getByRole('link', { name: /Vétel \/ eladás/i })).toHaveAttribute(
+      'href',
+      '/transactions/cashier',
+    )
+    expect(within(cashierArea).getByRole('link', { name: /Címletezés/i })).toHaveAttribute(
+      'href',
+      '/cashdesk/denominations',
+    )
     expect(within(cashierArea).getByText('Pénztári készletfigyelő')).toBeInTheDocument()
     expect(within(cashierArea).getAllByText('EUR').length).toBeGreaterThan(0)
     expect(within(cashierArea).getByText('Alacsony')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Terepi kontroll/i }))
     const fieldArea = await screen.findByTestId('mobile-work-area-field')
-    expect(within(fieldArea).getByRole('link', { name: /Plomba/i })).toHaveAttribute('href', '/seal-tracking')
-    expect(within(fieldArea).getByRole('link', { name: /Bizonylatok/i })).toHaveAttribute('href', '/transfer-documents')
+    expect(within(fieldArea).getByRole('link', { name: /Plomba/i })).toHaveAttribute(
+      'href',
+      '/seal-tracking',
+    )
+    expect(within(fieldArea).getByRole('link', { name: /Bizonylatok/i })).toHaveAttribute(
+      'href',
+      '/transfer-documents',
+    )
     expect(within(fieldArea).getByText('Offline irodák')).toBeInTheDocument()
     expect(within(fieldArea).getByText('Mobil átadási bizonylatok')).toBeInTheDocument()
     expect(within(fieldArea).getByText('ATD-101')).toBeInTheDocument()
@@ -732,8 +764,14 @@ describe('MobileOverviewPage', () => {
     expect(within(cameraArea).getByText('Pénztár kamera')).toBeInTheDocument()
     expect(within(cameraArea).getByText('Bejárat kamera')).toBeInTheDocument()
     expect(within(cameraArea).getByText('Offline')).toBeInTheDocument()
-    expect(within(cameraArea).getByRole('link', { name: /Élő kép/i })).toHaveAttribute('href', '/camera/live')
-    expect(within(cameraArea).getByRole('link', { name: /Státusz/i })).toHaveAttribute('href', '/camera/status')
+    expect(within(cameraArea).getByRole('link', { name: /Élő kép/i })).toHaveAttribute(
+      'href',
+      '/camera/live',
+    )
+    expect(within(cameraArea).getByRole('link', { name: /Státusz/i })).toHaveAttribute(
+      'href',
+      '/camera/status',
+    )
 
     const vaultUseCaseButton = screen.getAllByRole('button', { name: /Értéktár/i })[0]
     if (!vaultUseCaseButton) throw new Error('Hiányzik az Értéktár mobil használati pont')
@@ -743,25 +781,42 @@ describe('MobileOverviewPage', () => {
     expect(within(vaultArea).getByText('Begyűjtés #11')).toBeInTheDocument()
     expect(within(vaultArea).getByText('Szétosztás #12')).toBeInTheDocument()
     expect(within(vaultArea).getByText('Banki tétel #13')).toBeInTheDocument()
-    expect(within(vaultArea).getByRole('link', { name: /Értéktári dashboard/i })).toHaveAttribute('href', '/treasury')
+    expect(within(vaultArea).getByRole('link', { name: /Értéktári dashboard/i })).toHaveAttribute(
+      'href',
+      '/treasury',
+    )
 
     const approvalUseCaseButton = screen.getAllByRole('button', { name: /Jóváhagyás/i })[0]
     if (!approvalUseCaseButton) throw new Error('Hiányzik a Jóváhagyás mobil használati pont')
     await user.click(approvalUseCaseButton)
     const approvalArea = await screen.findByTestId('mobile-work-area-approval')
-    expect(within(approvalArea).getByRole('link', { name: /AML kontroll/i })).toHaveAttribute('href', '/compliance')
-    expect(within(approvalArea).getByRole('button', { name: /Mobil engedélyezés/i })).toBeInTheDocument()
+    expect(within(approvalArea).getByRole('link', { name: /AML kontroll/i })).toHaveAttribute(
+      'href',
+      '/compliance',
+    )
+    expect(
+      within(approvalArea).getByRole('button', { name: /Mobil engedélyezés/i }),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Ügyfél és AML/i }))
     const customerArea = await screen.findByTestId('mobile-work-area-customer')
     expect(within(customerArea).getByPlaceholderText('Név vagy okmányszám...')).toBeInTheDocument()
-    expect(within(customerArea).getByRole('link', { name: /Új ügyfél/i })).toHaveAttribute('href', '/customers/new')
-    expect(within(customerArea).getByRole('link', { name: /Megkeresés/i })).toHaveAttribute('href', '/police-requests')
+    expect(within(customerArea).getByRole('link', { name: /Új ügyfél/i })).toHaveAttribute(
+      'href',
+      '/customers/new',
+    )
+    expect(within(customerArea).getByRole('link', { name: /Megkeresés/i })).toHaveAttribute(
+      'href',
+      '/police-requests',
+    )
     expect(within(customerArea).getByText('Telefonos okmányfeltöltés')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Riasztás és státusz/i }))
     const managementArea = await screen.findByTestId('mobile-work-area-management')
-    expect(within(managementArea).getByRole('link', { name: /Irányító/i })).toHaveAttribute('href', '/central-workstation')
+    expect(within(managementArea).getByRole('link', { name: /Irányító/i })).toHaveAttribute(
+      'href',
+      '/central-workstation',
+    )
     expect(within(managementArea).getByText('Hiányzó jelentés')).toBeInTheDocument()
     expect(within(managementArea).getByText('Irodai sync gyorsműveletek')).toBeInTheDocument()
     expect(within(managementArea).getByRole('button', { name: /Teljes sync/i })).toBeInTheDocument()
@@ -779,8 +834,14 @@ describe('MobileOverviewPage', () => {
     expect(within(integrationsArea).getByText('Pénztárgép 1')).toBeInTheDocument()
     expect(within(integrationsArea).getByText('NAV zárás mobil lista')).toBeInTheDocument()
     expect(within(integrationsArea).getByText('WU adapter mobil státusz')).toBeInTheDocument()
-    expect(within(integrationsArea).getByRole('link', { name: /POS terminálok/i })).toHaveAttribute('href', '/pos-terminal')
-    expect(within(integrationsArea).getByRole('link', { name: /NAV integráció/i })).toHaveAttribute('href', '/nav-integration')
+    expect(within(integrationsArea).getByRole('link', { name: /POS terminálok/i })).toHaveAttribute(
+      'href',
+      '/pos-terminal',
+    )
+    expect(within(integrationsArea).getByRole('link', { name: /NAV integráció/i })).toHaveAttribute(
+      'href',
+      '/nav-integration',
+    )
   })
 
   it('alsó mobil navigációval is vált a hét valós munkanézet között', async () => {
@@ -788,11 +849,17 @@ describe('MobileOverviewPage', () => {
     renderPage()
 
     const bottomNav = await screen.findByTestId('mobile-bottom-nav')
-    expect(within(bottomNav).getByTestId('mobile-bottom-nav-cashier')).toHaveAttribute('aria-current', 'page')
+    expect(within(bottomNav).getByTestId('mobile-bottom-nav-cashier')).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
 
     await user.click(within(bottomNav).getByTestId('mobile-bottom-nav-field'))
     expect(await screen.findByTestId('mobile-work-area-field')).toBeInTheDocument()
-    expect(within(bottomNav).getByTestId('mobile-bottom-nav-field')).toHaveAttribute('aria-current', 'page')
+    expect(within(bottomNav).getByTestId('mobile-bottom-nav-field')).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
 
     await user.click(within(bottomNav).getByTestId('mobile-bottom-nav-camera'))
     expect(await screen.findByTestId('mobile-work-area-camera')).toBeInTheDocument()
@@ -837,7 +904,9 @@ describe('MobileOverviewPage', () => {
     await user.click(within(panel).getByRole('button', { name: /Teljes sync/i }))
 
     await waitFor(() => {
-      expect(mocks.apiPost).toHaveBeenCalledWith('/sync/full/branch-1', null, { validateStatus: expect.any(Function) })
+      expect(mocks.apiPost).toHaveBeenCalledWith('/sync/full/branch-1', null, {
+        validateStatus: expect.any(Function),
+      })
     })
   })
 
@@ -852,8 +921,12 @@ describe('MobileOverviewPage', () => {
     await user.click(within(panel).getByRole('button', { name: /Futtatás/i }))
 
     await waitFor(() => {
-      expect(window.confirm).toHaveBeenCalledWith('Biztosan futtatod az évnyitást 2027 évre? Ez adminisztratív záró/nyitó workflow.')
-      expect(mocks.apiPost).toHaveBeenCalledWith('/year-opening/execute', null, { params: { targetYear: 2027 } })
+      expect(window.confirm).toHaveBeenCalledWith(
+        'Biztosan futtatod az évnyitást 2027 évre? Ez adminisztratív záró/nyitó workflow.',
+      )
+      expect(mocks.apiPost).toHaveBeenCalledWith('/year-opening/execute', null, {
+        params: { targetYear: 2027 },
+      })
     })
   })
 
@@ -872,7 +945,10 @@ describe('MobileOverviewPage', () => {
     })
 
     await user.clear(within(panel).getByLabelText('Iroda ID'))
-    await user.type(within(panel).getByLabelText('Iroda ID'), '11111111-1111-1111-1111-111111111111')
+    await user.type(
+      within(panel).getByLabelText('Iroda ID'),
+      '11111111-1111-1111-1111-111111111111',
+    )
     await user.clear(within(panel).getByLabelText('Valuta'))
     await user.type(within(panel).getByLabelText('Valuta'), 'eur')
     await user.type(within(panel).getByLabelText('Vételi'), '395.5')
@@ -1031,7 +1107,9 @@ describe('MobileOverviewPage', () => {
     await screen.findByTestId('mobile-work-area-vault')
     await user.click(screen.getByRole('button', { name: 'Begyűjtés #11 mobil státusz COMPLETED' }))
     await user.click(screen.getByRole('button', { name: 'Szétosztás #12 mobil státusz REJECTED' }))
-    await user.click(screen.getByRole('button', { name: 'Banki tétel #13 mobil státusz IN_PROGRESS' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Banki tétel #13 mobil státusz IN_PROGRESS' }),
+    )
 
     await waitFor(() => {
       expect(mocks.ertektarUpdateCollectionStatus).toHaveBeenCalledWith(11, 'COMPLETED')

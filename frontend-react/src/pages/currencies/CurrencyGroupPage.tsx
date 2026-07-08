@@ -49,7 +49,7 @@ export default function CurrencyGroupPage() {
       setLoading(true)
       setError(null)
       const data = await currencyGroupApi.list()
-      setItems(safeArray<typeof items[0]>(data))
+      setItems(safeArray<(typeof items)[0]>(data))
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('CurrencyGroupPage', 'Betöltési hiba:', err)
@@ -132,12 +132,10 @@ export default function CurrencyGroupPage() {
     }
   }
 
-  const filtered = items.filter(item => {
+  const filtered = items.filter((item) => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
+    return Object.values(item).some((v) => v != null && String(v).toLowerCase().includes(term))
   })
 
   const handleDelete = async (id: string | number) => {
@@ -165,50 +163,76 @@ export default function CurrencyGroupPage() {
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button onClick={() => openForm()} className="form-button-primary flex items-center gap-1">
-            <Plus className="h-4 w-4" />{t('common.new')}
+          <button
+            onClick={() => openForm()}
+            className="form-button-primary flex items-center gap-1"
+          >
+            <Plus className="h-4 w-4" />
+            {t('common.new')}
           </button>
         </div>
       </div>
 
       {form && (
         <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
-          <h2 className="text-base font-semibold">{form.id ? 'Valutacsoport szerkesztése' : 'Új valutacsoport'}</h2>
+          <h2 className="text-base font-semibold">
+            {form.id ? 'Valutacsoport szerkesztése' : 'Új valutacsoport'}
+          </h2>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             <div>
-              <label htmlFor="currency-group-code" className="form-label">Kód</label>
+              <label htmlFor="currency-group-code" className="form-label">
+                Kód
+              </label>
               <input
                 id="currency-group-code"
                 value={form.code}
-                onChange={(e) => setForm((current) => current ? { ...current, code: e.target.value } : current)}
+                onChange={(e) =>
+                  setForm((current) => (current ? { ...current, code: e.target.value } : current))
+                }
                 className="form-input w-full uppercase"
                 maxLength={20}
               />
             </div>
             <div>
-              <label htmlFor="currency-group-name" className="form-label">Név</label>
+              <label htmlFor="currency-group-name" className="form-label">
+                Név
+              </label>
               <input
                 id="currency-group-name"
                 value={form.name}
-                onChange={(e) => setForm((current) => current ? { ...current, name: e.target.value } : current)}
+                onChange={(e) =>
+                  setForm((current) => (current ? { ...current, name: e.target.value } : current))
+                }
                 className="form-input w-full"
               />
             </div>
             <div>
-              <label htmlFor="currency-group-description" className="form-label">Leírás</label>
+              <label htmlFor="currency-group-description" className="form-label">
+                Leírás
+              </label>
               <input
                 id="currency-group-description"
                 value={form.description}
-                onChange={(e) => setForm((current) => current ? { ...current, description: e.target.value } : current)}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, description: e.target.value } : current,
+                  )
+                }
                 className="form-input w-full"
               />
             </div>
             <div>
-              <label htmlFor="currency-group-currency-ids" className="form-label">Valuta ID-k JSON</label>
+              <label htmlFor="currency-group-currency-ids" className="form-label">
+                Valuta ID-k JSON
+              </label>
               <input
                 id="currency-group-currency-ids"
                 value={form.currencyIds}
-                onChange={(e) => setForm((current) => current ? { ...current, currencyIds: e.target.value } : current)}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, currencyIds: e.target.value } : current,
+                  )
+                }
                 className="form-input w-full font-mono"
                 placeholder="[1,2,3]"
               />
@@ -217,16 +241,27 @@ export default function CurrencyGroupPage() {
               <input
                 type="checkbox"
                 checked={form.isActive}
-                onChange={(e) => setForm((current) => current ? { ...current, isActive: e.target.checked } : current)}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, isActive: e.target.checked } : current,
+                  )
+                }
               />
               Aktív
             </label>
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => void saveGroup()} disabled={saving} className="form-button-primary">
+            <button
+              type="button"
+              onClick={() => void saveGroup()}
+              disabled={saving}
+              className="form-button-primary"
+            >
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
-            <button type="button" onClick={() => setForm(null)} className="form-button">Mégse</button>
+            <button type="button" onClick={() => setForm(null)} className="form-button">
+              Mégse
+            </button>
           </div>
         </div>
       )}
@@ -238,7 +273,7 @@ export default function CurrencyGroupPage() {
             type="text"
             placeholder="Keresés..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="form-input w-full pl-10"
           />
         </div>
@@ -261,47 +296,76 @@ export default function CurrencyGroupPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('competitors.nev')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Kód</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('currencies.leiras')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('currencies.valutakSzama')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.active')}</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('competitors.muveletek')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('competitors.nev')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Kód
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('currencies.leiras')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('currencies.valutakSzama')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.active')}
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                {t('competitors.muveletek')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.name ?? '-'}</td>
-                <td className="px-4 py-3 text-sm font-mono font-semibold">{item.code ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.description ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{currencyCount(item.currencyIds)}</td>
-                <td className="px-4 py-3 text-sm">{item.isActive ? 'Igen' : 'Nem'}</td>
-                <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => void openEditForm(item)}
-                    className="form-button mr-2 p-1 text-blue-600"
-                    title="Szerkesztés"
-                    disabled={editingLoadingId === item.id}
-                  >
-                    <Edit2 className={`h-4 w-4 ${editingLoadingId === item.id ? 'animate-pulse' : ''}`} />
-                  </button>
-                  <button onClick={() => handleDelete(item.id)} className="form-button p-1 text-red-600" title="Törlés">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                  Betöltés...
                 </td>
               </tr>
-            ))}
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('common.noData')}
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm">{item.name ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm font-mono font-semibold">{item.code ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.description ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{currencyCount(item.currencyIds)}</td>
+                  <td className="px-4 py-3 text-sm">{item.isActive ? 'Igen' : 'Nem'}</td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => void openEditForm(item)}
+                      className="form-button mr-2 p-1 text-blue-600"
+                      title="Szerkesztés"
+                      disabled={editingLoadingId === item.id}
+                    >
+                      <Edit2
+                        className={`h-4 w-4 ${editingLoadingId === item.id ? 'animate-pulse' : ''}`}
+                      />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="form-button p-1 text-red-600"
+                      title="Törlés"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="text-sm text-gray-500">
-        {t('audit.osszesen')}{filtered.length} / {items.length}
+        {t('audit.osszesen')}
+        {filtered.length} / {items.length}
       </div>
     </div>
   )

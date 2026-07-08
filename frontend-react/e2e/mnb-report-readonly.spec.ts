@@ -31,7 +31,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -54,11 +54,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith(`/mnb/reports/${reportId}`) && method === 'GET') {
@@ -166,28 +174,32 @@ test('mnb riport oldal mobil nézetben read-only backend endpointokat használ',
   await page.goto('/reports/mnb', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('cell', { name: '2026-06-18', exact: true })).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === `/api/v1/mnb/reports/${reportId}`
+  const detailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === `/api/v1/mnb/reports/${reportId}`,
   )
   await page.getByRole('button', { name: /Részletek/i }).click()
   await detailRequest
   await expect(page.getByText('Backend detail reason')).toBeVisible()
 
   await page.locator('#mnb-report-date').fill('2026-06-18')
-  const dailyRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/mnb/reports/daily'
+  const dailyRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/mnb/reports/daily',
   )
-  const monthlyRequest = page.waitForRequest(request => {
+  const monthlyRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'GET'
-      && url.pathname === '/api/v1/mnb/reports/monthly'
-      && url.searchParams.get('month') === '2026-06'
+    return (
+      request.method() === 'GET' &&
+      url.pathname === '/api/v1/mnb/reports/monthly' &&
+      url.searchParams.get('month') === '2026-06'
+    )
   })
-  const validateRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/mnb/reports/validate'
+  const validateRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/mnb/reports/validate',
   )
   await page.getByRole('button', { name: /Read-only ellenőrzés/i }).click()
   await Promise.all([dailyRequest, monthlyRequest, validateRequest])
@@ -195,17 +207,19 @@ test('mnb riport oldal mobil nézetben read-only backend endpointokat használ',
   await expect(page.getByText('Nincs hiányzó árfolyam')).toBeVisible()
   await expect(page.getByText('37')).toBeVisible()
 
-  const dailyXmlRequest = page.waitForRequest(request => {
+  const dailyXmlRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'GET'
-      && url.pathname === '/api/v1/mnb/reports/daily/xml'
-      && url.searchParams.get('date') === '2026-06-18'
+    return (
+      request.method() === 'GET' &&
+      url.pathname === '/api/v1/mnb/reports/daily/xml' &&
+      url.searchParams.get('date') === '2026-06-18'
+    )
   })
   await page.getByRole('button', { name: /Napi XML/i }).click()
   await dailyXmlRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

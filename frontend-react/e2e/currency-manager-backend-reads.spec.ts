@@ -49,7 +49,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -72,15 +72,27 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/currencies/search') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([eurCurrency]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([eurCurrency]),
+      })
     }
 
     if (path.endsWith('/currencies/code/EUR') && method === 'GET') {
@@ -108,12 +120,16 @@ async function mockApis(page: Page) {
     }
 
     if (
-      (path.endsWith('/exchange-rate-master/active')
-        || path.endsWith('/exchange-rates')
-        || path.endsWith('/arfolyam-internet-links'))
-      && method === 'GET'
+      (path.endsWith('/exchange-rate-master/active') ||
+        path.endsWith('/exchange-rates') ||
+        path.endsWith('/arfolyam-internet-links')) &&
+      method === 'GET'
     ) {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
@@ -131,7 +147,9 @@ async function login(page: Page) {
   await page.goto('/rates/main', { waitUntil: 'domcontentloaded' })
 }
 
-test('Valutakezelő mobil nézetben backend keresést, ID detailt és kód szerinti ellenőrzést használ', async ({ page }) => {
+test('Valutakezelő mobil nézetben backend keresést, ID detailt és kód szerinti ellenőrzést használ', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -139,10 +157,11 @@ test('Valutakezelő mobil nézetben backend keresést, ID detailt és kód szeri
   await page.getByTestId('open-currency-manager').click()
   await expect(page.getByText('Valutakezelő (V238)')).toBeVisible()
 
-  const searchRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/currencies/search'
-    && new URL(request.url()).searchParams.get('q') === 'eur'
+  const searchRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/currencies/search' &&
+      new URL(request.url()).searchParams.get('q') === 'eur',
   )
   await page.getByTestId('currency-manager-search').fill('eur')
   await page.getByTestId('currency-manager-search-submit').click()
@@ -150,21 +169,24 @@ test('Valutakezelő mobil nézetben backend keresést, ID detailt és kód szeri
   await expect(page.getByText('Euró')).toBeVisible()
   await expect(page.getByText('Amerikai dollár')).toHaveCount(0)
 
-  const idDetailRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/currencies/1'
+  const idDetailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/currencies/1',
   )
-  const codeDetailRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/currencies/code/EUR'
+  const codeDetailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/currencies/code/EUR',
   )
   await page.getByTestId('detail-EUR').click()
   await Promise.all([idDetailRequest, codeDetailRequest])
   await expect(page.getByTestId('currency-manager-detail')).toContainText('Backend EUR ID detail')
-  await expect(page.getByTestId('currency-manager-code-check')).toContainText('Kód-ellenőrzés: EUR / #1')
+  await expect(page.getByTestId('currency-manager-code-check')).toContainText(
+    'Kód-ellenőrzés: EUR / #1',
+  )
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

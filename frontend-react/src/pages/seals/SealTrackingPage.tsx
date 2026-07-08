@@ -1,5 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Lock, Search, RefreshCw, Plus, AlertTriangle, Play, CheckCircle, Unlock, ShieldCheck } from 'lucide-react'
+import {
+  Lock,
+  Search,
+  RefreshCw,
+  Plus,
+  AlertTriangle,
+  Play,
+  CheckCircle,
+  Unlock,
+  ShieldCheck,
+} from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -111,7 +121,7 @@ export default function SealTrackingPage() {
     setItems((current) => {
       const index = current.findIndex((item) => item.id === updated.id)
       if (index < 0) return [updated, ...current]
-      return current.map((item) => item.id === updated.id ? updated : item)
+      return current.map((item) => (item.id === updated.id ? updated : item))
     })
   }
 
@@ -186,7 +196,11 @@ export default function SealTrackingPage() {
     }
   }
 
-  const runTransition = async (item: SealTrackingItem, endpoint: 'start-transit' | 'confirm-arrival' | 'open', successMessage: string) => {
+  const runTransition = async (
+    item: SealTrackingItem,
+    endpoint: 'start-transit' | 'confirm-arrival' | 'open',
+    successMessage: string,
+  ) => {
     try {
       setSaving(true)
       setError(null)
@@ -195,11 +209,12 @@ export default function SealTrackingPage() {
         transferType: item.transferType,
         transferId: item.transferId,
       }
-      const response = endpoint === 'start-transit'
-        ? await api.post<SealTrackingItem>('/seal-tracking/start-transit', null, { params })
-        : endpoint === 'confirm-arrival'
-          ? await api.post<SealTrackingItem>('/seal-tracking/confirm-arrival', null, { params })
-          : await api.post<SealTrackingItem>('/seal-tracking/open', null, { params })
+      const response =
+        endpoint === 'start-transit'
+          ? await api.post<SealTrackingItem>('/seal-tracking/start-transit', null, { params })
+          : endpoint === 'confirm-arrival'
+            ? await api.post<SealTrackingItem>('/seal-tracking/confirm-arrival', null, { params })
+            : await api.post<SealTrackingItem>('/seal-tracking/open', null, { params })
       replaceItem(response.data)
       setMessage(successMessage)
     } catch (err) {
@@ -240,7 +255,9 @@ export default function SealTrackingPage() {
       setSaving(true)
       setError(null)
       setMessage(null)
-      const response = await api.get<SealTrackingItem>(`/seal-tracking/by-seal/${encodeURIComponent(sealNumber)}`)
+      const response = await api.get<SealTrackingItem>(
+        `/seal-tracking/by-seal/${encodeURIComponent(sealNumber)}`,
+      )
       replaceItem(response.data)
       setMessage('Plomba megtalálva.')
     } catch (err) {
@@ -275,12 +292,10 @@ export default function SealTrackingPage() {
     }
   }
 
-  const filtered = items.filter(item => {
+  const filtered = items.filter((item) => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
+    return Object.values(item).some((v) => v != null && String(v).toLowerCase().includes(term))
   })
 
   return (
@@ -291,11 +306,19 @@ export default function SealTrackingPage() {
           {t('seals.plombaNyilvantartas')}
         </h1>
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={() => void refreshAll()} className="form-button p-2" title="Frissítés" aria-label="Plomba nézet frissítése">
-            <RefreshCw className={`h-4 w-4 ${loading || sealNumbersLoading ? 'animate-spin' : ''}`} />
+          <button
+            onClick={() => void refreshAll()}
+            className="form-button p-2"
+            title="Frissítés"
+            aria-label="Plomba nézet frissítése"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${loading || sealNumbersLoading ? 'animate-spin' : ''}`}
+            />
           </button>
           <button onClick={openNewForm} className="form-button-primary flex items-center gap-1">
-            <Plus className="h-4 w-4" />{t('common.new')}
+            <Plus className="h-4 w-4" />
+            {t('common.new')}
           </button>
         </div>
       </div>
@@ -305,23 +328,69 @@ export default function SealTrackingPage() {
           <h2 className="text-base font-semibold">Új plomba</h2>
           <div className="grid gap-3 md:grid-cols-3">
             <div>
-              <label htmlFor="seal-transfer-type" className="form-label">Átadás típusa</label>
-              <input id="seal-transfer-type" value={form.transferType} onChange={(e) => setForm((current) => current ? { ...current, transferType: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="seal-transfer-type" className="form-label">
+                Átadás típusa
+              </label>
+              <input
+                id="seal-transfer-type"
+                value={form.transferType}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, transferType: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="seal-transfer-id" className="form-label">Átadás ID</label>
-              <input id="seal-transfer-id" value={form.transferId} onChange={(e) => setForm((current) => current ? { ...current, transferId: e.target.value } : current)} className="form-input w-full" inputMode="numeric" />
+              <label htmlFor="seal-transfer-id" className="form-label">
+                Átadás ID
+              </label>
+              <input
+                id="seal-transfer-id"
+                value={form.transferId}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, transferId: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+                inputMode="numeric"
+              />
             </div>
             <div>
-              <label htmlFor="seal-number" className="form-label">Plombaszám</label>
-              <input id="seal-number" value={form.sealNumber} onChange={(e) => setForm((current) => current ? { ...current, sealNumber: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="seal-number" className="form-label">
+                Plombaszám
+              </label>
+              <input
+                id="seal-number"
+                value={form.sealNumber}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, sealNumber: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => void createSeal()} disabled={saving || !form.transferType.trim() || !form.transferId.trim() || !form.sealNumber.trim()} className="form-button-primary">
+            <button
+              type="button"
+              onClick={() => void createSeal()}
+              disabled={
+                saving ||
+                !form.transferType.trim() ||
+                !form.transferId.trim() ||
+                !form.sealNumber.trim()
+              }
+              className="form-button-primary"
+            >
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
-            <button type="button" onClick={() => setForm(null)} className="form-button">Mégse</button>
+            <button type="button" onClick={() => setForm(null)} className="form-button">
+              Mégse
+            </button>
           </div>
         </div>
       )}
@@ -334,8 +403,12 @@ export default function SealTrackingPage() {
               Generált plombaszámok
             </h2>
             <div className="mt-2 flex flex-wrap gap-2 text-sm">
-              <span className="rounded bg-blue-50 px-2 py-1 text-blue-800">Mai: {sealNumbersLoading ? '...' : todaySealNumbers.length}</span>
-              <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-800">Felhasználatlan: {sealNumbersLoading ? '...' : unusedSealNumbers.length}</span>
+              <span className="rounded bg-blue-50 px-2 py-1 text-blue-800">
+                Mai: {sealNumbersLoading ? '...' : todaySealNumbers.length}
+              </span>
+              <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-800">
+                Felhasználatlan: {sealNumbersLoading ? '...' : unusedSealNumbers.length}
+              </span>
             </div>
           </div>
           <div className="grid w-full gap-2 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)_auto] lg:max-w-2xl">
@@ -355,7 +428,12 @@ export default function SealTrackingPage() {
               placeholder="Megjegyzés"
               aria-label="Plombaszám megjegyzés"
             />
-            <button type="button" onClick={() => void generateSealNumber()} disabled={saving} className="form-button-primary whitespace-nowrap">
+            <button
+              type="button"
+              onClick={() => void generateSealNumber()}
+              disabled={saving}
+              className="form-button-primary whitespace-nowrap"
+            >
               Generálás
             </button>
           </div>
@@ -369,17 +447,34 @@ export default function SealTrackingPage() {
                 <div className="text-sm text-gray-500">Betöltés...</div>
               ) : unusedSealNumbers.length === 0 ? (
                 <div className="text-sm text-gray-500">Nincs felhasználatlan plombaszám.</div>
-              ) : unusedSealNumbers.slice(0, 5).map((seal) => (
-                <div key={seal.id} className="flex flex-col gap-2 rounded border border-gray-200 bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="break-all font-mono text-sm font-semibold">{seal.sealNumber ?? '-'}</div>
-                    <div className="text-xs text-gray-500">{seal.sealType ?? 'CLOSE'} · {seal.createdAt ? new Date(seal.createdAt).toLocaleString('hu-HU') : 'Nincs dátum'}</div>
+              ) : (
+                unusedSealNumbers.slice(0, 5).map((seal) => (
+                  <div
+                    key={seal.id}
+                    className="flex flex-col gap-2 rounded border border-gray-200 bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <div className="break-all font-mono text-sm font-semibold">
+                        {seal.sealNumber ?? '-'}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {seal.sealType ?? 'CLOSE'} ·{' '}
+                        {seal.createdAt
+                          ? new Date(seal.createdAt).toLocaleString('hu-HU')
+                          : 'Nincs dátum'}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void markSealNumberAsUsed(seal)}
+                      disabled={saving}
+                      className="form-button text-sm"
+                    >
+                      Felhasználva
+                    </button>
                   </div>
-                  <button type="button" onClick={() => void markSealNumberAsUsed(seal)} disabled={saving} className="form-button text-sm">
-                    Felhasználva
-                  </button>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
@@ -390,15 +485,21 @@ export default function SealTrackingPage() {
                 <div className="text-sm text-gray-500">Betöltés...</div>
               ) : todaySealNumbers.length === 0 ? (
                 <div className="text-sm text-gray-500">Ma még nincs generált plombaszám.</div>
-              ) : todaySealNumbers.slice(0, 5).map((seal) => (
-                <div key={seal.id} className="rounded border border-gray-200 bg-white px-3 py-2">
-                  <div className="break-all font-mono text-sm font-semibold">{seal.sealNumber ?? '-'}</div>
-                  <div className="text-xs text-gray-500">
-                    {seal.usedAt ? `Felhasználva: ${new Date(seal.usedAt).toLocaleString('hu-HU')}` : 'Felhasználatlan'}
-                    {seal.note ? ` · ${seal.note}` : ''}
+              ) : (
+                todaySealNumbers.slice(0, 5).map((seal) => (
+                  <div key={seal.id} className="rounded border border-gray-200 bg-white px-3 py-2">
+                    <div className="break-all font-mono text-sm font-semibold">
+                      {seal.sealNumber ?? '-'}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {seal.usedAt
+                        ? `Felhasználva: ${new Date(seal.usedAt).toLocaleString('hu-HU')}`
+                        : 'Felhasználatlan'}
+                      {seal.note ? ` · ${seal.note}` : ''}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -411,7 +512,7 @@ export default function SealTrackingPage() {
             type="text"
             placeholder="Keresés..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="form-input w-full pl-10"
           />
         </div>
@@ -427,18 +528,27 @@ export default function SealTrackingPage() {
                 type="text"
                 placeholder="Plombaszám keresése"
                 value={sealLookup}
-                onChange={e => setSealLookup(e.target.value)}
+                onChange={(e) => setSealLookup(e.target.value)}
                 className="form-input w-full pl-10"
               />
             </div>
-            <button type="button" onClick={() => void lookupBySeal()} disabled={saving || !sealLookup.trim()} className="form-button">Keresés</button>
+            <button
+              type="button"
+              onClick={() => void lookupBySeal()}
+              disabled={saving || !sealLookup.trim()}
+              className="form-button"
+            >
+              Keresés
+            </button>
           </div>
           <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
             <input
               id="seal-lookup-transfer-type"
               type="text"
               value={transferLookup.transferType}
-              onChange={e => setTransferLookup(current => ({ ...current, transferType: e.target.value }))}
+              onChange={(e) =>
+                setTransferLookup((current) => ({ ...current, transferType: e.target.value }))
+              }
               className="form-input w-full"
               placeholder="Átadás típusa"
             />
@@ -447,11 +557,22 @@ export default function SealTrackingPage() {
               type="text"
               inputMode="numeric"
               value={transferLookup.transferId}
-              onChange={e => setTransferLookup(current => ({ ...current, transferId: e.target.value }))}
+              onChange={(e) =>
+                setTransferLookup((current) => ({ ...current, transferId: e.target.value }))
+              }
               className="form-input w-full"
               placeholder="Átadás ID"
             />
-            <button type="button" onClick={() => void lookupByTransfer()} disabled={saving || !transferLookup.transferType.trim() || !transferLookup.transferId.trim()} className="form-button">Átadás keresés</button>
+            <button
+              type="button"
+              onClick={() => void lookupByTransfer()}
+              disabled={
+                saving || !transferLookup.transferType.trim() || !transferLookup.transferId.trim()
+              }
+              className="form-button"
+            >
+              Átadás keresés
+            </button>
           </div>
         </div>
       </div>
@@ -473,56 +594,113 @@ export default function SealTrackingPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('seals.plombaSzam')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Átadás</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.status2')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('seals.felhelyezve')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('seals.eltavolitva')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Kezelők</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.actions')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('seals.plombaSzam')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Átadás
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.status2')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('seals.felhelyezve')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('seals.eltavolitva')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Kezelők
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                {t('common.actions')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.sealNumber ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.transferType ?? '-'} / {item.transferId ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.transitStatus ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.sealedAt ? new Date(item.sealedAt).toLocaleString('hu-HU') : '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.openedAt ? new Date(item.openedAt).toLocaleString('hu-HU') : '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.sealedBy ?? '-'} / {item.openedBy ?? '-'}</td>
-                <td className="px-4 py-3 text-right whitespace-nowrap">
-                  <button onClick={() => void validateSeal(item)} disabled={saving} className="form-button mr-2 p-1 text-blue-600" title="Integritás ellenőrzés">
-                    <ShieldCheck className="h-4 w-4" />
-                  </button>
-                  {item.transitStatus === 'SEALED' && (
-                    <button onClick={() => void runTransition(item, 'start-transit', 'Szállítás elindítva.')} disabled={saving} className="form-button mr-2 p-1 text-green-700" title="Tranzit indítása">
-                      <Play className="h-4 w-4" />
-                    </button>
-                  )}
-                  {item.transitStatus === 'IN_TRANSIT' && (
-                    <button onClick={() => void runTransition(item, 'confirm-arrival', 'Megérkezés visszaigazolva.')} disabled={saving} className="form-button mr-2 p-1 text-green-700" title="Megérkezés visszaigazolása">
-                      <CheckCircle className="h-4 w-4" />
-                    </button>
-                  )}
-                  {item.transitStatus === 'ARRIVED' && (
-                    <button onClick={() => void runTransition(item, 'open', 'Plomba felnyitva.')} disabled={saving} className="form-button p-1 text-red-700" title="Plomba felnyitása">
-                      <Unlock className="h-4 w-4" />
-                    </button>
-                  )}
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
+                  Betöltés...
                 </td>
               </tr>
-            ))}
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('common.noData')}
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm">{item.sealNumber ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.transferType ?? '-'} / {item.transferId ?? '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm">{item.transitStatus ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.sealedAt ? new Date(item.sealedAt).toLocaleString('hu-HU') : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.openedAt ? new Date(item.openedAt).toLocaleString('hu-HU') : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.sealedBy ?? '-'} / {item.openedBy ?? '-'}
+                  </td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <button
+                      onClick={() => void validateSeal(item)}
+                      disabled={saving}
+                      className="form-button mr-2 p-1 text-blue-600"
+                      title="Integritás ellenőrzés"
+                    >
+                      <ShieldCheck className="h-4 w-4" />
+                    </button>
+                    {item.transitStatus === 'SEALED' && (
+                      <button
+                        onClick={() =>
+                          void runTransition(item, 'start-transit', 'Szállítás elindítva.')
+                        }
+                        disabled={saving}
+                        className="form-button mr-2 p-1 text-green-700"
+                        title="Tranzit indítása"
+                      >
+                        <Play className="h-4 w-4" />
+                      </button>
+                    )}
+                    {item.transitStatus === 'IN_TRANSIT' && (
+                      <button
+                        onClick={() =>
+                          void runTransition(item, 'confirm-arrival', 'Megérkezés visszaigazolva.')
+                        }
+                        disabled={saving}
+                        className="form-button mr-2 p-1 text-green-700"
+                        title="Megérkezés visszaigazolása"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                      </button>
+                    )}
+                    {item.transitStatus === 'ARRIVED' && (
+                      <button
+                        onClick={() => void runTransition(item, 'open', 'Plomba felnyitva.')}
+                        disabled={saving}
+                        className="form-button p-1 text-red-700"
+                        title="Plomba felnyitása"
+                      >
+                        <Unlock className="h-4 w-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="text-sm text-gray-500">
-        {t('audit.osszesen')}{filtered.length} / {items.length}
+        {t('audit.osszesen')}
+        {filtered.length} / {items.length}
       </div>
     </div>
   )

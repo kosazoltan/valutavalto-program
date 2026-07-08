@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { TrendingUp, AlertTriangle, Search, Download } from 'lucide-react'
 import { averageRateApi, branchApi } from '../../services/api/index'
-import type { AverageRatePivotResponse, AverageRateReport, BranchInfo } from '../../services/api/index'
+import type {
+  AverageRatePivotResponse,
+  AverageRateReport,
+  BranchInfo,
+} from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
@@ -140,19 +144,45 @@ export default function AverageRateReportPage() {
 
       <div className="bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="ar-from">Tól</label>
-          <input id="ar-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="form-input w-full text-sm" />
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="ar-from">
+            Tól
+          </label>
+          <input
+            id="ar-from"
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="form-input w-full text-sm"
+          />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="ar-to">Ig</label>
-          <input id="ar-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="form-input w-full text-sm" />
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="ar-to">
+            Ig
+          </label>
+          <input
+            id="ar-to"
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="form-input w-full text-sm"
+          />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="ar-branch">Iroda</label>
-          <select id="ar-branch" value={branchId} onChange={(e) => setBranchId(e.target.value)} className="form-input w-full text-sm" aria-label="Iroda szűrő">
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="ar-branch">
+            Iroda
+          </label>
+          <select
+            id="ar-branch"
+            value={branchId}
+            onChange={(e) => setBranchId(e.target.value)}
+            className="form-input w-full text-sm"
+            aria-label="Iroda szűrő"
+          >
             <option value="">Összes iroda</option>
             {branches.map((b) => (
-              <option key={b.id} value={b.id}>{b.code} - {b.name}</option>
+              <option key={b.id} value={b.id}>
+                {b.code} - {b.name}
+              </option>
             ))}
           </select>
         </div>
@@ -181,9 +211,7 @@ export default function AverageRateReportPage() {
         </div>
       </div>
 
-      {loading && (
-        <div className="text-center text-sm text-gray-500 py-8">Betöltés…</div>
-      )}
+      {loading && <div className="text-center text-sm text-gray-500 py-8">Betöltés…</div>}
 
       {!loading && reportRows.length > 0 && (
         <section className="bg-white rounded shadow p-4" data-testid="average-rate-line-summary">
@@ -205,21 +233,29 @@ export default function AverageRateReportPage() {
                   </div>
                   <div className="text-right">
                     <div className="text-xs uppercase text-gray-500">Irány</div>
-                    <div className="font-medium text-gray-800">{formatDirection(row.transactionType)}</div>
+                    <div className="font-medium text-gray-800">
+                      {formatDirection(row.transactionType)}
+                    </div>
                   </div>
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
                   <div>
                     <dt className="text-gray-500">Tranzakció</dt>
-                    <dd className="font-mono text-gray-900">{formatAmount(row.transactionCount)}</dd>
+                    <dd className="font-mono text-gray-900">
+                      {formatAmount(row.transactionCount)}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-gray-500">Átlagárfolyam</dt>
-                    <dd className="font-mono text-gray-900">{formatRate(row.weightedAverageRate)}</dd>
+                    <dd className="font-mono text-gray-900">
+                      {formatRate(row.weightedAverageRate)}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-gray-500">Deviza összeg</dt>
-                    <dd className="font-mono text-gray-900">{formatAmount(row.totalCurrencyAmount)}</dd>
+                    <dd className="font-mono text-gray-900">
+                      {formatAmount(row.totalCurrencyAmount)}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-gray-500">HUF összeg</dt>
@@ -234,23 +270,46 @@ export default function AverageRateReportPage() {
             <table className="min-w-full border-collapse text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500 border">Deviza</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500 border">Irány</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500 border">Tranzakció</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500 border">Deviza összeg</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500 border">HUF összeg</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500 border">Átlagárfolyam</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500 border">
+                    Deviza
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500 border">
+                    Irány
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500 border">
+                    Tranzakció
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500 border">
+                    Deviza összeg
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500 border">
+                    HUF összeg
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500 border">
+                    Átlagárfolyam
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {reportRows.map((row, index) => (
-                  <tr key={`${row.branchId ?? 'all'}-${row.currencyCode}-${row.transactionType ?? 'all'}-${index}`} className="hover:bg-gray-50">
+                  <tr
+                    key={`${row.branchId ?? 'all'}-${row.currencyCode}-${row.transactionType ?? 'all'}-${index}`}
+                    className="hover:bg-gray-50"
+                  >
                     <td className="px-3 py-1.5 font-semibold border">{row.currencyCode}</td>
                     <td className="px-3 py-1.5 border">{formatDirection(row.transactionType)}</td>
-                    <td className="px-3 py-1.5 text-right font-mono border">{formatAmount(row.transactionCount)}</td>
-                    <td className="px-3 py-1.5 text-right font-mono border">{formatAmount(row.totalCurrencyAmount)}</td>
-                    <td className="px-3 py-1.5 text-right font-mono border">{formatAmount(row.totalHufAmount)}</td>
-                    <td className="px-3 py-1.5 text-right font-mono border">{formatRate(row.weightedAverageRate)}</td>
+                    <td className="px-3 py-1.5 text-right font-mono border">
+                      {formatAmount(row.transactionCount)}
+                    </td>
+                    <td className="px-3 py-1.5 text-right font-mono border">
+                      {formatAmount(row.totalCurrencyAmount)}
+                    </td>
+                    <td className="px-3 py-1.5 text-right font-mono border">
+                      {formatAmount(row.totalHufAmount)}
+                    </td>
+                    <td className="px-3 py-1.5 text-right font-mono border">
+                      {formatRate(row.weightedAverageRate)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -275,9 +334,18 @@ export default function AverageRateReportPage() {
               <tr>
                 {/* bal-felső sarokcella: sticky MINDKÉT irányban (left-0 + top-0), legmagasabb z-index;
                     border-r-2 a görgethető tartalomtól való vizuális elválasztáshoz (FR-3) */}
-                <th rowSpan={2} className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500 border sticky left-0 top-0 z-30 bg-gray-50 border-r-2 border-r-gray-300">Valuta</th>
+                <th
+                  rowSpan={2}
+                  className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500 border sticky left-0 top-0 z-30 bg-gray-50 border-r-2 border-r-gray-300"
+                >
+                  Valuta
+                </th>
                 {groups.map((g) => (
-                  <th key={g.groupCode} colSpan={4} className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border bg-gray-50">
+                  <th
+                    key={g.groupCode}
+                    colSpan={4}
+                    className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border bg-gray-50"
+                  >
                     {g.groupName}
                   </th>
                 ))}
@@ -286,7 +354,12 @@ export default function AverageRateReportPage() {
                 {groups.map((g) => (
                   <Fragment key={g.groupCode}>
                     {SUB_HEADERS.map((h) => (
-                      <th key={`${g.groupCode}-${h}`} className="px-2 py-1 text-right text-[10px] font-medium uppercase text-gray-500 border bg-gray-50 whitespace-nowrap">{h}</th>
+                      <th
+                        key={`${g.groupCode}-${h}`}
+                        className="px-2 py-1 text-right text-[10px] font-medium uppercase text-gray-500 border bg-gray-50 whitespace-nowrap"
+                      >
+                        {h}
+                      </th>
                     ))}
                   </Fragment>
                 ))}
@@ -297,15 +370,25 @@ export default function AverageRateReportPage() {
                 <tr key={row.currencyCode} className="hover:bg-gray-50">
                   {/* VALUTA oszlop: sticky left (vízszintes görgetésnél marad); z-10 a sima cellák fölött,
                       a fejléc (z-20) alatt; opak háttér (NFR-1) + border-r-2 elválasztó (FR-1/FR-3) */}
-                  <td className="px-3 py-1.5 font-semibold border sticky left-0 z-10 bg-white border-r-2 border-r-gray-300">{row.currencyCode}</td>
+                  <td className="px-3 py-1.5 font-semibold border sticky left-0 z-10 bg-white border-r-2 border-r-gray-300">
+                    {row.currencyCode}
+                  </td>
                   {groups.map((g) => {
                     const v = row.values[g.groupCode]
                     return (
                       <Fragment key={g.groupCode}>
-                        <td className="px-2 py-1.5 text-right font-mono text-green-700 border">{formatRate(v?.buyAvgRate ?? 0)}</td>
-                        <td className="px-2 py-1.5 text-right font-mono border">{formatAmount(v?.buySumAmount ?? 0)}</td>
-                        <td className="px-2 py-1.5 text-right font-mono text-blue-700 border">{formatRate(v?.sellAvgRate ?? 0)}</td>
-                        <td className="px-2 py-1.5 text-right font-mono border">{formatAmount(v?.sellSumAmount ?? 0)}</td>
+                        <td className="px-2 py-1.5 text-right font-mono text-green-700 border">
+                          {formatRate(v?.buyAvgRate ?? 0)}
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-mono border">
+                          {formatAmount(v?.buySumAmount ?? 0)}
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-mono text-blue-700 border">
+                          {formatRate(v?.sellAvgRate ?? 0)}
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-mono border">
+                          {formatAmount(v?.sellSumAmount ?? 0)}
+                        </td>
                       </Fragment>
                     )
                   })}
@@ -317,11 +400,15 @@ export default function AverageRateReportPage() {
       )}
 
       {!loading && queried && (!data || currencyRows.length === 0) && !error && (
-        <div className="text-center text-sm text-gray-500 py-8">Nincs megjeleníthető adat erre az időszakra.</div>
+        <div className="text-center text-sm text-gray-500 py-8">
+          Nincs megjeleníthető adat erre az időszakra.
+        </div>
       )}
 
       {!loading && !queried && (
-        <div className="text-center text-sm text-gray-500 py-8">Adj meg egy dátum-intervallumot és kattints a „Lekérdezés" gombra.</div>
+        <div className="text-center text-sm text-gray-500 py-8">
+          Adj meg egy dátum-intervallumot és kattints a „Lekérdezés" gombra.
+        </div>
       )}
     </div>
   )

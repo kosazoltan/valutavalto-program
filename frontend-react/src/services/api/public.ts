@@ -1,4 +1,4 @@
-import { api } from "./client"
+import { api } from './client'
 
 // ================== PUBLIC API (no-auth) ==================
 
@@ -70,7 +70,7 @@ export interface SetupGoogleIdentifyResponse {
 }
 
 function customApiUrl(apiBase: string | undefined, endpoint: string): string | null {
-  const normalized = apiBase?.trim().replace(/\/+$/, "")
+  const normalized = apiBase?.trim().replace(/\/+$/, '')
   return normalized ? `${normalized}${endpoint}` : null
 }
 
@@ -78,9 +78,9 @@ export const publicApi = {
   /** Get active workers for the region of the given branch (no-auth). */
   getWorkersByBranch: async (branchCode: string, companyCode?: string): Promise<PublicWorker[]> => {
     const normalizedBranchCode = branchCode.trim()
-    const normalizedCompanyCode = companyCode?.trim() ?? ""
+    const normalizedCompanyCode = companyCode?.trim() ?? ''
     if (!normalizedBranchCode || !normalizedCompanyCode) return []
-    const response = await api.get<PublicWorker[]>("/public/workers", {
+    const response = await api.get<PublicWorker[]>('/public/workers', {
       params: {
         branchCode: normalizedBranchCode,
         companyCode: normalizedCompanyCode,
@@ -98,17 +98,17 @@ export const publicApi = {
    */
   getBranchesByCompany: async (companyCode: string, vaultOnly = false): Promise<PublicBranch[]> => {
     if (!companyCode) return []
-    const response = await api.get<PublicBranch[]>("/public/branches", {
+    const response = await api.get<PublicBranch[]>('/public/branches', {
       params: { companyCode, vaultOnly },
     })
     return response.data ?? []
   },
 
   getGoogleConfigStatus: async (apiBase?: string): Promise<GoogleConfigStatus> => {
-    const customUrl = customApiUrl(apiBase, "/public/auth/google-config-status")
+    const customUrl = customApiUrl(apiBase, '/public/auth/google-config-status')
     const response = customUrl
       ? await api.get<GoogleConfigStatus>(customUrl)
-      : await api.get<GoogleConfigStatus>("/public/auth/google-config-status")
+      : await api.get<GoogleConfigStatus>('/public/auth/google-config-status')
     return response.data
   },
 
@@ -116,11 +116,17 @@ export const publicApi = {
     request: SetupGoogleIdentifyRequest,
     options?: { apiBase?: string; idempotencyKey?: string },
   ): Promise<SetupGoogleIdentifyResponse> => {
-    const config = options?.idempotencyKey ? { headers: { "Idempotency-Key": options.idempotencyKey } } : undefined
-    const customUrl = customApiUrl(options?.apiBase, "/public/setup/google-identify")
+    const config = options?.idempotencyKey
+      ? { headers: { 'Idempotency-Key': options.idempotencyKey } }
+      : undefined
+    const customUrl = customApiUrl(options?.apiBase, '/public/setup/google-identify')
     const response = customUrl
       ? await api.post<SetupGoogleIdentifyResponse>(customUrl, request, config)
-      : await api.post<SetupGoogleIdentifyResponse>("/public/setup/google-identify", request, config)
+      : await api.post<SetupGoogleIdentifyResponse>(
+          '/public/setup/google-identify',
+          request,
+          config,
+        )
     return response.data
   },
 }

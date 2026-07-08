@@ -3,7 +3,7 @@ import { Shield, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
 import { permissionApi, Permission, PermissionCreateRequest } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
 export default function PermissionPage() {
@@ -22,10 +22,10 @@ export default function PermissionPage() {
     description: '',
     module: '',
     isSystemPermission: false,
-    isActive: true
+    isActive: true,
   })
 
-  const modules = Array.from(new Set(allPermissions.map(p => p.module))).sort()
+  const modules = Array.from(new Set(allPermissions.map((p) => p.module))).sort()
 
   useEffect(() => {
     let mounted = true
@@ -39,7 +39,7 @@ export default function PermissionPage() {
       }
     }
 
-    load().catch(err => {
+    load().catch((err) => {
       if (mounted) {
         logger.error('PermissionPage', 'Failed to load permissions:', err)
       }
@@ -49,7 +49,6 @@ export default function PermissionPage() {
       mounted = false
     }
   }, [])
-
 
   const loadPermissions = async (): Promise<void> => {
     try {
@@ -70,10 +69,11 @@ export default function PermissionPage() {
     let filtered = permissions
 
     if (searchTerm) {
-      filtered = filtered.filter(p =>
-        p.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.description?.toLowerCase().includes(searchTerm.toLowerCase()),
+      filtered = filtered.filter(
+        (p) =>
+          p.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.description?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
@@ -106,7 +106,7 @@ export default function PermissionPage() {
       description: '',
       module: '',
       isSystemPermission: false,
-      isActive: true
+      isActive: true,
     })
     setShowForm(true)
   }
@@ -122,7 +122,7 @@ export default function PermissionPage() {
         description: detail.description || '',
         module: detail.module,
         isSystemPermission: detail.isSystemPermission,
-        isActive: detail.isActive
+        isActive: detail.isActive,
       })
       setShowForm(true)
     } catch (err) {
@@ -190,10 +190,7 @@ export default function PermissionPage() {
           <Shield />
           {t('settings.permissions')}
         </h1>
-        <button
-          onClick={handleCreate}
-          className="form-button-primary flex items-center gap-2"
-        >
+        <button onClick={handleCreate} className="form-button-primary flex items-center gap-2">
           <Plus size={16} />
           {t('settings.ujJogosultsag')}
         </button>
@@ -203,9 +200,14 @@ export default function PermissionPage() {
       <div className="form-panel">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="form-label" htmlFor="permission-search">{t('common.search')}</label>
+            <label className="form-label" htmlFor="permission-search">
+              {t('common.search')}
+            </label>
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+              <Search
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={16}
+              />
               <input
                 id="permission-search"
                 type="text"
@@ -217,7 +219,9 @@ export default function PermissionPage() {
             </div>
           </div>
           <div>
-            <label className="form-label" htmlFor="permission-module-filter">{t('settings.modul')}</label>
+            <label className="form-label" htmlFor="permission-module-filter">
+              {t('settings.modul')}
+            </label>
             <select
               id="permission-module-filter"
               className="form-input"
@@ -225,8 +229,10 @@ export default function PermissionPage() {
               onChange={(e) => void handleModuleChange(e.target.value)}
             >
               <option value="">{t('settings.osszesModul')}</option>
-              {modules.map(module => (
-                <option key={module} value={module}>{module}</option>
+              {modules.map((module) => (
+                <option key={module} value={module}>
+                  {module}
+                </option>
               ))}
             </select>
           </div>
@@ -304,7 +310,9 @@ export default function PermissionPage() {
                     type="checkbox"
                     className="rounded"
                     checked={formData.isSystemPermission ?? false}
-                    onChange={(e) => setFormData({ ...formData, isSystemPermission: e.target.checked })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, isSystemPermission: e.target.checked })
+                    }
                     disabled={!!editingPermission}
                   />
                   <span>{t('settings.rendszerJogosultsag')}</span>
@@ -420,4 +428,3 @@ export default function PermissionPage() {
     </div>
   )
 }
-

@@ -30,8 +30,21 @@ describe('workgroupMaintenance — paletta', () => {
 
 describe('workgroupMaintenance — WorkgroupEditor', () => {
   function Harness({ mode }: { mode: 'create' | 'rename' }) {
-    const [draft, setDraft] = useState<RateWorkgroupSaveDTO>({ name: '', code: '', active: true, tileColor: DEFAULT_TILE.key })
-    return <WorkgroupEditor mode={mode} draft={draft} setDraft={setDraft} onSave={() => {}} onCancel={() => {}} />
+    const [draft, setDraft] = useState<RateWorkgroupSaveDTO>({
+      name: '',
+      code: '',
+      active: true,
+      tileColor: DEFAULT_TILE.key,
+    })
+    return (
+      <WorkgroupEditor
+        mode={mode}
+        draft={draft}
+        setDraft={setDraft}
+        onSave={() => {}}
+        onCancel={() => {}}
+      />
+    )
   }
 
   it('FK02-E (FR-1): a Kód mező NEM jelenik meg (a rendszer generálja a sorszámból)', () => {
@@ -57,7 +70,15 @@ describe('workgroupMaintenance — ConfirmDialog', () => {
     let confirmed = false
     render(
       <ConfirmDialog
-        state={{ title: 'Törlés', message: 'Biztos?', confirmLabel: 'Törlés', danger: true, onConfirm: () => { confirmed = true } }}
+        state={{
+          title: 'Törlés',
+          message: 'Biztos?',
+          confirmLabel: 'Törlés',
+          danger: true,
+          onConfirm: () => {
+            confirmed = true
+          },
+        }}
         onCancel={() => {}}
       />,
     )
@@ -72,8 +93,17 @@ describe('workgroupMaintenance — ConfirmDialog', () => {
     let cancelled = false
     render(
       <ConfirmDialog
-        state={{ title: 'X', message: 'Y', confirmLabel: 'OK', onConfirm: () => { confirmed = true } }}
-        onCancel={() => { cancelled = true }}
+        state={{
+          title: 'X',
+          message: 'Y',
+          confirmLabel: 'OK',
+          onConfirm: () => {
+            confirmed = true
+          },
+        }}
+        onCancel={() => {
+          cancelled = true
+        }}
       />,
     )
     fireEvent.click(within(screen.getByText('X').closest('div') as HTMLElement).getByText('Mégse'))

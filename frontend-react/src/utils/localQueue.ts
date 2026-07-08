@@ -83,7 +83,9 @@ function toDateParts(value: string): { date: string; time: string } {
   const date = new Date(normalized)
   return {
     date: Number.isNaN(date.getTime()) ? normalized.slice(0, 10) : date.toLocaleDateString('hu-HU'),
-    time: Number.isNaN(date.getTime()) ? normalized.slice(11, 19) : date.toLocaleTimeString('hu-HU'),
+    time: Number.isNaN(date.getTime())
+      ? normalized.slice(11, 19)
+      : date.toLocaleTimeString('hu-HU'),
   }
 }
 
@@ -164,7 +166,9 @@ interface StornoReceiptRow {
  * A per-soros nyers HUF = banknoteCount * customExchangeRate (kerekites elott), egyezoen a
  * CashierTransactionPage pont-of-sale szamitasaval. Ervenytelen/ures JSON → null (egysoros ag).
  */
-function parseTransactionReceiptLines(linesJson: string | null | undefined): TransactionReceiptLine[] | null {
+function parseTransactionReceiptLines(
+  linesJson: string | null | undefined,
+): TransactionReceiptLine[] | null {
   if (!linesJson) return null
   let parsed: unknown
   try {
@@ -175,7 +179,11 @@ function parseTransactionReceiptLines(linesJson: string | null | undefined): Tra
   if (!Array.isArray(parsed) || parsed.length === 0) return null
   const lines: TransactionReceiptLine[] = []
   for (const raw of parsed) {
-    const entry = raw as { currencyCode?: unknown; banknoteCount?: unknown; customExchangeRate?: unknown }
+    const entry = raw as {
+      currencyCode?: unknown
+      banknoteCount?: unknown
+      customExchangeRate?: unknown
+    }
     const foreignAmount = Number(entry.banknoteCount)
     const rate = Number(entry.customExchangeRate)
     // Copilot P2: érvénytelen (nem véges) numerikus mező esetén NE essünk csendben 0-ra — az
@@ -185,7 +193,8 @@ function parseTransactionReceiptLines(linesJson: string | null | undefined): Tra
       return null
     }
     lines.push({
-      currencyCode: typeof entry.currencyCode === 'string' && entry.currencyCode ? entry.currencyCode : '—',
+      currencyCode:
+        typeof entry.currencyCode === 'string' && entry.currencyCode ? entry.currencyCode : '—',
       foreignAmount,
       rate,
       hufAmount: foreignAmount * rate,
@@ -194,7 +203,10 @@ function parseTransactionReceiptLines(linesJson: string | null | undefined): Tra
   return lines
 }
 
-function buildTransactionReceiptData(row: TransactionReceiptRow, worker: Worker | null): PrintReceiptData {
+function buildTransactionReceiptData(
+  row: TransactionReceiptRow,
+  worker: Worker | null,
+): PrintReceiptData {
   const parts = toDateParts(normalizeTimestamp(row.created_at))
   const mode: 'buy' | 'sell' = row.type === 'BUY' ? 'buy' : 'sell'
   const receiptNumber = row.local_reference_number ?? `LOCAL-TX-${row.id}`
@@ -217,7 +229,12 @@ function buildTransactionReceiptData(row: TransactionReceiptRow, worker: Worker 
     // (nyers Σ → kedvezmeny + kezelesi dij → EGYSZER 5 Ft-ra kerekitve). A tarolt sor huf_amount-ja
     // a fejlec ELSO soranak erteke (NEM az aggregatum), ezert a lines-bol szamolunk ujra.
     const totalRaw = lines.reduce((sum, ln) => sum + ln.hufAmount, 0)
-    const payable = multiLinePayable(totalRaw, mode, row.discount_percent ?? 0, row.handling_fee ?? 0)
+    const payable = multiLinePayable(
+      totalRaw,
+      mode,
+      row.discount_percent ?? 0,
+      row.handling_fee ?? 0,
+    )
     // Codex P2: a kezelési díj MÁR bele van számolva a `payable`-be (multiLinePayable), ezért NEM
     // adjuk át külön `handlingFee`-ként — különben a ReceiptPreviewModal (paid = roundedHufAmount +
     // handlingFee) duplán számolná a díjat. Így a preview „Kifizetve" összege EGYEZIK a fizikailag
@@ -243,7 +260,10 @@ function buildTransactionReceiptData(row: TransactionReceiptRow, worker: Worker 
   }
 }
 
-function buildConversionReceiptData(row: ConversionReceiptRow, worker: Worker | null): PrintReceiptData {
+function buildConversionReceiptData(
+  row: ConversionReceiptRow,
+  worker: Worker | null,
+): PrintReceiptData {
   const parts = toDateParts(normalizeTimestamp(row.created_at))
   return {
     type: 'conversion',
@@ -287,10 +307,16 @@ function buildStornoReceiptData(row: StornoReceiptRow, worker: Worker | null): P
   }
 }
 
-export async function getPendingReceiptDrafts(worker: Worker | null): Promise<PendingReceiptDraft[]> {
+export async function getPendingReceiptDrafts(
+  worker: Worker | null,
+): Promise<PendingReceiptDraft[]> {
   try {
     const electronAPI = getElectronAPI()
-    if (!electronAPI?.getPendingTransactions || !electronAPI.getPendingConversions || !electronAPI.getPendingStornos) {
+    if (
+      !electronAPI?.getPendingTransactions ||
+      !electronAPI.getPendingConversions ||
+      !electronAPI.getPendingStornos
+    ) {
       return []
     }
 
@@ -363,13 +389,15 @@ export async function getPendingReceiptDrafts(worker: Worker | null): Promise<Pe
  * Visszafele kompatibilis: ha a futtatott Electron build (preload) meg nem ismeri a reprint-API-kat
  * (regi telepito), ures listat ad → a UI nem mutat ujranyomtatas-szekciot, semmi nem torik.
  */
-export async function getReprintableReceiptDrafts(worker: Worker | null): Promise<PendingReceiptDraft[]> {
+export async function getReprintableReceiptDrafts(
+  worker: Worker | null,
+): Promise<PendingReceiptDraft[]> {
   try {
     const electronAPI = getElectronAPI()
     if (
-      !electronAPI?.getReprintableTransactions
-      || !electronAPI.getReprintableConversions
-      || !electronAPI.getReprintableStornos
+      !electronAPI?.getReprintableTransactions ||
+      !electronAPI.getReprintableConversions ||
+      !electronAPI.getReprintableStornos
     ) {
       return []
     }
@@ -453,11 +481,15 @@ export async function printPendingReceiptDraft(receiptData: PrintReceiptData): P
 export function parseTransferLines(raw: string | null | undefined): Transfer['lines'] {
   if (!raw) return undefined
   try {
-    const parsed = JSON.parse(raw) as Array<{ currencyId?: number; amount?: number; currencyCode?: string }>
+    const parsed = JSON.parse(raw) as Array<{
+      currencyId?: number
+      amount?: number
+      currencyCode?: string
+    }>
     if (!Array.isArray(parsed) || parsed.length === 0) return undefined
     return parsed
-      .filter(l => typeof l?.currencyId === 'number' && typeof l?.amount === 'number')
-      .map(l => ({ currencyId: l.currencyId!, amount: l.amount!, currencyCode: l.currencyCode }))
+      .filter((l) => typeof l?.currencyId === 'number' && typeof l?.amount === 'number')
+      .map((l) => ({ currencyId: l.currencyId!, amount: l.amount!, currencyCode: l.currencyCode }))
   } catch {
     return undefined
   }
@@ -560,7 +592,9 @@ export async function getLocalPendingBankTransactions(): Promise<BankTransaction
   }
 }
 
-export async function getLocalPendingHandoverOperations(): Promise<LocalPendingHandoverOperation[]> {
+export async function getLocalPendingHandoverOperations(): Promise<
+  LocalPendingHandoverOperation[]
+> {
   try {
     const electronAPI = getElectronAPI()
     if (!electronAPI?.getPendingHandoverOperations) {
@@ -596,9 +630,13 @@ export function mapPendingHandoverGeneratesToSheets(
       id: operation.id,
       sheetNumber: operation.referenceNumber,
       fromCashDeskId: operation.fromCashDeskId ?? '',
-      fromCashDeskName: cashDeskNames.get(operation.fromCashDeskId ?? '') ?? operation.fromCashDeskId ?? 'Ismeretlen',
+      fromCashDeskName:
+        cashDeskNames.get(operation.fromCashDeskId ?? '') ??
+        operation.fromCashDeskId ??
+        'Ismeretlen',
       toCashDeskId: operation.toCashDeskId ?? '',
-      toCashDeskName: cashDeskNames.get(operation.toCashDeskId ?? '') ?? operation.toCashDeskId ?? 'Ismeretlen',
+      toCashDeskName:
+        cashDeskNames.get(operation.toCashDeskId ?? '') ?? operation.toCashDeskId ?? 'Ismeretlen',
       transferDate: operation.transferDate ?? operation.createdAt.slice(0, 10),
       amounts: operation.amounts,
       notes: operation.note ?? undefined,

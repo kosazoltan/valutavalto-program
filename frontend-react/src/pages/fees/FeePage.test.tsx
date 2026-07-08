@@ -46,13 +46,35 @@ describe('FeePage delete backend contracts', () => {
     vi.stubGlobal('confirm', mocks.confirm)
     mocks.confirm.mockReturnValue(true)
     mocks.getTypes.mockResolvedValue([
-      { id: 'fee-type-1', code: 'HANDLING', name: 'Kezelési díj', calculationMethod: 'FIXED', isActive: true },
+      {
+        id: 'fee-type-1',
+        code: 'HANDLING',
+        name: 'Kezelési díj',
+        calculationMethod: 'FIXED',
+        isActive: true,
+      },
     ])
     mocks.getRates.mockResolvedValue([
-      { id: 'fee-rate-1', feeTypeId: 'fee-type-1', feeTypeName: 'Kezelési díj', currencyCode: 'EUR', rate: 1.5, validFrom: '2026-01-01', isActive: true },
+      {
+        id: 'fee-rate-1',
+        feeTypeId: 'fee-type-1',
+        feeTypeName: 'Kezelési díj',
+        currencyCode: 'EUR',
+        rate: 1.5,
+        validFrom: '2026-01-01',
+        isActive: true,
+      },
     ])
     mocks.getDiscounts.mockResolvedValue([
-      { id: 'fee-discount-1', code: 'VIP', name: 'VIP kedvezmény', discountType: 'PERCENT', discountValue: 10, validFrom: '2026-01-01', isActive: true },
+      {
+        id: 'fee-discount-1',
+        code: 'VIP',
+        name: 'VIP kedvezmény',
+        discountType: 'PERCENT',
+        discountValue: 10,
+        validFrom: '2026-01-01',
+        isActive: true,
+      },
     ])
     mocks.deleteType.mockResolvedValue(undefined)
     mocks.deleteRate.mockResolvedValue(undefined)

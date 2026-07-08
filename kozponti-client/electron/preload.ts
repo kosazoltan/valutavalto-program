@@ -2,13 +2,13 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('electronAPI', {
   googleOAuthFlow: (): Promise<
-    | { ok: true; idToken: string; email?: string }
-    | { ok: false; code: string; message: string }
+    { ok: true; idToken: string; email?: string } | { ok: false; code: string; message: string }
   > => ipcRenderer.invoke('auth:google-oauth-flow'),
 
-  googleOAuthFlowWithBackend: (appMode?: string): Promise<
-    | { ok: true; response: unknown; email?: string }
-    | { ok: false; code: string; message: string }
+  googleOAuthFlowWithBackend: (
+    appMode?: string,
+  ): Promise<
+    { ok: true; response: unknown; email?: string } | { ok: false; code: string; message: string }
   > => ipcRenderer.invoke('auth:google-oauth-flow-with-backend', { appMode }),
 
   apiRequest: (params: {
@@ -52,10 +52,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSyncStatus: () => ipcRenderer.invoke('lf:sync-status'),
     getOutboxStats: () => ipcRenderer.invoke('lf:outbox-stats'),
     triggerSync: () => ipcRenderer.invoke('lf:trigger-sync'),
-    saveTreasuryOperation: (op: Record<string, unknown>) => ipcRenderer.invoke('lf:save-treasury-operation', op),
-    updateTreasuryOperation: (op: Record<string, unknown>) => ipcRenderer.invoke('lf:update-treasury-operation', op),
+    saveTreasuryOperation: (op: Record<string, unknown>) =>
+      ipcRenderer.invoke('lf:save-treasury-operation', op),
+    updateTreasuryOperation: (op: Record<string, unknown>) =>
+      ipcRenderer.invoke('lf:update-treasury-operation', op),
     getTreasuryOperations: () => ipcRenderer.invoke('lf:get-treasury-operations'),
-    saveDistribution: (dist: Record<string, unknown>) => ipcRenderer.invoke('lf:save-distribution', dist),
+    saveDistribution: (dist: Record<string, unknown>) =>
+      ipcRenderer.invoke('lf:save-distribution', dist),
     getDistributions: () => ipcRenderer.invoke('lf:get-distributions'),
     saveTransfer: (xfer: Record<string, unknown>) => ipcRenderer.invoke('lf:save-transfer', xfer),
     getTransfers: () => ipcRenderer.invoke('lf:get-transfers'),
@@ -65,7 +68,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // FK02-B (árfolyamkészítő rate-maker mód): tartós offline csoport-ráta-érték perzisztencia
     saveGroupRateValues: (payload: { groupId: string; values: Record<string, string> }) =>
       ipcRenderer.invoke('lf:save-group-rate-values', payload),
-    getGroupRateValues: (groupId: string) => ipcRenderer.invoke('lf:get-group-rate-values', groupId),
+    getGroupRateValues: (groupId: string) =>
+      ipcRenderer.invoke('lf:get-group-rate-values', groupId),
   },
 
   platform: process.platform,

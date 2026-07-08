@@ -20,20 +20,21 @@ vi.mock('../../services/api', () => ({
 }))
 
 vi.mock('../../stores/authStore', () => ({
-  useAuthStore: (selector: (state: unknown) => unknown) => selector({
-    worker: {
-      id: 77,
-      workerCode: 'ADMIN',
-      fullName: 'Admin Teszt',
-      role: 'ADMIN',
-      branchId: '11111111-1111-1111-1111-111111111111',
-      branchCode: 'BUD01',
-      branchName: 'Budapest 01',
-      companyId: 'company-1',
-      companyCode: 'EBC',
-      companyName: 'EBC',
-    },
-  }),
+  useAuthStore: (selector: (state: unknown) => unknown) =>
+    selector({
+      worker: {
+        id: 77,
+        workerCode: 'ADMIN',
+        fullName: 'Admin Teszt',
+        role: 'ADMIN',
+        branchId: '11111111-1111-1111-1111-111111111111',
+        branchCode: 'BUD01',
+        branchName: 'Budapest 01',
+        companyId: 'company-1',
+        companyCode: 'EBC',
+        companyName: 'EBC',
+      },
+    }),
 }))
 
 vi.mock('../../services/api/trades', () => ({
@@ -96,7 +97,9 @@ describe('TradePage backend contract', () => {
     mocks.complete.mockResolvedValue({ ...acceptedTrade, status: 'COMPLETED' })
     mocks.cancel.mockResolvedValue({ ...proposedTrade, status: 'CANCELLED' })
     mocks.listVaultCounterparties.mockResolvedValue({
-      territorialCashiers: [{ id: '22222222-2222-2222-2222-222222222222', code: 'SZG01', name: 'Szeged 01' }],
+      territorialCashiers: [
+        { id: '22222222-2222-2222-2222-222222222222', code: 'SZG01', name: 'Szeged 01' },
+      ],
       peerVaults: [],
       fixedCounterparties: [],
     })
@@ -107,10 +110,12 @@ describe('TradePage backend contract', () => {
 
     await waitFor(() => {
       expect(mocks.pending).toHaveBeenCalledWith('11111111-1111-1111-1111-111111111111')
-      expect(mocks.history).toHaveBeenCalledWith(expect.objectContaining({
-        branchId: '11111111-1111-1111-1111-111111111111',
-        size: 20,
-      }))
+      expect(mocks.history).toHaveBeenCalledWith(
+        expect.objectContaining({
+          branchId: '11111111-1111-1111-1111-111111111111',
+          size: 20,
+        }),
+      )
     })
     expect((await screen.findAllByText(/Budapest 01/)).length).toBeGreaterThan(0)
     expect((await screen.findAllByText(/Szeged 01/)).length).toBeGreaterThan(0)
@@ -155,7 +160,10 @@ describe('TradePage backend contract', () => {
     fireEvent.change(rejectReason, { target: { value: 'Nincs készlet' } })
     await clickEnabledButton(/Elutasítás/i)
     await waitFor(() => {
-      expect(mocks.reject).toHaveBeenCalledWith('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Nincs készlet')
+      expect(mocks.reject).toHaveBeenCalledWith(
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'Nincs készlet',
+      )
     })
     await clickEnabledButton(/Elfogadás/i)
     await waitFor(() => {

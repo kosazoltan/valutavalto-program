@@ -1,13 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import {
-  RefreshCw,
-  ArrowUp,
-  ArrowDown,
-  Edit2,
-  Save,
-  Server,
-  X,
-} from 'lucide-react'
+import { RefreshCw, ArrowUp, ArrowDown, Edit2, Save, Server, X } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { exchangeRateApi, currencyApi } from '../../services/api/index'
 import type { ExchangeRate, Currency, CreateExchangeRateRequest } from '../../services/api/index'
@@ -85,61 +77,73 @@ export default function RatePanel() {
   useHotkeys('r', () => void fetchData(), { enableOnFormTags: false })
   useHotkeys('m', () => setShowManualModal(true), { enableOnFormTags: false })
   useHotkeys('s', () => setShowSpreadEditor(true), { enableOnFormTags: false })
-  useHotkeys('escape', () => {
-    setShowManualModal(false)
-    setShowSpreadEditor(false)
-    setEditCurrency('')
-  }, { enableOnFormTags: true })
+  useHotkeys(
+    'escape',
+    () => {
+      setShowManualModal(false)
+      setShowSpreadEditor(false)
+      setEditCurrency('')
+    },
+    { enableOnFormTags: true },
+  )
 
-  const handleManualRateSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!manualCurrencyId || !manualBuyRate || !manualSellRate) return
-    try {
-      const request: CreateExchangeRateRequest = {
-        currencyId: manualCurrencyId,
-        baseBuyRate: parseFloat(manualBuyRate),
-        baseSellRate: parseFloat(manualSellRate),
-      }
-      await exchangeRateApi.create(request)
-      const selectedCurrency = rateRows.find((row) => row.currency.id === manualCurrencyId)?.currency
-      await recordLocalAuditEvent({
-        entityType: 'EXCHANGE_RATE',
-        eventType: 'CREATE',
-        entityId: String(manualCurrencyId),
-        referenceNumber: selectedCurrency?.code ?? null,
-        payload: {
+  const handleManualRateSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      if (!manualCurrencyId || !manualBuyRate || !manualSellRate) return
+      try {
+        const request: CreateExchangeRateRequest = {
           currencyId: manualCurrencyId,
-          currencyCode: selectedCurrency?.code ?? null,
           baseBuyRate: parseFloat(manualBuyRate),
           baseSellRate: parseFloat(manualSellRate),
-        },
-        rateSnapshot: {
-          currencyCode: selectedCurrency?.code ?? null,
-          buyRate: parseFloat(manualBuyRate),
-          sellRate: parseFloat(manualSellRate),
-        },
-        status: 'SERVER_FORWARDED',
-      })
-      setShowManualModal(false)
-      setManualBuyRate('')
-      setManualSellRate('')
-      setManualCurrencyId(0)
-      void fetchData()
-    } catch (err) {
-      logger.error('RatePanel', 'Manual rate submit error:', err)
-    }
-  }, [manualCurrencyId, manualBuyRate, manualSellRate, fetchData, rateRows])
+        }
+        await exchangeRateApi.create(request)
+        const selectedCurrency = rateRows.find(
+          (row) => row.currency.id === manualCurrencyId,
+        )?.currency
+        await recordLocalAuditEvent({
+          entityType: 'EXCHANGE_RATE',
+          eventType: 'CREATE',
+          entityId: String(manualCurrencyId),
+          referenceNumber: selectedCurrency?.code ?? null,
+          payload: {
+            currencyId: manualCurrencyId,
+            currencyCode: selectedCurrency?.code ?? null,
+            baseBuyRate: parseFloat(manualBuyRate),
+            baseSellRate: parseFloat(manualSellRate),
+          },
+          rateSnapshot: {
+            currencyCode: selectedCurrency?.code ?? null,
+            buyRate: parseFloat(manualBuyRate),
+            sellRate: parseFloat(manualSellRate),
+          },
+          status: 'SERVER_FORWARDED',
+        })
+        setShowManualModal(false)
+        setManualBuyRate('')
+        setManualSellRate('')
+        setManualCurrencyId(0)
+        void fetchData()
+      } catch (err) {
+        logger.error('RatePanel', 'Manual rate submit error:', err)
+      }
+    },
+    [manualCurrencyId, manualBuyRate, manualSellRate, fetchData, rateRows],
+  )
 
-  const handleEditRate = useCallback((code: string) => {
-    setEditCurrency(code)
-    const row = rateRows.find((r) => r.currency.code === code)
-    if (row?.rate) {
-      setManualCurrencyId(row.currency.id)
-      setManualBuyRate(String(row.rate.baseBuyRate))
-      setManualSellRate(String(row.rate.baseSellRate))
-    }
-    setShowManualModal(true)
-  }, [rateRows])
+  const handleEditRate = useCallback(
+    (code: string) => {
+      setEditCurrency(code)
+      const row = rateRows.find((r) => r.currency.code === code)
+      if (row?.rate) {
+        setManualCurrencyId(row.currency.id)
+        setManualBuyRate(String(row.rate.baseBuyRate))
+        setManualSellRate(String(row.rate.baseSellRate))
+      }
+      setShowManualModal(true)
+    },
+    [rateRows],
+  )
 
   if (loading) return <TableSkeleton rows={10} cols={7} />
 
@@ -152,7 +156,8 @@ export default function RatePanel() {
           <div className="flex items-center gap-2 text-sm text-secondary-600">
             <RefreshCw size={16} />
             <span>
-              {t('rates.utolsoFrissites')}<strong>{lastPoll}</strong>
+              {t('rates.utolsoFrissites')}
+              <strong>{lastPoll}</strong>
             </span>
           </div>
         </div>
@@ -272,12 +277,16 @@ export default function RatePanel() {
         </h2>
         <div className="grid grid-cols-4 gap-4">
           <div className="p-4 bg-success-50 border border-success-200 rounded-lg">
-            <div className="text-xs text-secondary-600 mb-1">{t('treasury.utolsoSikeresFrissites')}</div>
+            <div className="text-xs text-secondary-600 mb-1">
+              {t('treasury.utolsoSikeresFrissites')}
+            </div>
             <div className="text-sm font-bold text-secondary-900">{lastPoll || '—'}</div>
             <div className="text-xs text-success-700 mt-1">{t('treasury.Elerheto')}</div>
           </div>
           <div className="p-4 bg-primary-50 border border-primary-200 rounded-lg">
-            <div className="text-xs text-secondary-600 mb-1">{t('treasury.kovetkezoFrissites')}</div>
+            <div className="text-xs text-secondary-600 mb-1">
+              {t('treasury.kovetkezoFrissites')}
+            </div>
             <div className="text-sm font-bold text-secondary-900">{t('treasury.manualis')}</div>
             <div className="text-xs text-secondary-500 mt-1">{t('treasury.rBillentyu')}</div>
           </div>
@@ -300,9 +309,14 @@ export default function RatePanel() {
           <div className="bg-white rounded-lg shadow-xl p-4 max-w-md w-full mx-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xl font-bold text-secondary-900">
-                {editCurrency ? `${editCurrency} árfolyam szerkesztés` : 'Manuális árfolyam bevitel'}
+                {editCurrency
+                  ? `${editCurrency} árfolyam szerkesztés`
+                  : 'Manuális árfolyam bevitel'}
               </h2>
-              <button onClick={() => setShowManualModal(false)} className="text-secondary-400 hover:text-secondary-600">
+              <button
+                onClick={() => setShowManualModal(false)}
+                className="text-secondary-400 hover:text-secondary-600"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -350,7 +364,8 @@ export default function RatePanel() {
               </div>
               <div className="p-3 bg-warning-50 border border-warning-200 rounded-lg">
                 <div className="text-xs text-warning-800">
-                  <strong>{t('treasury.figyelem')}</strong>{t('treasury.manualisBevitelFelulirjaAzAktualisArfolyamot')}
+                  <strong>{t('treasury.figyelem')}</strong>
+                  {t('treasury.manualisBevitelFelulirjaAzAktualisArfolyamot')}
                 </div>
               </div>
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-secondary-200">
@@ -376,13 +391,20 @@ export default function RatePanel() {
         <ModalOverlay onClose={() => setShowSpreadEditor(false)}>
           <div className="bg-white rounded-lg shadow-xl p-4 max-w-3xl w-full mx-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-bold text-secondary-900">{t('treasury.spreadSzerkeszto')}</h2>
-              <button onClick={() => setShowSpreadEditor(false)} className="text-secondary-400 hover:text-secondary-600">
+              <h2 className="text-xl font-bold text-secondary-900">
+                {t('treasury.spreadSzerkeszto')}
+              </h2>
+              <button
+                onClick={() => setShowSpreadEditor(false)}
+                className="text-secondary-400 hover:text-secondary-600"
+              >
                 <X size={20} />
               </button>
             </div>
             <div className="p-3 bg-primary-50 border border-primary-200 rounded-lg text-sm text-secondary-700 mb-4">
-              {t('treasury.aSpreadArfolyamMarginEladasiArfolyamVeteliArfolyamATablazatCsakOlvashato')}
+              {t(
+                'treasury.aSpreadArfolyamMarginEladasiArfolyamVeteliArfolyamATablazatCsakOlvashato',
+              )}
               {t('treasury.attekintesAzEgyesValutakSzerkesztesehezKattintsACeruzaIkonra')}
             </div>
             <table className="data-grid w-full">
@@ -437,7 +459,10 @@ export default function RatePanel() {
 
 function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
       <div onClick={(e) => e.stopPropagation()}>{children}</div>
     </div>
   )

@@ -54,9 +54,13 @@ describe('ErrorReporter', () => {
 
     expect(mocks.post).toHaveBeenCalledTimes(2)
     expect(mocks.post).toHaveBeenNthCalledWith(1, '/diagnostics/error-report', expect.any(Object))
-    expect(mocks.post).toHaveBeenNthCalledWith(2, '/error-report', expect.objectContaining({
-      message: 'Fallback hiba',
-      errorType: 'frontend_error',
-    }))
+    expect(mocks.post).toHaveBeenNthCalledWith(
+      2,
+      '/error-report',
+      expect.objectContaining({
+        message: 'Fallback hiba',
+        errorType: 'frontend_error',
+      }),
+    )
   })
 })

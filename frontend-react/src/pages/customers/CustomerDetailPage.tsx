@@ -1,8 +1,22 @@
 import { useCallback, useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
-  User, ArrowLeft, Save, Edit, Clock, FileText,
-  Phone, MapPin, CreditCard, Calendar, AlertCircle, Loader2, Users, ShieldCheck, ShieldAlert, Trash2
+  User,
+  ArrowLeft,
+  Save,
+  Edit,
+  Clock,
+  FileText,
+  Phone,
+  MapPin,
+  CreditCard,
+  Calendar,
+  AlertCircle,
+  Loader2,
+  Users,
+  ShieldCheck,
+  ShieldAlert,
+  Trash2,
 } from 'lucide-react'
 import {
   customerApi,
@@ -62,7 +76,8 @@ export default function CustomerDetailPage() {
   const [statsError, setStatsError] = useState<string | null>(null)
   const [amlRiskProfile, setAmlRiskProfile] = useState<CustomerRiskProfile | null>(null)
   const [structuringDetected, setStructuringDetected] = useState<boolean | null>(null)
-  const [restrictionType, setRestrictionType] = useState<CustomerRestriction['restrictionType']>('WATCH_LIST')
+  const [restrictionType, setRestrictionType] =
+    useState<CustomerRestriction['restrictionType']>('WATCH_LIST')
   const [restrictionReason, setRestrictionReason] = useState('')
   const [restrictionExpiresAt, setRestrictionExpiresAt] = useState('')
   const [restrictionSaving, setRestrictionSaving] = useState(false)
@@ -70,58 +85,64 @@ export default function CustomerDetailPage() {
   const [mergeSaving, setMergeSaving] = useState(false)
   const [mergeError, setMergeError] = useState<string | null>(null)
 
-  const loadControlData = useCallback(async (customerId: number) => {
-    try {
-      setControlLoading(true)
-      setControlError(null)
-      const [nextRestrictions, nextAnnualTotal, nextScreeningLog] = await Promise.all([
-        customerControlApi.getRestrictions(customerId),
-        customerControlApi.getAnnualTotal(customerId),
-        customerControlApi.getScreeningLog(customerId),
-      ])
-      setRestrictions(nextRestrictions)
-      setAnnualTotal(nextAnnualTotal)
-      setScreeningLog(nextScreeningLog)
-      if (canManageRestrictions) {
-        const [nextRiskProfile, nextStructuring] = await Promise.all([
-          amlApi.customerRisk(String(customerId)),
-          amlApi.structuringCheck(String(customerId)),
+  const loadControlData = useCallback(
+    async (customerId: number) => {
+      try {
+        setControlLoading(true)
+        setControlError(null)
+        const [nextRestrictions, nextAnnualTotal, nextScreeningLog] = await Promise.all([
+          customerControlApi.getRestrictions(customerId),
+          customerControlApi.getAnnualTotal(customerId),
+          customerControlApi.getScreeningLog(customerId),
         ])
-        setAmlRiskProfile(nextRiskProfile)
-        setStructuringDetected(nextStructuring.structuringDetected)
-      } else {
-        setAmlRiskProfile(null)
-        setStructuringDetected(null)
+        setRestrictions(nextRestrictions)
+        setAnnualTotal(nextAnnualTotal)
+        setScreeningLog(nextScreeningLog)
+        if (canManageRestrictions) {
+          const [nextRiskProfile, nextStructuring] = await Promise.all([
+            amlApi.customerRisk(String(customerId)),
+            amlApi.structuringCheck(String(customerId)),
+          ])
+          setAmlRiskProfile(nextRiskProfile)
+          setStructuringDetected(nextStructuring.structuringDetected)
+        } else {
+          setAmlRiskProfile(null)
+          setStructuringDetected(null)
+        }
+      } catch (err) {
+        setControlError(getErrorMessage(err))
+        logger.error('CustomerDetailPage', 'Customer control data load failed:', err)
+      } finally {
+        setControlLoading(false)
       }
-    } catch (err) {
-      setControlError(getErrorMessage(err))
-      logger.error('CustomerDetailPage', 'Customer control data load failed:', err)
-    } finally {
-      setControlLoading(false)
-    }
-  }, [canManageRestrictions])
+    },
+    [canManageRestrictions],
+  )
 
-  const loadCustomerStats = useCallback(async (customerId: number, range?: { from?: string; to?: string }) => {
-    try {
-      setStatsLoading(true)
-      setStatsError(null)
-      const params = {
-        ...(range?.from ? { from: range.from } : {}),
-        ...(range?.to ? { to: range.to } : {}),
+  const loadCustomerStats = useCallback(
+    async (customerId: number, range?: { from?: string; to?: string }) => {
+      try {
+        setStatsLoading(true)
+        setStatsError(null)
+        const params = {
+          ...(range?.from ? { from: range.from } : {}),
+          ...(range?.to ? { to: range.to } : {}),
+        }
+        const [nextStats, nextHistory] = await Promise.all([
+          customerApi.getStats(customerId),
+          customerApi.getHistory(customerId, Object.keys(params).length > 0 ? params : undefined),
+        ])
+        setBackendStats(nextStats)
+        setHistoryStats(nextHistory)
+      } catch (err) {
+        setStatsError(getErrorMessage(err))
+        logger.error('CustomerDetailPage', 'Customer stats data load failed:', err)
+      } finally {
+        setStatsLoading(false)
       }
-      const [nextStats, nextHistory] = await Promise.all([
-        customerApi.getStats(customerId),
-        customerApi.getHistory(customerId, Object.keys(params).length > 0 ? params : undefined),
-      ])
-      setBackendStats(nextStats)
-      setHistoryStats(nextHistory)
-    } catch (err) {
-      setStatsError(getErrorMessage(err))
-      logger.error('CustomerDetailPage', 'Customer stats data load failed:', err)
-    } finally {
-      setStatsLoading(false)
-    }
-  }, [])
+    },
+    [],
+  )
 
   const loadVersionHistory = useCallback(async (customerId: number) => {
     try {
@@ -339,21 +360,17 @@ export default function CustomerDetailPage() {
     })
   }
 
-  const formatHuf = (value: number | null) => (
+  const formatHuf = (value: number | null) =>
     value === null ? '-' : `${Number(value).toLocaleString('hu-HU')} Ft`
-  )
 
-  const formatOptionalHuf = (value?: number | null) => (
+  const formatOptionalHuf = (value?: number | null) =>
     value === null || value === undefined ? '-' : `${Number(value).toLocaleString('hu-HU')} Ft`
-  )
 
-  const formatDateTime = (value?: string | null) => (
+  const formatDateTime = (value?: string | null) =>
     value ? new Date(value).toLocaleString('hu-HU') : '-'
-  )
 
-  const formatDate = (value?: string | null) => (
+  const formatDate = (value?: string | null) =>
     value ? new Date(value).toLocaleDateString('hu-HU') : '-'
-  )
 
   const selectedVersionEntries = (() => {
     if (!selectedVersion?.snapshot) return [] as [string, unknown][]
@@ -365,19 +382,22 @@ export default function CustomerDetailPage() {
     }
   })()
 
-  const restrictionTypeLabel = (value: string) => ({
-    BLOCKED: 'Tiltott',
-    SUSPICIOUS: 'Gyanús',
-    WATCH_LIST: 'Figyelőlista',
-    ANNUAL_LIMIT: 'Éves limit',
-  }[value] ?? value)
+  const restrictionTypeLabel = (value: string) =>
+    ({
+      BLOCKED: 'Tiltott',
+      SUSPICIOUS: 'Gyanús',
+      WATCH_LIST: 'Figyelőlista',
+      ANNUAL_LIMIT: 'Éves limit',
+    })[value] ?? value
 
-  const riskLevelLabel = (value?: string) => ({
-    LOW: 'Alacsony',
-    MEDIUM: 'Közepes',
-    HIGH: 'Magas',
-    CRITICAL: 'Kritikus',
-  }[value ?? ''] ?? (value || '-'))
+  const riskLevelLabel = (value?: string) =>
+    ({
+      LOW: 'Alacsony',
+      MEDIUM: 'Közepes',
+      HIGH: 'Magas',
+      CRITICAL: 'Kritikus',
+    })[value ?? ''] ??
+    (value || '-')
 
   if (loading) {
     return (
@@ -394,14 +414,16 @@ export default function CustomerDetailPage() {
         <AlertCircle className="inline mr-2" size={16} />
         {error || 'Ügyfél nem található'}
         <div className="mt-4">
-          <Link to="/customers" className="form-button">{t('common.back')}</Link>
+          <Link to="/customers" className="form-button">
+            {t('common.back')}
+          </Link>
         </div>
       </div>
     )
   }
 
   const updateField = <K extends keyof Customer>(field: K, value: Customer[K]) => {
-    setCustomer(prev => prev ? { ...prev, [field]: value } : prev)
+    setCustomer((prev) => (prev ? { ...prev, [field]: value } : prev))
   }
 
   const currentRiskRating = customer.riskRating || 'LOW'
@@ -427,7 +449,9 @@ export default function CustomerDetailPage() {
           <h1 className="flex min-w-0 flex-wrap items-center gap-2 text-xl font-bold text-gray-800">
             <User />
             {t('customers.ugyfelAdatai')}
-            {customer.isVip && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">VIP</span>}
+            {customer.isVip && (
+              <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">VIP</span>
+            )}
             {customer.eddActive && (
               <span
                 title={customer.eddReason || t('customers.eddBadgeFallback')}
@@ -435,7 +459,9 @@ export default function CustomerDetailPage() {
               >
                 <ShieldCheck size={12} />
                 {t('customers.eddBadge', {
-                  date: customer.eddUntil ? new Date(customer.eddUntil).toLocaleDateString('hu-HU') : '',
+                  date: customer.eddUntil
+                    ? new Date(customer.eddUntil).toLocaleDateString('hu-HU')
+                    : '',
                 })}
               </span>
             )}
@@ -451,7 +477,9 @@ export default function CustomerDetailPage() {
                 Átnézve{customer.reviewedBy ? `: ${customer.reviewedBy}` : ''}
               </span>
             )}
-            <span className={`text-xs px-2 py-0.5 rounded flex items-center gap-1 ${riskRatingClasses[currentRiskRating]}`}>
+            <span
+              className={`text-xs px-2 py-0.5 rounded flex items-center gap-1 ${riskRatingClasses[currentRiskRating]}`}
+            >
               <ShieldAlert size={12} />
               <span>{t('customers.riskRatingLabel')}</span>
               <span>{riskRatingLabels[currentRiskRating]}</span>
@@ -471,7 +499,10 @@ export default function CustomerDetailPage() {
           )}
           {canMarkEdd && !isEditing && (
             <button
-              onClick={() => { setEddError(null); setShowEddModal(true) }}
+              onClick={() => {
+                setEddError(null)
+                setShowEddModal(true)
+              }}
               className="form-button flex items-center gap-1 text-red-700"
               title={t('customers.eddMarkButtonTitle')}
             >
@@ -505,13 +536,20 @@ export default function CustomerDetailPage() {
               <button onClick={() => setIsEditing(false)} className="form-button">
                 {t('common.cancel')}
               </button>
-              <button onClick={() => void handleSave()} disabled={saving} className="form-button-primary flex items-center gap-1">
+              <button
+                onClick={() => void handleSave()}
+                disabled={saving}
+                className="form-button-primary flex items-center gap-1"
+              >
                 <Save size={16} />
                 {saving ? 'Mentés...' : 'Mentés'}
               </button>
             </>
           ) : (
-            <button onClick={() => setIsEditing(true)} className="form-button flex items-center gap-1">
+            <button
+              onClick={() => setIsEditing(true)}
+              className="form-button flex items-center gap-1"
+            >
               <Edit size={16} />
               {t('common.edit')}
             </button>
@@ -535,35 +573,83 @@ export default function CustomerDetailPage() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
               <label className="form-label">{t('common.name')}</label>
-              <input type="text" value={customer.name || ''} onChange={(e) => updateField('name', e.target.value)} disabled={!isEditing} className="form-input" />
+              <input
+                type="text"
+                value={customer.name || ''}
+                onChange={(e) => updateField('name', e.target.value)}
+                disabled={!isEditing}
+                className="form-input"
+              />
             </div>
             <div>
               <label className="form-label">{t('common.birthName')}</label>
-              <input type="text" value={customer.birthName || ''} onChange={(e) => updateField('birthName', e.target.value)} disabled={!isEditing} className="form-input" />
+              <input
+                type="text"
+                value={customer.birthName || ''}
+                onChange={(e) => updateField('birthName', e.target.value)}
+                disabled={!isEditing}
+                className="form-input"
+              />
             </div>
             <div>
               <label className="form-label">{t('common.birthDate')}</label>
-              <input type="date" value={customer.birthDate || ''} onChange={(e) => updateField('birthDate', e.target.value)} disabled={!isEditing} className="form-input" />
+              <input
+                type="date"
+                value={customer.birthDate || ''}
+                onChange={(e) => updateField('birthDate', e.target.value)}
+                disabled={!isEditing}
+                className="form-input"
+              />
             </div>
             <div>
               <label className="form-label">{t('common.birthPlace')}</label>
-              <input type="text" value={customer.birthPlace || ''} onChange={(e) => updateField('birthPlace', e.target.value)} disabled={!isEditing} className="form-input" />
+              <input
+                type="text"
+                value={customer.birthPlace || ''}
+                onChange={(e) => updateField('birthPlace', e.target.value)}
+                disabled={!isEditing}
+                className="form-input"
+              />
             </div>
             <div>
               <label className="form-label">{t('common.motherName')}</label>
-              <input type="text" value={customer.motherName || ''} onChange={(e) => updateField('motherName', e.target.value)} disabled={!isEditing} className="form-input" />
+              <input
+                type="text"
+                value={customer.motherName || ''}
+                onChange={(e) => updateField('motherName', e.target.value)}
+                disabled={!isEditing}
+                className="form-input"
+              />
             </div>
             <div>
               <label className="form-label">{t('common.nationality')}</label>
-              <input type="text" value={customer.nationality || ''} onChange={(e) => updateField('nationality', e.target.value)} disabled={!isEditing} className="form-input" />
+              <input
+                type="text"
+                value={customer.nationality || ''}
+                onChange={(e) => updateField('nationality', e.target.value)}
+                disabled={!isEditing}
+                className="form-input"
+              />
             </div>
             <div>
               <label className="form-label">{t('common.taxNumber')}</label>
-              <input type="text" value={customer.taxNumber || ''} onChange={(e) => updateField('taxNumber', e.target.value)} disabled={!isEditing} className="form-input font-mono" />
+              <input
+                type="text"
+                value={customer.taxNumber || ''}
+                onChange={(e) => updateField('taxNumber', e.target.value)}
+                disabled={!isEditing}
+                className="form-input font-mono"
+              />
             </div>
             <div>
               <label className="form-label">{t('common.note')}</label>
-              <input type="text" value={customer.notes || ''} onChange={(e) => updateField('notes', e.target.value)} disabled={!isEditing} className="form-input" />
+              <input
+                type="text"
+                value={customer.notes || ''}
+                onChange={(e) => updateField('notes', e.target.value)}
+                disabled={!isEditing}
+                className="form-input"
+              />
             </div>
             <div>
               <label className="form-label flex items-center gap-1">
@@ -603,26 +689,41 @@ export default function CustomerDetailPage() {
           <div className="space-y-3">
             <div className="bg-blue-50 p-3 rounded">
               <div className="text-sm text-blue-600">{t('customers.osszesTranzakcio')}</div>
-              <div className="text-lg font-bold text-blue-800">{customer.transactionCount ?? 0}</div>
+              <div className="text-lg font-bold text-blue-800">
+                {customer.transactionCount ?? 0}
+              </div>
             </div>
-            <div className="rounded border border-indigo-100 bg-indigo-50 p-3" data-testid="customer-backend-stats">
-              <div className="text-sm font-semibold text-indigo-800">{t('customers.backendStats')}</div>
+            <div
+              className="rounded border border-indigo-100 bg-indigo-50 p-3"
+              data-testid="customer-backend-stats"
+            >
+              <div className="text-sm font-semibold text-indigo-800">
+                {t('customers.backendStats')}
+              </div>
               <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <div className="text-indigo-700">{t('customers.totalVolume')}</div>
-                  <div className="font-bold text-indigo-950">{formatOptionalHuf(backendStats?.totalVolumeHuf)}</div>
+                  <div className="font-bold text-indigo-950">
+                    {formatOptionalHuf(backendStats?.totalVolumeHuf)}
+                  </div>
                 </div>
                 <div>
                   <div className="text-indigo-700">{t('customers.averageAmount')}</div>
-                  <div className="font-bold text-indigo-950">{formatOptionalHuf(backendStats?.averageAmount)}</div>
+                  <div className="font-bold text-indigo-950">
+                    {formatOptionalHuf(backendStats?.averageAmount)}
+                  </div>
                 </div>
                 <div>
                   <div className="text-indigo-700">{t('customers.firstVisit')}</div>
-                  <div className="font-semibold text-indigo-950">{formatDate(backendStats?.firstVisit)}</div>
+                  <div className="font-semibold text-indigo-950">
+                    {formatDate(backendStats?.firstVisit)}
+                  </div>
                 </div>
                 <div>
                   <div className="text-indigo-700">{t('customers.preferredCurrency')}</div>
-                  <div className="font-semibold text-indigo-950">{backendStats?.preferredCurrency || '-'}</div>
+                  <div className="font-semibold text-indigo-950">
+                    {backendStats?.preferredCurrency || '-'}
+                  </div>
                 </div>
               </div>
             </div>
@@ -637,8 +738,13 @@ export default function CustomerDetailPage() {
                 </div>
               </div>
             )}
-            <div className="rounded border border-gray-200 p-3" data-testid="customer-history-stats">
-              <div className="mb-2 text-sm font-semibold text-gray-800">{t('customers.historyStats')}</div>
+            <div
+              className="rounded border border-gray-200 p-3"
+              data-testid="customer-history-stats"
+            >
+              <div className="mb-2 text-sm font-semibold text-gray-800">
+                {t('customers.historyStats')}
+              </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <label className="block">
                   <span className="form-label">{t('customers.historyFrom')}</span>
@@ -672,19 +778,27 @@ export default function CustomerDetailPage() {
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <div className="text-gray-600">{t('customers.osszesTranzakcio')}</div>
-                  <div className="font-bold text-gray-900">{historyStats?.totalTransactions ?? '-'}</div>
+                  <div className="font-bold text-gray-900">
+                    {historyStats?.totalTransactions ?? '-'}
+                  </div>
                 </div>
                 <div>
                   <div className="text-gray-600">{t('customers.totalVolume')}</div>
-                  <div className="font-bold text-gray-900">{formatOptionalHuf(historyStats?.totalVolumeHuf)}</div>
+                  <div className="font-bold text-gray-900">
+                    {formatOptionalHuf(historyStats?.totalVolumeHuf)}
+                  </div>
                 </div>
                 <div>
                   <div className="text-gray-600">{t('customers.lastVisit')}</div>
-                  <div className="font-semibold text-gray-900">{formatDate(historyStats?.lastVisit)}</div>
+                  <div className="font-semibold text-gray-900">
+                    {formatDate(historyStats?.lastVisit)}
+                  </div>
                 </div>
                 <div>
                   <div className="text-gray-600">{t('customers.preferredCurrency')}</div>
-                  <div className="font-semibold text-gray-900">{historyStats?.preferredCurrency || '-'}</div>
+                  <div className="font-semibold text-gray-900">
+                    {historyStats?.preferredCurrency || '-'}
+                  </div>
                 </div>
               </div>
             </div>
@@ -742,14 +856,18 @@ export default function CustomerDetailPage() {
                 <div className="text-lg font-bold text-gray-900">
                   {formatOptionalHuf(amlRiskProfile?.dailyTotal)}
                 </div>
-                <div className="text-xs text-gray-500">{amlRiskProfile?.dailyTransactionCount ?? 0} tranzakció</div>
+                <div className="text-xs text-gray-500">
+                  {amlRiskProfile?.dailyTransactionCount ?? 0} tranzakció
+                </div>
               </div>
               <div className="rounded border border-gray-200 bg-gray-50 p-3">
                 <div className="text-sm text-gray-600">30 napos AML forgalom</div>
                 <div className="text-lg font-bold text-gray-900">
                   {formatOptionalHuf(amlRiskProfile?.last30DaysTotal)}
                 </div>
-                <div className="text-xs text-gray-500">{amlRiskProfile?.last30DaysTransactionCount ?? 0} tranzakció</div>
+                <div className="text-xs text-gray-500">
+                  {amlRiskProfile?.last30DaysTransactionCount ?? 0} tranzakció
+                </div>
               </div>
               <div className="rounded border border-amber-100 bg-amber-50 p-3">
                 <div className="text-sm text-amber-700">Structuring jelzés</div>
@@ -811,7 +929,10 @@ export default function CustomerDetailPage() {
           )}
 
           {canMergeCustomers && (
-            <div className="mt-3 rounded border border-amber-200 bg-amber-50 p-3" data-testid="customer-merge-panel">
+            <div
+              className="mt-3 rounded border border-amber-200 bg-amber-50 p-3"
+              data-testid="customer-merge-panel"
+            >
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-900">
                 <Users size={16} />
                 {t('customers.mergeTitle')}
@@ -842,9 +963,7 @@ export default function CustomerDetailPage() {
                   {mergeSaving ? t('customers.mergeSubmitting') : t('customers.mergeSubmit')}
                 </button>
               </div>
-              <p className="mt-2 text-xs text-amber-800">
-                {t('customers.mergeHelp')}
-              </p>
+              <p className="mt-2 text-xs text-amber-800">{t('customers.mergeHelp')}</p>
               {mergeError && (
                 <div className="mt-2 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
                   {mergeError}
@@ -855,52 +974,71 @@ export default function CustomerDetailPage() {
 
           <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
             <div className="overflow-hidden rounded border border-gray-200">
-              <div className="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">Korlátozások</div>
+              <div className="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">
+                Korlátozások
+              </div>
               <div className="divide-y divide-gray-100">
                 {restrictions.length === 0 ? (
                   <div className="px-3 py-3 text-sm text-gray-500">Nincs rögzített korlátozás.</div>
-                ) : restrictions.map((restriction) => (
-                  <div key={restriction.id} className="flex items-start justify-between gap-3 px-3 py-2 text-sm">
-                    <div>
-                      <div className="font-semibold text-gray-800">
-                        {restrictionTypeLabel(restriction.restrictionType)}
-                        {!restriction.active && <span className="ml-2 text-xs text-gray-500">inaktív</span>}
+                ) : (
+                  restrictions.map((restriction) => (
+                    <div
+                      key={restriction.id}
+                      className="flex items-start justify-between gap-3 px-3 py-2 text-sm"
+                    >
+                      <div>
+                        <div className="font-semibold text-gray-800">
+                          {restrictionTypeLabel(restriction.restrictionType)}
+                          {!restriction.active && (
+                            <span className="ml-2 text-xs text-gray-500">inaktív</span>
+                          )}
+                        </div>
+                        <div className="text-gray-600">{restriction.reason}</div>
+                        <div className="text-xs text-gray-500">
+                          Rögzítve: {formatDateTime(restriction.addedAt)}
+                          {restriction.expiresAt
+                            ? ` | Lejár: ${formatDateTime(restriction.expiresAt)}`
+                            : ''}
+                        </div>
                       </div>
-                      <div className="text-gray-600">{restriction.reason}</div>
-                      <div className="text-xs text-gray-500">
-                        Rögzítve: {formatDateTime(restriction.addedAt)}
-                        {restriction.expiresAt ? ` | Lejár: ${formatDateTime(restriction.expiresAt)}` : ''}
-                      </div>
+                      {canManageRestrictions && restriction.active && (
+                        <button
+                          onClick={() => void handleRemoveRestriction(restriction.id)}
+                          className="toolbar-button text-red-700"
+                          title="Korlátozás deaktiválása"
+                          aria-label="Korlátozás deaktiválása"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
-                    {canManageRestrictions && restriction.active && (
-                      <button
-                        onClick={() => void handleRemoveRestriction(restriction.id)}
-                        className="toolbar-button text-red-700"
-                        title="Korlátozás deaktiválása"
-                        aria-label="Korlátozás deaktiválása"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
             <div className="overflow-hidden rounded border border-gray-200">
-              <div className="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">Szűrési napló</div>
+              <div className="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">
+                Szűrési napló
+              </div>
               <div className="divide-y divide-gray-100">
                 {screeningLog.length === 0 ? (
-                  <div className="px-3 py-3 text-sm text-gray-500">Nincs szűrési naplóbejegyzés.</div>
-                ) : screeningLog.slice(0, 5).map((entry) => (
-                  <div key={entry.id} className="px-3 py-2 text-sm">
-                    <div className="font-semibold text-gray-800">
-                      {entry.screeningType} / {entry.result}
-                    </div>
-                    {entry.details && <div className="text-gray-600">{entry.details}</div>}
-                    <div className="text-xs text-gray-500">{formatDateTime(entry.screenedAt)}</div>
+                  <div className="px-3 py-3 text-sm text-gray-500">
+                    Nincs szűrési naplóbejegyzés.
                   </div>
-                ))}
+                ) : (
+                  screeningLog.slice(0, 5).map((entry) => (
+                    <div key={entry.id} className="px-3 py-2 text-sm">
+                      <div className="font-semibold text-gray-800">
+                        {entry.screeningType} / {entry.result}
+                      </div>
+                      {entry.details && <div className="text-gray-600">{entry.details}</div>}
+                      <div className="text-xs text-gray-500">
+                        {formatDateTime(entry.screenedAt)}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -974,7 +1112,12 @@ export default function CustomerDetailPage() {
           <div className="space-y-3">
             <div>
               <label className="form-label">{t('customers.okmanyTipusa')}</label>
-              <select value={customer.documentType || ''} onChange={(e) => updateField('documentType', e.target.value)} disabled={!isEditing} className="form-input">
+              <select
+                value={customer.documentType || ''}
+                onChange={(e) => updateField('documentType', e.target.value)}
+                disabled={!isEditing}
+                className="form-input"
+              >
                 <option value="">—</option>
                 <option value="Személyi igazolvány">{t('customers.szemelyiIgazolvany')}</option>
                 <option value="Útlevél">{t('customers.utlevel')}</option>
@@ -984,19 +1127,29 @@ export default function CustomerDetailPage() {
             </div>
             <div>
               <label className="form-label">{t('common.documentNumber')}</label>
-              <input type="text" value={customer.documentNumber || ''} onChange={(e) => updateField('documentNumber', e.target.value)} disabled={!isEditing} className="form-input font-mono" />
+              <input
+                type="text"
+                value={customer.documentNumber || ''}
+                onChange={(e) => updateField('documentNumber', e.target.value)}
+                disabled={!isEditing}
+                className="form-input font-mono"
+              />
             </div>
             <div>
               <label className="form-label">{t('commissions.ervenyesseg')}</label>
-              <input type="date" value={customer.documentExpiry || ''} onChange={(e) => updateField('documentExpiry', e.target.value)} disabled={!isEditing} className="form-input" />
+              <input
+                type="date"
+                value={customer.documentExpiry || ''}
+                onChange={(e) => updateField('documentExpiry', e.target.value)}
+                disabled={!isEditing}
+                className="form-input"
+              />
             </div>
           </div>
         </div>
 
         {/* FS-5: Okmány szkennelés (elő/hátlap) + regisztrált okmányok megtekintése — csak ismert szerver-id-nél */}
-        {customer && id && Number(id) > 0 && (
-          <DocumentPairCapture customerId={Number(id)} />
-        )}
+        {customer && id && Number(id) > 0 && <DocumentPairCapture customerId={Number(id)} />}
 
         {/* Contact Info */}
         <div className="form-panel">
@@ -1007,11 +1160,23 @@ export default function CustomerDetailPage() {
           <div className="space-y-3">
             <div>
               <label className="form-label">{t('common.phone')}</label>
-              <input type="tel" value={customer.phone || ''} onChange={(e) => updateField('phone', e.target.value)} disabled={!isEditing} className="form-input font-mono" />
+              <input
+                type="tel"
+                value={customer.phone || ''}
+                onChange={(e) => updateField('phone', e.target.value)}
+                disabled={!isEditing}
+                className="form-input font-mono"
+              />
             </div>
             <div>
               <label className="form-label">{t('customers.eMail')}</label>
-              <input type="email" value={customer.email || ''} onChange={(e) => updateField('email', e.target.value)} disabled={!isEditing} className="form-input" />
+              <input
+                type="email"
+                value={customer.email || ''}
+                onChange={(e) => updateField('email', e.target.value)}
+                disabled={!isEditing}
+                className="form-input"
+              />
             </div>
           </div>
         </div>
@@ -1026,20 +1191,44 @@ export default function CustomerDetailPage() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="form-label">{t('customers.iranyitoszam')}</label>
-                <input type="text" value={customer.postalCode || ''} onChange={(e) => updateField('postalCode', e.target.value)} disabled={!isEditing} className="form-input" />
+                <input
+                  type="text"
+                  value={customer.postalCode || ''}
+                  onChange={(e) => updateField('postalCode', e.target.value)}
+                  disabled={!isEditing}
+                  className="form-input"
+                />
               </div>
               <div>
                 <label className="form-label">{t('common.city')}</label>
-                <input type="text" value={customer.city || ''} onChange={(e) => updateField('city', e.target.value)} disabled={!isEditing} className="form-input" />
+                <input
+                  type="text"
+                  value={customer.city || ''}
+                  onChange={(e) => updateField('city', e.target.value)}
+                  disabled={!isEditing}
+                  className="form-input"
+                />
               </div>
             </div>
             <div>
               <label className="form-label">{t('customers.utcaHazszam')}</label>
-              <input type="text" value={customer.address || ''} onChange={(e) => updateField('address', e.target.value)} disabled={!isEditing} className="form-input" />
+              <input
+                type="text"
+                value={customer.address || ''}
+                onChange={(e) => updateField('address', e.target.value)}
+                disabled={!isEditing}
+                className="form-input"
+              />
             </div>
             <div>
               <label className="form-label">{t('common.country')}</label>
-              <input type="text" value={customer.country || ''} onChange={(e) => updateField('country', e.target.value)} disabled={!isEditing} className="form-input" />
+              <input
+                type="text"
+                value={customer.country || ''}
+                onChange={(e) => updateField('country', e.target.value)}
+                disabled={!isEditing}
+                className="form-input"
+              />
             </div>
           </div>
         </div>
@@ -1050,15 +1239,18 @@ export default function CustomerDetailPage() {
         <div className="flex flex-wrap gap-3 text-sm text-gray-500">
           <span className="flex items-center gap-1">
             <Calendar size={14} />
-            {t('customers.letrehozva')}{customer.createdAt ? new Date(customer.createdAt).toLocaleString('hu-HU') : '-'}
+            {t('customers.letrehozva')}
+            {customer.createdAt ? new Date(customer.createdAt).toLocaleString('hu-HU') : '-'}
           </span>
           <span className="flex items-center gap-1">
             <Clock size={14} />
-            {t('customers.modositva')}{customer.updatedAt ? new Date(customer.updatedAt).toLocaleString('hu-HU') : '-'}
+            {t('customers.modositva')}
+            {customer.updatedAt ? new Date(customer.updatedAt).toLocaleString('hu-HU') : '-'}
           </span>
           <span className="flex items-center gap-1">
             <CreditCard size={14} />
-            {t('customers.id')}{id}
+            {t('customers.id')}
+            {id}
           </span>
         </div>
       </div>
@@ -1071,7 +1263,9 @@ export default function CustomerDetailPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="edd-mark-title"
-          onKeyDown={(e) => { if (e.key === 'Escape' && !eddSaving) setShowEddModal(false) }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && !eddSaving) setShowEddModal(false)
+          }}
         >
           <div className="w-full max-w-md rounded bg-white shadow-xl">
             <div className="flex items-center justify-between border-b p-4">
@@ -1083,7 +1277,9 @@ export default function CustomerDetailPage() {
             <div className="space-y-3 p-4">
               <p className="text-sm text-gray-600">{t('customers.eddMarkDescription')}</p>
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-gray-700">{t('customers.eddMarkReasonLabel')}</span>
+                <span className="mb-1 block font-medium text-gray-700">
+                  {t('customers.eddMarkReasonLabel')}
+                </span>
                 <textarea
                   value={eddReasonInput}
                   onChange={(e) => setEddReasonInput(e.target.value)}
@@ -1094,11 +1290,17 @@ export default function CustomerDetailPage() {
                 />
               </label>
               {eddError && (
-                <div className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-800">{eddError}</div>
+                <div className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-800">
+                  {eddError}
+                </div>
               )}
             </div>
             <div className="flex items-center justify-end gap-2 border-t p-4">
-              <button onClick={() => setShowEddModal(false)} className="form-button" disabled={eddSaving}>
+              <button
+                onClick={() => setShowEddModal(false)}
+                className="form-button"
+                disabled={eddSaving}
+              >
                 {t('common.cancel')}
               </button>
               <button
@@ -1119,7 +1321,9 @@ export default function CustomerDetailPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="risk-rating-title"
-          onKeyDown={(e) => { if (e.key === 'Escape' && !riskSaving) setShowRiskModal(false) }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && !riskSaving) setShowRiskModal(false)
+          }}
         >
           <div className="w-full max-w-md rounded bg-white shadow-xl">
             <div className="flex items-center justify-between border-b p-4">
@@ -1131,7 +1335,9 @@ export default function CustomerDetailPage() {
             <div className="space-y-3 p-4">
               <p className="text-sm text-gray-600">{t('customers.riskRatingDescription')}</p>
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-gray-700">{t('customers.riskRatingLabel')}</span>
+                <span className="mb-1 block font-medium text-gray-700">
+                  {t('customers.riskRatingLabel')}
+                </span>
                 <select
                   value={riskInput}
                   onChange={(e) => setRiskInput(e.target.value as 'LOW' | 'MEDIUM' | 'HIGH')}
@@ -1143,7 +1349,9 @@ export default function CustomerDetailPage() {
                 </select>
               </label>
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-gray-700">{t('customers.riskRatingReasonLabel')}</span>
+                <span className="mb-1 block font-medium text-gray-700">
+                  {t('customers.riskRatingReasonLabel')}
+                </span>
                 <textarea
                   value={riskReasonInput}
                   onChange={(e) => setRiskReasonInput(e.target.value)}
@@ -1154,11 +1362,17 @@ export default function CustomerDetailPage() {
                 />
               </label>
               {riskError && (
-                <div className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-800">{riskError}</div>
+                <div className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-800">
+                  {riskError}
+                </div>
               )}
             </div>
             <div className="flex items-center justify-end gap-2 border-t p-4">
-              <button onClick={() => setShowRiskModal(false)} className="form-button" disabled={riskSaving}>
+              <button
+                onClick={() => setShowRiskModal(false)}
+                className="form-button"
+                disabled={riskSaving}
+              >
                 {t('customers.riskRatingCancel')}
               </button>
               <button

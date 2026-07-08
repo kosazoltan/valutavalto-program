@@ -59,7 +59,10 @@ export default function SuspicionReportModal({
         // törzs-nevet használja (audit-integritás) és tenant-guardot futtat.
         customerId: customerId ?? undefined,
         customerName: effectiveName || undefined,
-        hufAmount: typeof hufAmount === 'number' && Number.isFinite(hufAmount) && hufAmount > 0 ? hufAmount : undefined,
+        hufAmount:
+          typeof hufAmount === 'number' && Number.isFinite(hufAmount) && hufAmount > 0
+            ? hufAmount
+            : undefined,
         suspicionSigns: signs.trim(),
       })
       setSigns('')
@@ -78,7 +81,9 @@ export default function SuspicionReportModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="suspicion-report-title"
-      onKeyDown={(e) => { if (e.key === 'Escape' && !saving) resetAndClose() }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && !saving) resetAndClose()
+      }}
     >
       <div className="w-full max-w-md rounded bg-white shadow-xl">
         <div className="flex items-center justify-between border-b p-4">
@@ -89,8 +94,8 @@ export default function SuspicionReportModal({
         </div>
         <div className="space-y-3 p-4">
           <p className="text-sm text-gray-600">
-            A bejelentés a szűrési naplóba kerül és a vezetők azonnali értesítést kapnak.
-            A tranzakciót NE rögzítse — a bejelentés után telefonon egyeztessen a területi vezetővel.
+            A bejelentés a szűrési naplóba kerül és a vezetők azonnali értesítést kapnak. A
+            tranzakciót NE rögzítse — a bejelentés után telefonon egyeztessen a területi vezetővel.
           </p>
           {!hasPrefilledName && (
             <label className="block text-sm">
@@ -107,7 +112,9 @@ export default function SuspicionReportModal({
             </label>
           )}
           {hasPrefilledName && (
-            <div className="text-sm"><strong>Ügyfél:</strong> {customerName}</div>
+            <div className="text-sm">
+              <strong>Ügyfél:</strong> {customerName}
+            </div>
           )}
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-gray-700">Gyanús jelek leírása</span>
@@ -121,11 +128,15 @@ export default function SuspicionReportModal({
             />
           </label>
           {error && (
-            <div className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-800">{error}</div>
+            <div className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-800">
+              {error}
+            </div>
           )}
         </div>
         <div className="flex items-center justify-end gap-2 border-t p-4">
-          <button onClick={resetAndClose} className="form-button" disabled={saving}>Mégse</button>
+          <button onClick={resetAndClose} className="form-button" disabled={saving}>
+            Mégse
+          </button>
           <button
             onClick={() => void submit()}
             disabled={saving || !signs.trim() || !effectiveName}

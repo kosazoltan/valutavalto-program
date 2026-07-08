@@ -3,7 +3,7 @@ import { Calculator, Search, Calendar } from 'lucide-react'
 import { contributionApi, Contribution } from '../../services/api/index'
 import { formatInteger } from '../../utils/numberFormat'
 import { toast } from '../../components/ui/toaster'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -21,9 +21,10 @@ export default function ContributionPage() {
   const filteredContributions = useMemo(() => {
     if (!searchTerm) return contributions
     const term = searchTerm.toLowerCase()
-    return contributions.filter(c =>
-      c.workerFullName?.toLowerCase().includes(term) ||
-      c.branchName?.toLowerCase().includes(term)
+    return contributions.filter(
+      (c) =>
+        c.workerFullName?.toLowerCase().includes(term) ||
+        c.branchName?.toLowerCase().includes(term),
     )
   }, [contributions, searchTerm])
 
@@ -83,7 +84,10 @@ export default function ContributionPage() {
       setSelectedContribution(await contributionApi.getById(id))
     } catch (error) {
       logger.error('ContributionPage', 'Hiba a járulék részletek betöltésekor:', error)
-      toast.warning('Részletek betöltése sikertelen', 'A kiválasztott járulék részletei nem tölthetők be')
+      toast.warning(
+        'Részletek betöltése sikertelen',
+        'A kiválasztott járulék részletei nem tölthetők be',
+      )
     } finally {
       setDetailLoadingId(null)
     }
@@ -106,18 +110,34 @@ export default function ContributionPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <div>
             <label className="form-label">{t('common.startDate')}</label>
-            <input type="date" className="form-input" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <input
+              type="date"
+              className="form-input"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
           </div>
           <div>
             <label className="form-label">{t('common.endDate')}</label>
-            <input type="date" className="form-input" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <input
+              type="date"
+              className="form-input"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
           </div>
           <div className="flex flex-col gap-2 sm:flex-row md:items-end">
-            <button onClick={handleFilterByPeriod} className="form-button-primary flex min-h-10 items-center justify-center gap-2">
+            <button
+              onClick={handleFilterByPeriod}
+              className="form-button-primary flex min-h-10 items-center justify-center gap-2"
+            >
               <Calendar size={16} />
               {t('common.filter')}
             </button>
-            <button onClick={handleCalculatePeriod} className="form-button flex min-h-10 items-center justify-center gap-2">
+            <button
+              onClick={handleCalculatePeriod}
+              className="form-button flex min-h-10 items-center justify-center gap-2"
+            >
               <Calculator size={16} />
               Időszaki számítás
             </button>
@@ -125,8 +145,17 @@ export default function ContributionPage() {
           <div>
             <label className="form-label">{t('common.search')}</label>
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-              <input type="text" className="form-input pl-8" placeholder="Dolgozó vagy fiók..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <Search
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={16}
+              />
+              <input
+                type="text"
+                className="form-input pl-8"
+                placeholder="Dolgozó vagy fiók..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
         </div>
@@ -149,18 +178,31 @@ export default function ContributionPage() {
             </thead>
             <tbody>
               {filteredContributions.length === 0 ? (
-                <tr><td colSpan={8} className="text-center text-gray-500 py-4">{t('common.noResult')}</td></tr>
+                <tr>
+                  <td colSpan={8} className="text-center text-gray-500 py-4">
+                    {t('common.noResult')}
+                  </td>
+                </tr>
               ) : (
                 filteredContributions.map((c) => (
                   <tr key={c.id}>
                     <td>{c.workerFullName}</td>
                     <td>{c.branchName || '-'}</td>
-                    <td>{c.periodStart} - {c.periodEnd}</td>
-                    <td>{c.contributionTypeName}</td>
-                    <td className="font-mono">{c.baseAmount ? formatInteger(c.baseAmount) : '0'} {c.currencyCode}</td>
-                    <td className="font-bold font-mono">{c.calculatedAmount ? formatInteger(c.calculatedAmount) : '0'} {c.currencyCode}</td>
                     <td>
-                      <span className={`badge ${c.statusName === 'Jóváhagyva' ? 'badge-green' : 'badge-yellow'}`}>
+                      {c.periodStart} - {c.periodEnd}
+                    </td>
+                    <td>{c.contributionTypeName}</td>
+                    <td className="font-mono">
+                      {c.baseAmount ? formatInteger(c.baseAmount) : '0'} {c.currencyCode}
+                    </td>
+                    <td className="font-bold font-mono">
+                      {c.calculatedAmount ? formatInteger(c.calculatedAmount) : '0'}{' '}
+                      {c.currencyCode}
+                    </td>
+                    <td>
+                      <span
+                        className={`badge ${c.statusName === 'Jóváhagyva' ? 'badge-green' : 'badge-yellow'}`}
+                      >
                         {c.statusName}
                       </span>
                     </td>
@@ -186,7 +228,11 @@ export default function ContributionPage() {
         <div className="form-panel" data-testid="contribution-detail-panel">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-base font-semibold text-gray-800">Járulék részletei</h2>
-            <button type="button" className="form-button h-8 text-xs" onClick={() => setSelectedContribution(null)}>
+            <button
+              type="button"
+              className="form-button h-8 text-xs"
+              onClick={() => setSelectedContribution(null)}
+            >
               Bezárás
             </button>
           </div>
@@ -207,12 +253,15 @@ export default function ContributionPage() {
             </div>
             <div>
               <dt className="text-gray-500">Tranzakciók</dt>
-              <dd className="font-mono text-gray-900">{formatInteger(selectedContribution.transactionCount ?? 0)}</dd>
+              <dd className="font-mono text-gray-900">
+                {formatInteger(selectedContribution.transactionCount ?? 0)}
+              </dd>
             </div>
             <div>
               <dt className="text-gray-500">Teljes volumen</dt>
               <dd className="font-mono text-gray-900">
-                {formatInteger(selectedContribution.totalVolume ?? 0)} {selectedContribution.currencyCode}
+                {formatInteger(selectedContribution.totalVolume ?? 0)}{' '}
+                {selectedContribution.currencyCode}
               </dd>
             </div>
             <div>
@@ -230,4 +279,3 @@ export default function ContributionPage() {
     </div>
   )
 }
-

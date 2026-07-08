@@ -27,9 +27,7 @@ export default function CurrencyPage() {
     if (!searchTerm) return currencies
     const t = searchTerm.toLowerCase()
     return currencies.filter(
-      (c) =>
-        c.code.toLowerCase().includes(t) ||
-        c.name.toLowerCase().includes(t),
+      (c) => c.code.toLowerCase().includes(t) || c.name.toLowerCase().includes(t),
     )
   }, [currencies, searchTerm])
 
@@ -69,12 +67,17 @@ export default function CurrencyPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
       )}
 
       <div className="form-panel">
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+          <Search
+            className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+            size={16}
+          />
           <input
             type="text"
             className="form-input pl-8"
@@ -100,7 +103,9 @@ export default function CurrencyPage() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center text-gray-500 py-4">{t('common.noResult')}</td>
+                <td colSpan={6} className="text-center text-gray-500 py-4">
+                  {t('common.noResult')}
+                </td>
               </tr>
             ) : (
               filtered.map((c) => (

@@ -42,7 +42,11 @@ export default function DocumentPairCapture({ customerId }: DocumentPairCaptureP
       setLoadingDocs(true)
       setRegisteredDocs(await documentScannerApi.getCustomerDocuments(customerId))
     } catch (err) {
-      logger.warn('DocumentPairCapture', 'Regisztrált okmányok betöltés hiba:', getErrorMessage(err))
+      logger.warn(
+        'DocumentPairCapture',
+        'Regisztrált okmányok betöltés hiba:',
+        getErrorMessage(err),
+      )
     } finally {
       setLoadingDocs(false)
     }
@@ -80,48 +84,56 @@ export default function DocumentPairCapture({ customerId }: DocumentPairCaptureP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [electronAvailable])
 
-  const captureSide = useCallback(async (side: 'front' | 'back') => {
-    if (!window.electronAPI?.scanSaveDocument) {
-      toast.error(t('documents.okmanyCaptureHiba'), t('documents.okmanyCaptureNemElectron'))
-      return
-    }
-    if (!videoRef.current || !canvasRef.current) {
-      toast.error(t('documents.okmanyCaptureHiba'), t('documents.okmanyCaptureHiba'))
-      return
-    }
+  const captureSide = useCallback(
+    async (side: 'front' | 'back') => {
+      if (!window.electronAPI?.scanSaveDocument) {
+        toast.error(t('documents.okmanyCaptureHiba'), t('documents.okmanyCaptureNemElectron'))
+        return
+      }
+      if (!videoRef.current || !canvasRef.current) {
+        toast.error(t('documents.okmanyCaptureHiba'), t('documents.okmanyCaptureHiba'))
+        return
+      }
 
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    canvas.width = video.videoWidth || 1280
-    canvas.height = video.videoHeight || 720
+      const video = videoRef.current
+      const canvas = canvasRef.current
+      canvas.width = video.videoWidth || 1280
+      canvas.height = video.videoHeight || 720
 
-    const ctx = canvas.getContext('2d')
-    if (!ctx) {
-      toast.error(t('documents.okmanyCaptureHiba'), t('documents.okmanyCaptureHiba'))
-      return
-    }
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        toast.error(t('documents.okmanyCaptureHiba'), t('documents.okmanyCaptureHiba'))
+        return
+      }
 
-    // REAL capture: video frame → canvas → PNG data URL → base64.
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-    const dataUrl = canvas.toDataURL('image/png')
-    const base64 = dataUrl.replace(/^data:image\/png;base64,/, '')
+      // REAL capture: video frame → canvas → PNG data URL → base64.
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      const dataUrl = canvas.toDataURL('image/png')
+      const base64 = dataUrl.replace(/^data:image\/png;base64,/, '')
 
-    if (!base64) {
-      toast.error(t('documents.okmanyCaptureHiba'), t('documents.okmanyCaptureNemElectron'))
-      return
-    }
+      if (!base64) {
+        toast.error(t('documents.okmanyCaptureHiba'), t('documents.okmanyCaptureNemElectron'))
+        return
+      }
 
-    try {
-      const scopeId = `customer-${customerId}`.replace(/[^a-zA-Z0-9_-]/g, '')
-      const result = await window.electronAPI.scanSaveDocument(scopeId, docType, base64, side)
-      if (side === 'front') setFrontPath(result.path)
-      else setBackPath(result.path)
-      toast.success(side === 'front' ? t('documents.okmanyCaptureElolap') : t('documents.okmanyCaptureHatlap'), result.path)
-    } catch (err) {
-      logger.error('DocumentPairCapture', 'Scan hiba:', getErrorMessage(err))
-      toast.error(t('documents.okmanyCaptureHiba'), getErrorMessage(err))
-    }
-  }, [customerId, docType, t])
+      try {
+        const scopeId = `customer-${customerId}`.replace(/[^a-zA-Z0-9_-]/g, '')
+        const result = await window.electronAPI.scanSaveDocument(scopeId, docType, base64, side)
+        if (side === 'front') setFrontPath(result.path)
+        else setBackPath(result.path)
+        toast.success(
+          side === 'front'
+            ? t('documents.okmanyCaptureElolap')
+            : t('documents.okmanyCaptureHatlap'),
+          result.path,
+        )
+      } catch (err) {
+        logger.error('DocumentPairCapture', 'Scan hiba:', getErrorMessage(err))
+        toast.error(t('documents.okmanyCaptureHiba'), getErrorMessage(err))
+      }
+    },
+    [customerId, docType, t],
+  )
 
   const handleUpload = async () => {
     if (!frontPath || !backPath) return
@@ -137,7 +149,10 @@ export default function DocumentPairCapture({ customerId }: DocumentPairCaptureP
         frontPath,
         backPath,
       })
-      toast.success(t('documents.okmanyCaptureFeltoltes'), t('documents.okmanyCaptureFeltoltesUtemezve'))
+      toast.success(
+        t('documents.okmanyCaptureFeltoltes'),
+        t('documents.okmanyCaptureFeltoltesUtemezve'),
+      )
       setFrontPath(null)
       setBackPath(null)
       await loadRegisteredDocs()
@@ -188,7 +203,9 @@ export default function DocumentPairCapture({ customerId }: DocumentPairCaptureP
             className="form-input"
           >
             {(Object.entries(DOC_TYPE_LABELS) as [DocType, string][]).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
           </select>
         </div>
@@ -200,20 +217,12 @@ export default function DocumentPairCapture({ customerId }: DocumentPairCaptureP
         <canvas ref={canvasRef} className="hidden" />
 
         <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => void captureSide('front')}
-            className="form-button"
-          >
+          <button type="button" onClick={() => void captureSide('front')} className="form-button">
             <Camera size={16} />
             {t('documents.okmanyCaptureElolap')}
             {frontPath && <span className="ml-2 text-green-600">✓</span>}
           </button>
-          <button
-            type="button"
-            onClick={() => void captureSide('back')}
-            className="form-button"
-          >
+          <button type="button" onClick={() => void captureSide('back')} className="form-button">
             <Camera size={16} />
             {t('documents.okmanyCaptureHatlap')}
             {backPath && <span className="ml-2 text-green-600">✓</span>}
@@ -231,8 +240,16 @@ export default function DocumentPairCapture({ customerId }: DocumentPairCaptureP
 
         {(frontPath || backPath) && (
           <div className="rounded border border-gray-200 bg-gray-50 p-2 text-xs text-gray-600">
-            {frontPath && <div><strong>{t('documents.elolap')}:</strong> {frontPath}</div>}
-            {backPath && <div><strong>{t('documents.hatlap')}:</strong> {backPath}</div>}
+            {frontPath && (
+              <div>
+                <strong>{t('documents.elolap')}:</strong> {frontPath}
+              </div>
+            )}
+            {backPath && (
+              <div>
+                <strong>{t('documents.hatlap')}:</strong> {backPath}
+              </div>
+            )}
           </div>
         )}
 

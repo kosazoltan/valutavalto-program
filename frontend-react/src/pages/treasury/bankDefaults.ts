@@ -13,7 +13,7 @@ export function resolveDefaultBankName(
   // Szigorú illesztés: a normalizált név a "raiffeisen"-nel KEZDŐDjön (nem véletlen
   // substring-egyezés), így a "...Raiffeisen..." nevű idegen bank nem aktiválódik.
   const match = list.find(
-    b => typeof b?.name === 'string' && b.name.trim().toLowerCase().startsWith('raiffeisen'),
+    (b) => typeof b?.name === 'string' && b.name.trim().toLowerCase().startsWith('raiffeisen'),
   )
   return match?.name?.trim() || RAIFFEISEN_CANONICAL
 }

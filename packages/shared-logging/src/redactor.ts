@@ -20,7 +20,8 @@ const PATTERNS = {
   card_pan: /\b(?:4\d{12}(?:\d{3})?|5[1-5]\d{14}|3[47]\d{13}|6(?:011|5\d{2})\d{12})\b/g,
   openai_sk: /sk-(?:proj|svcacct)-[A-Za-z0-9_-]{20,}/g,
   // Kontextus-fuggo: kulcsszo + 5char + ertek - csak az erteket cserelni
-  hu_id_card_ctx: /(szig\.?szam|szemelyi\.?ig\.?|id[_-]?card|identity[_-]?card)([^A-Za-z0-9]{0,5})(\d{6}[A-Z]{2})/gi,
+  hu_id_card_ctx:
+    /(szig\.?szam|szemelyi\.?ig\.?|id[_-]?card|identity[_-]?card)([^A-Za-z0-9]{0,5})(\d{6}[A-Z]{2})/gi,
   hu_tax_id_ctx: /(adoszam|tax[_-]?id)([^A-Za-z0-9]{0,5})(\d{10})/gi,
 }
 
@@ -54,16 +55,18 @@ const FIELD_REDACT = new Set<string>([
 const REDACTED = '[REDACTED]'
 
 function redactString(s: string): string {
-  return s
-    .replace(PATTERNS.openai_sk, '[OPENAI_KEY]')
-    .replace(PATTERNS.jwt, '[JWT]')
-    .replace(PATTERNS.bearer, 'Bearer [REDACTED]')
-    .replace(PATTERNS.email, '[EMAIL]')
-    .replace(PATTERNS.iban, '[IBAN]')
-    .replace(PATTERNS.card_pan, '[PAN]')
-    // Kontextus-fuggo: a kulcsszo + separator megmarad, csak az ertek redact
-    .replace(PATTERNS.hu_id_card_ctx, '$1$2[IDCARD]')
-    .replace(PATTERNS.hu_tax_id_ctx, '$1$2[TAXID]')
+  return (
+    s
+      .replace(PATTERNS.openai_sk, '[OPENAI_KEY]')
+      .replace(PATTERNS.jwt, '[JWT]')
+      .replace(PATTERNS.bearer, 'Bearer [REDACTED]')
+      .replace(PATTERNS.email, '[EMAIL]')
+      .replace(PATTERNS.iban, '[IBAN]')
+      .replace(PATTERNS.card_pan, '[PAN]')
+      // Kontextus-fuggo: a kulcsszo + separator megmarad, csak az ertek redact
+      .replace(PATTERNS.hu_id_card_ctx, '$1$2[IDCARD]')
+      .replace(PATTERNS.hu_tax_id_ctx, '$1$2[TAXID]')
+  )
 }
 
 /**

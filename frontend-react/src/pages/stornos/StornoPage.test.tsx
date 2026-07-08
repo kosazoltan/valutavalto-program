@@ -90,13 +90,19 @@ describe('FK-penztar-batch D.1+D.2 — StornoPage', () => {
       },
     )
     mocks.getById.mockResolvedValue(mockTransaction)
-    mocks.check.mockResolvedValue({ requiresApproval: false, message: 'Sztornó végrehajtható.', dailyStornoCount: 0 })
+    mocks.check.mockResolvedValue({
+      requiresApproval: false,
+      message: 'Sztornó végrehajtható.',
+      dailyStornoCount: 0,
+    })
     mocks.isElectronQueueAvailable.mockReturnValue(false) // online ág
   })
 
   it('D.1: csak az indok mező van — nincs egyedi árfolyam input, nincs fizetési mód select', async () => {
     await renderLoaded()
-    expect(screen.getByPlaceholderText('Részletesen indokolja a sztornó okát...')).toBeInTheDocument()
+    expect(
+      screen.getByPlaceholderText('Részletesen indokolja a sztornó okát...'),
+    ).toBeInTheDocument()
     // a két eltávolított mező egyik formájában sem létezik
     expect(screen.queryByText(/Egyedi árfolyam/i)).toBeNull()
     expect(screen.queryByText(/Fizetési mód/i)).toBeNull()
@@ -137,16 +143,22 @@ describe('FK-penztar-batch D.1+D.2 — StornoPage', () => {
 
     // zárás → navigate a siker-üzenettel
     fireEvent.click(screen.getByText('Mégse (ESC)'))
-    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/transactions', {
-      state: { message: 'Sztornó sikeresen végrehajtva' },
-    }))
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith('/transactions', {
+        state: { message: 'Sztornó sikeresen végrehajtva' },
+      }),
+    )
   })
 
   it('D.2 offline ág: a pending-mentés customExchangeRate/paymentMethod nélkül (null) megy, és helyi referenciás bizonylat nyílik', async () => {
     mocks.isElectronQueueAvailable.mockReturnValue(true)
     mocks.saveAndSyncPendingStorno.mockResolvedValue({
-      savedIds: [1], syncedCount: 1, pendingCount: 0, allSavedSynced: true,
-      syncErrors: [], localReferenceNumbers: ['LST-2026-0001'],
+      savedIds: [1],
+      syncedCount: 1,
+      pendingCount: 0,
+      allSavedSynced: true,
+      syncErrors: [],
+      localReferenceNumbers: ['LST-2026-0001'],
     })
     await renderLoaded()
 

@@ -57,14 +57,19 @@ export const MAX_HEARTBEAT_INTERVAL_MS = 600_000
  * `.pipe(z.number().int().min().max())` — Zod number constraints range validation
  * + integer constraint (defensive, redundáns a regex-szel de explicit).
  */
-const HeartbeatIntervalSchema = z.string()
+const HeartbeatIntervalSchema = z
+  .string()
   .regex(/^\d+$/, 'NEM strict-integer string')
   .transform((s) => parseInt(s, 10))
   .pipe(
-    z.number()
+    z
+      .number()
       .int()
       .min(MIN_HEARTBEAT_INTERVAL_MS, `< ${MIN_HEARTBEAT_INTERVAL_MS} (DOS-protekció)`)
-      .max(MAX_HEARTBEAT_INTERVAL_MS, `> ${MAX_HEARTBEAT_INTERVAL_MS} (fagyás-detection felbontás)`),
+      .max(
+        MAX_HEARTBEAT_INTERVAL_MS,
+        `> ${MAX_HEARTBEAT_INTERVAL_MS} (fagyás-detection felbontás)`,
+      ),
   )
 
 /**

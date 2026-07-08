@@ -69,7 +69,11 @@ export const territoryReconciliationApi = {
     })
     return res.data
   },
-  getTerritoryProfit: async (id: number, from: string, to: string): Promise<TerritoryProfitSummary> => {
+  getTerritoryProfit: async (
+    id: number,
+    from: string,
+    to: string,
+  ): Promise<TerritoryProfitSummary> => {
     const res = await api.get<TerritoryProfitSummary>(`/territories/${id}/profit`, {
       params: { from, to },
     })

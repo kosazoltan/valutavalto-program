@@ -24,18 +24,47 @@ vi.mock('../../services/api/index', () => ({
 
 const WORKERS = [
   // multi-role, KÜLÖNBÖZŐ csoportban: Vezetői (Területi vezető) + Operatív (Értéktáros)
-  { id: 1, workerCode: 'BR020-01', fullName: 'Kiss Anna', region: 'SZEGED', active: true, roleCodes: ['teruleti_vezeto', 'ertektar'] },
+  {
+    id: 1,
+    workerCode: 'BR020-01',
+    fullName: 'Kiss Anna',
+    region: 'SZEGED',
+    active: true,
+    roleCodes: ['teruleti_vezeto', 'ertektar'],
+  },
   // multi-role, AZONOS csoportban: Operatív (Pénztáros, Értéktáros)
-  { id: 2, workerCode: 'BR020-02', fullName: 'Nagy Béla', region: 'SZEGED', active: true, roleCodes: ['penztar', 'ertektar'] },
+  {
+    id: 2,
+    workerCode: 'BR020-02',
+    fullName: 'Nagy Béla',
+    region: 'SZEGED',
+    active: true,
+    roleCodes: ['penztar', 'ertektar'],
+  },
   // üres roleCodes → Egyéb/Háttér, "–"
-  { id: 3, workerCode: 'BR013-01', fullName: 'Tóth Cecília', region: 'PECS', active: true, roleCodes: [] },
+  {
+    id: 3,
+    workerCode: 'BR013-01',
+    fullName: 'Tóth Cecília',
+    region: 'PECS',
+    active: true,
+    roleCodes: [],
+  },
   // region null + inaktív → Vezetői (Ügyvezető), "Nincs megadva", Inaktív
-  { id: 4, workerCode: 'KP-01', fullName: 'Szabó Dénes', region: null, active: false, roleCodes: ['ugyvezeto'] },
+  {
+    id: 4,
+    workerCode: 'KP-01',
+    fullName: 'Szabó Dénes',
+    region: null,
+    active: false,
+    roleCodes: ['ugyvezeto'],
+  },
 ]
 
 function mockApi() {
   mockGet.mockImplementation((url: string) => {
-    if (typeof url === 'string' && url === '/workers/directory') return Promise.resolve({ data: WORKERS })
+    if (typeof url === 'string' && url === '/workers/directory')
+      return Promise.resolve({ data: WORKERS })
     return Promise.resolve({ data: [] })
   })
 }

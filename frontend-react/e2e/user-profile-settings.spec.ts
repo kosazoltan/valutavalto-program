@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/features') && method === 'GET') {
@@ -128,7 +136,7 @@ test('beállítások mobil nézetben saját user profilt kér a backendből', as
 
   await page.goto('/settings', { waitUntil: 'domcontentloaded' })
 
-  const userMeRequest = page.waitForRequest(request => {
+  const userMeRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
     return request.method() === 'GET' && url.pathname === '/api/v1/users/me'
   })
@@ -141,7 +149,7 @@ test('beállítások mobil nézetben saját user profilt kér a backendből', as
   await expect(profile.getByText('admin@example.com')).toBeVisible()
   await expect(profile.getByText('Budapest 01')).toBeVisible()
 
-  const updatePasswordRequest = page.waitForRequest(request => {
+  const updatePasswordRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
     return request.method() === 'PUT' && url.pathname === '/api/v1/users/me/password'
   })
@@ -152,8 +160,8 @@ test('beállítások mobil nézetben saját user profilt kér a backendből', as
   await updatePasswordRequest
   await expect(page.getByText('Saját jelszó módosítva.')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

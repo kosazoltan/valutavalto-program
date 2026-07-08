@@ -5,7 +5,10 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { useAuthStore } from '../../stores/authStore'
 import { vaultClosingChecklistApi } from '../../services/api/vaultClosingChecklist'
-import type { VaultClosingChecklistDto, UpdateChecklistItemsRequest } from '../../services/api/vaultClosingChecklist'
+import type {
+  VaultClosingChecklistDto,
+  UpdateChecklistItemsRequest,
+} from '../../services/api/vaultClosingChecklist'
 import VaultClosingAuditorDialog from './VaultClosingAuditorDialog'
 import type { CompleteChecklistRequest } from '../../services/api/vaultClosingChecklist'
 
@@ -21,7 +24,11 @@ import type { CompleteChecklistRequest } from '../../services/api/vaultClosingCh
  */
 
 /** A 9 checklist-tétel a spec PONTOS szövegeivel (FR-ZARUI-17..25). */
-const CHECKLIST_ITEMS: Array<{ key: keyof UpdateChecklistItemsRequest; label: string; fr: string }> = [
+const CHECKLIST_ITEMS: Array<{
+  key: keyof UpdateChecklistItemsRequest
+  label: string
+  fr: string
+}> = [
   {
     key: 'item1',
     label: 'Minden pénztár készlete feltöltve (címletek, fém euró)',
@@ -39,7 +46,8 @@ const CHECKLIST_ITEMS: Array<{ key: keyof UpdateChecklistItemsRequest; label: st
   },
   {
     key: 'item4',
-    label: 'Konkurencia árfolyamainak/készleteinek figyelemmel követése; konkurencia-jelentés megírása (eseti)',
+    label:
+      'Konkurencia árfolyamainak/készleteinek figyelemmel követése; konkurencia-jelentés megírása (eseti)',
     fr: 'FR-ZARUI-20',
   },
   {
@@ -54,17 +62,20 @@ const CHECKLIST_ITEMS: Array<{ key: keyof UpdateChecklistItemsRequest; label: st
   },
   {
     key: 'item7',
-    label: 'TRB tábla kitöltése; egyedi árfolyamos tábla kitöltése+továbbítása (eseti); egyedi árfolyamok ellenőrzése+továbbítása (eseti)',
+    label:
+      'TRB tábla kitöltése; egyedi árfolyamos tábla kitöltése+továbbítása (eseti); egyedi árfolyamok ellenőrzése+továbbítása (eseti)',
     fr: 'FR-ZARUI-23',
   },
   {
     key: 'item8',
-    label: 'Nagy ügyfélkártyák begyűjtése/összesítése, továbbítása (eseti); könyvelések lenyomtatása, lefűzése, adatainak ellenőrzése (eseti)',
+    label:
+      'Nagy ügyfélkártyák begyűjtése/összesítése, továbbítása (eseti); könyvelések lenyomtatása, lefűzése, adatainak ellenőrzése (eseti)',
     fr: 'FR-ZARUI-24',
   },
   {
     key: 'item9',
-    label: 'Hóvégi egyeztetés területekkel (eseti); hóvégi egyeztetés pénztárakkal; napi jelentések leszavainak elküldése SMS-ben a pénztáraknak/értéktárosoknak stb. (eseti)',
+    label:
+      'Hóvégi egyeztetés területekkel (eseti); hóvégi egyeztetés pénztárakkal; napi jelentések leszavainak elküldése SMS-ben a pénztáraknak/értéktárosoknak stb. (eseti)',
     fr: 'FR-ZARUI-25',
   },
 ]
@@ -77,7 +88,8 @@ interface Props {
 export default function VaultClosingChecklistPanel({ date }: Props) {
   const worker = useAuthStore((s) => s.worker)
   const branchId = worker?.branchId ?? ''
-  const workerName = worker?.fullName ?? `${worker?.lastName ?? ''} ${worker?.firstName ?? ''}`.trim()
+  const workerName =
+    worker?.fullName ?? `${worker?.lastName ?? ''} ${worker?.firstName ?? ''}`.trim()
 
   const [checklist, setChecklist] = useState<VaultClosingChecklistDto | null>(null)
   const [loading, setLoading] = useState(false)
@@ -121,7 +133,7 @@ export default function VaultClosingChecklistPanel({ date }: Props) {
       [key]: !checklist[key],
     }
     // optimista frissítés
-    setChecklist((prev) => prev ? { ...prev, [key]: !prev[key] } : prev)
+    setChecklist((prev) => (prev ? { ...prev, [key]: !prev[key] } : prev))
     try {
       setSaving(true)
       const saved = await vaultClosingChecklistApi.updateItems(branchId, date, updated)
@@ -157,9 +169,7 @@ export default function VaultClosingChecklistPanel({ date }: Props) {
   }
 
   const isCompleted = !!checklist?.completedAt
-  const checkedCount = checklist
-    ? CHECKLIST_ITEMS.filter((item) => checklist[item.key]).length
-    : 0
+  const checkedCount = checklist ? CHECKLIST_ITEMS.filter((item) => checklist[item.key]).length : 0
 
   return (
     <>
@@ -241,7 +251,9 @@ export default function VaultClosingChecklistPanel({ date }: Props) {
                               <Square size={18} className="text-gray-400" />
                             )}
                           </span>
-                          <span className={`text-sm leading-snug ${checked ? 'text-gray-700' : 'text-gray-800'}`}>
+                          <span
+                            className={`text-sm leading-snug ${checked ? 'text-gray-700' : 'text-gray-800'}`}
+                          >
                             <span className="mr-1 font-medium text-gray-500">{idx + 1}.</span>
                             {item.label}
                           </span>

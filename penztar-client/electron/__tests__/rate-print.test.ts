@@ -289,9 +289,10 @@ describe('SyncEngine — rate print outbox poison isolation', () => {
 
     await engine.syncRatePrintObligations();
 
-    expect(dbRun).not.toHaveBeenCalledWith('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [
-      'dist-transient',
-    ]);
+    expect(dbRun).not.toHaveBeenCalledWith(
+      'DELETE FROM rate_print_outbox WHERE distribution_id = ?',
+      ['dist-transient'],
+    );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       pendingPrintUrl,
@@ -311,9 +312,10 @@ describe('SyncEngine — rate print outbox poison isolation', () => {
 
     await engine.syncRatePrintObligations();
 
-    expect(dbRun).not.toHaveBeenCalledWith('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [
-      'dist-network',
-    ]);
+    expect(dbRun).not.toHaveBeenCalledWith(
+      'DELETE FROM rate_print_outbox WHERE distribution_id = ?',
+      ['dist-network'],
+    );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       pendingPrintUrl,
@@ -327,15 +329,20 @@ describe('SyncEngine — rate print outbox poison isolation', () => {
     );
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({ ok: false, status: 429, statusText: 'Too Many Requests' } as Response)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+      } as Response)
       .mockResolvedValueOnce(jsonResponse([]));
     vi.stubGlobal('fetch', fetchMock);
 
     await engine.syncRatePrintObligations();
 
-    expect(dbRun).not.toHaveBeenCalledWith('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [
-      'dist-rate-limited',
-    ]);
+    expect(dbRun).not.toHaveBeenCalledWith(
+      'DELETE FROM rate_print_outbox WHERE distribution_id = ?',
+      ['dist-rate-limited'],
+    );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       pendingPrintUrl,
@@ -354,9 +361,10 @@ describe('SyncEngine — rate print outbox poison isolation', () => {
 
     await engine.syncRatePrintObligations();
 
-    expect(dbRun).not.toHaveBeenCalledWith('DELETE FROM rate_print_outbox WHERE distribution_id = ?', [
-      'dist-auth',
-    ]);
+    expect(dbRun).not.toHaveBeenCalledWith(
+      'DELETE FROM rate_print_outbox WHERE distribution_id = ?',
+      ['dist-auth'],
+    );
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(mockedDeleteConfig).toHaveBeenCalledWith('auth_token');
   });

@@ -5,13 +5,28 @@ import { useFKeyHotkey } from '../../hooks/useFKeyHotkey'
 import { AlertTriangle } from 'lucide-react'
 import { HotkeyBar } from '../../components/cashier/HotkeyBar'
 import { useCompanyTheme } from '../../contexts/CompanyThemeContext'
-import { transactionApi, exchangeRateApi, dailySessionApi, cashBalanceApi, receiptApi, handlingFeeConfigApi, discountThresholdApi, incomeSourceDocApi } from '../../services/api/index'
+import {
+  transactionApi,
+  exchangeRateApi,
+  dailySessionApi,
+  cashBalanceApi,
+  receiptApi,
+  handlingFeeConfigApi,
+  discountThresholdApi,
+  incomeSourceDocApi,
+} from '../../services/api/index'
 import type { HandlingFeeConfig } from '../../services/api/index'
 import { computeHandlingFee } from '../../utils/handlingFee'
 import { api } from '../../services/api/client'
 import AmlApproverModal, { toApprovalCustomer } from '../../components/auth/AmlApproverModal'
 import SuspicionReportModal from '../../components/SuspicionReportModal'
-import type { BuyRequest, SellRequest, TransactionLineRequest, ExchangeRate, CashierCustomRateQuota } from '../../services/api/index'
+import type {
+  BuyRequest,
+  SellRequest,
+  TransactionLineRequest,
+  ExchangeRate,
+  CashierCustomRateQuota,
+} from '../../services/api/index'
 import { roundHuf, multiLinePayable } from '../../utils/rounding'
 import { toast } from '../../components/ui/toaster'
 import {
@@ -33,7 +48,12 @@ import { CurrencyAutocomplete } from '../../components/cashier/CurrencyAutocompl
 import { useIdentificationLevel } from './hooks/useIdentificationLevel'
 import type { AmlCheckResultDto } from '../../services/api/transactions'
 import { useTranslation } from 'react-i18next'
-import { getBandForAmount, isWithinBand, isWithinHardLimit, getHardLimitMessage } from '../../utils/rateBands'
+import {
+  getBandForAmount,
+  isWithinBand,
+  isWithinHardLimit,
+  getHardLimitMessage,
+} from '../../utils/rateBands'
 import RateAuthDialog from './components/RateAuthDialog'
 import { getErrorMessage } from '../../utils/errorHandling'
 import IncomeSourceDocCapture from '../../components/documents/IncomeSourceDocCapture'
@@ -89,17 +109,20 @@ const emptyRow = (): TransactionRow => ({
   exchangeRate: 0,
   quantity: '',
   hufValue: 0,
-  foreignStatus: 'FOREIGN',  // Default: kulfoldi (penzvalto-bran a leggyakoribb)
+  foreignStatus: 'FOREIGN', // Default: kulfoldi (penzvalto-bran a leggyakoribb)
 })
 
-const RateInput = forwardRef<HTMLInputElement, {
-  rate: number
-  onChange: (val: string) => void
-  onKeyDown: (e: React.KeyboardEvent) => void
-  onFocus: () => void
-  onRateBlur?: () => void
-  disabled: boolean
-}>(({ rate, onChange, onKeyDown, onFocus, onRateBlur, disabled }, ref) => {
+const RateInput = forwardRef<
+  HTMLInputElement,
+  {
+    rate: number
+    onChange: (val: string) => void
+    onKeyDown: (e: React.KeyboardEvent) => void
+    onFocus: () => void
+    onRateBlur?: () => void
+    disabled: boolean
+  }
+>(({ rate, onChange, onKeyDown, onFocus, onRateBlur, disabled }, ref) => {
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
 
@@ -109,7 +132,10 @@ const RateInput = forwardRef<HTMLInputElement, {
     <input
       ref={ref}
       value={editing ? text : display}
-      onChange={(e) => { setText(e.target.value); onChange(e.target.value) }}
+      onChange={(e) => {
+        setText(e.target.value)
+        onChange(e.target.value)
+      }}
       onKeyDown={onKeyDown}
       onFocus={(e) => {
         setEditing(true)
@@ -117,7 +143,10 @@ const RateInput = forwardRef<HTMLInputElement, {
         onFocus()
         e.target.select()
       }}
-      onBlur={() => { setEditing(false); onRateBlur?.() }}
+      onBlur={() => {
+        setEditing(false)
+        onRateBlur?.()
+      }}
       type="text"
       inputMode="decimal"
       className="w-28 h-8 text-right font-mono text-base font-semibold bg-transparent border-2 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:border-transparent"
@@ -141,9 +170,7 @@ export default function CashierTransactionPage() {
 
   // Transaction state
   const [mode, setMode] = useState<'buy' | 'sell'>('buy')
-  const [rows, setRows] = useState<TransactionRow[]>(
-    Array.from({ length: MAX_LINES }, emptyRow)
-  )
+  const [rows, setRows] = useState<TransactionRow[]>(Array.from({ length: MAX_LINES }, emptyRow))
   const [activeRow, setActiveRow] = useState(0)
   const [activeField, setActiveField] = useState<'currency' | 'rate' | 'quantity'>('currency')
 
@@ -161,7 +188,8 @@ export default function CashierTransactionPage() {
   const [showIncomeProofSendModal, setShowIncomeProofSendModal] = useState(false)
   const [incomeProofSending, setIncomeProofSending] = useState(false)
   const [incomeProofSendError, setIncomeProofSendError] = useState<string | null>(null)
-  const [incomeProofPendingPayload, setIncomeProofPendingPayload] = useState<IncomeProofEmailPayload | null>(null)
+  const [incomeProofPendingPayload, setIncomeProofPendingPayload] =
+    useState<IncomeProofEmailPayload | null>(null)
 
   // Fees
   const [handlingFee, setHandlingFee] = useState(0)
@@ -182,7 +210,9 @@ export default function CashierTransactionPage() {
   // mátrixot; itt csak a kliens-választás (típus/jogcím/kártyaszám) — HALF/WAIVED-nél a szerver
   // számolja a végösszeget, SPECIAL-nál a feeInput az egyedi díj.
   const [feeOverrideType, setFeeOverrideType] = useState<'' | 'HALF' | 'WAIVED' | 'SPECIAL'>('')
-  const [feeOverrideReason, setFeeOverrideReason] = useState<'' | 'DIRECTOR_APPROVAL' | 'CUSTOMER_CARD' | 'PROMOTION'>('')
+  const [feeOverrideReason, setFeeOverrideReason] = useState<
+    '' | 'DIRECTOR_APPROVAL' | 'CUSTOMER_CARD' | 'PROMOTION'
+  >('')
   const [cardNumber, setCardNumber] = useState('')
   // FK-KEZDIJ B.1 (2026-06-12, user-kérés): a díj a "Kezelési költség beállítások" konfig
   // szerint AUTOMATIKUSAN számolódik (ezrelékes/sávos) — a szerver eddig is ezzel könyvelt,
@@ -240,10 +270,14 @@ export default function CashierTransactionPage() {
   }, [])
 
   // Auth store for receipt data
-  const worker = useAuthStore(s => s.worker)
+  const worker = useAuthStore((s) => s.worker)
   // FK-KEZDÍJ (2026-06-02): a bejelentkezett dolgozó ügyvezető/főértéktáros-e — csak ekkor látszik
   // a SPECIAL (egyedi díj) + a "vezetői jóváhagyás" jogcím (a szerver amúgy is validál, ez UX-gate).
-  const isDirectorUser = useAuthStore(s => s.hasCanonicalRole)(['ugyvezeto', 'foertektar', 'admin'])
+  const isDirectorUser = useAuthStore((s) => s.hasCanonicalRole)([
+    'ugyvezeto',
+    'foertektar',
+    'admin',
+  ])
 
   // Refs for keyboard navigation
   const currencyRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -264,25 +298,38 @@ export default function CashierTransactionPage() {
   // Math.round-ja korábban 1 Ft-os értéket adhatott → az ügyfélnek mutatott + az AML-küszöbhöz használt
   // `total` nem volt 5 Ft többszöröse. (Per-soros összegek külön, már roundHuf-olva mennek a backendre.)
   const subtotal = rows.reduce((sum, r) => sum + r.hufValue, 0)
-  const discountAmount = discount > 0 ? roundHuf(subtotal * discount / 100) : 0
+  const discountAmount = discount > 0 ? roundHuf((subtotal * discount) / 100) : 0
   // Codex PR #1103 P1: a fizetendő MÓD-FÜGGŐ — BUY-nál a díj LEVONÓDIK a kifizetésből és a
   // kedvezmény hozzáadódik, SELL-nél fordítva (a szerver calculateBuyGross/calculateSellGross
   // tükre = multiLinePayable). A korábbi sell-előjelű képlet BUY-nál díj/kedvezmény mellett
   // rossz összeget mutatott és rossz AML-küszöböt ellenőrzött.
-  const total = multiLinePayable(subtotal, mode === 'buy' ? 'buy' : 'sell', discount > 0 ? discount : 0, handlingFee > 0 ? handlingFee : 0)
+  const total = multiLinePayable(
+    subtotal,
+    mode === 'buy' ? 'buy' : 'sell',
+    discount > 0 ? discount : 0,
+    handlingFee > 0 ? handlingFee : 0,
+  )
 
   // Identification level based on HUF total
-  const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } = useIdentificationLevel(String(total))
+  const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } =
+    useIdentificationLevel(String(total))
 
   // FK-KEZDIJ B.1 (2026-06-12): a kezelési díj konfig betöltése (read-only — a backend
   // GET /handling-fee-config a pénztárosnak is engedélyezett). Régi backend (403) vagy
   // hálózati hiba → null konfig, a viselkedés a korábbi marad (a szerver sync-kor számol).
   useEffect(() => {
     let cancelled = false
-    handlingFeeConfigApi.get()
-      .then(cfg => { if (!cancelled) setFeeConfig(cfg) })
-      .catch(() => { if (!cancelled) setFeeConfig(null) })
-    return () => { cancelled = true }
+    handlingFeeConfigApi
+      .get()
+      .then((cfg) => {
+        if (!cancelled) setFeeConfig(cfg)
+      })
+      .catch(() => {
+        if (!cancelled) setFeeConfig(null)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // FK-KEZDIJ B.1 + DiscountThreshold contract: az AUTOMATIKUS díj a konfigból
@@ -305,7 +352,8 @@ export default function CashierTransactionPage() {
     setAutoFeeDiscountLabel(null)
     if (subtotal <= 0) return
 
-    discountThresholdApi.apply(subtotal, auto)
+    discountThresholdApi
+      .apply(subtotal, auto)
       .then((result) => {
         if (cancelled) return
         const adjusted = roundHuf(result.adjustedFee ?? auto)
@@ -319,10 +367,16 @@ export default function CashierTransactionPage() {
       .catch((err) => {
         if (!cancelled) {
           setAutoFeeDiscountLabel(null)
-          logger.warn('CashierTransactionPage', 'Discount threshold apply failed; base handling fee kept:', err)
+          logger.warn(
+            'CashierTransactionPage',
+            'Discount threshold apply failed; base handling fee kept:',
+            err,
+          )
         }
       })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [subtotal, feeConfig, feeOverrideType])
 
   // Batch2-B (Fabulya-teszt 2026-06-12): betöltött díj-konfig mellett a kézi díj-mező
@@ -344,7 +398,8 @@ export default function CashierTransactionPage() {
     const timerId = window.setTimeout(() => {
       setDiscountApprovalLoading(true)
       setDiscountApprovalError(null)
-      api.get('/discount-approval/required-level', { params: { discountPercent } })
+      api
+        .get('/discount-approval/required-level', { params: { discountPercent } })
         .then((response) => {
           if (!cancelled) {
             setDiscountApprovalInfo(response.data as typeof discountApprovalInfo)
@@ -373,9 +428,13 @@ export default function CashierTransactionPage() {
     if (nextDiscount > 0) {
       try {
         setDiscountApprovalError(null)
-        await api.post('/discount-approval/validate', null, { params: { discountPercent: nextDiscount } })
+        await api.post('/discount-approval/validate', null, {
+          params: { discountPercent: nextDiscount },
+        })
       } catch (err) {
-        setDiscountApprovalError('A backend nem engedélyezte ezt a kedvezményt a jelenlegi dolgozói szinttel.')
+        setDiscountApprovalError(
+          'A backend nem engedélyezte ezt a kedvezményt a jelenlegi dolgozói szinttel.',
+        )
         logger.warn('CashierTransactionPage', 'Discount approval validate failed:', err)
         return
       }
@@ -418,7 +477,9 @@ export default function CashierTransactionPage() {
       }
     }
     void checkSession()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Load exchange rates with Electron cached-rates priority
@@ -448,7 +509,10 @@ export default function CashierTransactionPage() {
       } catch (err) {
         logger.error('CashierTransactionPage', 'Arfolyam betöltés sikertelen:', err)
         if (!cancelled && electronQueueAvailable) {
-          toast.error('Árfolyam nem elérhető', 'Nincs használható helyi vagy szerver oldali árfolyam adat.')
+          toast.error(
+            'Árfolyam nem elérhető',
+            'Nincs használható helyi vagy szerver oldali árfolyam adat.',
+          )
         }
       }
     }
@@ -472,7 +536,9 @@ export default function CashierTransactionPage() {
       }
     }
     void loadQuota()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Auto focus first row on mount
@@ -493,7 +559,13 @@ export default function CashierTransactionPage() {
     setDiscountInput(String(discount || ''))
     setShowFeeDialog(true)
   })
-  useHotkeys('escape', () => { void handleCancel() }, { enableOnFormTags: true })
+  useHotkeys(
+    'escape',
+    () => {
+      void handleCancel()
+    },
+    { enableOnFormTags: true },
+  )
 
   // ====== HANDLERS ======
 
@@ -523,32 +595,26 @@ export default function CashierTransactionPage() {
         })
       }
     },
-    [mode]
+    [mode],
   )
 
-  const handleCurrencyConfirm = useCallback(
-    (rowIdx: number) => {
-      setActiveRow(rowIdx)
-      setActiveField('rate')
-    },
-    []
-  )
+  const handleCurrencyConfirm = useCallback((rowIdx: number) => {
+    setActiveRow(rowIdx)
+    setActiveField('rate')
+  }, [])
 
-  const handleRateInput = useCallback(
-    (rowIdx: number, value: string) => {
-      const cleaned = value.replace(/[^0-9.,]/g, '').replace(',', '.')
-      const newRate = parseFloat(cleaned) || 0
-      setRows((prev) => {
-        const next = [...prev]
-        const row = next[rowIdx]!
-        const qtyNum = parseFloat(row.quantity) || 0
-        const hufValue = roundHuf(newRate * qtyNum)
-        next[rowIdx] = { ...row, exchangeRate: newRate, hufValue }
-        return next
-      })
-    },
-    []
-  )
+  const handleRateInput = useCallback((rowIdx: number, value: string) => {
+    const cleaned = value.replace(/[^0-9.,]/g, '').replace(',', '.')
+    const newRate = parseFloat(cleaned) || 0
+    setRows((prev) => {
+      const next = [...prev]
+      const row = next[rowIdx]!
+      const qtyNum = parseFloat(row.quantity) || 0
+      const hufValue = roundHuf(newRate * qtyNum)
+      next[rowIdx] = { ...row, exchangeRate: newRate, hufValue }
+      return next
+    })
+  }, [])
 
   const validateRateOnBlur = useCallback(
     (rowIdx: number) => {
@@ -563,11 +629,18 @@ export default function CashierTransactionPage() {
       const baseAmountHuf = qtyNum * baseRate
 
       if (!isWithinHardLimit(row.exchangeRate, rateObj.officialRate, mode)) {
-        toast.error('Árfolyam meghaladja a hard limitet', getHardLimitMessage(mode, rateObj.officialRate!))
+        toast.error(
+          'Árfolyam meghaladja a hard limitet',
+          getHardLimitMessage(mode, rateObj.officialRate!),
+        )
         const band = getBandForAmount(rateObj, mode, baseAmountHuf)
         setRows((prev) => {
           const next = [...prev]
-          next[rowIdx] = { ...next[rowIdx]!, exchangeRate: band.tierRate, hufValue: roundHuf(band.tierRate * qtyNum) }
+          next[rowIdx] = {
+            ...next[rowIdx]!,
+            exchangeRate: band.tierRate,
+            hufValue: roundHuf(band.tierRate * qtyNum),
+          }
           return next
         })
         return
@@ -601,10 +674,11 @@ export default function CashierTransactionPage() {
         // lasd lines 303-305, 358-363, 450-452). Ha a custom rate * qty-val hivnank,
         // egy magas custom rate-tel atugorhatnank tier-t es false in-band classification
         // → silent freed slot. Ezert tracked baseRate * trackedQty hasznalando.
-        const trackedRateObj = exchangeRates.find(r => r.currencyCode === trackedCurrency)
+        const trackedRateObj = exchangeRates.find((r) => r.currencyCode === trackedCurrency)
         const trackedQty = Number.parseFloat(trackedRow.quantity.replace(/[\s,]/g, '.')) || 0
         if (trackedRateObj) {
-          const trackedBaseRate = mode === 'buy' ? trackedRateObj.baseBuyRate : trackedRateObj.baseSellRate
+          const trackedBaseRate =
+            mode === 'buy' ? trackedRateObj.baseBuyRate : trackedRateObj.baseSellRate
           const trackedBaseHuf = trackedBaseRate * trackedQty
           if (isWithinBand(trackedRateObj, trackedRow.exchangeRate, mode, trackedBaseHuf)) {
             cashierCustomRateRowsRef.current.delete(k)
@@ -627,7 +701,8 @@ export default function CashierTransactionPage() {
           cashierCustomRateRowsRef.current.add(rowKey)
           rateAuthApprovedRef.current.add(rowKey)
           // Aktuális felhasználás after this approval = (limit - baseRemaining) + local_approved (most már +1).
-          const totalUsedAfterThis = cashierRateQuota!.limit - baseRemaining + cashierCustomRateRowsRef.current.size
+          const totalUsedAfterThis =
+            cashierRateQuota!.limit - baseRemaining + cashierCustomRateRowsRef.current.size
           toast.success(
             'Pénztárosi sáv',
             `Egyedi árfolyam engedélyezve (${totalUsedAfterThis}/${cashierRateQuota!.limit} ma)`,
@@ -636,7 +711,10 @@ export default function CashierTransactionPage() {
         }
 
         if (hufAmount >= minAmount && effectiveRemaining <= 0) {
-          toast.warning('Pénztárosi sáv limit', `Napi ${cashierRateQuota?.limit ?? 5} egyedi árfolyam felhasználva!`)
+          toast.warning(
+            'Pénztárosi sáv limit',
+            `Napi ${cashierRateQuota?.limit ?? 5} egyedi árfolyam felhasználva!`,
+          )
         }
 
         setRateAuthRow(rowIdx)
@@ -644,7 +722,7 @@ export default function CashierTransactionPage() {
         setShowRateAuth(true)
       }
     },
-    [rows, exchangeRates, mode, cashierRateQuota]
+    [rows, exchangeRates, mode, cashierRateQuota],
   )
 
   const handleQuantityInput = useCallback(
@@ -673,28 +751,31 @@ export default function CashierTransactionPage() {
         return next
       })
     },
-    [exchangeRates, mode]
+    [exchangeRates, mode],
   )
 
-  const sendIncomeProofEmail = useCallback(async (payload: IncomeProofEmailPayload) => {
-    setIncomeProofPendingPayload(payload)
-    setIncomeProofSendError(null)
-    setShowIncomeProofSendModal(true)
-    setIncomeProofSending(true)
-    try {
-      await incomeSourceDocApi.sendEmail(payload)
-      incomeProofBase64Ref.current = null
-      setIncomeProofPendingPayload(null)
-      setShowIncomeProofSendModal(false)
-      toast.success(t('incomeProof.kuldesSikeres'))
-    } catch (err) {
-      const message = getErrorMessage(err)
-      logger.error('CashierTransactionPage', 'Income proof email send failed:', message)
-      setIncomeProofSendError(message)
-    } finally {
-      setIncomeProofSending(false)
-    }
-  }, [t])
+  const sendIncomeProofEmail = useCallback(
+    async (payload: IncomeProofEmailPayload) => {
+      setIncomeProofPendingPayload(payload)
+      setIncomeProofSendError(null)
+      setShowIncomeProofSendModal(true)
+      setIncomeProofSending(true)
+      try {
+        await incomeSourceDocApi.sendEmail(payload)
+        incomeProofBase64Ref.current = null
+        setIncomeProofPendingPayload(null)
+        setShowIncomeProofSendModal(false)
+        toast.success(t('incomeProof.kuldesSikeres'))
+      } catch (err) {
+        const message = getErrorMessage(err)
+        logger.error('CashierTransactionPage', 'Income proof email send failed:', message)
+        setIncomeProofSendError(message)
+      } finally {
+        setIncomeProofSending(false)
+      }
+    },
+    [t],
+  )
 
   const cancelIncomeProofEmail = useCallback(async () => {
     const transactionRef = incomeProofPendingPayload?.transactionRef
@@ -711,7 +792,11 @@ export default function CashierTransactionPage() {
         status: 'degraded',
       })
     } catch (err) {
-      logger.warn('CashierTransactionPage', 'Income proof audit write failed:', getErrorMessage(err))
+      logger.warn(
+        'CashierTransactionPage',
+        'Income proof audit write failed:',
+        getErrorMessage(err),
+      )
     }
     incomeProofBase64Ref.current = null
     setIncomeProofPendingPayload(null)
@@ -745,7 +830,10 @@ export default function CashierTransactionPage() {
 
     // Rate staleness warning (>5 min since load)
     if (ratesLoadedAtRef.current > 0 && Date.now() - ratesLoadedAtRef.current > RATE_STALE_MS) {
-      toast.warning('Arfolyam regi', 'Az arfolyamok tobb mint 5 perce toltodtek be. Frissitsd az oldalt az aktualis arfolyamokhoz!')
+      toast.warning(
+        'Arfolyam regi',
+        'Az arfolyamok tobb mint 5 perce toltodtek be. Frissitsd az oldalt az aktualis arfolyamokhoz!',
+      )
     }
 
     // Sell-mode stock check — verify branch has enough currency to sell
@@ -762,7 +850,7 @@ export default function CashierTransactionPage() {
             if (row.currencyCode.length !== 3) continue
             const qty = parseFloat(row.quantity) || 0
             if (qty <= 0) continue
-            const bal = balances.find(b => b.currencyCode === row.currencyCode)
+            const bal = balances.find((b) => b.currencyCode === row.currencyCode)
             const available = bal?.currentBalance ?? 0
             if (qty > available) {
               insufficientRows.push(`${row.currencyCode}: ${qty} kert, ${available} elerheto`)
@@ -781,8 +869,10 @@ export default function CashierTransactionPage() {
             return sum + Math.max(0, row.hufValue)
           }, 0)
           // Penztaros kifizetes ~= bruttó − handlingFee, 5 Ft-os rounding-toleranciaval
-          const totalHufPayable = roundHuf(Math.max(0, grossHuf - (handlingFee > 0 ? handlingFee : 0)))
-          const hufBal = balances.find(b => b.currencyCode === 'HUF')
+          const totalHufPayable = roundHuf(
+            Math.max(0, grossHuf - (handlingFee > 0 ? handlingFee : 0)),
+          )
+          const hufBal = balances.find((b) => b.currencyCode === 'HUF')
           const hufAvailable = hufBal?.currentBalance ?? 0
           if (totalHufPayable > hufAvailable) {
             insufficientRows.push(
@@ -797,7 +887,10 @@ export default function CashierTransactionPage() {
       } catch (err) {
         logger.error('CashierTransactionPage', 'Keszletellenorzes sikertelen:', err)
         // Fail-closed: ha nem tudjuk ellenorizni, nem engedjuk tovabb
-        toast.error('Keszletellenorzes sikertelen', 'A keszlet nem ellenorizheto. Probald ujra kesobb.')
+        toast.error(
+          'Keszletellenorzes sikertelen',
+          'A keszlet nem ellenorizheto. Probald ujra kesobb.',
+        )
         return
       }
     }
@@ -835,15 +928,31 @@ export default function CashierTransactionPage() {
       // az új, kézi ügyfél rögzítését 100k–300k között. (Az okmányszám-követelmény a FULL-ágba
       // került lentebb.)
       if (!cd?.name?.trim()) {
-        toast.warning('Ügyfél azonosítás kötelező', `${SIMPLIFIED_IDENTIFICATION_LIMIT.toLocaleString('hu-HU')} Ft feletti tranzakcióhoz ügyfél azonosítás KÖTELEZŐ!`)
+        toast.warning(
+          'Ügyfél azonosítás kötelező',
+          `${SIMPLIFIED_IDENTIFICATION_LIMIT.toLocaleString('hu-HU')} Ft feletti tranzakcióhoz ügyfél azonosítás KÖTELEZŐ!`,
+        )
         return
       }
       if (identificationLevel === 'SIMPLIFIED' && (!cd?.birthPlace || !cd?.birthDate)) {
-        toast.warning('Egyszerűsített azonosítás hiányos', '100.000 Ft felett születési hely és születési idő is KÖTELEZŐ!')
+        toast.warning(
+          'Egyszerűsített azonosítás hiányos',
+          '100.000 Ft felett születési hely és születési idő is KÖTELEZŐ!',
+        )
         return
       }
-      if (identificationLevel === 'FULL' && (!cd?.documentNumber?.trim() || !cd?.birthPlace || !cd?.birthDate || !cd?.motherName || !cd?.address)) {
-        toast.warning('Teljes azonosítás kötelező', '300.000 Ft felett teljes ügyféladatsor szükséges (okmányszám, születési hely/idő, anyja neve, lakcím)!')
+      if (
+        identificationLevel === 'FULL' &&
+        (!cd?.documentNumber?.trim() ||
+          !cd?.birthPlace ||
+          !cd?.birthDate ||
+          !cd?.motherName ||
+          !cd?.address)
+      ) {
+        toast.warning(
+          'Teljes azonosítás kötelező',
+          '300.000 Ft felett teljes ügyféladatsor szükséges (okmányszám, születési hely/idő, anyja neve, lakcím)!',
+        )
         return
       }
     }
@@ -854,14 +963,22 @@ export default function CashierTransactionPage() {
 
     if (mode === 'buy' && !incomeProofBase64Ref.current) {
       try {
-        const check = await incomeSourceDocApi.checkRequired(total, cd?.id ? String(cd.id) : undefined, filledRows[0]?.currencyCode)
+        const check = await incomeSourceDocApi.checkRequired(
+          total,
+          cd?.id ? String(cd.id) : undefined,
+          filledRows[0]?.currencyCode,
+        )
         if (check.required && !incomeProofBase64Ref.current) {
           setIncomeProofRequired(true)
           setShowIncomeProofModal(true)
           return
         }
       } catch (err) {
-        logger.warn('CashierTransactionPage', 'Income proof required-check hiba:', getErrorMessage(err))
+        logger.warn(
+          'CashierTransactionPage',
+          'Income proof required-check hiba:',
+          getErrorMessage(err),
+        )
         if (total >= 10_000_000) {
           toast.error(t('incomeProof.offlineBlokk'))
           return
@@ -891,7 +1008,9 @@ export default function CashierTransactionPage() {
         if (checkRes.data?.requiresApproval) {
           // Uj jovahagyas-session a nyugtahoz (a grantot ehhez + a jovahagyott ugyfelhez koti a backend).
           approvalSessionIdRef.current = crypto.randomUUID()
-          setAmlApprovalReason(typeof checkRes.data?.reason === 'string' ? checkRes.data.reason : '')
+          setAmlApprovalReason(
+            typeof checkRes.data?.reason === 'string' ? checkRes.data.reason : '',
+          )
           setShowAmlApprover(true)
           return // a modal onApproved-ja beallitja az approverWorkerId-t es ujrahivja a submitet
         }
@@ -910,14 +1029,17 @@ export default function CashierTransactionPage() {
     if (amlDegraded && identificationLevel !== 'SIMPLE') {
       const confirmed = window.confirm(
         'FIGYELEM: Az AML ellenőrzés nem futott le (hálózati hiba).\n\n' +
-        'A tranzakció FOLYTATHATÓ, de:\n' +
-        '• Audit naplóba degradált módként kerül\n' +
-        '• A központi szerver utólag újra-ellenőrzi\n' +
-        '• Ha az utólagos ellenőrzés gyanút talál, a pénztárost értesítjük\n\n' +
-        'Biztosan folytatja?',
+          'A tranzakció FOLYTATHATÓ, de:\n' +
+          '• Audit naplóba degradált módként kerül\n' +
+          '• A központi szerver utólag újra-ellenőrzi\n' +
+          '• Ha az utólagos ellenőrzés gyanút talál, a pénztárost értesítjük\n\n' +
+          'Biztosan folytatja?',
       )
       if (!confirmed) {
-        toast.info('Tranzakció megszakítva', 'Várj amíg helyreáll a hálózat, vagy próbáld újra később.')
+        toast.info(
+          'Tranzakció megszakítva',
+          'Várj amíg helyreáll a hálózat, vagy próbáld újra később.',
+        )
         return
       }
       // Codex P1 #586 iter-5 fix: setIsSubmitting(true) ELŐTT az audit write await, hogy a
@@ -936,7 +1058,8 @@ export default function CashierTransactionPage() {
             customerId: cd?.id ?? null,
             customerDocNumber: cd?.documentNumber ?? null,
             confirmedAt: new Date().toISOString(),
-            reason: 'AML check failed (offline/server error), pénztáros explicit megerősítéssel folytatta',
+            reason:
+              'AML check failed (offline/server error), pénztáros explicit megerősítéssel folytatta',
           },
           status: 'degraded',
         })
@@ -951,7 +1074,11 @@ export default function CashierTransactionPage() {
         }
       } catch (auditErr) {
         setIsSubmitting(false)
-        logger.error('CashierTransactionPage', 'AML degradalt audit log persist FAILED — tranzakcio blokkolva', auditErr)
+        logger.error(
+          'CashierTransactionPage',
+          'AML degradalt audit log persist FAILED — tranzakcio blokkolva',
+          auditErr,
+        )
         toast.error(
           'Audit napló mentés sikertelen',
           'A degradált AML mód audit naplójának mentése nem sikerült. A tranzakció biztonsági okokból nem folytatható. Próbáld újra.',
@@ -964,54 +1091,56 @@ export default function CashierTransactionPage() {
     }
 
     try {
-      const customerData = cd ? {
-        customerId: cd.id || undefined,
-        customerName: cd.name || undefined,
-        customerDocumentNumber: cd.documentNumber || undefined,
-        customerDocumentType: cd.documentType || undefined,
-        customerNationality: cd.nationality || undefined,
-        customerBirthPlace: cd.birthPlace || undefined,
-        customerBirthDate: cd.birthDate || undefined,
-        customerMotherName: cd.motherName || undefined,
-        customerAddress: cd.address || undefined,
-        // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat
-        customerIsPep: cd.isPep,
-        sourceOfFunds: cd.sourceOfFunds,
-        // AML 50M (Pmt./MNB 14/2025): strukturált forrás-dokumentum a szerver-oldali validációhoz
-        sourceOfFundsDocType: cd.sourceOfFundsDocType,
-        sourceOfFundsDocDate: cd.sourceOfFundsDocDate,
-        customerOnOwnBehalf: cd.onOwnBehalf,
-        customerActorName: cd.actorName,
-        // V235 (2026-05-19 HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
-        customerPepKind: cd.pepKind ?? undefined,
-        customerActorBirthPlace: cd.actorIdentity?.birthPlace,
-        customerActorBirthDate: cd.actorIdentity?.birthDate,
-        customerActorMotherName: cd.actorIdentity?.motherName,
-        customerActorNationality: cd.actorIdentity?.nationality,
-        customerActorDocumentType: cd.actorIdentity?.documentType,
-        customerActorDocumentNumber: cd.actorIdentity?.documentNumber,
-        customerActorAddress: cd.actorIdentity?.address,
-        // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok a REST request-be
-        isLegalEntityCustomer: cd.isLegalEntity ?? undefined,
-        legalEntityName: cd.legalEntityName,
-        legalEntitySeat: cd.legalEntitySeat,
-        legalEntityTaxNumber: cd.legalEntityTaxNumber,
-        legalDeedNumber: cd.legalDeedNumber,
-        beneficialOwners: cd.beneficialOwners?.map(o => ({
-          name: o.name,
-          address: o.address || undefined,
-          birthPlace: o.birthPlace || undefined,
-          birthDate: o.birthDate || undefined,
-          nationality: o.nationality || undefined,
-          residenceAbroad: o.residenceAbroad || undefined,
-          interestNature: o.interestNature || undefined,
-          interestExtent: o.interestExtent || undefined,
-          isPep: o.isPep,
-        })),
-        // AML felsovezetoi jovahagyas: a jovahagyo workerId a REST buy/sell request-be (spread).
-        approverWorkerId: approverWorkerIdRef.current ?? undefined,
-        approvalSessionId: approvalSessionIdRef.current ?? undefined,
-      } : {}
+      const customerData = cd
+        ? {
+            customerId: cd.id || undefined,
+            customerName: cd.name || undefined,
+            customerDocumentNumber: cd.documentNumber || undefined,
+            customerDocumentType: cd.documentType || undefined,
+            customerNationality: cd.nationality || undefined,
+            customerBirthPlace: cd.birthPlace || undefined,
+            customerBirthDate: cd.birthDate || undefined,
+            customerMotherName: cd.motherName || undefined,
+            customerAddress: cd.address || undefined,
+            // V229 (2026-05-15 HIBA #8): 300k+ JOGCIM nyilatkozat
+            customerIsPep: cd.isPep,
+            sourceOfFunds: cd.sourceOfFunds,
+            // AML 50M (Pmt./MNB 14/2025): strukturált forrás-dokumentum a szerver-oldali validációhoz
+            sourceOfFundsDocType: cd.sourceOfFundsDocType,
+            sourceOfFundsDocDate: cd.sourceOfFundsDocDate,
+            customerOnOwnBehalf: cd.onOwnBehalf,
+            customerActorName: cd.actorName,
+            // V235 (2026-05-19 HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
+            customerPepKind: cd.pepKind ?? undefined,
+            customerActorBirthPlace: cd.actorIdentity?.birthPlace,
+            customerActorBirthDate: cd.actorIdentity?.birthDate,
+            customerActorMotherName: cd.actorIdentity?.motherName,
+            customerActorNationality: cd.actorIdentity?.nationality,
+            customerActorDocumentType: cd.actorIdentity?.documentType,
+            customerActorDocumentNumber: cd.actorIdentity?.documentNumber,
+            customerActorAddress: cd.actorIdentity?.address,
+            // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok a REST request-be
+            isLegalEntityCustomer: cd.isLegalEntity ?? undefined,
+            legalEntityName: cd.legalEntityName,
+            legalEntitySeat: cd.legalEntitySeat,
+            legalEntityTaxNumber: cd.legalEntityTaxNumber,
+            legalDeedNumber: cd.legalDeedNumber,
+            beneficialOwners: cd.beneficialOwners?.map((o) => ({
+              name: o.name,
+              address: o.address || undefined,
+              birthPlace: o.birthPlace || undefined,
+              birthDate: o.birthDate || undefined,
+              nationality: o.nationality || undefined,
+              residenceAbroad: o.residenceAbroad || undefined,
+              interestNature: o.interestNature || undefined,
+              interestExtent: o.interestExtent || undefined,
+              isPep: o.isPep,
+            })),
+            // AML felsovezetoi jovahagyas: a jovahagyo workerId a REST buy/sell request-be (spread).
+            approverWorkerId: approverWorkerIdRef.current ?? undefined,
+            approvalSessionId: approvalSessionIdRef.current ?? undefined,
+          }
+        : {}
 
       // Penztar-batch C.1/C.2 (2026-06-12, user-kérés): a bizonylat Pmt.-mezői. Ezeket az
       // adatokat a backend felé eddig is elküldtük (customerData), de a BIZONYLAT-objektumból
@@ -1047,12 +1176,17 @@ export default function CashierTransactionPage() {
       // B/K toggle nem függ az azonosítástól). Többsoros nyugtán a fejléc csak akkor hordozza,
       // ha minden sor azonos — vegyesnél a soronkénti érték jelenik meg (transactionLines).
       const uniformForeignStatus = (rows: typeof filledRows): 'DOMESTIC' | 'FOREIGN' | undefined =>
-        new Set(rows.map(r => r.foreignStatus)).size === 1 ? rows[0]?.foreignStatus : undefined
+        new Set(rows.map((r) => r.foreignStatus)).size === 1 ? rows[0]?.foreignStatus : undefined
       // Codex PR #1102 P1 + #1103 P1: a Pmt. 300k-s küszöb a FIZETENDŐ összegre vonatkozik
       // (AML-paritás), és a fizetendő MÓD-FÜGGŐ (BUY: +kedvezmény −díj; SELL: −kedvezmény +díj)
       // — a kanonikus multiLinePayable-lel számolunk (a szerver gross-számításának tükre).
       const singleRowPayable = (rowHuf: number): number =>
-        multiLinePayable(rowHuf, mode === 'buy' ? 'buy' : 'sell', discount > 0 ? discount : 0, handlingFee > 0 ? handlingFee : 0)
+        multiLinePayable(
+          rowHuf,
+          mode === 'buy' ? 'buy' : 'sell',
+          discount > 0 ? discount : 0,
+          handlingFee > 0 ? handlingFee : 0,
+        )
 
       if (electronQueueAvailable) {
         // V235 (2026-05-19 HIBA #14 + #15 + #17 + #18): a teljes Pmt. customer-
@@ -1148,7 +1282,10 @@ export default function CashierTransactionPage() {
         const outcome = await saveAndSyncPendingBuySell(entries)
 
         if (outcome.allSavedSynced) {
-          toast.success('Bizonylat(ok) sikeresen rögzítve!', `${filledRows.length} tétel azonnal szinkronizálva.`)
+          toast.success(
+            'Bizonylat(ok) sikeresen rögzítve!',
+            `${filledRows.length} tétel azonnal szinkronizálva.`,
+          )
         } else {
           toast.warning(
             'Offline mentés megtörtént',
@@ -1169,8 +1306,10 @@ export default function CashierTransactionPage() {
           // egyezett (audit-probléma). Most a valós sorszámot bélyegezzük; ha hiányzik (régi
           // telepítő / null), fallback a fabrikált számra.
           const receiptHeader = {
-            type: mode === 'buy' ? 'buy' as const : 'sell' as const,
-            companyType: ((worker?.companyCode ?? '').startsWith('EXP') ? 'EXPRESSZ' : 'BEST_CHANGE') as 'BEST_CHANGE' | 'EXPRESSZ',
+            type: mode === 'buy' ? ('buy' as const) : ('sell' as const),
+            companyType: ((worker?.companyCode ?? '').startsWith('EXP')
+              ? 'EXPRESSZ'
+              : 'BEST_CHANGE') as 'BEST_CHANGE' | 'EXPRESSZ',
             branchCode: worker?.branchCode ?? '',
             cashierName: worker?.fullName ?? '',
             date: now.toLocaleDateString('hu-HU'),
@@ -1225,7 +1364,10 @@ export default function CashierTransactionPage() {
             // Egysoros bizonylat: változatlan viselkedés (egy sor → egy bizonylat egy számmal).
             const receipts: PrintReceiptData[] = filledRows.map((row, idx) => ({
               ...receiptHeader,
-              receiptNumber: idx === 0 ? primaryReceiptRef : outcomeReceipts[idx] ?? `P-${now.getTime()}-${idx}`,
+              receiptNumber:
+                idx === 0
+                  ? primaryReceiptRef
+                  : (outcomeReceipts[idx] ?? `P-${now.getTime()}-${idx}`),
               currencyCode: row.currencyCode,
               foreignAmount: parseFloat(row.quantity) || 0,
               rate: row.exchangeRate,
@@ -1253,8 +1395,10 @@ export default function CashierTransactionPage() {
       } else {
         const now = new Date()
         const receiptBase = {
-          type: mode === 'buy' ? 'buy' as const : 'sell' as const,
-          companyType: ((worker?.companyCode ?? '').startsWith('EXP') ? 'EXPRESSZ' : 'BEST_CHANGE') as 'BEST_CHANGE' | 'EXPRESSZ',
+          type: mode === 'buy' ? ('buy' as const) : ('sell' as const),
+          companyType: ((worker?.companyCode ?? '').startsWith('EXP')
+            ? 'EXPRESSZ'
+            : 'BEST_CHANGE') as 'BEST_CHANGE' | 'EXPRESSZ',
           branchCode: worker?.branchCode ?? '',
           cashierName: worker?.fullName ?? '',
           date: now.toLocaleDateString('hu-HU'),
@@ -1302,11 +1446,15 @@ export default function CashierTransactionPage() {
             lines,
             ...customerData,
           }
-          const result = mode === 'buy'
-            ? await transactionApi.buy(aggregateBase as BuyRequest)
-            : await transactionApi.sell(aggregateBase as SellRequest)
+          const result =
+            mode === 'buy'
+              ? await transactionApi.buy(aggregateBase as BuyRequest)
+              : await transactionApi.sell(aggregateBase as SellRequest)
 
-          toast.success('Bizonylat(ok) sikeresen készítve!', `${filledRows.length} tétel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat szám: ${result.receiptNumber}`)
+          toast.success(
+            'Bizonylat(ok) sikeresen készítve!',
+            `${filledRows.length} tétel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat szám: ${result.receiptNumber}`,
+          )
 
           // EGY bizonylat az összes valuta-sorral (mirror az Electron multi-line ágat). A fejléc
           // hufAmount-ot a backend által visszaadott aggregált összegre állítjuk (single-source-of-
@@ -1314,12 +1462,14 @@ export default function CashierTransactionPage() {
           // nyers per-soros HUF-ot mutatja.
           const totalRaw = filledRows.reduce((sum, row) => sum + row.hufValue, 0)
           const backendHuf = typeof result.hufAmount === 'number' ? result.hufAmount : null
-          const totalPayable = backendHuf ?? multiLinePayable(
-            totalRaw,
-            mode === 'buy' ? 'buy' : 'sell',
-            discount > 0 ? discount : 0,
-            handlingFee > 0 ? handlingFee : 0,
-          )
+          const totalPayable =
+            backendHuf ??
+            multiLinePayable(
+              totalRaw,
+              mode === 'buy' ? 'buy' : 'sell',
+              discount > 0 ? discount : 0,
+              handlingFee > 0 ? handlingFee : 0,
+            )
           const receipt: PrintReceiptData = {
             ...receiptBase,
             receiptNumber: result.receiptNumber,
@@ -1392,7 +1542,10 @@ export default function CashierTransactionPage() {
             }
           }
 
-          toast.success('Bizonylat(ok) sikeresen készítve!', `${filledRows.length} tétel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat számok: ${receiptNumbers.join(', ')}`)
+          toast.success(
+            'Bizonylat(ok) sikeresen készítve!',
+            `${filledRows.length} tétel, ${total.toLocaleString('hu-HU')} Ft | Bizonylat számok: ${receiptNumbers.join(', ')}`,
+          )
           const primaryReceiptRef = receiptNumbers[0]
 
           // Build receipt queue for all lines (API path)
@@ -1451,9 +1604,12 @@ export default function CashierTransactionPage() {
       // unreachable → submit stuck az API timeout-ig. Helyette fire-and-forget
       // a quota refetch: setCashierRateQuota async, a felhasználó már új tranzakciót
       // kezdhet a régi-de-rendezett kvótával (mivel a ref-eket lokálisan tisztítottuk).
-      transactionApi.getCashierRateQuota()
-        .then(quota => setCashierRateQuota(quota))
-        .catch(e => logger.error('CashierTx', 'Quota refresh failed after submit (non-blocking)', e))
+      transactionApi
+        .getCashierRateQuota()
+        .then((quota) => setCashierRateQuota(quota))
+        .catch((e) =>
+          logger.error('CashierTx', 'Quota refresh failed after submit (non-blocking)', e),
+        )
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Ismeretlen hiba'
       const axiosError = error as { response?: { data?: { message?: string } } }
@@ -1467,7 +1623,22 @@ export default function CashierTransactionPage() {
     } finally {
       setIsSubmitting(false)
     }
-  }, [rows, mode, total, handlingFee, discount, identificationLevel, sessionOpen, electronQueueAvailable, worker?.branchCode, worker?.companyCode, worker?.fullName, openReceiptModal, sendIncomeProofEmail, t])
+  }, [
+    rows,
+    mode,
+    total,
+    handlingFee,
+    discount,
+    identificationLevel,
+    sessionOpen,
+    electronQueueAvailable,
+    worker?.branchCode,
+    worker?.companyCode,
+    worker?.fullName,
+    openReceiptModal,
+    sendIncomeProofEmail,
+    t,
+  ])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, rowIdx: number, field: 'currency' | 'rate' | 'quantity') => {
@@ -1528,12 +1699,12 @@ export default function CashierTransactionPage() {
         })
       }
     },
-    [handleSubmit]
+    [handleSubmit],
   )
 
   const handleCancel = useCallback(async () => {
-    const hasDraftTransaction = rows.some((r) =>
-      r.currencyCode || r.quantity || r.exchangeRate > 0 || r.hufValue > 0
+    const hasDraftTransaction = rows.some(
+      (r) => r.currencyCode || r.quantity || r.exchangeRate > 0 || r.hufValue > 0,
     )
     if (hasDraftTransaction) {
       if (!confirm('Biztosan elveti a tranzakciot?')) return
@@ -1555,10 +1726,14 @@ export default function CashierTransactionPage() {
         })
         toast.info('Megszakított bizonylat rögzítve', `Bizonylat: ${receipt.receiptNumber}`)
       } catch (error) {
-        logger.warn('CashierTransactionPage', 'Cancelled transaction receipt could not be recorded', error)
+        logger.warn(
+          'CashierTransactionPage',
+          'Cancelled transaction receipt could not be recorded',
+          error,
+        )
         toast.warning(
           'Megszakítás lokálisan elvetve',
-          'A megszakított bizonylat szerveroldali rögzítése nem sikerült. Ellenőrizze a kapcsolatot.'
+          'A megszakított bizonylat szerveroldali rögzítése nem sikerült. Ellenőrizze a kapcsolatot.',
         )
       }
     }
@@ -1588,7 +1763,8 @@ export default function CashierTransactionPage() {
   // tizedes tiltott). Ez NEM az 5 Ft-os készpénz-kerekítés — azt a fizetendő végösszegre a HungarianRounding
   // végzi (lásd a `total` számítását fent); itt csak a megjelenítés kerekül egész Ft-ra (Math.round).
   // A formatNum minden használata HUF-érték (hufValue/subtotal/handlingFee/discountAmount/total).
-  const formatNum = (n: number) => Math.round(n).toLocaleString('hu-HU', { maximumFractionDigits: 0 })
+  const formatNum = (n: number) =>
+    Math.round(n).toLocaleString('hu-HU', { maximumFractionDigits: 0 })
 
   // ====== RENDER ======
   return (
@@ -1600,8 +1776,12 @@ export default function CashierTransactionPage() {
         <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-500 rounded-lg p-2 flex items-center gap-2">
           <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0" />
           <div>
-            <p className="font-bold text-sm text-red-800 dark:text-red-200">{t('transactions.nincsNyitottNapiSession')}</p>
-            <p className="text-xs text-red-700 dark:text-red-300">{t('transactions.aTranzakciokRogzitesehezEloszorMegKellNyitniANapot')}</p>
+            <p className="font-bold text-sm text-red-800 dark:text-red-200">
+              {t('transactions.nincsNyitottNapiSession')}
+            </p>
+            <p className="text-xs text-red-700 dark:text-red-300">
+              {t('transactions.aTranzakciokRogzitesehezEloszorMegKellNyitniANapot')}
+            </p>
           </div>
         </div>
       )}
@@ -1610,9 +1790,13 @@ export default function CashierTransactionPage() {
       {showFeeDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 w-96 space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('transactions.kezelesiDijKedvezmeny')}</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              {t('transactions.kezelesiDijKedvezmeny')}
+            </h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('transactions.kezelesiDijHuf')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t('transactions.kezelesiDijHuf')}
+              </label>
               {/* Batch2-B (Fabulya-teszt 2026-06-12): ha van betöltött díj-konfig, a díjat a
                   program számolja (Kezelési költség beállítások) — a kézi mező ZÁRT, kivéve a
                   vezetői SPECIAL felülbírálást. Konfig nélkül (régi backend / hálózati hiba)
@@ -1629,7 +1813,9 @@ export default function CashierTransactionPage() {
                   if (e.key === 'Enter') {
                     void applyFeeDialog()
                   } else if (e.key === 'Escape') {
-                    setFeeOverrideType(''); setFeeOverrideReason(''); setCardNumber('')
+                    setFeeOverrideType('')
+                    setFeeOverrideReason('')
+                    setCardNumber('')
                     setShowFeeDialog(false)
                   }
                 }}
@@ -1637,22 +1823,28 @@ export default function CashierTransactionPage() {
               {feeInputLocked && (
                 <p className="text-xs text-gray-500 mt-1">
                   {t('transactions.kezelesiDijKonfigSzamolja', {
-                    mode: feeConfig?.feeType === 'BRACKET'
-                      ? t('transactions.kezelesiDijModSavos')
-                      : feeConfig?.feeType === 'PER_MILLE'
-                        ? t('transactions.kezelesiDijModEzrelekes')
-                        : t('transactions.kezelesiDijModNincs'),
+                    mode:
+                      feeConfig?.feeType === 'BRACKET'
+                        ? t('transactions.kezelesiDijModSavos')
+                        : feeConfig?.feeType === 'PER_MILLE'
+                          ? t('transactions.kezelesiDijModEzrelekes')
+                          : t('transactions.kezelesiDijModNincs'),
                   })}
                 </p>
               )}
               {autoFeeDiscountLabel && (
-                <p className="mt-1 text-xs font-medium text-green-700" data-testid="auto-fee-discount">
+                <p
+                  className="mt-1 text-xs font-medium text-green-700"
+                  data-testid="auto-fee-discount"
+                >
                   Automatikus küszöbkedvezmény: {autoFeeDiscountLabel}
                 </p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('transactions.kedvezmeny')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t('transactions.kedvezmeny')}
+              </label>
               <input
                 type="number"
                 value={discountInput}
@@ -1664,13 +1856,17 @@ export default function CashierTransactionPage() {
                   if (e.key === 'Enter') {
                     void applyFeeDialog()
                   } else if (e.key === 'Escape') {
-                    setFeeOverrideType(''); setFeeOverrideReason(''); setCardNumber('')
+                    setFeeOverrideType('')
+                    setFeeOverrideReason('')
+                    setCardNumber('')
                     setShowFeeDialog(false)
                   }
                 }}
               />
               {discountApprovalLoading && (
-                <p className="mt-1 text-xs text-gray-500">Kedvezmény jóváhagyási szint ellenőrzése...</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Kedvezmény jóváhagyási szint ellenőrzése...
+                </p>
               )}
               {discountApprovalInfo && (
                 <div
@@ -1681,7 +1877,8 @@ export default function CashierTransactionPage() {
                   }`}
                   data-testid="discount-approval-info"
                 >
-                  Szükséges szint: {discountApprovalInfo.requiredLevel ?? '-'}; dolgozói szint: {discountApprovalInfo.workerLevel ?? '-'}.
+                  Szükséges szint: {discountApprovalInfo.requiredLevel ?? '-'}; dolgozói szint:{' '}
+                  {discountApprovalInfo.workerLevel ?? '-'}.
                   {discountApprovalInfo.exceedsMaxCap && (
                     <span> Maximum: {discountApprovalInfo.maxAllowedPercent ?? '-'}%.</span>
                   )}
@@ -1691,27 +1888,37 @@ export default function CashierTransactionPage() {
                 </div>
               )}
               {discountApprovalError && (
-                <div className="mt-2 rounded border border-red-200 bg-red-50 p-2 text-xs text-red-800" data-testid="discount-approval-error">
+                <div
+                  className="mt-2 rounded border border-red-200 bg-red-50 p-2 text-xs text-red-800"
+                  data-testid="discount-approval-error"
+                >
                   {discountApprovalError}
                 </div>
               )}
             </div>
             {/* FK-KEZDÍJ (2026-06-02): kezelési díj módosítás (override) — engedély-mátrix. */}
             <div className="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Kezelési díj módosítása</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Kezelési díj módosítása
+              </label>
               <select
                 value={feeOverrideType}
                 onChange={(e) => {
                   const v = e.target.value as typeof feeOverrideType
                   setFeeOverrideType(v)
-                  if (!v) { setFeeOverrideReason(''); setCardNumber('') }
+                  if (!v) {
+                    setFeeOverrideReason('')
+                    setCardNumber('')
+                  }
                 }}
                 className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white"
               >
                 <option value="">Nincs módosítás</option>
                 <option value="HALF">Felezés</option>
                 <option value="WAIVED">Elengedés</option>
-                {isDirectorUser && <option value="SPECIAL">Speciális (egyedi összeg — vezetői)</option>}
+                {isDirectorUser && (
+                  <option value="SPECIAL">Speciális (egyedi összeg — vezetői)</option>
+                )}
               </select>
               {feeOverrideType && (
                 <select
@@ -1724,8 +1931,12 @@ export default function CashierTransactionPage() {
                   className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white"
                 >
                   <option value="">Jogcím választása...</option>
-                  {isDirectorUser && <option value="DIRECTOR_APPROVAL">Ügyvezetői / főértéktárosi jóváhagyás</option>}
-                  {feeOverrideType !== 'SPECIAL' && <option value="CUSTOMER_CARD">Ügyfélkártya</option>}
+                  {isDirectorUser && (
+                    <option value="DIRECTOR_APPROVAL">Ügyvezetői / főértéktárosi jóváhagyás</option>
+                  )}
+                  {feeOverrideType !== 'SPECIAL' && (
+                    <option value="CUSTOMER_CARD">Ügyfélkártya</option>
+                  )}
                   {feeOverrideType !== 'SPECIAL' && <option value="PROMOTION">Akció</option>}
                 </select>
               )}
@@ -1740,7 +1951,10 @@ export default function CashierTransactionPage() {
                 />
               )}
               {feeOverrideType && feeOverrideType !== 'SPECIAL' && (
-                <p className="text-xs text-gray-500">A díjat a szerver számolja (felezés = fele, elengedés = 0). A fenti díj-mező csak speciális (egyedi) díjnál érvényes.</p>
+                <p className="text-xs text-gray-500">
+                  A díjat a szerver számolja (felezés = fele, elengedés = 0). A fenti díj-mező csak
+                  speciális (egyedi) díjnál érvényes.
+                </p>
               )}
             </div>
             <div className="flex gap-2">
@@ -1755,7 +1969,9 @@ export default function CashierTransactionPage() {
                 onClick={() => {
                   // FK-KEZDÍJ (2026-06-02): Mégse → az override-draft NEM marad érvényben (biztonságos:
                   // a nem véglegesített díj-módosítás eldobódik).
-                  setFeeOverrideType(''); setFeeOverrideReason(''); setCardNumber('')
+                  setFeeOverrideType('')
+                  setFeeOverrideReason('')
+                  setCardNumber('')
                   setShowFeeDialog(false)
                 }}
                 className="flex-1 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -1776,7 +1992,8 @@ export default function CashierTransactionPage() {
           {mode === 'buy' ? 'VÉTEL' : 'ELADÁS'}
         </span>
         <span className="text-xs text-gray-500 dark:text-gray-400">
-          {t('transactions.max')}{MAX_LINES} {t('transactions.valutasorTabEnter')}
+          {t('transactions.max')}
+          {MAX_LINES} {t('transactions.valutasorTabEnter')}
         </span>
       </div>
 
@@ -1790,7 +2007,12 @@ export default function CashierTransactionPage() {
                   <th className="px-2 py-1.5 text-left w-28">VALUTA</th>
                   <th className="px-2 py-1.5 text-right w-28">{t('transactions.arfolyam')}</th>
                   <th className="px-2 py-1.5 text-right w-32">{t('transactions.bankjegyDb')}</th>
-                  <th className="px-2 py-1.5 text-center w-16" title="Devizastátusz: K=külföldi, B=belföldi (bizonylaton megjelenik)">DSZ</th>
+                  <th
+                    className="px-2 py-1.5 text-center w-16"
+                    title="Devizastátusz: K=külföldi, B=belföldi (bizonylaton megjelenik)"
+                  >
+                    DSZ
+                  </th>
                   <th className="px-2 py-1.5 text-right">{t('transactions.forintErtek')}</th>
                 </tr>
               </thead>
@@ -1811,30 +2033,45 @@ export default function CashierTransactionPage() {
                         onChange={(code, rate) => handleCurrencySelect(idx, code, rate)}
                         onConfirm={() => handleCurrencyConfirm(idx)}
                         onKeyDown={(e) => handleKeyDown(e, idx, 'currency')}
-                        onFocus={() => { setActiveRow(idx); setActiveField('currency') }}
-                        inputRef={(el) => { currencyRefs.current[idx] = el }}
+                        onFocus={() => {
+                          setActiveRow(idx)
+                          setActiveField('currency')
+                        }}
+                        inputRef={(el) => {
+                          currencyRefs.current[idx] = el
+                        }}
                         placeholder="EUR, Euró..."
                         data-testid={`currency-input-${idx}`}
                       />
                     </td>
                     <td className="px-2 py-1 text-right">
                       <RateInput
-                        ref={(el) => { rateRefs.current[idx] = el }}
+                        ref={(el) => {
+                          rateRefs.current[idx] = el
+                        }}
                         rate={row.exchangeRate}
                         onChange={(val) => handleRateInput(idx, val)}
                         onKeyDown={(e) => handleKeyDown(e, idx, 'rate')}
-                        onFocus={() => { setActiveRow(idx); setActiveField('rate') }}
+                        onFocus={() => {
+                          setActiveRow(idx)
+                          setActiveField('rate')
+                        }}
                         onRateBlur={() => validateRateOnBlur(idx)}
                         disabled={!row.currencyCode}
                       />
                     </td>
                     <td className="px-2 py-1 text-right">
                       <input
-                        ref={(el) => { quantityRefs.current[idx] = el }}
+                        ref={(el) => {
+                          quantityRefs.current[idx] = el
+                        }}
                         value={row.quantity}
                         onChange={(e) => handleQuantityInput(idx, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, idx, 'quantity')}
-                        onFocus={() => { setActiveRow(idx); setActiveField('quantity') }}
+                        onFocus={() => {
+                          setActiveRow(idx)
+                          setActiveField('quantity')
+                        }}
                         type="text"
                         inputMode="numeric"
                         className="w-24 h-8 text-right font-mono text-base font-semibold bg-transparent border-2 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:border-transparent"
@@ -1846,14 +2083,30 @@ export default function CashierTransactionPage() {
                     <td className="px-2 py-1 text-center">
                       <button
                         type="button"
-                        onClick={() => setRows(prev => prev.map((r, i) => i === idx ? { ...r, foreignStatus: r.foreignStatus === 'FOREIGN' ? 'DOMESTIC' : 'FOREIGN' } : r))}
+                        onClick={() =>
+                          setRows((prev) =>
+                            prev.map((r, i) =>
+                              i === idx
+                                ? {
+                                    ...r,
+                                    foreignStatus:
+                                      r.foreignStatus === 'FOREIGN' ? 'DOMESTIC' : 'FOREIGN',
+                                  }
+                                : r,
+                            ),
+                          )
+                        }
                         disabled={!row.currencyCode}
                         className={`w-10 h-8 rounded font-mono font-bold text-sm border-2 transition-colors ${
                           row.foreignStatus === 'FOREIGN'
                             ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border-blue-400 dark:border-blue-700'
                             : 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-400 dark:border-green-700'
                         } disabled:opacity-40 disabled:cursor-not-allowed`}
-                        title={row.foreignStatus === 'FOREIGN' ? 'Külföldi (kattints: belföldire váltás)' : 'Belföldi (kattints: külföldire váltás)'}
+                        title={
+                          row.foreignStatus === 'FOREIGN'
+                            ? 'Külföldi (kattints: belföldire váltás)'
+                            : 'Belföldi (kattints: külföldire váltás)'
+                        }
                         data-testid={`foreign-status-toggle-${idx}`}
                       >
                         {row.foreignStatus === 'FOREIGN' ? 'K' : 'B'}
@@ -1873,34 +2126,65 @@ export default function CashierTransactionPage() {
             {(() => {
               const activeRowData = rows[activeRow]
               if (!activeRowData?.currencyCode) return null
-              const rateObj = exchangeRates.find((r) => r.currencyCode === activeRowData.currencyCode)
+              const rateObj = exchangeRates.find(
+                (r) => r.currencyCode === activeRowData.currencyCode,
+              )
               if (!rateObj) return null
               const qtyNum = parseFloat(activeRowData.quantity) || 0
               const baseRate = mode === 'buy' ? rateObj.baseBuyRate : rateObj.baseSellRate
               const baseHuf = baseRate * qtyNum
               const band = getBandForAmount(rateObj, mode, baseHuf)
               const tiers: { name: string; rate: number; minHuf: number }[] = [
-                { name: 'Alap', rate: mode === 'buy' ? rateObj.baseBuyRate : rateObj.baseSellRate, minHuf: 0 },
+                {
+                  name: 'Alap',
+                  rate: mode === 'buy' ? rateObj.baseBuyRate : rateObj.baseSellRate,
+                  minHuf: 0,
+                },
               ]
-              if (rateObj.limit1Amount != null && (mode === 'buy' ? rateObj.limit1BuyRate : rateObj.limit1SellRate) != null) {
-                tiers.push({ name: 'Limit 1', rate: (mode === 'buy' ? rateObj.limit1BuyRate : rateObj.limit1SellRate)!, minHuf: rateObj.limit1Amount })
+              if (
+                rateObj.limit1Amount != null &&
+                (mode === 'buy' ? rateObj.limit1BuyRate : rateObj.limit1SellRate) != null
+              ) {
+                tiers.push({
+                  name: 'Limit 1',
+                  rate: (mode === 'buy' ? rateObj.limit1BuyRate : rateObj.limit1SellRate)!,
+                  minHuf: rateObj.limit1Amount,
+                })
               }
-              if (rateObj.limit2Amount != null && (mode === 'buy' ? rateObj.limit2BuyRate : rateObj.limit2SellRate) != null) {
-                tiers.push({ name: 'Limit 2', rate: (mode === 'buy' ? rateObj.limit2BuyRate : rateObj.limit2SellRate)!, minHuf: rateObj.limit2Amount })
+              if (
+                rateObj.limit2Amount != null &&
+                (mode === 'buy' ? rateObj.limit2BuyRate : rateObj.limit2SellRate) != null
+              ) {
+                tiers.push({
+                  name: 'Limit 2',
+                  rate: (mode === 'buy' ? rateObj.limit2BuyRate : rateObj.limit2SellRate)!,
+                  minHuf: rateObj.limit2Amount,
+                })
               }
-              if (rateObj.limit3Amount != null && (mode === 'buy' ? rateObj.limit3BuyRate : rateObj.limit3SellRate) != null) {
-                tiers.push({ name: 'Limit 3', rate: (mode === 'buy' ? rateObj.limit3BuyRate : rateObj.limit3SellRate)!, minHuf: rateObj.limit3Amount })
+              if (
+                rateObj.limit3Amount != null &&
+                (mode === 'buy' ? rateObj.limit3BuyRate : rateObj.limit3SellRate) != null
+              ) {
+                tiers.push({
+                  name: 'Limit 3',
+                  rate: (mode === 'buy' ? rateObj.limit3BuyRate : rateObj.limit3SellRate)!,
+                  minHuf: rateObj.limit3Amount,
+                })
               }
               return (
                 <div className="bg-blue-50 dark:bg-blue-950/30 p-2 text-xs border-t border-blue-200 dark:border-blue-800">
                   <div className="flex items-center gap-4 flex-wrap">
-                    <span className="font-semibold text-blue-700 dark:text-blue-300">{activeRowData.currencyCode} sávok:</span>
+                    <span className="font-semibold text-blue-700 dark:text-blue-300">
+                      {activeRowData.currencyCode} sávok:
+                    </span>
                     {/* FK-SAVOS B.2 (2026-06-12, user-kérés): a sáv-badge-ek KATTINTHATÓK — a
                         kiválasztott sáv árfolyama a sorra kerül. Csak az összeg-küszöböt elérő
                         sáv aktív (a küszöb alatti sáv kézi választása marzs-vesztés lenne —
                         ahhoz a sorban kézi árfolyam írható, a pénztárosi kvóta terhére). */}
                     {tiers.map((tier) => {
-                      const isCurrent = band.tierName === tier.name.toLowerCase().replace(' ', '') || (tier.name === 'Alap' && band.tierName === 'alap')
+                      const isCurrent =
+                        band.tierName === tier.name.toLowerCase().replace(' ', '') ||
+                        (tier.name === 'Alap' && band.tierName === 'alap')
                       const reachable = baseHuf >= tier.minHuf
                       return (
                         // Copilot PR #1103: a title a NEM-disabled wrapper span-en — disabled
@@ -1908,19 +2192,24 @@ export default function CashierTransactionPage() {
                         // inaktív sávnál kell a „miért nem választható" magyarázat.
                         <span
                           key={tier.name}
-                          title={reachable
-                            ? `Sáv alkalmazása: ${tier.rate.toFixed(2)}`
-                            : `A sávhoz legalább ${(tier.minHuf / 1000).toFixed(0)}k Ft összeg kell`}
+                          title={
+                            reachable
+                              ? `Sáv alkalmazása: ${tier.rate.toFixed(2)}`
+                              : `A sávhoz legalább ${(tier.minHuf / 1000).toFixed(0)}k Ft összeg kell`
+                          }
                         >
                           <button
                             type="button"
                             disabled={!reachable}
                             onClick={() => handleRateInput(activeRow, String(tier.rate))}
-                            className={`px-1.5 py-0.5 rounded ${isCurrent
-                              ? 'bg-blue-600 text-white font-bold'
-                              : 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'} ${reachable ? 'cursor-pointer hover:ring-1 hover:ring-blue-500' : 'opacity-50 cursor-not-allowed'}`}
+                            className={`px-1.5 py-0.5 rounded ${
+                              isCurrent
+                                ? 'bg-blue-600 text-white font-bold'
+                                : 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'
+                            } ${reachable ? 'cursor-pointer hover:ring-1 hover:ring-blue-500' : 'opacity-50 cursor-not-allowed'}`}
                           >
-                            {tier.name}: {tier.rate.toFixed(2)} {tier.minHuf > 0 ? `(${(tier.minHuf / 1000).toFixed(0)}k+)` : ''}
+                            {tier.name}: {tier.rate.toFixed(2)}{' '}
+                            {tier.minHuf > 0 ? `(${(tier.minHuf / 1000).toFixed(0)}k+)` : ''}
                           </button>
                         </span>
                       )
@@ -1935,7 +2224,8 @@ export default function CashierTransactionPage() {
                     )}
                     {cashierRateQuota && cashierRateQuota.remaining > 0 && (
                       <span className="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                        Pénztárosi sáv: {cashierRateQuota.remaining}/{cashierRateQuota.limit} ({(cashierRateQuota.minAmountHuf / 1000).toFixed(0)}k+ Ft)
+                        Pénztárosi sáv: {cashierRateQuota.remaining}/{cashierRateQuota.limit} (
+                        {(cashierRateQuota.minAmountHuf / 1000).toFixed(0)}k+ Ft)
                       </span>
                     )}
                     {cashierRateQuota && cashierRateQuota.remaining <= 0 && (
@@ -1951,11 +2241,15 @@ export default function CashierTransactionPage() {
             {/* OSSZEGZO */}
             <div className="bg-gray-50 dark:bg-gray-800/80 p-2 space-y-1 border-t border-gray-200 dark:border-gray-700">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">{t('transactions.osszesen')}</span>
+                <span className="text-gray-600 dark:text-gray-400">
+                  {t('transactions.osszesen')}
+                </span>
                 <span className="font-mono font-semibold">{formatNum(subtotal)} HUF</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">{t('transactions.kezelesiDij')}</span>
+                <span className="text-gray-600 dark:text-gray-400">
+                  {t('transactions.kezelesiDij')}
+                </span>
                 <span className="font-mono font-semibold">{formatNum(handlingFee)} HUF</span>
               </div>
               {autoFeeDiscountLabel && (
@@ -1966,8 +2260,13 @@ export default function CashierTransactionPage() {
               )}
               {discount > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">{t('transactions.kedvezmeny2')}{discount}%):</span>
-                  <span className="font-mono font-semibold text-green-600">-{formatNum(discountAmount)} HUF</span>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    {t('transactions.kedvezmeny2')}
+                    {discount}%):
+                  </span>
+                  <span className="font-mono font-semibold text-green-600">
+                    -{formatNum(discountAmount)} HUF
+                  </span>
                 </div>
               )}
               <hr className="border-gray-300 dark:border-gray-600 my-1" />
@@ -1995,19 +2294,28 @@ export default function CashierTransactionPage() {
                 customerDataRef.current = data
                 setComplianceCustomerId(data?.id ?? null)
               }}
-              onAmlResult={(result) => { amlResultRef.current = result }}
+              onAmlResult={(result) => {
+                amlResultRef.current = result
+              }}
             />
 
             {/* FS-10 S3: center-ben rögzített compliance-kérdések — nem blokkoló,
                 a válasz az ügyfélhez kötve rögzül (transactionId nélkül). */}
             {complianceCustomerId != null && (
-              <ComplianceQuestionsBlock key={complianceCustomerId} customerId={complianceCustomerId} />
+              <ComplianceQuestionsBlock
+                key={complianceCustomerId}
+                customerId={complianceCustomerId}
+              />
             )}
 
             {/* Veglegestes gomb */}
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting || !rows.some((r) => r.currencyCode.length > 0) || (amlResultRef.current?.blocked ?? false)}
+              disabled={
+                isSubmitting ||
+                !rows.some((r) => r.currencyCode.length > 0) ||
+                (amlResultRef.current?.blocked ?? false)
+              }
               className="w-full py-2 rounded-lg text-white font-bold text-base shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
               data-action="save"
               style={{ backgroundColor: 'var(--primary)' }}
@@ -2040,7 +2348,11 @@ export default function CashierTransactionPage() {
               const band = getBandForAmount(rateObj, mode, baseAmountHuf)
               setRows((prev) => {
                 const next = [...prev]
-                next[rateAuthRow] = { ...next[rateAuthRow]!, exchangeRate: band.tierRate, hufValue: roundHuf(band.tierRate * qtyNum) }
+                next[rateAuthRow] = {
+                  ...next[rateAuthRow]!,
+                  exchangeRate: band.tierRate,
+                  hufValue: roundHuf(band.tierRate * qtyNum),
+                }
                 return next
               })
             }
@@ -2052,10 +2364,19 @@ export default function CashierTransactionPage() {
       />
 
       {showIncomeProofModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" data-testid="income-proof-capture-modal">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          data-testid="income-proof-capture-modal"
+        >
           <div className="w-full max-w-2xl rounded-xl bg-white p-4 shadow-2xl dark:bg-gray-800">
-            <h3 className="mb-2 text-lg font-bold text-gray-900 dark:text-white">{t('incomeProof.cim')}</h3>
-            {incomeProofRequired && <p className="mb-3 text-sm text-red-700 dark:text-red-300">{t('incomeProof.kotelezo')}</p>}
+            <h3 className="mb-2 text-lg font-bold text-gray-900 dark:text-white">
+              {t('incomeProof.cim')}
+            </h3>
+            {incomeProofRequired && (
+              <p className="mb-3 text-sm text-red-700 dark:text-red-300">
+                {t('incomeProof.kotelezo')}
+              </p>
+            )}
             <IncomeSourceDocCapture
               onCaptured={(base64) => {
                 incomeProofBase64Ref.current = base64
@@ -2063,7 +2384,9 @@ export default function CashierTransactionPage() {
                 setIncomeProofRequired(false)
                 void handleSubmit()
               }}
-              onClear={() => { incomeProofBase64Ref.current = null }}
+              onClear={() => {
+                incomeProofBase64Ref.current = null
+              }}
             />
             <div className="mt-3 flex justify-end">
               <button
@@ -2083,21 +2406,45 @@ export default function CashierTransactionPage() {
       )}
 
       {showIncomeProofSendModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" data-testid="income-proof-send-modal">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          data-testid="income-proof-send-modal"
+        >
           <div className="w-full max-w-md rounded-xl bg-white p-4 shadow-2xl dark:bg-gray-800">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('incomeProof.kuldes')}</h3>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{t('incomeProof.nemTarolodik')}</p>
-            {incomeProofSending && <p className="mt-3 text-sm text-gray-700 dark:text-gray-200">{t('incomeProof.kuldes')}</p>}
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              {t('incomeProof.kuldes')}
+            </h3>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              {t('incomeProof.nemTarolodik')}
+            </p>
+            {incomeProofSending && (
+              <p className="mt-3 text-sm text-gray-700 dark:text-gray-200">
+                {t('incomeProof.kuldes')}
+              </p>
+            )}
             {incomeProofSendError && (
               <div className="mt-3 space-y-3">
-                <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{t('incomeProof.kuldesHiba')} {incomeProofSendError}</p>
+                <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+                  {t('incomeProof.kuldesHiba')} {incomeProofSendError}
+                </p>
                 <div className="flex justify-end gap-2">
-                  <button type="button" className="form-button" onClick={() => { void cancelIncomeProofEmail() }}>{t('incomeProof.megsem')}</button>
+                  <button
+                    type="button"
+                    className="form-button"
+                    onClick={() => {
+                      void cancelIncomeProofEmail()
+                    }}
+                  >
+                    {t('incomeProof.megsem')}
+                  </button>
                   <button
                     type="button"
                     className="form-button-primary"
                     disabled={!incomeProofPendingPayload || incomeProofSending}
-                    onClick={() => { if (incomeProofPendingPayload) void sendIncomeProofEmail(incomeProofPendingPayload) }}
+                    onClick={() => {
+                      if (incomeProofPendingPayload)
+                        void sendIncomeProofEmail(incomeProofPendingPayload)
+                    }}
                   >
                     {t('incomeProof.ujra')}
                   </button>
@@ -2152,16 +2499,18 @@ export default function CashierTransactionPage() {
               'Nyomtatás nem elérhető',
               inElectron
                 ? 'Electron preload/electronAPI wiring sikertelen — indítsa újra a klienst, ha tartós, frissítse a programot.'
-                : 'Webes módban nincs nyomtatás. Telepítse az Electron klienst.'
+                : 'Webes módban nincs nyomtatás. Telepítse az Electron klienst.',
             )
             throw new Error('printReceipt nem elérhető')
           }
           try {
             const success = await window.electronAPI.printReceipt(JSON.stringify(receiptData))
             if (!success) {
-              toast.error('Nyomtatás sikertelen',
+              toast.error(
+                'Nyomtatás sikertelen',
                 'A nyomtató offline / nincs konfigurálva / papír kifogyott. ' +
-                'Beállítások > Nyomtatás → ellenőrizze a soros port + nyomtató nevet.')
+                  'Beállítások > Nyomtatás → ellenőrizze a soros port + nyomtató nevet.',
+              )
               throw new Error('Nyomtatás sikertelen')
             }
             toast.success('Nyomtatás elindítva', `Bizonylat: ${receiptData.receiptNumber ?? '—'}`)
@@ -2218,8 +2567,10 @@ export default function CashierTransactionPage() {
         onClose={() => setShowSuspicionModal(false)}
         onReported={() => {
           setShowSuspicionModal(false)
-          toast.warning('Gyanú-bejelentés rögzítve',
-            'A vezetők értesítést kaptak. A tranzakciót NE rögzítse — egyeztessen telefonon a területi vezetővel.')
+          toast.warning(
+            'Gyanú-bejelentés rögzítve',
+            'A vezetők értesítést kaptak. A tranzakciót NE rögzítse — egyeztessen telefonon a területi vezetővel.',
+          )
         }}
       />
 
@@ -2229,14 +2580,39 @@ export default function CashierTransactionPage() {
           // v2.3.40 B13: F1/F2 align Főmenü-höz (F1=Vétel, F2=Eladás)
           { key: 'F1', label: 'Vétel', onClick: () => setMode('buy'), active: mode === 'buy' },
           { key: 'F2', label: 'Eladás', onClick: () => setMode('sell'), active: mode === 'sell' },
-          { key: 'F5', label: 'Sztornó', onClick: () => navigate('/transactions?action=storno'), variant: 'danger' },
+          {
+            key: 'F5',
+            label: 'Sztornó',
+            onClick: () => navigate('/transactions?action=storno'),
+            variant: 'danger',
+          },
           { key: 'F8', label: 'Árfolyam', onClick: () => navigate('/rates') },
-          { key: 'F9', label: 'Díj/Kedv.', onClick: () => { setFeeInput(String(handlingFee || '')); setDiscountInput(String(discount || '')); setShowFeeDialog(true) } },
+          {
+            key: 'F9',
+            label: 'Díj/Kedv.',
+            onClick: () => {
+              setFeeInput(String(handlingFee || ''))
+              setDiscountInput(String(discount || ''))
+              setShowFeeDialog(true)
+            },
+          },
           // EXCMD b9-korlevelek FR-03: gyanú-bejelentés (a folyamat felfüggesztése + SAR)
-          { key: 'F10', label: 'Gyanú', onClick: () => setShowSuspicionModal(true), variant: 'danger' },
+          {
+            key: 'F10',
+            label: 'Gyanú',
+            onClick: () => setShowSuspicionModal(true),
+            variant: 'danger',
+          },
         ]}
         right={[
-          { key: 'Esc', label: 'Mégse', onClick: () => { void handleCancel() }, variant: 'secondary' },
+          {
+            key: 'Esc',
+            label: 'Mégse',
+            onClick: () => {
+              void handleCancel()
+            },
+            variant: 'secondary',
+          },
         ]}
       />
     </div>

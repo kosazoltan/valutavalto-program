@@ -84,10 +84,7 @@ export function isBranchSelectableForAppMode(
   return true
 }
 
-export function filterBranchesForAppMode(
-  branches: Branch[],
-  appMode: ElectronAppMode,
-): Branch[] {
+export function filterBranchesForAppMode(branches: Branch[], appMode: ElectronAppMode): Branch[] {
   // Először mindig alkalmazzuk az alap szűrést (pl. inaktív/soft-deleted kizárása)
   const selectable = branches.filter((branch) => isBranchSelectableForAppMode(branch, appMode))
   if (appMode === 'ertektar') {
@@ -109,7 +106,11 @@ export function resolveSelectedWorkerForSetup(params: {
   if (params.offlineMode) return null
   const normalizedWorkerCode = params.workerCode.trim().toUpperCase()
   if (!normalizedWorkerCode) return null
-  return params.availableWorkers.find((worker) => worker.code.trim().toUpperCase() === normalizedWorkerCode) ?? null
+  return (
+    params.availableWorkers.find(
+      (worker) => worker.code.trim().toUpperCase() === normalizedWorkerCode,
+    ) ?? null
+  )
 }
 
 export function buildConnectionTestResetKey(params: {
@@ -137,11 +138,21 @@ interface StepDef {
 // SetupWizard csak az adott módnak megfelelő fiókokat ajánlja. Értéktár módban
 // CSAK az is_vault=TRUE fiókok látsszanak.
 const STEPS: readonly StepDef[] = [
-  { id: 'welcome', title: 'Üdvözöljük',    subtitle: 'A telepítés véghezvitele',     icon: Rocket },
-  { id: 'program', title: 'Program típus',       subtitle: 'Milyen szerepben indul ez a gép', icon: Server },
-  { id: 'branch',  title: 'Fiók kiválasztása', subtitle: 'Ezen a gépen dolgozó iroda', icon: Building2 },
-  { id: 'server',  title: 'Szerver kapcsolat', subtitle: 'Központi backend elérése',   icon: Server },
-  { id: 'admin',   title: 'Admin jelszó',      subtitle: 'Első belépéshez',            icon: KeyRound },
+  { id: 'welcome', title: 'Üdvözöljük', subtitle: 'A telepítés véghezvitele', icon: Rocket },
+  {
+    id: 'program',
+    title: 'Program típus',
+    subtitle: 'Milyen szerepben indul ez a gép',
+    icon: Server,
+  },
+  {
+    id: 'branch',
+    title: 'Fiók kiválasztása',
+    subtitle: 'Ezen a gépen dolgozó iroda',
+    icon: Building2,
+  },
+  { id: 'server', title: 'Szerver kapcsolat', subtitle: 'Központi backend elérése', icon: Server },
+  { id: 'admin', title: 'Admin jelszó', subtitle: 'Első belépéshez', icon: KeyRound },
 ]
 
 // Produkciós központi backend (Hetzner CPX31, DNS: excvaluta.com (api. aldomain nem letezik)).
@@ -169,7 +180,10 @@ function branchFromGoogleSetup(branch: SetupGoogleBranch | null | undefined): Br
   }
 }
 
-function preferredAppModeFromGoogleSetup(response: SetupGoogleIdentifyResponse, fallback: ElectronAppMode): ElectronAppMode {
+function preferredAppModeFromGoogleSetup(
+  response: SetupGoogleIdentifyResponse,
+  fallback: ElectronAppMode,
+): ElectronAppMode {
   const modes = response.validAppModes ?? response.worker?.validAppModes ?? []
   if (modes.includes(fallback)) return fallback
   if (modes.includes('rate-maker')) return 'rate-maker'
@@ -186,24 +200,26 @@ function isCashierPasswordSetup(response: SetupGoogleIdentifyResponse | null): b
     roles.push(response.worker.role.trim().toLowerCase())
   }
   const cashierRole = roles.includes('penztar') || roles.includes('cashier')
-  const nonCashierRole = roles.some((role) => [
-    'ertektar',
-    'ertekszallito',
-    'foertektar',
-    'ugyvezeto',
-    'irodavezeto',
-    'belso_ellenor',
-    'teruleti_vezeto',
-    'biztonsagi_vezeto',
-    'berszamfejto',
-    'penzugyi_vezeto',
-    'irodai_dolgozo',
-    'csoportvezeto',
-    'arfolyam_nezo',
-    'manager',
-    'supervisor',
-    'admin',
-  ].includes(role))
+  const nonCashierRole = roles.some((role) =>
+    [
+      'ertektar',
+      'ertekszallito',
+      'foertektar',
+      'ugyvezeto',
+      'irodavezeto',
+      'belso_ellenor',
+      'teruleti_vezeto',
+      'biztonsagi_vezeto',
+      'berszamfejto',
+      'penzugyi_vezeto',
+      'irodai_dolgozo',
+      'csoportvezeto',
+      'arfolyam_nezo',
+      'manager',
+      'supervisor',
+      'admin',
+    ].includes(role),
+  )
   return cashierRole && !nonCashierRole
 }
 
@@ -241,14 +257,19 @@ export default function SetupWizard() {
   const [selectedSharedWorkerCode, setSelectedSharedWorkerCode] = useState('')
   const [offlineMode, setOfflineMode] = useState(false)
   const [appModeChoice, setAppModeChoice] = useState<ElectronAppMode>('penztar')
-  const [connectionTest, setConnectionTest] = useState<
-    { state: 'idle' | 'testing' | 'ok' | 'fail'; message?: string }
-  >({ state: 'idle' })
-  const connectionTestResetKey = useMemo(() => buildConnectionTestResetKey({
-    apiUrl,
-    companyCode,
-    offlineMode,
-  }), [apiUrl, companyCode, offlineMode])
+  const [connectionTest, setConnectionTest] = useState<{
+    state: 'idle' | 'testing' | 'ok' | 'fail'
+    message?: string
+  }>({ state: 'idle' })
+  const connectionTestResetKey = useMemo(
+    () =>
+      buildConnectionTestResetKey({
+        apiUrl,
+        companyCode,
+        offlineMode,
+      }),
+    [apiUrl, companyCode, offlineMode],
+  )
   const connectionTestResetKeyRef = useRef(connectionTestResetKey)
   const autoConnectionTestKeyRef = useRef<string | null>(null)
 
@@ -304,7 +325,15 @@ export default function SetupWizard() {
         try {
           const list = await publicApi.getBranchesByCompany(companyCode)
           if (Array.isArray(list) && list.length > 0) {
-            setBranches(list.map((b) => ({ code: b.code, name: b.name, city: b.city ?? '', address: b.address, isVault: b.isVault })))
+            setBranches(
+              list.map((b) => ({
+                code: b.code,
+                name: b.name,
+                city: b.city ?? '',
+                address: b.address,
+                isVault: b.isVault,
+              })),
+            )
           }
         } catch {
           // Transiens hiba eseten NE toroljuk a korabban betoltott branch-eket
@@ -322,10 +351,11 @@ export default function SetupWizard() {
     const list = filterBranchesForAppMode(branches, appModeChoice)
     const q = branchSearch.trim().toLowerCase()
     if (!q) return list
-    return list.filter((b) =>
-      b.code.toLowerCase().includes(q) ||
-      b.name.toLowerCase().includes(q) ||
-      b.city.toLowerCase().includes(q),
+    return list.filter(
+      (b) =>
+        b.code.toLowerCase().includes(q) ||
+        b.name.toLowerCase().includes(q) ||
+        b.city.toLowerCase().includes(q),
     )
   }, [branches, branchSearch, appModeChoice])
 
@@ -347,52 +377,64 @@ export default function SetupWizard() {
     }
   }, [appModeChoice, selectedBranch])
 
-  const postSetupGoogleIdentify = useCallback(async (payload: {
-    idToken: string
-    selectedWorkerCode?: string
-    bindGoogleSubject?: boolean
-  }): Promise<SetupGoogleIdentifyResponse> => {
-    const apiBase = normalizeApiBase(apiUrl)
-    const request = {
-      idToken: payload.idToken,
-      companyCode: companyCode.trim(),
-      appMode: appModeChoice,
-      selectedWorkerCode: payload.selectedWorkerCode,
-      bindGoogleSubject: payload.bindGoogleSubject === true,
-    }
-    // Idempotency-Key: a google-identify ugyanazzal az id_token-nel termeszetszeruleg idempotens
-    // (ugyanazt a dolgozot azonositja / ugyanazt a subjectet koti). A kulcs jelzi az api-proxy-nak,
-    // hogy ez a POST retry-biztos (ESET-MITM reset ellen ujraprobalhato, duplikacio-kockazat nelkul).
-    const idempotencyKey = crypto.randomUUID()
-
-    if (window.electronAPI?.apiRequest) {
-      const url = `${apiBase}/public/setup/google-identify`
-      const result = await window.electronAPI.apiRequest({
-        method: 'POST',
-        url,
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'Idempotency-Key': idempotencyKey },
-        body: JSON.stringify(request),
-        timeoutMs: 15000,
-      })
-      const parsed = result.body ? JSON.parse(result.body) as SetupGoogleIdentifyResponse & { message?: string; error?: string } : null
-      if (!result.ok || !parsed) {
-        const reason = parsed?.message || parsed?.error
-        // status 0 = az api-proxy hálózati szintű hibát adott vissza (nincs HTTP válasz).
-        // A nem-informatikus kollégának értelmezhető, actionable üzenet kell — NEM "HTTP 0".
-        if (result.status === 0) {
-          throw new Error(
-            'Nem sikerült csatlakozni a szerverhez (hálózati hiba). Gyakori ok: a vírusirtó '
-            + '(pl. ESET) blokkolja a biztonságos kapcsolatot, vagy nincs internet. '
-            + (reason ? `Részletek: ${reason}` : ''),
-          )
-        }
-        throw new Error(reason || `HTTP ${result.status}`)
+  const postSetupGoogleIdentify = useCallback(
+    async (payload: {
+      idToken: string
+      selectedWorkerCode?: string
+      bindGoogleSubject?: boolean
+    }): Promise<SetupGoogleIdentifyResponse> => {
+      const apiBase = normalizeApiBase(apiUrl)
+      const request = {
+        idToken: payload.idToken,
+        companyCode: companyCode.trim(),
+        appMode: appModeChoice,
+        selectedWorkerCode: payload.selectedWorkerCode,
+        bindGoogleSubject: payload.bindGoogleSubject === true,
       }
-      return parsed
-    }
+      // Idempotency-Key: a google-identify ugyanazzal az id_token-nel termeszetszeruleg idempotens
+      // (ugyanazt a dolgozot azonositja / ugyanazt a subjectet koti). A kulcs jelzi az api-proxy-nak,
+      // hogy ez a POST retry-biztos (ESET-MITM reset ellen ujraprobalhato, duplikacio-kockazat nelkul).
+      const idempotencyKey = crypto.randomUUID()
 
-    return publicApi.identifyGoogleSetup(request, { apiBase, idempotencyKey })
-  }, [apiUrl, appModeChoice, companyCode])
+      if (window.electronAPI?.apiRequest) {
+        const url = `${apiBase}/public/setup/google-identify`
+        const result = await window.electronAPI.apiRequest({
+          method: 'POST',
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'Idempotency-Key': idempotencyKey,
+          },
+          body: JSON.stringify(request),
+          timeoutMs: 15000,
+        })
+        const parsed = result.body
+          ? (JSON.parse(result.body) as SetupGoogleIdentifyResponse & {
+              message?: string
+              error?: string
+            })
+          : null
+        if (!result.ok || !parsed) {
+          const reason = parsed?.message || parsed?.error
+          // status 0 = az api-proxy hálózati szintű hibát adott vissza (nincs HTTP válasz).
+          // A nem-informatikus kollégának értelmezhető, actionable üzenet kell — NEM "HTTP 0".
+          if (result.status === 0) {
+            throw new Error(
+              'Nem sikerült csatlakozni a szerverhez (hálózati hiba). Gyakori ok: a vírusirtó ' +
+                '(pl. ESET) blokkolja a biztonságos kapcsolatot, vagy nincs internet. ' +
+                (reason ? `Részletek: ${reason}` : ''),
+            )
+          }
+          throw new Error(reason || `HTTP ${result.status}`)
+        }
+        return parsed
+      }
+
+      return publicApi.identifyGoogleSetup(request, { apiBase, idempotencyKey })
+    },
+    [apiUrl, appModeChoice, companyCode],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -417,39 +459,44 @@ export default function SetupWizard() {
     }
   }, [apiUrl])
 
-  const applyGoogleSetup = useCallback((response: SetupGoogleIdentifyResponse) => {
-    setGoogleSetup(response)
-    setGoogleSetupError(null)
-    const branch = branchFromGoogleSetup(response.branch)
-    if (branch) {
-      setSelectedBranch(branch)
-      setBranches((existing) => (
-        existing.some((item) => item.code === branch.code) ? existing : [branch, ...existing]
-      ))
-    }
-    if (response.workerOptions && response.workerOptions.length > 0) {
-      setAvailableWorkers(response.workerOptions.map((worker) => ({
-        code: worker.code,
-        name: worker.name,
-      })))
-    }
-    if (response.worker) {
-      setBootstrapUsername(response.worker.code)
-      setAdminUsername(response.worker.code)
-      setAvailableWorkers((existing) => (
-        existing.some((worker) => worker.code === response.worker?.code)
-          ? existing
-          : [{ code: response.worker!.code, name: response.worker!.name }, ...existing]
-      ))
-      if (!isCashierPasswordSetup(response)) {
-        setAdminPassword('')
-        setAdminPasswordConfirm('')
-        setBootstrapPassword('')
+  const applyGoogleSetup = useCallback(
+    (response: SetupGoogleIdentifyResponse) => {
+      setGoogleSetup(response)
+      setGoogleSetupError(null)
+      const branch = branchFromGoogleSetup(response.branch)
+      if (branch) {
+        setSelectedBranch(branch)
+        setBranches((existing) =>
+          existing.some((item) => item.code === branch.code) ? existing : [branch, ...existing],
+        )
       }
-      setCurrentStep('server')
-    }
-    setAppModeChoice(preferredAppModeFromGoogleSetup(response, appModeChoice))
-  }, [appModeChoice])
+      if (response.workerOptions && response.workerOptions.length > 0) {
+        setAvailableWorkers(
+          response.workerOptions.map((worker) => ({
+            code: worker.code,
+            name: worker.name,
+          })),
+        )
+      }
+      if (response.worker) {
+        setBootstrapUsername(response.worker.code)
+        setAdminUsername(response.worker.code)
+        setAvailableWorkers((existing) =>
+          existing.some((worker) => worker.code === response.worker?.code)
+            ? existing
+            : [{ code: response.worker!.code, name: response.worker!.name }, ...existing],
+        )
+        if (!isCashierPasswordSetup(response)) {
+          setAdminPassword('')
+          setAdminPasswordConfirm('')
+          setBootstrapPassword('')
+        }
+        setCurrentStep('server')
+      }
+      setAppModeChoice(preferredAppModeFromGoogleSetup(response, appModeChoice))
+    },
+    [appModeChoice],
+  )
 
   const handleGoogleSetupLogin = useCallback(async () => {
     setGoogleSetupLoading(true)
@@ -514,9 +561,10 @@ export default function SetupWizard() {
     setConnectionTest({ state: 'idle' })
   }, [connectionTestResetKey])
 
-  const isCurrentConnectionTestRequest = useCallback((requestKey: string) => (
-    connectionTestResetKeyRef.current === requestKey
-  ), [])
+  const isCurrentConnectionTestRequest = useCallback(
+    (requestKey: string) => connectionTestResetKeyRef.current === requestKey,
+    [],
+  )
 
   const googlePasswordSetupRequired = isCashierPasswordSetup(googleSetup)
   const googleAuthSetupReady = Boolean(googleSetup?.worker && !googlePasswordSetupRequired)
@@ -535,11 +583,25 @@ export default function SetupWizard() {
         return connectionTest.state === 'ok'
       case 'admin':
         if (googleAuthSetupReady) return true
-        return adminPassword.length >= 8 && adminPassword === adminPasswordConfirm && adminUsername.length > 0
+        return (
+          adminPassword.length >= 8 &&
+          adminPassword === adminPasswordConfirm &&
+          adminUsername.length > 0
+        )
       default:
         return false
     }
-  }, [currentStep, selectedBranch, offlineMode, connectionTest.state, googleAuthSetupReady, adminPassword, adminPasswordConfirm, adminUsername, appModeChoice])
+  }, [
+    currentStep,
+    selectedBranch,
+    offlineMode,
+    connectionTest.state,
+    googleAuthSetupReady,
+    adminPassword,
+    adminPasswordConfirm,
+    adminUsername,
+    appModeChoice,
+  ])
 
   // --- v2.5.41: Auto connection test a server step belepeskor ---
   // AUTOMATIKUSAN fut a bootstrap-status teszt amikor a user a server step-re lep.
@@ -553,12 +615,13 @@ export default function SetupWizard() {
     const requestKey = connectionTestResetKey
     setConnectionTest({ state: 'testing' })
     if (window.electronAPI?.setupTestConnection) {
-      window.electronAPI.setupTestConnection({
-        apiUrl: apiUrl.trim(),
-        companyCode: companyCode.trim(),
-        username: '',
-        password: '',
-      })
+      window.electronAPI
+        .setupTestConnection({
+          apiUrl: apiUrl.trim(),
+          companyCode: companyCode.trim(),
+          username: '',
+          password: '',
+        })
         .then((result) => {
           if (!isCurrentConnectionTestRequest(requestKey)) return
           if (result.success) {
@@ -578,7 +641,10 @@ export default function SetupWizard() {
         })
       return
     }
-    const normalized = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '')
+    const normalized = apiUrl
+      .trim()
+      .replace(/\/+$/, '')
+      .replace(/\/api\/v1$/, '')
     const url = `${normalized}/api/v1/auth/bootstrap-status`
     const started = performance.now()
     fetch(url, { method: 'GET' })
@@ -586,7 +652,10 @@ export default function SetupWizard() {
         if (!isCurrentConnectionTestRequest(requestKey)) return
         const latency = Math.round(performance.now() - started)
         if (resp.ok) {
-          setConnectionTest({ state: 'ok', message: `Kapcsolódva (HTTP ${resp.status}, ${latency} ms)` })
+          setConnectionTest({
+            state: 'ok',
+            message: `Kapcsolódva (HTTP ${resp.status}, ${latency} ms)`,
+          })
         } else {
           setConnectionTest({ state: 'fail', message: `Szerver hiba: HTTP ${resp.status}` })
         }
@@ -595,7 +664,14 @@ export default function SetupWizard() {
         if (!isCurrentConnectionTestRequest(requestKey)) return
         setConnectionTest({ state: 'fail', message: humanizeError(err) })
       })
-  }, [currentStep, apiUrl, companyCode, offlineMode, connectionTestResetKey, isCurrentConnectionTestRequest])
+  }, [
+    currentStep,
+    apiUrl,
+    companyCode,
+    offlineMode,
+    connectionTestResetKey,
+    isCurrentConnectionTestRequest,
+  ])
 
   // --- Kapcsolat teszt (kezi, retry gombnak) ---
   const runConnectionTest = useCallback(async () => {
@@ -624,7 +700,10 @@ export default function SetupWizard() {
         }
         return
       }
-      const normalized = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '')
+      const normalized = apiUrl
+        .trim()
+        .replace(/\/+$/, '')
+        .replace(/\/api\/v1$/, '')
       const url = `${normalized}/api/v1/auth/bootstrap-status`
       const resp = await fetch(url, { method: 'GET' })
       if (!isCurrentConnectionTestRequest(requestKey)) return
@@ -638,7 +717,14 @@ export default function SetupWizard() {
       if (!isCurrentConnectionTestRequest(requestKey)) return
       setConnectionTest({ state: 'fail', message: humanizeError(err) })
     }
-  }, [apiUrl, companyCode, bootstrapUsername, bootstrapPassword, connectionTestResetKey, isCurrentConnectionTestRequest])
+  }, [
+    apiUrl,
+    companyCode,
+    bootstrapUsername,
+    bootstrapPassword,
+    connectionTestResetKey,
+    isCurrentConnectionTestRequest,
+  ])
 
   // --- Telepítés befejezése ---
   const handleFinish = async () => {
@@ -686,45 +772,63 @@ export default function SetupWizard() {
           bootstrapPassword: googleAuthSetupReady ? '' : bootstrapPassword,
           offlineMode,
           appMode: appModeChoice,
-          ...(googleAuthSetupReady && finalizedGoogleSetup?.googleIdentity ? {
-            googleEmail: finalizedGoogleSetup.googleIdentity.email,
-            googleSub: finalizedGoogleSetup.googleIdentity.googleSub,
-            googleName: finalizedGoogleSetup.googleIdentity.name ?? undefined,
-            googlePicture: finalizedGoogleSetup.googleIdentity.picture ?? undefined,
-          } : {}),
+          ...(googleAuthSetupReady && finalizedGoogleSetup?.googleIdentity
+            ? {
+                googleEmail: finalizedGoogleSetup.googleIdentity.email,
+                googleSub: finalizedGoogleSetup.googleIdentity.googleSub,
+                googleName: finalizedGoogleSetup.googleIdentity.name ?? undefined,
+                googlePicture: finalizedGoogleSetup.googleIdentity.picture ?? undefined,
+              }
+            : {}),
           // v2.3.0: worker identity atadasa az electron-nak ha van kivalasztott dolgozo
-          ...(googleAuthSetupReady && finalizedGoogleSetup?.worker ? {
-            selectedWorkerCode: finalizedGoogleSetup.worker.code.trim().toUpperCase(),
-            selectedWorkerName: finalizedGoogleSetup.worker.name,
-            selectedWorkerRole: finalizedGoogleSetup.worker.roles?.[0] ?? finalizedGoogleSetup.worker.role ?? undefined,
-          } : selectedWorker ? {
-            selectedWorkerCode: selectedWorker.code.trim().toUpperCase(),
-            selectedWorkerName: selectedWorker.name,
-          } : {}),
+          ...(googleAuthSetupReady && finalizedGoogleSetup?.worker
+            ? {
+                selectedWorkerCode: finalizedGoogleSetup.worker.code.trim().toUpperCase(),
+                selectedWorkerName: finalizedGoogleSetup.worker.name,
+                selectedWorkerRole:
+                  finalizedGoogleSetup.worker.roles?.[0] ??
+                  finalizedGoogleSetup.worker.role ??
+                  undefined,
+              }
+            : selectedWorker
+              ? {
+                  selectedWorkerCode: selectedWorker.code.trim().toUpperCase(),
+                  selectedWorkerName: selectedWorker.name,
+                }
+              : {}),
         })
         if (!result.success) {
-          setSaveError(result.errorMessage || 'Ismeretlen hiba a telepítés során. Ellenőrizze a szerver kapcsolatot.')
+          setSaveError(
+            result.errorMessage ||
+              'Ismeretlen hiba a telepítés során. Ellenőrizze a szerver kapcsolatot.',
+          )
           setIsSaving(false)
         }
         return
       }
-      const normalized = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '')
+      const normalized = apiUrl
+        .trim()
+        .replace(/\/+$/, '')
+        .replace(/\/api\/v1$/, '')
 
       if (googleAuthSetupReady && finalizedGoogleSetup?.worker) {
-        localStorage.setItem('valuta-setup-config', JSON.stringify({
-          branchCode: selectedBranch.code,
-          branchName: selectedBranch.name,
-          apiUrl: apiUrl.trim(),
-          companyCode: companyCode.trim(),
-          appMode: appModeChoice,
-          authMode: 'google',
-          googleEmail: finalizedGoogleSetup.googleIdentity.email,
-          googleSub: finalizedGoogleSetup.googleIdentity.googleSub,
-          workerCode: finalizedGoogleSetup.worker.code,
-          workerName: finalizedGoogleSetup.worker.name,
-          workerRole: finalizedGoogleSetup.worker.roles?.[0] ?? finalizedGoogleSetup.worker.role,
-          installedAt: new Date().toISOString(),
-        }))
+        localStorage.setItem(
+          'valuta-setup-config',
+          JSON.stringify({
+            branchCode: selectedBranch.code,
+            branchName: selectedBranch.name,
+            apiUrl: apiUrl.trim(),
+            companyCode: companyCode.trim(),
+            appMode: appModeChoice,
+            authMode: 'google',
+            googleEmail: finalizedGoogleSetup.googleIdentity.email,
+            googleSub: finalizedGoogleSetup.googleIdentity.googleSub,
+            workerCode: finalizedGoogleSetup.worker.code,
+            workerName: finalizedGoogleSetup.worker.name,
+            workerRole: finalizedGoogleSetup.worker.roles?.[0] ?? finalizedGoogleSetup.worker.role,
+            installedAt: new Date().toISOString(),
+          }),
+        )
         window.location.href = '/login'
         return
       }
@@ -745,13 +849,19 @@ export default function SetupWizard() {
           method: 'GET',
           credentials: 'include',
         })
-        const statusBody = await statusResp.json().catch(() => ({} as { completed?: boolean }))
+        const statusBody = await statusResp.json().catch(() => ({}) as { completed?: boolean })
         bootstrapCompleted = statusBody.completed === true
       } catch {
         bootstrapCompleted = false
       }
-      const useWorkerSetup = selectedWorker !== null || (bootstrapCompleted && selectedWorkerCode.trim().length > 0)
-      let workerIdentity: { workerCode: string; workerName?: string; workerRole?: string; branchCode?: string } | null = null
+      const useWorkerSetup =
+        selectedWorker !== null || (bootstrapCompleted && selectedWorkerCode.trim().length > 0)
+      let workerIdentity: {
+        workerCode: string
+        workerName?: string
+        workerRole?: string
+        branchCode?: string
+      } | null = null
 
       if (useWorkerSetup) {
         const setupUrl = `${normalized}/api/v1/auth/first-time-worker-setup`
@@ -769,7 +879,7 @@ export default function SetupWizard() {
           }),
         })
         if (!setupResp.ok) {
-          const body = await setupResp.json().catch(() => ({} as Record<string, unknown>))
+          const body = await setupResp.json().catch(() => ({}) as Record<string, unknown>)
           const msg = (body as { message?: string }).message || `HTTP ${setupResp.status}`
           setSaveError(`A dolgozói jelszó beállítása nem sikerült: ${msg}`)
           setIsSaving(false)
@@ -797,7 +907,7 @@ export default function SetupWizard() {
           }),
         })
         if (!resp.ok) {
-          const body = await resp.json().catch(() => ({} as Record<string, unknown>))
+          const body = await resp.json().catch(() => ({}) as Record<string, unknown>)
           const msg = (body as { message?: string }).message || `HTTP ${resp.status}`
           if (resp.status !== 400 || !msg.toLowerCase().includes('lezajlott')) {
             setSaveError(`Admin létrehozási hiba: ${msg}`)
@@ -812,17 +922,20 @@ export default function SetupWizard() {
         }
       }
 
-      localStorage.setItem('valuta-setup-config', JSON.stringify({
-        branchCode: selectedBranch.code,
-        branchName: selectedBranch.name,
-        apiUrl: apiUrl.trim(),
-        companyCode: companyCode.trim(),
-        appMode: appModeChoice,
-        workerCode: workerIdentity?.workerCode,
-        workerName: workerIdentity?.workerName,
-        workerRole: workerIdentity?.workerRole,
-        installedAt: new Date().toISOString(),
-      }))
+      localStorage.setItem(
+        'valuta-setup-config',
+        JSON.stringify({
+          branchCode: selectedBranch.code,
+          branchName: selectedBranch.name,
+          apiUrl: apiUrl.trim(),
+          companyCode: companyCode.trim(),
+          appMode: appModeChoice,
+          workerCode: workerIdentity?.workerCode,
+          workerName: workerIdentity?.workerName,
+          workerRole: workerIdentity?.workerRole,
+          installedAt: new Date().toISOString(),
+        }),
+      )
       window.location.href = '/login'
     } catch (err: unknown) {
       setSaveError(humanizeError(err))
@@ -833,7 +946,10 @@ export default function SetupWizard() {
   // --- Lépés navigáció ---
   const goNext = () => {
     if (!canAdvance) return
-    if (googleSetup?.worker && (currentStep === 'welcome' || currentStep === 'program' || currentStep === 'branch')) {
+    if (
+      googleSetup?.worker &&
+      (currentStep === 'welcome' || currentStep === 'program' || currentStep === 'branch')
+    ) {
       setCurrentStep('server')
       return
     }
@@ -885,13 +1001,17 @@ export default function SetupWizard() {
           )}
           {currentStep === 'program' && (
             <div>
-              <h2 className="text-xl font-bold text-slate-800 mb-2">{t('setup.programTipusKivalasztasa')}</h2>
+              <h2 className="text-xl font-bold text-slate-800 mb-2">
+                {t('setup.programTipusKivalasztasa')}
+              </h2>
               <p className="text-sm text-slate-600 mb-6">
-                {t('setup.mitFuttatEzAGepEzHatarozzaMegMilyenMenupontokJelennekMegEsHogyKiTudBejelentkezni')}
+                {t(
+                  'setup.mitFuttatEzAGepEzHatarozzaMegMilyenMenupontokJelennekMegEsHogyKiTudBejelentkezni',
+                )}
                 {t('setup.aValasztasATelepitesUtanIsModosithatoABeallitasokban')}
               </p>
               <div className="space-y-3">
-                {([
+                {[
                   {
                     id: 'penztar' as const,
                     title: 'Valutaváltó Pénztár',
@@ -907,7 +1027,7 @@ export default function SetupWizard() {
                     title: 'Árfolyamkészítő',
                     desc: 'Főértéktárosi árfolyamkészítés: helyi Electron alkalmazásból publikálás a központi szerveren keresztül.',
                   },
-                ]).map((opt) => (
+                ].map((opt) => (
                   <button
                     key={opt.id}
                     type="button"
@@ -920,7 +1040,9 @@ export default function SetupWizard() {
                 ))}
               </div>
               <p className="mt-4 text-xs text-slate-500">
-                {t('setup.aBejelentkezettDolgozoMunkakoreAlapjanASzerverEllenorziHogyJogosultEErreAProgramTipusra')}
+                {t(
+                  'setup.aBejelentkezettDolgozoMunkakoreAlapjanASzerverEllenorziHogyJogosultEErreAProgramTipusra',
+                )}
                 {t('setup.haNemHibauzenetetKapALoginNal')}
               </p>
             </div>
@@ -941,9 +1063,11 @@ export default function SetupWizard() {
               onWorkerListChange={setAvailableWorkers}
               appMode={appModeChoice}
               googleAuthSetupReady={googleAuthSetupReady}
-              googleSetupWorker={googleSetup?.worker
-                ? { code: googleSetup.worker.code ?? '', name: googleSetup.worker.name ?? '' }
-                : null}
+              googleSetupWorker={
+                googleSetup?.worker
+                  ? { code: googleSetup.worker.code ?? '', name: googleSetup.worker.name ?? '' }
+                  : null
+              }
             />
           )}
           {currentStep === 'admin' && googleAuthSetupReady && googleSetup?.worker ? (
@@ -952,23 +1076,25 @@ export default function SetupWizard() {
               selectedBranch={selectedBranch}
               appMode={appModeChoice}
             />
-          ) : currentStep === 'admin' && (
-            <AdminStep
-              adminUsername={adminUsername}
-              onAdminUsernameChange={setAdminUsername}
-              adminPassword={adminPassword}
-              onAdminPasswordChange={setAdminPassword}
-              adminPasswordConfirm={adminPasswordConfirm}
-              onAdminPasswordConfirmChange={setAdminPasswordConfirm}
-              bootstrapPassword={bootstrapPassword}
-              onBootstrapPasswordChange={setBootstrapPassword}
-              selectedBranch={selectedBranch}
-              apiUrl={apiUrl}
-              companyCode={companyCode}
-              offlineMode={offlineMode}
-              setupToken={setupToken}
-              onSetupTokenChange={setSetupToken}
-            />
+          ) : (
+            currentStep === 'admin' && (
+              <AdminStep
+                adminUsername={adminUsername}
+                onAdminUsernameChange={setAdminUsername}
+                adminPassword={adminPassword}
+                onAdminPasswordChange={setAdminPassword}
+                adminPasswordConfirm={adminPasswordConfirm}
+                onAdminPasswordConfirmChange={setAdminPasswordConfirm}
+                bootstrapPassword={bootstrapPassword}
+                onBootstrapPasswordChange={setBootstrapPassword}
+                selectedBranch={selectedBranch}
+                apiUrl={apiUrl}
+                companyCode={companyCode}
+                offlineMode={offlineMode}
+                setupToken={setupToken}
+                onSetupTokenChange={setSetupToken}
+              />
+            )
           )}
         </div>
 
@@ -980,7 +1106,8 @@ export default function SetupWizard() {
             disabled={currentIndex === 0 || isSaving}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
-            <ChevronLeft className="w-4 h-4" />{t('common.back')}
+            <ChevronLeft className="w-4 h-4" />
+            {t('common.back')}
           </button>
 
           <div className="text-sm text-slate-500">
@@ -994,7 +1121,8 @@ export default function SetupWizard() {
               disabled={!canAdvance || isSaving}
               className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition"
             >
-              {t('common.next')}<ChevronRight className="w-4 h-4" />
+              {t('common.next')}
+              <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
             <button
@@ -1004,9 +1132,14 @@ export default function SetupWizard() {
               className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition"
             >
               {isSaving ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Telepítés...</>
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Telepítés...
+                </>
               ) : (
-                <><Rocket className="w-4 h-4" />{t('setup.telepitesBefejezese')}</>
+                <>
+                  <Rocket className="w-4 h-4" />
+                  {t('setup.telepitesBefejezese')}
+                </>
               )}
             </button>
           )}
@@ -1048,20 +1181,29 @@ function SetupHeader({ currentIndex }: { currentIndex: number }) {
               <div
                 className={[
                   'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold',
-                  done ? 'bg-green-500 text-white'
-                    : active ? 'bg-white text-blue-700'
-                    : 'bg-blue-800/50 text-blue-100',
+                  done
+                    ? 'bg-green-500 text-white'
+                    : active
+                      ? 'bg-white text-blue-700'
+                      : 'bg-blue-800/50 text-blue-100',
                 ].join(' ')}
               >
                 {done ? <CheckCircle2 className="w-5 h-5" /> : idx + 1}
               </div>
               <div className="hidden sm:block min-w-0">
-                <div className={['text-xs font-medium truncate', active ? 'text-white' : 'text-blue-100'].join(' ')}>
+                <div
+                  className={[
+                    'text-xs font-medium truncate',
+                    active ? 'text-white' : 'text-blue-100',
+                  ].join(' ')}
+                >
                   {step.title}
                 </div>
               </div>
               {idx < STEPS.length - 1 && (
-                <div className={['flex-1 h-0.5', done ? 'bg-green-500' : 'bg-blue-800/50'].join(' ')} />
+                <div
+                  className={['flex-1 h-0.5', done ? 'bg-green-500' : 'bg-blue-800/50'].join(' ')}
+                />
               )}
             </li>
           )
@@ -1101,16 +1243,20 @@ function WelcomeStep(props: {
     onRetryGoogleIdentify,
     onSharedWorkerConfirm,
   } = props
-  const sharedWorkerOptions = googleSetup?.requiresWorkerSelection ? (googleSetup.workerOptions ?? []) : []
+  const sharedWorkerOptions = googleSetup?.requiresWorkerSelection
+    ? (googleSetup.workerOptions ?? [])
+    : []
   return (
     <div className="max-w-2xl mx-auto text-center py-8">
       <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 text-blue-600 mb-6">
         <Rocket className="w-10 h-10" />
       </div>
-      <h2 className="text-3xl font-bold text-slate-900 mb-3">Üdvözöljük a Valuta Pénzváltó Rendszerben</h2>
+      <h2 className="text-3xl font-bold text-slate-900 mb-3">
+        Üdvözöljük a Valuta Pénzváltó Rendszerben
+      </h2>
       <p className="text-slate-600 mb-6">
-        Jelentkezzen be Google fiókkal. A rendszer az email alapján azonosítja a fiókot,
-        a szerepkört és a telepítendő működési módot.
+        Jelentkezzen be Google fiókkal. A rendszer az email alapján azonosítja a fiókot, a
+        szerepkört és a telepítendő működési módot.
       </p>
 
       <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm text-slate-700">
@@ -1121,12 +1267,22 @@ function WelcomeStep(props: {
         {googleConfigStatus ? (
           <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div>
-              Web kliens: <span className="font-semibold">{googleConfigStatus.webConfigured ? 'beállítva' : 'nincs beállítva'}</span>
-              {googleConfigStatus.webPrefix && <span className="ml-1 text-slate-500">({googleConfigStatus.webPrefix})</span>}
+              Web kliens:{' '}
+              <span className="font-semibold">
+                {googleConfigStatus.webConfigured ? 'beállítva' : 'nincs beállítva'}
+              </span>
+              {googleConfigStatus.webPrefix && (
+                <span className="ml-1 text-slate-500">({googleConfigStatus.webPrefix})</span>
+              )}
             </div>
             <div>
-              Desktop kliens: <span className="font-semibold">{googleConfigStatus.desktopConfigured ? 'beállítva' : 'nincs beállítva'}</span>
-              {googleConfigStatus.desktopPrefix && <span className="ml-1 text-slate-500">({googleConfigStatus.desktopPrefix})</span>}
+              Desktop kliens:{' '}
+              <span className="font-semibold">
+                {googleConfigStatus.desktopConfigured ? 'beállítva' : 'nincs beállítva'}
+              </span>
+              {googleConfigStatus.desktopPrefix && (
+                <span className="ml-1 text-slate-500">({googleConfigStatus.desktopPrefix})</span>
+              )}
             </div>
           </div>
         ) : (
@@ -1142,7 +1298,11 @@ function WelcomeStep(props: {
         disabled={googleSetupLoading}
         className="mx-auto mb-5 inline-flex items-center justify-center gap-3 rounded-lg bg-blue-600 px-6 py-3 text-base font-semibold text-white hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition"
       >
-        {googleSetupLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span className="text-lg font-bold">G</span>}
+        {googleSetupLoading ? (
+          <Loader2 className="w-5 h-5 animate-spin" />
+        ) : (
+          <span className="text-lg font-bold">G</span>
+        )}
         Bejelentkezés Google-lel
       </button>
 
@@ -1155,7 +1315,11 @@ function WelcomeStep(props: {
             disabled={googleSetupLoading}
             className="mt-3 inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition"
           >
-            {googleSetupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            {googleSetupLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
             Próbáld újra a kapcsolatot
           </button>
         </div>
@@ -1164,13 +1328,18 @@ function WelcomeStep(props: {
       {googleSetup?.worker && (
         <div className="mb-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-left text-sm text-green-800">
           <div className="font-semibold">Azonosítva: {googleSetup.worker.name}</div>
-          <div>{googleSetup.branch?.code} - {googleSetup.branch?.name} · {googleSetup.worker.roles?.[0] ?? googleSetup.worker.role}</div>
+          <div>
+            {googleSetup.branch?.code} - {googleSetup.branch?.name} ·{' '}
+            {googleSetup.worker.roles?.[0] ?? googleSetup.worker.role}
+          </div>
         </div>
       )}
 
       {sharedWorkerOptions.length > 0 && (
         <div className="mb-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-4 text-left">
-          <div className="mb-3 text-sm font-semibold text-slate-800">Megosztott fiók-email. Ki ön?</div>
+          <div className="mb-3 text-sm font-semibold text-slate-800">
+            Megosztott fiók-email. Ki ön?
+          </div>
           <select
             value={selectedSharedWorkerCode}
             onChange={(event) => onSelectedSharedWorkerCodeChange(event.target.value)}
@@ -1221,10 +1390,21 @@ function WelcomeStep(props: {
   )
 }
 
-function InfoTile({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+function InfoTile({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode
+  title: string
+  description: string
+}) {
   return (
     <div className="p-4 rounded-lg border border-slate-200 bg-slate-50">
-      <div className="flex items-center gap-2 mb-1 text-blue-600">{icon}<span className="font-semibold text-slate-800">{title}</span></div>
+      <div className="flex items-center gap-2 mb-1 text-blue-600">
+        {icon}
+        <span className="font-semibold text-slate-800">{title}</span>
+      </div>
       <p className="text-sm text-slate-600">{description}</p>
     </div>
   )
@@ -1248,12 +1428,23 @@ interface BranchStepProps {
 
 function BranchStep(props: BranchStepProps) {
   const { t } = useTranslation()
-  const { branches, totalFiltered, page, totalPages, onPageChange, search, onSearchChange, selected, onSelect } = props
+  const {
+    branches,
+    totalFiltered,
+    page,
+    totalPages,
+    onPageChange,
+    search,
+    onSearchChange,
+    selected,
+    onSelect,
+  } = props
   return (
     <div>
       <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('setup.valasszaKiAzIrodat')}</h2>
       <p className="text-slate-600 mb-5">
-        {t('setup.ezAFiokIrodaAmelyikbenASzamitogepFizikailagTalalhatoOsszesen')} {totalFiltered} {t('setup.irodaKozul')}
+        {t('setup.ezAFiokIrodaAmelyikbenASzamitogepFizikailagTalalhatoOsszesen')} {totalFiltered}{' '}
+        {t('setup.irodaKozul')}
       </p>
 
       <div className="relative mb-5">
@@ -1323,8 +1514,14 @@ function BranchStep(props: BranchStepProps) {
         <div className="mt-5 p-3 rounded-lg bg-blue-50 border border-blue-200 flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0" />
           <div>
-            <div className="text-sm font-semibold text-blue-900">{t('setup.kivalasztva')}{selected.name}</div>
-            <div className="text-xs text-blue-700">{t('setup.kod')}{selected.code} • {selected.city}</div>
+            <div className="text-sm font-semibold text-blue-900">
+              {t('setup.kivalasztva')}
+              {selected.name}
+            </div>
+            <div className="text-xs text-blue-700">
+              {t('setup.kod')}
+              {selected.code} • {selected.city}
+            </div>
           </div>
         </div>
       )}
@@ -1361,13 +1558,19 @@ function ServerStep(props: ServerStepProps) {
   const { t } = useTranslation()
   const {
     apiUrl,
-    companyCode, onCompanyCodeChange,
-    bootstrapUsername, onBootstrapUsernameChange,
-    offlineMode, onOfflineModeChange,
-    connectionTest, onTestConnection,
+    companyCode,
+    onCompanyCodeChange,
+    bootstrapUsername,
+    onBootstrapUsernameChange,
+    offlineMode,
+    onOfflineModeChange,
+    connectionTest,
+    onTestConnection,
     selectedBranchCode,
     onWorkerListChange,
-    appMode, googleAuthSetupReady, googleSetupWorker,
+    appMode,
+    googleAuthSetupReady,
+    googleSetupWorker,
   } = props
 
   // PR #686 (kosa@bestchange.hu bug): a "Penztaros kivalasztasa" mezo CSAK
@@ -1382,7 +1585,7 @@ function ServerStep(props: ServerStepProps) {
 
   useEffect(() => {
     const normalizedCompanyCode = companyCode.trim()
-    const normalizedBranchCode = selectedBranchCode?.trim() ?? ""
+    const normalizedBranchCode = selectedBranchCode?.trim() ?? ''
 
     if (!normalizedBranchCode || !normalizedCompanyCode || offlineMode) {
       setWorkerList([])
@@ -1393,10 +1596,10 @@ function ServerStep(props: ServerStepProps) {
     setWorkerListLoading(true)
     const loadWorkers = window.electronAPI?.setupGetWorkers
       ? window.electronAPI.setupGetWorkers({
-        apiUrl: apiUrl.trim(),
-        companyCode: normalizedCompanyCode,
-        branchCode: normalizedBranchCode,
-      })
+          apiUrl: apiUrl.trim(),
+          companyCode: normalizedCompanyCode,
+          branchCode: normalizedBranchCode,
+        })
       : publicApi.getWorkersByBranch(normalizedBranchCode, normalizedCompanyCode)
 
     loadWorkers
@@ -1412,8 +1615,12 @@ function ServerStep(props: ServerStepProps) {
           onWorkerListChange([])
         }
       })
-      .finally(() => { if (!cancelled) setWorkerListLoading(false) })
-    return () => { cancelled = true }
+      .finally(() => {
+        if (!cancelled) setWorkerListLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [apiUrl, companyCode, selectedBranchCode, offlineMode, onWorkerListChange])
 
   return (
@@ -1432,9 +1639,10 @@ function ServerStep(props: ServerStepProps) {
             title="A központi backend URL-je — telepítéskor rögzített, csak szervizélra módosítható."
             className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed outline-none"
           />
-          <p className="text-xs text-slate-500 mt-1">{t('setup.kozpontiHetznerBackendAutomatikusanBeallitva')}</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {t('setup.kozpontiHetznerBackendAutomatikusanBeallitva')}
+          </p>
         </FieldLabel>
-
         <FieldLabel label="Cégkód" icon={<Building2 className="w-4 h-4" />}>
           <input
             type="text"
@@ -1445,7 +1653,6 @@ function ServerStep(props: ServerStepProps) {
             className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100 disabled:text-slate-500"
           />
         </FieldLabel>
-
         {showCashierDropdown ? (
           <FieldLabel label="Pénztáros kiválasztása">
             {workerList.length > 0 ? (
@@ -1457,7 +1664,9 @@ function ServerStep(props: ServerStepProps) {
               >
                 <option value="">{t('auth.valasszonPenztarost')}</option>
                 {workerList.map((w) => (
-                  <option key={w.code} value={w.code}>{w.name} ({w.code})</option>
+                  <option key={w.code} value={w.code}>
+                    {w.name} ({w.code})
+                  </option>
                 ))}
               </select>
             ) : (
@@ -1466,7 +1675,7 @@ function ServerStep(props: ServerStepProps) {
                 value={bootstrapUsername}
                 onChange={(e) => onBootstrapUsernameChange(e.target.value)}
                 disabled={offlineMode}
-                placeholder={workerListLoading ? "Pénztárosok betöltése..." : "Pénztáros kód"}
+                placeholder={workerListLoading ? 'Pénztárosok betöltése...' : 'Pénztáros kód'}
                 className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none disabled:bg-slate-100"
               />
             )}
@@ -1498,7 +1707,6 @@ function ServerStep(props: ServerStepProps) {
             </div>
           </FieldLabel>
         )}
-
         <div /> {/* spacer — a jelszo mezo az Admin lepesre kerult */}
       </div>
 
@@ -1509,9 +1717,16 @@ function ServerStep(props: ServerStepProps) {
           disabled={offlineMode || connectionTest.state === 'testing'}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-600 bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 transition"
         >
-          {connectionTest.state === 'testing'
-            ? <><Loader2 className="w-4 h-4 animate-spin" /> Tesztelés...</>
-            : <><Wifi className="w-4 h-4" />{t('setup.kapcsolatTesztelese')}</>}
+          {connectionTest.state === 'testing' ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> Tesztelés...
+            </>
+          ) : (
+            <>
+              <Wifi className="w-4 h-4" />
+              {t('setup.kapcsolatTesztelese')}
+            </>
+          )}
         </button>
 
         {connectionTest.state === 'ok' && (
@@ -1536,42 +1751,42 @@ function ServerStep(props: ServerStepProps) {
       {(() => {
         const offlineCheckboxDisabled = connectionTest.state !== 'fail' && !offlineMode
         return (
-      <div
-        className={`mt-6 p-4 rounded-lg border flex items-start gap-3 ${
-          connectionTest.state === 'fail' || offlineMode
-            ? 'border-amber-300 bg-amber-50'
-            : 'border-slate-200 bg-slate-50 opacity-50'
-        }`}
-      >
-        <input
-          id="offline-mode"
-          type="checkbox"
-          checked={offlineMode}
-          onChange={(e) => onOfflineModeChange(e.target.checked)}
-          // P1.7: csak akkor checkable, ha connection test mar fail-elt VAGY mar offline a state
-          disabled={offlineCheckboxDisabled}
-          className="mt-1"
-        />
-        <label
-          htmlFor="offline-mode"
-          // Copilot review #383 P2: a label cursor-ja kovesse a checkbox tenyleges
-          // interaktivitasat (cursor-not-allowed disabled-eseten — UX/a11y konzisztencia).
-          aria-disabled={offlineCheckboxDisabled}
-          className={`flex-1 text-sm text-slate-700 select-none ${offlineCheckboxDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-        >
-          <span className="font-semibold text-slate-900 inline-flex items-center gap-1.5">
-            <WifiOff className="w-4 h-4" /> {t('setupWizard.offlineModeTitle')}
-          </span>
-          <br />
-          {connectionTest.state === 'fail' ? (
-            <span className="text-amber-800">{t('setupWizard.offlineModeFail')}</span>
-          ) : offlineMode ? (
-            <span className="text-amber-800">{t('setupWizard.offlineModeActive')}</span>
-          ) : (
-            <span>{t('setupWizard.offlineModeDisabled')}</span>
-          )}
-        </label>
-      </div>
+          <div
+            className={`mt-6 p-4 rounded-lg border flex items-start gap-3 ${
+              connectionTest.state === 'fail' || offlineMode
+                ? 'border-amber-300 bg-amber-50'
+                : 'border-slate-200 bg-slate-50 opacity-50'
+            }`}
+          >
+            <input
+              id="offline-mode"
+              type="checkbox"
+              checked={offlineMode}
+              onChange={(e) => onOfflineModeChange(e.target.checked)}
+              // P1.7: csak akkor checkable, ha connection test mar fail-elt VAGY mar offline a state
+              disabled={offlineCheckboxDisabled}
+              className="mt-1"
+            />
+            <label
+              htmlFor="offline-mode"
+              // Copilot review #383 P2: a label cursor-ja kovesse a checkbox tenyleges
+              // interaktivitasat (cursor-not-allowed disabled-eseten — UX/a11y konzisztencia).
+              aria-disabled={offlineCheckboxDisabled}
+              className={`flex-1 text-sm text-slate-700 select-none ${offlineCheckboxDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+            >
+              <span className="font-semibold text-slate-900 inline-flex items-center gap-1.5">
+                <WifiOff className="w-4 h-4" /> {t('setupWizard.offlineModeTitle')}
+              </span>
+              <br />
+              {connectionTest.state === 'fail' ? (
+                <span className="text-amber-800">{t('setupWizard.offlineModeFail')}</span>
+              ) : offlineMode ? (
+                <span className="text-amber-800">{t('setupWizard.offlineModeActive')}</span>
+              ) : (
+                <span>{t('setupWizard.offlineModeDisabled')}</span>
+              )}
+            </label>
+          </div>
         )
       })()}
     </div>
@@ -1579,12 +1794,19 @@ function ServerStep(props: ServerStepProps) {
 }
 
 function FieldLabel({
-  label, icon, children,
-}: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
+  label,
+  icon,
+  children,
+}: {
+  label: string
+  icon?: React.ReactNode
+  children: React.ReactNode
+}) {
   return (
     <label className="block">
       <span className="text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
-        {icon}{label}
+        {icon}
+        {label}
       </span>
       {children}
     </label>
@@ -1606,24 +1828,30 @@ function GoogleAdminStep(props: {
     <div>
       <h2 className="text-2xl font-bold text-slate-900 mb-2">Google-belépés véglegesítése</h2>
       <p className="text-slate-600 mb-6">
-        Ehhez a telepítéshez nem készítünk helyi admin jelszót. A dolgozó Google fiókja
-        lesz a vezetői belépés alapja, a pénztárosi jelszavas ág pedig változatlanul megmarad.
+        Ehhez a telepítéshez nem készítünk helyi admin jelszót. A dolgozó Google fiókja lesz a
+        vezetői belépés alapja, a pénztárosi jelszavas ág pedig változatlanul megmarad.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
           <div className="text-xs uppercase text-slate-500 mb-1">Dolgozó</div>
           <div className="font-semibold text-slate-900">{worker?.name}</div>
-          <div className="text-sm text-slate-600">{worker?.code} · {worker?.roles?.[0] ?? worker?.role}</div>
+          <div className="text-sm text-slate-600">
+            {worker?.code} · {worker?.roles?.[0] ?? worker?.role}
+          </div>
         </div>
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
           <div className="text-xs uppercase text-slate-500 mb-1">Google email</div>
-          <div className="font-semibold text-slate-900 break-all">{googleSetup.googleIdentity.email}</div>
+          <div className="font-semibold text-slate-900 break-all">
+            {googleSetup.googleIdentity.email}
+          </div>
           <div className="text-sm text-slate-600">{googleSetup.matchType}</div>
         </div>
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
           <div className="text-xs uppercase text-slate-500 mb-1">Fiók</div>
-          <div className="font-semibold text-slate-900">{selectedBranch?.code} - {selectedBranch?.name}</div>
+          <div className="font-semibold text-slate-900">
+            {selectedBranch?.code} - {selectedBranch?.name}
+          </div>
           <div className="text-sm text-slate-600">{selectedBranch?.city}</div>
         </div>
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -1662,11 +1890,18 @@ function AdminStep(props: AdminStepProps) {
   const { t } = useTranslation()
   const {
     adminUsername,
-    adminPassword, onAdminPasswordChange,
-    adminPasswordConfirm, onAdminPasswordConfirmChange,
-    bootstrapPassword, onBootstrapPasswordChange,
-    selectedBranch, apiUrl, companyCode, offlineMode,
-    setupToken, onSetupTokenChange,
+    adminPassword,
+    onAdminPasswordChange,
+    adminPasswordConfirm,
+    onAdminPasswordConfirmChange,
+    bootstrapPassword,
+    onBootstrapPasswordChange,
+    selectedBranch,
+    apiUrl,
+    companyCode,
+    offlineMode,
+    setupToken,
+    onSetupTokenChange,
   } = props
 
   const pwTooShort = adminPassword.length > 0 && adminPassword.length < 8
@@ -1708,8 +1943,8 @@ function AdminStep(props: AdminStepProps) {
             ].join(' ')}
           />
           <span className="text-xs text-slate-500 mt-1 block">
-            Csak akkor töltse ki, ha ennek a pénztárosnak már volt beállított jelszava (pl. újratelepítés esetén).
-            Első telepítésnél hagyja üresen.
+            Csak akkor töltse ki, ha ennek a pénztárosnak már volt beállított jelszava (pl.
+            újratelepítés esetén). Első telepítésnél hagyja üresen.
           </span>
         </FieldLabel>
         <FieldLabel label="Setup-token (opcionális)">
@@ -1728,8 +1963,8 @@ function AdminStep(props: AdminStepProps) {
             ].join(' ')}
           />
           <span className="text-xs text-slate-500 mt-1 block">
-            Újratelepítés/jelszó-reset esetén az adminisztrátor egyszeri setup-tokent adhat.
-            Első telepítésnél hagyja üresen.
+            Újratelepítés/jelszó-reset esetén az adminisztrátor egyszeri setup-tokent adhat. Első
+            telepítésnél hagyja üresen.
           </span>
         </FieldLabel>
         <FieldLabel label="Új jelszó">
@@ -1739,11 +1974,14 @@ function AdminStep(props: AdminStepProps) {
             onChange={(e) => onAdminPasswordChange(e.target.value)}
             className={[
               'w-full px-3 py-2 rounded-lg border focus:ring-2 outline-none',
-              pwTooShort ? 'border-red-400 focus:border-red-500 focus:ring-red-200'
+              pwTooShort
+                ? 'border-red-400 focus:border-red-500 focus:ring-red-200'
                 : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200',
             ].join(' ')}
           />
-          {pwTooShort && <span className="text-xs text-red-600 mt-1 block">{t('setup.minimum8Karakter')}</span>}
+          {pwTooShort && (
+            <span className="text-xs text-red-600 mt-1 block">{t('setup.minimum8Karakter')}</span>
+          )}
         </FieldLabel>
         <FieldLabel label="Jelszó megerősítése">
           <input
@@ -1752,32 +1990,51 @@ function AdminStep(props: AdminStepProps) {
             onChange={(e) => onAdminPasswordConfirmChange(e.target.value)}
             className={[
               'w-full px-3 py-2 rounded-lg border focus:ring-2 outline-none',
-              pwMismatch ? 'border-red-400 focus:border-red-500 focus:ring-red-200'
+              pwMismatch
+                ? 'border-red-400 focus:border-red-500 focus:ring-red-200'
                 : 'border-slate-300 focus:border-blue-500 focus:ring-blue-200',
             ].join(' ')}
           />
-          {pwMismatch && <span className="text-xs text-red-600 mt-1 block">{t('resetPassword.mismatchError')}</span>}
+          {pwMismatch && (
+            <span className="text-xs text-red-600 mt-1 block">
+              {t('resetPassword.mismatchError')}
+            </span>
+          )}
         </FieldLabel>
       </div>
 
       <div className="p-5 rounded-lg bg-slate-50 border border-slate-200">
         <h3 className="text-sm font-semibold text-slate-900 mb-3 inline-flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-blue-600" />{t('setup.osszefoglalo')}
+          <ShieldCheck className="w-4 h-4 text-blue-600" />
+          {t('setup.osszefoglalo')}
         </h3>
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
-          <SummaryRow label="Iroda" value={selectedBranch ? `${selectedBranch.name} (#${selectedBranch.code})` : '—'} />
+          <SummaryRow
+            label="Iroda"
+            value={selectedBranch ? `${selectedBranch.name} (#${selectedBranch.code})` : '—'}
+          />
           <SummaryRow label="Város" value={selectedBranch?.city || '—'} />
           <SummaryRow label="Szerver" value={offlineMode ? 'Offline mód' : apiUrl || '—'} />
           <SummaryRow label="Cégkód" value={offlineMode ? '—' : companyCode || '—'} />
-          <SummaryRow label="Pénztáros kód (login)" value={adminUsername || '— (nincs kiválasztva)'} />
-          <SummaryRow label="Jelszó (login)" value={adminPassword ? '•'.repeat(Math.min(adminPassword.length, 12)) : '—'} />
+          <SummaryRow
+            label="Pénztáros kód (login)"
+            value={adminUsername || '— (nincs kiválasztva)'}
+          />
+          <SummaryRow
+            label="Jelszó (login)"
+            value={adminPassword ? '•'.repeat(Math.min(adminPassword.length, 12)) : '—'}
+          />
         </dl>
       </div>
 
       <div className="mt-5 p-4 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-900">
         <strong className="block mb-1">{t('setup.bejelentkezeskorIgyHasznalja')}</strong>
-        {t('setup.cegkod')}<code className="px-1 bg-white rounded">{companyCode}</code>{' · '}
-        {t('setup.penztarosKod')}<code className="px-1 bg-white rounded">{adminUsername || '...'}</code>{' · '}
+        {t('setup.cegkod')}
+        <code className="px-1 bg-white rounded">{companyCode}</code>
+        {' · '}
+        {t('setup.penztarosKod')}
+        <code className="px-1 bg-white rounded">{adminUsername || '...'}</code>
+        {' · '}
         {t('setup.jelszoAzIttMegadottUjJelszo')}
       </div>
 

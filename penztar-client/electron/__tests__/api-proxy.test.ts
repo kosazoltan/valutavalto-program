@@ -7,13 +7,15 @@ vi.mock('electron-log/main', () => ({
 }));
 
 // Mock response helper
-function createMockResponse(opts: {
-  statusCode?: number;
-  statusMessage?: string;
-  headers?: Record<string, string>;
-  chunks?: Buffer[];
-  errorOnData?: Error;
-} = {}) {
+function createMockResponse(
+  opts: {
+    statusCode?: number;
+    statusMessage?: string;
+    headers?: Record<string, string>;
+    chunks?: Buffer[];
+    errorOnData?: Error;
+  } = {},
+) {
   const response = new EventEmitter() as EventEmitter & {
     statusCode: number;
     statusMessage: string;
@@ -83,7 +85,13 @@ vi.mock('electron', () => ({
   IncomingMessage: class {},
 }));
 
-import { fetchViaElectronNet, retryFetch, isRetryableNetworkError, isRetrySafeRequest, type ApiProxyResponse } from '../api-proxy';
+import {
+  fetchViaElectronNet,
+  retryFetch,
+  isRetryableNetworkError,
+  isRetrySafeRequest,
+  type ApiProxyResponse,
+} from '../api-proxy';
 import { net as electronNet } from 'electron';
 
 describe('fetchViaElectronNet', () => {
@@ -105,7 +113,10 @@ describe('fetchViaElectronNet', () => {
 
   describe('sikeres kérések', () => {
     it('GET kérés JSON válasszal', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/data' });
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/test/data',
+      });
       triggerResponse({
         statusCode: 200,
         headers: { 'content-type': 'application/json' },
@@ -115,7 +126,10 @@ describe('fetchViaElectronNet', () => {
       vi.advanceTimersByTime(0);
       const result = await promise;
 
-      expect(electronNet.request).toHaveBeenCalledWith({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/data' });
+      expect(electronNet.request).toHaveBeenCalledWith({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/test/data',
+      });
       expect(result.ok).toBe(true);
       expect(result.status).toBe(200);
       expect(result.body).toBe('{"hello":"world"}');
@@ -145,7 +159,7 @@ describe('fetchViaElectronNet', () => {
       vi.advanceTimersByTime(0);
       await promise;
 
-      const setHeaderCalls = mockSetHeader.mock.calls.map(c => c[0]);
+      const setHeaderCalls = mockSetHeader.mock.calls.map((c) => c[0]);
       expect(setHeaderCalls).not.toContain('Content-Type');
     });
 
@@ -166,7 +180,7 @@ describe('fetchViaElectronNet', () => {
         method: 'POST',
         url: 'https://excvaluta.com/api/v1/test/data',
         body: 'data',
-        headers: { 'Content-Type': 'text/plain', 'Accept': 'text/html' },
+        headers: { 'Content-Type': 'text/plain', Accept: 'text/html' },
       });
       triggerResponse();
       vi.advanceTimersByTime(0);
@@ -174,7 +188,7 @@ describe('fetchViaElectronNet', () => {
 
       expect(mockSetHeader).toHaveBeenCalledWith('Content-Type', 'text/plain');
       expect(mockSetHeader).toHaveBeenCalledWith('Accept', 'text/html');
-      const ctCalls = mockSetHeader.mock.calls.filter(c => c[0] === 'Content-Type');
+      const ctCalls = mockSetHeader.mock.calls.filter((c) => c[0] === 'Content-Type');
       expect(ctCalls).toHaveLength(1);
     });
 
@@ -224,7 +238,10 @@ describe('fetchViaElectronNet', () => {
 
   describe('HTTP státusz kezelés', () => {
     it('2xx → ok: true', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/ok' });
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/test/ok',
+      });
       triggerResponse({ statusCode: 201 });
       vi.advanceTimersByTime(0);
       const result = await promise;
@@ -232,7 +249,10 @@ describe('fetchViaElectronNet', () => {
     });
 
     it('4xx → ok: false', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/bad' });
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/test/bad',
+      });
       triggerResponse({ statusCode: 401, statusMessage: 'Unauthorized' });
       vi.advanceTimersByTime(0);
       const result = await promise;
@@ -242,7 +262,10 @@ describe('fetchViaElectronNet', () => {
     });
 
     it('5xx → ok: false', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/err' });
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/test/err',
+      });
       triggerResponse({ statusCode: 500 });
       vi.advanceTimersByTime(0);
       const result = await promise;
@@ -254,7 +277,10 @@ describe('fetchViaElectronNet', () => {
   describe('bináris válasz (base64)', () => {
     it('application/octet-stream → base64 kódolt', async () => {
       const binaryData = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/file' });
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/test/file',
+      });
       triggerResponse({
         headers: { 'content-type': 'application/octet-stream' },
         chunks: [binaryData],
@@ -267,7 +293,10 @@ describe('fetchViaElectronNet', () => {
     });
 
     it('application/json → NEM base64', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/json' });
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/test/json',
+      });
       triggerResponse({
         headers: { 'content-type': 'application/json; charset=utf-8' },
         chunks: [Buffer.from('{"x":1}')],
@@ -280,7 +309,10 @@ describe('fetchViaElectronNet', () => {
     });
 
     it('text/html → NEM base64', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/page' });
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/test/page',
+      });
       triggerResponse({
         headers: { 'content-type': 'text/html' },
         chunks: [Buffer.from('<html></html>')],
@@ -291,7 +323,10 @@ describe('fetchViaElectronNet', () => {
     });
 
     it('üres content-type → NEM base64 (ct === "")', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/noct' });
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/test/noct',
+      });
       triggerResponse({
         headers: {},
         chunks: [Buffer.from('plain')],
@@ -304,7 +339,10 @@ describe('fetchViaElectronNet', () => {
 
   describe('több chunk', () => {
     it('több data chunk → összefűzve', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/multi' });
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/test/multi',
+      });
       triggerResponse({
         headers: { 'content-type': 'application/json' },
         chunks: [Buffer.from('{"he'), Buffer.from('llo"'), Buffer.from(':"ok"}')],
@@ -342,7 +380,10 @@ describe('fetchViaElectronNet', () => {
 
   describe('hálózati hiba', () => {
     it('request error → reject', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/err' });
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/test/err',
+      });
       process.nextTick(() => {
         mockRequestEmitter.emit('error', new Error('ECONNREFUSED'));
       });
@@ -353,12 +394,19 @@ describe('fetchViaElectronNet', () => {
 
   describe('method normalizálás', () => {
     it('kisbetűs method → nagybetűre konvertál', async () => {
-      const promise = fetchViaElectronNet({ method: 'post', url: 'https://excvaluta.com/api/v1/test/data', body: '{}' });
+      const promise = fetchViaElectronNet({
+        method: 'post',
+        url: 'https://excvaluta.com/api/v1/test/data',
+        body: '{}',
+      });
       triggerResponse();
       vi.advanceTimersByTime(0);
       await promise;
 
-      expect(electronNet.request).toHaveBeenCalledWith({ method: 'POST', url: 'https://excvaluta.com/api/v1/test/data' });
+      expect(electronNet.request).toHaveBeenCalledWith({
+        method: 'POST',
+        url: 'https://excvaluta.com/api/v1/test/data',
+      });
     });
   });
 
@@ -380,30 +428,39 @@ describe('fetchViaElectronNet', () => {
     });
 
     it('tetszoleges kulso host tovabbra is blokkolt', async () => {
-      await expect(fetchViaElectronNet({
-        method: 'GET',
-        url: 'https://example.com/api/v1/auth/bootstrap-status',
-      })).rejects.toThrow('Blocked: URL host not in allowlist');
+      await expect(
+        fetchViaElectronNet({
+          method: 'GET',
+          url: 'https://example.com/api/v1/auth/bootstrap-status',
+        }),
+      ).rejects.toThrow('Blocked: URL host not in allowlist');
     });
 
     it('F-005: cloud-metadata link-local (169.254.169.254) BLOKKOLT (SSRF)', async () => {
-      await expect(fetchViaElectronNet({
-        method: 'GET',
-        url: 'http://169.254.169.254/latest/meta-data/',
-      })).rejects.toThrow('Blocked: URL host not in allowlist');
+      await expect(
+        fetchViaElectronNet({
+          method: 'GET',
+          url: 'http://169.254.169.254/latest/meta-data/',
+        }),
+      ).rejects.toThrow('Blocked: URL host not in allowlist');
     });
 
     it('F-005: nem-http(s) protokoll (file:) BLOKKOLT', async () => {
-      await expect(fetchViaElectronNet({
-        method: 'GET',
-        url: 'file:///etc/passwd',
-      })).rejects.toThrow('Blocked: URL host not in allowlist');
+      await expect(
+        fetchViaElectronNet({
+          method: 'GET',
+          url: 'file:///etc/passwd',
+        }),
+      ).rejects.toThrow('Blocked: URL host not in allowlist');
     });
   });
 
   describe('response header kezelés', () => {
     it('tömb headerek → comma-separated', async () => {
-      const promise = fetchViaElectronNet({ method: 'GET', url: 'https://excvaluta.com/api/v1/test/headers' });
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/test/headers',
+      });
       const response = createMockResponse({
         headers: { 'content-type': 'application/json' },
       });
@@ -423,12 +480,20 @@ describe('fetchViaElectronNet', () => {
 
 describe('isRetryableNetworkError (ESET-MITM reset felismeres)', () => {
   it('net::ERR_CONNECTION_RESET → retryable (a Szeged-ertektar 2026-06-01 eset)', () => {
-    expect(isRetryableNetworkError('[api-proxy] Network error: net::ERR_CONNECTION_RESET')).toBe(true);
+    expect(isRetryableNetworkError('[api-proxy] Network error: net::ERR_CONNECTION_RESET')).toBe(
+      true,
+    );
   });
   it('tovabbi Chromium net-hibak (CLOSED/ABORTED/SSL/TIMED_OUT/NAME_NOT_RESOLVED) → retryable', () => {
-    for (const code of ['net::ERR_CONNECTION_CLOSED', 'net::ERR_CONNECTION_ABORTED',
-      'net::ERR_SSL_PROTOCOL_ERROR', 'net::ERR_TIMED_OUT', 'net::ERR_NAME_NOT_RESOLVED',
-      'net::ERR_NETWORK_CHANGED', 'net::ERR_EMPTY_RESPONSE']) {
+    for (const code of [
+      'net::ERR_CONNECTION_CLOSED',
+      'net::ERR_CONNECTION_ABORTED',
+      'net::ERR_SSL_PROTOCOL_ERROR',
+      'net::ERR_TIMED_OUT',
+      'net::ERR_NAME_NOT_RESOLVED',
+      'net::ERR_NETWORK_CHANGED',
+      'net::ERR_EMPTY_RESPONSE',
+    ]) {
       expect(isRetryableNetworkError(`[api-proxy] Network error: ${code}`)).toBe(true);
     }
   });
@@ -438,7 +503,9 @@ describe('isRetryableNetworkError (ESET-MITM reset felismeres)', () => {
     }
   });
   it('[api-proxy] Timeout → retryable', () => {
-    expect(isRetryableNetworkError('[api-proxy] Timeout: 15000ms exceeded for POST ...')).toBe(true);
+    expect(isRetryableNetworkError('[api-proxy] Timeout: 15000ms exceeded for POST ...')).toBe(
+      true,
+    );
   });
   it('HTTP-szeru / business hibak → NEM retryable', () => {
     expect(isRetryableNetworkError('HTTP 401 Unauthorized')).toBe(false);
@@ -451,7 +518,11 @@ describe('isRetryableNetworkError (ESET-MITM reset felismeres)', () => {
 
 describe('retryFetch (ESET-rezisztens ujraprobalkozas)', () => {
   const okResponse: ApiProxyResponse = {
-    ok: true, status: 200, statusText: 'OK', headers: {}, body: '{"ok":true}',
+    ok: true,
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    body: '{"ok":true}',
   };
   const instantSleep = vi.fn(async (_ms: number) => {});
 
@@ -464,7 +535,11 @@ describe('retryFetch (ESET-rezisztens ujraprobalkozas)', () => {
       if (calls <= 2) throw new Error('[api-proxy] Network error: net::ERR_CONNECTION_RESET');
       return okResponse;
     });
-    const result = await retryFetch(doFetch, { maxRetries: 5, retryDelaysMs: [1, 1, 1, 1], sleep: instantSleep });
+    const result = await retryFetch(doFetch, {
+      maxRetries: 5,
+      retryDelaysMs: [1, 1, 1, 1],
+      sleep: instantSleep,
+    });
     expect(result.ok).toBe(true);
     expect(doFetch).toHaveBeenCalledTimes(3);
     expect(instantSleep).toHaveBeenCalledTimes(2); // ket retry kozott ket varakozas
@@ -482,8 +557,12 @@ describe('retryFetch (ESET-rezisztens ujraprobalkozas)', () => {
   });
 
   it('nem-retryable hiba (HTTP-szeru throw) → AZONNAL dob, nincs retry', async () => {
-    const doFetch = vi.fn(async () => { throw new Error('Blocked: URL host not in allowlist'); });
-    await expect(retryFetch(doFetch, { maxRetries: 5, sleep: instantSleep })).rejects.toThrow('Blocked');
+    const doFetch = vi.fn(async () => {
+      throw new Error('Blocked: URL host not in allowlist');
+    });
+    await expect(retryFetch(doFetch, { maxRetries: 5, sleep: instantSleep })).rejects.toThrow(
+      'Blocked',
+    );
     expect(doFetch).toHaveBeenCalledTimes(1);
     expect(instantSleep).not.toHaveBeenCalled();
   });
@@ -497,7 +576,13 @@ describe('retryFetch (ESET-rezisztens ujraprobalkozas)', () => {
   });
 
   it('ok:false (HTTP 4xx/5xx) valasz NEM dob → retry nelkul visszaadja', async () => {
-    const httpErr: ApiProxyResponse = { ok: false, status: 401, statusText: 'Unauthorized', headers: {}, body: '{}' };
+    const httpErr: ApiProxyResponse = {
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+      headers: {},
+      body: '{}',
+    };
     const doFetch = vi.fn(async () => httpErr);
     const result = await retryFetch(doFetch, { sleep: instantSleep });
     expect(result.status).toBe(401);
@@ -513,28 +598,49 @@ describe('isRetrySafeRequest (Codex P1 — mutalo tranzakcio dupla-vedelem)', ()
   });
   it('mutalo POST/PUT/PATCH/DELETE Idempotency-Key NELKUL → NEM retry-biztos', () => {
     for (const method of ['POST', 'PUT', 'PATCH', 'DELETE', 'post']) {
-      expect(isRetrySafeRequest({ method, url: 'https://excvaluta.com/api/v1/transactions/buy', body: '{}' })).toBe(false);
+      expect(
+        isRetrySafeRequest({
+          method,
+          url: 'https://excvaluta.com/api/v1/transactions/buy',
+          body: '{}',
+        }),
+      ).toBe(false);
     }
   });
   it('POST Idempotency-Key-vel → retry-biztos (backend deduplikal)', () => {
-    expect(isRetrySafeRequest({
-      method: 'POST',
-      url: 'https://excvaluta.com/api/v1/transactions/buy',
-      headers: { 'Idempotency-Key': 'abc-123' },
-      body: '{}',
-    })).toBe(true);
+    expect(
+      isRetrySafeRequest({
+        method: 'POST',
+        url: 'https://excvaluta.com/api/v1/transactions/buy',
+        headers: { 'Idempotency-Key': 'abc-123' },
+        body: '{}',
+      }),
+    ).toBe(true);
   });
   it('Idempotency-Key fejlec case-insensitive + ures kulcs nem szamit', () => {
-    expect(isRetrySafeRequest({
-      method: 'POST', url: 'https://excvaluta.com/api/v1/sell', headers: { 'idempotency-key': 'k1' },
-    })).toBe(true);
-    expect(isRetrySafeRequest({
-      method: 'POST', url: 'https://excvaluta.com/api/v1/sell', headers: { 'Idempotency-Key': '' },
-    })).toBe(false);
+    expect(
+      isRetrySafeRequest({
+        method: 'POST',
+        url: 'https://excvaluta.com/api/v1/sell',
+        headers: { 'idempotency-key': 'k1' },
+      }),
+    ).toBe(true);
+    expect(
+      isRetrySafeRequest({
+        method: 'POST',
+        url: 'https://excvaluta.com/api/v1/sell',
+        headers: { 'Idempotency-Key': '' },
+      }),
+    ).toBe(false);
   });
   it('fetchViaElectronNetWithRetry: mutalo kulcs-nelkuli POST → 1 proba (nincs retry)', async () => {
     // A google-identify-szeru retry-biztos POST kulccsal megy; ez itt a vedett eset:
     // buy/sell kulcs nelkul SOHA nem duplikalodhat retry-bol.
-    expect(isRetrySafeRequest({ method: 'POST', url: 'https://excvaluta.com/api/v1/transactions/reversal' })).toBe(false);
+    expect(
+      isRetrySafeRequest({
+        method: 'POST',
+        url: 'https://excvaluta.com/api/v1/transactions/reversal',
+      }),
+    ).toBe(false);
   });
 });

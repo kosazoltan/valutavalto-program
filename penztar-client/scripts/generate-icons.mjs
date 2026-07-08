@@ -27,15 +27,9 @@ await sharp(bestChangeSvg)
 // Expressz ikonok
 const expresszSvg = readFileSync(join(iconsDir, 'app-icon-expressz.svg'));
 
-await sharp(expresszSvg)
-  .resize(256, 256)
-  .png()
-  .toFile(join(iconsDir, 'app-icon-expressz-256.png'));
+await sharp(expresszSvg).resize(256, 256).png().toFile(join(iconsDir, 'app-icon-expressz-256.png'));
 
-await sharp(expresszSvg)
-  .resize(512, 512)
-  .png()
-  .toFile(join(iconsDir, 'app-icon-expressz-512.png'));
+await sharp(expresszSvg).resize(512, 512).png().toFile(join(iconsDir, 'app-icon-expressz-512.png'));
 
 await sharp(expresszSvg)
   .resize(256, 256)
@@ -45,4 +39,6 @@ await sharp(expresszSvg)
 console.log('✅ Ikonok generálva:');
 console.log('  - Best Change: 256px, 512px PNG');
 console.log('  - Expressz: 256px, 512px PNG');
-console.log('\n📝 ICO fájlok generálásához használd: electron-builder (automatikus Windows build-nél)');
+console.log(
+  '\n📝 ICO fájlok generálásához használd: electron-builder (automatikus Windows build-nél)',
+);

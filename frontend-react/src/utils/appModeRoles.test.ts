@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { canonicalizeRoleForAppMode, isRoleSelectableForAppMode, selectableLocalAppModes, preferredRoleForAppMode } from './appModeRoles'
+import {
+  canonicalizeRoleForAppMode,
+  isRoleSelectableForAppMode,
+  selectableLocalAppModes,
+  preferredRoleForAppMode,
+} from './appModeRoles'
 
 describe('selectableLocalAppModes (HIBA 2026-05-26 mód-választó)', () => {
   it('üres/hiányzó validAppModes → üres lista', () => {
@@ -17,7 +22,10 @@ describe('selectableLocalAppModes (HIBA 2026-05-26 mód-választó)', () => {
   })
 
   it('a full/rate-maker módokat kiszűri a lokál terminál választójából', () => {
-    expect(selectableLocalAppModes(['penztar', 'ertektar', 'full', 'rate-maker'])).toEqual(['penztar', 'ertektar'])
+    expect(selectableLocalAppModes(['penztar', 'ertektar', 'full', 'rate-maker'])).toEqual([
+      'penztar',
+      'ertektar',
+    ])
   })
 })
 

@@ -103,7 +103,11 @@ export default function ErrorMonitorPage() {
         <>
           <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <SummaryCard label="Összes (valaha)" value={summary.totalAllTime} />
-            <SummaryCard label="Utolsó 24 óra" value={summary.last24h} highlight={summary.last24h > 10} />
+            <SummaryCard
+              label="Utolsó 24 óra"
+              value={summary.last24h}
+              highlight={summary.last24h > 10}
+            />
             <SummaryCard label="Utolsó 7 nap" value={summary.last7d} />
             <SummaryCard label="Utolsó 30 nap" value={summary.last30d} />
           </section>
@@ -111,14 +115,14 @@ export default function ErrorMonitorPage() {
           <section className="grid gap-4 md:grid-cols-2">
             <BreakdownTable
               title="Komponens-megoszlás (7 nap)"
-              rows={summary.componentBreakdown7d.map(c => ({
+              rows={summary.componentBreakdown7d.map((c) => ({
                 key: c.component,
                 count: c.errorCount,
               }))}
             />
             <BreakdownTable
               title="Verzió-megoszlás (7 nap)"
-              rows={summary.versionBreakdown7d.map(v => ({
+              rows={summary.versionBreakdown7d.map((v) => ({
                 key: v.version,
                 count: v.errorCount,
               }))}
@@ -149,7 +153,7 @@ export default function ErrorMonitorPage() {
                   </td>
                 </tr>
               )}
-              {errors.map(e => (
+              {errors.map((e) => (
                 <tr key={e.id} className="border-t border-gray-100 hover:bg-gray-50">
                   <td className="p-2 whitespace-nowrap">
                     {new Date(e.createdAt).toLocaleString('hu-HU')}
@@ -181,14 +185,14 @@ export default function ErrorMonitorPage() {
           <div className="space-x-2">
             <button
               disabled={page === 0}
-              onClick={() => setPage(p => Math.max(0, p - 1))}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
               className="rounded border px-3 py-1 disabled:opacity-50"
             >
               ← Előző
             </button>
             <button
               disabled={page + 1 >= totalPages}
-              onClick={() => setPage(p => p + 1)}
+              onClick={() => setPage((p) => p + 1)}
               className="rounded border px-3 py-1 disabled:opacity-50"
             >
               Következő →
@@ -209,16 +213,34 @@ export default function ErrorMonitorPage() {
   )
 }
 
-function SummaryCard({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+function SummaryCard({
+  label,
+  value,
+  highlight,
+}: {
+  label: string
+  value: number
+  highlight?: boolean
+}) {
   return (
-    <div className={`rounded border p-4 ${highlight ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'}`}>
+    <div
+      className={`rounded border p-4 ${highlight ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'}`}
+    >
       <div className="text-sm text-gray-600">{label}</div>
-      <div className={`text-2xl font-bold ${highlight ? 'text-red-700' : 'text-gray-900'}`}>{value}</div>
+      <div className={`text-2xl font-bold ${highlight ? 'text-red-700' : 'text-gray-900'}`}>
+        {value}
+      </div>
     </div>
   )
 }
 
-function BreakdownTable({ title, rows }: { title: string; rows: { key: string; count: number }[] }) {
+function BreakdownTable({
+  title,
+  rows,
+}: {
+  title: string
+  rows: { key: string; count: number }[]
+}) {
   return (
     <div className="rounded border border-gray-200">
       <h3 className="border-b bg-gray-50 p-2 font-semibold">{title}</h3>
@@ -226,10 +248,12 @@ function BreakdownTable({ title, rows }: { title: string; rows: { key: string; c
         <tbody>
           {rows.length === 0 && (
             <tr>
-              <td colSpan={2} className="p-2 text-center text-gray-500">Nincs adat</td>
+              <td colSpan={2} className="p-2 text-center text-gray-500">
+                Nincs adat
+              </td>
             </tr>
           )}
-          {rows.map(r => (
+          {rows.map((r) => (
             <tr key={r.key} className="border-t">
               <td className="p-2">{r.key}</td>
               <td className="p-2 text-right font-mono">{r.count}</td>
@@ -257,7 +281,9 @@ function ErrorDetailModal({
       <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded bg-white p-6 shadow-lg">
         <div className="mb-4 flex items-start justify-between">
           <h2 className="text-lg font-bold">Hiba #{error.id}</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            ✕
+          </button>
         </div>
         {loading && (
           <div className="mb-3 rounded border border-blue-200 bg-blue-50 p-2 text-sm text-blue-800">

@@ -1,29 +1,29 @@
-contract: "Remove unused legacy transaction/POS wrapper methods from frontend API surface"
-date: "2026-06-20"
-status: "IMPLEMENTED_FROM_EXISTING_PRODUCTION_WORKFLOW"
+contract: 'Remove unused legacy transaction/POS wrapper methods from frontend API surface'
+date: '2026-06-20'
+status: 'IMPLEMENTED_FROM_EXISTING_PRODUCTION_WORKFLOW'
 
 goal:
-  - "Remove frontend wrappers that expose lower-level or legacy state-changing transaction paths without production UI usage."
-  - "Keep the existing production storno workflow on StornoPage via stornoApi.execute, including approval/local-first/receipt-preview behavior."
+  - 'Remove frontend wrappers that expose lower-level or legacy state-changing transaction paths without production UI usage.'
+  - 'Keep the existing production storno workflow on StornoPage via stornoApi.execute, including approval/local-first/receipt-preview behavior.'
 
 non_goals:
-  - "Do not add a new direct transaction reversal UI."
-  - "Do not add a new POS payment processing UI around the backend legacy compatibility method."
-  - "Do not add a POS storno shortcut that bypasses the existing StornoPage approval workflow."
+  - 'Do not add a new direct transaction reversal UI.'
+  - 'Do not add a new POS payment processing UI around the backend legacy compatibility method.'
+  - 'Do not add a POS storno shortcut that bypasses the existing StornoPage approval workflow.'
 
 removed_frontend_wrappers:
-  - "transactionApi.reversal -> POST /api/v1/transactions/reversal"
-  - "posTerminalApi.processTransaction -> POST /api/v1/pos-terminal/process-transaction"
-  - "stornoApi.executePos -> POST /api/v1/stornos/pos"
+  - 'transactionApi.reversal -> POST /api/v1/transactions/reversal'
+  - 'posTerminalApi.processTransaction -> POST /api/v1/pos-terminal/process-transaction'
+  - 'stornoApi.executePos -> POST /api/v1/stornos/pos'
 
 invariants:
-  - "StornoPage remains wired to stornoApi.execute for online storno execution."
-  - "Transaction buy/sell/conversion wrappers remain unchanged."
-  - "POS terminal list/detail/status wrappers remain unchanged."
-  - "Backend endpoints are not removed by this frontend cleanup."
+  - 'StornoPage remains wired to stornoApi.execute for online storno execution.'
+  - 'Transaction buy/sell/conversion wrappers remain unchanged.'
+  - 'POS terminal list/detail/status wrappers remain unchanged.'
+  - 'Backend endpoints are not removed by this frontend cleanup.'
 
 verification:
-  - "No production UI/app reference remains to the removed wrapper methods."
-  - "frontend-api-method-usage-audit reports zero direct production method gaps."
-  - "transactions/settings API wrapper unit tests pass after removing obsolete wrapper tests."
-  - "typecheck, lint and pre-push gate pass."
+  - 'No production UI/app reference remains to the removed wrapper methods.'
+  - 'frontend-api-method-usage-audit reports zero direct production method gaps.'
+  - 'transactions/settings API wrapper unit tests pass after removing obsolete wrapper tests.'
+  - 'typecheck, lint and pre-push gate pass.'

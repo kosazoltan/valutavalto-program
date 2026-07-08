@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { Package } from "lucide-react"
-import { transitApi } from "../services/api/index"
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Package } from 'lucide-react'
+import { transitApi } from '../services/api/index'
 
 /**
  * Kis kedvelt "uton levo csomagok" badge a topbar-ba.
@@ -12,7 +12,10 @@ import { transitApi } from "../services/api/index"
 export default function TransitBadge() {
   const [count, setCount] = useState(0)
   const navigate = useNavigate()
-  const branchCode = String(import.meta.env.VITE_BRANCH_CODE ?? "").trim().toUpperCase() || undefined
+  const branchCode =
+    String(import.meta.env.VITE_BRANCH_CODE ?? '')
+      .trim()
+      .toUpperCase() || undefined
 
   const poll = useCallback(async () => {
     try {
@@ -33,13 +36,13 @@ export default function TransitBadge() {
 
   return (
     <button
-      onClick={() => navigate("/transit")}
-      title={"Úton lévő csomagok: " + count + " db - kattints az átvételhez"}
+      onClick={() => navigate('/transit')}
+      title={'Úton lévő csomagok: ' + count + ' db - kattints az átvételhez'}
       className="relative p-2 hover:bg-secondary-100 rounded-lg transition-colors"
     >
       <Package size={18} className="text-amber-600" />
       <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-        {count > 9 ? "9+" : count}
+        {count > 9 ? '9+' : count}
       </span>
     </button>
   )

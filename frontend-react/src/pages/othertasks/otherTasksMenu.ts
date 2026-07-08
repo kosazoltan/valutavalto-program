@@ -1,7 +1,16 @@
 import type { LucideIcon } from 'lucide-react'
 import {
-  Settings, Trash2, Upload, Sun, Lock, Cable, LogOut,
-  Terminal, CreditCard, FileText, Users,
+  Settings,
+  Trash2,
+  Upload,
+  Sun,
+  Lock,
+  Cable,
+  LogOut,
+  Terminal,
+  CreditCard,
+  FileText,
+  Users,
 } from 'lucide-react'
 
 /**

@@ -29,7 +29,7 @@ async function mockDayOpenApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,23 +52,43 @@ async function mockDayOpenApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/daily-sessions/is-open') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(false) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(false),
+      })
     }
 
     if (path.endsWith('/daily-sessions/reversal-count') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(4) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(4),
+      })
     }
 
     if (path.endsWith(`/sessions/validate-open/${worker.branchId}`) && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     if (path.endsWith('/cash-balances') && method === 'GET') {
@@ -115,8 +135,10 @@ test('napnyitás mobil nézetben megjeleníti a backend napi sztornó számlál�
   await mockDayOpenApis(page)
   await login(page)
 
-  const reversalCountRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/daily-sessions/reversal-count'
+  const reversalCountRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/daily-sessions/reversal-count',
   )
   await page.goto('/cashdesk/day-open', { waitUntil: 'domcontentloaded' })
   await reversalCountRequest
@@ -124,8 +146,8 @@ test('napnyitás mobil nézetben megjeleníti a backend napi sztornó számlál�
   await expect(page.getByTestId('daily-reversal-count')).toContainText('Mai sztornók')
   await expect(page.getByTestId('daily-reversal-count')).toContainText('4')
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

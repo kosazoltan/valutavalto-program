@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { ChangeEvent } from 'react'
 import { Upload, Search, RefreshCw, AlertTriangle, PlayCircle, RotateCcw } from 'lucide-react'
-import { api, configExportApi, type ConfigBundleDto, type ConfigImportResultDto } from '../../services/api/index'
+import {
+  api,
+  configExportApi,
+  type ConfigBundleDto,
+  type ConfigImportResultDto,
+} from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
@@ -61,9 +66,12 @@ export default function DataImportPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get<{ content?: DataImportItem[] } | DataImportItem[]>('/data-import/history', {
-        params: { branchId },
-      })
+      const response = await api.get<{ content?: DataImportItem[] } | DataImportItem[]>(
+        '/data-import/history',
+        {
+          params: { branchId },
+        },
+      )
       const rows = Array.isArray(response.data) ? response.data : response.data?.content
       setItems(safeArray<DataImportItem>(rows))
     } catch (err) {
@@ -84,7 +92,10 @@ export default function DataImportPage() {
       setError('Az import indításához bejelentkezett telephely szükséges.')
       return
     }
-    if (kind === 'full' && !window.confirm('Biztosan teljes adatimportot indít a bejelentkezett telephelyre?')) {
+    if (
+      kind === 'full' &&
+      !window.confirm('Biztosan teljes adatimportot indít a bejelentkezett telephelyre?')
+    ) {
       return
     }
 
@@ -139,7 +150,11 @@ export default function DataImportPage() {
       setError('A konfiguráció importhoz bejelentkezett telephely szükséges.')
       return
     }
-    if (!window.confirm('Biztosan importálja a kiválasztott telephelyi konfigurációt? A művelet rendszerbeállításokat módosíthat.')) {
+    if (
+      !window.confirm(
+        'Biztosan importálja a kiválasztott telephelyi konfigurációt? A művelet rendszerbeállításokat módosíthat.',
+      )
+    ) {
       return
     }
 
@@ -153,7 +168,10 @@ export default function DataImportPage() {
       if (result.success) {
         toast.success('Konfiguráció import kész')
       } else {
-        toast.error('Konfiguráció import hiba', result.errors?.join(', ') || 'A backend hibát jelzett.')
+        toast.error(
+          'Konfiguráció import hiba',
+          result.errors?.join(', ') || 'A backend hibát jelzett.',
+        )
       }
     } catch (err) {
       const msg = getErrorMessage(err)
@@ -165,12 +183,10 @@ export default function DataImportPage() {
     }
   }
 
-  const filtered = items.filter(item => {
+  const filtered = items.filter((item) => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
+    return Object.values(item).some((v) => v != null && String(v).toLowerCase().includes(term))
   })
 
   return (
@@ -194,7 +210,7 @@ export default function DataImportPage() {
             type="text"
             placeholder="Keresés..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="form-input w-full pl-10"
           />
         </div>
@@ -275,10 +291,13 @@ export default function DataImportPage() {
           <div>
             <h2 className="text-sm font-semibold text-blue-950">Konfiguráció import</h2>
             <p className="mt-1 text-sm text-blue-800">
-              Korábban exportált telephelyi konfiguráció JSON betöltése a bejelentkezett telephelyre.
+              Korábban exportált telephelyi konfiguráció JSON betöltése a bejelentkezett
+              telephelyre.
             </p>
           </div>
-          <label className={`form-button inline-flex cursor-pointer items-center gap-2 ${busyAction !== null || !branchId ? 'pointer-events-none opacity-60' : ''}`}>
+          <label
+            className={`form-button inline-flex cursor-pointer items-center gap-2 ${busyAction !== null || !branchId ? 'pointer-events-none opacity-60' : ''}`}
+          >
             <Upload className="h-4 w-4" />
             Config JSON import
             <input
@@ -291,12 +310,18 @@ export default function DataImportPage() {
           </label>
         </div>
         {configImportResult && (
-          <div className={`mt-3 rounded border p-3 text-sm ${configImportResult.success ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-red-200 bg-red-50 text-red-900'}`}>
+          <div
+            className={`mt-3 rounded border p-3 text-sm ${configImportResult.success ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-red-200 bg-red-50 text-red-900'}`}
+          >
             <div className="font-semibold">
               {configImportResult.success ? 'Import sikeres' : 'Import hibával zárult'}
             </div>
             <div className="mt-1">
-              Paraméter: {configImportResult.importedSystemParams}, árfolyam: {configImportResult.importedRateSettings}, kerekítés: {configImportResult.importedRoundingRules}, sablon: {configImportResult.importedPrintTemplates}, LED: {configImportResult.ledConfigImported ? 'igen' : 'nem'}
+              Paraméter: {configImportResult.importedSystemParams}, árfolyam:{' '}
+              {configImportResult.importedRateSettings}, kerekítés:{' '}
+              {configImportResult.importedRoundingRules}, sablon:{' '}
+              {configImportResult.importedPrintTemplates}, LED:{' '}
+              {configImportResult.ledConfigImported ? 'igen' : 'nem'}
             </div>
             {configImportResult.warnings?.length ? (
               <div className="mt-2">Figyelmeztetés: {configImportResult.warnings.join(', ')}</div>
@@ -319,49 +344,81 @@ export default function DataImportPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('backup.tipus')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('import.fajlnev')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('backup.allapot')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('import.rekordok')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('import.importalva')}</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.actions')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('backup.tipus')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('import.fajlnev')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('backup.allapot')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('import.rekordok')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('import.importalva')}
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                {t('common.actions')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.importType ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">
-                  {item.sourceFile ?? '-'}
-                  {item.errorLog ? <div className="mt-1 text-xs text-red-600">{item.errorLog}</div> : null}
-                </td>
-                <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.importedRecords ?? 0} / {item.totalRecords ?? 0}{item.failedRecords ? ` (${item.failedRecords} hiba)` : ''}</td>
-                <td className="px-4 py-3 text-sm">{item.completedAt || item.createdAt ? new Date(item.completedAt ?? item.createdAt ?? '').toLocaleString('hu-HU') : '-'}</td>
-                <td className="px-4 py-3 text-right text-sm">
-                  <button
-                    type="button"
-                    onClick={() => void retryImport(item.id)}
-                    disabled={busyAction !== null || item.status !== 'FAILED'}
-                    className="form-button inline-flex items-center gap-2"
-                    title="Újrapróbálás"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Retry
-                  </button>
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                  Betöltés...
                 </td>
               </tr>
-            ))}
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('common.noData')}
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm">{item.importType ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.sourceFile ?? '-'}
+                    {item.errorLog ? (
+                      <div className="mt-1 text-xs text-red-600">{item.errorLog}</div>
+                    ) : null}
+                  </td>
+                  <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.importedRecords ?? 0} / {item.totalRecords ?? 0}
+                    {item.failedRecords ? ` (${item.failedRecords} hiba)` : ''}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.completedAt || item.createdAt
+                      ? new Date(item.completedAt ?? item.createdAt ?? '').toLocaleString('hu-HU')
+                      : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm">
+                    <button
+                      type="button"
+                      onClick={() => void retryImport(item.id)}
+                      disabled={busyAction !== null || item.status !== 'FAILED'}
+                      className="form-button inline-flex items-center gap-2"
+                      title="Újrapróbálás"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Retry
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="text-sm text-gray-500">
-        {t('audit.osszesen')}{filtered.length} / {items.length}
+        {t('audit.osszesen')}
+        {filtered.length} / {items.length}
       </div>
     </div>
   )

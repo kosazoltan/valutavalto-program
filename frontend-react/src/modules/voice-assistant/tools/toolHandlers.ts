@@ -1,8 +1,4 @@
-import {
-  createIssue,
-  appendQuickNote,
-  finalizeIssue,
-} from '../store/issueStore'
+import { createIssue, appendQuickNote, finalizeIssue } from '../store/issueStore'
 import type {
   IssueRecord,
   IssueMode,
@@ -118,7 +114,7 @@ function categoryFromString(value: unknown): IssueCategory {
 export async function dispatchToolCall(
   name: ToolName,
   args: Record<string, unknown>,
-  ctx: ToolContext
+  ctx: ToolContext,
 ): Promise<Record<string, unknown>> {
   switch (name) {
     case 'report_issue': {
@@ -160,7 +156,7 @@ export async function dispatchToolCall(
       const step = ctx.nextInstallStep(
         Number(args.current_step ?? 0),
         Boolean(args.success ?? false),
-        typeof args.note === 'string' ? args.note : undefined
+        typeof args.note === 'string' ? args.note : undefined,
       )
       return { step_number: step.step_number, instructions: step.instructions }
     }

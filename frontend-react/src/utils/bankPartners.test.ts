@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  VAULT_COUNTERPARTY_CODES,
-  isBankPartner,
-  excludeBankPartners,
-} from './bankPartners'
+import { VAULT_COUNTERPARTY_CODES, isBankPartner, excludeBankPartners } from './bankPartners'
 
 describe('FK-014 – bankPartners', () => {
   describe('isBankPartner', () => {
@@ -20,7 +16,9 @@ describe('FK-014 – bankPartners', () => {
 
     it('strukturális: branchTypeCode === VAULT_COUNTERPARTY → banki partner (kód nélkül is)', () => {
       expect(isBankPartner({ branchTypeCode: 'VAULT_COUNTERPARTY' })).toBe(true)
-      expect(isBankPartner({ branchCode: 'BR999', branchTypeCode: 'VAULT_COUNTERPARTY' })).toBe(true)
+      expect(isBankPartner({ branchCode: 'BR999', branchTypeCode: 'VAULT_COUNTERPARTY' })).toBe(
+        true,
+      )
     })
 
     it('kis/nagybetű és körbevevő whitespace toleráns', () => {
@@ -61,7 +59,10 @@ describe('FK-014 – bankPartners', () => {
     })
 
     it('megőrzi az elemek típusát/extra mezőit', () => {
-      const rows = [{ code: 'BR020', name: 'Szeged', isActive: true }, { code: 'PRB', name: 'POS Raiffeisen' }]
+      const rows = [
+        { code: 'BR020', name: 'Szeged', isActive: true },
+        { code: 'PRB', name: 'POS Raiffeisen' },
+      ]
       const result = excludeBankPartners(rows)
       expect(result).toEqual([{ code: 'BR020', name: 'Szeged', isActive: true }])
     })

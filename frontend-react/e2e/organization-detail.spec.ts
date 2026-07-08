@@ -31,7 +31,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -54,11 +54,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith(`/organizations/${organizationId}`) && method === 'GET') {
@@ -79,7 +87,9 @@ async function mockApis(page: Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ id: organizationId, code: 'ROOT', name: 'Aktív root', isActive: true }]),
+        body: JSON.stringify([
+          { id: organizationId, code: 'ROOT', name: 'Aktív root', isActive: true },
+        ]),
       })
     }
 
@@ -87,7 +97,9 @@ async function mockApis(page: Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ id: organizationId, code: 'ROOT', name: 'Gyökér root', isActive: true }]),
+        body: JSON.stringify([
+          { id: organizationId, code: 'ROOT', name: 'Gyökér root', isActive: true },
+        ]),
       })
     }
 
@@ -121,7 +133,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('szervezet oldal mobil nézetben aktív/root listákat és backend detailt használ', async ({ page }) => {
+test('szervezet oldal mobil nézetben aktív/root listákat és backend detailt használ', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -131,9 +145,10 @@ test('szervezet oldal mobil nézetben aktív/root listákat és backend detailt 
   await expect(page.getByText('Aktív szervezet')).toBeVisible()
   await expect(page.getByText('Gyökér szervezet')).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === `/api/v1/organizations/${organizationId}`
+  const detailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === `/api/v1/organizations/${organizationId}`,
   )
   await page.getByRole('button', { name: /Szerk/i }).click()
   await detailRequest
@@ -141,8 +156,8 @@ test('szervezet oldal mobil nézetben aktív/root listákat és backend detailt 
   await expect(page.locator('input').nth(2)).toHaveValue('Backend root részlet')
   await expect(page.locator('textarea')).toHaveValue('Backend detail description')
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

@@ -56,9 +56,7 @@ let API_BASE_URL = import.meta.env.VITE_API_URL
 export const PRODUCTION_API_URL = 'https://excvaluta.com/api/v1'
 const ELECTRON_PROD_ALLOWED_HOSTS = new Set(['excvaluta.com', 'www.excvaluta.com'])
 
-export function resolveElectronProdBaseUrl(
-  buildTimeUrl: string | undefined,
-): string | undefined {
+export function resolveElectronProdBaseUrl(buildTimeUrl: string | undefined): string | undefined {
   if (typeof buildTimeUrl !== 'string' || buildTimeUrl.trim().length === 0) {
     return undefined
   }

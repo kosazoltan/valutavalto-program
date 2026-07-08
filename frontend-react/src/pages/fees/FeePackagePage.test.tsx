@@ -39,7 +39,13 @@ describe('FeePackagePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.getTypes.mockResolvedValue([
-      { id: 'fee-type-1', code: 'WU', name: 'Western Union', calculationMethod: 'FIXED', isActive: true },
+      {
+        id: 'fee-type-1',
+        code: 'WU',
+        name: 'Western Union',
+        calculationMethod: 'FIXED',
+        isActive: true,
+      },
     ])
     mocks.getRates.mockResolvedValue([])
     mocks.getDiscounts.mockResolvedValue([])

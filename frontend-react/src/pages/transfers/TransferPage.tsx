@@ -13,7 +13,7 @@ import {
   Clock,
   Building2,
   Printer,
-  Ban
+  Ban,
 } from 'lucide-react'
 import {
   transferApi,
@@ -24,7 +24,7 @@ import {
   exchangeRateApi,
   Transfer,
   CreateTransferRequest,
-  Currency
+  Currency,
 } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { NumberInput } from '../../components/NumberInput'
@@ -36,7 +36,11 @@ import {
   saveAndSyncPendingTransfer,
   getElectronCachedRates,
 } from '../../utils/electronTransactions'
-import { getLocalPendingTransfers, getCompanyType, queueOfflineTransferStorno } from '../../utils/localQueue'
+import {
+  getLocalPendingTransfers,
+  getCompanyType,
+  queueOfflineTransferStorno,
+} from '../../utils/localQueue'
 import { useTranslation } from 'react-i18next'
 import SupervisorPinModal from '../../components/auth/SupervisorPinModal'
 import { ReceiptPreviewModal } from '../../components/electron'
@@ -45,7 +49,20 @@ import { toast } from '../../components/ui/toaster'
 import type { PrintReceiptData } from '../../types/receipt'
 import { localIsoDate } from '../../utils/dateFormat'
 import { roundHuf } from '../../utils/rounding'
-import { getAvailableTransferTypes, getAllowedTransferTypeValues, isHufOnlyTransferType, isCurrencyOnlyTransferType, filterCurrenciesForType, buildTransferLines, filterTransferTargetBranches, isTHBranch, isMainCashierBranch, validateCarrierSeal, buildDenominationPayload, type CurrencyLineInput } from './transferRules'
+import {
+  getAvailableTransferTypes,
+  getAllowedTransferTypeValues,
+  isHufOnlyTransferType,
+  isCurrencyOnlyTransferType,
+  filterCurrenciesForType,
+  buildTransferLines,
+  filterTransferTargetBranches,
+  isTHBranch,
+  isMainCashierBranch,
+  validateCarrierSeal,
+  buildDenominationPayload,
+  type CurrencyLineInput,
+} from './transferRules'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -77,17 +94,28 @@ type TransferTypeEnum =
 function localizeTransferType(rawType: TransferTypeEnum | null | undefined): string {
   if (rawType == null) return '—'
   switch (rawType) {
-    case 'CURRENCY': return 'Deviza'
-    case 'CASH': return 'Készpénz'
-    case 'HANDLING_FEE': return 'Kezelési díj'
-    case 'VAULT_DEPOSIT': return 'Széf befizetés'
-    case 'VAULT_WITHDRAW': return 'Széf kivét'
-    case 'CORRECTION': return 'Korrekció'
-    case 'OTHER': return 'Egyéb'
-    case 'ERB': return 'Fixing valuta mozgás RB (ERB)'
-    case 'FRB': return 'Forint mozgás RB (FRB)'
-    case 'TRB': return 'Egyedi kötés RB (TRB)'
-    case 'PRB': return 'POS átvétel banktól (PRB)'
+    case 'CURRENCY':
+      return 'Deviza'
+    case 'CASH':
+      return 'Készpénz'
+    case 'HANDLING_FEE':
+      return 'Kezelési díj'
+    case 'VAULT_DEPOSIT':
+      return 'Széf befizetés'
+    case 'VAULT_WITHDRAW':
+      return 'Széf kivét'
+    case 'CORRECTION':
+      return 'Korrekció'
+    case 'OTHER':
+      return 'Egyéb'
+    case 'ERB':
+      return 'Fixing valuta mozgás RB (ERB)'
+    case 'FRB':
+      return 'Forint mozgás RB (FRB)'
+    case 'TRB':
+      return 'Egyedi kötés RB (TRB)'
+    case 'PRB':
+      return 'POS átvétel banktól (PRB)'
     default: {
       // Exhaustive check: ha uj enum bekerul a TransferTypeEnum-ba,
       // a TS compiler itt error-t dob (`Type 'X' is not assignable to type 'never'`).
@@ -124,7 +152,18 @@ export default function TransferPage() {
   // Form state for new transfer
   const [showNewTransfer, setShowNewTransfer] = useState(false)
   const [currencies, setCurrencies] = useState<Currency[]>([])
-  const [branches, setBranches] = useState<{ id: string; code: string; name: string; isVault?: boolean; branchTypeCode?: string; region?: string; regionCode?: string | null; vaultTerritoryId?: number | null }[]>([])
+  const [branches, setBranches] = useState<
+    {
+      id: string
+      code: string
+      name: string
+      isVault?: boolean
+      branchTypeCode?: string
+      region?: string
+      regionCode?: string | null
+      vaultTerritoryId?: number | null
+    }[]
+  >([])
 
   // New transfer form
   const [transferDirection, setTransferDirection] = useState<'out' | 'in'>('out')
@@ -133,17 +172,20 @@ export default function TransferPage() {
   const [amount, setAmount] = useState('')
   // #6: több-valutás átadólap sorai (CSAK valuta-típusnál aktív). Az első sor a header.
   const lineIdRef = useRef(1)
-  const [currencyLines, setCurrencyLines] = useState<CurrencyLineInput[]>([{ id: 0, currencyId: null, amount: '' }])
-  const [transferType, setTransferType] = useState<CreateTransferRequest['transferType']>('CURRENCY')
+  const [currencyLines, setCurrencyLines] = useState<CurrencyLineInput[]>([
+    { id: 0, currencyId: null, amount: '' },
+  ])
+  const [transferType, setTransferType] =
+    useState<CreateTransferRequest['transferType']>('CURRENCY')
   const [notes, setNotes] = useState('')
   const [carrierName, setCarrierName] = useState('')
   const [sealNumber, setSealNumber] = useState('')
   // FR-17/18: opcionális címletezés (darab × névleges érték). Üres → nem küldjük, a bizonylaton nem jelenik meg.
   const [showDenominations, setShowDenominations] = useState(false)
   const denomIdRef = useRef(1)
-  const [denominationLines, setDenominationLines] = useState<Array<{ id: number; quantity: string; faceValue: string }>>([
-    { id: 0, quantity: '', faceValue: '' },
-  ])
+  const [denominationLines, setDenominationLines] = useState<
+    Array<{ id: number; quantity: string; faceValue: string }>
+  >([{ id: 0, quantity: '', faceValue: '' }])
   // Penztar-batch A.3 (2026-06-12, user-kérés): a kiválasztott valuta TÉNYLEGES címleteit
   // ajánljuk fel (denomination törzs, GET /denominations/currency/{id} — a Címletezés
   // menüvel azonos forrás), hogy ne kézzel kelljen a névleges értéket beírni (elgépelés-
@@ -203,11 +245,17 @@ export default function TransferPage() {
       // igényel. A banki/vault-átadás "csak Bankok + Területek" finomszűrése külön körben, a
       // speciális (TH / Főpénztár / vault) célok megőrzésével. Itt egyelőre az összes aktív.
       const branchData = await branchApi.listActive()
-      setBranches(branchData.map(b => ({
-        id: b.id, code: b.code, name: b.name,
-        isVault: b.isVault, branchTypeCode: b.branchTypeCode,
-        region: b.region, vaultTerritoryId: b.vaultTerritoryId,
-      })))
+      setBranches(
+        branchData.map((b) => ({
+          id: b.id,
+          code: b.code,
+          name: b.name,
+          isVault: b.isVault,
+          branchTypeCode: b.branchTypeCode,
+          region: b.region,
+          vaultTerritoryId: b.vaultTerritoryId,
+        })),
+      )
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -221,14 +269,14 @@ export default function TransferPage() {
 
   // Belső ellenőri (supervisor) PIN kell, ha a cél TH (többlet/hiány könyvelés) VAGY az
   // 1.sz Főpénztár (hó végi visszapótlás) — Kósa Zoltán 2026-05-20 üzleti szabály.
-  const targetBranch = branches.find(b => b.id === toBranchId)
+  const targetBranch = branches.find((b) => b.id === toBranchId)
   const isTargetTH = targetBranch ? isTHBranch(targetBranch) : false
   const isTargetMainCashier = targetBranch ? isMainCashierBranch(targetBranch) : false
   const requiresSupervisorPin = isTargetTH || isTargetMainCashier
 
   // === Átadás-átvétel üzleti szabályok (Kósa Zoltán tesztelői kérés) ===
   // A bejelentkezett felhasználó saját fiókja — ez dönti el, hogy pénztár vagy értéktár.
-  const ownBranch = branches.find(b => b.id === worker?.branchId)
+  const ownBranch = branches.find((b) => b.id === worker?.branchId)
   const isVaultUser = ownBranch?.isVault === true
 
   // FR-4 (fejléc-javítás 2026-06-11): a „Kérő iroda" automatikus kitöltése. Elsődleges forrás a
@@ -242,9 +290,9 @@ export default function TransferPage() {
   // jelöli, több pénztár osztozik rajta — ott nem egyedi azonosító). Hiányzó
   // kódnál TBD-2 szerint kód-név fallback, sosem "—"/null.
   const vaultLabel = ownBranch
-    ? (ownBranch.isVault && ownBranch.regionCode?.trim()
+    ? ownBranch.isVault && ownBranch.regionCode?.trim()
       ? `${ownBranch.regionCode.trim()}. ${ownBranch.name}`
-      : `${ownBranch.code} - ${ownBranch.name}`)
+      : `${ownBranch.code} - ${ownBranch.name}`
     : (worker?.branchName ?? worker?.branchCode ?? '—')
 
   // (Req #2/#3) Iránytól + felhasználó-típustól függő választható átadás-típusok.
@@ -254,7 +302,11 @@ export default function TransferPage() {
   // select-ben a listából hiányzó, backend által is elutasított érték). Teljes dep-lista,
   // önjavító (a CURRENCY minden irány/szerep mellett elérhető → nincs loop).
   useEffect(() => {
-    if (!getAvailableTransferTypes(isVaultUser, transferDirection).some(o => o.value === transferType)) {
+    if (
+      !getAvailableTransferTypes(isVaultUser, transferDirection).some(
+        (o) => o.value === transferType,
+      )
+    ) {
       setTransferType('CURRENCY')
     }
   }, [transferDirection, isVaultUser, transferType])
@@ -265,16 +317,23 @@ export default function TransferPage() {
   const isMultiCurrency = transferType === 'CURRENCY'
 
   // #6 sor-kezelők
-  const updateCurrencyLine = useCallback((idx: number, field: 'currencyId' | 'amount', value: string) => {
-    setCurrencyLines(prev => prev.map((row, i) => i === idx
-      ? { ...row, [field]: field === 'currencyId' ? (value ? Number(value) : null) : value }
-      : row))
-  }, [])
+  const updateCurrencyLine = useCallback(
+    (idx: number, field: 'currencyId' | 'amount', value: string) => {
+      setCurrencyLines((prev) =>
+        prev.map((row, i) =>
+          i === idx
+            ? { ...row, [field]: field === 'currencyId' ? (value ? Number(value) : null) : value }
+            : row,
+        ),
+      )
+    },
+    [],
+  )
   const addCurrencyLine = useCallback(() => {
-    setCurrencyLines(prev => [...prev, { id: lineIdRef.current++, currencyId: null, amount: '' }])
+    setCurrencyLines((prev) => [...prev, { id: lineIdRef.current++, currencyId: null, amount: '' }])
   }, [])
   const removeCurrencyLine = useCallback((idx: number) => {
-    setCurrencyLines(prev => prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx))
+    setCurrencyLines((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)))
   }, [])
 
   // Ha a felhasználóhoz nem elérhető típus van kiválasztva (pl. pénztár + VAULT_*), visszaállítjuk.
@@ -290,12 +349,12 @@ export default function TransferPage() {
   useEffect(() => {
     if (currencies.length === 0) return
     if (isHufOnlyType) {
-      const huf = currencies.find(c => c.code === 'HUF')
+      const huf = currencies.find((c) => c.code === 'HUF')
       if (huf && currencyId !== huf.id) setCurrencyId(huf.id)
     } else if (isCurrencyOnlyTransferType(transferType)) {
       // CURRENCY mellett az ERB/TRB (csak-deviza technikai RB-kötések) is: a beragadt
       // HUF currencyId-t töröljük, különben üresnek látszó select + backend 400.
-      const selected = currencies.find(c => c.id === currencyId)
+      const selected = currencies.find((c) => c.id === currencyId)
       if (selected?.code === 'HUF') setCurrencyId(null)
     }
   }, [transferType, currencies, currencyId, isHufOnlyType])
@@ -311,7 +370,7 @@ export default function TransferPage() {
       return
     }
     const denomCurrencyId = isMultiCurrency
-      ? currencyLines.find(l => l.currencyId != null)?.currencyId ?? null
+      ? (currencyLines.find((l) => l.currencyId != null)?.currencyId ?? null)
       : currencyId
     if (denomCurrencyId == null || denomPresetCurrencyRef.current === denomCurrencyId) return
     // Verif PR #1101 P2: a ref a fetch INDÍTÁSAKOR áll be (nem a válasznál) — így a
@@ -325,9 +384,10 @@ export default function TransferPage() {
         if (cancelled) return
         // Verif PR #1101 P2: a felhasználó által már elkezdett kitöltést (darabszám) a
         // később beérkező preset NEM írhatja felül — funkcionális update-ben ellenőrizzük.
-        const applyIfPristine = (next: Array<{ id: number; quantity: string; faceValue: string }>) =>
-          setDenominationLines(prev =>
-            prev.some(r => r.quantity.trim() !== '') ? prev : next)
+        const applyIfPristine = (
+          next: Array<{ id: number; quantity: string; faceValue: string }>,
+        ) =>
+          setDenominationLines((prev) => (prev.some((r) => r.quantity.trim() !== '') ? prev : next))
         if (denoms.length === 0) {
           // Codex PR #1101 P2: valutaváltáskor az ELŐZŐ valuta stale presetje nem
           // maradhat — üres törzsnél vissza a szabad bevitelre.
@@ -335,20 +395,26 @@ export default function TransferPage() {
           applyIfPristine([{ id: denomIdRef.current++, quantity: '', faceValue: '' }])
           return
         }
-        const code = currencies.find(c => c.id === denomCurrencyId)?.code ?? null
+        const code = currencies.find((c) => c.id === denomCurrencyId)?.code ?? null
         setDenomPresetCode(code)
         // Címletenként egy sor, csökkenő névértékkel (a DenominationPage rendezése) —
         // a felhasználó csak a darabszámot tölti ki; a sorok szerkeszthetők maradnak.
         applyIfPristine(
           [...denoms]
             .sort((a, b) => b.faceValue - a.faceValue)
-            .map(d => ({ id: denomIdRef.current++, quantity: '', faceValue: String(d.faceValue) })),
+            .map((d) => ({
+              id: denomIdRef.current++,
+              quantity: '',
+              faceValue: String(d.faceValue),
+            })),
         )
       } catch {
         // Törzs nem elérhető (pl. offline) → szabad bevitel marad, jelzés nélkül.
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [showDenominations, isMultiCurrency, currencyId, currencyLines, currencies])
 
   // Create new transfer
@@ -392,7 +458,11 @@ export default function TransferPage() {
     }
 
     // FR-17..20b: opcionális címletezés feldolgozása + összeg-egyezés (pure helper, tesztelt).
-    const denomResult = buildDenominationPayload(showDenominations, denominationLines, effAmountValue)
+    const denomResult = buildDenominationPayload(
+      showDenominations,
+      denominationLines,
+      effAmountValue,
+    )
     if (denomResult.error) {
       setError(denomResult.error)
       return
@@ -411,12 +481,14 @@ export default function TransferPage() {
         const balances = await cashBalanceApi.list()
         const linesToCheck = effLines ?? [{ currencyId: effCurrencyId!, amount: effAmountValue }]
         for (const ln of linesToCheck) {
-          const cur = currencies.find(c => c.id === ln.currencyId)
+          const cur = currencies.find((c) => c.id === ln.currencyId)
           if (!cur) continue
           const bal = balances.find((b: { currencyCode: string }) => b.currencyCode === cur.code)
           const available = bal?.currentBalance ?? 0
           if (ln.amount > available) {
-            setError(`Nincs ennyi készlet! ${cur.code}: elérhető ${available.toLocaleString('hu-HU')}, kért ${ln.amount.toLocaleString('hu-HU')}`)
+            setError(
+              `Nincs ennyi készlet! ${cur.code}: elérhető ${available.toLocaleString('hu-HU')}, kért ${ln.amount.toLocaleString('hu-HU')}`,
+            )
             return
           }
         }
@@ -432,23 +504,28 @@ export default function TransferPage() {
 
       // A.1: a sorok valutakóddal dúsítva — az offline lista + bizonylat internet nélkül
       // is meg tudja jeleníteni a kódokat (a backend TransferLineDto fogadja a mezőt).
-      const enrichedLines = effLines?.map(l => ({
+      const enrichedLines = effLines?.map((l) => ({
         ...l,
-        currencyCode: currencies.find(c => c.id === l.currencyId)?.code,
+        currencyCode: currencies.find((c) => c.id === l.currencyId)?.code,
       }))
       // A.1: a bizonylaton minden valuta-sor megjelenik (egysorosnál a fejléc-mezők maradnak).
-      const receiptTransferLines = enrichedLines && enrichedLines.length > 1
-        ? enrichedLines.map(l => ({ currencyCode: l.currencyCode ?? `#${l.currencyId}`, amount: l.amount }))
-        : undefined
+      const receiptTransferLines =
+        enrichedLines && enrichedLines.length > 1
+          ? enrichedLines.map((l) => ({
+              currencyCode: l.currencyCode ?? `#${l.currencyId}`,
+              amount: l.amount,
+            }))
+          : undefined
 
       // Batch2-E + FK05 FR-5: deviza-átadólapon a forintosított érték + árfolyam a bizonylatra.
       // Egyvalutás deviza-sornál az aktuális publikált ELSZÁMOLÓ árfolyammal számolunk;
       // több-valutás lapnál (soronként eltérő valuták) a fejléc-szintű forintosítás
       // nem értelmezhető — ott kimarad (dokumentált korlát).
-      const effCurrencyCode = currencies.find(c => c.id === effCurrencyId)?.code
-      const transferRate = effCurrencyCode && (!effLines || effLines.length <= 1)
-        ? await resolveTransferRate(effCurrencyCode)
-        : null
+      const effCurrencyCode = currencies.find((c) => c.id === effCurrencyId)?.code
+      const transferRate =
+        effCurrencyCode && (!effLines || effLines.length <= 1)
+          ? await resolveTransferRate(effCurrencyCode)
+          : null
       // Codex P1 #1111: a forintosított érték 5 Ft-os MAGYAR kerekítéssel (roundHuf) —
       // a bizonylat roundedHufAmount mezője és az app HUF-invariánsa is ezt várja.
       const transferHufValue = transferRate != null ? roundHuf(effAmountValue * transferRate) : null
@@ -470,12 +547,13 @@ export default function TransferPage() {
       // FR-1/FR-2/FR-3/FR-4: a bizonylat fejléc-adatai. A bejelentkezett értéktár neve a vault-oldal
       // (component-szintű vaultLabel, FR-4 auto-kitöltéssel); átadásnál Kérő iroda = értéktár,
       // átvételnél Cél iroda = értéktár.
-      const transferDocType: 'handover' | 'receipt' = transferDirection === 'in' ? 'receipt' : 'handover'
+      const transferDocType: 'handover' | 'receipt' =
+        transferDirection === 'in' ? 'receipt' : 'handover'
       // FR-17..19: a bizonylaton megjelenő címletezési sorok (lineTotal a frontend számolja az előnézethez).
-      const receiptDenominations = effDenominations?.map(d => ({
+      const receiptDenominations = effDenominations?.map((d) => ({
         quantity: d.quantity,
         faceValue: d.faceValue,
-        currencyCode: currencies.find(c => c.id === effCurrencyId)?.code,
+        currencyCode: currencies.find((c) => c.id === effCurrencyId)?.code,
         lineTotal: d.quantity * d.faceValue,
       }))
 
@@ -518,16 +596,18 @@ export default function TransferPage() {
         let offlineVaultPhone: string | undefined
         try {
           const cachedDesks = await window.electronAPI?.getCachedCashDesks?.()
-          const ownDesk = cachedDesks?.find(d => d.id === worker?.branchId)
+          const ownDesk = cachedDesks?.find((d) => d.id === worker?.branchId)
           if (ownDesk) {
             // A backend formatBranchAddress() formátumával egyezően: "Város, Cím, IRSZ".
             const parts = [ownDesk.city, ownDesk.address, ownDesk.zip_code]
-              .map(p => (p ?? '').trim())
-              .filter(p => p !== '')
+              .map((p) => (p ?? '').trim())
+              .filter((p) => p !== '')
             offlineVaultAddress = parts.length > 0 ? parts.join(', ') : undefined
             offlineVaultPhone = ownDesk.phone?.trim() || undefined
           }
-        } catch { /* cache-hiány nem blokkolja a bizonylatot — fallback a cég-székhely cím */ }
+        } catch {
+          /* cache-hiány nem blokkolja a bizonylatot — fallback a cég-székhely cím */
+        }
         const now = new Date()
         setPrintReceiptData({
           type: 'transfer',
@@ -536,8 +616,9 @@ export default function TransferPage() {
           // AT105000042) — ezt szinkronizáljuk a backendre is, így a kinyomtatott szállítólevél
           // EGYEZIK a rögzített átadással. Ha hiányzik (régi telepítő / null), fallback a queue-sor
           // ID-jére, végső soron a fabrikált időbélyegre.
-          receiptNumber: outcome.localReferenceNumbers?.[0]
-            ?? (outcome.savedIds[0] != null
+          receiptNumber:
+            outcome.localReferenceNumbers?.[0] ??
+            (outcome.savedIds[0] != null
               ? `LOCAL-${localIsoDate()}-#${outcome.savedIds[0]}`
               : `LOCAL-${localIsoDate()}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`),
           // FR-3/4: átadásnál Kérő=értéktár (vaultLabel), Cél=másik; átvételnél fordítva.
@@ -550,7 +631,8 @@ export default function TransferPage() {
           // Batch2-E: árfolyam + forintosított érték a deviza-bizonylaton (ha feloldható).
           rate: transferRate ?? undefined,
           roundedHufAmount: transferHufValue ?? undefined,
-          transferTarget: transferDirection === 'in' ? vaultLabel : `${branch.code} - ${branch.name}`,
+          transferTarget:
+            transferDirection === 'in' ? vaultLabel : `${branch.code} - ${branch.name}`,
           transferNote: notes || undefined,
           carrierName: carrierName.trim(),
           sealNumber: sealNumber.trim(),
@@ -563,7 +645,9 @@ export default function TransferPage() {
         })
       } else {
         const result = await transferApi.create(request)
-        setSuccess(`${transferDirection === 'out' ? 'Átadás' : 'Átvétel'} létrehozva: ${result.transferNumber}`)
+        setSuccess(
+          `${transferDirection === 'out' ? 'Átadás' : 'Átvétel'} létrehozva: ${result.transferNumber}`,
+        )
         // FR-6: nyomtatható szállítólevél a szerver-válaszból (Szállító + Plombaszám is rajta).
         {
           const otherLabel = `${result.toBranchCode} - ${result.toBranchName}`
@@ -590,9 +674,13 @@ export default function TransferPage() {
             transferDocType, // FR-2
             denominations: result.denominations ?? receiptDenominations, // FR-17..19
             // A.1: a szerver-válasz sorai (currencyCode-dal), fallback a kérés soraira.
-            transferLines: result.lines && result.lines.length > 1
-              ? result.lines.map(l => ({ currencyCode: l.currencyCode ?? `#${l.currencyId}`, amount: l.amount }))
-              : receiptTransferLines,
+            transferLines:
+              result.lines && result.lines.length > 1
+                ? result.lines.map((l) => ({
+                    currencyCode: l.currencyCode ?? `#${l.currencyId}`,
+                    amount: l.amount,
+                  }))
+                : receiptTransferLines,
           })
         }
       }
@@ -634,7 +722,7 @@ export default function TransferPage() {
 
       await transferApi.receive(selectedTransfer.id, {
         receivedAmount: amountValue,
-        notes: receiveNotes || undefined
+        notes: receiveNotes || undefined,
       })
 
       await recordLocalAuditEvent({
@@ -728,7 +816,9 @@ export default function TransferPage() {
   // a currencyId alapján a betöltött valuta-törzsből oldjuk fel (végső fallback: #id).
   const resolveLineCode = useCallback(
     (line: { currencyId: number; currencyCode?: string }): string =>
-      line.currencyCode ?? currencies.find(c => c.id === line.currencyId)?.code ?? `#${line.currencyId}`,
+      line.currencyCode ??
+      currencies.find((c) => c.id === line.currencyId)?.code ??
+      `#${line.currencyId}`,
     [currencies],
   )
 
@@ -743,35 +833,42 @@ export default function TransferPage() {
     try {
       if (isElectron()) {
         const cached = await getElectronCachedRates()
-        const row = cached.find(r => r.currency_code === currencyCode)
+        const row = cached.find((r) => r.currency_code === currencyCode)
         if (row?.official_rate != null && row.official_rate > 0) return row.official_rate
         if (row && row.buy_rate > 0) return row.buy_rate
       }
       const rates = await exchangeRateApi.list()
-      const row = rates.find(r => r.currencyCode === currencyCode)
+      const row = rates.find((r) => r.currencyCode === currencyCode)
       if (row?.officialRate != null && row.officialRate > 0) return row.officialRate
       if (row && row.baseBuyRate > 0) return row.baseBuyRate
-    } catch { /* árfolyam-cache/API hiánya nem blokkolja a rögzítést */ }
+    } catch {
+      /* árfolyam-cache/API hiánya nem blokkolja a rögzítést */
+    }
     return null
   }, [])
 
   // Batch2-E: az értéktár cím/telefon fallback a lokális cached_cash_desks mirrorból
   // (offline rögzített sorok előnézetéhez — azok strukturálisan nem hordoznak fejléc-adatot).
-  const loadOwnVaultContact = useCallback(async (): Promise<{ address?: string; phone?: string }> => {
+  const loadOwnVaultContact = useCallback(async (): Promise<{
+    address?: string
+    phone?: string
+  }> => {
     try {
       const cachedDesks = await window.electronAPI?.getCachedCashDesks?.()
-      const ownDesk = cachedDesks?.find(d => d.id === worker?.branchId)
+      const ownDesk = cachedDesks?.find((d) => d.id === worker?.branchId)
       if (ownDesk) {
         // A backend formatBranchAddress() formátumával egyezően: "Város, Cím, IRSZ".
         const parts = [ownDesk.city, ownDesk.address, ownDesk.zip_code]
-          .map(p => (p ?? '').trim())
-          .filter(p => p !== '')
+          .map((p) => (p ?? '').trim())
+          .filter((p) => p !== '')
         return {
           address: parts.length > 0 ? parts.join(', ') : undefined,
           phone: ownDesk.phone?.trim() || undefined,
         }
       }
-    } catch { /* cache-hiány nem blokkolja a bizonylatot */ }
+    } catch {
+      /* cache-hiány nem blokkolja a bizonylatot */
+    }
     return {}
   }, [worker?.branchId])
 
@@ -795,9 +892,8 @@ export default function TransferPage() {
       : regionLabel(transfer.fromBranchCode, transfer.fromBranchName, transfer.fromBranchRegionCode)
     // Batch2-E: offline (electron-queue) sorok nem hordoznak fejléc cím/telefon adatot —
     // fallback a lokális cached_cash_desks mirrorból, kizárólag hiány esetén.
-    const vaultContact = (!transfer.vaultAddress || !transfer.vaultPhone)
-      ? await loadOwnVaultContact()
-      : {}
+    const vaultContact =
+      !transfer.vaultAddress || !transfer.vaultPhone ? await loadOwnVaultContact() : {}
     setPrintReceiptData({
       type: 'transfer',
       companyType: getCompanyType(worker),
@@ -818,9 +914,10 @@ export default function TransferPage() {
       // Batch2-E: a deviza-bizonylat árfolyama a tárolt forintosított értékből DERIVÁLT
       // (rate = hufValue / amount) — a transfer-adatmodellben nincs külön rate oszlop,
       // és definíció szerint pontosan ezzel az aránnyal készült a forintosítás.
-      rate: transfer.currencyCode !== 'HUF' && transfer.hufValue != null && transfer.amount > 0
-        ? Number((transfer.hufValue / transfer.amount).toFixed(2))
-        : undefined,
+      rate:
+        transfer.currencyCode !== 'HUF' && transfer.hufValue != null && transfer.amount > 0
+          ? Number((transfer.hufValue / transfer.amount).toFixed(2))
+          : undefined,
       transferNote: transfer.notes,
       carrierName: transfer.carrierName,
       sealNumber: transfer.sealNumber,
@@ -833,9 +930,10 @@ export default function TransferPage() {
       stornoReason: transfer.cancellationReason,
       denominations: transfer.denominations,
       // A.1: több-valutás átadólapon minden sor a bizonylatra kerül.
-      transferLines: transfer.lines && transfer.lines.length > 1
-        ? transfer.lines.map(l => ({ currencyCode: resolveLineCode(l), amount: l.amount }))
-        : undefined,
+      transferLines:
+        transfer.lines && transfer.lines.length > 1
+          ? transfer.lines.map((l) => ({ currencyCode: resolveLineCode(l), amount: l.amount }))
+          : undefined,
     })
     setShowReceiptModal(true)
   }
@@ -882,7 +980,10 @@ export default function TransferPage() {
   const handleStornoConfirm = async () => {
     if (!stornoTarget) return
     const reason = stornoReason.trim()
-    if (!reason) { setError('A sztornó indoklása kötelező!'); return }
+    if (!reason) {
+      setError('A sztornó indoklása kötelező!')
+      return
+    }
     try {
       setLoading(true)
       setError(null)
@@ -929,7 +1030,9 @@ export default function TransferPage() {
           const queued = await queueOfflineTransferStorno(target.id, target.transferNumber, reason)
           if (queued) {
             closeStornoModal()
-            setSuccess(`Sztornó helyben rögzítve (offline): ${target.transferNumber}-SZ. A szinkronizálás az internet visszatértekor folytatódik.`)
+            setSuccess(
+              `Sztornó helyben rögzítve (offline): ${target.transferNumber}-SZ. A szinkronizálás az internet visszatértekor folytatódik.`,
+            )
             const stornoIsReceipt = target.direction === 'U'
             const stornoOther = `${target.toBranchCode} - ${target.toBranchName}`
             const now = new Date()
@@ -957,7 +1060,9 @@ export default function TransferPage() {
             setShowReceiptModal(true)
             return
           }
-        } catch { /* ha a queue-olás is bukik, az általános hiba jelzés következik */ }
+        } catch {
+          /* ha a queue-olás is bukik, az általános hiba jelzés következik */
+        }
       }
       setError(getErrorMessage(err))
     } finally {
@@ -991,7 +1096,7 @@ export default function TransferPage() {
       RECEIVED: 'bg-purple-100 text-purple-700',
       COMPLETED: 'bg-green-100 text-green-700',
       REJECTED: 'bg-red-100 text-red-700',
-      CANCELLED: 'bg-gray-100 text-gray-500'
+      CANCELLED: 'bg-gray-100 text-gray-500',
     }
     return (
       <span className={`px-2 py-1 text-xs rounded ${statusMap[status] || 'bg-gray-100'}`}>
@@ -1001,7 +1106,11 @@ export default function TransferPage() {
   }
 
   // Transfer list component
-  const TransferList = ({ transfers, showActions = false, isOutgoing = false }: {
+  const TransferList = ({
+    transfers,
+    showActions = false,
+    isOutgoing = false,
+  }: {
     transfers: Transfer[]
     showActions?: boolean
     isOutgoing?: boolean
@@ -1031,7 +1140,9 @@ export default function TransferPage() {
             transfers.map((transfer) => (
               <tr key={transfer.id} className={transfer.isCancelled ? 'opacity-60' : ''}>
                 <td className="font-mono font-semibold">
-                  <span className={transfer.isCancelled ? 'line-through' : ''}>{transfer.transferNumber}</span>
+                  <span className={transfer.isCancelled ? 'line-through' : ''}>
+                    {transfer.transferNumber}
+                  </span>
                   {/* FR-14: sztornózott bizonylat jelölése a listában */}
                   {transfer.isCancelled && (
                     <span className="ml-1 inline-block rounded bg-red-100 text-red-700 text-[10px] font-semibold px-1.5 py-0.5 align-middle">
@@ -1051,7 +1162,9 @@ export default function TransferPage() {
                 </td>
                 {/* v2.3.41 (B31 audit fix): fallback raw enum -> magyar label
                   ha transferTypeDisplay missing (electron-queue lokal fallback). */}
-                <td>{transfer.transferTypeDisplay ?? localizeTransferType(transfer.transferType)}</td>
+                <td>
+                  {transfer.transferTypeDisplay ?? localizeTransferType(transfer.transferType)}
+                </td>
                 {/* Penztar-batch A.1 (2026-06-12): több-valutás átadólapon MINDEN sor látszik
                     (eddig csak a fejléc = első valuta jelent meg). Egysorosnál változatlan. */}
                 {transfer.lines && transfer.lines.length > 1 ? (
@@ -1092,7 +1205,9 @@ export default function TransferPage() {
                     <div className="flex gap-1">
                       <button
                         type="button"
-                        onClick={() => { void openDocumentPreview(transfer) }}
+                        onClick={() => {
+                          void openDocumentPreview(transfer)
+                        }}
                         className="toolbar-button"
                         title="Bizonylat megtekintése"
                       >
@@ -1102,7 +1217,9 @@ export default function TransferPage() {
                         <>
                           <button
                             type="button"
-                            onClick={() => { void openReceiveModal(transfer) }}
+                            onClick={() => {
+                              void openReceiveModal(transfer)
+                            }}
                             className="toolbar-button text-green-600"
                             title="Átvétel"
                           >
@@ -1134,7 +1251,9 @@ export default function TransferPage() {
                       {transfer.isCompleted && !transfer.isCancelled && (
                         <button
                           type="button"
-                          onClick={() => { void openStornoModal(transfer) }}
+                          onClick={() => {
+                            void openStornoModal(transfer)
+                          }}
                           className="toolbar-button text-orange-600"
                           title="Sztornó (indoklással)"
                         >
@@ -1171,9 +1290,20 @@ export default function TransferPage() {
       <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800 flex items-start gap-2">
         <Building2 size={16} className="flex-shrink-0 mt-0.5" />
         <div>
-          <strong>{t('transfers.bankiKiBeszallitasEsErtektarErtektarKozottiMozgas')}</strong>{t('transfers.aPenztarakFele')}
-          {t('transfers.szervezettAtadasAtvetelhezHasznaljaAz')}<Link to="/shipments" className="underline font-semibold">{t('transfers.atadasAtvetelPenztaraknak')}</Link>{t('transfers.menupontot')}
-          {t('transfers.aTeljesBankiWorkflowBankiRendelesWesternUnionNapiKereteSurgossegiKivetSkeletonJeMegnezhetoA')}<Link to="/bank-orders" className="underline font-semibold">{t('transfers.bankiRendelesek')}</Link>{t('transfers.menupontbanTeljesImplementacioV240')}
+          <strong>{t('transfers.bankiKiBeszallitasEsErtektarErtektarKozottiMozgas')}</strong>
+          {t('transfers.aPenztarakFele')}
+          {t('transfers.szervezettAtadasAtvetelhezHasznaljaAz')}
+          <Link to="/shipments" className="underline font-semibold">
+            {t('transfers.atadasAtvetelPenztaraknak')}
+          </Link>
+          {t('transfers.menupontot')}
+          {t(
+            'transfers.aTeljesBankiWorkflowBankiRendelesWesternUnionNapiKereteSurgossegiKivetSkeletonJeMegnezhetoA',
+          )}
+          <Link to="/bank-orders" className="underline font-semibold">
+            {t('transfers.bankiRendelesek')}
+          </Link>
+          {t('transfers.menupontbanTeljesImplementacioV240')}
         </div>
       </div>
 
@@ -1199,11 +1329,15 @@ export default function TransferPage() {
       </div>
 
       <form
-        onSubmit={(event) => { void handleTransferNumberLookup(event) }}
+        onSubmit={(event) => {
+          void handleTransferNumberLookup(event)
+        }}
         className="form-panel p-3 flex flex-col gap-2 sm:flex-row sm:items-end"
       >
         <div className="min-w-0 flex-1">
-          <label htmlFor="transfer-number-lookup" className="form-label">Átadólap keresése</label>
+          <label htmlFor="transfer-number-lookup" className="form-label">
+            Átadólap keresése
+          </label>
           <input
             id="transfer-number-lookup"
             value={transferLookupNumber}
@@ -1218,7 +1352,11 @@ export default function TransferPage() {
           className="form-button flex items-center justify-center gap-1"
           disabled={transferLookupLoading || transferLookupNumber.trim() === ''}
         >
-          {transferLookupLoading ? <RefreshCw size={16} className="animate-spin" /> : <Search size={16} />}
+          {transferLookupLoading ? (
+            <RefreshCw size={16} className="animate-spin" />
+          ) : (
+            <Search size={16} />
+          )}
           Keresés
         </button>
       </form>
@@ -1228,7 +1366,9 @@ export default function TransferPage() {
         <div className="form-panel bg-red-50 border-red-200 flex items-center gap-2 text-red-700">
           <AlertCircle size={18} />
           <span>{error}</span>
-          <button type="button" onClick={() => setError(null)} className="ml-auto text-red-500">×</button>
+          <button type="button" onClick={() => setError(null)} className="ml-auto text-red-500">
+            ×
+          </button>
         </div>
       )}
 
@@ -1246,7 +1386,16 @@ export default function TransferPage() {
               <Printer size={14} /> Nyomtatás
             </button>
           )}
-          <button type="button" onClick={() => { setSuccess(null); setPrintReceiptData(null) }} className={printReceiptData ? 'text-green-500' : 'ml-auto text-green-500'}>×</button>
+          <button
+            type="button"
+            onClick={() => {
+              setSuccess(null)
+              setPrintReceiptData(null)
+            }}
+            className={printReceiptData ? 'text-green-500' : 'ml-auto text-green-500'}
+          >
+            ×
+          </button>
         </div>
       )}
 
@@ -1262,7 +1411,8 @@ export default function TransferPage() {
           }`}
         >
           <Clock size={16} className="inline mr-1" />
-          {t('transfers.atvetelreVaro')}{pendingCount})
+          {t('transfers.atvetelreVaro')}
+          {pendingCount})
         </button>
         <button
           type="button"
@@ -1344,7 +1494,9 @@ export default function TransferPage() {
                   iroda (a bizonylaton eddig is így szerepelt, de a formból hiányzott). */}
               <div>
                 <label className="form-label">
-                  {transferDirection === 'out' ? 'Kérő iroda (saját értéktár)' : 'Cél iroda (saját értéktár)'}
+                  {transferDirection === 'out'
+                    ? 'Kérő iroda (saját értéktár)'
+                    : 'Cél iroda (saját értéktár)'}
                 </label>
                 <input
                   type="text"
@@ -1372,32 +1524,43 @@ export default function TransferPage() {
                     // TH + "Egyes számú pénztár" (1.sz Főpénztár). filterTransferTargetBranches
                     // üres-fallbackkel (ha a törzsadat hiányos → mindet mutatja, nehogy üres
                     // legyen a dropdown, mint 2026-05-15-én).
-                    const candidates = branches.filter(b => transferDirection === 'out' ? b.id !== worker?.branchId : true)
-                    return filterTransferTargetBranches(candidates, ownBranch)
-                      .map(b => {
-                        const isTH = b.branchTypeCode === 'TH' || /\bTH\b/i.test(b.code) || /\bTH\b/i.test(b.name)
-                        const isVault = b.isVault === true
-                        const badge = isVault ? ' (értéktár)' : isTH ? ' (TH)' : ''
-                        return (
-                          <option key={b.id} value={b.id}>
-                            {b.code} - {b.name}{badge}
-                          </option>
-                        )
-                      })
+                    const candidates = branches.filter((b) =>
+                      transferDirection === 'out' ? b.id !== worker?.branchId : true,
+                    )
+                    return filterTransferTargetBranches(candidates, ownBranch).map((b) => {
+                      const isTH =
+                        b.branchTypeCode === 'TH' ||
+                        /\bTH\b/i.test(b.code) ||
+                        /\bTH\b/i.test(b.name)
+                      const isVault = b.isVault === true
+                      const badge = isVault ? ' (értéktár)' : isTH ? ' (TH)' : ''
+                      return (
+                        <option key={b.id} value={b.id}>
+                          {b.code} - {b.name}
+                          {badge}
+                        </option>
+                      )
+                    })
                   })()}
                 </select>
               </div>
 
               <div>
-                <label htmlFor="transfer-type" className="form-label">{t('circulars.tipus')}</label>
+                <label htmlFor="transfer-type" className="form-label">
+                  {t('circulars.tipus')}
+                </label>
                 <select
                   id="transfer-type"
                   value={transferType}
-                  onChange={(e) => setTransferType(e.target.value as CreateTransferRequest['transferType'])}
+                  onChange={(e) =>
+                    setTransferType(e.target.value as CreateTransferRequest['transferType'])
+                  }
                   className="form-input w-full"
                 >
-                  {availableTransferTypes.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  {availableTransferTypes.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -1416,8 +1579,10 @@ export default function TransferPage() {
                           aria-label={`Valuta ${idx + 1}`}
                         >
                           <option value="">{t('transfers.valasszonValutat')}</option>
-                          {filteredCurrencies.map(c => (
-                            <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
+                          {filteredCurrencies.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.code} - {c.name}
+                            </option>
                           ))}
                         </select>
                         <NumberInput
@@ -1453,23 +1618,33 @@ export default function TransferPage() {
               ) : (
                 <>
                   <div>
-                    <label htmlFor="currency" className="form-label">{t('transfers.valuta')}</label>
+                    <label htmlFor="currency" className="form-label">
+                      {t('transfers.valuta')}
+                    </label>
                     <select
                       id="currency"
                       value={currencyId ?? ''}
-                      onChange={(e) => setCurrencyId(e.target.value ? Number(e.target.value) : null)}
+                      onChange={(e) =>
+                        setCurrencyId(e.target.value ? Number(e.target.value) : null)
+                      }
                       className="form-input w-full"
                     >
                       {/* FT/kez.ktg típusnál nincs üres opció — a HUF kötelezően kiválasztva marad. */}
-                      {!isHufOnlyType && <option value="">{t('transfers.valasszonValutat')}</option>}
-                      {filteredCurrencies.map(c => (
-                        <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
+                      {!isHufOnlyType && (
+                        <option value="">{t('transfers.valasszonValutat')}</option>
+                      )}
+                      {filteredCurrencies.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.code} - {c.name}
+                        </option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label htmlFor="amount" className="form-label">{t('transfers.osszeg')}</label>
+                    <label htmlFor="amount" className="form-label">
+                      {t('transfers.osszeg')}
+                    </label>
                     <NumberInput
                       id="amount"
                       value={amount}
@@ -1486,7 +1661,9 @@ export default function TransferPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="carrier-name" className="form-label">Szállító neve <span className="text-red-500">*</span></label>
+                  <label htmlFor="carrier-name" className="form-label">
+                    Szállító neve <span className="text-red-500">*</span>
+                  </label>
                   <input
                     id="carrier-name"
                     type="text"
@@ -1498,7 +1675,9 @@ export default function TransferPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="seal-number" className="form-label">Plombaszám <span className="text-red-500">*</span></label>
+                  <label htmlFor="seal-number" className="form-label">
+                    Plombaszám <span className="text-red-500">*</span>
+                  </label>
                   <input
                     id="seal-number"
                     type="text"
@@ -1512,7 +1691,9 @@ export default function TransferPage() {
               </div>
 
               <div>
-                <label htmlFor="notes" className="form-label">{t('common.note')}</label>
+                <label htmlFor="notes" className="form-label">
+                  {t('common.note')}
+                </label>
                 <textarea
                   id="notes"
                   value={notes}
@@ -1539,21 +1720,28 @@ export default function TransferPage() {
                     {/* A.3: jelzés, hogy a címlet-törzs előtöltötte a névértékeket. */}
                     {denomPresetCode && (
                       <p className="text-xs text-blue-700">
-                        A(z) {denomPresetCode} címletei betöltve — csak a darabszámot adja meg
-                        (a sorok szabadon szerkeszthetők, az üresen hagyott címlet kimarad).
+                        A(z) {denomPresetCode} címletei betöltve — csak a darabszámot adja meg (a
+                        sorok szabadon szerkeszthetők, az üresen hagyott címlet kimarad).
                       </p>
                     )}
                     {denominationLines.map((line, idx) => {
                       const q = parseInt(line.quantity, 10)
                       const fv = parseFloat(line.faceValue.replace(',', '.').replace(/\s/g, ''))
-                      const lineTotal = (Number.isFinite(q) && Number.isFinite(fv)) ? q * fv : 0
+                      const lineTotal = Number.isFinite(q) && Number.isFinite(fv) ? q * fv : 0
                       return (
-                        <div key={line.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
+                        <div
+                          key={line.id}
+                          className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end"
+                        >
                           <div>
                             {idx === 0 && <label className="form-label text-xs">Darab</label>}
                             <NumberInput
                               value={line.quantity}
-                              onChange={(v) => setDenominationLines(prev => prev.map((r, i) => i === idx ? { ...r, quantity: v } : r))}
+                              onChange={(v) =>
+                                setDenominationLines((prev) =>
+                                  prev.map((r, i) => (i === idx ? { ...r, quantity: v } : r)),
+                                )
+                              }
                               className="form-input w-full"
                               placeholder="db"
                               allowDecimals={false}
@@ -1561,10 +1749,16 @@ export default function TransferPage() {
                             />
                           </div>
                           <div>
-                            {idx === 0 && <label className="form-label text-xs">Névleges érték</label>}
+                            {idx === 0 && (
+                              <label className="form-label text-xs">Névleges érték</label>
+                            )}
                             <NumberInput
                               value={line.faceValue}
-                              onChange={(v) => setDenominationLines(prev => prev.map((r, i) => i === idx ? { ...r, faceValue: v } : r))}
+                              onChange={(v) =>
+                                setDenominationLines((prev) =>
+                                  prev.map((r, i) => (i === idx ? { ...r, faceValue: v } : r)),
+                                )
+                              }
                               className="form-input w-full"
                               placeholder="0"
                               allowDecimals={true}
@@ -1579,7 +1773,11 @@ export default function TransferPage() {
                           </div>
                           <button
                             type="button"
-                            onClick={() => setDenominationLines(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev)}
+                            onClick={() =>
+                              setDenominationLines((prev) =>
+                                prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev,
+                              )
+                            }
                             className="toolbar-button text-red-600 mb-1"
                             title="Sor törlése"
                             disabled={denominationLines.length <= 1}
@@ -1591,7 +1789,12 @@ export default function TransferPage() {
                     })}
                     <button
                       type="button"
-                      onClick={() => setDenominationLines(prev => [...prev, { id: denomIdRef.current++, quantity: '', faceValue: '' }])}
+                      onClick={() =>
+                        setDenominationLines((prev) => [
+                          ...prev,
+                          { id: denomIdRef.current++, quantity: '', faceValue: '' },
+                        ])
+                      }
                       className="text-sm text-blue-600 hover:underline"
                     >
                       + Sor hozzáadása
@@ -1615,7 +1818,13 @@ export default function TransferPage() {
                 className="form-button-primary"
                 disabled={loading}
               >
-                {loading ? <RefreshCw size={16} className="animate-spin" /> : transferDirection === 'out' ? <Send size={16} /> : <Download size={16} />}
+                {loading ? (
+                  <RefreshCw size={16} className="animate-spin" />
+                ) : transferDirection === 'out' ? (
+                  <Send size={16} />
+                ) : (
+                  <Download size={16} />
+                )}
                 {transferDirection === 'out' ? 'Átadás létrehozása' : 'Átvétel igénylése'}
               </button>
             </div>
@@ -1660,7 +1869,9 @@ export default function TransferPage() {
               </div>
 
               <div>
-                <label htmlFor="received-amount" className="form-label">{t('transfers.atvettOsszeg')}</label>
+                <label htmlFor="received-amount" className="form-label">
+                  {t('transfers.atvettOsszeg')}
+                </label>
                 <NumberInput
                   id="received-amount"
                   value={receivedAmount}
@@ -1672,7 +1883,9 @@ export default function TransferPage() {
               </div>
 
               <div>
-                <label htmlFor="receive-notes" className="form-label">{t('common.note')}</label>
+                <label htmlFor="receive-notes" className="form-label">
+                  {t('common.note')}
+                </label>
                 <textarea
                   id="receive-notes"
                   value={receiveNotes}
@@ -1701,7 +1914,11 @@ export default function TransferPage() {
                 className="form-button-primary"
                 disabled={loading}
               >
-                {loading ? <RefreshCw size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                {loading ? (
+                  <RefreshCw size={16} className="animate-spin" />
+                ) : (
+                  <CheckCircle size={16} />
+                )}
                 {t('transfers.atvetelMegerositese')}
               </button>
             </div>
@@ -1731,9 +1948,13 @@ export default function TransferPage() {
             </h3>
             <p className="text-sm text-gray-600 mb-3">
               {stornoTarget.transferNumber} — a sztornó bizonylat sorszáma:{' '}
-              <span className="font-mono font-semibold">{stornoTarget.stornoSerialNumber ?? `${stornoTarget.transferNumber}-SZ`}</span>
+              <span className="font-mono font-semibold">
+                {stornoTarget.stornoSerialNumber ?? `${stornoTarget.transferNumber}-SZ`}
+              </span>
             </p>
-            <label htmlFor="storno-reason" className="form-label">Sztornó indoklása <span className="text-red-500">*</span></label>
+            <label htmlFor="storno-reason" className="form-label">
+              Sztornó indoklása <span className="text-red-500">*</span>
+            </label>
             <textarea
               id="storno-reason"
               value={stornoReason}
@@ -1744,11 +1965,7 @@ export default function TransferPage() {
               placeholder="Az érvénytelenítés oka (kötelező, max 500 karakter)…"
             />
             <div className="flex justify-end gap-2 mt-4">
-              <button
-                type="button"
-                onClick={closeStornoModal}
-                className="form-button"
-              >
+              <button type="button" onClick={closeStornoModal} className="form-button">
                 {t('common.cancel')}
               </button>
               <button
@@ -1777,18 +1994,27 @@ export default function TransferPage() {
           // hiba esetén nyitva marad és újrapróbálható.
           if (!printReceiptData) throw new Error('Nincs aktív bizonylat-adat')
           if (!window.electronAPI?.printReceipt) {
-            toast.warning('Nyomtatás nem elérhető', isElectron()
-              ? 'Electron preload/electronAPI hiba — indítsa újra a klienst.'
-              : 'Webes módban nincs nyomtatás. Telepítse az Electron klienst.')
+            toast.warning(
+              'Nyomtatás nem elérhető',
+              isElectron()
+                ? 'Electron preload/electronAPI hiba — indítsa újra a klienst.'
+                : 'Webes módban nincs nyomtatás. Telepítse az Electron klienst.',
+            )
             throw new Error('printReceipt nem elérhető')
           }
           try {
             const ok = await window.electronAPI.printReceipt(JSON.stringify(printReceiptData))
             if (!ok) {
-              toast.error('Nyomtatás sikertelen', 'Ellenőrizze a nyomtatót (Beállítások > Nyomtatás).')
+              toast.error(
+                'Nyomtatás sikertelen',
+                'Ellenőrizze a nyomtatót (Beállítások > Nyomtatás).',
+              )
               throw new Error('Nyomtatás sikertelen')
             }
-            toast.success('Nyomtatás elindítva', `Bizonylat: ${printReceiptData.receiptNumber ?? '—'}`)
+            toast.success(
+              'Nyomtatás elindítva',
+              `Bizonylat: ${printReceiptData.receiptNumber ?? '—'}`,
+            )
           } catch (err) {
             if (!(err instanceof Error && err.message === 'Nyomtatás sikertelen')) {
               toast.error('Nyomtatás sikertelen', 'A nyomtatási parancs nem futott le.')

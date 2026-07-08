@@ -35,7 +35,9 @@ async function main(): Promise<void> {
     const input = await readJsonFile<BuildRatePackageInput>(inputPath)
     const ratePackage = buildRatePackage(input)
     const result = await publishRatePackage(config, ratePackage)
-    process.stdout.write(`${JSON.stringify({ localPackage: ratePackage, server: result }, null, 2)}\n`)
+    process.stdout.write(
+      `${JSON.stringify({ localPackage: ratePackage, server: result }, null, 2)}\n`,
+    )
     return
   }
 

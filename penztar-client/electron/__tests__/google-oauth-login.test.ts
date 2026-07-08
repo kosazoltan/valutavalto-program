@@ -75,21 +75,27 @@ describe('performPasswordLoginMainProcess URL handling', () => {
   });
 
   it('tetszoleges kulso backend hostot tovabbra is blokkol', async () => {
-    await expect(performPasswordLoginMainProcess({
-      apiBaseUrl: 'https://example.com/api/v1',
-      companyCode: 'EBC',
-      workerCode: 'BORSI',
-      password: 'Secret123!',
-    })).rejects.toMatchObject({ code: 'INVALID_URL' });
+    await expect(
+      performPasswordLoginMainProcess({
+        apiBaseUrl: 'https://example.com/api/v1',
+        companyCode: 'EBC',
+        workerCode: 'BORSI',
+        password: 'Secret123!',
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_URL' });
   });
 
   it('Google OAuth flow-t rendszerbongeszoben inditja, nem beagyazott Electron ablakban', async () => {
-    await expect(performGoogleOAuthFlow({
-      clientId: 'desktop-client-id',
-      clientSecret: 'desktop-secret',
-      timeoutMs: 1,
-    })).rejects.toMatchObject({ code: 'TIMEOUT' });
+    await expect(
+      performGoogleOAuthFlow({
+        clientId: 'desktop-client-id',
+        clientSecret: 'desktop-secret',
+        timeoutMs: 1,
+      }),
+    ).rejects.toMatchObject({ code: 'TIMEOUT' });
 
-    expect(shell.openExternal).toHaveBeenCalledWith(expect.stringContaining('https://accounts.google.com/o/oauth2/v2/auth'));
+    expect(shell.openExternal).toHaveBeenCalledWith(
+      expect.stringContaining('https://accounts.google.com/o/oauth2/v2/auth'),
+    );
   });
 });

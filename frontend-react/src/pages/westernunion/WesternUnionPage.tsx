@@ -1,5 +1,18 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Globe, Search, RefreshCw, Send, Download, RotateCcw, AlertTriangle, X, ArrowLeftRight, Building2, Plus, Trash2 } from 'lucide-react'
+import {
+  Globe,
+  Search,
+  RefreshCw,
+  Send,
+  Download,
+  RotateCcw,
+  AlertTriangle,
+  X,
+  ArrowLeftRight,
+  Building2,
+  Plus,
+  Trash2,
+} from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -103,7 +116,9 @@ export default function WesternUnionPage() {
 
   const loadPartners = useCallback(async (q = '') => {
     try {
-      const res = await api.get<{ id: string; name: string }[]>('/wu-partner-companies', { params: q ? { q } : {} })
+      const res = await api.get<{ id: string; name: string }[]>('/wu-partner-companies', {
+        params: q ? { q } : {},
+      })
       setPartners(safeArray(res.data))
     } catch (err) {
       logger.error('WesternUnionPage', 'partner load', err)
@@ -140,7 +155,7 @@ export default function WesternUnionPage() {
       setLoading(true)
       setError(null)
       const response = await api.get<{ content: WuTransaction[] }>('/western-union/transactions', {
-        params: { branchId, page: 0, size: 50 }
+        params: { branchId, page: 0, size: 50 },
       })
       setItems(safeArray<WuTransaction>(response.data?.content ?? response.data))
     } catch (err) {
@@ -155,7 +170,9 @@ export default function WesternUnionPage() {
   const loadBranches = useCallback(async () => {
     try {
       const response = await api.get<BranchOption[]>('/branches')
-      const activeBranches = safeArray<BranchOption>(response.data).filter((branch) => branch.isActive !== false)
+      const activeBranches = safeArray<BranchOption>(response.data).filter(
+        (branch) => branch.isActive !== false,
+      )
       setBranches(activeBranches)
       setBranchId((current) => current || workerBranchId || activeBranches[0]?.id || '')
     } catch (err) {
@@ -163,14 +180,23 @@ export default function WesternUnionPage() {
     }
   }, [workerBranchId])
 
-  useEffect(() => { void loadBranches() }, [loadBranches])
-  useEffect(() => { void loadData() }, [loadData])
+  useEffect(() => {
+    void loadBranches()
+  }, [loadBranches])
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
-  const filtered = items.filter(item => {
+  const filtered = items.filter((item) => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return [item.mtcn, item.senderName, item.receiverName, item.destinationCountry, item.status]
-      .some(v => v != null && String(v).toLowerCase().includes(term))
+    return [
+      item.mtcn,
+      item.senderName,
+      item.receiverName,
+      item.destinationCountry,
+      item.status,
+    ].some((v) => v != null && String(v).toLowerCase().includes(term))
   })
 
   const openModal = (type: ModalType) => {
@@ -254,23 +280,43 @@ export default function WesternUnionPage() {
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <button
-            onClick={() => { setPartnerOpen(true); void loadPartners() }}
+            onClick={() => {
+              setPartnerOpen(true)
+              void loadPartners()
+            }}
             className="form-button flex items-center gap-1"
             title="WU partnercégek kezelése (legacy GETWCEG)"
           >
-            <Building2 className="h-4 w-4" />{t('westernunion.partnerCegek')}
+            <Building2 className="h-4 w-4" />
+            {t('westernunion.partnerCegek')}
           </button>
-          <button onClick={() => openModal('send')} className="form-button-primary flex items-center gap-1">
-            <Send className="h-4 w-4" />{t('common.send')}
+          <button
+            onClick={() => openModal('send')}
+            className="form-button-primary flex items-center gap-1"
+          >
+            <Send className="h-4 w-4" />
+            {t('common.send')}
           </button>
-          <button onClick={() => openModal('receive')} className="form-button flex items-center gap-1 border-green-300 text-green-700 hover:bg-green-50">
-            <Download className="h-4 w-4" />{t('westernunion.fogadas')}
+          <button
+            onClick={() => openModal('receive')}
+            className="form-button flex items-center gap-1 border-green-300 text-green-700 hover:bg-green-50"
+          >
+            <Download className="h-4 w-4" />
+            {t('westernunion.fogadas')}
           </button>
-          <button onClick={() => openModal('ic-in')} className="form-button flex items-center gap-1 text-sm">
-            <ArrowLeftRight className="h-3 w-3" />{t('westernunion.icIn')}
+          <button
+            onClick={() => openModal('ic-in')}
+            className="form-button flex items-center gap-1 text-sm"
+          >
+            <ArrowLeftRight className="h-3 w-3" />
+            {t('westernunion.icIn')}
           </button>
-          <button onClick={() => openModal('ic-out')} className="form-button flex items-center gap-1 text-sm">
-            <ArrowLeftRight className="h-3 w-3" />{t('westernunion.icOut')}
+          <button
+            onClick={() => openModal('ic-out')}
+            className="form-button flex items-center gap-1 text-sm"
+          >
+            <ArrowLeftRight className="h-3 w-3" />
+            {t('westernunion.icOut')}
           </button>
         </div>
       </div>
@@ -279,32 +325,45 @@ export default function WesternUnionPage() {
       <div className="flex items-center gap-2">
         <select
           value={branchId}
-          onChange={(event) => { setBranchId(event.target.value); setItems([]) }}
+          onChange={(event) => {
+            setBranchId(event.target.value)
+            setItems([])
+          }}
           className="form-input w-72"
         >
           <option value="">{t('export.valassz')}</option>
           {branches.map((branch) => (
-            <option key={branch.id} value={branch.id}>{branch.name}{branch.code ? ` (${branch.code})` : ''}</option>
+            <option key={branch.id} value={branch.id}>
+              {branch.name}
+              {branch.code ? ` (${branch.code})` : ''}
+            </option>
           ))}
         </select>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input type="text" placeholder="Keresés (MTCN, név, ország)..."
-            value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-            className="form-input w-full pl-10" />
+          <input
+            type="text"
+            placeholder="Keresés (MTCN, név, ország)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="form-input w-full pl-10"
+          />
         </div>
       </div>
 
       {/* Alerts */}
       {error && (
         <div className="form-error flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4" />{error}
+          <AlertTriangle className="h-4 w-4" />
+          {error}
         </div>
       )}
       {success && (
         <div className="rounded-md bg-green-50 p-3 text-sm text-green-700 flex items-center gap-2">
           {success}
-          <button onClick={() => setSuccess(null)} className="ml-auto"><X className="h-4 w-4" /></button>
+          <button onClick={() => setSuccess(null)} className="ml-auto">
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
 
@@ -313,62 +372,102 @@ export default function WesternUnionPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.type')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">MTCN</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('handover.kuldo')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('transit.cimzett')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.country')}</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">USD</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">HUF</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.status2')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.date')}</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.operation')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.type')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                MTCN
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('handover.kuldo')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('transit.cimzett')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.country')}
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                USD
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                HUF
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.status2')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.date')}
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                {t('common.operation')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-500">{t('westernunion.nincsWuTranzakcio')}</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm font-medium">
-                  {TX_TYPE_LABELS[item.transactionType] ?? item.transactionType}
-                </td>
-                <td className="px-4 py-3 text-sm font-mono">{item.mtcn ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.senderName ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.receiverName ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.destinationCountry ?? '-'}</td>
-                <td className="px-4 py-3 text-sm text-right font-mono">
-                  {typeof item.amountUsd === 'number' ? item.amountUsd.toLocaleString('hu-HU', { minimumFractionDigits: 2 }) : '-'}
-                </td>
-                <td className="px-4 py-3 text-sm text-right font-mono">
-                  {typeof item.amountHuf === 'number' ? item.amountHuf.toLocaleString('hu-HU') : '-'}
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  <span className={`rounded-full px-2 py-1 text-xs font-medium ${STATUS_COLORS[item.status ?? ''] ?? 'bg-gray-100 text-gray-800'}`}>
-                    {item.status ?? '-'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  {item.createdAt ? new Date(item.createdAt).toLocaleString('hu-HU') : '-'}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {item.status === 'COMPLETED' && item.transactionType !== 'STORNO' && (
-                    <button onClick={() => setStornoTarget({ id: item.id, reason: '' })}
-                      className="form-button p-1 text-red-600" title="Sztornó">
-                      <RotateCcw className="h-4 w-4" />
-                    </button>
-                  )}
+              <tr>
+                <td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-500">
+                  Betöltés...
                 </td>
               </tr>
-            ))}
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('westernunion.nincsWuTranzakcio')}
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm font-medium">
+                    {TX_TYPE_LABELS[item.transactionType] ?? item.transactionType}
+                  </td>
+                  <td className="px-4 py-3 text-sm font-mono">{item.mtcn ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.senderName ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.receiverName ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.destinationCountry ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm text-right font-mono">
+                    {typeof item.amountUsd === 'number'
+                      ? item.amountUsd.toLocaleString('hu-HU', { minimumFractionDigits: 2 })
+                      : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right font-mono">
+                    {typeof item.amountHuf === 'number'
+                      ? item.amountHuf.toLocaleString('hu-HU')
+                      : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs font-medium ${STATUS_COLORS[item.status ?? ''] ?? 'bg-gray-100 text-gray-800'}`}
+                    >
+                      {item.status ?? '-'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.createdAt ? new Date(item.createdAt).toLocaleString('hu-HU') : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {item.status === 'COMPLETED' && item.transactionType !== 'STORNO' && (
+                      <button
+                        onClick={() => setStornoTarget({ id: item.id, reason: '' })}
+                        className="form-button p-1 text-red-600"
+                        title="Sztornó"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="text-sm text-gray-500">
-        {t('audit.osszesen')}{filtered.length} / {items.length}
+        {t('audit.osszesen')}
+        {filtered.length} / {items.length}
       </div>
 
       {/* Modal */}
@@ -377,58 +476,98 @@ export default function WesternUnionPage() {
           <div className="w-full max-w-lg rounded-lg bg-white p-4 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold">{modalTitle[modal]}</h2>
-              <button onClick={() => setModal(null)}><X className="h-5 w-5" /></button>
+              <button onClick={() => setModal(null)}>
+                <X className="h-5 w-5" />
+              </button>
             </div>
 
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="form-label">MTCN</label>
-                  <input type="text" className="form-input w-full" placeholder="MTCN szám"
-                    value={form.mtcn} onChange={e => setForm(f => ({ ...f, mtcn: e.target.value }))} />
+                  <input
+                    type="text"
+                    className="form-input w-full"
+                    placeholder="MTCN szám"
+                    value={form.mtcn}
+                    onChange={(e) => setForm((f) => ({ ...f, mtcn: e.target.value }))}
+                  />
                 </div>
                 <div>
                   <label className="form-label">{t('westernunion.celOrszag')}</label>
-                  <input type="text" className="form-input w-full" placeholder="pl. HU"
-                    value={form.destinationCountry} onChange={e => setForm(f => ({ ...f, destinationCountry: e.target.value }))} />
+                  <input
+                    type="text"
+                    className="form-input w-full"
+                    placeholder="pl. HU"
+                    value={form.destinationCountry}
+                    onChange={(e) => setForm((f) => ({ ...f, destinationCountry: e.target.value }))}
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="form-label">{t('westernunion.kuldoNeve')}</label>
-                  <input type="text" className="form-input w-full"
-                    value={form.senderName} onChange={e => setForm(f => ({ ...f, senderName: e.target.value }))} />
+                  <input
+                    type="text"
+                    className="form-input w-full"
+                    value={form.senderName}
+                    onChange={(e) => setForm((f) => ({ ...f, senderName: e.target.value }))}
+                  />
                 </div>
                 <div>
                   <label className="form-label">{t('westernunion.cimzettNeve')}</label>
-                  <input type="text" className="form-input w-full"
-                    value={form.receiverName} onChange={e => setForm(f => ({ ...f, receiverName: e.target.value }))} />
+                  <input
+                    type="text"
+                    className="form-input w-full"
+                    value={form.receiverName}
+                    onChange={(e) => setForm((f) => ({ ...f, receiverName: e.target.value }))}
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="form-label">{t('westernunion.usdOsszeg')}</label>
-                  <input type="number" step="0.01" className="form-input w-full"
-                    value={form.amountUsd} onChange={e => setForm(f => ({ ...f, amountUsd: e.target.value }))} />
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="form-input w-full"
+                    value={form.amountUsd}
+                    onChange={(e) => setForm((f) => ({ ...f, amountUsd: e.target.value }))}
+                  />
                 </div>
                 <div>
                   <label className="form-label">{t('stornos.hufOsszeg')}</label>
-                  <input type="number" step="1" className="form-input w-full"
-                    value={form.amountHuf} onChange={e => setForm(f => ({ ...f, amountHuf: e.target.value }))} />
+                  <input
+                    type="number"
+                    step="1"
+                    className="form-input w-full"
+                    value={form.amountHuf}
+                    onChange={(e) => setForm((f) => ({ ...f, amountHuf: e.target.value }))}
+                  />
                 </div>
                 <div>
                   <label className="form-label">{t('cashier.exchangeRate')}</label>
-                  <input type="number" step="0.01" className="form-input w-full"
-                    value={form.exchangeRate} onChange={e => setForm(f => ({ ...f, exchangeRate: e.target.value }))} />
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="form-input w-full"
+                    value={form.exchangeRate}
+                    onChange={(e) => setForm((f) => ({ ...f, exchangeRate: e.target.value }))}
+                  />
                 </div>
               </div>
 
               <div>
                 <label className="form-label">{t('westernunion.dijFee')}</label>
-                <input type="number" step="0.01" className="form-input w-full"
-                  value={form.feeAmount} onChange={e => setForm(f => ({ ...f, feeAmount: e.target.value }))} />
+                <input
+                  type="number"
+                  step="0.01"
+                  className="form-input w-full"
+                  value={form.feeAmount}
+                  onChange={(e) => setForm((f) => ({ ...f, feeAmount: e.target.value }))}
+                />
               </div>
 
               {/* SOF (V.2.8 A.1): a backend a 10M/7nap kumulált triggernél követeli meg */}
@@ -436,27 +575,44 @@ export default function WesternUnionPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="form-label">Pénzeszköz-forrás dokumentum</label>
-                    <select className="form-input w-full" value={form.sourceOfFundsDocType}
-                      onChange={e => setForm(f => ({ ...f, sourceOfFundsDocType: e.target.value }))}>
-                      {SOF_DOC_TYPES.map(o => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
+                    <select
+                      className="form-input w-full"
+                      value={form.sourceOfFundsDocType}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, sourceOfFundsDocType: e.target.value }))
+                      }
+                    >
+                      {SOF_DOC_TYPES.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
                       ))}
                     </select>
                   </div>
                   <div>
                     <label className="form-label">Forrás-dokumentum dátuma</label>
-                    <input type="date" className="form-input w-full"
+                    <input
+                      type="date"
+                      className="form-input w-full"
                       value={form.sourceOfFundsDocDate}
-                      onChange={e => setForm(f => ({ ...f, sourceOfFundsDocDate: e.target.value }))} />
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, sourceOfFundsDocDate: e.target.value }))
+                      }
+                    />
                   </div>
                 </div>
               )}
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
-              <button onClick={() => setModal(null)} className="form-button">{t('common.cancel')}</button>
-              <button onClick={handleSubmit} disabled={submitting}
-                className="form-button-primary flex items-center gap-1">
+              <button onClick={() => setModal(null)} className="form-button">
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="form-button-primary flex items-center gap-1"
+              >
                 {submitting ? 'Mentés...' : 'Rögzítés'}
               </button>
             </div>
@@ -470,16 +626,27 @@ export default function WesternUnionPage() {
           <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">Sztornó indoka</h2>
-              <button onClick={() => setStornoTarget(null)}><X className="h-5 w-5" /></button>
+              <button onClick={() => setStornoTarget(null)}>
+                <X className="h-5 w-5" />
+              </button>
             </div>
-            <textarea autoFocus rows={3} className="form-input w-full"
+            <textarea
+              autoFocus
+              rows={3}
+              className="form-input w-full"
               placeholder="Adja meg a sztornó indokát…"
               value={stornoTarget.reason}
-              onChange={e => setStornoTarget(s => (s ? { ...s, reason: e.target.value } : s))} />
+              onChange={(e) => setStornoTarget((s) => (s ? { ...s, reason: e.target.value } : s))}
+            />
             <div className="mt-4 flex justify-end gap-3">
-              <button onClick={() => setStornoTarget(null)} className="form-button">{t('common.cancel')}</button>
-              <button onClick={handleStornoSubmit} disabled={!stornoTarget.reason.trim()}
-                className="form-button-primary">
+              <button onClick={() => setStornoTarget(null)} className="form-button">
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={handleStornoSubmit}
+                disabled={!stornoTarget.reason.trim()}
+                className="form-button-primary"
+              >
                 Sztornó végrehajtása
               </button>
             </div>
@@ -493,28 +660,48 @@ export default function WesternUnionPage() {
           <div className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold flex items-center gap-2">
-                <Building2 className="h-5 w-5" />{t('westernunion.partnerCegek')}
+                <Building2 className="h-5 w-5" />
+                {t('westernunion.partnerCegek')}
               </h2>
-              <button onClick={() => setPartnerOpen(false)}><X className="h-5 w-5" /></button>
+              <button onClick={() => setPartnerOpen(false)}>
+                <X className="h-5 w-5" />
+              </button>
             </div>
 
             <div className="mt-3 flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input type="text" placeholder="Keresés..." value={partnerSearch}
-                  onChange={e => { setPartnerSearch(e.target.value); void loadPartners(e.target.value) }}
-                  className="form-input w-full pl-10" />
+                <input
+                  type="text"
+                  placeholder="Keresés..."
+                  value={partnerSearch}
+                  onChange={(e) => {
+                    setPartnerSearch(e.target.value)
+                    void loadPartners(e.target.value)
+                  }}
+                  className="form-input w-full pl-10"
+                />
               </div>
             </div>
 
             <div className="mt-2 flex gap-2">
-              <input type="text" placeholder="Új partnercég neve" value={newPartner}
-                onChange={e => setNewPartner(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') void addPartner() }}
-                className="form-input flex-1" />
-              <button onClick={() => void addPartner()} disabled={!newPartner.trim()}
-                className="form-button-primary flex items-center gap-1 disabled:opacity-40">
-                <Plus className="h-4 w-4" />{t('common.add')}
+              <input
+                type="text"
+                placeholder="Új partnercég neve"
+                value={newPartner}
+                onChange={(e) => setNewPartner(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void addPartner()
+                }}
+                className="form-input flex-1"
+              />
+              <button
+                onClick={() => void addPartner()}
+                disabled={!newPartner.trim()}
+                className="form-button-primary flex items-center gap-1 disabled:opacity-40"
+              >
+                <Plus className="h-4 w-4" />
+                {t('common.add')}
               </button>
             </div>
 
@@ -522,11 +709,16 @@ export default function WesternUnionPage() {
               {partners.length === 0 && (
                 <li className="px-3 py-2 text-sm text-gray-400">{t('common.noData')}</li>
               )}
-              {partners.map(p => (
+              {partners.map((p) => (
                 <li key={p.id} className="flex items-center justify-between px-3 py-2 text-sm">
                   <span>{p.name}</span>
-                  <button onClick={() => void removePartner(p.id)} title={t('common.delete')}
-                    className="text-red-500 hover:text-red-700"><Trash2 className="h-4 w-4" /></button>
+                  <button
+                    onClick={() => void removePartner(p.id)}
+                    title={t('common.delete')}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </li>
               ))}
             </ul>

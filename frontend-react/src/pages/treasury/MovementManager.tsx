@@ -15,7 +15,12 @@ import {
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { transferApi, currencyApi, branchApi, sealNumberApi } from '../../services/api/index'
-import type { Transfer, Currency, CreateTransferRequest, BranchInfo } from '../../services/api/index'
+import type {
+  Transfer,
+  Currency,
+  CreateTransferRequest,
+  BranchInfo,
+} from '../../services/api/index'
 import {
   formatInteger,
   formatDateTime,
@@ -39,10 +44,30 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { useTranslation } from 'react-i18next'
 
 const MOVEMENT_TYPES = [
-  { value: 'VAULT_WITHDRAW' as const, label: 'Bank kivét', description: 'Értéktárból bankba szállítás', icon: Banknote },
-  { value: 'VAULT_DEPOSIT' as const, label: 'Bank befizetés', description: 'Bankból értéktárba befizetés', icon: Banknote },
-  { value: 'CURRENCY' as const, label: 'Iroda szállítás', description: 'Irodák közti készletmozgatás', icon: ArrowLeftRight },
-  { value: 'CORRECTION' as const, label: 'Korrekció', description: 'Leltárkülönbözet rendezés', icon: PenLine },
+  {
+    value: 'VAULT_WITHDRAW' as const,
+    label: 'Bank kivét',
+    description: 'Értéktárból bankba szállítás',
+    icon: Banknote,
+  },
+  {
+    value: 'VAULT_DEPOSIT' as const,
+    label: 'Bank befizetés',
+    description: 'Bankból értéktárba befizetés',
+    icon: Banknote,
+  },
+  {
+    value: 'CURRENCY' as const,
+    label: 'Iroda szállítás',
+    description: 'Irodák közti készletmozgatás',
+    icon: ArrowLeftRight,
+  },
+  {
+    value: 'CORRECTION' as const,
+    label: 'Korrekció',
+    description: 'Leltárkülönbözet rendezés',
+    icon: PenLine,
+  },
 ] as const
 
 export default function MovementManager() {
@@ -59,7 +84,8 @@ export default function MovementManager() {
   const [typeFilter, setTypeFilter] = useState('all')
 
   // New movement form state
-  const [movementType, setMovementType] = useState<CreateTransferRequest['transferType']>('CURRENCY')
+  const [movementType, setMovementType] =
+    useState<CreateTransferRequest['transferType']>('CURRENCY')
   const [toBranchId, setToBranchId] = useState('')
   const [currencyId, setCurrencyId] = useState<number>(0)
   const [amount, setAmount] = useState('')
@@ -83,9 +109,13 @@ export default function MovementManager() {
     try {
       const [pendingRaw, allRaw, currDataRaw, localPending] = await Promise.all([
         transferApi.getPending().catch(() => []),
-        transferApi.search({ page: 0, size: 50 }).catch(() => ({ content: [], totalElements: 0, totalPages: 0, size: 50, number: 0 })),
+        transferApi
+          .search({ page: 0, size: 50 })
+          .catch(() => ({ content: [], totalElements: 0, totalPages: 0, size: 50, number: 0 })),
         currencyApi.list().catch(() => []),
-        electronQueueAvailable ? getLocalPendingTransfers(worker) : Promise.resolve([] as Transfer[]),
+        electronQueueAvailable
+          ? getLocalPendingTransfers(worker)
+          : Promise.resolve([] as Transfer[]),
       ])
       const pending = safeArray<Transfer>(pendingRaw)
       const allTransfersData = safeArray<Transfer>(allRaw?.content)
@@ -111,7 +141,8 @@ export default function MovementManager() {
   // user csapdába esik (select használhatatlan), és az üres toBranchId-submitet a guard tiltja.
   const loadCounterparties = useCallback(() => {
     setCounterpartiesError(false)
-    return branchApi.listVaultCounterparties()
+    return branchApi
+      .listVaultCounterparties()
       .then((cp) => setVaultCounterparties(cp))
       .catch((err) => {
         logger.warn('MovementManager', 'vault-counterparties betöltési hiba:', err)
@@ -119,108 +150,147 @@ export default function MovementManager() {
       })
   }, [])
 
-  useEffect(() => { void loadCounterparties() }, [loadCounterparties])
+  useEffect(() => {
+    void loadCounterparties()
+  }, [loadCounterparties])
 
   // Hotkeys
   useHotkeys('n', () => setShowNewModal(true), { enableOnFormTags: false })
-  useHotkeys('escape', () => { setShowNewModal(false); setShowDetailModal(null) }, { enableOnFormTags: true })
+  useHotkeys(
+    'escape',
+    () => {
+      setShowNewModal(false)
+      setShowDetailModal(null)
+    },
+    { enableOnFormTags: true },
+  )
 
-  const handleApprove = useCallback(async (id: number) => {
-    try {
-      const transfer = pendingTransfers.find(t => t.id === id) ?? allTransfers.find(t => t.id === id)
-      const receivedAmount = transfer?.amount ?? 0
-      await transferApi.receive(id, { receivedAmount })
-      await recordLocalAuditEvent({
-        entityType: 'TREASURY_MOVEMENT',
-        eventType: 'RECEIVE',
-        entityId: String(id),
-        referenceNumber: transfer?.transferNumber ?? null,
-        payload: { transferId: id, receivedAmount },
-        status: 'SERVER_FORWARDED',
-      })
-      void fetchData()
-    } catch (err) {
-      logger.error('MovementManager', 'Approve error:', err)
-    }
-  }, [fetchData, pendingTransfers, allTransfers])
+  const handleApprove = useCallback(
+    async (id: number) => {
+      try {
+        const transfer =
+          pendingTransfers.find((t) => t.id === id) ?? allTransfers.find((t) => t.id === id)
+        const receivedAmount = transfer?.amount ?? 0
+        await transferApi.receive(id, { receivedAmount })
+        await recordLocalAuditEvent({
+          entityType: 'TREASURY_MOVEMENT',
+          eventType: 'RECEIVE',
+          entityId: String(id),
+          referenceNumber: transfer?.transferNumber ?? null,
+          payload: { transferId: id, receivedAmount },
+          status: 'SERVER_FORWARDED',
+        })
+        void fetchData()
+      } catch (err) {
+        logger.error('MovementManager', 'Approve error:', err)
+      }
+    },
+    [fetchData, pendingTransfers, allTransfers],
+  )
 
-  const handleReject = useCallback(async (id: number) => {
-    try {
-      await transferApi.reject(id, 'Értéktáros által elutasítva')
-      await recordLocalAuditEvent({
-        entityType: 'TREASURY_MOVEMENT',
-        eventType: 'REJECT',
-        entityId: String(id),
-        payload: { transferId: id, reason: 'Értéktáros által elutasítva' },
-        status: 'SERVER_FORWARDED',
-      })
-      void fetchData()
-    } catch (err) {
-      logger.error('MovementManager', 'Reject error:', err)
-    }
-  }, [fetchData])
+  const handleReject = useCallback(
+    async (id: number) => {
+      try {
+        await transferApi.reject(id, 'Értéktáros által elutasítva')
+        await recordLocalAuditEvent({
+          entityType: 'TREASURY_MOVEMENT',
+          eventType: 'REJECT',
+          entityId: String(id),
+          payload: { transferId: id, reason: 'Értéktáros által elutasítva' },
+          status: 'SERVER_FORWARDED',
+        })
+        void fetchData()
+      } catch (err) {
+        logger.error('MovementManager', 'Reject error:', err)
+      }
+    },
+    [fetchData],
+  )
 
-  const handleSubmitNew = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault()
-    // Codex P2: cél-iroda KÖTELEZŐ — különben (üres toBranchId) az offline-út rossz célhellyel
-    // (targetBranchId=null, targetBranchCode='TREASURY') mentene, a backend-út pedig UUID-hibát dobna.
-    if (!currencyId || !amount || !toBranchId) return
-    setFormError(null)
-    // FR-1..3 / NFR-1,2: szállító + plombaszám kötelező + hossz/formátum (a backend Bean Validationnel egyezően).
-    const carrier = carrierName.trim()
-    const seal = sealNumber.trim()
-    const carrierSealError = validateCarrierSeal(carrierName, sealNumber)
-    if (carrierSealError) { setFormError(carrierSealError); return }
-    try {
-      const parsedAmount = parseFloat(amount)
-      const selectedCurrency = currencies.find((currency) => currency.id === currencyId)
-      if (!selectedCurrency) {
+  const handleSubmitNew = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      // Codex P2: cél-iroda KÖTELEZŐ — különben (üres toBranchId) az offline-út rossz célhellyel
+      // (targetBranchId=null, targetBranchCode='TREASURY') mentene, a backend-út pedig UUID-hibát dobna.
+      if (!currencyId || !amount || !toBranchId) return
+      setFormError(null)
+      // FR-1..3 / NFR-1,2: szállító + plombaszám kötelező + hossz/formátum (a backend Bean Validationnel egyezően).
+      const carrier = carrierName.trim()
+      const seal = sealNumber.trim()
+      const carrierSealError = validateCarrierSeal(carrierName, sealNumber)
+      if (carrierSealError) {
+        setFormError(carrierSealError)
         return
       }
+      try {
+        const parsedAmount = parseFloat(amount)
+        const selectedCurrency = currencies.find((currency) => currency.id === currencyId)
+        if (!selectedCurrency) {
+          return
+        }
 
-      // FK-013 follow-up: a kiválasztott cél-iroda KÓDJÁT a partner-listából oldjuk fel
-      // (a toBranchId most UUID, nem kód) — különben a targetBranchCode hibásan UUID lenne.
-      const allCounterparties = vaultCounterparties
-        ? [...(vaultCounterparties.territorialCashiers ?? []), ...(vaultCounterparties.peerVaults ?? []), ...(vaultCounterparties.fixedCounterparties ?? [])]
-        : []
-      const targetBranchCode = allCounterparties.find((b) => b.id === toBranchId)?.code ?? 'TREASURY'
+        // FK-013 follow-up: a kiválasztott cél-iroda KÓDJÁT a partner-listából oldjuk fel
+        // (a toBranchId most UUID, nem kód) — különben a targetBranchCode hibásan UUID lenne.
+        const allCounterparties = vaultCounterparties
+          ? [
+              ...(vaultCounterparties.territorialCashiers ?? []),
+              ...(vaultCounterparties.peerVaults ?? []),
+              ...(vaultCounterparties.fixedCounterparties ?? []),
+            ]
+          : []
+        const targetBranchCode =
+          allCounterparties.find((b) => b.id === toBranchId)?.code ?? 'TREASURY'
 
-      if (electronQueueAvailable) {
-        await saveAndSyncPendingTransfer({
-          targetBranchId: toBranchId || null,
-          targetBranchCode,
-          currencyId,
-          currencyCode: selectedCurrency.code,
-          amount: parsedAmount,
-          hufValue: null,
-          transferType: movementType,
-          denominations: null,
-          note: notes || null,
-          carrierName: carrier,
-          sealNumber: seal,
-        })
-      } else {
-        await transferApi.create({
-          toBranchId,
-          currencyId,
-          amount: parsedAmount,
-          transferType: movementType,
-          notes: notes || undefined,
-          carrierName: carrier,
-          sealNumber: seal,
-        })
+        if (electronQueueAvailable) {
+          await saveAndSyncPendingTransfer({
+            targetBranchId: toBranchId || null,
+            targetBranchCode,
+            currencyId,
+            currencyCode: selectedCurrency.code,
+            amount: parsedAmount,
+            hufValue: null,
+            transferType: movementType,
+            denominations: null,
+            note: notes || null,
+            carrierName: carrier,
+            sealNumber: seal,
+          })
+        } else {
+          await transferApi.create({
+            toBranchId,
+            currencyId,
+            amount: parsedAmount,
+            transferType: movementType,
+            notes: notes || undefined,
+            carrierName: carrier,
+            sealNumber: seal,
+          })
+        }
+        setShowNewModal(false)
+        setAmount('')
+        setNotes('')
+        setCarrierName('')
+        setSealNumber('')
+        setFormError(null)
+        void fetchData()
+      } catch (err) {
+        logger.error('MovementManager', 'Create movement error:', err)
       }
-      setShowNewModal(false)
-      setAmount('')
-      setNotes('')
-      setCarrierName('')
-      setSealNumber('')
-      setFormError(null)
-      void fetchData()
-    } catch (err) {
-      logger.error('MovementManager', 'Create movement error:', err)
-    }
-  }, [toBranchId, currencyId, amount, movementType, notes, carrierName, sealNumber, fetchData, currencies, electronQueueAvailable, vaultCounterparties])
+    },
+    [
+      toBranchId,
+      currencyId,
+      amount,
+      movementType,
+      notes,
+      carrierName,
+      sealNumber,
+      fetchData,
+      currencies,
+      electronQueueAvailable,
+      vaultCounterparties,
+    ],
+  )
 
   const generateSealNumber = useCallback(async () => {
     const branchCode = worker?.branchCode?.trim()
@@ -251,7 +321,7 @@ export default function MovementManager() {
   if (loading) return <TableSkeleton rows={6} cols={7} />
 
   const approvedToday = allTransfers.filter(
-    (t) => t.status === 'COMPLETED' || t.status === 'RECEIVED'
+    (t) => t.status === 'COMPLETED' || t.status === 'RECEIVED',
   ).length
 
   return (
@@ -260,8 +330,14 @@ export default function MovementManager() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold text-secondary-900">{t('treasury.keszletMozgasok')}</h1>
-          <span className="badge badge-yellow">{t('treasury.Fuggo')}{pendingTransfers.length}</span>
-          <span className="badge badge-green">{t('treasury.JovahagyvaMa')}{approvedToday}</span>
+          <span className="badge badge-yellow">
+            {t('treasury.Fuggo')}
+            {pendingTransfers.length}
+          </span>
+          <span className="badge badge-green">
+            {t('treasury.JovahagyvaMa')}
+            {approvedToday}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => void fetchData()} className="form-button h-8 text-xs">
@@ -279,7 +355,8 @@ export default function MovementManager() {
         <div className="form-panel">
           <h2 className="text-lg font-bold text-secondary-900 mb-4 flex items-center gap-2">
             <Clock size={20} className="text-warning-500" />
-            {t('treasury.fuggoMozgasok')}{pendingTransfers.length})
+            {t('treasury.fuggoMozgasok')}
+            {pendingTransfers.length})
           </h2>
           <div className="space-y-3">
             {pendingTransfers.map((mov) => (
@@ -304,9 +381,13 @@ export default function MovementManager() {
                         {mov.currencyCode}
                       </span>{' '}
                       <span className="font-mono font-semibold">{formatInteger(mov.amount)}</span>{' '}
-                      <span className="text-secondary-500">{t('treasury.kerte')} {mov.fromWorkerName}</span>
+                      <span className="text-secondary-500">
+                        {t('treasury.kerte')} {mov.fromWorkerName}
+                      </span>
                     </div>
-                    <div className="text-xs text-secondary-500">{formatDateTime(mov.createdAt)}</div>
+                    <div className="text-xs text-secondary-500">
+                      {formatDateTime(mov.createdAt)}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
                     <button
@@ -402,9 +483,7 @@ export default function MovementManager() {
                 <td className={`font-bold ${currencyColorClass(mov.currencyCode)}`}>
                   {mov.currencyCode}
                 </td>
-                <td className="text-right font-mono font-semibold">
-                  {formatInteger(mov.amount)}
-                </td>
+                <td className="text-right font-mono font-semibold">{formatInteger(mov.amount)}</td>
                 <td>
                   <span
                     className={`badge ${
@@ -438,7 +517,9 @@ export default function MovementManager() {
       {showNewModal && (
         <ModalOverlay onClose={() => setShowNewModal(false)}>
           <div className="bg-white rounded-lg shadow-xl p-4 max-w-2xl w-full mx-4">
-            <h2 className="text-xl font-bold text-secondary-900 mb-3">{t('treasury.ujKeszletMozgas')}</h2>
+            <h2 className="text-xl font-bold text-secondary-900 mb-3">
+              {t('treasury.ujKeszletMozgas')}
+            </h2>
             <form onSubmit={(e) => void handleSubmitNew(e)} className="space-y-4">
               {/* Movement type */}
               <div>
@@ -459,9 +540,7 @@ export default function MovementManager() {
                         <type.icon
                           size={24}
                           className={
-                            movementType === type.value
-                              ? 'text-primary-600'
-                              : 'text-secondary-400'
+                            movementType === type.value ? 'text-primary-600' : 'text-secondary-400'
                           }
                         />
                         <div>
@@ -488,36 +567,59 @@ export default function MovementManager() {
                   <option value="">{t('treasury.valasszonCelIrodat')}</option>
                   {vaultCounterparties ? (
                     <>
-                      {(vaultCounterparties.territorialCashiers ?? []).filter((b) => b.isActive !== false).length > 0 && (
+                      {(vaultCounterparties.territorialCashiers ?? []).filter(
+                        (b) => b.isActive !== false,
+                      ).length > 0 && (
                         <optgroup label="Helyi Pénztárak">
                           {(vaultCounterparties.territorialCashiers ?? [])
                             .filter((b) => b.isActive !== false)
-                            .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                            .map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.code} - {b.name}
+                              </option>
+                            ))}
                         </optgroup>
                       )}
-                      {(vaultCounterparties.peerVaults ?? []).filter((b) => b.isActive !== false).length > 0 && (
+                      {(vaultCounterparties.peerVaults ?? []).filter((b) => b.isActive !== false)
+                        .length > 0 && (
                         <optgroup label="Társ értéktárak">
                           {(vaultCounterparties.peerVaults ?? [])
                             .filter((b) => b.isActive !== false)
-                            .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                            .map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.code} - {b.name}
+                              </option>
+                            ))}
                         </optgroup>
                       )}
-                      {(vaultCounterparties.fixedCounterparties ?? []).filter((b) => b.isActive !== false).length > 0 && (
+                      {(vaultCounterparties.fixedCounterparties ?? []).filter(
+                        (b) => b.isActive !== false,
+                      ).length > 0 && (
                         <optgroup label="Banki és speciális partnerek">
                           {(vaultCounterparties.fixedCounterparties ?? [])
                             .filter((b) => b.isActive !== false)
-                            .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                            .map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.code} - {b.name}
+                              </option>
+                            ))}
                         </optgroup>
                       )}
                     </>
                   ) : (
-                    <option value="" disabled>Partnerek betöltése...</option>
+                    <option value="" disabled>
+                      Partnerek betöltése...
+                    </option>
                   )}
                 </select>
                 {counterpartiesError && (
                   <div className="mt-1 flex items-center gap-2 text-xs text-red-600">
                     <span>{t('treasury.celIrodakBetoltesHiba')}</span>
-                    <button type="button" onClick={() => void loadCounterparties()} className="font-semibold underline">
+                    <button
+                      type="button"
+                      onClick={() => void loadCounterparties()}
+                      className="font-semibold underline"
+                    >
                       {t('treasury.ujra')}
                     </button>
                   </div>
@@ -567,7 +669,9 @@ export default function MovementManager() {
               {/* FR-1..3: Szállító neve + Plombaszám (kötelező) */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="form-label">Szállító neve <span className="text-red-500">*</span></label>
+                  <label className="form-label">
+                    Szállító neve <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     maxLength={128}
@@ -578,7 +682,9 @@ export default function MovementManager() {
                   />
                 </div>
                 <div>
-                  <label className="form-label">Plombaszám <span className="text-red-500">*</span></label>
+                  <label className="form-label">
+                    Plombaszám <span className="text-red-500">*</span>
+                  </label>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -606,7 +712,9 @@ export default function MovementManager() {
               </div>
 
               {formError && (
-                <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</div>
+                <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {formError}
+                </div>
               )}
 
               {/* Buttons */}
@@ -618,7 +726,11 @@ export default function MovementManager() {
                 >
                   {t('common.cancel')}
                 </button>
-                <button type="submit" className="form-button-primary disabled:opacity-50 disabled:cursor-not-allowed" disabled={!toBranchId || !currencyId || !amount}>
+                <button
+                  type="submit"
+                  className="form-button-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!toBranchId || !currencyId || !amount}
+                >
                   <Save size={18} />
                   <span>{t('common.create')}</span>
                 </button>
@@ -633,18 +745,32 @@ export default function MovementManager() {
         <ModalOverlay onClose={() => setShowDetailModal(null)}>
           <div className="bg-white rounded-lg shadow-xl p-4 max-w-lg w-full mx-4">
             <h2 className="text-xl font-bold text-secondary-900 mb-4">
-              {t('treasury.mozgasReszletei')}{showDetailModal.transferNumber}
+              {t('treasury.mozgasReszletei')}
+              {showDetailModal.transferNumber}
             </h2>
             <div className="space-y-3 text-sm">
-              <DetailRow label="Típus" value={MOVEMENT_TYPE_LABELS[showDetailModal.transferType] ?? showDetailModal.transferTypeDisplay} />
+              <DetailRow
+                label="Típus"
+                value={
+                  MOVEMENT_TYPE_LABELS[showDetailModal.transferType] ??
+                  showDetailModal.transferTypeDisplay
+                }
+              />
               <DetailRow label="Forrás" value={showDetailModal.fromBranchName} />
               <DetailRow label="Cél" value={showDetailModal.toBranchName} />
               <DetailRow label="Valuta" value={showDetailModal.currencyCode} />
               <DetailRow label="Összeg" value={formatInteger(showDetailModal.amount)} mono />
-              <DetailRow label="Státusz" value={MOVEMENT_STATUS_LABELS[showDetailModal.status] ?? showDetailModal.statusDisplay} />
+              <DetailRow
+                label="Státusz"
+                value={
+                  MOVEMENT_STATUS_LABELS[showDetailModal.status] ?? showDetailModal.statusDisplay
+                }
+              />
               <DetailRow label="Kérte" value={showDetailModal.fromWorkerName} />
               <DetailRow label="Létrehozva" value={formatDateTime(showDetailModal.createdAt)} />
-              {showDetailModal.notes && <DetailRow label="Megjegyzés" value={showDetailModal.notes} />}
+              {showDetailModal.notes && (
+                <DetailRow label="Megjegyzés" value={showDetailModal.notes} />
+              )}
             </div>
             <button
               onClick={() => setShowDetailModal(null)}
@@ -663,7 +789,10 @@ export default function MovementManager() {
 
 function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
       <div onClick={(e) => e.stopPropagation()}>{children}</div>
     </div>
   )

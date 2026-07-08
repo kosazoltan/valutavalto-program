@@ -19,13 +19,22 @@ export function getBandForAmount(
 
   if (rate.limit3Amount != null && hufAmount >= rate.limit3Amount) {
     const lr = mode === 'buy' ? rate.limit3BuyRate : rate.limit3SellRate
-    if (lr != null) { tierRate = lr; tierName = 'limit3' }
+    if (lr != null) {
+      tierRate = lr
+      tierName = 'limit3'
+    }
   } else if (rate.limit2Amount != null && hufAmount >= rate.limit2Amount) {
     const lr = mode === 'buy' ? rate.limit2BuyRate : rate.limit2SellRate
-    if (lr != null) { tierRate = lr; tierName = 'limit2' }
+    if (lr != null) {
+      tierRate = lr
+      tierName = 'limit2'
+    }
   } else if (rate.limit1Amount != null && hufAmount >= rate.limit1Amount) {
     const lr = mode === 'buy' ? rate.limit1BuyRate : rate.limit1SellRate
-    if (lr != null) { tierRate = lr; tierName = 'limit1' }
+    if (lr != null) {
+      tierRate = lr
+      tierName = 'limit1'
+    }
   }
 
   if (mode === 'buy') {
@@ -54,10 +63,7 @@ export function isWithinHardLimit(
   return customRate >= officialRate
 }
 
-export function getHardLimitMessage(
-  mode: 'buy' | 'sell',
-  officialRate: number,
-): string {
+export function getHardLimitMessage(mode: 'buy' | 'sell', officialRate: number): string {
   if (mode === 'buy') {
     return `Vételi árfolyam nem lehet magasabb az elszámoló árfolyamnál (${officialRate.toFixed(2)}).`
   }

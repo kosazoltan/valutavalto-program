@@ -55,8 +55,7 @@ export const decadeReportApi = {
   generate: (data: GenerateDecadeDto) =>
     api.post<DecadeReportDto>('/decade-reports/generate', data),
 
-  close: (id: string) =>
-    api.post<DecadeReportDto>(`/decade-reports/${id}/close`),
+  close: (id: string) => api.post<DecadeReportDto>(`/decade-reports/${id}/close`),
 
   list: (branchId: string, year: number, page = 0, size = 36) =>
     // _preservePaged: a backend Page<DecadeReportDto>-t ad; e flag nélkül az axios

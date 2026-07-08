@@ -68,7 +68,7 @@ describe('dispatchToolCall', () => {
         description: 'lecsapodott a program',
         affected_module: 'penztar1',
       },
-      ctx
+      ctx,
     )
     expect(result).toMatchObject({ success: true })
     expect(result.issue_id).toBeDefined()
@@ -85,10 +85,10 @@ describe('dispatchToolCall', () => {
         description: 'kellene egy uj funkcio',
         affected_module: 'arfolyam',
       },
-      ctx
+      ctx,
     )
     expect(mocks.createIssue).toHaveBeenCalledWith(
-      expect.objectContaining({ category: 'feature_request' })
+      expect.objectContaining({ category: 'feature_request' }),
     )
   })
 
@@ -103,11 +103,9 @@ describe('dispatchToolCall', () => {
         description: 'y',
         affected_module: 'm',
       },
-      ctx
+      ctx,
     )
-    expect(mocks.createIssue).toHaveBeenCalledWith(
-      expect.objectContaining({ category: 'bug' })
-    )
+    expect(mocks.createIssue).toHaveBeenCalledWith(expect.objectContaining({ category: 'bug' }))
   })
 
   it('set_user_info eltarolja az infot, getUserInfo visszaadja', () => {
@@ -117,11 +115,7 @@ describe('dispatchToolCall', () => {
   })
 
   it('next_install_step a default ctx-ben placeholder valaszt ad', async () => {
-    const r = await dispatchToolCall(
-      'next_install_step',
-      { current_step: 2, success: true },
-      ctx
-    )
+    const r = await dispatchToolCall('next_install_step', { current_step: 2, success: true }, ctx)
     expect(r.step_number).toBe(3)
     expect(String(r.instructions)).toContain('Phase 9')
   })
@@ -141,7 +135,7 @@ describe('dispatchToolCall', () => {
     const r = await dispatchToolCall(
       'add_quick_note',
       { title: 'Felirat', body: 'irjuk fel ezt' },
-      ctx
+      ctx,
     )
     expect(r).toMatchObject({ success: true })
     expect(r.note_id).toBeDefined()

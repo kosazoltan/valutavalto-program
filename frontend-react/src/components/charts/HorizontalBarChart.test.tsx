@@ -77,10 +77,7 @@ describe('HorizontalBarChart', () => {
 
   it('egyéni formázót alkalmaz az értékekre', () => {
     render(
-      <HorizontalBarChart
-        data={[{ label: 'EUR', value: 1234 }]}
-        formatValue={(n) => `${n} Ft`}
-      />,
+      <HorizontalBarChart data={[{ label: 'EUR', value: 1234 }]} formatValue={(n) => `${n} Ft`} />,
     )
     expect(screen.getByText('1234 Ft')).toBeInTheDocument()
   })

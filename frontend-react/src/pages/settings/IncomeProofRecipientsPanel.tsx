@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState, type KeyboardEvent } from 'react'
 import { Loader2, Mail, Plus, Trash2 } from 'lucide-react'
-import { incomeSourceDocApi, type IncomeProofRecipientsResponse } from '../../services/api/incomeSourceDocs'
+import {
+  incomeSourceDocApi,
+  type IncomeProofRecipientsResponse,
+} from '../../services/api/incomeSourceDocs'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 

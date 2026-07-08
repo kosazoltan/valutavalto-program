@@ -41,8 +41,7 @@ describe('path-guard — assertInsideBase', () => {
   });
 
   it('elutasitja a teljesen kulso fajlt', () => {
-    const outside =
-      process.platform === 'win32' ? 'C:\\Windows\\System32\\config' : '/etc/passwd';
+    const outside = process.platform === 'win32' ? 'C:\\Windows\\System32\\config' : '/etc/passwd';
     expect(() => assertInsideBase(outside, SCAN_BASE)).toThrow(/Invalid path/);
   });
 

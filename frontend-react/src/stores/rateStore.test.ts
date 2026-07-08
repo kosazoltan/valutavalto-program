@@ -82,7 +82,9 @@ describe('rateStore', () => {
 
     it('sets isLoading=true during fetch', async () => {
       let resolveFn: (val: unknown) => void
-      const promise = new Promise((resolve) => { resolveFn = resolve })
+      const promise = new Promise((resolve) => {
+        resolveFn = resolve
+      })
       mockApi.get.mockReturnValue(promise)
 
       // Start fetch without awaiting
@@ -212,9 +214,9 @@ describe('rateStore', () => {
         useRateStore.setState({ rates: [mockEurRate] })
       })
       act(() => {
-        useRateStore.getState().applyPublishedRates([
-          { currencyCode: 'EUR', buyRate: 380, sellRate: 395 },
-        ])
+        useRateStore
+          .getState()
+          .applyPublishedRates([{ currencyCode: 'EUR', buyRate: 380, sellRate: 395 }])
       })
       const state = useRateStore.getState()
       expect(state.rates[0]!.baseBuyRate).toBe(380)
@@ -226,9 +228,9 @@ describe('rateStore', () => {
         useRateStore.setState({ rates: [mockEurRate] })
       })
       act(() => {
-        useRateStore.getState().applyPublishedRates([
-          { currencyCode: 'CHF', buyRate: 400, sellRate: 415 },
-        ])
+        useRateStore
+          .getState()
+          .applyPublishedRates([{ currencyCode: 'CHF', buyRate: 400, sellRate: 415 }])
       })
       const state = useRateStore.getState()
       expect(state.rates).toHaveLength(2)
@@ -240,9 +242,7 @@ describe('rateStore', () => {
         useRateStore.setState({ rates: [mockEurRate] })
       })
       act(() => {
-        useRateStore.getState().applyPublishedRates([
-          { buyRate: 999, sellRate: 999 } as any,
-        ])
+        useRateStore.getState().applyPublishedRates([{ buyRate: 999, sellRate: 999 } as any])
       })
       // EUR unchanged
       expect(useRateStore.getState().getBuyRate('EUR')).toBe(375)
@@ -253,11 +253,11 @@ describe('rateStore', () => {
         useRateStore.setState({ rates: [mockEurRate, mockUsdRate] })
       })
       act(() => {
-        useRateStore.getState().applyPublishedRates([
-          { currencyCode: 'USD', buyRate: 350, sellRate: 365 },
-        ])
+        useRateStore
+          .getState()
+          .applyPublishedRates([{ currencyCode: 'USD', buyRate: 350, sellRate: 365 }])
       })
-      const {rates} = useRateStore.getState()
+      const { rates } = useRateStore.getState()
       expect(rates[0]!.currencyCode).toBe('EUR')
       expect(rates[1]!.currencyCode).toBe('USD')
       expect(rates[1]!.baseBuyRate).toBe(350)
@@ -267,7 +267,9 @@ describe('rateStore', () => {
   describe('startAutoRefresh / stopAutoRefresh', () => {
     it('stopAutoRefresh clears interval', () => {
       act(() => {
-        useRateStore.setState({ autoRefreshIntervalId: 999 as unknown as ReturnType<typeof setInterval> })
+        useRateStore.setState({
+          autoRefreshIntervalId: 999 as unknown as ReturnType<typeof setInterval>,
+        })
       })
       act(() => {
         useRateStore.getState().stopAutoRefresh()

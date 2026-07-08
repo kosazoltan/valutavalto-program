@@ -31,7 +31,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -54,11 +54,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/permissions/module/TRANSACTION') && method === 'GET') {
@@ -140,7 +148,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('jogosultság oldal mobil nézetben backend modul- és detail endpointot használ', async ({ page }) => {
+test('jogosultság oldal mobil nézetben backend modul- és detail endpointot használ', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -148,18 +158,20 @@ test('jogosultság oldal mobil nézetben backend modul- és detail endpointot ha
   await page.goto('/settings/permissions', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('cell', { name: 'TRANSACTION_CREATE', exact: true })).toBeVisible()
 
-  const moduleRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/permissions/module/TRANSACTION'
+  const moduleRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/permissions/module/TRANSACTION',
   )
   await page.locator('#permission-module-filter').selectOption('TRANSACTION')
   await moduleRequest
 
   await expect(page.getByText('Backend module result')).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === `/api/v1/permissions/${permissionId}`
+  const detailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === `/api/v1/permissions/${permissionId}`,
   )
   await page.getByRole('button', { name: 'Szerkesztés' }).click()
   await detailRequest
@@ -169,8 +181,8 @@ test('jogosultság oldal mobil nézetben backend modul- és detail endpointot ha
   await expect(modalInputs.nth(1)).toHaveValue('Backend Detail Jogosultság')
   await expect(page.locator('.fixed.inset-0 textarea')).toHaveValue('Backend detail result')
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

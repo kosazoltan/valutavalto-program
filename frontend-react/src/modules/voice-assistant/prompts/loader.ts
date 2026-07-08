@@ -37,10 +37,7 @@ const PROMPTS: Record<ActiveMode, string> = {
  * @param moduleKnowledge opcionalis high-level overview (Phase 1 PR #654)
  * @returns összefűzött system prompt
  */
-export function getSystemPrompt(
-  mode: ActiveMode,
-  moduleKnowledge?: string
-): string {
+export function getSystemPrompt(mode: ActiveMode, moduleKnowledge?: string): string {
   const base: string = PROMPTS[mode] ?? ''
   if (!moduleKnowledge || !moduleKnowledge.trim()) {
     return base

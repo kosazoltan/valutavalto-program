@@ -69,11 +69,13 @@ describe('ComplianceDashboardPage manual AML check', () => {
     await user.type(screen.getByTestId('aml-manual-amount'), '5100000')
     await user.click(screen.getByTestId('aml-manual-check-button'))
 
-    await waitFor(() => expect(mocks.checkTransaction).toHaveBeenCalledWith({
-      amountHuf: 5100000,
-      customerId: 'cust-42',
-      currencyCode: 'EUR',
-    }))
+    await waitFor(() =>
+      expect(mocks.checkTransaction).toHaveBeenCalledWith({
+        amountHuf: 5100000,
+        customerId: 'cust-42',
+        currencyCode: 'EUR',
+      }),
+    )
     expect(screen.getByTestId('aml-manual-result')).toHaveTextContent('Tranzakció típus: 5')
     expect(screen.getByText('Vezetői jóváhagyás kell')).toBeInTheDocument()
     expect(screen.getByText('Fokozott átvilágítás szükséges')).toBeInTheDocument()

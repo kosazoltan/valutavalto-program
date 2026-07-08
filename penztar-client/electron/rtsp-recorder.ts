@@ -54,7 +54,9 @@ function validateRtspUrl(url: string): void {
     throw new Error('Érvénytelen RTSP URL (nem parseolható)');
   }
   if (parsed.protocol !== 'rtsp:' && parsed.protocol !== 'rtsps:') {
-    throw new Error(`Csak rtsp:// vagy rtsps:// protokoll engedélyezett. Kapott: ${parsed.protocol}`);
+    throw new Error(
+      `Csak rtsp:// vagy rtsps:// protokoll engedélyezett. Kapott: ${parsed.protocol}`,
+    );
   }
   if (!parsed.hostname) {
     throw new Error(`RTSP URL üres host-ot tartalmaz: ${parsed.protocol}//[host hiányzik]`);
@@ -202,14 +204,20 @@ export class RtspRecorder extends EventEmitter {
 
     // ffmpeg parancs: RTSP → MP4 szegmens
     const ffmpegArgs = [
-      '-rtsp_transport', 'tcp',
-      '-i', config.rtspUrl,
-      '-c:v', 'copy',          // codec másolás (nem újrakódol)
-      '-an',                    // audio nélkül (opcionális, kameránként)
-      '-f', 'mp4',
-      '-movflags', '+frag_keyframe+empty_moov+faststart',
-      '-t', String(config.segmentDurationSeconds),
-      '-y',                     // felülírás
+      '-rtsp_transport',
+      'tcp',
+      '-i',
+      config.rtspUrl,
+      '-c:v',
+      'copy', // codec másolás (nem újrakódol)
+      '-an', // audio nélkül (opcionális, kameránként)
+      '-f',
+      'mp4',
+      '-movflags',
+      '+frag_keyframe+empty_moov+faststart',
+      '-t',
+      String(config.segmentDurationSeconds),
+      '-y', // felülírás
       segmentPath,
     ];
 
@@ -254,11 +262,14 @@ export class RtspRecorder extends EventEmitter {
     this.emit('camera-connected', config.id);
 
     // Timeout biztonsági háló — ha ffmpeg nem áll le időben
-    const timer = setTimeout(() => {
-      if (proc && !proc.killed) {
-        proc.kill('SIGINT');
-      }
-    }, (config.segmentDurationSeconds + 10) * 1000);
+    const timer = setTimeout(
+      () => {
+        if (proc && !proc.killed) {
+          proc.kill('SIGINT');
+        }
+      },
+      (config.segmentDurationSeconds + 10) * 1000,
+    );
     this.segmentTimers.set(config.id, timer);
   }
 
@@ -326,5 +337,8 @@ export class RtspRecorder extends EventEmitter {
  * Hash chain: SHA-256(previousHash + currentFileHash).
  */
 function computeChainHash(previousHash: string, currentFileHash: string): string {
-  return crypto.createHash('sha256').update(previousHash + currentFileHash).digest('hex');
+  return crypto
+    .createHash('sha256')
+    .update(previousHash + currentFileHash)
+    .digest('hex');
 }

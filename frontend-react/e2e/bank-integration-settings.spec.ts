@@ -46,7 +46,7 @@ async function mockBankIntegrationApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -69,11 +69,19 @@ async function mockBankIntegrationApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/own-companies/active') && method === 'GET') {
@@ -89,7 +97,12 @@ async function mockBankIntegrationApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          mnb: { rateCount: 23, lastFetchSuccess: true, lastFetchDate: '2026-06-18', schedulerActive: true },
+          mnb: {
+            rateCount: 23,
+            lastFetchSuccess: true,
+            lastFetchDate: '2026-06-18',
+            schedulerActive: true,
+          },
           raiffeisen: {
             schedulerActive: true,
             scheduledTime: '08:00 CET (munkanapokon)',
@@ -116,11 +129,19 @@ async function mockBankIntegrationApis(page: Page) {
     }
 
     if (path === '/api/v1/bank-api-config' && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([raiffeisenConfig]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([raiffeisenConfig]),
+      })
     }
 
     if (path === '/api/v1/bank-api-config/RAIFFEISEN' && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(raiffeisenConfig) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(raiffeisenConfig),
+      })
     }
 
     if (path === '/api/v1/bank-api-config/RAIFFEISEN' && method === 'PUT') {
@@ -151,7 +172,11 @@ async function mockBankIntegrationApis(page: Page) {
       })
     }
 
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [], data: [] }) })
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ content: [], data: [] }),
+    })
   })
 }
 
@@ -165,7 +190,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('bank integráció beállítás mobil viewporton kezeli a bank-api-config szerződést', async ({ page }) => {
+test('bank integráció beállítás mobil viewporton kezeli a bank-api-config szerződést', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockBankIntegrationApis(page)
   await login(page)
@@ -182,20 +209,23 @@ test('bank integráció beállítás mobil viewporton kezeli a bank-api-config s
   await page.getByLabel('Auth típus').selectOption('OAUTH2_CLIENT_CREDENTIALS')
   await page.getByLabel('Endpoint URL').fill('https://raiffeisen.example/rest')
   await page.getByLabel('Client secret').fill('new-secret-value')
-  const saveRequest = page.waitForRequest(request =>
-    request.method() === 'PUT' && request.url().endsWith('/api/v1/bank-api-config/RAIFFEISEN')
+  const saveRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'PUT' && request.url().endsWith('/api/v1/bank-api-config/RAIFFEISEN'),
   )
   await page.getByRole('button', { name: 'Mentés' }).click()
   await saveRequest
 
-  const fetchRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().endsWith('/api/v1/bank-api-config/raiffeisen/fetch-now')
+  const fetchRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      request.url().endsWith('/api/v1/bank-api-config/raiffeisen/fetch-now'),
   )
   await page.getByRole('button', { name: 'Raiffeisen kézi fetch' }).click()
   await fetchRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

@@ -64,7 +64,7 @@ export default function BankTransactionReportPage() {
       if (direction === 'out') return t('reports.bankTransactions.directionOut')
       return t('reports.bankTransactions.directionAll')
     },
-    [t]
+    [t],
   )
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -78,7 +78,7 @@ export default function BankTransactionReportPage() {
   const [from, setFrom] = useState<string>(searchParams.get('from') ?? localIsoDate(monthStart))
   const [to, setTo] = useState<string>(searchParams.get('to') ?? localIsoDate(today))
   const [direction, setDirection] = useState<'all' | 'in' | 'out'>(
-    (searchParams.get('direction') as 'all' | 'in' | 'out') ?? 'all'
+    (searchParams.get('direction') as 'all' | 'in' | 'out') ?? 'all',
   )
   const [branchId, setBranchId] = useState<string>(searchParams.get('branchId') ?? '')
 
@@ -141,9 +141,7 @@ export default function BankTransactionReportPage() {
   const filtered = useMemo(() => {
     const fromMs = from ? new Date(from + 'T00:00:00').getTime() : Number.NEGATIVE_INFINITY
     const toMs = to ? new Date(to + 'T23:59:59.999').getTime() : Number.POSITIVE_INFINITY
-    const branchName = branchId
-      ? branches.find((b) => b.id === branchId)?.name ?? ''
-      : ''
+    const branchName = branchId ? (branches.find((b) => b.id === branchId)?.name ?? '') : ''
     return transactions.filter((tx) => {
       if (tx.createdAt) {
         const ms = new Date(tx.createdAt).getTime()
@@ -206,7 +204,9 @@ export default function BankTransactionReportPage() {
 
       <div className="bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-from">{t('reports.bankTransactions.from')}</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-from">
+            {t('reports.bankTransactions.from')}
+          </label>
           <input
             id="bt-from"
             type="date"
@@ -216,7 +216,9 @@ export default function BankTransactionReportPage() {
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-to">{t('reports.bankTransactions.to')}</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-to">
+            {t('reports.bankTransactions.to')}
+          </label>
           <input
             id="bt-to"
             type="date"
@@ -226,7 +228,9 @@ export default function BankTransactionReportPage() {
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-direction">{t('reports.bankTransactions.direction')}</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-direction">
+            {t('reports.bankTransactions.direction')}
+          </label>
           <select
             id="bt-direction"
             value={direction}
@@ -239,7 +243,9 @@ export default function BankTransactionReportPage() {
           </select>
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-branch">{t('reports.bankTransactions.branch')}</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="bt-branch">
+            {t('reports.bankTransactions.branch')}
+          </label>
           <select
             id="bt-branch"
             value={branchId}
@@ -268,7 +274,10 @@ export default function BankTransactionReportPage() {
       </div>
 
       <div className="text-xs text-gray-500">
-        {t('reports.bankTransactions.activeFilter', { label: directionLabel(direction), count: filtered.length })}
+        {t('reports.bankTransactions.activeFilter', {
+          label: directionLabel(direction),
+          count: filtered.length,
+        })}
       </div>
 
       {totalsByCurrency.length > 0 && (
@@ -279,10 +288,18 @@ export default function BankTransactionReportPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.currencyTable.currency')}</th>
-                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.currencyTable.transactions')}</th>
-                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.currencyTable.amount')}</th>
-                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.currencyTable.hufValue')}</th>
+                <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                  {t('reports.bankTransactions.currencyTable.currency')}
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                  {t('reports.bankTransactions.currencyTable.transactions')}
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                  {t('reports.bankTransactions.currencyTable.amount')}
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                  {t('reports.bankTransactions.currencyTable.hufValue')}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -291,7 +308,9 @@ export default function BankTransactionReportPage() {
                   <td className="px-4 py-2 text-sm font-mono font-semibold">{r.code}</td>
                   <td className="px-4 py-2 text-right text-sm font-mono">{r.count}</td>
                   <td className="px-4 py-2 text-right text-sm font-mono">{formatNum(r.amount)}</td>
-                  <td className="px-4 py-2 text-right text-sm font-mono font-semibold">{formatHuf(r.hufAmount)}</td>
+                  <td className="px-4 py-2 text-right text-sm font-mono font-semibold">
+                    {formatHuf(r.hufAmount)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -307,23 +326,45 @@ export default function BankTransactionReportPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.date')}</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.direction')}</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.currency')}</th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.amount')}</th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.rate')}</th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.huf')}</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.bank')}</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.ref')}</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.vault')}</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.bankTransactions.table.note')}</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                  {t('reports.bankTransactions.table.date')}
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                  {t('reports.bankTransactions.table.direction')}
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                  {t('reports.bankTransactions.table.currency')}
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                  {t('reports.bankTransactions.table.amount')}
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                  {t('reports.bankTransactions.table.rate')}
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                  {t('reports.bankTransactions.table.huf')}
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                  {t('reports.bankTransactions.table.bank')}
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                  {t('reports.bankTransactions.table.ref')}
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                  {t('reports.bankTransactions.table.vault')}
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                  {t('reports.bankTransactions.table.note')}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={10} className="px-4 py-4 text-center text-sm text-gray-500">
-                    {loading ? t('reports.bankTransactions.table.loading') : t('reports.bankTransactions.table.noResults')}
+                    {loading
+                      ? t('reports.bankTransactions.table.loading')
+                      : t('reports.bankTransactions.table.noResults')}
                   </td>
                 </tr>
               )}
@@ -338,7 +379,9 @@ export default function BankTransactionReportPage() {
                           : 'inline-block px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium'
                       }
                     >
-                      {tx.transactionType === 'BUY' ? t('reports.bankTransactions.table.atvett') : t('reports.bankTransactions.table.atadott')}
+                      {tx.transactionType === 'BUY'
+                        ? t('reports.bankTransactions.table.atvett')
+                        : t('reports.bankTransactions.table.atadott')}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-sm font-mono font-semibold">{tx.currencyCode}</td>
@@ -352,7 +395,10 @@ export default function BankTransactionReportPage() {
                   <td className="px-3 py-2 text-xs">{tx.bankName ?? '-'}</td>
                   <td className="px-3 py-2 text-xs">{tx.bankReference ?? '-'}</td>
                   <td className="px-3 py-2 text-xs">{tx.vaultTerritoryName ?? '-'}</td>
-                  <td className="px-3 py-2 text-xs max-w-[20ch] truncate" title={tx.note ?? undefined}>
+                  <td
+                    className="px-3 py-2 text-xs max-w-[20ch] truncate"
+                    title={tx.note ?? undefined}
+                  >
                     {tx.note ?? '-'}
                   </td>
                 </tr>

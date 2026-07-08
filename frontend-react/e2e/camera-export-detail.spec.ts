@@ -48,7 +48,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -71,11 +71,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/features') && method === 'GET') {
@@ -95,19 +103,35 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/camera/export/pending') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     if (path.endsWith('/camera/export/branch/branch-1') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([exportListItem]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([exportListItem]),
+      })
     }
 
     if (path.endsWith('/camera/export/export-1/custody') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     if (path.endsWith('/camera/export/export-1') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(exportDetail) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(exportDetail),
+      })
     }
 
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
@@ -124,7 +148,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('kamera export mobil nézetben kiválasztáskor backend részlet endpointot hív', async ({ page }) => {
+test('kamera export mobil nézetben kiválasztáskor backend részlet endpointot hív', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -136,10 +162,9 @@ test('kamera export mobil nézetben kiválasztáskor backend részlet endpointot
   await page.locator('select').first().selectOption('branch-1')
   await expect(page.getByTestId('camera-export-request-export-1')).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request => {
+  const detailRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'GET'
-      && url.pathname === '/api/v1/camera/export/export-1'
+    return request.method() === 'GET' && url.pathname === '/api/v1/camera/export/export-1'
   })
   await page.getByTestId('camera-export-request-export-1').click()
   await detailRequest
@@ -147,8 +172,8 @@ test('kamera export mobil nézetben kiválasztáskor backend részlet endpointot
   await expect(page.getByText('Backend részlet indok')).toBeVisible()
   await expect(page.getByText('D:/exports/export-1.zip')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

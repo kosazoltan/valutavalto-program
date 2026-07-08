@@ -29,7 +29,9 @@ function getKeyBuffer(config: EncryptionConfig): Buffer {
   }
   const keyBuf = Buffer.from(config.masterKeyBase64, 'base64');
   if (keyBuf.length !== 32) {
-    throw new Error(`Camera encryption key mérete nem 256 bit (32 byte)! Jelenlegi: ${keyBuf.length} byte`);
+    throw new Error(
+      `Camera encryption key mérete nem 256 bit (32 byte)! Jelenlegi: ${keyBuf.length} byte`,
+    );
   }
   return keyBuf;
 }
@@ -93,7 +95,9 @@ export async function decryptFile(
   const authTag = fileData.subarray(fileData.length - AUTH_TAG_LENGTH);
   const encrypted = fileData.subarray(NONCE_LENGTH, fileData.length - AUTH_TAG_LENGTH);
 
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, nonce, { authTagLength: AUTH_TAG_LENGTH });
+  const decipher = crypto.createDecipheriv(ALGORITHM, key, nonce, {
+    authTagLength: AUTH_TAG_LENGTH,
+  });
   decipher.setAuthTag(authTag);
   const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
   // Audit-iter3 P0 (CodeQL js/insecure-temporary-file fix, 2026-04-27):
@@ -101,7 +105,11 @@ export async function decryptFile(
   // re-decrypt eseten felulir, mode 0o600: csak owner read/write.
   // A plainPath user-input mar validalva path.resolve+startsWith ellenorzessel
   // (camera.ts:361-368), igy CSAK CAMERA_DIR alatt lehet.
-  const fd = fs.openSync(plainPath, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_TRUNC | fs.constants.O_NOFOLLOW, 0o600);
+  const fd = fs.openSync(
+    plainPath,
+    fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_TRUNC | fs.constants.O_NOFOLLOW,
+    0o600,
+  );
   try {
     fs.writeFileSync(fd, decrypted);
   } finally {

@@ -23,7 +23,12 @@ interface Props {
   submitting?: boolean
 }
 
-export default function VaultClosingAuditorDialog({ open, onConfirm, onCancel, submitting = false }: Props) {
+export default function VaultClosingAuditorDialog({
+  open,
+  onConfirm,
+  onCancel,
+  submitting = false,
+}: Props) {
   const [auditorName, setAuditorName] = useState('')
   const [auditorRole, setAuditorRole] = useState('')
   const [nameError, setNameError] = useState('')
@@ -86,10 +91,7 @@ export default function VaultClosingAuditorDialog({ open, onConfirm, onCancel, s
         onClick={(e) => e.stopPropagation()}
       >
         {/* Fejléc */}
-        <h2
-          id="vault-auditor-dialog-title"
-          className="mb-1 text-lg font-bold text-gray-800"
-        >
+        <h2 id="vault-auditor-dialog-title" className="mb-1 text-lg font-bold text-gray-800">
           Ellenőrző személy adatai
         </h2>
 
@@ -99,10 +101,7 @@ export default function VaultClosingAuditorDialog({ open, onConfirm, onCancel, s
         </p>
 
         {/* Ellenőrző neve */}
-        <label
-          htmlFor="auditor-name"
-          className="mb-1 block text-sm font-semibold text-gray-700"
-        >
+        <label htmlFor="auditor-name" className="mb-1 block text-sm font-semibold text-gray-700">
           Ellenőrző neve <span className="text-red-500">*</span>
         </label>
         <input
@@ -110,41 +109,44 @@ export default function VaultClosingAuditorDialog({ open, onConfirm, onCancel, s
           ref={nameRef}
           type="text"
           value={auditorName}
-          onChange={(e) => { setAuditorName(e.target.value); setNameError('') }}
+          onChange={(e) => {
+            setAuditorName(e.target.value)
+            setNameError('')
+          }}
           disabled={submitting}
           placeholder="pl. Kovács Péter"
           className={`mb-1 w-full rounded border px-3 py-2 focus:outline-none disabled:opacity-50 ${
-            nameError ? 'border-red-400 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'
+            nameError
+              ? 'border-red-400 focus:border-red-500'
+              : 'border-gray-300 focus:border-blue-500'
           }`}
           autoComplete="off"
         />
-        {nameError && (
-          <p className="mb-3 text-xs text-red-600">{nameError}</p>
-        )}
+        {nameError && <p className="mb-3 text-xs text-red-600">{nameError}</p>}
         {!nameError && <div className="mb-3" />}
 
         {/* Ellenőrző beosztása */}
-        <label
-          htmlFor="auditor-role"
-          className="mb-1 block text-sm font-semibold text-gray-700"
-        >
+        <label htmlFor="auditor-role" className="mb-1 block text-sm font-semibold text-gray-700">
           Beosztás <span className="text-red-500">*</span>
         </label>
         <input
           id="auditor-role"
           type="text"
           value={auditorRole}
-          onChange={(e) => { setAuditorRole(e.target.value); setRoleError('') }}
+          onChange={(e) => {
+            setAuditorRole(e.target.value)
+            setRoleError('')
+          }}
           disabled={submitting}
           placeholder="pl. Értéktáros vezető"
           className={`mb-1 w-full rounded border px-3 py-2 focus:outline-none disabled:opacity-50 ${
-            roleError ? 'border-red-400 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'
+            roleError
+              ? 'border-red-400 focus:border-red-500'
+              : 'border-gray-300 focus:border-blue-500'
           }`}
           autoComplete="off"
         />
-        {roleError && (
-          <p className="mb-3 text-xs text-red-600">{roleError}</p>
-        )}
+        {roleError && <p className="mb-3 text-xs text-red-600">{roleError}</p>}
         {!roleError && <div className="mb-4" />}
 
         {/* Gombok */}

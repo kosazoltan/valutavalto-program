@@ -1,5 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto'
-import type { BuildRatePackageInput, DecimalLike, LocalRateEntry, LocalRatePackage } from './types.js'
+import type {
+  BuildRatePackageInput,
+  DecimalLike,
+  LocalRateEntry,
+  LocalRatePackage,
+} from './types.js'
 
 function decimalToString(value: DecimalLike | null | undefined): string | null {
   if (value === null || value === undefined || value === '') return null
@@ -21,7 +26,9 @@ function normalizeRate(rate: LocalRateEntry): LocalRateEntry {
   const buyRate = positiveDecimal(rate.buyRate, 'buyRate')
   const sellRate = positiveDecimal(rate.sellRate, 'sellRate')
   if (Number(sellRate) <= Number(buyRate)) {
-    throw new Error(`Eladasi arfolyam nagyobb kell legyen a vetelinal: currencyId=${rate.currencyId}`)
+    throw new Error(
+      `Eladasi arfolyam nagyobb kell legyen a vetelinal: currencyId=${rate.currencyId}`,
+    )
   }
 
   return {
@@ -42,9 +49,7 @@ function normalizeRate(rate: LocalRateEntry): LocalRateEntry {
 }
 
 function hashPackage(packageWithoutHash: Omit<LocalRatePackage, 'clientPackageHash'>): string {
-  return createHash('sha256')
-    .update(JSON.stringify(packageWithoutHash), 'utf8')
-    .digest('hex')
+  return createHash('sha256').update(JSON.stringify(packageWithoutHash), 'utf8').digest('hex')
 }
 
 export function buildRatePackage(input: BuildRatePackageInput): LocalRatePackage {

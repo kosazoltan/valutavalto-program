@@ -2,7 +2,13 @@ import { ipcMain, dialog } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { RtspRecorder, type RtspCameraConfig, type RecordingSegment } from './rtsp-recorder';
-import { type EncryptionConfig, encryptFile, decryptFile, computeFileHash, generateNewKey } from './camera-encryption';
+import {
+  type EncryptionConfig,
+  encryptFile,
+  decryptFile,
+  computeFileHash,
+  generateNewKey,
+} from './camera-encryption';
 import { assertInsideBase, validateRecordingExtension } from './path-guard';
 
 const CAMERA_DIR = 'C:/valuta/camera';
@@ -69,101 +75,117 @@ function getDirSize(dirPath: string): number {
     if (entry.isDirectory()) {
       size += getDirSize(fullPath);
     } else if (entry.isFile()) {
-      try { size += fs.statSync(fullPath).size; } catch { /* skip */ }
+      try {
+        size += fs.statSync(fullPath).size;
+      } catch {
+        /* skip */
+      }
     }
   }
   return size;
 }
 
 export function registerCameraHandlers(): void {
-  ipcMain.handle('camera-save-recording', async (
-    _event,
-    transactionId: string,
-    videoBuffer: ArrayBuffer,
-    extension: string,
-  ): Promise<string> => {
-    // Audit P0.9: extension runtime allowlist (mp4|webm) — NEM csak TS-tipus,
-    // mert az IPC bemenet untrusted; defenzív path-traversal karakterek kizarva.
-    const safeExt = validateRecordingExtension(extension);
-    const date = new Date().toISOString().slice(0, 10);
-    const safeId = sanitizeId(transactionId);
-    const dir = path.join(CAMERA_DIR, date, safeId);
-    fs.mkdirSync(dir, { recursive: true });
-    const filename = `recording_${Date.now()}.${safeExt}`;
-    const filepath = path.join(dir, filename);
-    fs.writeFileSync(filepath, Buffer.from(videoBuffer));
-    return filepath;
-  });
-
-  ipcMain.handle('camera-export-to-usb', async (
-    _event,
-    dateFrom: string,
-    dateTo: string,
-  ): Promise<{ success: boolean; exported: number; error?: string }> => {
-    const result = await dialog.showOpenDialog({
-      title: 'Válaszd ki az USB meghajtót',
-      properties: ['openDirectory'],
-      buttonLabel: 'Exportálás ide',
-    });
-
-    if (result.canceled || !result.filePaths[0]) {
-      return { success: false, exported: 0, error: 'Megszakítva' };
-    }
-
-    const from = new Date(dateFrom);
-    const to = new Date(dateTo);
-    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
-      return { success: false, exported: 0, error: 'Érvénytelen dátum' };
-    }
-    if (from > to) {
-      return { success: false, exported: 0, error: 'A dátumtartomány hibás' };
-    }
-
-    try {
-      const targetDir = path.join(result.filePaths[0], 'valuta_kamera_export');
-      fs.mkdirSync(targetDir, { recursive: true });
-
-      let exported = 0;
-      const dateDirs = listDirectories(CAMERA_DIR);
-      for (const dateDir of dateDirs) {
-        const dateValue = new Date(dateDir);
-        if (Number.isNaN(dateValue.getTime())) continue;
-        if (dateValue < from || dateValue > to) continue;
-
-        const sourceDir = path.join(CAMERA_DIR, dateDir);
-        const destinationDir = path.join(targetDir, dateDir);
-        exported += copyDirectoryWithCount(sourceDir, destinationDir);
-      }
-
-      return { success: true, exported };
-    } catch (err) {
-      return { success: false, exported: 0, error: `Írási hiba: ${(err as Error).message}` };
-    }
-  });
-
-  ipcMain.handle('camera-list-recordings', async (
-    _event,
-    transactionId?: string,
-  ): Promise<string[]> => {
-    if (!fs.existsSync(CAMERA_DIR)) return [];
-
-    if (transactionId) {
-      const recordings: string[] = [];
+  ipcMain.handle(
+    'camera-save-recording',
+    async (
+      _event,
+      transactionId: string,
+      videoBuffer: ArrayBuffer,
+      extension: string,
+    ): Promise<string> => {
+      // Audit P0.9: extension runtime allowlist (mp4|webm) — NEM csak TS-tipus,
+      // mert az IPC bemenet untrusted; defenzív path-traversal karakterek kizarva.
+      const safeExt = validateRecordingExtension(extension);
+      const date = new Date().toISOString().slice(0, 10);
       const safeId = sanitizeId(transactionId);
-      const dateDirs = listDirectories(CAMERA_DIR);
-      for (const dateDir of dateDirs) {
-        const candidateDir = path.join(CAMERA_DIR, dateDir, safeId);
-        recordings.push(...collectFiles(candidateDir));
-      }
-      return recordings;
-    }
+      const dir = path.join(CAMERA_DIR, date, safeId);
+      fs.mkdirSync(dir, { recursive: true });
+      const filename = `recording_${Date.now()}.${safeExt}`;
+      const filepath = path.join(dir, filename);
+      fs.writeFileSync(filepath, Buffer.from(videoBuffer));
+      return filepath;
+    },
+  );
 
-    return collectFiles(CAMERA_DIR);
-  });
+  ipcMain.handle(
+    'camera-export-to-usb',
+    async (
+      _event,
+      dateFrom: string,
+      dateTo: string,
+    ): Promise<{ success: boolean; exported: number; error?: string }> => {
+      const result = await dialog.showOpenDialog({
+        title: 'Válaszd ki az USB meghajtót',
+        properties: ['openDirectory'],
+        buttonLabel: 'Exportálás ide',
+      });
+
+      if (result.canceled || !result.filePaths[0]) {
+        return { success: false, exported: 0, error: 'Megszakítva' };
+      }
+
+      const from = new Date(dateFrom);
+      const to = new Date(dateTo);
+      if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+        return { success: false, exported: 0, error: 'Érvénytelen dátum' };
+      }
+      if (from > to) {
+        return { success: false, exported: 0, error: 'A dátumtartomány hibás' };
+      }
+
+      try {
+        const targetDir = path.join(result.filePaths[0], 'valuta_kamera_export');
+        fs.mkdirSync(targetDir, { recursive: true });
+
+        let exported = 0;
+        const dateDirs = listDirectories(CAMERA_DIR);
+        for (const dateDir of dateDirs) {
+          const dateValue = new Date(dateDir);
+          if (Number.isNaN(dateValue.getTime())) continue;
+          if (dateValue < from || dateValue > to) continue;
+
+          const sourceDir = path.join(CAMERA_DIR, dateDir);
+          const destinationDir = path.join(targetDir, dateDir);
+          exported += copyDirectoryWithCount(sourceDir, destinationDir);
+        }
+
+        return { success: true, exported };
+      } catch (err) {
+        return { success: false, exported: 0, error: `Írási hiba: ${(err as Error).message}` };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    'camera-list-recordings',
+    async (_event, transactionId?: string): Promise<string[]> => {
+      if (!fs.existsSync(CAMERA_DIR)) return [];
+
+      if (transactionId) {
+        const recordings: string[] = [];
+        const safeId = sanitizeId(transactionId);
+        const dateDirs = listDirectories(CAMERA_DIR);
+        for (const dateDir of dateDirs) {
+          const candidateDir = path.join(CAMERA_DIR, dateDir, safeId);
+          recordings.push(...collectFiles(candidateDir));
+        }
+        return recordings;
+      }
+
+      return collectFiles(CAMERA_DIR);
+    },
+  );
 
   ipcMain.handle('camera-local-storage-stats', async () => {
     if (!fs.existsSync(CAMERA_DIR)) {
-      return { totalUsageBytes: 0, availableSpaceBytes: 0, totalRecordings: 0, oldestDate: null, newestDate: null };
+      return {
+        totalUsageBytes: 0,
+        availableSpaceBytes: 0,
+        totalRecordings: 0,
+        oldestDate: null,
+        newestDate: null,
+      };
     }
 
     const totalUsageBytes = getDirSize(CAMERA_DIR);
@@ -187,92 +209,95 @@ export function registerCameraHandlers(): void {
     };
   });
 
-  ipcMain.handle('camera-local-recordings-by-date', async (
-    _event,
-    dateFrom: string,
-    dateTo: string,
-  ) => {
-    if (!fs.existsSync(CAMERA_DIR)) return [];
+  ipcMain.handle(
+    'camera-local-recordings-by-date',
+    async (_event, dateFrom: string, dateTo: string) => {
+      if (!fs.existsSync(CAMERA_DIR)) return [];
 
-    const from = new Date(dateFrom);
-    const to = new Date(dateTo);
-    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return [];
+      const from = new Date(dateFrom);
+      const to = new Date(dateTo);
+      if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return [];
 
-    const results: Array<{
-      date: string;
-      transactionId: string;
-      filePath: string;
-      fileSizeBytes: number;
-      createdAt: string;
-    }> = [];
+      const results: Array<{
+        date: string;
+        transactionId: string;
+        filePath: string;
+        fileSizeBytes: number;
+        createdAt: string;
+      }> = [];
 
-    const dateDirs = listDirectories(CAMERA_DIR);
-    for (const dateDir of dateDirs) {
-      const dirDate = new Date(dateDir);
-      if (Number.isNaN(dirDate.getTime())) continue;
-      if (dirDate < from || dirDate > to) continue;
+      const dateDirs = listDirectories(CAMERA_DIR);
+      for (const dateDir of dateDirs) {
+        const dirDate = new Date(dateDir);
+        if (Number.isNaN(dirDate.getTime())) continue;
+        if (dirDate < from || dirDate > to) continue;
 
-      const txDirs = listDirectories(path.join(CAMERA_DIR, dateDir));
-      for (const txDir of txDirs) {
-        const files = collectFiles(path.join(CAMERA_DIR, dateDir, txDir));
-        for (const filePath of files) {
-          try {
-            const stat = fs.statSync(filePath);
-            results.push({
-              date: dateDir,
-              transactionId: txDir,
-              filePath,
-              fileSizeBytes: stat.size,
-              createdAt: stat.birthtime.toISOString(),
-            });
-          } catch { /* skip */ }
+        const txDirs = listDirectories(path.join(CAMERA_DIR, dateDir));
+        for (const txDir of txDirs) {
+          const files = collectFiles(path.join(CAMERA_DIR, dateDir, txDir));
+          for (const filePath of files) {
+            try {
+              const stat = fs.statSync(filePath);
+              results.push({
+                date: dateDir,
+                transactionId: txDir,
+                filePath,
+                fileSizeBytes: stat.size,
+                createdAt: stat.birthtime.toISOString(),
+              });
+            } catch {
+              /* skip */
+            }
+          }
         }
       }
-    }
 
-    return results;
-  });
+      return results;
+    },
+  );
 
-  ipcMain.handle('camera-local-read-file', async (
-    _event,
-    filePath: string,
-  ): Promise<string | null> => {
-    // Audit P0.9 + Sourcery PR #355 follow-up: az `assertInsideBase` resolveol es
-    // visszaadja a normalizalt path-et — DRY.
-    let resolved: string;
-    try {
-      resolved = assertInsideBase(filePath, CAMERA_DIR, 'camera filePath');
-    } catch {
-      return null;
-    }
-    if (!fs.existsSync(resolved)) return null;
-    return fs.readFileSync(resolved).toString('base64');
-  });
-
-  ipcMain.handle('camera-local-cleanup', async (
-    _event,
-    retentionDays: number,
-  ): Promise<{ deletedCount: number }> => {
-    if (!fs.existsSync(CAMERA_DIR)) return { deletedCount: 0 };
-
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - retentionDays);
-    let deletedCount = 0;
-
-    for (const dateDir of listDirectories(CAMERA_DIR)) {
-      const dirDate = new Date(dateDir);
-      if (Number.isNaN(dirDate.getTime()) || dirDate >= cutoff) continue;
-
-      const dirPath = path.join(CAMERA_DIR, dateDir);
-      const fileCount = collectFiles(dirPath).length;
+  ipcMain.handle(
+    'camera-local-read-file',
+    async (_event, filePath: string): Promise<string | null> => {
+      // Audit P0.9 + Sourcery PR #355 follow-up: az `assertInsideBase` resolveol es
+      // visszaadja a normalizalt path-et — DRY.
+      let resolved: string;
       try {
-        fs.rmSync(dirPath, { recursive: true, force: true });
-        deletedCount += fileCount;
-      } catch { /* skip */ }
-    }
+        resolved = assertInsideBase(filePath, CAMERA_DIR, 'camera filePath');
+      } catch {
+        return null;
+      }
+      if (!fs.existsSync(resolved)) return null;
+      return fs.readFileSync(resolved).toString('base64');
+    },
+  );
 
-    return { deletedCount };
-  });
+  ipcMain.handle(
+    'camera-local-cleanup',
+    async (_event, retentionDays: number): Promise<{ deletedCount: number }> => {
+      if (!fs.existsSync(CAMERA_DIR)) return { deletedCount: 0 };
+
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - retentionDays);
+      let deletedCount = 0;
+
+      for (const dateDir of listDirectories(CAMERA_DIR)) {
+        const dirDate = new Date(dateDir);
+        if (Number.isNaN(dirDate.getTime()) || dirDate >= cutoff) continue;
+
+        const dirPath = path.join(CAMERA_DIR, dateDir);
+        const fileCount = collectFiles(dirPath).length;
+        try {
+          fs.rmSync(dirPath, { recursive: true, force: true });
+          deletedCount += fileCount;
+        } catch {
+          /* skip */
+        }
+      }
+
+      return { deletedCount };
+    },
+  );
 
   // ═══════════════════════════════════════════
   // RTSP IP kamera kezelés
@@ -281,43 +306,46 @@ export function registerCameraHandlers(): void {
   /**
    * RTSP kamerákat konfigurál és indítja a rögzítést.
    */
-  ipcMain.handle('camera-rtsp-start', async (
-    _event,
-    cameras: RtspCameraConfig[],
-    encryption?: { enabled: boolean; masterKeyBase64: string },
-  ): Promise<{ started: number; errors: string[] }> => {
-    const encConfig: EncryptionConfig = encryption ?? { enabled: false, masterKeyBase64: '' };
+  ipcMain.handle(
+    'camera-rtsp-start',
+    async (
+      _event,
+      cameras: RtspCameraConfig[],
+      encryption?: { enabled: boolean; masterKeyBase64: string },
+    ): Promise<{ started: number; errors: string[] }> => {
+      const encConfig: EncryptionConfig = encryption ?? { enabled: false, masterKeyBase64: '' };
 
-    if (rtspRecorder) {
-      rtspRecorder.stopAll();
-    }
-
-    rtspRecorder = new RtspRecorder(CAMERA_DIR, encConfig);
-    const errors: string[] = [];
-
-    // Szegmens események kezelése
-    rtspRecorder.on('segment-completed', (segment: RecordingSegment) => {
-      completedSegments.push(segment);
-      if (completedSegments.length > MAX_SEGMENT_HISTORY) {
-        completedSegments.splice(0, completedSegments.length - MAX_SEGMENT_HISTORY);
+      if (rtspRecorder) {
+        rtspRecorder.stopAll();
       }
-    });
 
-    rtspRecorder.on('segment-error', (cameraId: string, error: Error) => {
-      errors.push(`${cameraId}: ${error.message}`);
-    });
+      rtspRecorder = new RtspRecorder(CAMERA_DIR, encConfig);
+      const errors: string[] = [];
 
-    for (const cam of cameras) {
-      try {
-        rtspRecorder.addCamera(cam);
-      } catch (err) {
-        errors.push(`${cam.id}: ${(err as Error).message}`);
+      // Szegmens események kezelése
+      rtspRecorder.on('segment-completed', (segment: RecordingSegment) => {
+        completedSegments.push(segment);
+        if (completedSegments.length > MAX_SEGMENT_HISTORY) {
+          completedSegments.splice(0, completedSegments.length - MAX_SEGMENT_HISTORY);
+        }
+      });
+
+      rtspRecorder.on('segment-error', (cameraId: string, error: Error) => {
+        errors.push(`${cameraId}: ${error.message}`);
+      });
+
+      for (const cam of cameras) {
+        try {
+          rtspRecorder.addCamera(cam);
+        } catch (err) {
+          errors.push(`${cam.id}: ${(err as Error).message}`);
+        }
       }
-    }
 
-    rtspRecorder.startAll();
-    return { started: rtspRecorder.cameraCount, errors };
-  });
+      rtspRecorder.startAll();
+      return { started: rtspRecorder.cameraCount, errors };
+    },
+  );
 
   /**
    * RTSP rögzítés leállítása.
@@ -346,13 +374,13 @@ export function registerCameraHandlers(): void {
   /**
    * Befejezett szegmensek lekérdezése.
    */
-  ipcMain.handle('camera-rtsp-segments', async (
-    _event,
-    limit?: number,
-  ): Promise<RecordingSegment[]> => {
-    const n = limit ?? 50;
-    return completedSegments.slice(-n);
-  });
+  ipcMain.handle(
+    'camera-rtsp-segments',
+    async (_event, limit?: number): Promise<RecordingSegment[]> => {
+      const n = limit ?? 50;
+      return completedSegments.slice(-n);
+    },
+  );
 
   // ═══════════════════════════════════════════
   // Fájl titkosítás / visszafejtés IPC
@@ -361,45 +389,54 @@ export function registerCameraHandlers(): void {
   /**
    * Egyedi fájl titkosítása.
    */
-  ipcMain.handle('camera-encrypt-file', async (
-    _event,
-    plainPath: string,
-    encryptedPath: string,
-    config: EncryptionConfig,
-  ): Promise<{ nonce: string }> => {
-    const resolvedPlain = assertInsideBase(plainPath, CAMERA_DIR, 'camera plainPath');
-    const resolvedEnc = assertInsideBase(encryptedPath, CAMERA_DIR, 'camera encryptedPath');
-    const nonce = await encryptFile(resolvedPlain, resolvedEnc, config);
-    return { nonce };
-  });
+  ipcMain.handle(
+    'camera-encrypt-file',
+    async (
+      _event,
+      plainPath: string,
+      encryptedPath: string,
+      config: EncryptionConfig,
+    ): Promise<{ nonce: string }> => {
+      const resolvedPlain = assertInsideBase(plainPath, CAMERA_DIR, 'camera plainPath');
+      const resolvedEnc = assertInsideBase(encryptedPath, CAMERA_DIR, 'camera encryptedPath');
+      const nonce = await encryptFile(resolvedPlain, resolvedEnc, config);
+      return { nonce };
+    },
+  );
 
   /**
    * Titkosított fájl visszafejtése (lejátszáshoz, exporthoz).
    */
-  ipcMain.handle('camera-decrypt-file', async (
-    _event,
-    encryptedPath: string,
-    plainPath: string,
-    config: EncryptionConfig,
-  ): Promise<{ success: boolean }> => {
-    const resolvedEnc = assertInsideBase(encryptedPath, CAMERA_DIR, 'camera encryptedPath');
-    const resolvedPlain = assertInsideBase(plainPath, CAMERA_DIR, 'camera plainPath');
-    await decryptFile(resolvedEnc, resolvedPlain, config);
-    return { success: true };
-  });
+  ipcMain.handle(
+    'camera-decrypt-file',
+    async (
+      _event,
+      encryptedPath: string,
+      plainPath: string,
+      config: EncryptionConfig,
+    ): Promise<{ success: boolean }> => {
+      const resolvedEnc = assertInsideBase(encryptedPath, CAMERA_DIR, 'camera encryptedPath');
+      const resolvedPlain = assertInsideBase(plainPath, CAMERA_DIR, 'camera plainPath');
+      await decryptFile(resolvedEnc, resolvedPlain, config);
+      return { success: true };
+    },
+  );
 
   /**
    * Fájl integritás ellenőrzés (SHA-256).
    */
-  ipcMain.handle('camera-verify-hash', async (
-    _event,
-    filePath: string,
-    expectedHash: string,
-  ): Promise<{ valid: boolean; actualHash: string }> => {
-    const resolved = assertInsideBase(filePath, CAMERA_DIR, 'camera filePath');
-    const actualHash = computeFileHash(resolved);
-    return { valid: actualHash === expectedHash, actualHash };
-  });
+  ipcMain.handle(
+    'camera-verify-hash',
+    async (
+      _event,
+      filePath: string,
+      expectedHash: string,
+    ): Promise<{ valid: boolean; actualHash: string }> => {
+      const resolved = assertInsideBase(filePath, CAMERA_DIR, 'camera filePath');
+      const actualHash = computeFileHash(resolved);
+      return { valid: actualHash === expectedHash, actualHash };
+    },
+  );
 
   /**
    * Új titkosítási kulcs generálása.

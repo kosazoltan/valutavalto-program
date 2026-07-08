@@ -4,7 +4,13 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
-import { dailyBalanceGridApi, branchApi, currencyApi, type BranchInfo, type DailyBalanceGridRow } from '../../services/api/index'
+import {
+  dailyBalanceGridApi,
+  branchApi,
+  currencyApi,
+  type BranchInfo,
+  type DailyBalanceGridRow,
+} from '../../services/api/index'
 
 // FK-047: Napi ellenőrző lista — valutánkénti mérleg-grid a daily_balance (FK-046) pénztári
 // adataiból. A BANK+/BANK- és az értéktári SZÁMZÁR még nem áll rendelkezésre (jövőbeli FK-k);
@@ -114,7 +120,9 @@ export default function DailyCheckPage() {
     const order = activeCurrencies.length > 0 ? activeCurrencies : data.map((r) => r.currencyCode)
     const extra = data.map((r) => r.currencyCode).filter((c) => !order.includes(c))
     return [...order, ...extra].map(
-      (code) => byCode.get(code) ?? ({ currencyCode: code } as Partial<DailyBalanceGridRow> as DailyBalanceGridRow),
+      (code) =>
+        byCode.get(code) ??
+        ({ currencyCode: code } as Partial<DailyBalanceGridRow> as DailyBalanceGridRow),
     )
   }, [data, activeCurrencies])
 
@@ -158,7 +166,9 @@ export default function DailyCheckPage() {
             >
               <option value="">— válasszon —</option>
               {territories.map((tr) => (
-                <option key={tr.id} value={tr.id}>{tr.name}</option>
+                <option key={tr.id} value={tr.id}>
+                  {tr.name}
+                </option>
               ))}
             </select>
           </div>
@@ -166,10 +176,16 @@ export default function DailyCheckPage() {
         {unitMode === 'branch' && (
           <div>
             <label className="form-label">Pénztár</label>
-            <select className="form-input" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+            <select
+              className="form-input"
+              value={branchId}
+              onChange={(e) => setBranchId(e.target.value)}
+            >
               <option value="">— válasszon —</option>
               {cashierBranches.map((b) => (
-                <option key={b.id} value={b.id}>{b.code} — {b.name}</option>
+                <option key={b.id} value={b.id}>
+                  {b.code} — {b.name}
+                </option>
               ))}
             </select>
           </div>
@@ -181,7 +197,9 @@ export default function DailyCheckPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
       )}
 
       {data && (
@@ -189,7 +207,9 @@ export default function DailyCheckPage() {
           <h2 className="font-semibold mb-2">Valutánkénti mérleg — {date}</h2>
           {data.length === 0 && activeCurrencies.length === 0 ? (
             /* NFR-5: érthető, nem-hibaüzenet jellegű tájékoztatás */
-            <div className="text-center text-gray-500 py-4">Nincs adat a kiválasztott időszakra</div>
+            <div className="text-center text-gray-500 py-4">
+              Nincs adat a kiválasztott időszakra
+            </div>
           ) : (
             /* FR-7/NFR-1: .data-grid — a váltakozó sorszín (bg-gray-50 páratlan) az FK-050 közös CSS-ből jön */
             <table className="data-grid w-full text-sm" data-testid="daily-check-grid">
@@ -206,8 +226,12 @@ export default function DailyCheckPage() {
                   <th className="text-right">TÖBB</th>
                   <th className="text-right">HIÁNY</th>
                   {/* FR-4: BANK+/- még nincs egységes backend forrás — szürke fejléc, „–" cellák */}
-                  <th className="text-right text-gray-400" title="Hamarosan elérhető">BANK+</th>
-                  <th className="text-right text-gray-400" title="Hamarosan elérhető">BANK-</th>
+                  <th className="text-right text-gray-400" title="Hamarosan elérhető">
+                    BANK+
+                  </th>
+                  <th className="text-right text-gray-400" title="Hamarosan elérhető">
+                    BANK-
+                  </th>
                 </tr>
               </thead>
               <tbody>

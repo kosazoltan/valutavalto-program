@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import type { CustomerDisplayPayload } from '../../types/electron';
+import { useEffect, useState } from 'react'
+import type { CustomerDisplayPayload } from '../../types/electron'
 
 /**
  * VFD ügyfélkijelző oldal (P2-1).
@@ -14,42 +14,45 @@ import type { CustomerDisplayPayload } from '../../types/electron';
  * Hivatkozás: D:\valutavalto-vault\references\p2-features-design-2026-05-06.md
  */
 
-const TRANSACTION_TYPE_LABEL: Record<NonNullable<CustomerDisplayPayload['transactionType']>, string> = {
+const TRANSACTION_TYPE_LABEL: Record<
+  NonNullable<CustomerDisplayPayload['transactionType']>,
+  string
+> = {
   BUY: 'VÉTEL',
   SELL: 'ELADÁS',
   CONVERSION: 'KONVERZIÓ',
   STORNO: 'SZTORNÓ',
-};
+}
 
 function formatNumber(value: number | undefined, fractionDigits = 0): string {
-  if (value == null || Number.isNaN(value)) return '—';
+  if (value == null || Number.isNaN(value)) return '—'
   return new Intl.NumberFormat('hu-HU', {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
-  }).format(value);
+  }).format(value)
 }
 
 export default function CustomerDisplayPage() {
-  const [payload, setPayload] = useState<CustomerDisplayPayload | null>(null);
+  const [payload, setPayload] = useState<CustomerDisplayPayload | null>(null)
 
   useEffect(() => {
     // IPC listener regisztrálása a customer-display:update eseményre.
     // A `onUpdate` egy unsubscribe függvénnyel tér vissza, amit cleanup-ban hívunk.
-    const cd = window.electronAPI?.customerDisplay;
+    const cd = window.electronAPI?.customerDisplay
     if (!cd?.onUpdate) {
       // Web módban (NEM Electron) nincs IPC — a komponens demo/idle nézetet mutat.
-      return;
+      return
     }
     const unsubscribe = cd.onUpdate((p: CustomerDisplayPayload) => {
-      setPayload(p ?? null);
-    });
+      setPayload(p ?? null)
+    })
     return () => {
-      unsubscribe();
-    };
-  }, []);
+      unsubscribe()
+    }
+  }, [])
 
   // Idle (üdvözlő) képernyő — ha nincs aktív tranzakció
-  const isIdle = !payload || (!payload.transactionType && !payload.amount && !payload.totalHuf);
+  const isIdle = !payload || (!payload.transactionType && !payload.amount && !payload.totalHuf)
 
   if (isIdle) {
     return (
@@ -59,7 +62,7 @@ export default function CustomerDisplayPage() {
         </h1>
         <p className="text-3xl text-slate-300">Kérjük, lépjen a pénztárhoz</p>
       </div>
-    );
+    )
   }
 
   return (
@@ -78,7 +81,8 @@ export default function CustomerDisplayPage() {
           <div className="text-center">
             <p className="text-2xl uppercase tracking-widest text-slate-400">Összeg</p>
             <p className="mt-2 text-8xl font-bold">
-              {formatNumber(payload.amount, 2)} <span className="text-amber-300">{payload.currencyCode}</span>
+              {formatNumber(payload.amount, 2)}{' '}
+              <span className="text-amber-300">{payload.currencyCode}</span>
             </p>
           </div>
         )}
@@ -119,10 +123,8 @@ export default function CustomerDisplayPage() {
             </p>
           </>
         ) : null}
-        {payload.message && (
-          <p className="mt-6 text-3xl text-slate-300">{payload.message}</p>
-        )}
+        {payload.message && <p className="mt-6 text-3xl text-slate-300">{payload.message}</p>}
       </footer>
     </div>
-  );
+  )
 }

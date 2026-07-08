@@ -16,26 +16,21 @@ export type LogService = 'backend' | 'frontend' | 'penztar' | 'kozponti' | 'arfo
 export type LogEnv = 'dev' | 'staging' | 'prod'
 
 export type ErrorCategory =
-  | 'AML'
-  | 'BUSINESS'
-  | 'TECHNICAL'
-  | 'NETWORK'
-  | 'SECURITY'
-  | 'INTEGRATION'
+  'AML' | 'BUSINESS' | 'TECHNICAL' | 'NETWORK' | 'SECURITY' | 'INTEGRATION'
 
 export interface VVLogEntry {
   // === Kotelezo mezok ===
-  ts: string                    // ISO 8601, pl. "2026-05-18T12:34:56.789Z"
+  ts: string // ISO 8601, pl. "2026-05-18T12:34:56.789Z"
   level: LogLevel
   service: LogService
-  service_version: string       // pl. "2.5.57"
+  service_version: string // pl. "2.5.57"
   env: LogEnv
-  hostname: string              // OS hostname
-  message: string               // Rovid (< 200 char), human-readable
+  hostname: string // OS hostname
+  message: string // Rovid (< 200 char), human-readable
 
   // === Trace korrelacio (W3C TraceContext) ===
-  trace_id?: string             // 32-hex
-  span_id?: string              // 16-hex
+  trace_id?: string // 32-hex
+  span_id?: string // 16-hex
   parent_span_id?: string
 
   // === Uzleti kontextus ===
@@ -47,18 +42,18 @@ export interface VVLogEntry {
   client_context?: 'CASHIER' | 'TREASURY_HQ' | 'RFM' | 'ADMIN'
 
   // === Esemeny-specifikus ===
-  event_type?: string           // pl. "transaction.committed", "rate.published"
-  entity_type?: string          // pl. "Transaction", "Rate", "Receipt"
+  event_type?: string // pl. "transaction.committed", "rate.published"
+  entity_type?: string // pl. "Transaction", "Rate", "Receipt"
   entity_id?: string
   receipt_number?: string
   amount?: number
   currency?: string
 
   // === Hibakod (AI-olvashato) ===
-  error_code?: string           // pl. "VV-AML-001", lasd error-codes.yaml
+  error_code?: string // pl. "VV-AML-001", lasd error-codes.yaml
   error_category?: ErrorCategory
   error?: {
-    type: string                // exception class
+    type: string // exception class
     message: string
     stack?: string
     cause?: { type: string; message: string }
@@ -71,11 +66,11 @@ export interface VVLogEntry {
   http_path?: string
 
   // === Hashed PII (NEM nyers!) ===
-  customer_id_hash?: string     // SHA-256 hash, sosem nyers nev
+  customer_id_hash?: string // SHA-256 hash, sosem nyers nev
 
   // === AI hint (opcionalis) ===
   ai_hint?: string
-  related_logs?: string[]       // trace_id-k
+  related_logs?: string[] // trace_id-k
 
   // === Szabad attributumok (vigyazat a kardinalitassal!) ===
   attrs?: Record<string, unknown>
@@ -86,11 +81,11 @@ export interface VVLogEntry {
  * A `packages/shared-logging/error-codes.yaml` parse-olasanak eredmenye.
  */
 export interface ErrorCodeEntry {
-  name: string                  // ember-olvashato leiras
+  name: string // ember-olvashato leiras
   category: ErrorCategory
   level: LogLevel
-  user_impact?: string          // ami a felhasznalo lat
-  ai_fix_hint: string           // Claude Code-nak: hogyan javitsd
+  user_impact?: string // ami a felhasznalo lat
+  ai_fix_hint: string // Claude Code-nak: hogyan javitsd
 }
 
 export interface ErrorCodeCatalog {

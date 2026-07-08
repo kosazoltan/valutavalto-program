@@ -157,7 +157,9 @@ describe('SyncEngine — bootstrap password storage', () => {
     vi.mocked(safeStorage.decryptString).mockReturnValue('NewGlobalPass123');
     const engine = new SyncEngine();
 
-    const password = (engine as unknown as { getStoredBootstrapPassword(): string }).getStoredBootstrapPassword();
+    const password = (
+      engine as unknown as { getStoredBootstrapPassword(): string }
+    ).getStoredBootstrapPassword();
 
     expect(password).toBe('NewGlobalPass123');
     expect(safeStorage.decryptString).toHaveBeenCalledWith(Buffer.from(encrypted, 'base64'));
@@ -175,7 +177,9 @@ describe('SyncEngine — bootstrap password storage', () => {
     });
     const engine = new SyncEngine();
 
-    const password = (engine as unknown as { getStoredBootstrapPassword(): string }).getStoredBootstrapPassword();
+    const password = (
+      engine as unknown as { getStoredBootstrapPassword(): string }
+    ).getStoredBootstrapPassword();
 
     expect(password).toBe('legacy-fallback-pass');
     expect(mockedDeleteConfig).toHaveBeenCalledWith('bootstrap_password_encrypted');
@@ -225,9 +229,14 @@ describe('SyncEngine — syncAll', () => {
         customer_name: null,
         customer_document_number: null,
         customer_address: null,
-        denominations: null, source_of_funds: null, customer_is_pep: null, foreign_status: null, local_reference_number: 'LS-20260324-ABCD',
+        denominations: null,
+        source_of_funds: null,
+        customer_is_pep: null,
+        foreign_status: null,
+        local_reference_number: 'LS-20260324-ABCD',
         idempotency_key: 'key-1',
-        created_at: '2026-03-24 10:00:00',        synced: 0,
+        created_at: '2026-03-24 10:00:00',
+        synced: 0,
       },
     ]);
 
@@ -257,8 +266,20 @@ describe('SyncEngine — syncAll', () => {
     // `lines` JSON-nal. A sync EGY POST /transactions/buy-t kuld, a body-ban a `lines[]` tomb a
     // backend TransactionLineRequestDto alakjaban → aggregalt utvonal (egy AML-kapu, egy grant).
     const linesJson = JSON.stringify([
-      { currencyCode: 'EUR', banknoteCount: 100, customExchangeRate: 400, discountType: 0, foreignStatus: 'FOREIGN' },
-      { currencyCode: 'USD', banknoteCount: 50, customExchangeRate: 360, discountType: 0, foreignStatus: 'FOREIGN' },
+      {
+        currencyCode: 'EUR',
+        banknoteCount: 100,
+        customExchangeRate: 400,
+        discountType: 0,
+        foreignStatus: 'FOREIGN',
+      },
+      {
+        currencyCode: 'USD',
+        banknoteCount: 50,
+        customExchangeRate: 360,
+        discountType: 0,
+        foreignStatus: 'FOREIGN',
+      },
     ]);
     mockedGetPendingTransactions.mockReturnValue([
       {
@@ -276,11 +297,15 @@ describe('SyncEngine — syncAll', () => {
         customer_name: null,
         customer_document_number: null,
         customer_address: null,
-        denominations: null, source_of_funds: null, customer_is_pep: null, foreign_status: null,
+        denominations: null,
+        source_of_funds: null,
+        customer_is_pep: null,
+        foreign_status: null,
         lines: linesJson,
         local_reference_number: 'LV-20260604-ML01',
         idempotency_key: 'key-ml-7',
-        created_at: '2026-06-04 10:00:00', synced: 0,
+        created_at: '2026-06-04 10:00:00',
+        synced: 0,
       },
     ]);
 
@@ -300,8 +325,16 @@ describe('SyncEngine — syncAll', () => {
     const body = JSON.parse((fetchCall[1] as { body: string }).body);
     expect(Array.isArray(body.lines)).toBe(true);
     expect(body.lines).toHaveLength(2);
-    expect(body.lines[0]).toMatchObject({ currencyCode: 'EUR', banknoteCount: 100, customExchangeRate: 400 });
-    expect(body.lines[1]).toMatchObject({ currencyCode: 'USD', banknoteCount: 50, customExchangeRate: 360 });
+    expect(body.lines[0]).toMatchObject({
+      currencyCode: 'EUR',
+      banknoteCount: 100,
+      customExchangeRate: 400,
+    });
+    expect(body.lines[1]).toMatchObject({
+      currencyCode: 'USD',
+      banknoteCount: 50,
+      customExchangeRate: 360,
+    });
     // Egysoros mezok backward-compat: a fejlec az ELSO sor erteke marad.
     expect(body.currencyCode).toBe('EUR');
 
@@ -311,22 +344,52 @@ describe('SyncEngine — syncAll', () => {
   it('should handle auth errors and stop syncing', async () => {
     mockedGetPendingTransactions.mockReturnValue([
       {
-        id: 1, type: 'SELL', currency_code: 'EUR', foreign_amount: 100,
-        huf_amount: 40000, rounded_huf_amount: 40000, rate: 400,
-        handling_fee: null, discount_percent: null, customer_id: null,
-        customer_identifier: null, customer_name: null,
-        customer_document_number: null, customer_address: null,
-        denominations: null, source_of_funds: null, customer_is_pep: null, foreign_status: null, local_reference_number: 'LS-1', idempotency_key: 'k1',
-        created_at: '2026-03-24', synced: 0,
+        id: 1,
+        type: 'SELL',
+        currency_code: 'EUR',
+        foreign_amount: 100,
+        huf_amount: 40000,
+        rounded_huf_amount: 40000,
+        rate: 400,
+        handling_fee: null,
+        discount_percent: null,
+        customer_id: null,
+        customer_identifier: null,
+        customer_name: null,
+        customer_document_number: null,
+        customer_address: null,
+        denominations: null,
+        source_of_funds: null,
+        customer_is_pep: null,
+        foreign_status: null,
+        local_reference_number: 'LS-1',
+        idempotency_key: 'k1',
+        created_at: '2026-03-24',
+        synced: 0,
       },
       {
-        id: 2, type: 'BUY', currency_code: 'USD', foreign_amount: 50,
-        huf_amount: 18000, rounded_huf_amount: 18000, rate: 360,
-        handling_fee: null, discount_percent: null, customer_id: null,
-        customer_identifier: null, customer_name: null,
-        customer_document_number: null, customer_address: null,
-        denominations: null, source_of_funds: null, customer_is_pep: null, foreign_status: null, local_reference_number: 'LB-2', idempotency_key: 'k2',
-        created_at: '2026-03-24', synced: 0,
+        id: 2,
+        type: 'BUY',
+        currency_code: 'USD',
+        foreign_amount: 50,
+        huf_amount: 18000,
+        rounded_huf_amount: 18000,
+        rate: 360,
+        handling_fee: null,
+        discount_percent: null,
+        customer_id: null,
+        customer_identifier: null,
+        customer_name: null,
+        customer_document_number: null,
+        customer_address: null,
+        denominations: null,
+        source_of_funds: null,
+        customer_is_pep: null,
+        foreign_status: null,
+        local_reference_number: 'LB-2',
+        idempotency_key: 'k2',
+        created_at: '2026-03-24',
+        synced: 0,
       },
     ]);
 
@@ -351,13 +414,28 @@ describe('SyncEngine — syncAll', () => {
   it('should handle network errors and stop syncing', async () => {
     mockedGetPendingTransactions.mockReturnValue([
       {
-        id: 1, type: 'SELL', currency_code: 'EUR', foreign_amount: 100,
-        huf_amount: 40000, rounded_huf_amount: 40000, rate: 400,
-        handling_fee: null, discount_percent: null, customer_id: null,
-        customer_identifier: null, customer_name: null,
-        customer_document_number: null, customer_address: null,
-        denominations: null, source_of_funds: null, customer_is_pep: null, foreign_status: null, local_reference_number: 'LS-1', idempotency_key: 'k1',
-        created_at: '2026-03-24', synced: 0,
+        id: 1,
+        type: 'SELL',
+        currency_code: 'EUR',
+        foreign_amount: 100,
+        huf_amount: 40000,
+        rounded_huf_amount: 40000,
+        rate: 400,
+        handling_fee: null,
+        discount_percent: null,
+        customer_id: null,
+        customer_identifier: null,
+        customer_name: null,
+        customer_document_number: null,
+        customer_address: null,
+        denominations: null,
+        source_of_funds: null,
+        customer_is_pep: null,
+        foreign_status: null,
+        local_reference_number: 'LS-1',
+        idempotency_key: 'k1',
+        created_at: '2026-03-24',
+        synced: 0,
       },
     ]);
 
@@ -374,13 +452,28 @@ describe('SyncEngine — syncAll', () => {
   it('should return failure when no auth token provided and no stored token', async () => {
     mockedGetPendingTransactions.mockReturnValue([
       {
-        id: 1, type: 'SELL', currency_code: 'EUR', foreign_amount: 100,
-        huf_amount: 40000, rounded_huf_amount: 40000, rate: 400,
-        handling_fee: null, discount_percent: null, customer_id: null,
-        customer_identifier: null, customer_name: null,
-        customer_document_number: null, customer_address: null,
-        denominations: null, source_of_funds: null, customer_is_pep: null, foreign_status: null, local_reference_number: 'LS-1', idempotency_key: 'k1',
-        created_at: '2026-03-24', synced: 0,
+        id: 1,
+        type: 'SELL',
+        currency_code: 'EUR',
+        foreign_amount: 100,
+        huf_amount: 40000,
+        rounded_huf_amount: 40000,
+        rate: 400,
+        handling_fee: null,
+        discount_percent: null,
+        customer_id: null,
+        customer_identifier: null,
+        customer_name: null,
+        customer_document_number: null,
+        customer_address: null,
+        denominations: null,
+        source_of_funds: null,
+        customer_is_pep: null,
+        foreign_status: null,
+        local_reference_number: 'LS-1',
+        idempotency_key: 'k1',
+        created_at: '2026-03-24',
+        synced: 0,
       },
     ]);
 
@@ -423,7 +516,8 @@ describe('SyncEngine — syncAll', () => {
         note: null,
         local_reference_number: 'LC-10',
         idempotency_key: 'conv-key-1',
-        created_at: '2026-03-24',        synced: 0,
+        created_at: '2026-03-24',
+        synced: 0,
       },
     ]);
 
@@ -439,8 +533,8 @@ describe('SyncEngine — syncAll', () => {
     expect(mockedMarkConversionSynced).toHaveBeenCalledWith(10);
 
     // Find the conversion fetch call
-    const conversionCall = mockFetch.mock.calls.find(
-      (call) => (call[0] as string).includes('/transactions/conversion'),
+    const conversionCall = mockFetch.mock.calls.find((call) =>
+      (call[0] as string).includes('/transactions/conversion'),
     );
     expect(conversionCall).toBeDefined();
 
@@ -450,14 +544,28 @@ describe('SyncEngine — syncAll', () => {
   it('should send idempotency key in headers', async () => {
     mockedGetPendingTransactions.mockReturnValue([
       {
-        id: 1, type: 'BUY', currency_code: 'USD', foreign_amount: 200,
-        huf_amount: 72000, rounded_huf_amount: 72000, rate: 360,
-        handling_fee: null, discount_percent: null, customer_id: null,
-        customer_identifier: null, customer_name: null,
-        customer_document_number: null, customer_address: null,
-        denominations: null, source_of_funds: null, customer_is_pep: null, foreign_status: null, local_reference_number: 'LB-1',
+        id: 1,
+        type: 'BUY',
+        currency_code: 'USD',
+        foreign_amount: 200,
+        huf_amount: 72000,
+        rounded_huf_amount: 72000,
+        rate: 360,
+        handling_fee: null,
+        discount_percent: null,
+        customer_id: null,
+        customer_identifier: null,
+        customer_name: null,
+        customer_document_number: null,
+        customer_address: null,
+        denominations: null,
+        source_of_funds: null,
+        customer_is_pep: null,
+        foreign_status: null,
+        local_reference_number: 'LB-1',
         idempotency_key: 'my-idempotency-key-123',
-        created_at: '2026-03-24', synced: 0,
+        created_at: '2026-03-24',
+        synced: 0,
       },
     ]);
 
@@ -505,7 +613,9 @@ describe('SyncEngine — syncAll', () => {
         customer_address: 'Budapest, Fő u. 1.',
         denominations: null,
         source_of_funds: 'munkabér',
-        customer_is_pep: 0, foreign_status: null, local_reference_number: 'LB-PEP-001',
+        customer_is_pep: 0,
+        foreign_status: null,
+        local_reference_number: 'LB-PEP-001',
         idempotency_key: 'pep-test-key-001',
         created_at: '2026-04-05 10:00:00',
         synced: 0,
@@ -776,7 +886,10 @@ describe('SyncEngine — start/stop', () => {
 });
 
 // Helper: build a minimal pending transaction row
-function makeTx(id: number, overrides: Partial<ReturnType<typeof getPendingTransactions>[number]> = {}): ReturnType<typeof getPendingTransactions>[number] {
+function makeTx(
+  id: number,
+  overrides: Partial<ReturnType<typeof getPendingTransactions>[number]> = {},
+): ReturnType<typeof getPendingTransactions>[number] {
   return {
     id,
     type: 'SELL',
@@ -792,14 +905,22 @@ function makeTx(id: number, overrides: Partial<ReturnType<typeof getPendingTrans
     customer_name: null,
     customer_document_number: null,
     customer_address: null,
-    denominations: null, source_of_funds: null, customer_is_pep: null, foreign_status: null, local_reference_number: `LS-${id}`,
+    denominations: null,
+    source_of_funds: null,
+    customer_is_pep: null,
+    foreign_status: null,
+    local_reference_number: `LS-${id}`,
     idempotency_key: `ikey-${id}`,
-    created_at: '2026-03-31 10:00:00',    synced: 0,
+    created_at: '2026-03-31 10:00:00',
+    synced: 0,
     ...overrides,
   };
 }
 
-function makeStorno(id: number, overrides: Partial<ReturnType<typeof getPendingStornos>[number]> = {}): ReturnType<typeof getPendingStornos>[number] {
+function makeStorno(
+  id: number,
+  overrides: Partial<ReturnType<typeof getPendingStornos>[number]> = {},
+): ReturnType<typeof getPendingStornos>[number] {
   return {
     id,
     transaction_id: id * 10,
@@ -817,12 +938,16 @@ function makeStorno(id: number, overrides: Partial<ReturnType<typeof getPendingS
     customer_document_number: null,
     local_reference_number: `STORNO-${id}`,
     idempotency_key: `storno-ikey-${id}`,
-    created_at: '2026-03-31 10:00:00',    synced: 0,
+    created_at: '2026-03-31 10:00:00',
+    synced: 0,
     ...overrides,
   };
 }
 
-function makeHandoverOp(id: number, operation_type: 'GENERATE' | 'PRINT' | 'COMPLETE' = 'GENERATE'): ReturnType<typeof getPendingHandoverOperations>[number] {
+function makeHandoverOp(
+  id: number,
+  operation_type: 'GENERATE' | 'PRINT' | 'COMPLETE' = 'GENERATE',
+): ReturnType<typeof getPendingHandoverOperations>[number] {
   return {
     id,
     operation_type,
@@ -834,7 +959,8 @@ function makeHandoverOp(id: number, operation_type: 'GENERATE' | 'PRINT' | 'COMP
     note: null,
     local_reference_number: `HO-${id}`,
     idempotency_key: `ho-ikey-${id}`,
-    created_at: '2026-03-31 10:00:00',    synced: 0,
+    created_at: '2026-03-31 10:00:00',
+    synced: 0,
   };
 }
 
@@ -848,7 +974,8 @@ function makeDistribution(id: number): ReturnType<typeof getPendingDistributions
     note: null,
     local_reference_number: `DIST-${id}`,
     idempotency_key: `dist-ikey-${id}`,
-    created_at: '2026-03-31 10:00:00',    synced: 0,
+    created_at: '2026-03-31 10:00:00',
+    synced: 0,
   };
 }
 
@@ -861,7 +988,8 @@ function makeCollection(id: number): ReturnType<typeof getPendingCollections>[nu
     note: null,
     local_reference_number: `COL-${id}`,
     idempotency_key: `col-ikey-${id}`,
-    created_at: '2026-03-31 10:00:00',    synced: 0,
+    created_at: '2026-03-31 10:00:00',
+    synced: 0,
   };
 }
 
@@ -945,7 +1073,8 @@ describe('SyncEngine — duplikált idempotency-key (409 Conflict)', () => {
       makeTx(3),
     ]);
 
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({ ok: false, status: 409, statusText: 'Conflict' })
       .mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true }) });
     vi.stubGlobal('fetch', mockFetch);
@@ -993,7 +1122,9 @@ describe('SyncEngine — párhuzamos sync trigger (race condition)', () => {
 
     // Slow fetch — allows second sync to start while first is in-flight
     let resolveFirst: () => void;
-    const firstDone = new Promise<void>((resolve) => { resolveFirst = resolve; });
+    const firstDone = new Promise<void>((resolve) => {
+      resolveFirst = resolve;
+    });
 
     let callCount = 0;
     const mockFetch = vi.fn().mockImplementation(async () => {
@@ -1023,7 +1154,7 @@ describe('SyncEngine — párhuzamos sync trigger (race condition)', () => {
     expect(result1.failed).toBe(0);
     expect(result2.failed).toBe(0);
 
-    const markCalls = mockedMarkTransactionSynced.mock.calls.map(c => c[0]);
+    const markCalls = mockedMarkTransactionSynced.mock.calls.map((c) => c[0]);
     expect(markCalls).toHaveLength(2);
     expect(new Set(markCalls)).toEqual(new Set([1, 2]));
     expect(markCalls.filter((id) => id === 1)).toHaveLength(1);
@@ -1037,7 +1168,9 @@ describe('SyncEngine — párhuzamos sync trigger (race condition)', () => {
       .mockReturnValue([]);
 
     let resolveFirst: () => void;
-    const firstDone = new Promise<void>((resolve) => { resolveFirst = resolve; });
+    const firstDone = new Promise<void>((resolve) => {
+      resolveFirst = resolve;
+    });
 
     const mockFetch = vi.fn().mockImplementation(async () => {
       await firstDone;
@@ -1113,7 +1246,11 @@ describe('SyncEngine — részleges megszakítás (queue konzisztencia)', () => 
   it('should only mark successfully synced items; failed items remain in pending queue', async () => {
     // 5 transactions: #1,#2 succeed, #3 fails with network error (stops loop), #4,#5 never reached
     mockedGetPendingTransactions.mockReturnValue([
-      makeTx(1), makeTx(2), makeTx(3), makeTx(4), makeTx(5),
+      makeTx(1),
+      makeTx(2),
+      makeTx(3),
+      makeTx(4),
+      makeTx(5),
     ]);
 
     let callCount = 0;
@@ -1266,7 +1403,8 @@ describe('SyncEngine — storno pending → backend rollback (idempotens)', () =
     // 409 on storno means server already processed it — count as failed but do NOT re-queue
     mockedGetPendingStornos.mockReturnValue([makeStorno(2), makeStorno(3)]);
 
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({ ok: false, status: 409, statusText: 'Conflict' })
       .mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true }) });
     vi.stubGlobal('fetch', mockFetch);
@@ -1427,12 +1565,28 @@ describe('SyncEngine — P1.7 offline mode regression', () => {
     // Tegyunk be 1 pending tx-et — meg igy se kelljen hivni a fetch-et
     mockedGetPendingTransactions.mockReturnValue([
       {
-        id: 1, type: 'SELL', currency_code: 'EUR', foreign_amount: 100,
-        huf_amount: 40000, rounded_huf_amount: 40000, rate: 400, handling_fee: null,
-        discount_percent: null, customer_id: null, customer_identifier: null,
-        customer_name: null, customer_document_number: null, customer_address: null,
-        denominations: null, source_of_funds: null, customer_is_pep: null, foreign_status: null, local_reference_number: 'LS-X', idempotency_key: 'k1',
-        created_at: '2026-03-24 10:00:00', synced: 0,
+        id: 1,
+        type: 'SELL',
+        currency_code: 'EUR',
+        foreign_amount: 100,
+        huf_amount: 40000,
+        rounded_huf_amount: 40000,
+        rate: 400,
+        handling_fee: null,
+        discount_percent: null,
+        customer_id: null,
+        customer_identifier: null,
+        customer_name: null,
+        customer_document_number: null,
+        customer_address: null,
+        denominations: null,
+        source_of_funds: null,
+        customer_is_pep: null,
+        foreign_status: null,
+        local_reference_number: 'LS-X',
+        idempotency_key: 'k1',
+        created_at: '2026-03-24 10:00:00',
+        synced: 0,
       },
     ] as unknown as ReturnType<typeof mockedGetPendingTransactions>);
 
@@ -1450,11 +1604,13 @@ describe('SyncEngine — P1.7 offline mode regression', () => {
 
   it('server_url config ures string esetén NEM spamel fetch-et', async () => {
     mockedGetConfig.mockImplementation((key: string) => {
-      if (key === 'server_url') return '   ';  // whitespace-only
+      if (key === 'server_url') return '   '; // whitespace-only
       if (key === 'auth_token') return 'test-token-123';
       return null;
     });
-    mockedGetPendingTransactions.mockReturnValue([] as ReturnType<typeof mockedGetPendingTransactions>);
+    mockedGetPendingTransactions.mockReturnValue(
+      [] as ReturnType<typeof mockedGetPendingTransactions>,
+    );
 
     const result = await engine.syncAll('test-token');
 
@@ -1468,7 +1624,9 @@ describe('SyncEngine — P1.7 offline mode regression', () => {
       if (key === 'server_url') return null;
       return null;
     });
-    mockedGetPendingTransactions.mockReturnValue([] as ReturnType<typeof mockedGetPendingTransactions>);
+    mockedGetPendingTransactions.mockReturnValue(
+      [] as ReturnType<typeof mockedGetPendingTransactions>,
+    );
 
     const result = await engine.syncAll('test-token');
 
@@ -1525,7 +1683,9 @@ describe('SyncEngine — re-assert (RPO védőháló)', () => {
       syncedTx(1, 'idem-1'),
       syncedTx(2, 'idem-2'),
     ]);
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true }) });
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true }) });
     vi.stubGlobal('fetch', mockFetch);
 
     const count = await (engine as unknown as ReassertAccess).reassertRecentSynced(

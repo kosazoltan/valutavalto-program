@@ -21,7 +21,14 @@ type FormState = {
   zipCode: string
 }
 
-const INITIAL: FormState = { code: '', address: '', regionCode: '', name: '', city: '', zipCode: '' }
+const INITIAL: FormState = {
+  code: '',
+  address: '',
+  regionCode: '',
+  name: '',
+  city: '',
+  zipCode: '',
+}
 
 export default function NewCashierBranchPage() {
   const navigate = useNavigate()
@@ -34,7 +41,8 @@ export default function NewCashierBranchPage() {
 
   useEffect(() => {
     let active = true
-    dictionaryApi.getByCategory('REGION')
+    dictionaryApi
+      .getByCategory('REGION')
       .then((list) => {
         if (!active) return
         // IRODA = központi iroda kategória, nem terület → kihagyjuk a pénztár-régió-választóból.
@@ -45,8 +53,12 @@ export default function NewCashierBranchPage() {
         logger.error('NewCashierBranchPage', 'Region-lista betöltési hiba:', err)
         setError(getErrorMessage(err))
       })
-      .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
   }, [])
 
   const patch = (values: Partial<FormState>) => setForm((current) => ({ ...current, ...values }))
@@ -69,7 +81,9 @@ export default function NewCashierBranchPage() {
         city: form.city.trim() || undefined,
         zipCode: form.zipCode.trim() || undefined,
       })
-      setSuccess(`A(z) "${created.code}" pénztár sikeresen felrögzítve a(z) ${form.regionCode} területhez.`)
+      setSuccess(
+        `A(z) "${created.code}" pénztár sikeresen felrögzítve a(z) ${form.regionCode} területhez.`,
+      )
       setForm(INITIAL)
     } catch (err) {
       logger.error('NewCashierBranchPage', 'Pénztár-felrögzítési hiba:', err)
@@ -88,15 +102,19 @@ export default function NewCashierBranchPage() {
           <Building2 />
           Új pénztár felrögzítése
         </h1>
-        <button type="button" onClick={() => navigate(-1)} className="form-button-secondary flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="form-button-secondary flex items-center gap-2"
+        >
           <ArrowLeft size={16} /> Vissza
         </button>
       </div>
 
       <p className="text-sm text-gray-600">
         Ha új lakossági pénztár (iroda) nyílik a területéhez tartozóan, itt rögzítheti fel a
-        rendszerbe. A felrögzítés után a pénztár automatikusan megjelenik a területi szűrt
-        listákban — pl. az „Átadás-átvétel" képernyő Kérő / Cél iroda legördülőjében.
+        rendszerbe. A felrögzítés után a pénztár automatikusan megjelenik a területi szűrt listákban
+        — pl. az „Átadás-átvétel" képernyő Kérő / Cél iroda legördülőjében.
       </p>
 
       {error && (
@@ -114,7 +132,9 @@ export default function NewCashierBranchPage() {
       <form onSubmit={submit} className="form-panel space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="block">
-            <span className="form-label">Pénztár száma / azonosítója <span className="text-red-600">*</span></span>
+            <span className="form-label">
+              Pénztár száma / azonosítója <span className="text-red-600">*</span>
+            </span>
             <input
               type="text"
               className="form-input uppercase"
@@ -124,7 +144,9 @@ export default function NewCashierBranchPage() {
               onChange={(e) => patch({ code: e.target.value.toUpperCase() })}
               maxLength={20}
             />
-            <span className="text-xs text-gray-500">Csak nagybetűk és számok (pl. BR099, TESCO12). Egyedi a rendszerben.</span>
+            <span className="text-xs text-gray-500">
+              Csak nagybetűk és számok (pl. BR099, TESCO12). Egyedi a rendszerben.
+            </span>
           </label>
           <label className="block">
             <span className="form-label">Megjelenítendő név (opcionális)</span>
@@ -137,10 +159,14 @@ export default function NewCashierBranchPage() {
               onChange={(e) => patch({ name: e.target.value })}
               maxLength={255}
             />
-            <span className="text-xs text-gray-500">Ha üresen hagyja, a rendszer „Pénztár &lt;kód&gt;" formára generálja.</span>
+            <span className="text-xs text-gray-500">
+              Ha üresen hagyja, a rendszer „Pénztár &lt;kód&gt;" formára generálja.
+            </span>
           </label>
           <label className="block md:col-span-2">
-            <span className="form-label">Pénztár pontos címe <span className="text-red-600">*</span></span>
+            <span className="form-label">
+              Pénztár pontos címe <span className="text-red-600">*</span>
+            </span>
             <input
               type="text"
               className="form-input"
@@ -152,7 +178,9 @@ export default function NewCashierBranchPage() {
             />
           </label>
           <label className="block">
-            <span className="form-label">Terület / Régió hozzárendelése <span className="text-red-600">*</span></span>
+            <span className="form-label">
+              Terület / Régió hozzárendelése <span className="text-red-600">*</span>
+            </span>
             <select
               className="form-input"
               value={form.regionCode}
@@ -161,10 +189,14 @@ export default function NewCashierBranchPage() {
             >
               <option value="">{loading ? 'Régiók betöltése…' : '— válasszon területet —'}</option>
               {regions.map((r) => (
-                <option key={r.id} value={r.code}>{r.nameHu || r.name}</option>
+                <option key={r.id} value={r.code}>
+                  {r.nameHu || r.name}
+                </option>
               ))}
             </select>
-            <span className="text-xs text-gray-500">A pénztárt ez a területhez (értéktárhoz) köti.</span>
+            <span className="text-xs text-gray-500">
+              A pénztárt ez a területhez (értéktárhoz) köti.
+            </span>
           </label>
           <label className="block">
             <span className="form-label">Város (opcionális)</span>
@@ -194,8 +226,13 @@ export default function NewCashierBranchPage() {
           </label>
         </div>
         <div className="flex justify-end">
-          <button type="submit" className="form-button-primary flex items-center gap-2" disabled={disabled}>
-            <Save size={16} />{saving ? 'Mentés…' : 'Pénztár felrögzítése'}
+          <button
+            type="submit"
+            className="form-button-primary flex items-center gap-2"
+            disabled={disabled}
+          >
+            <Save size={16} />
+            {saving ? 'Mentés…' : 'Pénztár felrögzítése'}
           </button>
         </div>
       </form>

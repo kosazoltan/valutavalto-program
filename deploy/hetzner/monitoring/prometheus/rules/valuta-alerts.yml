@@ -5,38 +5,38 @@ groups:
       - alert: BackendDown
         expr: up{job="valuta-backend"} == 0
         for: 2m
-        labels: {severity: critical}
+        labels: { severity: critical }
         annotations:
-          summary: "Valuta backend down"
-          description: "Spring Boot 2 percen tul nem valaszol"
+          summary: 'Valuta backend down'
+          description: 'Spring Boot 2 percen tul nem valaszol'
 
       - alert: HighErrorRate
         expr: rate(http_server_requests_seconds_count{status=~"5..",job="valuta-backend"}[5m]) > 0.1
         for: 5m
-        labels: {severity: warning}
+        labels: { severity: warning }
         annotations:
-          summary: "5xx hibaarany > 10%"
+          summary: '5xx hibaarany > 10%'
 
       - alert: HighP95Latency
         expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{job="valuta-backend"}[5m])) > 2
         for: 10m
-        labels: {severity: warning}
+        labels: { severity: warning }
         annotations:
-          summary: "P95 latencia > 2s"
+          summary: 'P95 latencia > 2s'
 
       - alert: JvmHeapPressure
         expr: (jvm_memory_used_bytes{area="heap",job="valuta-backend"} / jvm_memory_max_bytes{area="heap",job="valuta-backend"}) > 0.85
         for: 5m
-        labels: {severity: warning}
+        labels: { severity: warning }
         annotations:
-          summary: "JVM heap > 85%"
+          summary: 'JVM heap > 85%'
 
       - alert: HikariPoolExhausted
         expr: hikaricp_connections_active{job="valuta-backend"} / hikaricp_connections_max{job="valuta-backend"} > 0.9
         for: 3m
-        labels: {severity: critical}
+        labels: { severity: critical }
         annotations:
-          summary: "HikariCP connection pool 90% felett"
+          summary: 'HikariCP connection pool 90% felett'
 
   - name: infrastructure
     interval: 30s
@@ -44,20 +44,20 @@ groups:
       - alert: HostHighCpu
         expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
         for: 10m
-        labels: {severity: warning}
+        labels: { severity: warning }
         annotations:
-          summary: "CPU > 85% 10 perc"
+          summary: 'CPU > 85% 10 perc'
 
       - alert: HostLowDisk
         expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.10
         for: 5m
-        labels: {severity: critical}
+        labels: { severity: critical }
         annotations:
-          summary: "Root disk < 10% szabad"
+          summary: 'Root disk < 10% szabad'
 
       - alert: PostgresDown
         expr: pg_up == 0
         for: 2m
-        labels: {severity: critical}
+        labels: { severity: critical }
         annotations:
-          summary: "PostgreSQL le van allva"
+          summary: 'PostgreSQL le van allva'

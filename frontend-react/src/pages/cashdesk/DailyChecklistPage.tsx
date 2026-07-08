@@ -1,5 +1,13 @@
 import { useState, useCallback, useEffect } from 'react'
-import { ClipboardCheck, Calendar, CheckCircle, Circle, AlertTriangle, Send, MonitorCheck } from 'lucide-react'
+import {
+  ClipboardCheck,
+  Calendar,
+  CheckCircle,
+  Circle,
+  AlertTriangle,
+  Send,
+  MonitorCheck,
+} from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -81,31 +89,34 @@ export default function DailyChecklistPage() {
   const [editingNote, setEditingNote] = useState<number | null>(null)
   const [noteText, setNoteText] = useState('')
 
-  const mapChecklist = useCallback((data: BackendDailyChecklist): DailyChecklist => {
-    const branch = branches.find((b) => b.id === data.branchId)
-    const items: ChecklistItem[] = (data.items ?? []).map((item) => ({
-      itemNumber: item.itemNumber,
-      title: item.itemTitle,
-      description: item.itemDescription,
-      category: 'Napi ellenőrzés',
-      isCompleted: item.checked,
-      completedAt: item.checkedAt,
-      completedBy: item.checkedByWorkerId ? String(item.checkedByWorkerId) : undefined,
-      note: item.notes,
-      isMandatory: true,
-    }))
-    return {
-      id: data.id,
-      branchId: data.branchId,
-      branchName: branch?.name ?? worker?.branchName ?? data.branchId,
-      date: data.checklistDate,
-      status: data.status,
-      items,
-      completedCount: items.filter((item) => item.isCompleted).length,
-      totalCount: items.length,
-      completedAt: data.completedAt,
-    }
-  }, [branches, worker?.branchName])
+  const mapChecklist = useCallback(
+    (data: BackendDailyChecklist): DailyChecklist => {
+      const branch = branches.find((b) => b.id === data.branchId)
+      const items: ChecklistItem[] = (data.items ?? []).map((item) => ({
+        itemNumber: item.itemNumber,
+        title: item.itemTitle,
+        description: item.itemDescription,
+        category: 'Napi ellenőrzés',
+        isCompleted: item.checked,
+        completedAt: item.checkedAt,
+        completedBy: item.checkedByWorkerId ? String(item.checkedByWorkerId) : undefined,
+        note: item.notes,
+        isMandatory: true,
+      }))
+      return {
+        id: data.id,
+        branchId: data.branchId,
+        branchName: branch?.name ?? worker?.branchName ?? data.branchId,
+        date: data.checklistDate,
+        status: data.status,
+        items,
+        completedCount: items.filter((item) => item.isCompleted).length,
+        totalCount: items.length,
+        completedAt: data.completedAt,
+      }
+    },
+    [branches, worker?.branchName],
+  )
 
   const loadBranches = useCallback(async () => {
     try {
@@ -138,7 +149,10 @@ export default function DailyChecklistPage() {
       const pairs = await Promise.all(
         branches.map(async (branch) => {
           try {
-            const status = await dailyChecklistApi.status(branch.id, date) as BranchChecklistStatus
+            const status = (await dailyChecklistApi.status(
+              branch.id,
+              date,
+            )) as BranchChecklistStatus
             return [branch.id, status] as const
           } catch {
             return [branch.id, { branchId: branch.id, date, completed: false }] as const
@@ -152,11 +166,14 @@ export default function DailyChecklistPage() {
   }, [branches, date])
 
   const loadChecklist = useCallback(async () => {
-    if (!branchId) { toast.warning('Fiók szükséges'); return }
+    if (!branchId) {
+      toast.warning('Fiók szükséges')
+      return
+    }
     try {
       setLoading(true)
       setError(null)
-      const data = await dailyChecklistApi.get(branchId, date) as BackendDailyChecklist
+      const data = (await dailyChecklistApi.get(branchId, date)) as BackendDailyChecklist
       setChecklist(mapChecklist(data))
       await loadOverview()
     } catch (err) {
@@ -168,8 +185,12 @@ export default function DailyChecklistPage() {
     }
   }, [branchId, date, loadOverview, mapChecklist])
 
-  useEffect(() => { void loadBranches() }, [loadBranches])
-  useEffect(() => { void loadOverview() }, [loadOverview])
+  useEffect(() => {
+    void loadBranches()
+  }, [loadBranches])
+  useEffect(() => {
+    void loadOverview()
+  }, [loadOverview])
 
   const handleToggleItem = async (itemNumber: number, completed: boolean) => {
     if (!checklist) return
@@ -188,7 +209,7 @@ export default function DailyChecklistPage() {
 
   const handleComplete = async () => {
     if (!checklist) return
-    const mandatoryPending = checklist.items.filter(i => i.isMandatory && !i.isCompleted)
+    const mandatoryPending = checklist.items.filter((i) => i.isMandatory && !i.isCompleted)
     if (mandatoryPending.length > 0) {
       toast.error('Hiányzó kötelező pontok', `${mandatoryPending.length} kötelező pont nincs kész`)
       return
@@ -209,7 +230,12 @@ export default function DailyChecklistPage() {
     switch (status) {
       case 'COMPLETED':
       case 'SUBMITTED':
-        return <span className="badge badge-green"><CheckCircle size={10} className="inline" />{t('archiving.kesz')}</span>
+        return (
+          <span className="badge badge-green">
+            <CheckCircle size={10} className="inline" />
+            {t('archiving.kesz')}
+          </span>
+        )
       case 'IN_PROGRESS':
         return <span className="badge badge-blue">{t('common.inProgress')}</span>
       default:
@@ -217,18 +243,24 @@ export default function DailyChecklistPage() {
     }
   }
 
-  const progressPct = checklist ? Math.round((checklist.completedCount / Math.max(1, checklist.totalCount)) * 100) : 0
+  const progressPct = checklist
+    ? Math.round((checklist.completedCount / Math.max(1, checklist.totalCount)) * 100)
+    : 0
 
   // Group by category
-  const categories = checklist ? [...new Set(checklist.items.map(i => i.category))] : []
+  const categories = checklist ? [...new Set(checklist.items.map((i) => i.category))] : []
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><ClipboardCheck />{t('cashdesk.napiEllenorzesiLista')}</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <ClipboardCheck />
+          {t('cashdesk.napiEllenorzesiLista')}
+        </h1>
         {checklist && checklist.status !== 'COMPLETED' && checklist.status !== 'SUBMITTED' && (
           <button onClick={handleComplete} className="form-button-primary">
-            <Send size={16} />{t('cashdesk.listaLezarasa')}
+            <Send size={16} />
+            {t('cashdesk.listaLezarasa')}
           </button>
         )}
       </div>
@@ -240,7 +272,11 @@ export default function DailyChecklistPage() {
               <MonitorCheck size={16} />
               Központi státusz
             </div>
-            <button onClick={() => void loadOverview()} disabled={overviewLoading} className="form-button text-xs">
+            <button
+              onClick={() => void loadOverview()}
+              disabled={overviewLoading}
+              className="form-button text-xs"
+            >
               {overviewLoading ? 'Frissítés...' : 'Státusz frissítés'}
             </button>
           </div>
@@ -252,16 +288,25 @@ export default function DailyChecklistPage() {
                 <button
                   key={branch.id}
                   type="button"
-                  onClick={() => { setBranchId(branch.id); setChecklist(null) }}
+                  onClick={() => {
+                    setBranchId(branch.id)
+                    setChecklist(null)
+                  }}
                   className={`rounded border p-2 text-left text-xs transition ${
-                    selected ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'
+                    selected
+                      ? 'border-blue-400 bg-blue-50'
+                      : 'border-gray-200 bg-white hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold text-gray-900">{branch.name}</span>
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                      status?.completed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                    }`}>
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                        status?.completed
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}
+                    >
                       {status?.completed ? 'kész' : 'hiányzik'}
                     </span>
                   </div>
@@ -277,10 +322,20 @@ export default function DailyChecklistPage() {
       <div className="form-panel flex gap-3 items-end">
         <div>
           <label className="form-label">Fiók</label>
-          <select className="form-input min-w-[260px]" value={branchId} onChange={e => { setBranchId(e.target.value); setChecklist(null) }}>
+          <select
+            className="form-input min-w-[260px]"
+            value={branchId}
+            onChange={(e) => {
+              setBranchId(e.target.value)
+              setChecklist(null)
+            }}
+          >
             <option value="">{t('export.valassz')}</option>
-            {branches.map(branch => (
-              <option key={branch.id} value={branch.id}>{branch.name}{branch.code ? ` (${branch.code})` : ''}</option>
+            {branches.map((branch) => (
+              <option key={branch.id} value={branch.id}>
+                {branch.name}
+                {branch.code ? ` (${branch.code})` : ''}
+              </option>
             ))}
           </select>
         </div>
@@ -288,16 +343,27 @@ export default function DailyChecklistPage() {
           <label className="form-label">{t('common.date')}</label>
           <div className="flex items-center gap-1">
             <Calendar size={16} className="text-gray-400" />
-            <input className="form-input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+            <input
+              className="form-input"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
         </div>
-        <button onClick={() => void loadChecklist()} disabled={loading} className="form-button-primary">
+        <button
+          onClick={() => void loadChecklist()}
+          disabled={loading}
+          className="form-button-primary"
+        >
           {loading ? 'Betöltés...' : 'Betöltés'}
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
       )}
 
       {checklist && (
@@ -307,9 +373,13 @@ export default function DailyChecklistPage() {
             <div className="flex justify-between items-center mb-2">
               <div className="flex gap-2 items-center">
                 {getStatusBadge(checklist.status)}
-                <span className="text-sm text-gray-500">{checklist.branchName} — {checklist.date}</span>
+                <span className="text-sm text-gray-500">
+                  {checklist.branchName} — {checklist.date}
+                </span>
               </div>
-              <span className="font-mono text-sm">{checklist.completedCount}/{checklist.totalCount} ({progressPct}%)</span>
+              <span className="font-mono text-sm">
+                {checklist.completedCount}/{checklist.totalCount} ({progressPct}%)
+              </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
               <div
@@ -320,71 +390,121 @@ export default function DailyChecklistPage() {
           </div>
 
           {/* Items by category */}
-          {categories.map(cat => (
+          {categories.map((cat) => (
             <div key={cat} className="form-panel">
               <h2 className="font-semibold mb-2">{cat || 'Általános'}</h2>
               <div className="space-y-2">
-                {checklist.items.filter(i => i.category === cat).map(item => (
-                  <div key={item.itemNumber} className={`flex items-start gap-3 p-2 rounded ${item.isCompleted ? 'bg-green-50' : item.isMandatory ? 'bg-yellow-50' : 'bg-white'}`}>
-                    <button
-                      onClick={() => handleToggleItem(item.itemNumber, !item.isCompleted)}
-                      disabled={checklist.status === 'COMPLETED' || checklist.status === 'SUBMITTED'}
-                      className="mt-0.5 flex-shrink-0"
+                {checklist.items
+                  .filter((i) => i.category === cat)
+                  .map((item) => (
+                    <div
+                      key={item.itemNumber}
+                      className={`flex items-start gap-3 p-2 rounded ${item.isCompleted ? 'bg-green-50' : item.isMandatory ? 'bg-yellow-50' : 'bg-white'}`}
                     >
-                      {item.isCompleted ? (
-                        <CheckCircle size={20} className="text-green-600" />
-                      ) : (
-                        <Circle size={20} className="text-gray-300 hover:text-blue-400" />
-                      )}
-                    </button>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`font-medium ${item.isCompleted ? 'line-through text-gray-400' : ''}`}>{item.title}</span>
-                        {item.isMandatory && !item.isCompleted && (
-                          <span className="badge badge-red text-xs">{t('cashdesk.kotelezo')}</span>
+                      <button
+                        onClick={() => handleToggleItem(item.itemNumber, !item.isCompleted)}
+                        disabled={
+                          checklist.status === 'COMPLETED' || checklist.status === 'SUBMITTED'
+                        }
+                        className="mt-0.5 flex-shrink-0"
+                      >
+                        {item.isCompleted ? (
+                          <CheckCircle size={20} className="text-green-600" />
+                        ) : (
+                          <Circle size={20} className="text-gray-300 hover:text-blue-400" />
+                        )}
+                      </button>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`font-medium ${item.isCompleted ? 'line-through text-gray-400' : ''}`}
+                          >
+                            {item.title}
+                          </span>
+                          {item.isMandatory && !item.isCompleted && (
+                            <span className="badge badge-red text-xs">
+                              {t('cashdesk.kotelezo')}
+                            </span>
+                          )}
+                        </div>
+                        {item.description && (
+                          <div className="text-sm text-gray-500">{item.description}</div>
+                        )}
+                        {item.isCompleted && item.completedAt && (
+                          <div className="text-xs text-gray-400 mt-1">
+                            {t('cashdesk.kesz')}
+                            {new Date(item.completedAt).toLocaleString('hu-HU')}{' '}
+                            {item.completedBy ? `(${item.completedBy})` : ''}
+                          </div>
+                        )}
+                        {item.note && (
+                          <div className="text-xs text-blue-600 mt-1">
+                            {t('cashdesk.megjegyzes')} {item.note}
+                          </div>
+                        )}
+                        {/* Note edit */}
+                        {editingNote === item.itemNumber ? (
+                          <div className="flex gap-1 mt-1">
+                            <input
+                              className="form-input text-xs flex-1"
+                              value={noteText}
+                              onChange={(e) => setNoteText(e.target.value)}
+                              placeholder="Megjegyzés..."
+                            />
+                            <button
+                              onClick={() => {
+                                void handleToggleItem(item.itemNumber, item.isCompleted)
+                                setEditingNote(null)
+                              }}
+                              className="form-button text-xs"
+                            >
+                              OK
+                            </button>
+                            <button
+                              onClick={() => setEditingNote(null)}
+                              className="form-button text-xs"
+                            >
+                              X
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setEditingNote(item.itemNumber)
+                              setNoteText(item.note || '')
+                            }}
+                            className="text-xs text-blue-500 hover:underline mt-1"
+                          >
+                            {item.note ? 'Szerkesztés' : '+ Megjegyzés'}
+                          </button>
                         )}
                       </div>
-                      {item.description && <div className="text-sm text-gray-500">{item.description}</div>}
-                      {item.isCompleted && item.completedAt && (
-                        <div className="text-xs text-gray-400 mt-1">
-                          {t('cashdesk.kesz')}{new Date(item.completedAt).toLocaleString('hu-HU')} {item.completedBy ? `(${item.completedBy})` : ''}
-                        </div>
-                      )}
-                      {item.note && <div className="text-xs text-blue-600 mt-1">{t('cashdesk.megjegyzes')} {item.note}</div>}
-                      {/* Note edit */}
-                      {editingNote === item.itemNumber ? (
-                        <div className="flex gap-1 mt-1">
-                          <input className="form-input text-xs flex-1" value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Megjegyzés..." />
-                          <button onClick={() => { void handleToggleItem(item.itemNumber, item.isCompleted); setEditingNote(null) }} className="form-button text-xs">OK</button>
-                          <button onClick={() => setEditingNote(null)} className="form-button text-xs">X</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => { setEditingNote(item.itemNumber); setNoteText(item.note || '') }} className="text-xs text-blue-500 hover:underline mt-1">
-                          {item.note ? 'Szerkesztés' : '+ Megjegyzés'}
-                        </button>
-                      )}
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           ))}
 
           {/* Mandatory warnings */}
-          {checklist.status !== 'COMPLETED' && checklist.status !== 'SUBMITTED' && (
+          {checklist.status !== 'COMPLETED' &&
+            checklist.status !== 'SUBMITTED' &&
             (() => {
-              const pending = checklist.items.filter(i => i.isMandatory && !i.isCompleted)
+              const pending = checklist.items.filter((i) => i.isMandatory && !i.isCompleted)
               if (pending.length === 0) return null
               return (
                 <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-                  <div className="font-semibold flex items-center gap-1 text-yellow-700"><AlertTriangle size={16} /> {pending.length} {t('cashdesk.kotelezoPontMegNincs')}</div>
-                  {pending.map(p => (
-                    <div key={p.itemNumber} className="text-sm text-yellow-600 ml-5">• {p.title}</div>
+                  <div className="font-semibold flex items-center gap-1 text-yellow-700">
+                    <AlertTriangle size={16} /> {pending.length}{' '}
+                    {t('cashdesk.kotelezoPontMegNincs')}
+                  </div>
+                  {pending.map((p) => (
+                    <div key={p.itemNumber} className="text-sm text-yellow-600 ml-5">
+                      • {p.title}
+                    </div>
                   ))}
                 </div>
               )
-            })()
-          )}
+            })()}
         </>
       )}
     </div>

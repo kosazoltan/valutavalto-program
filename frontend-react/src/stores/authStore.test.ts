@@ -64,10 +64,17 @@ describe('authStore', () => {
 
     it('sets activeRole and permissions when provided', () => {
       act(() => {
-        useAuthStore.getState().login(
-          mockWorker, 'tok', 'Bearer', '',
-          'MANAGER', ['READ', 'WRITE'], ['CASHIER', 'MANAGER']
-        )
+        useAuthStore
+          .getState()
+          .login(
+            mockWorker,
+            'tok',
+            'Bearer',
+            '',
+            'MANAGER',
+            ['READ', 'WRITE'],
+            ['CASHIER', 'MANAGER'],
+          )
       })
       const state = useAuthStore.getState()
       expect(state.activeRole).toBe('MANAGER')
@@ -84,11 +91,19 @@ describe('authStore', () => {
 
     it('stores central workstation module manifest when provided', () => {
       act(() => {
-        useAuthStore.getState().login(
-          mockWorker, 'tok', 'Bearer', '',
-          'foertektar', ['RATE_CREATE'], ['foertektar'],
-          false, ['rate-maker', 'rate-publication']
-        )
+        useAuthStore
+          .getState()
+          .login(
+            mockWorker,
+            'tok',
+            'Bearer',
+            '',
+            'foertektar',
+            ['RATE_CREATE'],
+            ['foertektar'],
+            false,
+            ['rate-maker', 'rate-publication'],
+          )
       })
 
       expect(useAuthStore.getState().centralModules).toEqual(['rate-maker', 'rate-publication'])
@@ -247,7 +262,9 @@ describe('authStore', () => {
     it('legacy COURIER role-t ertekszallito canonical role-kent kezeli', () => {
       const courierWorker = { ...mockWorker, role: 'COURIER' }
       act(() => {
-        useAuthStore.getState().login(courierWorker, 'tok', 'Bearer', '', 'COURIER', [], ['COURIER'])
+        useAuthStore
+          .getState()
+          .login(courierWorker, 'tok', 'Bearer', '', 'COURIER', [], ['COURIER'])
       })
 
       expect(useAuthStore.getState().hasCanonicalRole('ertekszallito')).toBe(true)

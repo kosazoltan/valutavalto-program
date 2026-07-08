@@ -2,13 +2,13 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('electronAPI', {
   googleOAuthFlow: (): Promise<
-    | { ok: true; idToken: string; email?: string }
-    | { ok: false; code: string; message: string }
+    { ok: true; idToken: string; email?: string } | { ok: false; code: string; message: string }
   > => ipcRenderer.invoke('auth:google-oauth-flow'),
 
-  googleOAuthFlowWithBackend: (appMode?: string): Promise<
-    | { ok: true; response: unknown; email?: string }
-    | { ok: false; code: string; message: string }
+  googleOAuthFlowWithBackend: (
+    appMode?: string,
+  ): Promise<
+    { ok: true; response: unknown; email?: string } | { ok: false; code: string; message: string }
   > => ipcRenderer.invoke('auth:google-oauth-flow-with-backend', { appMode }),
 
   apiRequest: (params: {
@@ -52,8 +52,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSyncStatus: () => ipcRenderer.invoke('lf:sync-status'),
     getOutboxStats: () => ipcRenderer.invoke('lf:outbox-stats'),
     triggerSync: () => ipcRenderer.invoke('lf:trigger-sync'),
-    saveRateDraft: (draft: Record<string, unknown>) => ipcRenderer.invoke('lf:save-rate-draft', draft),
-    updateRateDraft: (draft: Record<string, unknown>) => ipcRenderer.invoke('lf:update-rate-draft', draft),
+    saveRateDraft: (draft: Record<string, unknown>) =>
+      ipcRenderer.invoke('lf:save-rate-draft', draft),
+    updateRateDraft: (draft: Record<string, unknown>) =>
+      ipcRenderer.invoke('lf:update-rate-draft', draft),
     deleteRateDraft: (entityId: string) => ipcRenderer.invoke('lf:delete-rate-draft', entityId),
     getRateDrafts: () => ipcRenderer.invoke('lf:get-rate-drafts'),
     getPublishedRates: () => ipcRenderer.invoke('lf:get-published-rates'),
@@ -61,7 +63,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // FK02-B (csoport-árfolyamlap FR-11/FR-12): tartós offline csoport-ráta-érték perzisztencia
     saveGroupRateValues: (payload: { groupId: string; values: Record<string, string> }) =>
       ipcRenderer.invoke('lf:save-group-rate-values', payload),
-    getGroupRateValues: (groupId: string) => ipcRenderer.invoke('lf:get-group-rate-values', groupId),
+    getGroupRateValues: (groupId: string) =>
+      ipcRenderer.invoke('lf:get-group-rate-values', groupId),
   },
 
   platform: process.platform,

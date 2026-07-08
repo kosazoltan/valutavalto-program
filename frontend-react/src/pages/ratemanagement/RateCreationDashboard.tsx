@@ -21,7 +21,9 @@ interface RateCreationDashboardProps {
   initialTab?: TabKey
 }
 
-export default function RateCreationDashboard({ initialTab = 'settlement' }: RateCreationDashboardProps) {
+export default function RateCreationDashboard({
+  initialTab = 'settlement',
+}: RateCreationDashboardProps) {
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
 

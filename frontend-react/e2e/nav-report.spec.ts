@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/nav-reports/daily') && method === 'GET') {
@@ -145,7 +153,11 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/nav/closings/closing-1/approve-discrepancy') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({}),
+      })
     }
 
     if (path.endsWith('/nav/closings/ptgszlah/monthly') && method === 'GET') {
@@ -187,8 +199,8 @@ test('NAV riport oldal a reportable backend listavégpontot is hívja', async ({
   await expect(page.getByRole('heading', { name: /NAV adatszolgáltatás/i })).toBeVisible()
   await page.locator('input[type="date"]').fill('2026-06-18')
 
-  const reportableRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/nav-reports/reportable')
+  const reportableRequest = page.waitForRequest(
+    (request) => request.method() === 'GET' && request.url().includes('/nav-reports/reportable'),
   )
   await page.getByRole('button', { name: /Lekérdezés/i }).click()
   await reportableRequest
@@ -196,13 +208,15 @@ test('NAV riport oldal a reportable backend listavégpontot is hívja', async ({
   await expect(page.getByTestId('nav-closing-panel')).toBeVisible()
   await expect(page.getByText('CLOSED')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
 
-test('NAV riport mobil nézetben is kezeli a zárás összesítőt és XML exportokat', async ({ page }) => {
+test('NAV riport mobil nézetben is kezeli a zárás összesítőt és XML exportokat', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -210,8 +224,8 @@ test('NAV riport mobil nézetben is kezeli a zárás összesítőt és XML expor
   await page.goto('/reports/nav', { waitUntil: 'domcontentloaded' })
   await page.locator('input[type="date"]').fill('2026-06-18')
 
-  const closingsRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/nav/closings?')
+  const closingsRequest = page.waitForRequest(
+    (request) => request.method() === 'GET' && request.url().includes('/nav/closings?'),
   )
   await page.getByRole('button', { name: /Lekérdezés/i }).click()
   await closingsRequest
@@ -219,27 +233,30 @@ test('NAV riport mobil nézetben is kezeli a zárás összesítőt és XML expor
   await expect(page.getByTestId('nav-closing-panel')).toBeVisible()
   await expect(page.getByText('NAV zárások')).toBeVisible()
 
-  const summaryRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/nav/closings/closing-1/summary')
+  const summaryRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes('/nav/closings/closing-1/summary'),
   )
   await page.getByRole('button', { name: /Zárás összesítő/i }).click()
   await summaryRequest
   await expect(page.getByText('Összes bevétel')).toBeVisible()
 
-  const monthlyExport = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/nav/closings/ptgszlah/monthly')
+  const monthlyExport = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes('/nav/closings/ptgszlah/monthly'),
   )
   await page.getByRole('button', { name: /PTGSZLAH havi XML/i }).click()
   await monthlyExport
 
-  const customExport = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/nav/closings/ptgszlah/custom')
+  const customExport = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes('/nav/closings/ptgszlah/custom'),
   )
   await page.getByRole('button', { name: /PTGSZLAH napi XML/i }).click()
   await customExport
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
@@ -255,13 +272,15 @@ test('NAV riport mobil nézetben validálja és jóváhagyja a zárási eltéré
   await expect(page.getByTestId('nav-closing-panel')).toBeVisible()
 
   await page.getByLabel('NAV záró HUF összeg').fill('1200000')
-  const validateRequest = page.waitForRequest(request => {
+  const validateRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'POST'
-      && url.pathname.endsWith('/nav/closings/validate-amount')
-      && url.searchParams.get('branchId') === 'branch-1'
-      && url.searchParams.get('date') === '2026-06-18'
-      && url.searchParams.get('navAmount') === '1200000'
+    return (
+      request.method() === 'POST' &&
+      url.pathname.endsWith('/nav/closings/validate-amount') &&
+      url.searchParams.get('branchId') === 'branch-1' &&
+      url.searchParams.get('date') === '2026-06-18' &&
+      url.searchParams.get('navAmount') === '1200000'
+    )
   })
   await page.getByRole('button', { name: /Összeg ellenőrzése/i }).click()
   await validateRequest
@@ -272,18 +291,20 @@ test('NAV riport mobil nézetben validálja és jóváhagyja a zárási eltéré
   await expect(approveButton).toBeDisabled()
   await page.getByLabel('Eltérés indoklása').fill('Pénztárgép kerekítési eltérés igazolva')
   await expect(approveButton).toBeEnabled()
-  const approveRequest = page.waitForRequest(request => {
+  const approveRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'POST'
-      && url.pathname.endsWith('/nav/closings/closing-1/approve-discrepancy')
-      && url.searchParams.get('navAmount') === '1200000'
-      && url.searchParams.get('justification') === 'Pénztárgép kerekítési eltérés igazolva'
+    return (
+      request.method() === 'POST' &&
+      url.pathname.endsWith('/nav/closings/closing-1/approve-discrepancy') &&
+      url.searchParams.get('navAmount') === '1200000' &&
+      url.searchParams.get('justification') === 'Pénztárgép kerekítési eltérés igazolva'
+    )
   })
   await approveButton.click()
   await approveRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

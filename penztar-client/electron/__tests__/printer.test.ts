@@ -271,9 +271,7 @@ describe('printer — generateReceiptContent (ESC/POS)', () => {
         totalFees: 5_000,
         openingBalance: 100_000,
         closingBalance: 120_000,
-        discrepancies: [
-          { currencyCode: 'EUR', expected: 500, actual: 495, difference: -5 },
-        ],
+        discrepancies: [{ currencyCode: 'EUR', expected: 500, actual: 495, difference: -5 }],
       },
     });
     expect(content).toContain('ELTÉRÉSEK');
@@ -420,7 +418,12 @@ describe('printer — generateReceiptContent (ESC/POS)', () => {
   });
 
   it('transfer receipt always shows Kérő iroda + Cél iroda (FR-2 kötelező, „—" fallback)', () => {
-    const content = generateReceiptContent({ ...baseData, type: 'transfer', branchCode: '', transferTarget: '' });
+    const content = generateReceiptContent({
+      ...baseData,
+      type: 'transfer',
+      branchCode: '',
+      transferTarget: '',
+    });
     expect(content).toContain('Kérő iroda');
     expect(content).toContain('Cél iroda');
     expect(content).toContain('—');
@@ -584,11 +587,15 @@ describe('printer — fejléc-javítás FR-7: HUF transfer dupla példány', () 
   });
 
   it('részleges soros hiba: 1 soros példány OK + 2. hibás → fallback csak a MARADÉK 1 példányt nyomtatja (összesen 2, nem 3)', async () => {
-    (printReceiptToSerial as Mock)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(false);
+    (printReceiptToSerial as Mock).mockResolvedValueOnce(true).mockResolvedValueOnce(false);
     const result = await printReceipt(
-      { ...baseData, type: 'transfer', transferDocType: 'handover', currencyCode: 'HUF', transferTarget: 'SZG-02' },
+      {
+        ...baseData,
+        type: 'transfer',
+        transferDocType: 'handover',
+        currencyCode: 'HUF',
+        transferTarget: 'SZG-02',
+      },
       undefined,
       'COM3',
     );
@@ -599,11 +606,15 @@ describe('printer — fejléc-javítás FR-7: HUF transfer dupla példány', () 
   });
 
   it('teljes soros siker: 2 soros példány OK → nincs Electron fallback', async () => {
-    (printReceiptToSerial as Mock)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true);
+    (printReceiptToSerial as Mock).mockResolvedValueOnce(true).mockResolvedValueOnce(true);
     const result = await printReceipt(
-      { ...baseData, type: 'transfer', transferDocType: 'handover', currencyCode: 'HUF', transferTarget: 'SZG-02' },
+      {
+        ...baseData,
+        type: 'transfer',
+        transferDocType: 'handover',
+        currencyCode: 'HUF',
+        transferTarget: 'SZG-02',
+      },
       undefined,
       'COM3',
     );
@@ -639,10 +650,12 @@ describe('printer — deviza-státusz + 300k+ nyilatkozatok (C.1/C.2)', () => {
   });
 
   it('deviza-státusz: DOMESTIC → Belföldi, hiányzó → —', () => {
-    expect(generateReceiptContent({ ...baseData, foreignStatus: 'DOMESTIC' }))
-      .toContain('Deviza-státusz: Belföldi');
-    expect(generateReceiptContent({ ...baseData, foreignStatus: undefined }))
-      .toContain('Deviza-státusz: —');
+    expect(generateReceiptContent({ ...baseData, foreignStatus: 'DOMESTIC' })).toContain(
+      'Deviza-státusz: Belföldi',
+    );
+    expect(generateReceiptContent({ ...baseData, foreignStatus: undefined })).toContain(
+      'Deviza-státusz: —',
+    );
   });
 
   it('deviza-státusz sor transzfer-bizonylaton NEM jelenik meg', () => {
@@ -684,7 +697,9 @@ describe('printer — deviza-státusz + 300k+ nyilatkozatok (C.1/C.2)', () => {
       customerPepKind: 'PARLAMENTI',
     });
     // Batch2-D: a PepKind kód a backend buildPepStatusText kategória-szövegére fordul.
-    expect(content).toContain('Az ügyfél kiemelt közszereplő (országgyűlési / önkormányzati képviselő)');
+    expect(content).toContain(
+      'Az ügyfél kiemelt közszereplő (országgyűlési / önkormányzati képviselő)',
+    );
     // Első személyű nyilatkozat a JOGCÍM blokkban (legacy KozszerepNyilatkozat).
     expect(content).toContain('Kiemelt közszereplő (vagyok),');
     expect(content).toContain('mint: országgyűlési / önkormányzati képviselő');
@@ -815,20 +830,41 @@ describe('printer — deviza-státusz + 300k+ nyilatkozatok (C.1/C.2)', () => {
 
   it('Batch2-D: orosz nyilatkozat NEM jelenik meg vételnél / nem-EUR-nál / nem-orosz ügyfélnél', () => {
     // buy módban (a pénztár VESZI a valutát) nincs orosz nyilatkozat
-    expect(generateReceiptContent({
-      ...baseData, type: 'buy', currencyCode: 'EUR', hufAmount: 400000,
-      roundedHufAmount: 400000, customerNationality: 'orosz', customerName: 'Ivanov Ivan',
-    })).not.toContain('NYILATKOZAT/DECLARATION');
+    expect(
+      generateReceiptContent({
+        ...baseData,
+        type: 'buy',
+        currencyCode: 'EUR',
+        hufAmount: 400000,
+        roundedHufAmount: 400000,
+        customerNationality: 'orosz',
+        customerName: 'Ivanov Ivan',
+      }),
+    ).not.toContain('NYILATKOZAT/DECLARATION');
     // nem-EUR eladásnál sincs
-    expect(generateReceiptContent({
-      ...baseData, type: 'sell', currencyCode: 'USD', hufAmount: 400000,
-      roundedHufAmount: 400000, customerNationality: 'orosz', customerName: 'Ivanov Ivan',
-    })).not.toContain('NYILATKOZAT/DECLARATION');
+    expect(
+      generateReceiptContent({
+        ...baseData,
+        type: 'sell',
+        currencyCode: 'USD',
+        hufAmount: 400000,
+        roundedHufAmount: 400000,
+        customerNationality: 'orosz',
+        customerName: 'Ivanov Ivan',
+      }),
+    ).not.toContain('NYILATKOZAT/DECLARATION');
     // magyar ügyfélnél sincs
-    expect(generateReceiptContent({
-      ...baseData, type: 'sell', currencyCode: 'EUR', hufAmount: 400000,
-      roundedHufAmount: 400000, customerNationality: 'Magyar', customerName: 'Kiss Géza',
-    })).not.toContain('NYILATKOZAT/DECLARATION');
+    expect(
+      generateReceiptContent({
+        ...baseData,
+        type: 'sell',
+        currencyCode: 'EUR',
+        hufAmount: 400000,
+        roundedHufAmount: 400000,
+        customerNationality: 'Magyar',
+        customerName: 'Kiss Géza',
+      }),
+    ).not.toContain('NYILATKOZAT/DECLARATION');
   });
 
   it('300k+ képviselt fél: actor neve + adatai a nyilatkozatban', () => {
@@ -869,8 +905,20 @@ describe('printer — deviza-státusz + 300k+ nyilatkozatok (C.1/C.2)', () => {
       hufAmount: 100000,
       foreignStatus: undefined, // vegyes → a fejléc nem hordozza
       transactionLines: [
-        { currencyCode: 'EUR', foreignAmount: 100, rate: 400, hufAmount: 40000, foreignStatus: 'FOREIGN' },
-        { currencyCode: 'USD', foreignAmount: 150, rate: 400, hufAmount: 60000, foreignStatus: 'DOMESTIC' },
+        {
+          currencyCode: 'EUR',
+          foreignAmount: 100,
+          rate: 400,
+          hufAmount: 40000,
+          foreignStatus: 'FOREIGN',
+        },
+        {
+          currencyCode: 'USD',
+          foreignAmount: 150,
+          rate: 400,
+          hufAmount: 60000,
+          foreignStatus: 'DOMESTIC',
+        },
       ],
     });
     expect(content).toContain('EUR (Külföldi):');

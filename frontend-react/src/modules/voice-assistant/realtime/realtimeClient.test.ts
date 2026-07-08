@@ -69,11 +69,14 @@ describe('openRealtimeSession', () => {
       mockPcs.push(pc)
       return pc
     } as unknown as typeof RTCPeerConnection
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      text: async () => 'v=0\nfake-answer',
-    } as Response))
+    globalThis.fetch = vi.fn(
+      async () =>
+        ({
+          ok: true,
+          status: 200,
+          text: async () => 'v=0\nfake-answer',
+        }) as Response,
+    )
   })
 
   afterEach(() => {
@@ -87,20 +90,28 @@ describe('openRealtimeSession', () => {
     expect(session.pc).toBeDefined()
     expect(session.micStream).toBeDefined()
     session.close()
-    const stoppedTracks = mockStreams[0]?.getTracks().filter((t) => (t.stop as ReturnType<typeof vi.fn>).mock.calls.length > 0)
+    const stoppedTracks = mockStreams[0]
+      ?.getTracks()
+      .filter((t) => (t.stop as ReturnType<typeof vi.fn>).mock.calls.length > 0)
     expect(stoppedTracks?.length).toBeGreaterThan(0)
     expect(mockPcs[0]?.close).toHaveBeenCalled()
   })
 
   it('failure: SDP HTTP 500 eseten a mikrofon track stop()-olva van (cleanup-on-error)', async () => {
-    globalThis.fetch = vi.fn(async () => ({
-      ok: false,
-      status: 500,
-      text: async () => 'error',
-    } as Response))
+    globalThis.fetch = vi.fn(
+      async () =>
+        ({
+          ok: false,
+          status: 500,
+          text: async () => 'error',
+        }) as Response,
+    )
 
     await expect(openRealtimeSession('test', vi.fn())).rejects.toThrow(/HTTP 500/)
-    const stops = mockStreams[0]?.getTracks().map((t) => (t.stop as ReturnType<typeof vi.fn>).mock.calls.length) ?? []
+    const stops =
+      mockStreams[0]
+        ?.getTracks()
+        .map((t) => (t.stop as ReturnType<typeof vi.fn>).mock.calls.length) ?? []
     expect(stops.some((n) => n > 0)).toBe(true)
     expect(mockPcs[0]?.close).toHaveBeenCalled()
   })
@@ -124,9 +135,7 @@ describe('openRealtimeSession', () => {
   it('AbortSignal: hivo szignallal lemondhato', async () => {
     const ctrl = new AbortController()
     ctrl.abort()
-    await expect(
-      openRealtimeSession('test', vi.fn(), { signal: ctrl.signal })
-    ).rejects.toThrow()
+    await expect(openRealtimeSession('test', vi.fn(), { signal: ctrl.signal })).rejects.toThrow()
   })
 })
 
@@ -155,7 +164,10 @@ describe('requestEphemeralToken — HTTP 422 friendly error mapping', () => {
     apiPost.mockRejectedValueOnce({
       response: {
         status: 422,
-        data: { error: 'VOICE_ASSISTANT_DISABLED', message: 'A hangsegéd jelenleg nincs engedélyezve.' },
+        data: {
+          error: 'VOICE_ASSISTANT_DISABLED',
+          message: 'A hangsegéd jelenleg nincs engedélyezve.',
+        },
       },
     })
 
@@ -163,7 +175,8 @@ describe('requestEphemeralToken — HTTP 422 friendly error mapping', () => {
       name: 'VoiceTokenError',
       code: 'VOICE_ASSISTANT_DISABLED',
       httpStatus: 422,
-      message: 'A hangsegéd jelenleg nincs bekapcsolva. Szólj a rendszergazdának (VOICE_OPENAI_ENABLED=true).',
+      message:
+        'A hangsegéd jelenleg nincs bekapcsolva. Szólj a rendszergazdának (VOICE_OPENAI_ENABLED=true).',
     })
   })
 

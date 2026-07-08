@@ -21,11 +21,17 @@ const DB_PATH = path.join(os.homedir(), '.valuta', 'local.db');
 // AI REVIEW FIX (PR #97 Codex P2 + Sourcery): kerunk EXPLICIT argumentumot vagy env valtozot -
 // nincs csendes 'EBC' fallback, mert az masik ceg gepen hibas configot ir.
 const FALLBACK_BRANCH = process.argv[2] || process.env.VITE_BRANCH_CODE || '';
-const FALLBACK_COMPANY = process.argv[3] || process.env.VITE_COMPANY_CODE || process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE || '';
+const FALLBACK_COMPANY =
+  process.argv[3] ||
+  process.env.VITE_COMPANY_CODE ||
+  process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE ||
+  '';
 if (!FALLBACK_BRANCH || !FALLBACK_COMPANY) {
   console.error('[fix-branch-code] HIBA: branch_code es/vagy company_code hianyzik!');
   console.error('  Hasznalat:  node scripts/fix-branch-code.mjs <branch_code> <company_code>');
-  console.error('  vagy env:   VITE_BRANCH_CODE=EBC VITE_COMPANY_CODE=EBC node scripts/fix-branch-code.mjs');
+  console.error(
+    '  vagy env:   VITE_BRANCH_CODE=EBC VITE_COMPANY_CODE=EBC node scripts/fix-branch-code.mjs',
+  );
   process.exit(2);
 }
 
@@ -76,7 +82,9 @@ async function main() {
 
   const tableCheck = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='config'");
   if (tableCheck.length === 0) {
-    console.error('[fix-branch-code] A config tabla nem letezik az SQLite-ban. Inditsd el eloszor a penztar-klienst.');
+    console.error(
+      '[fix-branch-code] A config tabla nem letezik az SQLite-ban. Inditsd el eloszor a penztar-klienst.',
+    );
     db.close();
     process.exit(1);
   }
@@ -94,7 +102,9 @@ async function main() {
   let changed = false;
 
   if (!branchValue) {
-    const stmt = db.prepare("INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, datetime('now'))");
+    const stmt = db.prepare(
+      "INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, datetime('now'))",
+    );
     stmt.run(['branch_code', FALLBACK_BRANCH]);
     stmt.free();
     console.log('[fix-branch-code] branch_code = "' + FALLBACK_BRANCH + '" beirva.');
@@ -102,7 +112,9 @@ async function main() {
   }
 
   if (!companyValue) {
-    const stmt = db.prepare("INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, datetime('now'))");
+    const stmt = db.prepare(
+      "INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, datetime('now'))",
+    );
     stmt.run(['bootstrap_company_code', FALLBACK_COMPANY]);
     stmt.free();
     console.log('[fix-branch-code] bootstrap_company_code = "' + FALLBACK_COMPANY + '" beirva.');

@@ -31,7 +31,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -54,11 +54,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/synchronization/should-sync') && method === 'GET') {
@@ -73,7 +81,15 @@ async function mockApis(page: Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ id: 'dc-1', branchId, collectionDate: '2026-06-18', status: 'COMPLETED', transactionCount: 12 }]),
+        body: JSON.stringify([
+          {
+            id: 'dc-1',
+            branchId,
+            collectionDate: '2026-06-18',
+            status: 'COMPLETED',
+            transactionCount: 12,
+          },
+        ]),
       })
     }
 
@@ -96,13 +112,15 @@ async function mockApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          content: [{
-            id: 'sync-1',
-            syncType: 'FULL',
-            status: 'COMPLETED',
-            startedAt: '2026-06-18T08:30:00',
-            recordsSynced: 44,
-          }],
+          content: [
+            {
+              id: 'sync-1',
+              syncType: 'FULL',
+              status: 'COMPLETED',
+              startedAt: '2026-06-18T08:30:00',
+              recordsSynced: 44,
+            },
+          ],
         }),
       })
     }
@@ -111,14 +129,16 @@ async function mockApis(page: Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{
-          id: 'ftp-1',
-          direction: 'UPLOAD',
-          fileName: 'daily_20260618.xml',
-          status: 'SUCCESS',
-          fileSizeBytes: 2048,
-          startedAt: '2026-06-18T09:15:00',
-        }]),
+        body: JSON.stringify([
+          {
+            id: 'ftp-1',
+            direction: 'UPLOAD',
+            fileName: 'daily_20260618.xml',
+            status: 'SUCCESS',
+            fileSizeBytes: 2048,
+            startedAt: '2026-06-18T09:15:00',
+          },
+        ]),
       })
     }
 
@@ -146,7 +166,10 @@ async function mockApis(page: Page) {
       })
     }
 
-    if (path.match(/\/api\/v1\/sync\/(rates|transactions|inventory|full)\/[^/]+$/) && method === 'POST') {
+    if (
+      path.match(/\/api\/v1\/sync\/(rates|transactions|inventory|full)\/[^/]+$/) &&
+      method === 'POST'
+    ) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -168,19 +191,22 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('szinkron admin panel mobil nézetben backend status és history endpointokat hív', async ({ page }) => {
+test('szinkron admin panel mobil nézetben backend status és history endpointokat hív', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
 
-  const statusRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes(`/sync/status/${branchId}`)
+  const statusRequest = page.waitForRequest(
+    (request) => request.method() === 'GET' && request.url().includes(`/sync/status/${branchId}`),
   )
-  const historyRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes(`/sync/history/${branchId}`)
+  const historyRequest = page.waitForRequest(
+    (request) => request.method() === 'GET' && request.url().includes(`/sync/history/${branchId}`),
   )
-  const ftpHistoryRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes(`/ftp-sync/history/${branchId}`)
+  const ftpHistoryRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes(`/ftp-sync/history/${branchId}`),
   )
 
   await page.goto('/synchronization', { waitUntil: 'domcontentloaded' })
@@ -193,50 +219,55 @@ test('szinkron admin panel mobil nézetben backend status és history endpointok
   await expect(page.getByTestId('branch-sync-actions')).toContainText('Branch sync műveletek')
   await expect(page.getByTestId('ftp-sync-history')).toContainText('daily_20260618.xml')
 
-  const ratesRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes(`/ftp-sync/rates/${branchId}`)
+  const ratesRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes(`/ftp-sync/rates/${branchId}`),
   )
   await page.getByTestId('ftp-sync-rates').click()
   await ratesRequest
 
-  const dailyReportRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes(`/ftp-sync/daily-report/${branchId}`)
+  const dailyReportRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes(`/ftp-sync/daily-report/${branchId}`),
   )
   await page.getByTestId('ftp-sync-daily-report').click()
   await dailyReportRequest
 
-  const transactionsRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes(`/ftp-sync/transactions/${branchId}`)
+  const transactionsRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes(`/ftp-sync/transactions/${branchId}`),
   )
   await page.getByTestId('ftp-sync-transactions').click()
   await transactionsRequest
 
-  const syncRatesRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes(`/sync/rates/${branchId}`)
+  const syncRatesRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes(`/sync/rates/${branchId}`),
   )
   await page.getByTestId('branch-sync-rates').click()
   await syncRatesRequest
 
-  const syncTransactionsRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes(`/sync/transactions/${branchId}`)
+  const syncTransactionsRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes(`/sync/transactions/${branchId}`),
   )
   await page.getByTestId('branch-sync-transactions').click()
   await syncTransactionsRequest
 
-  const syncInventoryRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes(`/sync/inventory/${branchId}`)
+  const syncInventoryRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes(`/sync/inventory/${branchId}`),
   )
   await page.getByTestId('branch-sync-inventory').click()
   await syncInventoryRequest
 
-  const syncFullRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes(`/sync/full/${branchId}`)
+  const syncFullRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes(`/sync/full/${branchId}`),
   )
   await page.getByTestId('branch-sync-full').click()
   await syncFullRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

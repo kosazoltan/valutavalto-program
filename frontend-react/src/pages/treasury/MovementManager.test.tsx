@@ -17,20 +17,21 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('../../stores/authStore', () => ({
-  useAuthStore: (selector: (state: unknown) => unknown) => selector({
-    worker: {
-      id: 1,
-      workerCode: 'W0001',
-      fullName: 'Teszt Admin',
-      role: 'ADMIN',
-      branchId: 'branch-1',
-      branchCode: 'SZEGED',
-      branchName: 'Szeged Értéktár',
-      companyId: 'company-1',
-      companyCode: 'EBC',
-      companyName: 'EBC Valutaváltó',
-    },
-  }),
+  useAuthStore: (selector: (state: unknown) => unknown) =>
+    selector({
+      worker: {
+        id: 1,
+        workerCode: 'W0001',
+        fullName: 'Teszt Admin',
+        role: 'ADMIN',
+        branchId: 'branch-1',
+        branchCode: 'SZEGED',
+        branchName: 'Szeged Értéktár',
+        companyId: 'company-1',
+        companyCode: 'EBC',
+        companyName: 'EBC Valutaváltó',
+      },
+    }),
 }))
 
 vi.mock('../../utils/electronTransactions', () => ({
@@ -70,9 +71,7 @@ describe('MovementManager', () => {
       size: 50,
       number: 0,
     })
-    mocks.currencyList.mockResolvedValue([
-      { id: 1, code: 'EUR', name: 'Euró', active: true },
-    ])
+    mocks.currencyList.mockResolvedValue([{ id: 1, code: 'EUR', name: 'Euró', active: true }])
     mocks.branchListVaultCounterparties.mockResolvedValue({
       territorialCashiers: [],
       peerVaults: [],

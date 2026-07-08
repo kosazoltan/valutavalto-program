@@ -51,14 +51,61 @@ export const CENTRAL_VAULT_ROLES = ['foertektar', 'ugyvezeto'] as const
 export const allTreasuryTabs: readonly TreasuryTab[] = [
   { path: '/treasury', label: 'Dashboard', icon: LayoutDashboard, hotkey: 'F1', end: true },
   { path: '/treasury/matrix', label: 'Készlet Mátrix', icon: Grid3X3, hotkey: 'F2', end: false },
-  { path: '/treasury/movements', label: 'Mozgások', icon: ArrowLeftRight, hotkey: 'F3', end: false },
-  { path: '/treasury/bank', label: 'Banki Tx', icon: Building2, hotkey: 'F4', end: false, canonicalRoles: CENTRAL_VAULT_ROLES },
-  { path: '/treasury/rates', label: 'Árfolyamkészítés', icon: TrendingUp, hotkey: 'F5', end: false, canonicalRoles: CENTRAL_VAULT_ROLES },
+  {
+    path: '/treasury/movements',
+    label: 'Mozgások',
+    icon: ArrowLeftRight,
+    hotkey: 'F3',
+    end: false,
+  },
+  {
+    path: '/treasury/bank',
+    label: 'Banki Tx',
+    icon: Building2,
+    hotkey: 'F4',
+    end: false,
+    canonicalRoles: CENTRAL_VAULT_ROLES,
+  },
+  {
+    path: '/treasury/rates',
+    label: 'Árfolyamkészítés',
+    icon: TrendingUp,
+    hotkey: 'F5',
+    end: false,
+    canonicalRoles: CENTRAL_VAULT_ROLES,
+  },
   { path: '/treasury/reports', label: 'Jelentések', icon: FileText, hotkey: 'F6', end: false },
-  { path: '/treasury/vat', label: 'ÁFA visszatérítés', icon: Receipt, hotkey: 'F7', end: false, canonicalRoles: CENTRAL_VAULT_ROLES },
-  { path: '/treasury/trb-export', label: 'TRB Export', icon: Download, hotkey: 'F8', end: false, canonicalRoles: CENTRAL_VAULT_ROLES },
-  { path: '/treasury/customer-turnover', label: 'Ügyfélforgalom', icon: Users, hotkey: 'F9', end: false },
-  { path: '/treasury/bank-turnover', label: 'Bankforgalom', icon: Landmark, hotkey: 'F10', end: false, canonicalRoles: CENTRAL_VAULT_ROLES },
+  {
+    path: '/treasury/vat',
+    label: 'ÁFA visszatérítés',
+    icon: Receipt,
+    hotkey: 'F7',
+    end: false,
+    canonicalRoles: CENTRAL_VAULT_ROLES,
+  },
+  {
+    path: '/treasury/trb-export',
+    label: 'TRB Export',
+    icon: Download,
+    hotkey: 'F8',
+    end: false,
+    canonicalRoles: CENTRAL_VAULT_ROLES,
+  },
+  {
+    path: '/treasury/customer-turnover',
+    label: 'Ügyfélforgalom',
+    icon: Users,
+    hotkey: 'F9',
+    end: false,
+  },
+  {
+    path: '/treasury/bank-turnover',
+    label: 'Bankforgalom',
+    icon: Landmark,
+    hotkey: 'F10',
+    end: false,
+    canonicalRoles: CENTRAL_VAULT_ROLES,
+  },
 ]
 
 export default function TreasuryLayout() {
@@ -83,13 +130,14 @@ export default function TreasuryLayout() {
   // role-trigger fontos a refresh helyességéhez (felesleges deps figyelmeztetést ad,
   // de itt szándékos belt+suspenders pattern).
   const treasuryTabs = useMemo(
-    () => allTreasuryTabs.filter((tab) => {
-      // Role check
-      if (tab.canonicalRoles && !hasCanonicalRole([...tab.canonicalRoles])) return false
-      // v2.4.9: foértéktári funkciók (CENTRAL_VAULT_ROLES) ertektar módban rejtve
-      if (tab.canonicalRoles === CENTRAL_VAULT_ROLES && appMode === 'ertektar') return false
-      return true
-    }),
+    () =>
+      allTreasuryTabs.filter((tab) => {
+        // Role check
+        if (tab.canonicalRoles && !hasCanonicalRole([...tab.canonicalRoles])) return false
+        // v2.4.9: foértéktári funkciók (CENTRAL_VAULT_ROLES) ertektar módban rejtve
+        if (tab.canonicalRoles === CENTRAL_VAULT_ROLES && appMode === 'ertektar') return false
+        return true
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- belt+suspenders: roles/activeRole/workerRole szándékos extra trigger
     [roles, activeRole, workerRole, hasCanonicalRole, appMode],
   )
@@ -100,7 +148,7 @@ export default function TreasuryLayout() {
   )
 
   const closeHelp = useCallback(() => setShowHelp(false), [])
-  const toggleHelp = useCallback(() => setShowHelp(prev => !prev), [])
+  const toggleHelp = useCallback(() => setShowHelp((prev) => !prev), [])
 
   // F-key navigation — csak a látható tabokra navigálunk, DE a preventDefault
   // mindig fut (Codex PR #271 P2): F5 default browser refresh-t kell elnyomni
@@ -164,7 +212,10 @@ export default function TreasuryLayout() {
 
       {/* Help modal */}
       {showHelp && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={closeHelp}>
+        <div
+          className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"
+          onClick={closeHelp}
+        >
           <div
             className="bg-white rounded-lg shadow-xl p-4 max-w-md w-full mx-4"
             onClick={(e) => e.stopPropagation()}
@@ -174,12 +225,16 @@ export default function TreasuryLayout() {
               {t('treasury.billentyuparancsok')}
             </h2>
             <div className="space-y-3">
-              <div className="text-sm font-semibold text-secondary-600 uppercase tracking-wider">{t('treasury.navigacio')}</div>
+              <div className="text-sm font-semibold text-secondary-600 uppercase tracking-wider">
+                {t('treasury.navigacio')}
+              </div>
               {treasuryTabs.map((tab) => (
                 <HotkeyRow key={tab.path} keys={tab.hotkey} desc={tab.label} />
               ))}
               <div className="border-t border-secondary-200 pt-3 mt-3">
-                <div className="text-sm font-semibold text-secondary-600 uppercase tracking-wider mb-3">{t('treasury.altalanos')}</div>
+                <div className="text-sm font-semibold text-secondary-600 uppercase tracking-wider mb-3">
+                  {t('treasury.altalanos')}
+                </div>
                 <HotkeyRow keys="?" desc="Billentyűparancsok" />
                 <HotkeyRow keys="Esc" desc="Bezárás / Mégse" />
                 <HotkeyRow keys="R" desc="Frissítés (képernyőtől függ)" />

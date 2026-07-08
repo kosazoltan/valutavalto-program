@@ -1,7 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, User, FileText, AlertCircle, Loader2, Pencil, Save, Trash2, X } from 'lucide-react'
-import { authorizedRepresentativeApi, AuthorizedRepresentative, RepresentativeRegistrationRequest } from '../../services/api/transactions'
+import {
+  ArrowLeft,
+  User,
+  FileText,
+  AlertCircle,
+  Loader2,
+  Pencil,
+  Save,
+  Trash2,
+  X,
+} from 'lucide-react'
+import {
+  authorizedRepresentativeApi,
+  AuthorizedRepresentative,
+  RepresentativeRegistrationRequest,
+} from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import AuthorizationSection from '../../components/representatives/AuthorizationSection'
@@ -9,7 +23,10 @@ import { useTranslation } from 'react-i18next'
 
 export default function RepresentativeDetailPage() {
   const { t } = useTranslation()
-  const { customerId, representativeId } = useParams<{ customerId: string; representativeId: string }>()
+  const { customerId, representativeId } = useParams<{
+    customerId: string
+    representativeId: string
+  }>()
   const navigate = useNavigate()
   const [rep, setRep] = useState<AuthorizedRepresentative | null>(null)
   const [loading, setLoading] = useState(true)
@@ -62,7 +79,7 @@ export default function RepresentativeDetailPage() {
   }
 
   const updateForm = (field: keyof RepresentativeRegistrationRequest, value: string) => {
-    setForm(prev => prev ? ({ ...prev, [field]: value || undefined }) : prev)
+    setForm((prev) => (prev ? { ...prev, [field]: value || undefined } : prev))
   }
 
   const saveEdit = async (e: React.FormEvent) => {
@@ -77,7 +94,7 @@ export default function RepresentativeDetailPage() {
         documentType: form.documentType.trim(),
         documentNumber: form.documentNumber.trim(),
       })
-      setRep(prev => ({
+      setRep((prev) => ({
         ...saved,
         customerName: saved.customerName || prev?.customerName || '',
       }))
@@ -122,7 +139,9 @@ export default function RepresentativeDetailPage() {
         <AlertCircle className="inline mr-2" size={16} />
         {error || 'Meghatalmazott nem található'}
         <div className="mt-4">
-          <Link to={`/customers/${customerId}/representatives`} className="form-button">{t('common.back')}</Link>
+          <Link to={`/customers/${customerId}/representatives`} className="form-button">
+            {t('common.back')}
+          </Link>
         </div>
       </div>
     )
@@ -138,26 +157,46 @@ export default function RepresentativeDetailPage() {
           <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2 min-w-0">
             <User className="shrink-0" />
             <span className="truncate">{rep.fullName}</span>
-            <span className={`px-2 py-1 text-xs rounded shrink-0 ${
-              rep.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-            }`}>
+            <span
+              className={`px-2 py-1 text-xs rounded shrink-0 ${
+                rep.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+              }`}
+            >
               {rep.isActive ? 'Aktív' : 'Inaktív'}
             </span>
           </h1>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {editing ? (
-            <button type="button" onClick={() => { setEditing(false); setForm(null) }} className="form-button flex items-center gap-1" disabled={saving}>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(false)
+                setForm(null)
+              }}
+              className="form-button flex items-center gap-1"
+              disabled={saving}
+            >
               <X size={16} />
               Mégse
             </button>
           ) : (
-            <button type="button" onClick={startEdit} className="form-button flex items-center gap-1" disabled={saving}>
+            <button
+              type="button"
+              onClick={startEdit}
+              className="form-button flex items-center gap-1"
+              disabled={saving}
+            >
               <Pencil size={16} />
               Szerkesztés
             </button>
           )}
-          <button type="button" onClick={() => void deleteRepresentative()} className="form-button text-red-700 flex items-center gap-1" disabled={saving}>
+          <button
+            type="button"
+            onClick={() => void deleteRepresentative()}
+            className="form-button text-red-700 flex items-center gap-1"
+            disabled={saving}
+          >
             <Trash2 size={16} />
             Törlés
           </button>
@@ -175,15 +214,27 @@ export default function RepresentativeDetailPage() {
 
       {editing && form && (
         <form onSubmit={(e) => void saveEdit(e)} className="form-panel space-y-3">
-          <h2 className="section-title flex items-center gap-2"><Pencil size={16} />Meghatalmazott szerkesztése</h2>
+          <h2 className="section-title flex items-center gap-2">
+            <Pencil size={16} />
+            Meghatalmazott szerkesztése
+          </h2>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="form-label required">Teljes név</label>
-              <input className="form-input" value={form.name} onChange={(e) => updateForm('name', e.target.value)} required />
+              <input
+                className="form-input"
+                value={form.name}
+                onChange={(e) => updateForm('name', e.target.value)}
+                required
+              />
             </div>
             <div>
               <label className="form-label">Kapcsolat</label>
-              <select className="form-input" value={form.relationshipDid || ''} onChange={(e) => updateForm('relationshipDid', e.target.value)}>
+              <select
+                className="form-input"
+                value={form.relationshipDid || ''}
+                onChange={(e) => updateForm('relationshipDid', e.target.value)}
+              >
                 <option value="">—</option>
                 <option value="FAMILY">Családtag</option>
                 <option value="COLLEAGUE">Munkatárs</option>
@@ -195,43 +246,91 @@ export default function RepresentativeDetailPage() {
             </div>
             <div>
               <label className="form-label required">Okmány típusa</label>
-              <input className="form-input" value={form.documentType} onChange={(e) => updateForm('documentType', e.target.value)} required />
+              <input
+                className="form-input"
+                value={form.documentType}
+                onChange={(e) => updateForm('documentType', e.target.value)}
+                required
+              />
             </div>
             <div>
               <label className="form-label required">Okmányszám</label>
-              <input className="form-input font-mono" value={form.documentNumber} onChange={(e) => updateForm('documentNumber', e.target.value)} required />
+              <input
+                className="form-input font-mono"
+                value={form.documentNumber}
+                onChange={(e) => updateForm('documentNumber', e.target.value)}
+                required
+              />
             </div>
             <div>
               <label className="form-label">Okmány érvényes tól</label>
-              <input type="date" className="form-input" value={form.documentValidFrom || ''} onChange={(e) => updateForm('documentValidFrom', e.target.value)} />
+              <input
+                type="date"
+                className="form-input"
+                value={form.documentValidFrom || ''}
+                onChange={(e) => updateForm('documentValidFrom', e.target.value)}
+              />
             </div>
             <div>
               <label className="form-label">Okmány érvényes ig</label>
-              <input type="date" className="form-input" value={form.documentValidTo || ''} onChange={(e) => updateForm('documentValidTo', e.target.value)} />
+              <input
+                type="date"
+                className="form-input"
+                value={form.documentValidTo || ''}
+                onChange={(e) => updateForm('documentValidTo', e.target.value)}
+              />
             </div>
             <div>
               <label className="form-label required">Meghatalmazás kezdete</label>
-              <input type="date" className="form-input" value={form.authorizationStart} onChange={(e) => updateForm('authorizationStart', e.target.value)} required />
+              <input
+                type="date"
+                className="form-input"
+                value={form.authorizationStart}
+                onChange={(e) => updateForm('authorizationStart', e.target.value)}
+                required
+              />
             </div>
             <div>
               <label className="form-label">Meghatalmazás vége</label>
-              <input type="date" className="form-input" value={form.authorizationEnd || ''} onChange={(e) => updateForm('authorizationEnd', e.target.value)} />
+              <input
+                type="date"
+                className="form-input"
+                value={form.authorizationEnd || ''}
+                onChange={(e) => updateForm('authorizationEnd', e.target.value)}
+              />
             </div>
             <div>
               <label className="form-label">Telefon</label>
-              <input className="form-input font-mono" value={form.phone || ''} onChange={(e) => updateForm('phone', e.target.value)} />
+              <input
+                className="form-input font-mono"
+                value={form.phone || ''}
+                onChange={(e) => updateForm('phone', e.target.value)}
+              />
             </div>
             <div>
               <label className="form-label">E-mail</label>
-              <input type="email" className="form-input" value={form.email || ''} onChange={(e) => updateForm('email', e.target.value)} />
+              <input
+                type="email"
+                className="form-input"
+                value={form.email || ''}
+                onChange={(e) => updateForm('email', e.target.value)}
+              />
             </div>
             <div className="col-span-2">
               <label className="form-label">Cím</label>
-              <input className="form-input" value={form.address || ''} onChange={(e) => updateForm('address', e.target.value)} />
+              <input
+                className="form-input"
+                value={form.address || ''}
+                onChange={(e) => updateForm('address', e.target.value)}
+              />
             </div>
           </div>
           <div className="flex justify-end">
-            <button type="submit" disabled={saving} className="form-button-primary flex items-center gap-1">
+            <button
+              type="submit"
+              disabled={saving}
+              className="form-button-primary flex items-center gap-1"
+            >
               <Save size={16} />
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
@@ -241,7 +340,10 @@ export default function RepresentativeDetailPage() {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="form-panel">
-          <h2 className="section-title flex items-center gap-2"><User size={16} />{t('representatives.szemelyesAdatok')}</h2>
+          <h2 className="section-title flex items-center gap-2">
+            <User size={16} />
+            {t('representatives.szemelyesAdatok')}
+          </h2>
           <dl className="space-y-2">
             <div className="flex justify-between">
               <dt className="text-gray-500 text-sm">{t('representatives.teljesNev')}</dt>
@@ -299,7 +401,10 @@ export default function RepresentativeDetailPage() {
         </div>
 
         <div className="form-panel">
-          <h2 className="section-title flex items-center gap-2"><FileText size={16} />{t('customers.okmanyAdatok')}</h2>
+          <h2 className="section-title flex items-center gap-2">
+            <FileText size={16} />
+            {t('customers.okmanyAdatok')}
+          </h2>
           <dl className="space-y-2">
             <div className="flex justify-between">
               <dt className="text-gray-500 text-sm">{t('customers.okmanyTipus')}</dt>

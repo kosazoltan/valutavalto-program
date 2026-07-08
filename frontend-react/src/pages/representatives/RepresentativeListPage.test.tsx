@@ -67,7 +67,10 @@ describe('RepresentativeListPage backend contract', () => {
     render(
       <MemoryRouter initialEntries={['/customers/42/representatives']}>
         <Routes>
-          <Route path="/customers/:customerId/representatives" element={<RepresentativeListPage />} />
+          <Route
+            path="/customers/:customerId/representatives"
+            element={<RepresentativeListPage />}
+          />
         </Routes>
       </MemoryRouter>,
     )

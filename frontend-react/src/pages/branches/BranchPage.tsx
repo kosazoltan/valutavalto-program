@@ -99,7 +99,9 @@ export default function BranchPage() {
   const [exactCode, setExactCode] = useState('')
   const [exactCodeResult, setExactCodeResult] = useState<Branch | null>(null)
   const [exactCodeLoading, setExactCodeLoading] = useState(false)
-  const [backendSummary, setBackendSummary] = useState<BranchBackendSummary>(EMPTY_BRANCH_BACKEND_SUMMARY)
+  const [backendSummary, setBackendSummary] = useState<BranchBackendSummary>(
+    EMPTY_BRANCH_BACKEND_SUMMARY,
+  )
   // FK-020: területi szűrő (region) + inaktívak megjelenítése (alapból csak aktív).
   const [territoryFilter, setTerritoryFilter] = useState('')
   const [showInactive, setShowInactive] = useState(false)
@@ -138,7 +140,13 @@ export default function BranchPage() {
       setError(null)
       // FK-020 / FK-016: a Központi Munkaállomás (clientType=CENTRAL) kizárja a virtuális
       // partnereket -> a 65 pénztár + 8 értéktár (73 valós iroda) jelenik meg.
-      const [branchesResult, adminStatsResult, rootsResult, vaultsResult, vaultCounterpartiesResult] = await Promise.allSettled([
+      const [
+        branchesResult,
+        adminStatsResult,
+        rootsResult,
+        vaultsResult,
+        vaultCounterpartiesResult,
+      ] = await Promise.allSettled([
         api.get('/branches', { params: { clientType: 'CENTRAL' } }),
         api.get<AdminBranchStats[]>('/admin/branches'),
         branchApi.listRoots(),
@@ -165,12 +173,17 @@ export default function BranchPage() {
         logger.error('BranchPage', 'vault branch list load error', vaultsResult.reason)
       }
       if (vaultCounterpartiesResult.status === 'rejected') {
-        logger.error('BranchPage', 'vault counterparties load error', vaultCounterpartiesResult.reason)
+        logger.error(
+          'BranchPage',
+          'vault counterparties load error',
+          vaultCounterpartiesResult.reason,
+        )
       }
 
-      const vaultCounterparties = vaultCounterpartiesResult.status === 'fulfilled'
-        ? vaultCounterpartiesResult.value
-        : EMPTY_BRANCH_BACKEND_SUMMARY
+      const vaultCounterparties =
+        vaultCounterpartiesResult.status === 'fulfilled'
+          ? vaultCounterpartiesResult.value
+          : EMPTY_BRANCH_BACKEND_SUMMARY
       setBackendSummary({
         roots: rootsResult.status === 'fulfilled' ? safeArray<Branch>(rootsResult.value) : [],
         vaults: vaultsResult.status === 'fulfilled' ? safeArray<Branch>(vaultsResult.value) : [],
@@ -179,10 +192,12 @@ export default function BranchPage() {
         fixedCounterparties: safeArray<Branch>(vaultCounterparties.fixedCounterparties),
       })
 
-      setBranches(safeArray<Branch>(branchesResult.value.data).map((branch) => ({
-        ...branch,
-        ...statsById.get(branch.id),
-      })))
+      setBranches(
+        safeArray<Branch>(branchesResult.value.data).map((branch) => ({
+          ...branch,
+          ...statsById.get(branch.id),
+        })),
+      )
     } catch (err) {
       logger.error('BranchPage', 'load error', err)
       setError(getErrorMessage(err))
@@ -221,7 +236,9 @@ export default function BranchPage() {
     const next = !(b.isVault ?? false)
     try {
       await api.patch(`/branches/${b.id}/is-vault`, { isVault: next })
-      toast.success(next ? `${b.code}: értéktárként megjelölve` : `${b.code}: pénztárként megjelölve`)
+      toast.success(
+        next ? `${b.code}: értéktárként megjelölve` : `${b.code}: pénztárként megjelölve`,
+      )
       await load()
     } catch (err) {
       toast.error('Hiba az is_vault frissítésekor', getErrorMessage(err))
@@ -261,9 +278,9 @@ export default function BranchPage() {
   )
 
   const counterpartiesCount =
-    backendSummary.territorialCashiers.length
-    + backendSummary.peerVaults.length
-    + backendSummary.fixedCounterparties.length
+    backendSummary.territorialCashiers.length +
+    backendSummary.peerVaults.length +
+    backendSummary.fixedCounterparties.length
 
   if (loading) {
     return (
@@ -283,20 +300,28 @@ export default function BranchPage() {
             ({filtered.length} pénztár)
           </span>
         </h1>
-        <button onClick={() => navigate('/admin/branches/new')} className="form-button-primary flex min-h-10 items-center justify-center gap-2">
+        <button
+          onClick={() => navigate('/admin/branches/new')}
+          className="form-button-primary flex min-h-10 items-center justify-center gap-2"
+        >
           <Plus size={16} />
           Új pénztár
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
       )}
 
       <div className="form-panel">
         <div className="flex flex-wrap items-end gap-3">
           <div className="relative flex-1 min-w-[220px]">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            <Search
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={16}
+            />
             <input
               type="text"
               className="form-input pl-8 w-full"
@@ -314,7 +339,9 @@ export default function BranchPage() {
           >
             <option value="">Minden terület</option>
             {territories.map((r) => (
-              <option key={r} value={r}>{r}</option>
+              <option key={r} value={r}>
+                {r}
+              </option>
             ))}
           </select>
           <label className="inline-flex items-center gap-2 cursor-pointer whitespace-nowrap">
@@ -328,7 +355,10 @@ export default function BranchPage() {
           </label>
           <div className="flex min-w-[220px] flex-1 gap-2 sm:flex-none">
             <div className="relative flex-1">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+              <Search
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={16}
+              />
               <input
                 type="text"
                 className="form-input pl-8 w-full"
@@ -352,7 +382,10 @@ export default function BranchPage() {
           </div>
         </div>
         {exactCodeResult && (
-          <div className="mt-3 rounded border border-blue-200 bg-blue-50 p-3 text-sm" data-testid="branch-code-result">
+          <div
+            className="mt-3 rounded border border-blue-200 bg-blue-50 p-3 text-sm"
+            data-testid="branch-code-result"
+          >
             <div className="font-semibold text-blue-900">{t('branches.pontosKodTalalat')}</div>
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-blue-900">
               <span className="font-mono">{exactCodeResult.code}</span>
@@ -367,20 +400,29 @@ export default function BranchPage() {
           data-testid="branch-backend-summary"
         >
           <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2">
-            <div className="text-xs font-semibold uppercase text-gray-500">{t('branches.gyokerIrodak')}</div>
+            <div className="text-xs font-semibold uppercase text-gray-500">
+              {t('branches.gyokerIrodak')}
+            </div>
             <div className="text-lg font-bold text-gray-900" data-testid="branch-roots-count">
               {backendSummary.roots.length}
             </div>
           </div>
           <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2">
-            <div className="text-xs font-semibold uppercase text-gray-500">{t('branches.ertektarak')}</div>
+            <div className="text-xs font-semibold uppercase text-gray-500">
+              {t('branches.ertektarak')}
+            </div>
             <div className="text-lg font-bold text-gray-900" data-testid="branch-vaults-count">
               {backendSummary.vaults.length}
             </div>
           </div>
           <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2">
-            <div className="text-xs font-semibold uppercase text-gray-500">{t('branches.ertektariCelpartnerek')}</div>
-            <div className="text-lg font-bold text-gray-900" data-testid="branch-counterparties-count">
+            <div className="text-xs font-semibold uppercase text-gray-500">
+              {t('branches.ertektariCelpartnerek')}
+            </div>
+            <div
+              className="text-lg font-bold text-gray-900"
+              data-testid="branch-counterparties-count"
+            >
               {counterpartiesCount}
             </div>
           </div>
@@ -405,13 +447,20 @@ export default function BranchPage() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={9} className="text-center text-gray-500 py-4">{t('common.noResult')}</td>
+                <td colSpan={9} className="text-center text-gray-500 py-4">
+                  {t('common.noResult')}
+                </td>
               </tr>
             ) : (
               filtered.map((b) => (
                 <tr key={b.id}>
                   <td className="font-mono text-sm">{b.code}</td>
-                  <td>{b.name}{b.shortName ? <span className="text-gray-400 text-xs ml-1">({b.shortName})</span> : null}</td>
+                  <td>
+                    {b.name}
+                    {b.shortName ? (
+                      <span className="text-gray-400 text-xs ml-1">({b.shortName})</span>
+                    ) : null}
+                  </td>
                   <td className="text-sm">{b.region ?? '-'}</td>
                   <td>
                     <div className="flex gap-1 flex-wrap">
@@ -422,7 +471,11 @@ export default function BranchPage() {
                     </div>
                   </td>
                   <td className="text-sm">
-                    {b.email ? <div className="truncate max-w-[180px]" title={b.email}>{b.email}</div> : null}
+                    {b.email ? (
+                      <div className="truncate max-w-[180px]" title={b.email}>
+                        {b.email}
+                      </div>
+                    ) : null}
                     {b.phone ? <div className="text-gray-500">{b.phone}</div> : null}
                     {!b.email && !b.phone ? <span className="text-gray-400">-</span> : null}
                   </td>
@@ -433,14 +486,19 @@ export default function BranchPage() {
                     </span>
                   </td>
                   <td>
-                    <label className="inline-flex items-center gap-2 cursor-pointer" title="Értéktári fiók">
+                    <label
+                      className="inline-flex items-center gap-2 cursor-pointer"
+                      title="Értéktári fiók"
+                    >
                       <input
                         type="checkbox"
                         checked={b.isVault ?? false}
                         onChange={() => void handleToggleVault(b)}
                         className="form-checkbox h-4 w-4"
                       />
-                      <span className={`text-xs font-semibold ${b.isVault ? 'text-blue-700' : 'text-gray-400'}`}>
+                      <span
+                        className={`text-xs font-semibold ${b.isVault ? 'text-blue-700' : 'text-gray-400'}`}
+                      >
                         {b.isVault ? 'IGEN' : 'nem'}
                       </span>
                     </label>
@@ -511,14 +569,19 @@ export default function BranchPage() {
                 <ServiceBadge label="POS" active={b.hasPos ?? false} />
               </div>
 
-              <label className="inline-flex items-center gap-2 cursor-pointer" title="Értéktári fiók">
+              <label
+                className="inline-flex items-center gap-2 cursor-pointer"
+                title="Értéktári fiók"
+              >
                 <input
                   type="checkbox"
                   checked={b.isVault ?? false}
                   onChange={() => void handleToggleVault(b)}
                   className="form-checkbox h-4 w-4"
                 />
-                <span className={`text-xs font-semibold ${b.isVault ? 'text-blue-700' : 'text-gray-400'}`}>
+                <span
+                  className={`text-xs font-semibold ${b.isVault ? 'text-blue-700' : 'text-gray-400'}`}
+                >
                   Értéktár: {b.isVault ? 'IGEN' : 'nem'}
                 </span>
               </label>

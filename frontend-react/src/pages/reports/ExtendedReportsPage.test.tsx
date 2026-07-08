@@ -83,7 +83,11 @@ describe('ExtendedReportsPage CSV backend contract', () => {
     mocks.getHandlingFeeReport.mockResolvedValue({ totalHandlingFees: 1500 })
     mocks.getCashStatus.mockResolvedValue({ branchName: 'Budapest 01', totalHufEquivalent: 250000 })
     mocks.getTodaySummary.mockResolvedValue({ reportDate: '2026-06-18', transactionCount: 7 })
-    mocks.getCurrencyReport.mockResolvedValue({ currencyId: 1, currencyCode: 'EUR', totalBuyHuf: 120000 })
+    mocks.getCurrencyReport.mockResolvedValue({
+      currencyId: 1,
+      currencyCode: 'EUR',
+      totalBuyHuf: 120000,
+    })
     mocks.getDailyFullReport.mockResolvedValue({ branchName: 'Budapest 01', transactionCount: 4 })
     mocks.exportPeriodCsv.mockResolvedValue(new Blob(['period']))
     mocks.exportMonthlyTurnoverCsv.mockResolvedValue(new Blob(['monthly']))

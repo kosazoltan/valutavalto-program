@@ -134,7 +134,10 @@ function makeTx(companyCode: string | null, overrides: Partial<PendingTx> = {}):
   };
 }
 
-function makeTransfer(companyCode: string | null, overrides: Partial<PendingTransfer> = {}): PendingTransfer {
+function makeTransfer(
+  companyCode: string | null,
+  overrides: Partial<PendingTransfer> = {},
+): PendingTransfer {
   return {
     id: 2,
     target_branch_id: null,

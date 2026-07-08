@@ -27,22 +27,47 @@ function setupApi(opts: {
   mockGet.mockImplementation((url: string) => {
     if (url === '/branches') return Promise.resolve({ data: opts.branches })
     if (url === '/cash-register/devices') {
-      return opts.devicesFail ? Promise.reject(new Error('devices 403')) : Promise.resolve({ data: opts.devices ?? [] })
+      return opts.devicesFail
+        ? Promise.reject(new Error('devices 403'))
+        : Promise.resolve({ data: opts.devices ?? [] })
     }
     if (url === '/stock-snapshot') {
-      return opts.stockFail ? Promise.reject(new Error('snapshot 500')) : Promise.resolve({ data: opts.stock ?? { regions: [] } })
+      return opts.stockFail
+        ? Promise.reject(new Error('snapshot 500'))
+        : Promise.resolve({ data: opts.stock ?? { regions: [] } })
     }
     return Promise.resolve({ data: null })
   })
 }
 
-const BRANCH_A = { id: 'a1', code: 'P01', name: 'Pénztár 1', city: 'Szeged', isActive: true, region: 'SZEGED' }
-const BRANCH_B = { id: 'b2', code: 'P02', name: 'Pénztár 2', city: 'Pécs', isActive: true, region: 'PECS' }
+const BRANCH_A = {
+  id: 'a1',
+  code: 'P01',
+  name: 'Pénztár 1',
+  city: 'Szeged',
+  isActive: true,
+  region: 'SZEGED',
+}
+const BRANCH_B = {
+  id: 'b2',
+  code: 'P02',
+  name: 'Pénztár 2',
+  city: 'Pécs',
+  isActive: true,
+  region: 'PECS',
+}
 
 // stock-snapshot válasz: A fióknak van EUR készlete (küszöb alatt → valódi riasztás),
 // B fióknak NINCS semmi (STOCK UNKNOWN).
 function snapshotWithLowEurForA() {
-  return { regions: [{ regionCode: 'SZEGED', branches: [{ branchId: 'a1', currencies: [{ currencyCode: 'EUR', stock: 100 }] }] }] }
+  return {
+    regions: [
+      {
+        regionCode: 'SZEGED',
+        branches: [{ branchId: 'a1', currencies: [{ currencyCode: 'EUR', stock: 100 }] }],
+      },
+    ],
+  }
 }
 
 describe('CentralVaultDashboard — FK-048 készlet-riasztás', () => {
@@ -82,13 +107,17 @@ describe('CentralVaultDashboard — FK-048 készlet-riasztás', () => {
   it('FR-4/FR-5: /stock-snapshot hiba esetén látható hibabanner jelenik meg (≠ STOCK UNKNOWN)', async () => {
     setupApi({ branches: [BRANCH_A], stockFail: true })
     render(<CentralVaultDashboard />)
-    await waitFor(() => expect(screen.getByText(/A készletadatok betöltése sikertelen/)).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText(/A készletadatok betöltése sikertelen/)).toBeInTheDocument(),
+    )
   })
 
   it('FR-4 (edge): /stock-snapshot hiba esetén a Készlet-riasztás kártya NEM félrevezető 0-t, hanem „—”-t mutat', async () => {
     setupApi({ branches: [BRANCH_A], stockFail: true })
     render(<CentralVaultDashboard />)
-    await waitFor(() => expect(screen.getByText(/A készletadatok betöltése sikertelen/)).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText(/A készletadatok betöltése sikertelen/)).toBeInTheDocument(),
+    )
     // a spec edge case: hiba esetén a táblázat/összesítő NE mutasson félrevezető adatot →
     // a kártya „—” (nem tudjuk), nem magabiztos 0
     expect(screen.getByTestId('stock-alert-count').textContent).toBe('—')

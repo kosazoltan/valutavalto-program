@@ -29,7 +29,7 @@ async function mockBankOrderApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockBankOrderApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/bank-orders') && method === 'GET') {
@@ -64,20 +72,22 @@ async function mockBankOrderApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          content: [{
-            id: 'order-1',
-            branchId: 'branch-1',
-            branchCode: 'BUD01',
-            branchName: 'Budapest 01',
-            currencyId: 2,
-            currencyCode: 'EUR',
-            amount: '1000',
-            status: 'APPROVED',
-            urgency: 'NORMAL',
-            requestedByWorkerId: 77,
-            requestedByWorkerName: 'Lista kérő',
-            requestedAt: '2026-06-19T08:00:00.000Z',
-          }],
+          content: [
+            {
+              id: 'order-1',
+              branchId: 'branch-1',
+              branchCode: 'BUD01',
+              branchName: 'Budapest 01',
+              currencyId: 2,
+              currencyCode: 'EUR',
+              amount: '1000',
+              status: 'APPROVED',
+              urgency: 'NORMAL',
+              requestedByWorkerId: 77,
+              requestedByWorkerName: 'Lista kérő',
+              requestedAt: '2026-06-19T08:00:00.000Z',
+            },
+          ],
           totalElements: 1,
           totalPages: 1,
           number: 0,
@@ -146,7 +156,11 @@ async function mockBankOrderApis(page: Page) {
       })
     }
 
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [], data: [] }) })
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ content: [], data: [] }),
+    })
   })
 }
 
@@ -160,9 +174,11 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('banki rendelések WU napi keret fallback mobil viewporton backend POST-ot hív', async ({ page }) => {
+test('banki rendelések WU napi keret fallback mobil viewporton backend POST-ot hív', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  page.on('dialog', dialog => void dialog.accept())
+  page.on('dialog', (dialog) => void dialog.accept())
   await mockBankOrderApis(page)
   await login(page)
 
@@ -171,22 +187,24 @@ test('banki rendelések WU napi keret fallback mobil viewporton backend POST-ot 
   await expect(page.getByText(/9[\s\u00a0]?000 USD maradt/)).toBeVisible()
 
   await page.getByLabel(/Kézi fallback felhasználás/i).fill('250')
-  const limitUseRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/western-union/daily-limit/use')
+  const limitUseRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes('/western-union/daily-limit/use'),
   )
   await page.getByRole('button', { name: /Keret felhasználás/i }).click()
   await limitUseRequest
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().endsWith('/api/v1/bank-orders/order-1')
+  const detailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().endsWith('/api/v1/bank-orders/order-1'),
   )
   await page.getByRole('button', { name: /Részletek/i }).click()
   await detailRequest
   await expect(page.getByText('Backend részletes banki rendelés megjegyzés')).toBeVisible()
   await expect(page.getByText('BANK-DETAIL-001')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

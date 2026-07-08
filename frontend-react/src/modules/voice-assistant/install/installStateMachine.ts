@@ -42,7 +42,7 @@ export interface InstallStateMachine {
 }
 
 export function createInstallStateMachine(
-  onCompleted?: (notes: string[]) => void
+  onCompleted?: (notes: string[]) => void,
 ): InstallStateMachine {
   let currentIdx = 1
   let completedFired = false
@@ -74,9 +74,7 @@ export function createInstallStateMachine(
       // szennyezne a Set-et. Sanitizaljuk: a `current_step` invalid esetben
       // -1-re mappel (NEM 0 - hogy ne utkozzon az LLM-szerinti valid 0-val
       // a stale-coerce miatt).
-      const sanitizedStep = Number.isFinite(currentStep)
-        ? Math.trunc(currentStep)
-        : -1
+      const sanitizedStep = Number.isFinite(currentStep) ? Math.trunc(currentStep) : -1
 
       // Codex PR #666 P1: a leptetes a BELSO currentIdx-en, NEM az LLM altal
       // kuldott currentStep-en. Ha az LLM out-of-sync (pl. current_step: 6,
@@ -85,7 +83,7 @@ export function createInstallStateMachine(
       if (sanitizedStep !== currentIdx) {
         logger.warn(
           'VoiceAssistant',
-          `installStateMachine: LLM currentStep=${currentStep} (sanitized=${sanitizedStep}) !== internal=${currentIdx}, internal a kanonikus`
+          `installStateMachine: LLM currentStep=${currentStep} (sanitized=${sanitizedStep}) !== internal=${currentIdx}, internal a kanonikus`,
         )
       }
 

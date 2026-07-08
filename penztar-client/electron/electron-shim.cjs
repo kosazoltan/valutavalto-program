@@ -14,7 +14,7 @@ const npmElectronPath = require.resolve('electron');
 
 // Temporarily override resolution for 'electron' to skip the npm package
 const origResolve = Module._resolveFilename;
-Module._resolveFilename = function(request, parent, isMain, options) {
+Module._resolveFilename = function (request, parent, isMain, options) {
   if (request === 'electron' || request === 'electron/main') {
     // Force Electron's built-in module by returning just 'electron'
     // which the Electron binary intercepts at the c._load level

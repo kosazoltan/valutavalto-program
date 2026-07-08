@@ -29,13 +29,15 @@ export default function CameraLivePage() {
       if (isElectron()) {
         // Electron: lokális kamerák listázása WebRTC-n keresztül
         const devices = await navigator.mediaDevices.enumerateDevices()
-        const videoCams = devices.filter(d => d.kind === 'videoinput')
-        setCameras(videoCams.map((d, i) => ({
-          cameraId: d.deviceId || `cam-${i}`,
-          cameraName: d.label || `Kamera ${i + 1}`,
-          recording: false,
-          connected: true,
-        })))
+        const videoCams = devices.filter((d) => d.kind === 'videoinput')
+        setCameras(
+          videoCams.map((d, i) => ({
+            cameraId: d.deviceId || `cam-${i}`,
+            cameraName: d.label || `Kamera ${i + 1}`,
+            recording: false,
+            connected: true,
+          })),
+        )
         if (videoCams.length > 0 && !selectedCamera) {
           const first = videoCams[0]
           if (first) setSelectedCamera(first.deviceId || 'cam-0')
@@ -59,7 +61,7 @@ export default function CameraLivePage() {
     void fetchCameraStatus()
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
-      if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop())
+      if (localStreamRef.current) localStreamRef.current.getTracks().forEach((t) => t.stop())
     }
   }, [fetchCameraStatus])
 
@@ -71,12 +73,10 @@ export default function CameraLivePage() {
     const startStream = async () => {
       try {
         // Előző stream leállítása
-        if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop())
+        if (localStreamRef.current) localStreamRef.current.getTracks().forEach((t) => t.stop())
 
         stream = await navigator.mediaDevices.getUserMedia({
-          video: selectedCamera.startsWith('cam-')
-            ? true
-            : { deviceId: { exact: selectedCamera } },
+          video: selectedCamera.startsWith('cam-') ? true : { deviceId: { exact: selectedCamera } },
         })
         if (videoRef.current) {
           videoRef.current.srcObject = stream
@@ -89,7 +89,7 @@ export default function CameraLivePage() {
     startStream()
 
     return () => {
-      if (stream) stream.getTracks().forEach(t => t.stop())
+      if (stream) stream.getTracks().forEach((t) => t.stop())
     }
   }, [selectedCamera])
 
@@ -114,7 +114,9 @@ export default function CameraLivePage() {
         <h1 className="text-lg font-bold flex items-center gap-2">
           <Camera className="h-6 w-6" />
           {t('camera.eloKamerakep')}
-          {isElectron() && <span className="text-sm font-normal text-muted-foreground">{t('camera.lokalis')}</span>}
+          {isElectron() && (
+            <span className="text-sm font-normal text-muted-foreground">{t('camera.lokalis')}</span>
+          )}
         </h1>
         <button
           className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
@@ -128,7 +130,9 @@ export default function CameraLivePage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
         {/* Camera selector */}
         <div className="lg:col-span-1 space-y-3">
-          <h2 className="font-semibold text-sm text-muted-foreground uppercase">{t('camera.kamerak')}</h2>
+          <h2 className="font-semibold text-sm text-muted-foreground uppercase">
+            {t('camera.kamerak')}
+          </h2>
           {loading ? (
             <p className="text-muted-foreground">Betöltés...</p>
           ) : cameras.length === 0 ? (
@@ -138,7 +142,9 @@ export default function CameraLivePage() {
               <div
                 key={cam.cameraId}
                 className={`rounded-lg border bg-card shadow-sm cursor-pointer transition-colors ${
-                  selectedCamera === cam.cameraId ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                  selectedCamera === cam.cameraId
+                    ? 'border-primary bg-primary/5'
+                    : 'hover:bg-muted/50'
                 }`}
                 onClick={() => setSelectedCamera(cam.cameraId)}
               >
@@ -176,7 +182,10 @@ export default function CameraLivePage() {
             </div>
             <div className="p-4">
               {selectedCamera ? (
-                <div className="relative bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '4/3' }}>
+                <div
+                  className="relative bg-black rounded-lg overflow-hidden"
+                  style={{ aspectRatio: '4/3' }}
+                >
                   {isElectron() ? (
                     // Electron: WebRTC video stream
                     <video
@@ -194,14 +203,16 @@ export default function CameraLivePage() {
                       alt="Élő kamerakép"
                       className="w-full h-full object-contain"
                       onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                        (e.target as HTMLImageElement).style.display = 'none'
+                        ;(e.target as HTMLImageElement).style.display = 'none'
                       }}
                     />
                   )}
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-64 bg-muted rounded-lg">
-                  <p className="text-muted-foreground">{t('camera.valasszonEgyKameratAListabol')}</p>
+                  <p className="text-muted-foreground">
+                    {t('camera.valasszonEgyKameratAListabol')}
+                  </p>
                 </div>
               )}
             </div>

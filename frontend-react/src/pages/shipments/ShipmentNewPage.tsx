@@ -2,7 +2,14 @@ import { useEffect, useState, useMemo, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertCircle, ArrowLeft, Package, Plus, Send, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { branchApi, currencyApi, exchangeRateApi, shipmentRequestApi, type BranchInfo, type Currency } from '../../services/api/index'
+import {
+  branchApi,
+  currencyApi,
+  exchangeRateApi,
+  shipmentRequestApi,
+  type BranchInfo,
+  type Currency,
+} from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
@@ -45,11 +52,12 @@ export default function ShipmentNewPage() {
     const d = searchParams.get('direction')
     return d === 'outbound' || d === 'inbound' ? d : null
   }, [searchParams])
-  const directionTitle = direction === 'outbound'
-    ? 'Új készpénz ÁTADÁS (Értéktárból a Pénztárnak)'
-    : direction === 'inbound'
-    ? 'Új készpénz ÁTVÉTEL (Pénztárból az Értéktárba)'
-    : t('shipments.ujSzallitmanyigeny')
+  const directionTitle =
+    direction === 'outbound'
+      ? 'Új készpénz ÁTADÁS (Értéktárból a Pénztárnak)'
+      : direction === 'inbound'
+        ? 'Új készpénz ÁTVÉTEL (Pénztárból az Értéktárba)'
+        : t('shipments.ujSzallitmanyigeny')
   const worker = useAuthStore((state) => state.worker)
   /**
    * Bali Henriett kérés B.: a saját értéktár mindig a tranzakció egyik szereplője.
@@ -115,9 +123,12 @@ export default function ShipmentNewPage() {
     // Worker-betöltés után a saját értéktár-id pótlása az irány által megszabott oldalon.
     if (!ownBranchId) return
     setForm((current) => {
-      if (direction === 'outbound' && !current.fromBranchId) return { ...current, fromBranchId: ownBranchId }
-      if (direction === 'inbound' && !current.toBranchId) return { ...current, toBranchId: ownBranchId }
-      if (direction === null && !current.fromBranchId) return { ...current, fromBranchId: ownBranchId } // legacy default
+      if (direction === 'outbound' && !current.fromBranchId)
+        return { ...current, fromBranchId: ownBranchId }
+      if (direction === 'inbound' && !current.toBranchId)
+        return { ...current, toBranchId: ownBranchId }
+      if (direction === null && !current.fromBranchId)
+        return { ...current, fromBranchId: ownBranchId } // legacy default
       return current
     })
   }, [ownBranchId, direction])
@@ -166,8 +177,8 @@ export default function ShipmentNewPage() {
           return [...cp.territorialCashiers, ...cp.peerVaults, ...cp.fixedCounterparties]
         })
       : isCashierUser
-        // FK-013 pénztári oldal: szűkített 3-elemes lista (saját értéktár + TH + FOP1)
-        ? branchApi.listCashierShipmentTargets()
+        ? // FK-013 pénztári oldal: szűkített 3-elemes lista (saját értéktár + TH + FOP1)
+          branchApi.listCashierShipmentTargets()
         : branchApi.listMyTerritory()
 
     Promise.all([branchSource, currencyApi.getActive()])
@@ -181,8 +192,12 @@ export default function ShipmentNewPage() {
         logger.error('ShipmentNewPage', 'Referenciaadat betoltesi hiba:', err)
         setError(getErrorMessage(err))
       })
-      .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
   }, [isVaultUser, isCashierUser])
 
   const patch = (values: Partial<FormState>) => setForm((current) => ({ ...current, ...values }))
@@ -196,7 +211,10 @@ export default function ShipmentNewPage() {
    * payload-ot NEM küldjük át (server-side authoritative).
    */
   useEffect(() => {
-    if (!form.currencyId) { setAppliedRate(null); return }
+    if (!form.currencyId) {
+      setAppliedRate(null)
+      return
+    }
     if (selectedCurrency?.code?.toUpperCase() === 'HUF') {
       setRateLoading(false)
       setAppliedRate(1)
@@ -204,7 +222,8 @@ export default function ShipmentNewPage() {
     }
     let active = true
     setRateLoading(true)
-    exchangeRateApi.getByCurrencyId(Number(form.currencyId))
+    exchangeRateApi
+      .getByCurrencyId(Number(form.currencyId))
       .then((rate) => {
         if (!active) return
         // D + Codex P2: KIZÁRÓLAG officialRate (elszámoló ár / J). A backend is csak
@@ -213,9 +232,15 @@ export default function ShipmentNewPage() {
         const official = rate.officialRate ?? null
         setAppliedRate(official != null ? Number(official) : null)
       })
-      .catch(() => { if (active) setAppliedRate(null) })
-      .finally(() => { if (active) setRateLoading(false) })
-    return () => { active = false }
+      .catch(() => {
+        if (active) setAppliedRate(null)
+      })
+      .finally(() => {
+        if (active) setRateLoading(false)
+      })
+    return () => {
+      active = false
+    }
   }, [form.currencyId, selectedCurrency?.code])
 
   // D: a forintosított érték élő számítása (5-Ft-os kerekítés a kijelzéshez; a
@@ -230,7 +255,13 @@ export default function ShipmentNewPage() {
     event.preventDefault()
     setError(null)
     const amount = Number(form.amount.replace(',', '.'))
-    if (!form.fromBranchId || !form.toBranchId || !form.currencyId || !Number.isFinite(amount) || amount <= 0) {
+    if (
+      !form.fromBranchId ||
+      !form.toBranchId ||
+      !form.currencyId ||
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
       setError('Átadó, átvevő, valuta és pozitív összeg megadása kötelező.')
       return
     }
@@ -257,8 +288,18 @@ export default function ShipmentNewPage() {
         }
       })
       .filter((line) => line.quantity > 0 || line.faceValue > 0)
-    if (normalizedDenominations.some((line) => !Number.isInteger(line.quantity) || line.quantity <= 0 || !Number.isFinite(line.faceValue) || line.faceValue <= 0)) {
-      setError('A címletezésben minden sorhoz pozitív egész darabszám és pozitív névleges érték szükséges.')
+    if (
+      normalizedDenominations.some(
+        (line) =>
+          !Number.isInteger(line.quantity) ||
+          line.quantity <= 0 ||
+          !Number.isFinite(line.faceValue) ||
+          line.faceValue <= 0,
+      )
+    ) {
+      setError(
+        'A címletezésben minden sorhoz pozitív egész darabszám és pozitív névleges érték szükséges.',
+      )
       return
     }
     const denominationTotal = normalizedDenominations.reduce((sum, line) => sum + line.lineTotal, 0)
@@ -277,10 +318,12 @@ export default function ShipmentNewPage() {
         sealNumber: form.sealNumber.trim(),
         // D követelmény (Codex P1): a backend autoritatív a server-side aktuális rate-tel —
         // a kliens csak display-célból mutatja a rate-et + hufValue-t, NEM küldi a payloadban.
-        items: [{
-          currencyId: form.currencyId,
-          requestedAmount: amount,
-        }],
+        items: [
+          {
+            currencyId: form.currencyId,
+            requestedAmount: amount,
+          },
+        ],
       })
       if (!created.id) throw new Error('A szerver nem adott szállítmány azonosítót.')
       const submitted = await shipmentRequestApi.submit(created.id)
@@ -371,16 +414,24 @@ export default function ShipmentNewPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="flex items-center gap-2 text-xl font-bold text-gray-800">
-          <Package />{directionTitle}
+          <Package />
+          {directionTitle}
         </h1>
-        <button onClick={() => navigate('/shipments')} className="form-button flex items-center gap-2">
-          <ArrowLeft size={16} />{t('shipments.visszaAListahoz')}
+        <button
+          onClick={() => navigate('/shipments')}
+          className="form-button flex items-center gap-2"
+        >
+          <ArrowLeft size={16} />
+          {t('shipments.visszaAListahoz')}
         </button>
       </div>
 
       {error && (
         <div className="form-panel bg-red-50 border-red-200">
-          <div className="flex items-center gap-2 text-red-700"><AlertCircle size={16} /><span>{error}</span></div>
+          <div className="flex items-center gap-2 text-red-700">
+            <AlertCircle size={16} />
+            <span>{error}</span>
+          </div>
         </div>
       )}
 
@@ -388,7 +439,10 @@ export default function ShipmentNewPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="block">
             <span className="form-label">
-              Átadó{direction === 'outbound' && <span className="ml-1 text-xs text-gray-500">(automatikus — Ön értéktára)</span>}
+              Átadó
+              {direction === 'outbound' && (
+                <span className="ml-1 text-xs text-gray-500">(automatikus — Ön értéktára)</span>
+              )}
             </span>
             <select
               className={`form-input ${direction === 'outbound' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
@@ -405,7 +459,9 @@ export default function ShipmentNewPage() {
                   {ownBranchOption && form.fromBranchId === ownBranchId && (
                     <optgroup label="Saját értéktár">
                       <option value={ownBranchOption.id}>
-                        {ownBranchOption.code ? `${ownBranchOption.code} - ${ownBranchOption.name}` : ownBranchOption.name}
+                        {ownBranchOption.code
+                          ? `${ownBranchOption.code} - ${ownBranchOption.name}`
+                          : ownBranchOption.name}
                       </option>
                     </optgroup>
                   )}
@@ -413,32 +469,51 @@ export default function ShipmentNewPage() {
                     <optgroup label="Helyi Pénztárak">
                       {(vaultCounterparties.territorialCashiers ?? [])
                         .filter((b) => b.isActive !== false)
-                        .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                        .map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.code} - {b.name}
+                          </option>
+                        ))}
                     </optgroup>
                   )}
                   {(vaultCounterparties.peerVaults ?? []).length > 0 && (
                     <optgroup label="Társ értéktárak">
                       {(vaultCounterparties.peerVaults ?? [])
                         .filter((b) => b.isActive !== false)
-                        .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                        .map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.code} - {b.name}
+                          </option>
+                        ))}
                     </optgroup>
                   )}
                   {(vaultCounterparties.fixedCounterparties ?? []).length > 0 && (
                     <optgroup label="Banki és speciális partnerek">
                       {(vaultCounterparties.fixedCounterparties ?? [])
                         .filter((b) => b.isActive !== false)
-                        .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                        .map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.code} - {b.name}
+                          </option>
+                        ))}
                     </optgroup>
                   )}
                 </>
               ) : (
-                branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} - {branch.name}</option>)
+                branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.code} - {branch.name}
+                  </option>
+                ))
               )}
             </select>
           </label>
           <label className="block">
             <span className="form-label">
-              Átvevő{direction === 'inbound' && <span className="ml-1 text-xs text-gray-500">(automatikus — Ön értéktára)</span>}
+              Átvevő
+              {direction === 'inbound' && (
+                <span className="ml-1 text-xs text-gray-500">(automatikus — Ön értéktára)</span>
+              )}
             </span>
             <select
               className={`form-input ${direction === 'inbound' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
@@ -455,7 +530,9 @@ export default function ShipmentNewPage() {
                   {ownBranchOption && form.toBranchId === ownBranchId && (
                     <optgroup label="Saját értéktár">
                       <option value={ownBranchOption.id}>
-                        {ownBranchOption.code ? `${ownBranchOption.code} - ${ownBranchOption.name}` : ownBranchOption.name}
+                        {ownBranchOption.code
+                          ? `${ownBranchOption.code} - ${ownBranchOption.name}`
+                          : ownBranchOption.name}
                       </option>
                     </optgroup>
                   )}
@@ -463,55 +540,102 @@ export default function ShipmentNewPage() {
                     <optgroup label="Helyi Pénztárak">
                       {(vaultCounterparties.territorialCashiers ?? [])
                         .filter((b) => b.isActive !== false)
-                        .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                        .map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.code} - {b.name}
+                          </option>
+                        ))}
                     </optgroup>
                   )}
                   {(vaultCounterparties.peerVaults ?? []).length > 0 && (
                     <optgroup label="Társ értéktárak">
                       {(vaultCounterparties.peerVaults ?? [])
                         .filter((b) => b.isActive !== false)
-                        .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                        .map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.code} - {b.name}
+                          </option>
+                        ))}
                     </optgroup>
                   )}
                   {(vaultCounterparties.fixedCounterparties ?? []).length > 0 && (
                     <optgroup label="Banki és speciális partnerek">
                       {(vaultCounterparties.fixedCounterparties ?? [])
                         .filter((b) => b.isActive !== false)
-                        .map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                        .map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.code} - {b.name}
+                          </option>
+                        ))}
                     </optgroup>
                   )}
                 </>
               ) : (
-                branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} - {branch.name}</option>)
+                branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.code} - {branch.name}
+                  </option>
+                ))
               )}
             </select>
           </label>
           <label className="block">
             <span className="form-label">Kért kézbesítési dátum</span>
-            <input type="date" className="form-input" value={form.deliveryDate} disabled={saving} onChange={(e) => patch({ deliveryDate: e.target.value })} />
+            <input
+              type="date"
+              className="form-input"
+              value={form.deliveryDate}
+              disabled={saving}
+              onChange={(e) => patch({ deliveryDate: e.target.value })}
+            />
           </label>
           <label className="block">
             <span className="form-label">Valuta</span>
-            <select className="form-input" value={form.currencyId} disabled={disabled} onChange={(e) => patch({ currencyId: e.target.value })}>
+            <select
+              className="form-input"
+              value={form.currencyId}
+              disabled={disabled}
+              onChange={(e) => patch({ currencyId: e.target.value })}
+            >
               <option value="">Válasszon valutát</option>
-              {currencies.map((currency) => <option key={currency.id} value={currency.id}>{currency.code} - {currency.name}</option>)}
+              {currencies.map((currency) => (
+                <option key={currency.id} value={currency.id}>
+                  {currency.code} - {currency.name}
+                </option>
+              ))}
             </select>
           </label>
           <label className="block">
             <span className="form-label">Összeg</span>
-            <input type="number" min="0.01" step="0.01" className="form-input" value={form.amount} disabled={saving} onChange={(e) => patch({ amount: e.target.value })} />
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              className="form-input"
+              value={form.amount}
+              disabled={saving}
+              onChange={(e) => patch({ amount: e.target.value })}
+            />
           </label>
           {/* D követelmény (Bali Henriett): aktuális elszámoló árfolyam + forintosított érték
               AUTOMATIKUSAN, read-only — a felhasználó NE írja kézzel. */}
           <label className="block">
             <span className="form-label">
               Alkalmazott elszámoló árfolyam
-              <span className="ml-1 text-xs text-gray-500">(automatikus — aktuális rendszer-árfolyam)</span>
+              <span className="ml-1 text-xs text-gray-500">
+                (automatikus — aktuális rendszer-árfolyam)
+              </span>
             </span>
             <input
               type="text"
               className="form-input bg-gray-100 cursor-not-allowed"
-              value={rateLoading ? 'Betöltés…' : appliedRate != null ? appliedRate.toLocaleString('hu-HU', { maximumFractionDigits: 6 }) : '—'}
+              value={
+                rateLoading
+                  ? 'Betöltés…'
+                  : appliedRate != null
+                    ? appliedRate.toLocaleString('hu-HU', { maximumFractionDigits: 6 })
+                    : '—'
+              }
               disabled
               readOnly
             />
@@ -531,7 +655,9 @@ export default function ShipmentNewPage() {
           </label>
           {/* FK02 (FR-1..3): szállító neve + plombaszám — KÖTELEZŐ az átadás-átvételnél. */}
           <label className="block">
-            <span className="form-label">Szállító neve <span className="text-red-500">*</span></span>
+            <span className="form-label">
+              Szállító neve <span className="text-red-500">*</span>
+            </span>
             <input
               type="text"
               maxLength={128}
@@ -543,7 +669,9 @@ export default function ShipmentNewPage() {
             />
           </label>
           <label className="block">
-            <span className="form-label">Plombaszám <span className="text-red-500">*</span></span>
+            <span className="form-label">
+              Plombaszám <span className="text-red-500">*</span>
+            </span>
             <input
               type="text"
               maxLength={64}
@@ -556,7 +684,12 @@ export default function ShipmentNewPage() {
           </label>
           <label className="block md:col-span-2">
             <span className="form-label">Megjegyzés</span>
-            <textarea className="form-input min-h-24" value={form.notes} disabled={saving} onChange={(e) => patch({ notes: e.target.value })} />
+            <textarea
+              className="form-input min-h-24"
+              value={form.notes}
+              disabled={saving}
+              onChange={(e) => patch({ notes: e.target.value })}
+            />
           </label>
           <div className="md:col-span-2 rounded border border-gray-200 p-3">
             <div className="mb-2 flex items-center justify-between gap-3">
@@ -565,7 +698,9 @@ export default function ShipmentNewPage() {
                 type="button"
                 className="form-button flex items-center gap-2"
                 disabled={saving}
-                onClick={() => setDenominations((current) => [...current, { quantity: '', faceValue: '' }])}
+                onClick={() =>
+                  setDenominations((current) => [...current, { quantity: '', faceValue: '' }])
+                }
               >
                 <Plus size={16} /> Sor hozzáadása
               </button>
@@ -575,7 +710,10 @@ export default function ShipmentNewPage() {
                 {denominations.map((line, index) => {
                   const quantity = Number(line.quantity)
                   const faceValue = Number(line.faceValue.replace(',', '.'))
-                  const lineTotal = Number.isFinite(quantity) && Number.isFinite(faceValue) ? quantity * faceValue : 0
+                  const lineTotal =
+                    Number.isFinite(quantity) && Number.isFinite(faceValue)
+                      ? quantity * faceValue
+                      : 0
                   return (
                     <div key={index} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
                       <input
@@ -586,7 +724,13 @@ export default function ShipmentNewPage() {
                         placeholder="Darab"
                         value={line.quantity}
                         disabled={saving}
-                        onChange={(e) => setDenominations((current) => current.map((item, i) => i === index ? { ...item, quantity: e.target.value } : item))}
+                        onChange={(e) =>
+                          setDenominations((current) =>
+                            current.map((item, i) =>
+                              i === index ? { ...item, quantity: e.target.value } : item,
+                            ),
+                          )
+                        }
                       />
                       <input
                         type="number"
@@ -596,12 +740,22 @@ export default function ShipmentNewPage() {
                         placeholder="Névleges érték"
                         value={line.faceValue}
                         disabled={saving}
-                        onChange={(e) => setDenominations((current) => current.map((item, i) => i === index ? { ...item, faceValue: e.target.value } : item))}
+                        onChange={(e) =>
+                          setDenominations((current) =>
+                            current.map((item, i) =>
+                              i === index ? { ...item, faceValue: e.target.value } : item,
+                            ),
+                          )
+                        }
                       />
                       <input
                         type="text"
                         className="form-input bg-gray-100"
-                        value={lineTotal > 0 ? `${lineTotal.toLocaleString('hu-HU')} ${selectedCurrency?.code ?? ''}` : '—'}
+                        value={
+                          lineTotal > 0
+                            ? `${lineTotal.toLocaleString('hu-HU')} ${selectedCurrency?.code ?? ''}`
+                            : '—'
+                        }
                         disabled
                         readOnly
                       />
@@ -610,7 +764,9 @@ export default function ShipmentNewPage() {
                         className="toolbar-button text-red-600"
                         title="Címletsor törlése"
                         disabled={saving}
-                        onClick={() => setDenominations((current) => current.filter((_, i) => i !== index))}
+                        onClick={() =>
+                          setDenominations((current) => current.filter((_, i) => i !== index))
+                        }
                       >
                         <Trash2 size={16} />
                       </button>
@@ -622,8 +778,13 @@ export default function ShipmentNewPage() {
           </div>
         </div>
         <div className="flex justify-end">
-          <button type="submit" className="form-button-primary flex items-center gap-2" disabled={disabled}>
-            <Send size={16} />{saving ? 'Beküldés...' : 'Igény beküldése'}
+          <button
+            type="submit"
+            className="form-button-primary flex items-center gap-2"
+            disabled={disabled}
+          >
+            <Send size={16} />
+            {saving ? 'Beküldés...' : 'Igény beküldése'}
           </button>
         </div>
       </form>
@@ -643,14 +804,21 @@ export default function ShipmentNewPage() {
         onPrint={async () => {
           if (!printReceiptData) return
           if (!window.electronAPI?.printReceipt) {
-            toast.warning('Nyomtatás nem elérhető', isElectron()
-              ? 'Electron preload/electronAPI hiba — indítsa újra a klienst.'
-              : 'A nyomtatás csak az asztali (Electron) kliensben érhető el.')
+            toast.warning(
+              'Nyomtatás nem elérhető',
+              isElectron()
+                ? 'Electron preload/electronAPI hiba — indítsa újra a klienst.'
+                : 'A nyomtatás csak az asztali (Electron) kliensben érhető el.',
+            )
             return
           }
           try {
             const ok = await window.electronAPI.printReceipt(JSON.stringify(printReceiptData))
-            if (ok) toast.success('Nyomtatás elindítva', `Bizonylat: ${printReceiptData.receiptNumber ?? '—'}`)
+            if (ok)
+              toast.success(
+                'Nyomtatás elindítva',
+                `Bizonylat: ${printReceiptData.receiptNumber ?? '—'}`,
+              )
             else toast.error('Nyomtatás sikertelen', 'A nyomtató nem válaszolt.')
           } catch (e) {
             toast.error('Nyomtatás hiba', getErrorMessage(e))

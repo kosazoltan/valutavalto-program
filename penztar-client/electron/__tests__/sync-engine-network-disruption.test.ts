@@ -97,9 +97,14 @@ function makeTx(
     customer_name: null,
     customer_document_number: null,
     customer_address: null,
-    denominations: null, source_of_funds: null, customer_is_pep: null, foreign_status: null, local_reference_number: `LS-${id}`,
+    denominations: null,
+    source_of_funds: null,
+    customer_is_pep: null,
+    foreign_status: null,
+    local_reference_number: `LS-${id}`,
     idempotency_key: `ikey-${id}`,
-    created_at: '2026-04-03 10:00:00',    synced: 0,
+    created_at: '2026-04-03 10:00:00',
+    synced: 0,
     ...overrides,
   };
 }
@@ -139,9 +144,9 @@ describe('SyncEngine — Teljes hálózati szakadás', () => {
   it('DNS feloldási hiba — minden tranzakció megmarad a queue-ban', async () => {
     mockedGetPendingTransactions.mockReturnValue([makeTx(1), makeTx(2), makeTx(3)]);
 
-    const mockFetch = vi.fn().mockRejectedValue(
-      new TypeError('fetch failed: getaddrinfo ENOTFOUND localhost'),
-    );
+    const mockFetch = vi
+      .fn()
+      .mockRejectedValue(new TypeError('fetch failed: getaddrinfo ENOTFOUND localhost'));
     vi.stubGlobal('fetch', mockFetch);
 
     const result = await engine.syncAll('test-token');
@@ -155,9 +160,9 @@ describe('SyncEngine — Teljes hálózati szakadás', () => {
   it('Connection refused — queue megőrzés', async () => {
     mockedGetPendingTransactions.mockReturnValue([makeTx(1)]);
 
-    const mockFetch = vi.fn().mockRejectedValue(
-      new TypeError('fetch failed: connect ECONNREFUSED 127.0.0.1:8080'),
-    );
+    const mockFetch = vi
+      .fn()
+      .mockRejectedValue(new TypeError('fetch failed: connect ECONNREFUSED 127.0.0.1:8080'));
     vi.stubGlobal('fetch', mockFetch);
 
     const result = await engine.syncAll('test-token');
@@ -206,7 +211,11 @@ describe('SyncEngine — Intermittáló kapcsolat (flapping)', () => {
 
   it('Minden második request sikeres — csak a sikeres tranzakciókat jelöli szinkronizáltnak', async () => {
     mockedGetPendingTransactions.mockReturnValue([
-      makeTx(1), makeTx(2), makeTx(3), makeTx(4), makeTx(5),
+      makeTx(1),
+      makeTx(2),
+      makeTx(3),
+      makeTx(4),
+      makeTx(5),
     ]);
 
     let callCount = 0;
@@ -461,7 +470,8 @@ describe('SyncEngine — Multi-entity hálózati szakadás', () => {
         note: null,
         local_reference_number: 'LC-10',
         idempotency_key: 'conv-key-1',
-        created_at: '2026-04-03',        synced: 0,
+        created_at: '2026-04-03',
+        synced: 0,
       },
     ]);
     mockedGetPendingBankTransactions.mockReturnValue([]);

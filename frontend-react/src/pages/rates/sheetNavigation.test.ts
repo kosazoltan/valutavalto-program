@@ -1,13 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { nextEditableCell, isCellEditable, EDITABLE_ORDER, type CellPos, type SheetNavRow } from './sheetNavigation'
+import {
+  nextEditableCell,
+  isCellEditable,
+  EDITABLE_ORDER,
+  type CellPos,
+  type SheetNavRow,
+} from './sheetNavigation'
 
 // Minimál sorok: EUR (nem crossBase), CHF (crossBase=EUR → crossRate szerkeszthető).
 const row = (crossBase: string | null): SheetNavRow => ({ crossBase })
 
 const rows: SheetNavRow[] = [
-  row(null),   // EUR
-  row('EUR'),  // CHF (cross)
-  row(null),   // USD
+  row(null), // EUR
+  row('EUR'), // CHF (cross)
+  row(null), // USD
 ]
 
 describe('sheetNavigation', () => {
@@ -19,7 +25,7 @@ describe('sheetNavigation', () => {
 
   it('crossRate csak crossBase sornál szerkeszthető', () => {
     expect(isCellEditable(rows, 0, 'crossRate')).toBe(false) // EUR
-    expect(isCellEditable(rows, 1, 'crossRate')).toBe(true)  // CHF
+    expect(isCellEditable(rows, 1, 'crossRate')).toBe(true) // CHF
     expect(isCellEditable(rows, 0, 'settlement')).toBe(true)
   })
 

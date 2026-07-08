@@ -82,7 +82,7 @@ export default function CashierBandSettingsPage() {
     if (value !== '' && !/^\d+$/.test(value)) {
       return
     }
-    setEditValues(prev => {
+    setEditValues((prev) => {
       const next = new Map(prev)
       next.set(key, value)
       return next
@@ -196,30 +196,32 @@ export default function CashierBandSettingsPage() {
 
       <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
         <strong>Üzleti szabály:</strong> A pénztáros maximum a napi limitig alkalmazhat egyedi
-        árfolyamot a minimum összeg feletti tranzakciókhoz. A backend (v2.5.50 / PR #564 óta)
-        élesen enforce-olja: a kvóta felett a tranzakció elutasítva HTTP 400 hibával.
-        Vezetői jóváhagyás (supervisor PIN) felüljárhatja a limitet egy adott tranzakcióhoz.
+        árfolyamot a minimum összeg feletti tranzakciókhoz. A backend (v2.5.50 / PR #564 óta) élesen
+        enforce-olja: a kvóta felett a tranzakció elutasítva HTTP 400 hibával. Vezetői jóváhagyás
+        (supervisor PIN) felüljárhatja a limitet egy adott tranzakcióhoz.
       </div>
 
       <div className="space-y-4">
-        {CASHIER_FIELDS.map(field => {
+        {CASHIER_FIELDS.map((field) => {
           const param = params.get(field.key)
           const isChanged = param && editValues.get(field.key) !== param.parameterValue
           const value = displayValue(field.key)
           const validationError = value !== '' ? validateValue(field, value) : null
 
           return (
-            <div key={field.key} className={`p-3 rounded border ${isChanged ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
+            <div
+              key={field.key}
+              className={`p-3 rounded border ${isChanged ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}
+            >
               <div className="flex items-start justify-between mb-1">
                 <label className="form-label font-medium text-gray-800">{field.label}</label>
-                {isChanged && (
-                  <span className="text-xs text-amber-600 font-medium">Módosítva</span>
-                )}
+                {isChanged && <span className="text-xs text-amber-600 font-medium">Módosítva</span>}
               </div>
               <p className="text-xs text-gray-500 mb-2">{field.description}</p>
               {!param ? (
                 <div className="text-sm text-red-600">
-                  Hiányzó rendszerparaméter: {field.key} (V213 migráció szükséges — V211 hibás volt, V213 javítja)
+                  Hiányzó rendszerparaméter: {field.key} (V213 migráció szükséges — V211 hibás volt,
+                  V213 javítja)
                 </div>
               ) : (
                 <>
@@ -230,7 +232,7 @@ export default function CashierBandSettingsPage() {
                       pattern="[0-9]*"
                       className={`form-input flex-1 ${validationError ? 'border-red-300' : ''}`}
                       value={value}
-                      onChange={e => handleChange(field.key, e.target.value)}
+                      onChange={(e) => handleChange(field.key, e.target.value)}
                       placeholder={field.placeholder}
                     />
                     <span className="text-sm text-gray-600 whitespace-nowrap">{field.unit}</span>
@@ -239,7 +241,8 @@ export default function CashierBandSettingsPage() {
                     <p className="text-xs text-red-600 mt-1">{validationError}</p>
                   )}
                   <p className="text-xs text-gray-400 mt-1">
-                    Tartomány: {field.min.toLocaleString('hu-HU')} – {field.max.toLocaleString('hu-HU')} {field.unit}
+                    Tartomány: {field.min.toLocaleString('hu-HU')} –{' '}
+                    {field.max.toLocaleString('hu-HU')} {field.unit}
                   </p>
                 </>
               )}

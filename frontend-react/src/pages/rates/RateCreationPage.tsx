@@ -1,7 +1,27 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AxiosError } from 'axios'
-import { RefreshCw, AlertTriangle, Send, Plus, X, Building2, Clock, Undo2, Redo2, Home, ArrowLeft, ShieldCheck, Shield, Pencil, Trash2, CheckCircle2, Copy, PanelRightClose, PanelRightOpen } from 'lucide-react'
+import {
+  RefreshCw,
+  AlertTriangle,
+  Send,
+  Plus,
+  X,
+  Building2,
+  Clock,
+  Undo2,
+  Redo2,
+  Home,
+  ArrowLeft,
+  ShieldCheck,
+  Shield,
+  Pencil,
+  Trash2,
+  CheckCircle2,
+  Copy,
+  PanelRightClose,
+  PanelRightOpen,
+} from 'lucide-react'
 import {
   rateCreationApi,
   rateWorkgroupApi,
@@ -28,7 +48,11 @@ import BranchPickerModal from './components/BranchPickerModal'
 import { fmtRate, parseNum, type EditableRate } from './types'
 import { sortByDisplayOrder } from './currencyDisplayOrder'
 import { currentFunctionCode } from './fillHelpers'
-import { validateWorkgroupProtection, workgroupProtectionLabel, type ProtectionRow } from './workgroupProtection'
+import {
+  validateWorkgroupProtection,
+  workgroupProtectionLabel,
+  type ProtectionRow,
+} from './workgroupProtection'
 import { sortWorkgroupsBySequence } from './workgroupOrdering'
 import { isFormula, type WgValues } from './workgroupSheetFormula'
 import { applyCrossGroupCopy, type CrossGroupCopyCell } from './crossGroupCopy'
@@ -59,10 +83,14 @@ import { useTranslation } from 'react-i18next'
 
 /** FK-04/C: a 8 képletezhető string-mező (J=officialRate read-only auto, K=ISO kód kihagyva). */
 const WG_STRING_FIELDS: Exclude<WgField, 'officialRate'>[] = [
-  'buyRate', 'sellRate',
-  'limit1BuyRate', 'limit1SellRate',
-  'limit2BuyRate', 'limit2SellRate',
-  'limit3BuyRate', 'limit3SellRate',
+  'buyRate',
+  'sellRate',
+  'limit1BuyRate',
+  'limit1SellRate',
+  'limit2BuyRate',
+  'limit2SellRate',
+  'limit3BuyRate',
+  'limit3SellRate',
 ]
 
 // FK04 (FR-4): a korábbi hard-coded MAIN_SHEET_CURRENCY_ORDER konstans MEGSZŰNT — a
@@ -74,10 +102,14 @@ const WG_STRING_FIELDS: Exclude<WgField, 'officialRate'>[] = [
 // megerősítő modal (elgépelés-védelem). Az arány-számítás a ./deviationCheck modulban.
 /** WgField → ember-olvasható oszlopnév a megerősítő üzenethez. */
 const WG_FIELD_LABEL: Record<string, string> = {
-  buyRate: 'alap vétel', sellRate: 'alap eladás',
-  limit1BuyRate: '1. sáv vétel', limit1SellRate: '1. sáv eladás',
-  limit2BuyRate: '2. sáv vétel', limit2SellRate: '2. sáv eladás',
-  limit3BuyRate: '3. sáv vétel', limit3SellRate: '3. sáv eladás',
+  buyRate: 'alap vétel',
+  sellRate: 'alap eladás',
+  limit1BuyRate: '1. sáv vétel',
+  limit1SellRate: '1. sáv eladás',
+  limit2BuyRate: '2. sáv vétel',
+  limit2SellRate: '2. sáv eladás',
+  limit3BuyRate: '3. sáv vétel',
+  limit3SellRate: '3. sáv eladás',
   officialRate: 'elszámoló (J)',
 }
 
@@ -95,8 +127,10 @@ export default function RateCreationPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const isLocalRateMakerApp = import.meta.env.VITE_APP_FLAVOR === 'rate-maker'
-  const canWriteRateCreation = useAuthStore((state) =>
-    isLocalRateMakerApp && (state.hasRole('ADMIN') || state.hasCanonicalRole(['foertektar', 'ugyvezeto', 'admin'])),
+  const canWriteRateCreation = useAuthStore(
+    (state) =>
+      isLocalRateMakerApp &&
+      (state.hasRole('ADMIN') || state.hasCanonicalRole(['foertektar', 'ugyvezeto', 'admin'])),
   )
   const [overview, setOverview] = useState<RateOverviewDTO | null>(null)
   const [workgroups, setWorkgroups] = useState<WorkgroupDetailDTO[]>([])
@@ -114,7 +148,11 @@ export default function RateCreationPage() {
   // FK02-B / FR-11, FR-12 (Codex P2): a snapshot a localStorage-ba mentett fix-érték állapotot is
   // rögzíti, hogy az undo/redo a perzisztált mentést is visszaállítsa (különben reload után a
   // visszavont érték jönne vissza).
-  type UndoSnapshot = { rates: EditableRate[]; formulas: Record<string, string>; savedRateValues: Record<string, string> }
+  type UndoSnapshot = {
+    rates: EditableRate[]
+    formulas: Record<string, string>
+    savedRateValues: Record<string, string>
+  }
   const undoStack = useRef<UndoSnapshot[]>([])
   const redoStack = useRef<UndoSnapshot[]>([])
   // FK02-B / FR-2..5: a PERZISZTÁLT (loadData-kor betöltött, utoljára publikált/mentett) árfolyamok
@@ -144,7 +182,9 @@ export default function RateCreationPage() {
   const [loading, setLoading] = useState(false)
   const [publishing, setPublishing] = useState(false)
   // FK05 (FR-8): "X / Y munkacsoport elküldve" folyamat-visszajelzés a szétküldés alatt.
-  const [publishProgress, setPublishProgress] = useState<{ done: number; total: number } | null>(null)
+  const [publishProgress, setPublishProgress] = useState<{ done: number; total: number } | null>(
+    null,
+  )
   // FK05 (FR-6): iroda-mentési hiba a modalon belül (nem csak toast).
   const [branchSaveError, setBranchSaveError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -162,20 +202,31 @@ export default function RateCreationPage() {
   const [cellErrors, setCellErrors] = useState<Record<string, string>>({})
   // FK02-D (FR-9..13): cross-csoport másolás állapota — a kijelölt forrás-cellák, a kijelölt
   // célcsoportok, és a megerősítő dialog nyitottsága.
-  const [copyCells, setCopyCells] = useState<Array<{ currencyId: number; field: WgField; raw: string }> | null>(null)
+  const [copyCells, setCopyCells] = useState<Array<{
+    currencyId: number
+    field: WgField
+    raw: string
+  }> | null>(null)
   const [copyTargetIds, setCopyTargetIds] = useState<Set<string>>(new Set())
   const [copyConfirmOpen, setCopyConfirmOpen] = useState(false)
   // A 0-s lap (A–I) + más csoportok J–S pillanatképei localStorage-ból; ref, hogy a recompute
   // effekt függőség-listája stabil maradjon (a Map-eket csoport-nyitáskor frissítjük).
   const sheetCtxRef = useRef<{
-    sheet0ByCurrency: Map<string, ReturnType<typeof loadSheet0ByCurrency> extends Map<string, infer V> ? V : never>
+    sheet0ByCurrency: Map<
+      string,
+      ReturnType<typeof loadSheet0ByCurrency> extends Map<string, infer V> ? V : never
+    >
     otherGroupsByCurrency: Map<number, Map<string, WgValues>>
   }>({ sheet0ByCurrency: new Map(), otherGroupsByCurrency: new Map() })
   // Védi a recompute setRates-ét a végtelen effekt-loop ellen (0-s lap minta).
   const recomputeGuardRef = useRef(false)
 
   // Limit editing state
-  const [editLimits, setEditLimits] = useState<{ l1: string; l2: string; l3: string }>({ l1: '', l2: '', l3: '' })
+  const [editLimits, setEditLimits] = useState<{ l1: string; l2: string; l3: string }>({
+    l1: '',
+    l2: '',
+    l3: '',
+  })
   const [limitsModified, setLimitsModified] = useState(false)
   const [savingLimits, setSavingLimits] = useState(false)
 
@@ -198,8 +249,8 @@ export default function RateCreationPage() {
       })
       setLimitsModified(false)
     }
-  // Only re-sync limit inputs when the selected workgroup identity changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: sync only on WG id change, not on every selectedWg reference
+    // Only re-sync limit inputs when the selected workgroup identity changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: sync only on WG id change, not on every selectedWg reference
   }, [selectedWg?.id])
 
   // FK-04/C: csoport-nyitáskor betöltjük a csoport képleteit + a hivatkozás-kontextust
@@ -221,7 +272,7 @@ export default function RateCreationPage() {
     // és a perzisztáló effekt annak localStorage-kulcsa alá mentené (kereszt-csoport korrupció).
     undoStack.current = []
     redoStack.current = []
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- csak a csoport-id váltáskor töltünk újra
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- csak a csoport-id váltáskor töltünk újra
   }, [selectedWg?.id])
 
   // FK02-B / FR-11, FR-12: az aktuális csoport FIX (nem-formulás) cella-állapotának alkalmazása.
@@ -235,9 +286,9 @@ export default function RateCreationPage() {
     if (!selectedWg) return
     const saved = loadGroupRateValues(selectedWg.id)
     const server = serverRateValuesRef.current
-    setRates(prev => {
+    setRates((prev) => {
       let changed = false
-      const next = prev.map(r => {
+      const next = prev.map((r) => {
         let nr = r
         for (const field of WG_STRING_FIELDS) {
           const key = `${r.currencyId}.${field}`
@@ -251,7 +302,10 @@ export default function RateCreationPage() {
         // FK02-E (FR-7, FR-9): a J (officialRate) override visszaállítása — mentett override, vagy a
         // szerver-alapérték (0-s lap A). A formula-J-t a recompute effekt utólag felülírja.
         const ofKey = `${r.currencyId}.officialRate`
-        const ofTarget = ofKey in saved ? numOrNull(saved[ofKey]!) : (serverOfficialRateRef.current[r.currencyId] ?? null)
+        const ofTarget =
+          ofKey in saved
+            ? numOrNull(saved[ofKey]!)
+            : (serverOfficialRateRef.current[r.currencyId] ?? null)
         if (nr.officialRate !== ofTarget) {
           if (nr === r) nr = { ...r }
           nr.officialRate = ofTarget
@@ -261,7 +315,7 @@ export default function RateCreationPage() {
       })
       return changed ? next : prev
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- csoportváltáskor ÉS minden reloadnál
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- csoportváltáskor ÉS minden reloadnál
   }, [selectedWg?.id, reloadVersion])
 
   // FK02-B / FR-11, FR-12: SQLite-first TARTÓS overlay (Electron). A fenti szinkron localStorage-
@@ -272,12 +326,12 @@ export default function RateCreationPage() {
     if (!selectedWg) return
     const groupId = selectedWg.id
     let cancelled = false
-    void loadGroupRateValuesFromOfflineDb(groupId).then(saved => {
+    void loadGroupRateValuesFromOfflineDb(groupId).then((saved) => {
       if (cancelled || !saved || Object.keys(saved).length === 0) return
       saveGroupRateValues(groupId, saved) // a szinkron localStorage utat is szinkronizáljuk
-      setRates(prev => {
+      setRates((prev) => {
         let changed = false
-        const next = prev.map(r => {
+        const next = prev.map((r) => {
           let nr = r
           for (const field of WG_STRING_FIELDS) {
             const key = `${r.currencyId}.${field}`
@@ -302,8 +356,10 @@ export default function RateCreationPage() {
         return changed ? next : prev
       })
     })
-    return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- csoportváltáskor ÉS minden reloadnál
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- csoportváltáskor ÉS minden reloadnál
   }, [selectedWg?.id, reloadVersion])
 
   // FK-04/C: a csoport képleteinek perzisztálása minden változáskor (localStorage, csoportonként).
@@ -316,20 +372,23 @@ export default function RateCreationPage() {
   // fix érték-override (a felhasználó képlettel vagy értékkel felülírhatja; ürítés után visszaáll).
   useEffect(() => {
     if (!selectedWg) return
-    const eua = rates.find(r => r.currencyCode.toUpperCase() === 'EUA')
+    const eua = rates.find((r) => r.currencyCode.toUpperCase() === 'EUA')
     if (!eua) return
     const key = `${eua.currencyId}.sellRate`
     if (formulas[key]) return
     if (key in loadGroupRateValues(selectedWg.id)) return
-    setFormulas(prev => (prev[key] ? prev : { ...prev, [key]: '!MEUR' }))
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- csoportváltáskor/reloadkor, ha EUA megjelent
+    setFormulas((prev) => (prev[key] ? prev : { ...prev, [key]: '!MEUR' }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- csoportváltáskor/reloadkor, ha EUA megjelent
   }, [selectedWg?.id, reloadVersion, rates.length])
 
   // FK-04/C reaktív újraszámítás: a képlet-cellákat feloldja és visszaírja a `rates`
   // string-mezőkbe (a fix cellák változatlanok). Jacobi-fixpont + ciklus-védelem a
   // workgroupSheetCompute-ban; a guard-ref akadályozza a saját setRates-loopot.
   useEffect(() => {
-    if (recomputeGuardRef.current) { recomputeGuardRef.current = false; return }
+    if (recomputeGuardRef.current) {
+      recomputeGuardRef.current = false
+      return
+    }
 
     const computeRows: WgComputeRow[] = rates.map((r) => ({
       currencyId: r.currencyId,
@@ -379,7 +438,10 @@ export default function RateCreationPage() {
     })
     setCellErrors(result.errors)
     if (result.diverged) {
-      logger.warn('RateCreationPage', 'Munkacsoport-lap képlet-újraszámítás nem konvergált (körhivatkozás-gyanú) — a részeredményt elvetjük')
+      logger.warn(
+        'RateCreationPage',
+        'Munkacsoport-lap képlet-újraszámítás nem konvergált (körhivatkozás-gyanú) — a részeredményt elvetjük',
+      )
       return
     }
 
@@ -416,8 +478,8 @@ export default function RateCreationPage() {
       recomputeGuardRef.current = true
       setRates(next)
     }
-  // cellErrors szándékosan kihagyva: csak rates/formulas változásra számolunk újra
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // cellErrors szándékosan kihagyva: csak rates/formulas változásra számolunk újra
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rates, formulas, selectedWg?.legacyGroupNumber])
 
   const loadData = useCallback(async () => {
@@ -433,13 +495,20 @@ export default function RateCreationPage() {
         const [bootstrap, serverSheet] = await Promise.all([
           rateCreationApi.getLocalRateMakerBootstrap(),
           rateCreationApi.getLocalRateMakerSheet().catch((sheetErr: unknown) => {
-            logger.warn('RateCreationPage', 'Szerveroldali rate-maker munkaív betöltése sikertelen — helyi állapot marad', sheetErr)
+            logger.warn(
+              'RateCreationPage',
+              'Szerveroldali rate-maker munkaív betöltése sikertelen — helyi állapot marad',
+              sheetErr,
+            )
             return null
           }),
         ])
         if (serverSheet?.sheetJson) {
           const imported = importRateMakerSheetSnapshot(serverSheet.sheetJson)
-          logger.info('RateCreationPage', `Szerveroldali rate-maker munkaív importálva: ${imported} localStorage kulcs`)
+          logger.info(
+            'RateCreationPage',
+            `Szerveroldali rate-maker munkaív importálva: ${imported} localStorage kulcs`,
+          )
         }
         serverSheetVersionRef.current = serverSheet?.version ?? null
         overviewData = bootstrap.overview
@@ -460,23 +529,25 @@ export default function RateCreationPage() {
       setWorkgroups(orderedWg)
       setSelectedWgIndex((current) => (orderedWg[current] ? current : 0))
 
-      const editableRates: EditableRate[] = (overviewData.currencies ?? []).map((c: RateOverviewItem) => ({
-        currencyId: c.currencyId,
-        currencyCode: c.currencyCode,
-        currencyName: c.currencyName,
-        displayOrder: c.displayOrder,
-        officialRate: c.officialRate,
-        buyRate: fmtRate(c.currentBuyRate),
-        sellRate: fmtRate(c.currentSellRate),
-        limit1BuyRate: fmtRate(c.limit1BuyRate),
-        limit1SellRate: fmtRate(c.limit1SellRate),
-        limit2BuyRate: fmtRate(c.limit2BuyRate),
-        limit2SellRate: fmtRate(c.limit2SellRate),
-        limit3BuyRate: fmtRate(c.limit3BuyRate),
-        limit3SellRate: fmtRate(c.limit3SellRate),
-        hasRate: c.hasRate,
-        modified: false,
-      }))
+      const editableRates: EditableRate[] = (overviewData.currencies ?? []).map(
+        (c: RateOverviewItem) => ({
+          currencyId: c.currencyId,
+          currencyCode: c.currencyCode,
+          currencyName: c.currencyName,
+          displayOrder: c.displayOrder,
+          officialRate: c.officialRate,
+          buyRate: fmtRate(c.currentBuyRate),
+          sellRate: fmtRate(c.currentSellRate),
+          limit1BuyRate: fmtRate(c.limit1BuyRate),
+          limit1SellRate: fmtRate(c.limit1SellRate),
+          limit2BuyRate: fmtRate(c.limit2BuyRate),
+          limit2SellRate: fmtRate(c.limit2SellRate),
+          limit3BuyRate: fmtRate(c.limit3BuyRate),
+          limit3SellRate: fmtRate(c.limit3SellRate),
+          hasRate: c.hasRate,
+          modified: false,
+        }),
+      )
       // FK04 (FR-4): a currency tábla displayOrder mezője szerint rendezünk (V317 kanonikus
       // sorrend) — a Főlappal konzisztens nézet; az EUA a RUB és TRY közé kerül (15. hely).
       setRates(sortByDisplayOrder(editableRates))
@@ -499,7 +570,7 @@ export default function RateCreationPage() {
       serverRateValuesRef.current = serverValues
       serverOfficialRateRef.current = serverOfficial
       // FK02-B / FR-11, FR-12: a fix-érték overlay effekt újrafuttatása (azonos csoportos reload is).
-      setReloadVersion(v => v + 1)
+      setReloadVersion((v) => v + 1)
     } catch (err) {
       logger.error('RateCreationPage', 'Betöltési hiba:', err)
       setError('Hiba az árfolyam adatok betöltésekor')
@@ -528,7 +599,8 @@ export default function RateCreationPage() {
     try {
       const result = await rateCreationApi.prepareAllCurrencies()
       await loadData()
-      const generatedCount = typeof result.generatedCount === 'number' ? result.generatedCount : null
+      const generatedCount =
+        typeof result.generatedCount === 'number' ? result.generatedCount : null
       setPrepareAllMessage(
         generatedCount === null
           ? 'Tömeges árfolyamtervezet elkészült.'
@@ -542,21 +614,30 @@ export default function RateCreationPage() {
     }
   }, [loadData])
 
-  useEffect(() => { void loadData() }, [loadData])
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   useEffect(() => {
     if (!isLocalRateMakerApp || loading || !overview || rates.length === 0) return
     const timer = window.setTimeout(() => {
       const snapshot = exportRateMakerSheetSnapshot()
       const sheetJson = JSON.stringify(snapshot)
-      void rateCreationApi.putLocalRateMakerSheet(sheetJson, {
-        source: 'rate-maker',
-        baseVersion: serverSheetVersionRef.current,
-      }).then((saved) => {
-        serverSheetVersionRef.current = saved.version ?? null
-      }).catch((sheetErr: unknown) => {
-        logger.warn('RateCreationPage', 'Szerveroldali rate-maker munkaív mentése sikertelen — helyi állapot marad', sheetErr)
-      })
+      void rateCreationApi
+        .putLocalRateMakerSheet(sheetJson, {
+          source: 'rate-maker',
+          baseVersion: serverSheetVersionRef.current,
+        })
+        .then((saved) => {
+          serverSheetVersionRef.current = saved.version ?? null
+        })
+        .catch((sheetErr: unknown) => {
+          logger.warn(
+            'RateCreationPage',
+            'Szerveroldali rate-maker munkaív mentése sikertelen — helyi állapot marad',
+            sheetErr,
+          )
+        })
     }, 1500)
     return () => window.clearTimeout(timer)
   }, [isLocalRateMakerApp, loading, overview, rates, formulas, reloadVersion, selectedWg?.id])
@@ -567,9 +648,12 @@ export default function RateCreationPage() {
     return id ? loadGroupRateValues(id) : {}
   }, [selectedWg?.id])
 
-
   const pushUndo = useCallback(() => {
-    undoStack.current.push({ rates: rates.map(r => ({ ...r })), formulas: { ...formulas }, savedRateValues: currentSavedRateValues() })
+    undoStack.current.push({
+      rates: rates.map((r) => ({ ...r })),
+      formulas: { ...formulas },
+      savedRateValues: currentSavedRateValues(),
+    })
     if (undoStack.current.length > 50) undoStack.current.shift()
     redoStack.current = []
   }, [rates, formulas, currentSavedRateValues])
@@ -578,7 +662,11 @@ export default function RateCreationPage() {
     const prev = undoStack.current.pop()
     if (!prev) return
     const id = selectedWg?.id
-    redoStack.current.push({ rates: rates.map(r => ({ ...r })), formulas: { ...formulas }, savedRateValues: currentSavedRateValues() })
+    redoStack.current.push({
+      rates: rates.map((r) => ({ ...r })),
+      formulas: { ...formulas },
+      savedRateValues: currentSavedRateValues(),
+    })
     setRates(prev.rates)
     setFormulas(prev.formulas)
     if (id) persistGroupRateValues(id, prev.savedRateValues) // FK02-B: dual-write (localStorage + SQLite)
@@ -588,7 +676,11 @@ export default function RateCreationPage() {
     const nextState = redoStack.current.pop()
     if (!nextState) return
     const id = selectedWg?.id
-    undoStack.current.push({ rates: rates.map(r => ({ ...r })), formulas: { ...formulas }, savedRateValues: currentSavedRateValues() })
+    undoStack.current.push({
+      rates: rates.map((r) => ({ ...r })),
+      formulas: { ...formulas },
+      savedRateValues: currentSavedRateValues(),
+    })
     setRates(nextState.rates)
     setFormulas(nextState.formulas)
     if (id) persistGroupRateValues(id, nextState.savedRateValues) // FK02-B: dual-write (localStorage + SQLite)
@@ -611,7 +703,7 @@ export default function RateCreationPage() {
 
   const updateRate = (index: number, field: keyof EditableRate, value: string) => {
     pushUndo()
-    setRates(prev => {
+    setRates((prev) => {
       const updated = [...prev]
       const existing = updated[index]
       if (!existing) return prev
@@ -625,182 +717,217 @@ export default function RateCreationPage() {
    * (nem tiszta szám), a képlet-stringet tároljuk (a számított érték a recompute-ból
    * jön); ha fix szám/üres, töröljük az esetleges képletet és a nyers értéket írjuk be.
    */
-  const commitWorkgroupCell = useCallback((index: number, field: WgField, raw: string) => {
-    if (!canWriteRateCreation) return
-    const r = rates[index]
-    if (!r) return
-    const key = `${r.currencyId}.${field}`
-    const trimmed = raw.trim()
-    const wgId = selectedWg?.id
+  const commitWorkgroupCell = useCallback(
+    (index: number, field: WgField, raw: string) => {
+      if (!canWriteRateCreation) return
+      const r = rates[index]
+      if (!r) return
+      const key = `${r.currencyId}.${field}`
+      const trimmed = raw.trim()
+      const wgId = selectedWg?.id
 
-    const applyCommit = () => {
-      pushUndo()
-      if (isFormula(trimmed)) {
-        setFormulas(prev => (prev[key] === trimmed ? prev : { ...prev, [key]: trimmed }))
-        setRates(prev => prev.map((x, i) => (i === index ? { ...x, modified: true } : x)))
-      } else {
-        setFormulas(prev => {
-          if (!prev[key]) return prev
-          const copy = { ...prev }
-          delete copy[key]
-          return copy
-        })
-        if (field === 'officialRate') {
-          // J (Elszámoló) NUMBER mező (a többi string). Fix override → parse; üres → vissza a
-          // szerver-alapértékre (FK02-E FR-9: a 0-s lap A oszlopa), NEM marad üres.
-          const n = numOrNull(trimmed)
-          const resolved = n ?? (serverOfficialRateRef.current[r.currencyId] ?? null)
-          setRates(prev => prev.map((x, i) => (i === index ? { ...x, officialRate: resolved, modified: true } : x)))
+      const applyCommit = () => {
+        pushUndo()
+        if (isFormula(trimmed)) {
+          setFormulas((prev) => (prev[key] === trimmed ? prev : { ...prev, [key]: trimmed }))
+          setRates((prev) => prev.map((x, i) => (i === index ? { ...x, modified: true } : x)))
         } else {
-          setRates(prev => prev.map((x, i) => (i === index ? { ...x, [field]: trimmed, modified: true } : x)))
+          setFormulas((prev) => {
+            if (!prev[key]) return prev
+            const copy = { ...prev }
+            delete copy[key]
+            return copy
+          })
+          if (field === 'officialRate') {
+            // J (Elszámoló) NUMBER mező (a többi string). Fix override → parse; üres → vissza a
+            // szerver-alapértékre (FK02-E FR-9: a 0-s lap A oszlopa), NEM marad üres.
+            const n = numOrNull(trimmed)
+            const resolved = n ?? serverOfficialRateRef.current[r.currencyId] ?? null
+            setRates((prev) =>
+              prev.map((x, i) =>
+                i === index ? { ...x, officialRate: resolved, modified: true } : x,
+              ),
+            )
+          } else {
+            setRates((prev) =>
+              prev.map((x, i) => (i === index ? { ...x, [field]: trimmed, modified: true } : x)),
+            )
+          }
+        }
+
+        // FK02-B / FR-11, FR-12: a fix (nem-formulás) érték localStorage-perzisztálása csoportonként,
+        // hogy lapváltás/újratöltés után is megmaradjon. CSAK a szerver-baseline-tól ELTÉRŐ értéket
+        // tároljuk override-ként (Codex P2): a szerverrel megegyező érték (pl. fókusz+blur változtatás
+        // nélkül) NEM pinelődik, így nem árnyékolja a jövőbeni szerver-változást. Formula vagy
+        // szerver-egyezés → kulcstörlés; üres a szerver nem-üres értékén = szándékos '' override. J nincs.
+        if (wgId && field !== 'officialRate') {
+          const saved = loadGroupRateValues(wgId)
+          const serverNum = baselineRatesRef.current[key]
+          const nextNum = numOrNull(trimmed)
+          const sameAsServer =
+            (trimmed === '' && serverNum === undefined) ||
+            (nextNum !== null && nextNum === serverNum)
+          let mutated = false
+          if (isFormula(trimmed) || sameAsServer) {
+            if (key in saved) {
+              delete saved[key]
+              mutated = true
+            }
+          } else if (saved[key] !== trimmed) {
+            saved[key] = trimmed
+            mutated = true
+          }
+          if (mutated) {
+            // FK02-B / FR-11,12: dual-write — localStorage (szinkron) + tartós Electron SQLite (best-effort).
+            persistGroupRateValues(wgId, saved)
+          }
+        }
+
+        // FK02-E (FR-7, FR-9): a J (officialRate) override perzisztálása. A szerver-alapértéktől eltérő
+        // fix érték marad override-ként; formula vagy üres/alapérték → kulcstörlés (reloadkor a J a
+        // szerver-alapértékre = 0-s lap A oszlopra áll vissza). A formula maga külön (saveGroupFormulas) megy.
+        if (wgId && field === 'officialRate') {
+          const saved = loadGroupRateValues(wgId)
+          const ofKey = `${r.currencyId}.officialRate`
+          const n = numOrNull(trimmed)
+          const serverDefault = serverOfficialRateRef.current[r.currencyId] ?? null
+          const isDefault = !isFormula(trimmed) && (n === null || n === serverDefault)
+          let mutated = false
+          if (isFormula(trimmed) || isDefault) {
+            if (ofKey in saved) {
+              delete saved[ofKey]
+              mutated = true
+            }
+          } else if (saved[ofKey] !== trimmed) {
+            saved[ofKey] = trimmed
+            mutated = true
+          }
+          if (mutated) persistGroupRateValues(wgId, saved)
         }
       }
 
-      // FK02-B / FR-11, FR-12: a fix (nem-formulás) érték localStorage-perzisztálása csoportonként,
-      // hogy lapváltás/újratöltés után is megmaradjon. CSAK a szerver-baseline-tól ELTÉRŐ értéket
-      // tároljuk override-ként (Codex P2): a szerverrel megegyező érték (pl. fókusz+blur változtatás
-      // nélkül) NEM pinelődik, így nem árnyékolja a jövőbeni szerver-változást. Formula vagy
-      // szerver-egyezés → kulcstörlés; üres a szerver nem-üres értékén = szándékos '' override. J nincs.
-      if (wgId && field !== 'officialRate') {
-        const saved = loadGroupRateValues(wgId)
-        const serverNum = baselineRatesRef.current[key]
-        const nextNum = numOrNull(trimmed)
-        const sameAsServer = (trimmed === '' && serverNum === undefined) || (nextNum !== null && nextNum === serverNum)
-        let mutated = false
-        if (isFormula(trimmed) || sameAsServer) {
-          if (key in saved) { delete saved[key]; mutated = true }
-        } else if (saved[key] !== trimmed) {
-          saved[key] = trimmed
-          mutated = true
-        }
-        if (mutated) {
-          // FK02-B / FR-11,12: dual-write — localStorage (szinkron) + tartós Electron SQLite (best-effort).
-          persistGroupRateValues(wgId, saved)
+      // FK02-B / FR-2..5: fix számra cserélt vétel/eladás/sáv mező esetén, ha az új érték a
+      // PERZISZTÁLT (loadData-kor betöltött) értékhez képest ≥10%-ot tér el, megerősítést kérünk a
+      // mentés ELŐTT. A baseline a perzisztált snapshot (NEM a session közbeni r[field]), így a
+      // lépésenkénti elcsúszás (400→430→470 = 17.5%) is kiszúrható. 'Nem' → a cella visszaáll, a
+      // mentés abortál. A formula- és a J (officialRate) mezőt nem korlátozzuk.
+      if (!isFormula(trimmed) && field !== 'officialRate') {
+        const prevVal = baselineRatesRef.current[key] ?? numOrNull(String(r[field] ?? ''))
+        const nextVal = numOrNull(trimmed)
+        if (isSignificantDeviation(prevVal, nextVal)) {
+          const pct = Math.round(
+            (Math.abs((nextVal as number) - (prevVal as number)) / Math.abs(prevVal as number)) *
+              100,
+          )
+          setRateConfirm({
+            title: 'Nagy árfolyam-eltérés',
+            message: `${r.currencyCode} – ${WG_FIELD_LABEL[field] ?? field}: ${prevVal} → ${nextVal} (${pct}% eltérés a korábbi értékhez képest). Biztosan elmenti?`,
+            confirmLabel: 'Igen, mentem',
+            danger: true,
+            onConfirm: () => {
+              applyCommit()
+              setRateConfirm(null)
+            },
+          })
+          return
         }
       }
-
-      // FK02-E (FR-7, FR-9): a J (officialRate) override perzisztálása. A szerver-alapértéktől eltérő
-      // fix érték marad override-ként; formula vagy üres/alapérték → kulcstörlés (reloadkor a J a
-      // szerver-alapértékre = 0-s lap A oszlopra áll vissza). A formula maga külön (saveGroupFormulas) megy.
-      if (wgId && field === 'officialRate') {
-        const saved = loadGroupRateValues(wgId)
-        const ofKey = `${r.currencyId}.officialRate`
-        const n = numOrNull(trimmed)
-        const serverDefault = serverOfficialRateRef.current[r.currencyId] ?? null
-        const isDefault = !isFormula(trimmed) && (n === null || n === serverDefault)
-        let mutated = false
-        if (isFormula(trimmed) || isDefault) {
-          if (ofKey in saved) { delete saved[ofKey]; mutated = true }
-        } else if (saved[ofKey] !== trimmed) {
-          saved[ofKey] = trimmed
-          mutated = true
-        }
-        if (mutated) persistGroupRateValues(wgId, saved)
-      }
-    }
-
-    // FK02-B / FR-2..5: fix számra cserélt vétel/eladás/sáv mező esetén, ha az új érték a
-    // PERZISZTÁLT (loadData-kor betöltött) értékhez képest ≥10%-ot tér el, megerősítést kérünk a
-    // mentés ELŐTT. A baseline a perzisztált snapshot (NEM a session közbeni r[field]), így a
-    // lépésenkénti elcsúszás (400→430→470 = 17.5%) is kiszúrható. 'Nem' → a cella visszaáll, a
-    // mentés abortál. A formula- és a J (officialRate) mezőt nem korlátozzuk.
-    if (!isFormula(trimmed) && field !== 'officialRate') {
-      const prevVal = baselineRatesRef.current[key] ?? numOrNull(String(r[field] ?? ''))
-      const nextVal = numOrNull(trimmed)
-      if (isSignificantDeviation(prevVal, nextVal)) {
-        const pct = Math.round((Math.abs((nextVal as number) - (prevVal as number)) / Math.abs(prevVal as number)) * 100)
-        setRateConfirm({
-          title: 'Nagy árfolyam-eltérés',
-          message: `${r.currencyCode} – ${WG_FIELD_LABEL[field] ?? field}: ${prevVal} → ${nextVal} (${pct}% eltérés a korábbi értékhez képest). Biztosan elmenti?`,
-          confirmLabel: 'Igen, mentem',
-          danger: true,
-          onConfirm: () => { applyCommit(); setRateConfirm(null) },
-        })
-        return
-      }
-    }
-    applyCommit()
-  }, [canWriteRateCreation, rates, pushUndo, selectedWg?.id])
+      applyCommit()
+    },
+    [canWriteRateCreation, rates, pushUndo, selectedWg?.id],
+  )
 
   // FK02-B / FR-6..10: kötegelt cella-alkalmazás a RateGrid lebegő toolbarjához (Lehúzás / Sávok
   // törlése). EGYETLEN undo-lépés, modal NÉLKÜL (a tömeges műveletet a felhasználó tudatosan indítja),
   // a képlet/fix érték kezelése a commit-tal azonos, a localStorage-perzisztálás sparse (szerver-diff).
-  const applyBulkCells = useCallback((cells: Array<{ row: number; field: WgField; raw: string }>) => {
-    if (!canWriteRateCreation || cells.length === 0) return
-    const wgId = selectedWg?.id
-    pushUndo()
+  const applyBulkCells = useCallback(
+    (cells: Array<{ row: number; field: WgField; raw: string }>) => {
+      if (!canWriteRateCreation || cells.length === 0) return
+      const wgId = selectedWg?.id
+      pushUndo()
 
-    // Képletek frissítése: formula-input → tárol; egyéb → a kulcs törlése (a fix érték a rates-be megy).
-    setFormulas(prevF => {
-      const f = { ...prevF }
-      for (const { row, field, raw } of cells) {
-        const r = rates[row]
-        if (!r) continue
-        const key = `${r.currencyId}.${field}`
-        if (isFormula(raw.trim())) f[key] = raw.trim()
-        else delete f[key]
-      }
-      return f
-    })
-
-    // Fix (nem-formula) értékek visszaírása a rates string-mezőkbe (a formula-cellákat a recompute tölti).
-    setRates(prev => prev.map((x, i) => {
-      const forRow = cells.filter(c => c.row === i)
-      if (forRow.length === 0) return x
-      const nr: EditableRate = { ...x, modified: true }
-      for (const { field, raw } of forRow) {
-        const trimmed = raw.trim()
-        if (isFormula(trimmed)) continue
-        // Codex #1112 (FK03): a J üres értéke a SZERVER-alapértékre áll vissza
-        // (FK02-E FR-9), a commitCell-lel azonosan — nem marad null/üres.
-        if (field === 'officialRate') nr.officialRate = numOrNull(trimmed) ?? (serverOfficialRateRef.current[x.currencyId] ?? null)
-        else nr[field] = trimmed
-      }
-      return nr
-    }))
-
-    // localStorage-perzisztálás (sparse): csak a szerver-baseline-tól ELTÉRŐ fix érték marad override-ként.
-    if (wgId) {
-      const saved = loadGroupRateValues(wgId)
-      for (const { row, field, raw } of cells) {
-        const r = rates[row]
-        if (!r) continue
-        const key = `${r.currencyId}.${field}`
-        const trimmed = raw.trim()
-        // Codex P2 #1112 (FK03): a J (officialRate) bulk-szerkesztése IS perzisztálódik
-        // override-ként — a commitCell J-ágával azonos szabállyal (szerver-alapértékkel
-        // egyező vagy üres/formula → kulcstörlés). Korábban a J kimaradt (continue), így
-        // a toolbar-műveletek J-változása újratöltéskor elveszett volna.
-        if (field === 'officialRate') {
-          const n = numOrNull(trimmed)
-          const serverDefault = serverOfficialRateRef.current[r.currencyId] ?? null
-          const isDefault = !isFormula(trimmed) && (n === null || n === serverDefault)
-          if (isFormula(trimmed) || isDefault) delete saved[key]
-          else saved[key] = trimmed
-          continue
+      // Képletek frissítése: formula-input → tárol; egyéb → a kulcs törlése (a fix érték a rates-be megy).
+      setFormulas((prevF) => {
+        const f = { ...prevF }
+        for (const { row, field, raw } of cells) {
+          const r = rates[row]
+          if (!r) continue
+          const key = `${r.currencyId}.${field}`
+          if (isFormula(raw.trim())) f[key] = raw.trim()
+          else delete f[key]
         }
-        const serverNum = baselineRatesRef.current[key]
-        const nextNum = numOrNull(trimmed)
-        const sameAsServer = (trimmed === '' && serverNum === undefined) || (nextNum !== null && nextNum === serverNum)
-        if (isFormula(trimmed) || sameAsServer) delete saved[key]
-        else saved[key] = trimmed
+        return f
+      })
+
+      // Fix (nem-formula) értékek visszaírása a rates string-mezőkbe (a formula-cellákat a recompute tölti).
+      setRates((prev) =>
+        prev.map((x, i) => {
+          const forRow = cells.filter((c) => c.row === i)
+          if (forRow.length === 0) return x
+          const nr: EditableRate = { ...x, modified: true }
+          for (const { field, raw } of forRow) {
+            const trimmed = raw.trim()
+            if (isFormula(trimmed)) continue
+            // Codex #1112 (FK03): a J üres értéke a SZERVER-alapértékre áll vissza
+            // (FK02-E FR-9), a commitCell-lel azonosan — nem marad null/üres.
+            if (field === 'officialRate')
+              nr.officialRate =
+                numOrNull(trimmed) ?? serverOfficialRateRef.current[x.currencyId] ?? null
+            else nr[field] = trimmed
+          }
+          return nr
+        }),
+      )
+
+      // localStorage-perzisztálás (sparse): csak a szerver-baseline-tól ELTÉRŐ fix érték marad override-ként.
+      if (wgId) {
+        const saved = loadGroupRateValues(wgId)
+        for (const { row, field, raw } of cells) {
+          const r = rates[row]
+          if (!r) continue
+          const key = `${r.currencyId}.${field}`
+          const trimmed = raw.trim()
+          // Codex P2 #1112 (FK03): a J (officialRate) bulk-szerkesztése IS perzisztálódik
+          // override-ként — a commitCell J-ágával azonos szabállyal (szerver-alapértékkel
+          // egyező vagy üres/formula → kulcstörlés). Korábban a J kimaradt (continue), így
+          // a toolbar-műveletek J-változása újratöltéskor elveszett volna.
+          if (field === 'officialRate') {
+            const n = numOrNull(trimmed)
+            const serverDefault = serverOfficialRateRef.current[r.currencyId] ?? null
+            const isDefault = !isFormula(trimmed) && (n === null || n === serverDefault)
+            if (isFormula(trimmed) || isDefault) delete saved[key]
+            else saved[key] = trimmed
+            continue
+          }
+          const serverNum = baselineRatesRef.current[key]
+          const nextNum = numOrNull(trimmed)
+          const sameAsServer =
+            (trimmed === '' && serverNum === undefined) ||
+            (nextNum !== null && nextNum === serverNum)
+          if (isFormula(trimmed) || sameAsServer) delete saved[key]
+          else saved[key] = trimmed
+        }
+        persistGroupRateValues(wgId, saved) // FK02-B: dual-write (localStorage + SQLite)
       }
-      persistGroupRateValues(wgId, saved) // FK02-B: dual-write (localStorage + SQLite)
-    }
-  }, [canWriteRateCreation, rates, pushUndo, selectedWg?.id])
+    },
+    [canWriteRateCreation, rates, pushUndo, selectedWg?.id],
+  )
 
   // ===================== FK02-D: cross-csoport másolás (FR-9..13) =====================
 
   // A RateGrid „Másolás más csoportba" gomb átadja a kijelölt cellákat → megnyitjuk a választót.
-  const handleCopyToGroups = useCallback((cells: Array<{ currencyId: number; field: WgField; raw: string }>) => {
-    if (!canWriteRateCreation || cells.length === 0) return
-    setCopyCells(cells)
-    setCopyTargetIds(new Set())
-    setCopyConfirmOpen(false)
-  }, [canWriteRateCreation])
+  const handleCopyToGroups = useCallback(
+    (cells: Array<{ currencyId: number; field: WgField; raw: string }>) => {
+      if (!canWriteRateCreation || cells.length === 0) return
+      setCopyCells(cells)
+      setCopyTargetIds(new Set())
+      setCopyConfirmOpen(false)
+    },
+    [canWriteRateCreation],
+  )
 
   const toggleCopyTarget = useCallback((id: string) => {
-    setCopyTargetIds(prev => {
+    setCopyTargetIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -817,7 +944,7 @@ export default function RateCreationPage() {
   // Megerősítés után: a kijelölt cellák tartalma a célcsoport(ok) azonos pozícióiba (dual-write).
   const executeCrossGroupCopy = useCallback(async () => {
     if (!copyCells || copyTargetIds.size === 0) return
-    const payload: CrossGroupCopyCell[] = copyCells.map(c => {
+    const payload: CrossGroupCopyCell[] = copyCells.map((c) => {
       const key = `${c.currencyId}.${c.field}`
       const isF = isFormula(c.raw)
       return { key, formula: isF ? c.raw : undefined, value: isF ? undefined : c.raw }
@@ -835,20 +962,26 @@ export default function RateCreationPage() {
           ? await loadGroupRateValuesFromOfflineDb(targetId)
           : loadGroupRateValues(targetId)
         const { formulas: nf, values: nv } = applyCrossGroupCopy(
-          loadGroupFormulas(targetId), targetValues, payload)
+          loadGroupFormulas(targetId),
+          targetValues,
+          payload,
+        )
         // Codex P2: SQLite-FIRST — az autoritatív SQLite-írást ELŐBB await-eljük (IPC-hostban);
         // CSAK siker esetén commitoljuk a localStorage-ot. Így bukásnál NINCS részleges commit
         // (a cél localStorage-a sem íródik felül egy sikertelennek jelzett másolásnál).
         if (dbAvailable) {
           const dbOk = (await saveGroupRateValuesToOfflineDbAwait(targetId, nv)).ok
           if (!dbOk) {
-            logger.warn('RateCreationPage', `Cross-csoport másolás: SQLite-mentés sikertelen — ${targetId}`)
+            logger.warn(
+              'RateCreationPage',
+              `Cross-csoport másolás: SQLite-mentés sikertelen — ${targetId}`,
+            )
             continue
           }
         }
-        saveGroupFormulas(targetId, nf)       // localStorage (formulák)
-        saveGroupRateValues(targetId, nv)     // localStorage (értékek, szinkron)
-        const wg = workgroups.find(w => w.id === targetId)
+        saveGroupFormulas(targetId, nf) // localStorage (formulák)
+        saveGroupRateValues(targetId, nv) // localStorage (értékek, szinkron)
+        const wg = workgroups.find((w) => w.id === targetId)
         if (wg) succeeded.push(wg.name)
       } catch (e) {
         logger.error('RateCreationPage', 'Cross-csoport másolás hiba', e)
@@ -867,7 +1000,10 @@ export default function RateCreationPage() {
   const handleSaveLimits = async () => {
     if (!selectedWg) return
     if (!canWriteRateCreation) {
-      toast.error('Nincs jogosultság', 'A határok mentéséhez főértéktáros vagy ügyvezető szerepkör kell')
+      toast.error(
+        'Nincs jogosultság',
+        'A határok mentéséhez főértéktáros vagy ügyvezető szerepkör kell',
+      )
       return
     }
     setSavingLimits(true)
@@ -882,7 +1018,10 @@ export default function RateCreationPage() {
       void loadData()
     } catch (err) {
       if (err instanceof AxiosError && err.response?.status === 403) {
-        toast.error('Nincs jogosultság', 'A határok mentéséhez főértéktáros vagy ügyvezető szerepkör kell')
+        toast.error(
+          'Nincs jogosultság',
+          'A határok mentéséhez főértéktáros vagy ügyvezető szerepkör kell',
+        )
       } else {
         toast.error('Hiba', 'Nem sikerült a határok mentése')
       }
@@ -892,7 +1031,7 @@ export default function RateCreationPage() {
   }
 
   const handleLimitChange = (key: 'l1' | 'l2' | 'l3', val: string) => {
-    setEditLimits(prev => ({ ...prev, [key]: val }))
+    setEditLimits((prev) => ({ ...prev, [key]: val }))
     setLimitsModified(true)
   }
 
@@ -903,7 +1042,9 @@ export default function RateCreationPage() {
     try {
       const branches = await rateCreationApi.getBranches(selectedWg.id)
       setAllBranches(branches)
-      setSelectedBranchIds(new Set(branches.filter(b => b.assignedToCurrentWorkgroup).map(b => b.id)))
+      setSelectedBranchIds(
+        new Set(branches.filter((b) => b.assignedToCurrentWorkgroup).map((b) => b.id)),
+      )
       setBranchFilter('')
       setBranchSaveError(null)
       setBranchModalOpen(true)
@@ -915,7 +1056,10 @@ export default function RateCreationPage() {
   const handleSaveBranches = async () => {
     if (!selectedWg) return
     if (!canWriteRateCreation) {
-      toast.error('Nincs jogosultság', 'Irodák mentéséhez főértéktáros vagy ügyvezető szerepkör kell')
+      toast.error(
+        'Nincs jogosultság',
+        'Irodák mentéséhez főértéktáros vagy ügyvezető szerepkör kell',
+      )
       return
     }
     setSavingBranches(true)
@@ -931,11 +1075,18 @@ export default function RateCreationPage() {
       // updateWorkgroupBranches áthelyez); a defenzív ág a constraint-versenyt
       // (uk_branch_workgroup_exclusive) és a régi szerververziót fedi.
       if (err instanceof AxiosError && err.response?.status === 403) {
-        setBranchSaveError('Nincs jogosultság: irodák mentéséhez főértéktáros vagy ügyvezető szerepkör kell.')
+        setBranchSaveError(
+          'Nincs jogosultság: irodák mentéséhez főértéktáros vagy ügyvezető szerepkör kell.',
+        )
       } else if (err instanceof AxiosError && err.response?.status === 409) {
-        setBranchSaveError('Ez a pénztár már szerepel egy másik munkacsoportban. Először helyezze át onnan, majd adja hozzá ide.')
+        setBranchSaveError(
+          'Ez a pénztár már szerepel egy másik munkacsoportban. Először helyezze át onnan, majd adja hozzá ide.',
+        )
       } else {
-        const msg = err instanceof AxiosError ? (err.response?.data as { message?: string } | undefined)?.message : undefined
+        const msg =
+          err instanceof AxiosError
+            ? (err.response?.data as { message?: string } | undefined)?.message
+            : undefined
         setBranchSaveError(msg ?? 'Nem sikerült az irodák mentése.')
       }
     } finally {
@@ -946,17 +1097,23 @@ export default function RateCreationPage() {
   const removeBranch = async (branchId: string) => {
     if (!selectedWg) return
     if (!canWriteRateCreation) {
-      toast.error('Nincs jogosultság', 'Iroda eltávolításához főértéktáros vagy ügyvezető szerepkör kell')
+      toast.error(
+        'Nincs jogosultság',
+        'Iroda eltávolításához főértéktáros vagy ügyvezető szerepkör kell',
+      )
       return
     }
-    const newIds = selectedWg.branches.filter(b => b.id !== branchId).map(b => b.id)
+    const newIds = selectedWg.branches.filter((b) => b.id !== branchId).map((b) => b.id)
     try {
       await rateCreationApi.updateWorkgroupBranches(selectedWg.id, newIds)
       toast.success('Eltávolítva', 'Iroda eltávolítva a csoportból')
       void loadData()
     } catch (err) {
       if (err instanceof AxiosError && err.response?.status === 403) {
-        toast.error('Nincs jogosultság', 'Iroda eltávolításához főértéktáros vagy ügyvezető szerepkör kell')
+        toast.error(
+          'Nincs jogosultság',
+          'Iroda eltávolításához főértéktáros vagy ügyvezető szerepkör kell',
+        )
       } else {
         toast.error('Hiba', 'Nem sikerült az iroda eltávolítása')
       }
@@ -964,14 +1121,13 @@ export default function RateCreationPage() {
   }
 
   const toggleBranch = (id: string) => {
-    setSelectedBranchIds(prev => {
+    setSelectedBranchIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
   }
-
 
   // ===================== Publish =====================
 
@@ -985,7 +1141,7 @@ export default function RateCreationPage() {
       return
     }
 
-    const validRates = rates.filter(r => {
+    const validRates = rates.filter((r) => {
       const buy = parseNum(r.buyRate)
       const sell = parseNum(r.sellRate)
       return buy > 0 && sell > 0
@@ -1000,7 +1156,10 @@ export default function RateCreationPage() {
       const buy = parseNum(r.buyRate)
       const sell = parseNum(r.sellRate)
       if (buy >= sell) {
-        toast.error('Hibás árfolyam', `${r.currencyCode}: Vétel (${r.buyRate}) >= Eladás (${r.sellRate})`)
+        toast.error(
+          'Hibás árfolyam',
+          `${r.currencyCode}: Vétel (${r.buyRate}) >= Eladás (${r.sellRate})`,
+        )
         return
       }
     }
@@ -1040,11 +1199,11 @@ export default function RateCreationPage() {
     const errorCurrencyIds = Object.keys(validationErrors)
     if (errorCurrencyIds.length > 0) {
       const affectedCodes = validRates
-        .filter(r => validationErrors[r.currencyId])
-        .map(r => r.currencyCode)
+        .filter((r) => validationErrors[r.currencyId])
+        .map((r) => r.currencyCode)
       toast.error(
         'Validációs hiba',
-        `${affectedCodes.join(', ')}: Javítsd a hibákat a publikálás előtt!`
+        `${affectedCodes.join(', ')}: Javítsd a hibákat a publikálás előtt!`,
       )
       return
     }
@@ -1055,7 +1214,7 @@ export default function RateCreationPage() {
       // aktuálisat. Az aktuális csoport a KÉPERNYŐ friss állapotából megy (inMemoryGroupRates),
       // a többi a tárolt overlay + képletek headless kiértékeléséből (publishAllWorkgroups).
       // A csoport-overlay törlését (FK02-B server-authority) a helper végzi csoportonként.
-      const inMemoryRates = validRates.map(r => ({
+      const inMemoryRates = validRates.map((r) => ({
         currencyId: r.currencyId,
         buyRate: parseNum(r.buyRate),
         sellRate: parseNum(r.sellRate),
@@ -1072,9 +1231,10 @@ export default function RateCreationPage() {
       }))
       const result = await publishAllWorkgroups({
         inMemoryGroupRates: { groupId: selectedWg.id, rates: inMemoryRates },
-        preloaded: overview && workgroups.length > 0
-          ? { overview: overview.currencies, workgroups }
-          : undefined,
+        preloaded:
+          overview && workgroups.length > 0
+            ? { overview: overview.currencies, workgroups }
+            : undefined,
         onProgress: (done, total) => setPublishProgress({ done, total }),
       })
       const summary = summarizePublishAll(result)
@@ -1097,7 +1257,9 @@ export default function RateCreationPage() {
     const out: string[] = []
     for (const b of allBranches) {
       if (!selectedBranchIds.has(b.id) || b.assignedToCurrentWorkgroup) continue
-      const other = workgroups.find(w => w.id !== selectedWg.id && w.branches.some(x => x.id === b.id))
+      const other = workgroups.find(
+        (w) => w.id !== selectedWg.id && w.branches.some((x) => x.id === b.id),
+      )
       if (other) out.push(`${b.code} — ${b.name} (jelenleg: ${other.name})`)
     }
     return out
@@ -1106,10 +1268,11 @@ export default function RateCreationPage() {
   // Grouped branches for modal
   const groupedBranches = useMemo(() => {
     const filtered = branchFilter
-      ? allBranches.filter(b =>
-          b.name.toLowerCase().includes(branchFilter.toLowerCase()) ||
-          b.code.toLowerCase().includes(branchFilter.toLowerCase()) ||
-          b.city.toLowerCase().includes(branchFilter.toLowerCase())
+      ? allBranches.filter(
+          (b) =>
+            b.name.toLowerCase().includes(branchFilter.toLowerCase()) ||
+            b.code.toLowerCase().includes(branchFilter.toLowerCase()) ||
+            b.city.toLowerCase().includes(branchFilter.toLowerCase()),
         )
       : allBranches
     const groups: Record<string, BranchListItem[]> = {}
@@ -1134,11 +1297,14 @@ export default function RateCreationPage() {
         errs.push('Vétel ≥ Eladás')
       }
       // Limit consistency checks
-      const l1b = parseNum(r.limit1BuyRate), l1s = parseNum(r.limit1SellRate)
+      const l1b = parseNum(r.limit1BuyRate),
+        l1s = parseNum(r.limit1SellRate)
       if (l1b > 0 && l1s > 0 && l1b >= l1s) errs.push('L1: Vétel ≥ Eladás')
-      const l2b = parseNum(r.limit2BuyRate), l2s = parseNum(r.limit2SellRate)
+      const l2b = parseNum(r.limit2BuyRate),
+        l2s = parseNum(r.limit2SellRate)
       if (l2b > 0 && l2s > 0 && l2b >= l2s) errs.push('L2: Vétel ≥ Eladás')
-      const l3b = parseNum(r.limit3BuyRate), l3s = parseNum(r.limit3SellRate)
+      const l3b = parseNum(r.limit3BuyRate),
+        l3s = parseNum(r.limit3SellRate)
       if (l3b > 0 && l3s > 0 && l3b >= l3s) errs.push('L3: Vétel ≥ Eladás')
       // Buy rate should be ≤ official rate (if both present)
       if (r.officialRate && buy > 0 && buy > r.officialRate * 1.1) {
@@ -1158,15 +1324,20 @@ export default function RateCreationPage() {
   // (a WorkgroupTileListView saját maga rendel loading-state placeholder-t a
   // `workgroups` üres és `loading=true` esetére — single source of truth).
   if (viewMode === 'tile-list') {
-    return <WorkgroupTileListView
-      workgroups={workgroups}
-      canWrite={canWriteRateCreation}
-      onSelect={(idx) => { setSelectedWgIndex(idx); setViewMode('editor') }}
-      onBackToMain={() => navigate('/rates/main')}
-      onReload={() => void loadData()}
-      loading={loading}
-      error={error}
-    />
+    return (
+      <WorkgroupTileListView
+        workgroups={workgroups}
+        canWrite={canWriteRateCreation}
+        onSelect={(idx) => {
+          setSelectedWgIndex(idx)
+          setViewMode('editor')
+        }}
+        onBackToMain={() => navigate('/rates/main')}
+        onReload={() => void loadData()}
+        loading={loading}
+        error={error}
+      />
+    )
   }
 
   // Editor mode: a klasszikus szerkesztő UI bootstrap-betöltést vár.
@@ -1179,7 +1350,7 @@ export default function RateCreationPage() {
     )
   }
 
-  const modifiedCount = rates.filter(r => r.modified).length
+  const modifiedCount = rates.filter((r) => r.modified).length
 
   // ===================== Editor view =====================
   return (
@@ -1231,19 +1402,32 @@ export default function RateCreationPage() {
               {new Date(overview.generatedAt).toLocaleString('hu-HU')}
             </span>
           )}
-          <button onClick={undo} disabled={undoStack.current.length === 0}
-            className="p-0.5 rounded hover:bg-gray-100 disabled:opacity-30" title="Visszavonás (Ctrl+Z)">
+          <button
+            onClick={undo}
+            disabled={undoStack.current.length === 0}
+            className="p-0.5 rounded hover:bg-gray-100 disabled:opacity-30"
+            title="Visszavonás (Ctrl+Z)"
+          >
             <Undo2 size={13} />
           </button>
-          <button onClick={redo} disabled={redoStack.current.length === 0}
-            className="p-0.5 rounded hover:bg-gray-100 disabled:opacity-30" title="Mégis (Ctrl+Y)">
+          <button
+            onClick={redo}
+            disabled={redoStack.current.length === 0}
+            className="p-0.5 rounded hover:bg-gray-100 disabled:opacity-30"
+            title="Mégis (Ctrl+Y)"
+          >
             <Redo2 size={13} />
           </button>
           {modifiedCount > 0 && (
-            <span className="text-orange-600 font-medium">{modifiedCount} {t('rates.mod')}</span>
+            <span className="text-orange-600 font-medium">
+              {modifiedCount} {t('rates.mod')}
+            </span>
           )}
-          <button onClick={() => void loadData()} disabled={loading}
-            className="px-2 py-0.5 border rounded text-xs hover:bg-gray-50 flex items-center gap-1">
+          <button
+            onClick={() => void loadData()}
+            disabled={loading}
+            className="px-2 py-0.5 border rounded text-xs hover:bg-gray-50 flex items-center gap-1"
+          >
             <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
           </button>
           <button
@@ -1257,9 +1441,15 @@ export default function RateCreationPage() {
             {prepareAllLoading ? 'Tervezet...' : 'Összes tervezet'}
           </button>
           {/* FK02-E (FR-12): munkacsoport-panel elrejtése/megjelenítése — a táblázat kitölti a helyet. */}
-          <button onClick={() => setPanelCollapsed(c => !c)}
+          <button
+            onClick={() => setPanelCollapsed((c) => !c)}
             className="px-2 py-0.5 border rounded text-xs hover:bg-gray-50 flex items-center gap-1"
-            title={panelCollapsed ? 'Munkacsoport-panel megjelenítése' : 'Munkacsoport-panel elrejtése (nagyobb táblázat)'}>
+            title={
+              panelCollapsed
+                ? 'Munkacsoport-panel megjelenítése'
+                : 'Munkacsoport-panel elrejtése (nagyobb táblázat)'
+            }
+          >
             {panelCollapsed ? <PanelRightOpen size={13} /> : <PanelRightClose size={13} />}
           </button>
         </div>
@@ -1272,7 +1462,6 @@ export default function RateCreationPage() {
 
       {/* === MAIN LAYOUT === */}
       <div className="flex gap-1.5 flex-1 min-h-0">
-
         {/* === LEFT: RATE TABLE === */}
         <RateGrid
           rates={rates}
@@ -1296,189 +1485,231 @@ export default function RateCreationPage() {
         {rateConfirm && (
           <ConfirmDialog
             state={rateConfirm}
-            onCancel={() => { setRateConfirm(null); setRateRevertSignal(n => n + 1) }}
+            onCancel={() => {
+              setRateConfirm(null)
+              setRateRevertSignal((n) => n + 1)
+            }}
           />
         )}
 
         {/* === RIGHT: WORKGROUP PANEL === (FK02-E FR-12: elrejthető) */}
         {!panelCollapsed && (
-        <div className="w-64 flex-shrink-0 flex flex-col gap-1 min-h-0">
-
-          {/* FK-02/03/04 (2026-05-28): a régi 54-csempés jobb-oldali választó ELTÁVOLÍTVA.
+          <div className="w-64 flex-shrink-0 flex flex-col gap-1 min-h-0">
+            {/* FK-02/03/04 (2026-05-28): a régi 54-csempés jobb-oldali választó ELTÁVOLÍTVA.
               A csempés listanézet (viewMode='tile-list') a teljes szélességben kezeli a
               csoportváltást. Helyette egy „Vissza" gombbal kompakt info-kártya — utalja
               a usert, hogy a csoportlistába visszamehet. */}
-          <button
-            onClick={() => setViewMode('tile-list')}
-            className="bg-white rounded border shadow-sm px-2 py-1.5 flex-shrink-0 text-left hover:bg-blue-50 transition-colors"
-            title="Vissza a csoport árfolyamlapok csempés listájához"
-          >
-            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1 flex items-center gap-1">
-              <ArrowLeft size={10} /> Csempés nézet
-            </div>
-            <div className="text-[11px] font-semibold text-gray-700 truncate">
-              {selectedWg?.name ?? '—'}
-            </div>
-            <div className="text-[10px] text-gray-500">
-              #{selectedWg?.legacyGroupNumber ?? '—'} · {selectedWg?.branches.length ?? 0} iroda
-            </div>
-          </button>
-
-          <div className="bg-white rounded border shadow-sm px-2 py-1.5 flex-shrink-0" data-testid="rate-prepare-panel">
-            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Backend javaslat</div>
-            {rateAdviceError && <div className="text-[10px] text-red-600">{rateAdviceError}</div>}
-            {rateAdvice ? (
-              <div className="space-y-1 text-[11px]">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-semibold text-gray-700">{rateAdvice.currencyCode} - {rateAdvice.currencyName}</span>
-                  <span className="rounded bg-blue-50 px-1.5 py-0.5 font-mono text-blue-800">{rateAdvice.recommendedMiddleRate}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-1 font-mono">
-                  <div className="rounded bg-green-50 px-1.5 py-1 text-green-800">
-                    <div className="text-[9px] font-sans uppercase text-green-700">Ajánlott vétel</div>
-                    {rateAdvice.recommendedBuyRate}
-                  </div>
-                  <div className="rounded bg-red-50 px-1.5 py-1 text-red-800">
-                    <div className="text-[9px] font-sans uppercase text-red-700">Ajánlott eladás</div>
-                    {rateAdvice.recommendedSellRate}
-                  </div>
-                </div>
-                <div className="text-[10px] text-gray-500">
-                  Bank: {rateAdvice.bankRates.length} · Versenytárs: {rateAdvice.competitorRates.length}
-                </div>
+            <button
+              onClick={() => setViewMode('tile-list')}
+              className="bg-white rounded border shadow-sm px-2 py-1.5 flex-shrink-0 text-left hover:bg-blue-50 transition-colors"
+              title="Vissza a csoport árfolyamlapok csempés listájához"
+            >
+              <div className="text-[10px] text-gray-500 uppercase font-bold mb-1 flex items-center gap-1">
+                <ArrowLeft size={10} /> Csempés nézet
               </div>
-            ) : (
+              <div className="text-[11px] font-semibold text-gray-700 truncate">
+                {selectedWg?.name ?? '—'}
+              </div>
               <div className="text-[10px] text-gray-500">
-                Valuta sorban kattints a Javaslat gombra a backend előkészítő adataihoz.
+                #{selectedWg?.legacyGroupNumber ?? '—'} · {selectedWg?.branches.length ?? 0} iroda
               </div>
-            )}
-          </div>
+            </button>
 
-          {/* Aktuális függvény (FR-RFM-22) + Kitöltési segítség (FR-RFM-23) */}
-          <div className="bg-white rounded border shadow-sm px-2 py-1.5 flex-shrink-0">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-gray-500 uppercase font-bold">Aktuális függvény</span>
-              <span
-                className="px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-800 font-mono text-[11px] font-bold"
-                title="A csoportlapon aktív képletkód-azonosító (a munkacsoport sorszámából képezve)."
-              >
-                {currentFunctionCode(selectedWg?.legacyGroupNumber)}
-              </span>
-            </div>
-            {/* FK02-B / FR-6..10: a régi GLOBÁLIS (egész táblázatra ható) destruktív gombok eltávolítva.
-                Helyette a táblázatban egér-drag / Shift+kattintás kijelölés + lebegő toolbar (Lehúzás
-                üres / Lehúzás mind / Sávok törlése) — kizárólag a kijelölt tartományra hat. */}
-            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Kitöltési segítség</div>
-            <div className="text-[10px] text-gray-500 leading-tight">
-              Jelölj ki cellákat a táblázatban (egér-húzás vagy Shift+kattintás), majd a megjelenő lebegő
-              eszköztárból válassz: <span className="font-semibold text-amber-700">Lehúzás (mind)</span>{' '}
-              (felső sor másolása lefelé), <span className="font-semibold text-gray-700">Ürítés</span>{' '}
-              (kijelölt cellák kiürítése) vagy{' '}
-              <span className="font-semibold text-red-700">Sávok törlése</span>.
-            </div>
-          </div>
-
-          {/* Branch list */}
-          <div className="bg-white rounded border shadow-sm px-2 py-1.5 flex-1 min-h-0 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-gray-500 uppercase font-bold flex items-center gap-1">
-                <Building2 size={10} />
-                {t('rates.irodak')} ({selectedWg?.branches.length ?? 0})
-              </span>
-              <button onClick={() => void openBranchPicker()}
-                disabled={!canWriteRateCreation}
-                className="w-5 h-5 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center"
-                title="Iroda hozzáadása">
-                <Plus size={12} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-0.5">
-              {selectedWg?.branches.length ? (
-                selectedWg.branches.map(b => (
-                  <div key={b.id} className="flex items-center justify-between px-1.5 py-0.5 bg-gray-50 rounded border border-gray-200 text-[11px] text-gray-700 group">
-                    <span className="truncate">{b.name}</span>
-                    <button onClick={() => void removeBranch(b.id)}
-                      disabled={!canWriteRateCreation}
-                      className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 flex-shrink-0 ml-1"
-                      title="Eltávolítás">
-                      <X size={12} />
-                    </button>
+            <div
+              className="bg-white rounded border shadow-sm px-2 py-1.5 flex-shrink-0"
+              data-testid="rate-prepare-panel"
+            >
+              <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
+                Backend javaslat
+              </div>
+              {rateAdviceError && <div className="text-[10px] text-red-600">{rateAdviceError}</div>}
+              {rateAdvice ? (
+                <div className="space-y-1 text-[11px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-gray-700">
+                      {rateAdvice.currencyCode} - {rateAdvice.currencyName}
+                    </span>
+                    <span className="rounded bg-blue-50 px-1.5 py-0.5 font-mono text-blue-800">
+                      {rateAdvice.recommendedMiddleRate}
+                    </span>
                   </div>
-                ))
+                  <div className="grid grid-cols-2 gap-1 font-mono">
+                    <div className="rounded bg-green-50 px-1.5 py-1 text-green-800">
+                      <div className="text-[9px] font-sans uppercase text-green-700">
+                        Ajánlott vétel
+                      </div>
+                      {rateAdvice.recommendedBuyRate}
+                    </div>
+                    <div className="rounded bg-red-50 px-1.5 py-1 text-red-800">
+                      <div className="text-[9px] font-sans uppercase text-red-700">
+                        Ajánlott eladás
+                      </div>
+                      {rateAdvice.recommendedSellRate}
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-gray-500">
+                    Bank: {rateAdvice.bankRates.length} · Versenytárs:{' '}
+                    {rateAdvice.competitorRates.length}
+                  </div>
+                </div>
               ) : (
-                <div className="text-gray-400 italic text-center text-[10px] py-2">{t('rates.nincsIrodaHozzarendelve')}</div>
+                <div className="text-[10px] text-gray-500">
+                  Valuta sorban kattints a Javaslat gombra a backend előkészítő adataihoz.
+                </div>
               )}
             </div>
-          </div>
 
-          {/* Limit boundaries - editable */}
-          <div className="bg-white rounded border shadow-sm px-2 py-1.5 flex-shrink-0">
-            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">{t('rates.hatarokFt')}</div>
-            <div className="space-y-1">
-              {([
-                { key: 'l1' as const, label: 'Alsó' },
-                { key: 'l2' as const, label: 'Középső' },
-                { key: 'l3' as const, label: 'Felső' },
-              ]).map(({ key, label }) => (
-                <div key={key} className="flex items-center gap-1">
-                  <span className="text-[10px] font-bold text-blue-700 w-14">{label}</span>
-                  <input
-                    type="text"
-                    value={editLimits[key]}
-                    onChange={e => handleLimitChange(key, e.target.value)}
-                    disabled={!canWriteRateCreation}
-                    className="flex-1 px-1.5 py-0.5 text-right font-mono text-[11px] font-bold border rounded bg-gray-50 focus:bg-white focus:border-blue-400 focus:outline-none"
-                  />
-                </div>
-              ))}
+            {/* Aktuális függvény (FR-RFM-22) + Kitöltési segítség (FR-RFM-23) */}
+            <div className="bg-white rounded border shadow-sm px-2 py-1.5 flex-shrink-0">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] text-gray-500 uppercase font-bold">
+                  Aktuális függvény
+                </span>
+                <span
+                  className="px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-800 font-mono text-[11px] font-bold"
+                  title="A csoportlapon aktív képletkód-azonosító (a munkacsoport sorszámából képezve)."
+                >
+                  {currentFunctionCode(selectedWg?.legacyGroupNumber)}
+                </span>
+              </div>
+              {/* FK02-B / FR-6..10: a régi GLOBÁLIS (egész táblázatra ható) destruktív gombok eltávolítva.
+                Helyette a táblázatban egér-drag / Shift+kattintás kijelölés + lebegő toolbar (Lehúzás
+                üres / Lehúzás mind / Sávok törlése) — kizárólag a kijelölt tartományra hat. */}
+              <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
+                Kitöltési segítség
+              </div>
+              <div className="text-[10px] text-gray-500 leading-tight">
+                Jelölj ki cellákat a táblázatban (egér-húzás vagy Shift+kattintás), majd a megjelenő
+                lebegő eszköztárból válassz:{' '}
+                <span className="font-semibold text-amber-700">Lehúzás (mind)</span> (felső sor
+                másolása lefelé), <span className="font-semibold text-gray-700">Ürítés</span>{' '}
+                (kijelölt cellák kiürítése) vagy{' '}
+                <span className="font-semibold text-red-700">Sávok törlése</span>.
+              </div>
             </div>
-            {limitsModified && canWriteRateCreation && (
-              <button onClick={() => void handleSaveLimits()} disabled={savingLimits}
-                className="w-full mt-1 px-2 py-0.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white text-[10px] font-bold rounded">
-                {savingLimits ? 'Mentés...' : 'Határok mentése'}
-              </button>
-            )}
-          </div>
 
-          {/* FR-HL-10 (hibalista): dedikált ELLENŐRZÉS gomb — a háromlépcsős flow (Ellenőrzés →
+            {/* Branch list */}
+            <div className="bg-white rounded border shadow-sm px-2 py-1.5 flex-1 min-h-0 flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] text-gray-500 uppercase font-bold flex items-center gap-1">
+                  <Building2 size={10} />
+                  {t('rates.irodak')} ({selectedWg?.branches.length ?? 0})
+                </span>
+                <button
+                  onClick={() => void openBranchPicker()}
+                  disabled={!canWriteRateCreation}
+                  className="w-5 h-5 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center"
+                  title="Iroda hozzáadása"
+                >
+                  <Plus size={12} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-0.5">
+                {selectedWg?.branches.length ? (
+                  selectedWg.branches.map((b) => (
+                    <div
+                      key={b.id}
+                      className="flex items-center justify-between px-1.5 py-0.5 bg-gray-50 rounded border border-gray-200 text-[11px] text-gray-700 group"
+                    >
+                      <span className="truncate">{b.name}</span>
+                      <button
+                        onClick={() => void removeBranch(b.id)}
+                        disabled={!canWriteRateCreation}
+                        className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 flex-shrink-0 ml-1"
+                        title="Eltávolítás"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-gray-400 italic text-center text-[10px] py-2">
+                    {t('rates.nincsIrodaHozzarendelve')}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Limit boundaries - editable */}
+            <div className="bg-white rounded border shadow-sm px-2 py-1.5 flex-shrink-0">
+              <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
+                {t('rates.hatarokFt')}
+              </div>
+              <div className="space-y-1">
+                {[
+                  { key: 'l1' as const, label: 'Alsó' },
+                  { key: 'l2' as const, label: 'Középső' },
+                  { key: 'l3' as const, label: 'Felső' },
+                ].map(({ key, label }) => (
+                  <div key={key} className="flex items-center gap-1">
+                    <span className="text-[10px] font-bold text-blue-700 w-14">{label}</span>
+                    <input
+                      type="text"
+                      value={editLimits[key]}
+                      onChange={(e) => handleLimitChange(key, e.target.value)}
+                      disabled={!canWriteRateCreation}
+                      className="flex-1 px-1.5 py-0.5 text-right font-mono text-[11px] font-bold border rounded bg-gray-50 focus:bg-white focus:border-blue-400 focus:outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+              {limitsModified && canWriteRateCreation && (
+                <button
+                  onClick={() => void handleSaveLimits()}
+                  disabled={savingLimits}
+                  className="w-full mt-1 px-2 py-0.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white text-[10px] font-bold rounded"
+                >
+                  {savingLimits ? 'Mentés...' : 'Határok mentése'}
+                </button>
+              )}
+            </div>
+
+            {/* FR-HL-10 (hibalista): dedikált ELLENŐRZÉS gomb — a háromlépcsős flow (Ellenőrzés →
               Mentés/auto-perzisztálás → Szétküldés) explicit szétválasztása. A gombra kattintáskor a
               fókuszált cella blur-je commitol, így a validationErrors (FR-HL-09 Ellenőrzés-oszlop)
               naprakész. Ez KLIENS-oldali pre-check (limit/MNB); a tényleges kiküldés a szerver-oldali
               árfolyamvédelmi ellenőrzést (RatePublishService) is elvégzi (Codex review). */}
-          <button
-            onClick={() => {
-              const errorCount = Object.values(validationErrors).filter(e => e && e.length > 0).length
-              if (errorCount === 0) {
-                toast.success('Ellenőrzés', 'A kliens-ellenőrzés rendben — a kiküldés a szerver-oldali védelmet is ellenőrzi.')
-              } else {
-                toast.warning('Ellenőrzés', `${errorCount} valutánál eltérés/hiba (lásd az „Ellenőrzés” oszlopot).`)
-              }
-            }}
-            disabled={!selectedWg}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-3 rounded shadow flex items-center justify-center gap-2 transition-colors flex-shrink-0"
-          >
-            <CheckCircle2 size={16} />
-            <span className="text-xs">Ellenőrzés</span>
-          </button>
+            <button
+              onClick={() => {
+                const errorCount = Object.values(validationErrors).filter(
+                  (e) => e && e.length > 0,
+                ).length
+                if (errorCount === 0) {
+                  toast.success(
+                    'Ellenőrzés',
+                    'A kliens-ellenőrzés rendben — a kiküldés a szerver-oldali védelmet is ellenőrzi.',
+                  )
+                } else {
+                  toast.warning(
+                    'Ellenőrzés',
+                    `${errorCount} valutánál eltérés/hiba (lásd az „Ellenőrzés” oszlopot).`,
+                  )
+                }
+              }}
+              disabled={!selectedWg}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-3 rounded shadow flex items-center justify-center gap-2 transition-colors flex-shrink-0"
+            >
+              <CheckCircle2 size={16} />
+              <span className="text-xs">Ellenőrzés</span>
+            </button>
 
-          {/* Publish button - always visible */}
-          <button
-            onClick={() => void handlePublish()}
-            disabled={publishing || !selectedWg || !canWriteRateCreation}
-            className="w-full bg-green-700 hover:bg-green-800 disabled:bg-gray-400 text-white font-bold py-2.5 px-3 rounded shadow flex items-center justify-center gap-2 transition-colors flex-shrink-0"
-          >
-            {publishing ? (
-              <RefreshCw size={16} className="animate-spin" />
-            ) : (
-              <Send size={16} />
-            )}
-            <span className="text-xs" data-testid="publish-button-label">
-              {publishing && publishProgress
-                ? t('rates.munkacsoportElkuldve', { done: publishProgress.done, total: publishProgress.total })
-                : t('rates.arfolyamokSzetkuldese')}
-            </span>
-          </button>
-        </div>
+            {/* Publish button - always visible */}
+            <button
+              onClick={() => void handlePublish()}
+              disabled={publishing || !selectedWg || !canWriteRateCreation}
+              className="w-full bg-green-700 hover:bg-green-800 disabled:bg-gray-400 text-white font-bold py-2.5 px-3 rounded shadow flex items-center justify-center gap-2 transition-colors flex-shrink-0"
+            >
+              {publishing ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
+              <span className="text-xs" data-testid="publish-button-label">
+                {publishing && publishProgress
+                  ? t('rates.munkacsoportElkuldve', {
+                      done: publishProgress.done,
+                      total: publishProgress.total,
+                    })
+                  : t('rates.arfolyamokSzetkuldese')}
+              </span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -1501,40 +1732,69 @@ export default function RateCreationPage() {
 
       {/* FK02-D (FR-9..13): cross-csoport másolás — célcsoport-választó csempénézet + megerősítés */}
       {copyCells && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeCopyModal}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={closeCopyModal}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between px-5 py-3 border-b">
-              <h2 className="text-lg font-bold flex items-center gap-2"><Copy size={18} /> Másolás más csoportba</h2>
-              <button onClick={closeCopyModal} className="p-1 text-gray-500 hover:text-gray-800" aria-label="Bezárás"><X size={20} /></button>
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Copy size={18} /> Másolás más csoportba
+              </h2>
+              <button
+                onClick={closeCopyModal}
+                className="p-1 text-gray-500 hover:text-gray-800"
+                aria-label="Bezárás"
+              >
+                <X size={20} />
+              </button>
             </div>
             <div className="px-5 py-3 text-sm text-gray-600">
-              {copyCells.length} kijelölt cella tartalma a kiválasztott munkacsoport(ok) azonos pozícióiba kerül.
-              Válassz egy vagy több célcsoportot (az aktuális nem választható):
+              {copyCells.length} kijelölt cella tartalma a kiválasztott munkacsoport(ok) azonos
+              pozícióiba kerül. Válassz egy vagy több célcsoportot (az aktuális nem választható):
             </div>
             <div className="px-5 pb-3 overflow-y-auto">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {sortWorkgroupsBySequence(workgroups).filter(w => w.id !== selectedWg?.id).map(wg => {
-                  const selected = copyTargetIds.has(wg.id)
-                  return (
-                    <button
-                      key={wg.id}
-                      type="button"
-                      onClick={() => toggleCopyTarget(wg.id)}
-                      className={`text-left rounded-lg border-2 p-3 transition-colors ${selected ? 'border-sky-500 bg-sky-100' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
-                    >
-                      <div className="text-2xl font-bold leading-none text-gray-800">{wg.legacyGroupNumber ?? '—'}</div>
-                      <div className="mt-2 text-sm font-medium truncate" title={wg.name}>{wg.name}</div>
-                      {selected && <div className="mt-1 text-xs font-semibold text-sky-700">✓ kijelölve</div>}
-                    </button>
-                  )
-                })}
+                {sortWorkgroupsBySequence(workgroups)
+                  .filter((w) => w.id !== selectedWg?.id)
+                  .map((wg) => {
+                    const selected = copyTargetIds.has(wg.id)
+                    return (
+                      <button
+                        key={wg.id}
+                        type="button"
+                        onClick={() => toggleCopyTarget(wg.id)}
+                        className={`text-left rounded-lg border-2 p-3 transition-colors ${selected ? 'border-sky-500 bg-sky-100' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                      >
+                        <div className="text-2xl font-bold leading-none text-gray-800">
+                          {wg.legacyGroupNumber ?? '—'}
+                        </div>
+                        <div className="mt-2 text-sm font-medium truncate" title={wg.name}>
+                          {wg.name}
+                        </div>
+                        {selected && (
+                          <div className="mt-1 text-xs font-semibold text-sky-700">✓ kijelölve</div>
+                        )}
+                      </button>
+                    )
+                  })}
               </div>
-              {workgroups.filter(w => w.id !== selectedWg?.id).length === 0 && (
-                <div className="text-center py-6 text-gray-400 text-sm">Nincs másik munkacsoport.</div>
+              {workgroups.filter((w) => w.id !== selectedWg?.id).length === 0 && (
+                <div className="text-center py-6 text-gray-400 text-sm">
+                  Nincs másik munkacsoport.
+                </div>
               )}
             </div>
             <div className="px-5 py-3 border-t flex justify-end gap-2">
-              <button onClick={closeCopyModal} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium">Mégse</button>
+              <button
+                onClick={closeCopyModal}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium"
+              >
+                Mégse
+              </button>
               <button
                 onClick={() => setCopyConfirmOpen(true)}
                 disabled={copyTargetIds.size === 0}
@@ -1554,12 +1814,27 @@ export default function RateCreationPage() {
             <h3 className="text-lg font-bold mb-3">Másolás megerősítése</h3>
             <p className="text-sm text-gray-700 mb-5">
               Biztosan másolod ezekbe a munkacsoportokba:{' '}
-              <span className="font-semibold">{workgroups.filter(w => copyTargetIds.has(w.id)).map(w => w.name).join(', ')}</span>?
-              A célcsoport(ok) érintett celláinak korábbi értéke felülíródik.
+              <span className="font-semibold">
+                {workgroups
+                  .filter((w) => copyTargetIds.has(w.id))
+                  .map((w) => w.name)
+                  .join(', ')}
+              </span>
+              ? A célcsoport(ok) érintett celláinak korábbi értéke felülíródik.
             </p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setCopyConfirmOpen(false)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium">Nem</button>
-              <button onClick={() => void executeCrossGroupCopy()} className="px-4 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700 text-sm font-semibold">Igen, másolás</button>
+              <button
+                onClick={() => setCopyConfirmOpen(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium"
+              >
+                Nem
+              </button>
+              <button
+                onClick={() => void executeCrossGroupCopy()}
+                className="px-4 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700 text-sm font-semibold"
+              >
+                Igen, másolás
+              </button>
             </div>
           </div>
         </div>
@@ -1578,7 +1853,10 @@ export default function RateCreationPage() {
 // - 10 választható csempeszín (tileColor mező a backendben).
 
 /** WorkgroupDetailDTO → RateWorkgroupSaveDTO (a karbantartó create/update payload-ja). */
-function toWorkgroupSaveDTO(wg: WorkgroupDetailDTO, overrides?: Partial<RateWorkgroupSaveDTO>): RateWorkgroupSaveDTO {
+function toWorkgroupSaveDTO(
+  wg: WorkgroupDetailDTO,
+  overrides?: Partial<RateWorkgroupSaveDTO>,
+): RateWorkgroupSaveDTO {
   return {
     name: wg.name,
     code: wg.code,
@@ -1605,7 +1883,15 @@ interface TileListProps {
 }
 
 // Exportált a fókuszált FK-02 teszthez (a teljes RateCreationPage túl nehéz egységként).
-export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackToMain, onReload, loading, error }: TileListProps) {
+export function WorkgroupTileListView({
+  workgroups,
+  canWrite,
+  onSelect,
+  onBackToMain,
+  onReload,
+  loading,
+  error,
+}: TileListProps) {
   // FK-02 §3: az árfolyamkészítő EGYSÉGES munkacsoport-kezelő felülete. A korábbi
   // read-only csempe helyett itt érhetők el a karbantartó műveletek is (létrehozás,
   // átnevezés/szín/határ, törlés, interaktív árfolyamvédelem) — a megosztott
@@ -1615,7 +1901,12 @@ export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackTo
   const [editorOpen, setEditorOpen] = useState(false)
   const [editorMode, setEditorMode] = useState<'create' | 'rename'>('create')
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [draft, setDraft] = useState<RateWorkgroupSaveDTO>({ name: '', code: '', active: true, tileColor: DEFAULT_TILE.key })
+  const [draft, setDraft] = useState<RateWorkgroupSaveDTO>({
+    name: '',
+    code: '',
+    active: true,
+    tileColor: DEFAULT_TILE.key,
+  })
   const [confirm, setConfirm] = useState<ConfirmState | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -1625,8 +1916,17 @@ export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackTo
     // FK02-E (FR-1, FR-2): a kódot ÉS a sorszámot a szerver osztja ki (a teljes cég-scope alapján,
     // az inaktív csoportok foglalt sorszámát is figyelembe véve) → a felhasználó nem lát ütközési
     // hibát. A sorszám üresen marad; igény esetén felülírható.
-    setDraft({ name: '', code: '', legacyGroupNumber: undefined, active: true,
-      tileColor: DEFAULT_TILE.key, protectionEnabled: true, limit1Boundary: null, limit2Boundary: null, limit3Boundary: null })
+    setDraft({
+      name: '',
+      code: '',
+      legacyGroupNumber: undefined,
+      active: true,
+      tileColor: DEFAULT_TILE.key,
+      protectionEnabled: true,
+      limit1Boundary: null,
+      limit2Boundary: null,
+      limit3Boundary: null,
+    })
     setActionError(null)
     setEditorOpen(true)
   }
@@ -1744,7 +2044,10 @@ export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackTo
         </div>
       ) : workgroups.length === 0 ? (
         <div className="bg-white rounded shadow-sm border p-6 text-center text-gray-500">
-          Még nincs csoport árfolyamlap.{canWrite ? ' Hozzon létre egyet az „Új munkacsoport” gombbal.' : ' Új létrehozása a Munkacsoportok kezelő felületen lehetséges.'}
+          Még nincs csoport árfolyamlap.
+          {canWrite
+            ? ' Hozzon létre egyet az „Új munkacsoport” gombbal.'
+            : ' Új létrehozása a Munkacsoportok kezelő felületen lehetséges.'}
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
@@ -1767,7 +2070,7 @@ export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackTo
                       <input
                         type="checkbox"
                         checked={protectionOn}
-                        onChange={e => void toggleProtection(wg, e.target.checked)}
+                        onChange={(e) => void toggleProtection(wg, e.target.checked)}
                         className="h-3.5 w-3.5"
                         aria-label={`Árfolyamvédelem a(z) ${wg.name} csoporton`}
                       />
@@ -1794,9 +2097,11 @@ export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackTo
                   aria-label={`${wg.name} (${wg.code}) árfolyamlap megnyitása`}
                 >
                   <div className="text-2xl font-bold leading-none font-mono mb-2">
-                    {String(wg.legacyGroupNumber ?? (idx + 1)).padStart(2, '0')}
+                    {String(wg.legacyGroupNumber ?? idx + 1).padStart(2, '0')}
                   </div>
-                  <div className="text-sm font-semibold truncate" title={wg.name}>{wg.name}</div>
+                  <div className="text-sm font-semibold truncate" title={wg.name}>
+                    {wg.name}
+                  </div>
                   <div className="text-xs opacity-70 mt-0.5">
                     <span className="font-mono">{wg.code}</span>
                     <span className="mx-1">·</span>
@@ -1837,8 +2142,13 @@ export function WorkgroupTileListView({ workgroups, canWrite, onSelect, onBackTo
           mode={editorMode}
           draft={draft}
           setDraft={setDraft}
-          onSave={() => { void saveEditor() }}
-          onCancel={() => { setEditorOpen(false); setActionError(null) }}
+          onSave={() => {
+            void saveEditor()
+          }}
+          onCancel={() => {
+            setEditorOpen(false)
+            setActionError(null)
+          }}
         />
       )}
       {confirm && <ConfirmDialog state={confirm} onCancel={() => setConfirm(null)} />}

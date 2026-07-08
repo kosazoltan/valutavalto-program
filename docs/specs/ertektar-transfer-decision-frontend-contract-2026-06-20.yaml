@@ -1,41 +1,41 @@
-contract: "TreasuryDashboard -> POST /api/v1/ertektar/transfers/{id}/supervisor-approve|complete|reject"
-date: "2026-06-20"
-status: "IMPLEMENTED_FROM_EXISTING_BACKEND_CONTRACT"
+contract: 'TreasuryDashboard -> POST /api/v1/ertektar/transfers/{id}/supervisor-approve|complete|reject'
+date: '2026-06-20'
+status: 'IMPLEMENTED_FROM_EXISTING_BACKEND_CONTRACT'
 
 preconditions:
-  - "The transfer row is loaded from the backend via ertektarApi.getTransfers/getPendingTransfers."
-  - "The transfer id, status and requiresSupervisor flag are backend-provided values."
-  - "The user confirms the state-changing action before the POST request is sent."
-  - "Backend authorization and state validation remain authoritative."
+  - 'The transfer row is loaded from the backend via ertektarApi.getTransfers/getPendingTransfers.'
+  - 'The transfer id, status and requiresSupervisor flag are backend-provided values.'
+  - 'The user confirms the state-changing action before the POST request is sent.'
+  - 'Backend authorization and state validation remain authoritative.'
 
 postconditions:
-  - "On supervisor approve success, the frontend reloads dashboard data from backend sources."
-  - "On complete success, the frontend reloads dashboard data from backend sources."
-  - "On reject success, the frontend reloads dashboard data from backend sources."
-  - "On failure, the existing dashboard error panel shows a factual error message."
+  - 'On supervisor approve success, the frontend reloads dashboard data from backend sources.'
+  - 'On complete success, the frontend reloads dashboard data from backend sources.'
+  - 'On reject success, the frontend reloads dashboard data from backend sources.'
+  - 'On failure, the existing dashboard error panel shows a factual error message.'
 
 invariants:
-  - "The frontend never applies transfer stock movements locally."
-  - "The frontend never fabricates a new transfer status after POST; it reloads server state."
-  - "Existing read/list behavior for transfers, receipts and corrections remains available."
+  - 'The frontend never applies transfer stock movements locally.'
+  - 'The frontend never fabricates a new transfer status after POST; it reloads server state.'
+  - 'Existing read/list behavior for transfers, receipts and corrections remains available.'
 
 error_contracts:
-  - "User cancels confirmation -> no POST request."
-  - "Backend rejects authorization or invalid state transition -> no local success state is fabricated; error state is set."
-  - "Completed or rejected transfers do not render action buttons."
+  - 'User cancels confirmation -> no POST request.'
+  - 'Backend rejects authorization or invalid state transition -> no local success state is fabricated; error state is set.'
+  - 'Completed or rejected transfers do not render action buttons.'
 
 behavioral:
-  - "REQUESTED transfer with requiresSupervisor=true renders supervisor approve and reject actions."
-  - "REQUESTED transfer with requiresSupervisor=false renders complete and reject actions."
-  - "IN_PROGRESS transfer renders complete and reject actions."
-  - "Supervisor approve button calls ertektarApi.supervisorApproveTransfer(id)."
-  - "Complete button calls ertektarApi.completeTransfer(id)."
-  - "Reject button calls ertektarApi.rejectTransfer(id)."
-  - "Buttons are disabled while the same transfer action is in flight."
+  - 'REQUESTED transfer with requiresSupervisor=true renders supervisor approve and reject actions.'
+  - 'REQUESTED transfer with requiresSupervisor=false renders complete and reject actions.'
+  - 'IN_PROGRESS transfer renders complete and reject actions.'
+  - 'Supervisor approve button calls ertektarApi.supervisorApproveTransfer(id).'
+  - 'Complete button calls ertektarApi.completeTransfer(id).'
+  - 'Reject button calls ertektarApi.rejectTransfer(id).'
+  - 'Buttons are disabled while the same transfer action is in flight.'
 
 derived_tests:
-  - "TreasuryDashboard calls supervisorApproveTransfer for a requested supervisor-gated transfer after confirmation."
-  - "TreasuryDashboard calls completeTransfer for an in-progress transfer after confirmation."
-  - "TreasuryDashboard calls rejectTransfer for a requested transfer after confirmation."
-  - "TreasuryDashboard does not call transfer decision endpoints when confirmation is cancelled."
-  - "Playwright verifies visible desktop and mobile render paths without horizontal overflow and observes the POST requests."
+  - 'TreasuryDashboard calls supervisorApproveTransfer for a requested supervisor-gated transfer after confirmation.'
+  - 'TreasuryDashboard calls completeTransfer for an in-progress transfer after confirmation.'
+  - 'TreasuryDashboard calls rejectTransfer for a requested transfer after confirmation.'
+  - 'TreasuryDashboard does not call transfer decision endpoints when confirmation is cancelled.'
+  - 'Playwright verifies visible desktop and mobile render paths without horizontal overflow and observes the POST requests.'

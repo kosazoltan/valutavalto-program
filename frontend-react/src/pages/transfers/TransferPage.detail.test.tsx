@@ -69,13 +69,15 @@ vi.mock('../../utils/localQueue', () => ({
 vi.mock('../../components/auth/SupervisorPinModal', () => ({ default: () => null }))
 
 vi.mock('../../components/NumberInput', () => ({
-  NumberInput: ({ value, onChange, id }: {
+  NumberInput: ({
+    value,
+    onChange,
+    id,
+  }: {
     value: string
     onChange: (v: string) => void
     id?: string
-  }) => (
-    <input id={id} value={value} onChange={(event) => onChange(event.target.value)} />
-  ),
+  }) => <input id={id} value={value} onChange={(event) => onChange(event.target.value)} />,
 }))
 
 vi.mock('../../utils/electron', () => ({ isElectron: () => true }))
@@ -113,8 +115,20 @@ describe('TransferPage — átadás részlet betöltése átvételhez', () => {
     mocks.countPending.mockResolvedValue(1)
     mocks.getActive.mockResolvedValue([{ id: 1, code: 'EUR', name: 'Euró' }])
     mocks.listActive.mockResolvedValue([
-      { id: 'b-own', code: 'BR076', name: 'Pécsi értéktár', isVault: true, branchTypeCode: 'VAULT' },
-      { id: 'b-source', code: 'BR001', name: 'Budapesti értéktár', isVault: true, branchTypeCode: 'VAULT' },
+      {
+        id: 'b-own',
+        code: 'BR076',
+        name: 'Pécsi értéktár',
+        isVault: true,
+        branchTypeCode: 'VAULT',
+      },
+      {
+        id: 'b-source',
+        code: 'BR001',
+        name: 'Budapesti értéktár',
+        isVault: true,
+        branchTypeCode: 'VAULT',
+      },
     ])
     mocks.getById.mockResolvedValue({
       ...pendingTransfer,
@@ -158,7 +172,9 @@ describe('TransferPage — átadás részlet betöltése átvételhez', () => {
     )
 
     await screen.findByText('AT-LIST-007')
-    fireEvent.change(screen.getByLabelText('Átadólap keresése'), { target: { value: 'AT-SEARCH-008' } })
+    fireEvent.change(screen.getByLabelText('Átadólap keresése'), {
+      target: { value: 'AT-SEARCH-008' },
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Keresés' }))
 
     await waitFor(() => expect(mocks.getByTransferNumber).toHaveBeenCalledWith('AT-SEARCH-008'))

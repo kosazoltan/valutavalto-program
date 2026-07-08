@@ -22,26 +22,26 @@
  *                  { worker_id: 'W-S011' })
  */
 
-import { app, net } from 'electron';
-import log from 'electron-log/main';
-import { release as getOsRelease, type as getOsType } from 'node:os';
+import { app, net } from 'electron'
+import log from 'electron-log/main'
+import { release as getOsRelease, type as getOsType } from 'node:os'
 
-const ENDPOINT_PATH = '/api/v1/diagnostics/audit/log';
+const ENDPOINT_PATH = '/api/v1/diagnostics/audit/log'
 // Copilot PR #681: token-bucket helyett egyszeru "drop counter + summary" minta.
 // Az anti-spam fix interval-on belul a forward-okat skip-eljuk, de
 // szamoljuk a `droppedSinceLastForward` countert, es a kovetkezo forward-on
 // hozzaadjuk az attrs.drop_count mezohoz - igy NEM tunik el nyomtalanul a signal.
-const ANTI_SPAM_MIN_INTERVAL_MS = 2_000;
-const MAX_MESSAGE_LEN = 500;
-const MAX_STACK_LEN = 4000;
+const ANTI_SPAM_MIN_INTERVAL_MS = 2_000
+const MAX_MESSAGE_LEN = 500
+const MAX_STACK_LEN = 4000
 
-type ClientContext = 'CASHIER' | 'TREASURY_HQ' | 'RFM' | 'ADMIN';
+type ClientContext = 'CASHIER' | 'TREASURY_HQ' | 'RFM' | 'ADMIN'
 
-let backendBaseUrl = 'https://excvaluta.com';
-let authBearerToken: string | null = null;
-let clientContext: ClientContext = 'TREASURY_HQ';
-let lastForwardMs = 0;
-let droppedSinceLastForward = 0;
+let backendBaseUrl = 'https://excvaluta.com'
+let authBearerToken: string | null = null
+let clientContext: ClientContext = 'TREASURY_HQ'
+let lastForwardMs = 0
+let droppedSinceLastForward = 0
 
 /**
  * Konfiguracio - a main.ts hivja meg inditaskor.
@@ -49,37 +49,34 @@ let droppedSinceLastForward = 0;
  * @param baseUrl - production: 'https://excvaluta.com' (default)
  * @param context - 'CASHIER' (penztar-client), 'TREASURY_HQ' (kozponti), 'RFM' (arfolyam)
  */
-export function configureVvLogger(opts: {
-  baseUrl?: string;
-  clientContext?: ClientContext;
-}): void {
-  if (opts.baseUrl) backendBaseUrl = opts.baseUrl.replace(/\/+$/, '');
-  if (opts.clientContext) clientContext = opts.clientContext;
+export function configureVvLogger(opts: { baseUrl?: string; clientContext?: ClientContext }): void {
+  if (opts.baseUrl) backendBaseUrl = opts.baseUrl.replace(/\/+$/, '')
+  if (opts.clientContext) clientContext = opts.clientContext
 }
 
 /**
  * A JWT-tokent a renderer kuldi a main-nek IPC-n at, amikor a worker login-ol.
  */
 export function setAuthToken(token: string | null): void {
-  authBearerToken = token;
+  authBearerToken = token
 }
 
 interface VvLogPayload {
-  level: 'ERROR' | 'WARN';
-  eventType: string;
-  errorCode?: string;
-  message: string;
-  clientTs: string;
-  traceId?: string;
-  clientContext: ClientContext;
-  clientVersion: string;
-  attrs?: Record<string, unknown>;
-  stackTrace?: string;
+  level: 'ERROR' | 'WARN'
+  eventType: string
+  errorCode?: string
+  message: string
+  clientTs: string
+  traceId?: string
+  clientContext: ClientContext
+  clientVersion: string
+  attrs?: Record<string, unknown>
+  stackTrace?: string
 }
 
 function truncate(s: string | undefined, max: number): string | undefined {
-  if (!s) return s;
-  return s.length > max ? `${s.substring(0, max)}...[truncated]` : s;
+  if (!s) return s
+  return s.length > max ? `${s.substring(0, max)}...[truncated]` : s
 }
 
 function buildPayload(
@@ -90,8 +87,7 @@ function buildPayload(
   attrs: Record<string, unknown> | undefined,
   cause?: Error | unknown,
 ): VvLogPayload {
-  const stack =
-    cause instanceof Error ? cause.stack : typeof cause === 'string' ? cause : undefined;
+  const stack = cause instanceof Error ? cause.stack : typeof cause === 'string' ? cause : undefined
   return {
     level,
     eventType,
@@ -106,7 +102,7 @@ function buildPayload(
       'electron.os': `${getOsType()} ${getOsRelease()}`,
     },
     stackTrace: truncate(stack, MAX_STACK_LEN),
-  };
+  }
 }
 
 /**
@@ -116,34 +112,44 @@ function forwardToBackend(payload: VvLogPayload): void {
   if (!authBearerToken) {
     // A kliens nincs bejelentkezve - a backend /log endpoint @PreAuthorize('isAuthenticated()')
     // elutasitana. Csak lokalisan logoljunk.
-    return;
+    return
   }
-  const now = Date.now();
+  const now = Date.now()
   if (now - lastForwardMs < ANTI_SPAM_MIN_INTERVAL_MS) {
     // Copilot PR #681 P1: dropolt event-eket szamoljuk, NEM dobjuk el silently
-    droppedSinceLastForward += 1;
-    return;
+    droppedSinceLastForward += 1
+    return
   }
-  lastForwardMs = now;
+  lastForwardMs = now
 
   // Hozzaadjuk a drop_count-ot az attrs-hoz hogy a backend lassa a missing signalt
-  const enrichedPayload: VvLogPayload = droppedSinceLastForward > 0
-    ? { ...payload, attrs: { ...payload.attrs, 'vv.dropped_since_last': droppedSinceLastForward } }
-    : payload;
-  droppedSinceLastForward = 0;
+  const enrichedPayload: VvLogPayload =
+    droppedSinceLastForward > 0
+      ? {
+          ...payload,
+          attrs: { ...payload.attrs, 'vv.dropped_since_last': droppedSinceLastForward },
+        }
+      : payload
+  droppedSinceLastForward = 0
 
   try {
-    const req = net.request({ method: 'POST', url: `${backendBaseUrl}${ENDPOINT_PATH}` });
-    req.setHeader('Content-Type', 'application/json');
-    req.setHeader('Authorization', `Bearer ${authBearerToken}`);
-    req.setHeader('User-Agent', `ValutaElectronVVLogger/${app.getVersion()}`);
-    req.on('error', () => { /* csendben */ });
+    const req = net.request({ method: 'POST', url: `${backendBaseUrl}${ENDPOINT_PATH}` })
+    req.setHeader('Content-Type', 'application/json')
+    req.setHeader('Authorization', `Bearer ${authBearerToken}`)
+    req.setHeader('User-Agent', `ValutaElectronVVLogger/${app.getVersion()}`)
+    req.on('error', () => {
+      /* csendben */
+    })
     req.on('response', (res) => {
-      res.on('data', () => { /* drain */ });
-      res.on('end', () => { /* finished */ });
-    });
-    req.write(JSON.stringify(enrichedPayload));
-    req.end();
+      res.on('data', () => {
+        /* drain */
+      })
+      res.on('end', () => {
+        /* finished */
+      })
+    })
+    req.write(JSON.stringify(enrichedPayload))
+    req.end()
   } catch {
     /* csendben */
   }
@@ -151,17 +157,17 @@ function forwardToBackend(payload: VvLogPayload): void {
 
 export const vvLogger = {
   info(eventType: string, attrs?: Record<string, unknown>): void {
-    log.info(`[VV] event=${eventType}`, attrs ?? {});
+    log.info(`[VV] event=${eventType}`, attrs ?? {})
   },
 
   debug(eventType: string, attrs?: Record<string, unknown>): void {
-    log.debug(`[VV] event=${eventType}`, attrs ?? {});
+    log.debug(`[VV] event=${eventType}`, attrs ?? {})
   },
 
   warn(eventType: string, errorCode?: string, attrs?: Record<string, unknown>): void {
-    const msg = `${eventType}${errorCode ? ` [${errorCode}]` : ''}`;
-    log.warn(`[VV] ${msg}`, attrs ?? {});
-    forwardToBackend(buildPayload('WARN', eventType, errorCode, msg, attrs));
+    const msg = `${eventType}${errorCode ? ` [${errorCode}]` : ''}`
+    log.warn(`[VV] ${msg}`, attrs ?? {})
+    forwardToBackend(buildPayload('WARN', eventType, errorCode, msg, attrs))
   },
 
   /**
@@ -176,11 +182,11 @@ export const vvLogger = {
     cause?: Error | unknown,
     attrs?: Record<string, unknown>,
   ): void {
-    const causeMsg = cause instanceof Error ? `: ${cause.message}` : '';
-    const msg = `${eventType} [${errorCode}]${causeMsg}`;
-    log.error(`[VV] ${msg}`, cause, attrs ?? {});
-    forwardToBackend(buildPayload('ERROR', eventType, errorCode, msg, attrs, cause));
+    const causeMsg = cause instanceof Error ? `: ${cause.message}` : ''
+    const msg = `${eventType} [${errorCode}]${causeMsg}`
+    log.error(`[VV] ${msg}`, cause, attrs ?? {})
+    forwardToBackend(buildPayload('ERROR', eventType, errorCode, msg, attrs, cause))
   },
-};
+}
 
-export default vvLogger;
+export default vvLogger

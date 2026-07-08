@@ -30,7 +30,9 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('../../stores/authStore', () => ({
   useAuthStore: (selector: (state: unknown) => unknown) =>
-    selector({ worker: { id: 77, branchCode: 'SZEG', branchId: 'branch-1', fullName: 'Teszt Vezető' } }),
+    selector({
+      worker: { id: 77, branchCode: 'SZEG', branchId: 'branch-1', fullName: 'Teszt Vezető' },
+    }),
 }))
 
 vi.mock('../../services/api/index', () => ({

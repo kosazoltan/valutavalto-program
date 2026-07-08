@@ -10,8 +10,8 @@ describe('sortWorkgroupsBySequence (FR-14)', () => {
       { id: 'b', legacyGroupNumber: 2, name: 'Második' },
     ]
     const out = sortWorkgroupsBySequence(input)
-    expect(out.map(w => w.legacyGroupNumber)).toEqual([1, 2, 3])
-    expect(out.map(w => w.id)).toEqual(['a', 'b', 'c'])
+    expect(out.map((w) => w.legacyGroupNumber)).toEqual([1, 2, 3])
+    expect(out.map((w) => w.id)).toEqual(['a', 'b', 'c'])
   })
 
   it('sorszám nélküli (null/undefined) csoportok a lista végére kerülnek', () => {
@@ -22,13 +22,13 @@ describe('sortWorkgroupsBySequence (FR-14)', () => {
       { id: 'b', legacyGroupNumber: 1 },
     ]
     const out = sortWorkgroupsBySequence(input)
-    expect(out.map(w => w.id)).toEqual(['b', 'a', 'x', 'y'])
+    expect(out.map((w) => w.id)).toEqual(['b', 'a', 'x', 'y'])
   })
 
   it('nem mutálja az eredeti tömböt (tiszta)', () => {
     const input = [{ legacyGroupNumber: 2 }, { legacyGroupNumber: 1 }]
     const out = sortWorkgroupsBySequence(input)
-    expect(input.map(w => w.legacyGroupNumber)).toEqual([2, 1]) // változatlan
-    expect(out.map(w => w.legacyGroupNumber)).toEqual([1, 2])
+    expect(input.map((w) => w.legacyGroupNumber)).toEqual([2, 1]) // változatlan
+    expect(out.map((w) => w.legacyGroupNumber)).toEqual([1, 2])
   })
 })

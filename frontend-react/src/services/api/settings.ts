@@ -261,16 +261,27 @@ export const systemParameterApi = {
     const response = await api.post<SystemParameter>('/system-parameters', data)
     return response.data
   },
-  update: async (id: string, data: Partial<SystemParameterCreateRequest>): Promise<SystemParameter> => {
+  update: async (
+    id: string,
+    data: Partial<SystemParameterCreateRequest>,
+  ): Promise<SystemParameter> => {
     const response = await api.put<SystemParameter>(`/system-parameters/${id}`, data)
     return response.data
   },
-  updateByKey: async (parameterKey: string, data: SystemParameterManagementUpdateRequest): Promise<SystemParameter> => {
+  updateByKey: async (
+    parameterKey: string,
+    data: SystemParameterManagementUpdateRequest,
+  ): Promise<SystemParameter> => {
     const response = await api.put<SystemParameter>(`/system-params/${parameterKey}`, data)
     return response.data
   },
-  bulkUpdate: async (parameters: Record<string, string>): Promise<SystemParameterBulkUpdateResponse> => {
-    const response = await api.post<SystemParameterBulkUpdateResponse>('/system-params/bulk-update', { parameters })
+  bulkUpdate: async (
+    parameters: Record<string, string>,
+  ): Promise<SystemParameterBulkUpdateResponse> => {
+    const response = await api.post<SystemParameterBulkUpdateResponse>(
+      '/system-params/bulk-update',
+      { parameters },
+    )
     return response.data
   },
   toggleActive: async (id: string): Promise<SystemParameter> => {
@@ -279,7 +290,7 @@ export const systemParameterApi = {
   },
   delete: async (id: string): Promise<void> => {
     await api.delete(`/system-parameters/${id}`)
-  }
+  },
 }
 
 // ================== DENOMINATION API ==================
@@ -333,9 +344,12 @@ export const denominationApi = {
     const response = await api.get<Denomination[]>('/denominations/alerts/low-stock')
     return response.data
   },
-  validate: async (currencyId: number, expectedBalance: number): Promise<DenominationValidationResult> => {
+  validate: async (
+    currencyId: number,
+    expectedBalance: number,
+  ): Promise<DenominationValidationResult> => {
     const response = await api.post<DenominationValidationResult>('/denominations/validate', null, {
-      params: { currencyId, expectedBalance }
+      params: { currencyId, expectedBalance },
     })
     return response.data
   },
@@ -345,10 +359,10 @@ export const denominationApi = {
   },
   getOptimalChange: async (currencyId: number, amount: number): Promise<Record<number, number>> => {
     const response = await api.get<Record<number, number>>('/denominations/optimal-change', {
-      params: { currencyId, amount }
+      params: { currencyId, amount },
     })
     return response.data
-  }
+  },
 }
 
 // ================== DENOMINATION CALCULATOR API ==================
@@ -374,8 +388,13 @@ export const denominationCalculatorApi = {
     })
     return response.data
   },
-  suggestBalanced: async (request: BalancedDenominationSuggestionRequest): Promise<DenominationSuggestion> => {
-    const response = await api.post<DenominationSuggestion>('/denomination-calculator/suggest-balanced', request)
+  suggestBalanced: async (
+    request: BalancedDenominationSuggestionRequest,
+  ): Promise<DenominationSuggestion> => {
+    const response = await api.post<DenominationSuggestion>(
+      '/denomination-calculator/suggest-balanced',
+      request,
+    )
     return response.data
   },
 }
@@ -400,21 +419,39 @@ export interface DenominationQuantityUpdateRequest {
 
 export const denominationBalanceApi = {
   getCashDeskDenominations: async (cashDeskId: string): Promise<DenominationBalanceDTO[]> => {
-    const response = await api.get<DenominationBalanceDTO[]>(`/cash-desks/${cashDeskId}/denominations`)
+    const response = await api.get<DenominationBalanceDTO[]>(
+      `/cash-desks/${cashDeskId}/denominations`,
+    )
     return response.data
   },
-  getCashDeskDenominationsByCurrency: async (cashDeskId: string, currencyId: string): Promise<DenominationBalanceDTO[]> => {
-    const response = await api.get<DenominationBalanceDTO[]>(`/cash-desks/${cashDeskId}/denominations/currency/${currencyId}`)
+  getCashDeskDenominationsByCurrency: async (
+    cashDeskId: string,
+    currencyId: string,
+  ): Promise<DenominationBalanceDTO[]> => {
+    const response = await api.get<DenominationBalanceDTO[]>(
+      `/cash-desks/${cashDeskId}/denominations/currency/${currencyId}`,
+    )
     return response.data
   },
-  setDenominationQuantities: async (cashDeskId: string, updates: DenominationQuantityUpdateRequest[]): Promise<DenominationBalanceDTO[]> => {
-    const response = await api.post<DenominationBalanceDTO[]>(`/cash-desks/${cashDeskId}/denominations/batch`, updates)
+  setDenominationQuantities: async (
+    cashDeskId: string,
+    updates: DenominationQuantityUpdateRequest[],
+  ): Promise<DenominationBalanceDTO[]> => {
+    const response = await api.post<DenominationBalanceDTO[]>(
+      `/cash-desks/${cashDeskId}/denominations/batch`,
+      updates,
+    )
     return response.data
   },
-  calculateTotalFromDenominations: async (cashDeskId: string, currencyId: string): Promise<number> => {
-    const response = await api.get<number>(`/cash-desks/${cashDeskId}/denominations/currency/${currencyId}/total`)
+  calculateTotalFromDenominations: async (
+    cashDeskId: string,
+    currencyId: string,
+  ): Promise<number> => {
+    const response = await api.get<number>(
+      `/cash-desks/${cashDeskId}/denominations/currency/${currencyId}/total`,
+    )
     return response.data
-  }
+  },
 }
 
 // ================== WORKER COMMISSION API ==================
@@ -454,24 +491,36 @@ export const workerCommissionApi = {
     const response = await api.get<WorkerCommission>(`/worker-commissions/${id}`)
     return response.data
   },
-  getByPeriod: async (branchId: string, periodStart: string, periodEnd: string): Promise<WorkerCommission[]> => {
+  getByPeriod: async (
+    branchId: string,
+    periodStart: string,
+    periodEnd: string,
+  ): Promise<WorkerCommission[]> => {
     const response = await api.get<WorkerCommission[]>('/worker-commissions/period', {
-      params: { branchId, periodStart, periodEnd }
+      params: { branchId, periodStart, periodEnd },
     })
     return response.data
   },
-  calculate: async (branchId: string, periodStart: string, periodEnd: string): Promise<WorkerCommission[]> => {
+  calculate: async (
+    branchId: string,
+    periodStart: string,
+    periodEnd: string,
+  ): Promise<WorkerCommission[]> => {
     const response = await api.post<WorkerCommission[]>('/worker-commissions/calculate', null, {
-      params: { branchId, periodStart, periodEnd }
+      params: { branchId, periodStart, periodEnd },
     })
     return response.data
   },
-  getAccountingList: async (branchId: string, periodStart: string, periodEnd: string): Promise<WorkerCommission[]> => {
+  getAccountingList: async (
+    branchId: string,
+    periodStart: string,
+    periodEnd: string,
+  ): Promise<WorkerCommission[]> => {
     const response = await api.get<WorkerCommission[]>('/worker-commissions/accounting-list', {
-      params: { branchId, periodStart, periodEnd }
+      params: { branchId, periodStart, periodEnd },
     })
     return response.data
-  }
+  },
 }
 
 export interface CommissionCalculation {
@@ -498,13 +547,17 @@ export const commissionCalculationApi = {
   calculate: async (month: string, workerId?: number): Promise<CommissionCalculation> => {
     const params: { month: string; workerId?: number } = { month }
     if (workerId != null) params.workerId = workerId
-    const response = await api.post<CommissionCalculation>('/commissions/calculate', null, { params })
+    const response = await api.post<CommissionCalculation>('/commissions/calculate', null, {
+      params,
+    })
     return response.data
   },
   calculateAll: async (month: string, branchId?: string): Promise<CommissionCalculation[]> => {
     const params: { month: string; branchId?: string } = { month }
     if (branchId) params.branchId = branchId
-    const response = await api.post<CommissionCalculation[]>('/commissions/calculate-all', null, { params })
+    const response = await api.post<CommissionCalculation[]>('/commissions/calculate-all', null, {
+      params,
+    })
     return response.data
   },
   approve: async (id: string): Promise<CommissionCalculation> => {
@@ -572,7 +625,7 @@ export const workstationApi = {
   },
   delete: async (id: string): Promise<void> => {
     await api.delete(`/workstations/${id}`)
-  }
+  },
 }
 
 // ================== CONTRIBUTION API ==================
@@ -616,13 +669,23 @@ export const contributionApi = {
     const response = await api.get<Contribution>(`/contributions/${id}`)
     return response.data
   },
-  getByPeriod: async (branchId: string, periodStart: string, periodEnd: string): Promise<Contribution[]> => {
-    const response = await api.get<Contribution[]>('/contributions/period', { params: { branchId, periodStart, periodEnd } })
+  getByPeriod: async (
+    branchId: string,
+    periodStart: string,
+    periodEnd: string,
+  ): Promise<Contribution[]> => {
+    const response = await api.get<Contribution[]>('/contributions/period', {
+      params: { branchId, periodStart, periodEnd },
+    })
     return response.data
   },
-  calculate: async (branchId: string, periodStart: string, periodEnd: string): Promise<Contribution[]> => {
+  calculate: async (
+    branchId: string,
+    periodStart: string,
+    periodEnd: string,
+  ): Promise<Contribution[]> => {
     const response = await api.post<Contribution[]>('/contributions/calculate', null, {
-      params: { branchId, periodStart, periodEnd }
+      params: { branchId, periodStart, periodEnd },
     })
     return response.data
   },
@@ -646,13 +709,22 @@ export interface Organization {
 
 export const organizationApi = {
   list: async (): Promise<Organization[]> => (await api.get<Organization[]>('/organizations')).data,
-  getActive: async (): Promise<Organization[]> => (await api.get<Organization[]>('/organizations/active')).data,
-  getRoots: async (): Promise<Organization[]> => (await api.get<Organization[]>('/organizations/root')).data,
-  getById: async (id: string): Promise<Organization> => (await api.get<Organization>(`/organizations/${id}`)).data,
-  create: async (data: Partial<Organization>): Promise<Organization> => (await api.post<Organization>('/organizations', data)).data,
-  update: async (id: string, data: Partial<Organization>): Promise<Organization> => (await api.put<Organization>(`/organizations/${id}`, data)).data,
-  archive: async (id: string): Promise<void> => { await api.post(`/organizations/${id}/archive`) },
-  delete: async (id: string): Promise<void> => { await api.delete(`/organizations/${id}`) },
+  getActive: async (): Promise<Organization[]> =>
+    (await api.get<Organization[]>('/organizations/active')).data,
+  getRoots: async (): Promise<Organization[]> =>
+    (await api.get<Organization[]>('/organizations/root')).data,
+  getById: async (id: string): Promise<Organization> =>
+    (await api.get<Organization>(`/organizations/${id}`)).data,
+  create: async (data: Partial<Organization>): Promise<Organization> =>
+    (await api.post<Organization>('/organizations', data)).data,
+  update: async (id: string, data: Partial<Organization>): Promise<Organization> =>
+    (await api.put<Organization>(`/organizations/${id}`, data)).data,
+  archive: async (id: string): Promise<void> => {
+    await api.post(`/organizations/${id}/archive`)
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/organizations/${id}`)
+  },
 }
 
 export interface OwnCompany {
@@ -705,17 +777,22 @@ export interface AdminCompanyUpdateRequest {
 
 export const ownCompanyApi = {
   list: async (): Promise<OwnCompany[]> => (await api.get<OwnCompany[]>('/own-companies')).data,
-  getActive: async (): Promise<OwnCompany[]> => (await api.get<OwnCompany[]>('/own-companies/active')).data,
-  getById: async (id: string): Promise<OwnCompany> => (await api.get<OwnCompany>(`/own-companies/${id}`)).data,
-  create: async (data: Partial<OwnCompany>): Promise<OwnCompany> => (await api.post<OwnCompany>('/own-companies', data)).data,
-  update: async (id: string, data: Partial<OwnCompany>): Promise<OwnCompany> => (await api.put<OwnCompany>(`/own-companies/${id}`, data)).data,
-  delete: async (id: string): Promise<void> => { await api.delete(`/own-companies/${id}`) },
+  getActive: async (): Promise<OwnCompany[]> =>
+    (await api.get<OwnCompany[]>('/own-companies/active')).data,
+  getById: async (id: string): Promise<OwnCompany> =>
+    (await api.get<OwnCompany>(`/own-companies/${id}`)).data,
+  create: async (data: Partial<OwnCompany>): Promise<OwnCompany> =>
+    (await api.post<OwnCompany>('/own-companies', data)).data,
+  update: async (id: string, data: Partial<OwnCompany>): Promise<OwnCompany> =>
+    (await api.put<OwnCompany>(`/own-companies/${id}`, data)).data,
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/own-companies/${id}`)
+  },
 }
 
 export const adminCompanyApi = {
-  getDetails: async (id: string): Promise<AdminCompanyDetails> => (
-    await api.get<AdminCompanyDetails>(`/admin/companies/${id}`)
-  ).data,
+  getDetails: async (id: string): Promise<AdminCompanyDetails> =>
+    (await api.get<AdminCompanyDetails>(`/admin/companies/${id}`)).data,
   updateCompany: async (id: string, data: AdminCompanyUpdateRequest): Promise<void> => {
     await api.put(`/admin/companies/${id}`, data)
   },
@@ -738,16 +815,54 @@ export interface BranchGroup {
 
 export const branchGroupApi = {
   list: async (): Promise<BranchGroup[]> => (await api.get<BranchGroup[]>('/branch-groups')).data,
-  getRoots: async (): Promise<BranchGroup[]> => (await api.get<BranchGroup[]>('/branch-groups/roots')).data,
-  getById: async (id: string): Promise<BranchGroup> => (await api.get<BranchGroup>(`/branch-groups/${id}`)).data,
-  create: async (data: Partial<BranchGroup>, workerId: string): Promise<BranchGroup> => (await api.post<BranchGroup>('/branch-groups', data, { params: { workerId } })).data,
-  update: async (id: string, data: Partial<BranchGroup>): Promise<BranchGroup> => (await api.put<BranchGroup>(`/branch-groups/${id}`, data)).data,
-  delete: async (id: string): Promise<void> => { await api.delete(`/branch-groups/${id}`) },
+  getRoots: async (): Promise<BranchGroup[]> =>
+    (await api.get<BranchGroup[]>('/branch-groups/roots')).data,
+  getById: async (id: string): Promise<BranchGroup> =>
+    (await api.get<BranchGroup>(`/branch-groups/${id}`)).data,
+  create: async (data: Partial<BranchGroup>, workerId: string): Promise<BranchGroup> =>
+    (await api.post<BranchGroup>('/branch-groups', data, { params: { workerId } })).data,
+  update: async (id: string, data: Partial<BranchGroup>): Promise<BranchGroup> =>
+    (await api.put<BranchGroup>(`/branch-groups/${id}`, data)).data,
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/branch-groups/${id}`)
+  },
 }
 
-export interface FeeType { id: string; code: string; name: string; description?: string; calculationMethod: string; isActive: boolean }
-export interface FeeRate { id: string; feeTypeId: string; feeTypeName?: string; currencyId?: string; currencyCode?: string; branchId?: string; branchName?: string; minAmount?: number; maxAmount?: number; rate: number; fixedAmount?: number; validFrom: string; validTo?: string; isActive: boolean }
-export interface FeeDiscount { id: string; code: string; name: string; discountType: string; discountValue: number; minTransactionAmount?: number; validFrom: string; validTo?: string; isActive: boolean }
+export interface FeeType {
+  id: string
+  code: string
+  name: string
+  description?: string
+  calculationMethod: string
+  isActive: boolean
+}
+export interface FeeRate {
+  id: string
+  feeTypeId: string
+  feeTypeName?: string
+  currencyId?: string
+  currencyCode?: string
+  branchId?: string
+  branchName?: string
+  minAmount?: number
+  maxAmount?: number
+  rate: number
+  fixedAmount?: number
+  validFrom: string
+  validTo?: string
+  isActive: boolean
+}
+export interface FeeDiscount {
+  id: string
+  code: string
+  name: string
+  discountType: string
+  discountValue: number
+  minTransactionAmount?: number
+  validFrom: string
+  validTo?: string
+  isActive: boolean
+}
 
 export interface DiscountThresholdApplyResult {
   originalFee: number
@@ -766,23 +881,53 @@ export interface DiscountThresholdResolveResult {
 
 export const feeApi = {
   getTypes: async (): Promise<FeeType[]> => (await api.get<FeeType[]>('/fees/types')).data,
-  createType: async (data: Partial<FeeType>): Promise<FeeType> => (await api.post<FeeType>('/fees/types', data)).data,
-  updateType: async (id: string, data: Partial<FeeType>): Promise<FeeType> => (await api.put<FeeType>(`/fees/types/${id}`, data)).data,
-  deleteType: async (id: string): Promise<void> => { await api.delete(`/fees/types/${id}`) },
+  createType: async (data: Partial<FeeType>): Promise<FeeType> =>
+    (await api.post<FeeType>('/fees/types', data)).data,
+  updateType: async (id: string, data: Partial<FeeType>): Promise<FeeType> =>
+    (await api.put<FeeType>(`/fees/types/${id}`, data)).data,
+  deleteType: async (id: string): Promise<void> => {
+    await api.delete(`/fees/types/${id}`)
+  },
   getRates: async (): Promise<FeeRate[]> => (await api.get<FeeRate[]>('/fees/rates')).data,
-  createRate: async (data: Partial<FeeRate>): Promise<FeeRate> => (await api.post<FeeRate>('/fees/rates', data)).data,
-  updateRate: async (id: string, data: Partial<FeeRate>): Promise<FeeRate> => (await api.put<FeeRate>(`/fees/rates/${id}`, data)).data,
-  deleteRate: async (id: string): Promise<void> => { await api.delete(`/fees/rates/${id}`) },
-  getDiscounts: async (): Promise<FeeDiscount[]> => (await api.get<FeeDiscount[]>('/fees/discounts')).data,
-  createDiscount: async (data: Partial<FeeDiscount>): Promise<FeeDiscount> => (await api.post<FeeDiscount>('/fees/discounts', data)).data,
-  updateDiscount: async (id: string, data: Partial<FeeDiscount>): Promise<FeeDiscount> => (await api.put<FeeDiscount>(`/fees/discounts/${id}`, data)).data,
-  deleteDiscount: async (id: string): Promise<void> => { await api.delete(`/fees/discounts/${id}`) },
+  createRate: async (data: Partial<FeeRate>): Promise<FeeRate> =>
+    (await api.post<FeeRate>('/fees/rates', data)).data,
+  updateRate: async (id: string, data: Partial<FeeRate>): Promise<FeeRate> =>
+    (await api.put<FeeRate>(`/fees/rates/${id}`, data)).data,
+  deleteRate: async (id: string): Promise<void> => {
+    await api.delete(`/fees/rates/${id}`)
+  },
+  getDiscounts: async (): Promise<FeeDiscount[]> =>
+    (await api.get<FeeDiscount[]>('/fees/discounts')).data,
+  createDiscount: async (data: Partial<FeeDiscount>): Promise<FeeDiscount> =>
+    (await api.post<FeeDiscount>('/fees/discounts', data)).data,
+  updateDiscount: async (id: string, data: Partial<FeeDiscount>): Promise<FeeDiscount> =>
+    (await api.put<FeeDiscount>(`/fees/discounts/${id}`, data)).data,
+  deleteDiscount: async (id: string): Promise<void> => {
+    await api.delete(`/fees/discounts/${id}`)
+  },
 }
 
-export interface HandlingFeeBracketConfig { id?: number; bracketOrder: number; upperLimit: number; feeAmount: number; active?: boolean }
-export interface HandlingFeeConfig { feeType: 'NONE' | 'PER_MILLE' | 'BRACKET'; perMilleRate: number; perMilleMaxAmount: number | null; brackets: HandlingFeeBracketConfig[] }
-export interface HandlingFeeCalculationRequest { transactionId?: number | null; hufAmount: number }
-export interface HandlingFeeDiscountRequest { discountPercent: number; reason?: string }
+export interface HandlingFeeBracketConfig {
+  id?: number
+  bracketOrder: number
+  upperLimit: number
+  feeAmount: number
+  active?: boolean
+}
+export interface HandlingFeeConfig {
+  feeType: 'NONE' | 'PER_MILLE' | 'BRACKET'
+  perMilleRate: number
+  perMilleMaxAmount: number | null
+  brackets: HandlingFeeBracketConfig[]
+}
+export interface HandlingFeeCalculationRequest {
+  transactionId?: number | null
+  hufAmount: number
+}
+export interface HandlingFeeDiscountRequest {
+  discountPercent: number
+  reason?: string
+}
 export interface HandlingFeeTransactionResult {
   id?: string
   transactionId?: number | null
@@ -797,50 +942,121 @@ export interface HandlingFeeTransactionResult {
 }
 
 export const handlingFeeConfigApi = {
-  get: async (): Promise<HandlingFeeConfig> => (await api.get<HandlingFeeConfig>('/handling-fee-config')).data,
-  update: async (data: HandlingFeeConfig): Promise<HandlingFeeConfig> => (await api.put<HandlingFeeConfig>('/handling-fee-config', data)).data,
-  saveBrackets: async (data: HandlingFeeBracketConfig[]): Promise<HandlingFeeBracketConfig[]> => (
-    await api.post<HandlingFeeBracketConfig[]>('/handling-fee-config/brackets', data)
-  ).data,
+  get: async (): Promise<HandlingFeeConfig> =>
+    (await api.get<HandlingFeeConfig>('/handling-fee-config')).data,
+  update: async (data: HandlingFeeConfig): Promise<HandlingFeeConfig> =>
+    (await api.put<HandlingFeeConfig>('/handling-fee-config', data)).data,
+  saveBrackets: async (data: HandlingFeeBracketConfig[]): Promise<HandlingFeeBracketConfig[]> =>
+    (await api.post<HandlingFeeBracketConfig[]>('/handling-fee-config/brackets', data)).data,
 }
 
 export const handlingFeeTransactionApi = {
-  calculate: async (data: HandlingFeeCalculationRequest): Promise<HandlingFeeTransactionResult> => (
-    await api.post<HandlingFeeTransactionResult>('/handling-fees/calculate', data)
-  ).data,
-  applyDiscount: async (id: string, data: HandlingFeeDiscountRequest): Promise<HandlingFeeTransactionResult> => (
-    await api.post<HandlingFeeTransactionResult>(`/handling-fees/${id}/discount`, data)
-  ).data,
+  calculate: async (data: HandlingFeeCalculationRequest): Promise<HandlingFeeTransactionResult> =>
+    (await api.post<HandlingFeeTransactionResult>('/handling-fees/calculate', data)).data,
+  applyDiscount: async (
+    id: string,
+    data: HandlingFeeDiscountRequest,
+  ): Promise<HandlingFeeTransactionResult> =>
+    (await api.post<HandlingFeeTransactionResult>(`/handling-fees/${id}/discount`, data)).data,
 }
 
-export interface ProhibitedPerson { id: string; fullName: string; documentNumber?: string; identityNumber?: string; passportNumber?: string; dateOfBirth?: string; nationality?: string; listType: string; listSource: string; reason?: string; isActive: boolean }
-export interface ProhibitedCompany { id: string; companyName: string; taxNumber?: string; registrationNumber?: string; listType: string; listSource: string; reason?: string; isActive: boolean }
+export interface ProhibitedPerson {
+  id: string
+  fullName: string
+  documentNumber?: string
+  identityNumber?: string
+  passportNumber?: string
+  dateOfBirth?: string
+  nationality?: string
+  listType: string
+  listSource: string
+  reason?: string
+  isActive: boolean
+}
+export interface ProhibitedCompany {
+  id: string
+  companyName: string
+  taxNumber?: string
+  registrationNumber?: string
+  listType: string
+  listSource: string
+  reason?: string
+  isActive: boolean
+}
 
 export const blacklistApi = {
-  getPersons: async (): Promise<ProhibitedPerson[]> => (await api.get<ProhibitedPerson[]>('/blacklist/persons')).data,
-  createPerson: async (data: Partial<ProhibitedPerson>): Promise<ProhibitedPerson> => (await api.post<ProhibitedPerson>('/blacklist/persons', data)).data,
-  updatePerson: async (id: string, data: Partial<ProhibitedPerson>): Promise<ProhibitedPerson> => (await api.put<ProhibitedPerson>(`/blacklist/persons/${id}`, data)).data,
-  deletePerson: async (id: string): Promise<void> => { await api.delete(`/blacklist/persons/${id}`) },
-  getCompanies: async (): Promise<ProhibitedCompany[]> => (await api.get<ProhibitedCompany[]>('/blacklist/companies')).data,
-  createCompany: async (data: Partial<ProhibitedCompany>): Promise<ProhibitedCompany> => (await api.post<ProhibitedCompany>('/blacklist/companies', data)).data,
-  updateCompany: async (id: string, data: Partial<ProhibitedCompany>): Promise<ProhibitedCompany> => (await api.put<ProhibitedCompany>(`/blacklist/companies/${id}`, data)).data,
-  deleteCompany: async (id: string): Promise<void> => { await api.delete(`/blacklist/companies/${id}`) },
-  importPersons: async (file: File): Promise<void> => { const formData = new FormData(); formData.append('file', file); await api.post('/blacklist/persons/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } }) },
-  importCompanies: async (file: File): Promise<void> => { const formData = new FormData(); formData.append('file', file); await api.post('/blacklist/companies/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } }) },
+  getPersons: async (): Promise<ProhibitedPerson[]> =>
+    (await api.get<ProhibitedPerson[]>('/blacklist/persons')).data,
+  createPerson: async (data: Partial<ProhibitedPerson>): Promise<ProhibitedPerson> =>
+    (await api.post<ProhibitedPerson>('/blacklist/persons', data)).data,
+  updatePerson: async (id: string, data: Partial<ProhibitedPerson>): Promise<ProhibitedPerson> =>
+    (await api.put<ProhibitedPerson>(`/blacklist/persons/${id}`, data)).data,
+  deletePerson: async (id: string): Promise<void> => {
+    await api.delete(`/blacklist/persons/${id}`)
+  },
+  getCompanies: async (): Promise<ProhibitedCompany[]> =>
+    (await api.get<ProhibitedCompany[]>('/blacklist/companies')).data,
+  createCompany: async (data: Partial<ProhibitedCompany>): Promise<ProhibitedCompany> =>
+    (await api.post<ProhibitedCompany>('/blacklist/companies', data)).data,
+  updateCompany: async (id: string, data: Partial<ProhibitedCompany>): Promise<ProhibitedCompany> =>
+    (await api.put<ProhibitedCompany>(`/blacklist/companies/${id}`, data)).data,
+  deleteCompany: async (id: string): Promise<void> => {
+    await api.delete(`/blacklist/companies/${id}`)
+  },
+  importPersons: async (file: File): Promise<void> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    await api.post('/blacklist/persons/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  importCompanies: async (file: File): Promise<void> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    await api.post('/blacklist/companies/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 }
 
 // ================== OTHER SETTINGS / OPS API ==================
 
-export interface CommissionRate { id: string; entityType: string; entityId?: string; entityName?: string; currencyId?: string; currencyCode?: string; rate: number; validFrom: string; validTo?: string; isActive: boolean }
+export interface CommissionRate {
+  id: string
+  entityType: string
+  entityId?: string
+  entityName?: string
+  currencyId?: string
+  currencyCode?: string
+  rate: number
+  validFrom: string
+  validTo?: string
+  isActive: boolean
+}
 export const commissionRateApi = {
-  list: async (): Promise<CommissionRate[]> => (await api.get<CommissionRate[]>('/commission-rates')).data,
-  getById: async (id: string): Promise<CommissionRate> => (await api.get<CommissionRate>(`/commission-rates/${id}`)).data,
-  create: async (data: Partial<CommissionRate>): Promise<CommissionRate> => (await api.post<CommissionRate>('/commission-rates', data)).data,
-  update: async (id: string, data: Partial<CommissionRate>): Promise<CommissionRate> => (await api.put<CommissionRate>(`/commission-rates/${id}`, data)).data,
-  delete: async (id: string): Promise<void> => { await api.delete(`/commission-rates/${id}`) },
+  list: async (): Promise<CommissionRate[]> =>
+    (await api.get<CommissionRate[]>('/commission-rates')).data,
+  getById: async (id: string): Promise<CommissionRate> =>
+    (await api.get<CommissionRate>(`/commission-rates/${id}`)).data,
+  create: async (data: Partial<CommissionRate>): Promise<CommissionRate> =>
+    (await api.post<CommissionRate>('/commission-rates', data)).data,
+  update: async (id: string, data: Partial<CommissionRate>): Promise<CommissionRate> =>
+    (await api.put<CommissionRate>(`/commission-rates/${id}`, data)).data,
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/commission-rates/${id}`)
+  },
 }
 
-export interface ArchiveTask { id: string; taskType: string; entityType: string; criteria: Record<string, unknown>; status: string; startedAt?: string; completedAt?: string; archiveLocation?: string }
+export interface ArchiveTask {
+  id: string
+  taskType: string
+  entityType: string
+  criteria: Record<string, unknown>
+  status: string
+  startedAt?: string
+  completedAt?: string
+  archiveLocation?: string
+}
 export interface ArchivedTransaction {
   id: number
   archiveMonth: string
@@ -858,29 +1074,37 @@ export interface ArchivedTransaction {
 }
 
 export const discountThresholdApi = {
-  listActive: async (): Promise<FeeDiscount[]> => (
-    await api.get<FeeDiscount[]>('/discount-threshold/active')
-  ).data,
-  resolve: async (hufAmount: number): Promise<DiscountThresholdResolveResult> => (
-    await api.get<DiscountThresholdResolveResult>('/discount-threshold/resolve', {
-      params: { hufAmount },
-    })
-  ).data,
-  apply: async (hufAmount: number, originalFee: number): Promise<DiscountThresholdApplyResult> => (
-    await api.get<DiscountThresholdApplyResult>('/discount-threshold/apply', {
-      params: { hufAmount, originalFee },
-    })
-  ).data,
+  listActive: async (): Promise<FeeDiscount[]> =>
+    (await api.get<FeeDiscount[]>('/discount-threshold/active')).data,
+  resolve: async (hufAmount: number): Promise<DiscountThresholdResolveResult> =>
+    (
+      await api.get<DiscountThresholdResolveResult>('/discount-threshold/resolve', {
+        params: { hufAmount },
+      })
+    ).data,
+  apply: async (hufAmount: number, originalFee: number): Promise<DiscountThresholdApplyResult> =>
+    (
+      await api.get<DiscountThresholdApplyResult>('/discount-threshold/apply', {
+        params: { hufAmount, originalFee },
+      })
+    ).data,
 }
 export const archivingApi = {
-  listTasks: async (): Promise<ArchiveTask[]> => (await api.get<ArchiveTask[]>('/archiving/tasks')).data,
-  createTask: async (data: Partial<ArchiveTask>): Promise<ArchiveTask> => (await api.post<ArchiveTask>('/archiving/tasks', data)).data,
-  executeTask: async (id: string): Promise<ArchiveTask> => (await api.post<ArchiveTask>(`/archiving/tasks/${id}/execute`)).data,
-  monthlyArchive: async (branchId: string, yearMonth: string) => (await api.post('/archiving/monthly', { branchId, yearMonth })).data,
-  getMonthlyStatus: async (branchId: string, yearMonth: string) => (await api.get(`/archiving/monthly/${branchId}/${yearMonth}/status`)).data,
-  getArchivedTransactions: async (branchId: string, yearMonth: string): Promise<ArchivedTransaction[]> => (
-    await api.get<ArchivedTransaction[]>(`/archiving/monthly/${branchId}/${yearMonth}`)
-  ).data,
+  listTasks: async (): Promise<ArchiveTask[]> =>
+    (await api.get<ArchiveTask[]>('/archiving/tasks')).data,
+  createTask: async (data: Partial<ArchiveTask>): Promise<ArchiveTask> =>
+    (await api.post<ArchiveTask>('/archiving/tasks', data)).data,
+  executeTask: async (id: string): Promise<ArchiveTask> =>
+    (await api.post<ArchiveTask>(`/archiving/tasks/${id}/execute`)).data,
+  monthlyArchive: async (branchId: string, yearMonth: string) =>
+    (await api.post('/archiving/monthly', { branchId, yearMonth })).data,
+  getMonthlyStatus: async (branchId: string, yearMonth: string) =>
+    (await api.get(`/archiving/monthly/${branchId}/${yearMonth}/status`)).data,
+  getArchivedTransactions: async (
+    branchId: string,
+    yearMonth: string,
+  ): Promise<ArchivedTransaction[]> =>
+    (await api.get<ArchivedTransaction[]>(`/archiving/monthly/${branchId}/${yearMonth}`)).data,
 }
 
 export interface Reservation {
@@ -924,36 +1148,70 @@ export interface CreateReservationRequest {
 }
 
 export const reservationsApi = {
-  create: async (data: CreateReservationRequest): Promise<Reservation> => (await api.post<Reservation>('/reservations', data)).data,
-  getById: async (id: string): Promise<Reservation> => (await api.get<Reservation>(`/reservations/${id}`)).data,
-  reservedStock: async (branchId: string): Promise<ReservedStock[]> => (
-    await api.get<ReservedStock[]>('/reservations/reserved-stock', { params: { branchId } })
-  ).data,
-  list: async (params?: { status?: string; customerId?: string; branchId?: string }): Promise<Reservation[]> => {
+  create: async (data: CreateReservationRequest): Promise<Reservation> =>
+    (await api.post<Reservation>('/reservations', data)).data,
+  getById: async (id: string): Promise<Reservation> =>
+    (await api.get<Reservation>(`/reservations/${id}`)).data,
+  reservedStock: async (branchId: string): Promise<ReservedStock[]> =>
+    (await api.get<ReservedStock[]>('/reservations/reserved-stock', { params: { branchId } })).data,
+  list: async (params?: {
+    status?: string
+    customerId?: string
+    branchId?: string
+  }): Promise<Reservation[]> => {
     const status = params?.status?.toUpperCase()
     const path = status === 'EXPIRED' ? '/reservations/expired' : '/reservations/active'
     const requestParams: Record<string, string> = {}
     if (params?.customerId) requestParams.customerId = params.customerId
     if (params?.branchId) requestParams.branchId = params.branchId
-    const response = await api.get<Reservation[]>(path, { params: Object.keys(requestParams).length ? requestParams : undefined })
+    const response = await api.get<Reservation[]>(path, {
+      params: Object.keys(requestParams).length ? requestParams : undefined,
+    })
     return response.data
   },
-  cancel: async (id: string | number, reason?: string): Promise<Reservation> => (
-    await api.post<Reservation>(`/reservations/${id}/cancel-by-customer`, reason ? { reason } : undefined)
-  ).data,
-  cancelByCompany: async (id: string | number, data: { reason: string; supervisorWorkerId: number }): Promise<Reservation> => (
-    await api.post<Reservation>(`/reservations/${id}/cancel-by-company`, data)
-  ).data,
-  fulfill: async (id: string | number): Promise<Reservation> => (await api.post<Reservation>(`/reservations/${id}/fulfill`)).data,
-  receipt: async (id: string | number, refund: boolean): Promise<Blob> => (
-    await api.get<Blob>(`/reservations/${id}/receipt`, { params: { refund }, responseType: 'blob' })
-  ).data,
+  cancel: async (id: string | number, reason?: string): Promise<Reservation> =>
+    (
+      await api.post<Reservation>(
+        `/reservations/${id}/cancel-by-customer`,
+        reason ? { reason } : undefined,
+      )
+    ).data,
+  cancelByCompany: async (
+    id: string | number,
+    data: { reason: string; supervisorWorkerId: number },
+  ): Promise<Reservation> =>
+    (await api.post<Reservation>(`/reservations/${id}/cancel-by-company`, data)).data,
+  fulfill: async (id: string | number): Promise<Reservation> =>
+    (await api.post<Reservation>(`/reservations/${id}/fulfill`)).data,
+  receipt: async (id: string | number, refund: boolean): Promise<Blob> =>
+    (
+      await api.get<Blob>(`/reservations/${id}/receipt`, {
+        params: { refund },
+        responseType: 'blob',
+      })
+    ).data,
 }
 
-export interface SynchronizationResult { success: boolean; recordsSynced: number; errors: string[] }
-export interface SynchronizationProbe { shouldSync: boolean; pendingCount: number }
+export interface SynchronizationResult {
+  success: boolean
+  recordsSynced: number
+  errors: string[]
+}
+export interface SynchronizationProbe {
+  shouldSync: boolean
+  pendingCount: number
+}
 export const synchronizationApi = {
-  synchronize: async (branchId: string, workerId: string, options?: { direction?: string; entityTypes?: string[] }): Promise<SynchronizationResult> => (await api.post<SynchronizationResult>('/synchronization/sync', options || null, { params: { branchId, workerId } })).data,
+  synchronize: async (
+    branchId: string,
+    workerId: string,
+    options?: { direction?: string; entityTypes?: string[] },
+  ): Promise<SynchronizationResult> =>
+    (
+      await api.post<SynchronizationResult>('/synchronization/sync', options || null, {
+        params: { branchId, workerId },
+      })
+    ).data,
   shouldSync: async (branchId?: string): Promise<SynchronizationProbe> => {
     const response = await api.get<boolean | SynchronizationProbe>('/synchronization/should-sync', {
       params: branchId ? { branchId } : undefined,
@@ -965,7 +1223,20 @@ export const synchronizationApi = {
   },
 }
 
-export interface PosTerminal { id: string; terminalId: string; terminalName: string; branchId?: string; branchName?: string; isActive: boolean; lastTransactionAt?: string; connectionType?: string; comPort?: string; baudRate?: number; ipAddress?: string; port?: number }
+export interface PosTerminal {
+  id: string
+  terminalId: string
+  terminalName: string
+  branchId?: string
+  branchName?: string
+  isActive: boolean
+  lastTransactionAt?: string
+  connectionType?: string
+  comPort?: string
+  baudRate?: number
+  ipAddress?: string
+  port?: number
+}
 export interface PosTerminalRuntimeStatus {
   terminalId: string
   connected: boolean
@@ -978,20 +1249,50 @@ export interface PosTerminalRuntimeStatus {
 }
 export const posTerminalApi = {
   list: async (): Promise<PosTerminal[]> => (await api.get<PosTerminal[]>('/pos-terminal')).data,
-  getById: async (id: string): Promise<PosTerminal> => (await api.get<PosTerminal>(`/pos-terminal/${id}`)).data,
-  status: async (terminalId: string): Promise<PosTerminalRuntimeStatus> => (
-    await api.get<PosTerminalRuntimeStatus>('/pos-terminal-stub/status', { params: { terminalId } })
-  ).data,
+  getById: async (id: string): Promise<PosTerminal> =>
+    (await api.get<PosTerminal>(`/pos-terminal/${id}`)).data,
+  status: async (terminalId: string): Promise<PosTerminalRuntimeStatus> =>
+    (
+      await api.get<PosTerminalRuntimeStatus>('/pos-terminal-stub/status', {
+        params: { terminalId },
+      })
+    ).data,
 }
 
-export interface NavSendResult { success: boolean; receiptNumber?: string; error?: string }
+export interface NavSendResult {
+  success: boolean
+  receiptNumber?: string
+  error?: string
+}
 export const navIntegrationApi = {
-  sendTransaction: async (transactionId: string, comPort: string): Promise<NavSendResult> => (await api.post<NavSendResult>('/nav-integration/send-transaction', null, { params: { transactionId, comPort } })).data,
-  receiveReceiptNumber: async (comPort: string): Promise<string> => (await api.get<string>('/nav-integration/receive-receipt-number', { params: { comPort } })).data,
-  sendQrCode: async (qrCode: string, comPort: string): Promise<boolean> => (await api.post<boolean>('/nav-integration/send-qr-code', null, { params: { qrCode, comPort } })).data,
+  sendTransaction: async (transactionId: string, comPort: string): Promise<NavSendResult> =>
+    (
+      await api.post<NavSendResult>('/nav-integration/send-transaction', null, {
+        params: { transactionId, comPort },
+      })
+    ).data,
+  receiveReceiptNumber: async (comPort: string): Promise<string> =>
+    (await api.get<string>('/nav-integration/receive-receipt-number', { params: { comPort } }))
+      .data,
+  sendQrCode: async (qrCode: string, comPort: string): Promise<boolean> =>
+    (
+      await api.post<boolean>('/nav-integration/send-qr-code', null, {
+        params: { qrCode, comPort },
+      })
+    ).data,
 }
 
-export interface Document { id: string; fileName: string; fileType: string; fileSize: number; entityType?: string; entityId?: string; uploadedAt: string; uploadedById?: string; uploadedByName?: string }
+export interface Document {
+  id: string
+  fileName: string
+  fileType: string
+  fileSize: number
+  entityType?: string
+  entityId?: string
+  uploadedAt: string
+  uploadedById?: string
+  uploadedByName?: string
+}
 export interface DocumentScannerDevicesResponse {
   devices: unknown[]
   mode: string
@@ -1027,64 +1328,88 @@ export const documentStorageApi = {
     return (await api.get<Document[]>('/documents', { params })).data
   },
   upload: async (file: File, entityType?: string, entityId?: string): Promise<Document> => {
-    const formData = new FormData(); formData.append('file', file)
+    const formData = new FormData()
+    formData.append('file', file)
     if (entityType) formData.append('entityType', entityType)
     if (entityId) formData.append('entityId', entityId)
-    return (await api.post<Document>('/documents', formData, { headers: { 'Content-Type': 'multipart/form-data' } })).data
+    return (
+      await api.post<Document>('/documents', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    ).data
   },
-  download: async (id: string): Promise<Blob> => (await api.get(`/documents/${id}/download`, { responseType: 'blob' })).data,
-  delete: async (id: string): Promise<void> => { await api.delete(`/documents/${id}`) },
+  download: async (id: string): Promise<Blob> =>
+    (await api.get(`/documents/${id}/download`, { responseType: 'blob' })).data,
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/documents/${id}`)
+  },
 }
 export const documentScannerApi = {
-  devices: async (): Promise<DocumentScannerDevicesResponse> => (
-    await api.get<DocumentScannerDevicesResponse>('/document-scanner/devices')
-  ).data,
-  scan: async (file: File, request: DocumentScannerUploadRequest = {}): Promise<ScannedDocument> => {
+  devices: async (): Promise<DocumentScannerDevicesResponse> =>
+    (await api.get<DocumentScannerDevicesResponse>('/document-scanner/devices')).data,
+  scan: async (
+    file: File,
+    request: DocumentScannerUploadRequest = {},
+  ): Promise<ScannedDocument> => {
     const formData = createScannerFormData(file, request)
-    return (await api.post<ScannedDocument>('/document-scanner/scan', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })).data
+    return (
+      await api.post<ScannedDocument>('/document-scanner/scan', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    ).data
   },
-  upload: async (file: File, request: DocumentScannerUploadRequest = {}): Promise<ScannedDocument> => {
+  upload: async (
+    file: File,
+    request: DocumentScannerUploadRequest = {},
+  ): Promise<ScannedDocument> => {
     const formData = createScannerFormData(file, request)
-    return (await api.post<ScannedDocument>('/document-scanner/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })).data
+    return (
+      await api.post<ScannedDocument>('/document-scanner/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    ).data
   },
-  uploadScannedDocument: async (file: File, request: DocumentScannerUploadRequest = {}): Promise<ScannedDocument> => {
+  uploadScannedDocument: async (
+    file: File,
+    request: DocumentScannerUploadRequest = {},
+  ): Promise<ScannedDocument> => {
     const formData = createScannerFormData(file, request)
-    return (await api.post<ScannedDocument>('/scanned-documents/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })).data
+    return (
+      await api.post<ScannedDocument>('/scanned-documents/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    ).data
   },
-  getCustomerDocuments: async (customerId: number): Promise<ScannedDocument[]> => (
-    await api.get<ScannedDocument[]>(`/scanned-documents/customer/${customerId}`)
-  ).data,
-  getTransactionDocuments: async (transactionId: number): Promise<ScannedDocument[]> => (
-    await api.get<ScannedDocument[]>(`/scanned-documents/transaction/${transactionId}`)
-  ).data,
+  getCustomerDocuments: async (customerId: number): Promise<ScannedDocument[]> =>
+    (await api.get<ScannedDocument[]>(`/scanned-documents/customer/${customerId}`)).data,
+  getTransactionDocuments: async (transactionId: number): Promise<ScannedDocument[]> =>
+    (await api.get<ScannedDocument[]>(`/scanned-documents/transaction/${transactionId}`)).data,
   deleteScannedDocument: async (id: string): Promise<void> => {
     await api.delete(`/scanned-documents/${id}`)
   },
-  uploadScannedDocumentPair: async (front: File, back: File, request: DocumentScannerUploadRequest = {}): Promise<ScannedDocument> => {
+  uploadScannedDocumentPair: async (
+    front: File,
+    back: File,
+    request: DocumentScannerUploadRequest = {},
+  ): Promise<ScannedDocument> => {
     const formData = new FormData()
     formData.append('front', front)
     formData.append('back', back)
     formData.append('documentType', request.documentType ?? 'OTHER')
     if (request.customerId != null) formData.append('customerId', String(request.customerId))
-    if (request.transactionId != null) formData.append('transactionId', String(request.transactionId))
+    if (request.transactionId != null)
+      formData.append('transactionId', String(request.transactionId))
     if (request.notes) formData.append('notes', request.notes)
     return (await api.post<ScannedDocument>('/scanned-documents/upload-pair', formData)).data
   },
-  getThumbnail: async (id: string, side: 'FRONT' | 'BACK'): Promise<Blob> => (
-    await api.get(`/scanned-documents/${id}/image/${side}/thumbnail`, { responseType: 'blob' })
-  ).data,
+  getThumbnail: async (id: string, side: 'FRONT' | 'BACK'): Promise<Blob> =>
+    (await api.get(`/scanned-documents/${id}/image/${side}/thumbnail`, { responseType: 'blob' }))
+      .data,
   issueViewGrant: async (id: string, approverWorkerId: number, pin: string): Promise<void> => {
     await api.post(`/scanned-documents/${id}/view-grant`, { approverWorkerId, pin })
   },
-  getFullImage: async (id: string, side: 'FRONT' | 'BACK'): Promise<Blob> => (
-    await api.get(`/scanned-documents/${id}/image/${side}/full`, { responseType: 'blob' })
-  ).data,
+  getFullImage: async (id: string, side: 'FRONT' | 'BACK'): Promise<Blob> =>
+    (await api.get(`/scanned-documents/${id}/image/${side}/full`, { responseType: 'blob' })).data,
 }
 
 // ================== VALUE BAND (AML ÉRTÉKSÁV) API ==================
@@ -1110,13 +1435,12 @@ export interface ValueBandConfigRequest {
 }
 
 export const valueBandApi = {
-  list: async (): Promise<ValueBandConfig[]> => (await api.get<ValueBandConfig[]>('/value-bands')).data,
-  create: async (req: ValueBandConfigRequest): Promise<ValueBandConfig> => (
-    await api.post<ValueBandConfig>('/value-bands', req)
-  ).data,
-  update: async (id: string, req: ValueBandConfigRequest): Promise<ValueBandConfig> => (
-    await api.put<ValueBandConfig>(`/value-bands/${id}`, req)
-  ).data,
+  list: async (): Promise<ValueBandConfig[]> =>
+    (await api.get<ValueBandConfig[]>('/value-bands')).data,
+  create: async (req: ValueBandConfigRequest): Promise<ValueBandConfig> =>
+    (await api.post<ValueBandConfig>('/value-bands', req)).data,
+  update: async (id: string, req: ValueBandConfigRequest): Promise<ValueBandConfig> =>
+    (await api.put<ValueBandConfig>(`/value-bands/${id}`, req)).data,
   remove: async (id: string): Promise<void> => {
     await api.delete(`/value-bands/${id}`)
   },
@@ -1132,19 +1456,40 @@ function createScannerFormData(file: File, request: DocumentScannerUploadRequest
   return formData
 }
 
-export interface Notification { id: string; title: string; message: string; type: string; userId?: string; isRead: boolean; createdAt: string }
+export interface Notification {
+  id: string
+  title: string
+  message: string
+  type: string
+  userId?: string
+  isRead: boolean
+  createdAt: string
+}
 export const notificationApi = {
   list: async (): Promise<Notification[]> => (await api.get<Notification[]>('/notifications')).data,
-  getUnread: async (): Promise<Notification[]> => (await api.get<Notification[]>('/notifications/unread')).data,
+  getUnread: async (): Promise<Notification[]> =>
+    (await api.get<Notification[]>('/notifications/unread')).data,
   unreadCount: async (): Promise<number> => {
     const data = (await api.get<number | { count?: number }>('/notifications/unread-count')).data
-    return typeof data === 'number' ? data : data.count ?? 0
+    return typeof data === 'number' ? data : (data.count ?? 0)
   },
-  markAsRead: async (id: string): Promise<void> => { await api.put(`/notifications/${id}/read`) },
-  markAllAsRead: async (): Promise<void> => { await api.post('/notifications/mark-all-read') },
-  sendInApp: async (data: { userId: string; title: string; message: string; type?: string }): Promise<Notification> => (await api.post<Notification>('/notifications', data)).data,
-  send: async (data: Record<string, unknown>): Promise<Notification> => (await api.post<Notification>('/notifications/send', data)).data,
-  broadcast: async (data: Record<string, unknown>): Promise<void> => { await api.post('/notifications/broadcast', data) },
+  markAsRead: async (id: string): Promise<void> => {
+    await api.put(`/notifications/${id}/read`)
+  },
+  markAllAsRead: async (): Promise<void> => {
+    await api.post('/notifications/mark-all-read')
+  },
+  sendInApp: async (data: {
+    userId: string
+    title: string
+    message: string
+    type?: string
+  }): Promise<Notification> => (await api.post<Notification>('/notifications', data)).data,
+  send: async (data: Record<string, unknown>): Promise<Notification> =>
+    (await api.post<Notification>('/notifications/send', data)).data,
+  broadcast: async (data: Record<string, unknown>): Promise<void> => {
+    await api.post('/notifications/broadcast', data)
+  },
 }
 
 export interface SupervisorPinResponse {
@@ -1154,12 +1499,10 @@ export interface SupervisorPinResponse {
 }
 
 export const supervisorPinApi = {
-  set: async (currentPassword: string, pin: string): Promise<SupervisorPinResponse> => (
-    await api.post<SupervisorPinResponse>('/supervisor-pin/set', { currentPassword, pin })
-  ).data,
-  clear: async (currentPassword: string): Promise<SupervisorPinResponse> => (
-    await api.post<SupervisorPinResponse>('/supervisor-pin/clear', { currentPassword })
-  ).data,
+  set: async (currentPassword: string, pin: string): Promise<SupervisorPinResponse> =>
+    (await api.post<SupervisorPinResponse>('/supervisor-pin/set', { currentPassword, pin })).data,
+  clear: async (currentPassword: string): Promise<SupervisorPinResponse> =>
+    (await api.post<SupervisorPinResponse>('/supervisor-pin/clear', { currentPassword })).data,
 }
 
 export interface MfaAdminDisableResponse {
@@ -1168,9 +1511,8 @@ export interface MfaAdminDisableResponse {
 }
 
 export const mfaAdminApi = {
-  disable: async (workerId: number | string): Promise<MfaAdminDisableResponse> => (
-    await api.post<MfaAdminDisableResponse>(`/mfa/admin/${workerId}/disable`)
-  ).data,
+  disable: async (workerId: number | string): Promise<MfaAdminDisableResponse> =>
+    (await api.post<MfaAdminDisableResponse>(`/mfa/admin/${workerId}/disable`)).data,
 }
 
 export interface OrganizationalSystemParameter {
@@ -1190,12 +1532,27 @@ export interface OrganizationalSystemParameter {
 export const organizationalSystemParameterApi = {
   list: async (organizationId?: string): Promise<OrganizationalSystemParameter[]> => {
     const params = organizationId ? { organizationId } : {}
-    return (await api.get<OrganizationalSystemParameter[]>('/organizational-system-parameters', { params })).data
+    return (
+      await api.get<OrganizationalSystemParameter[]>('/organizational-system-parameters', {
+        params,
+      })
+    ).data
   },
-  getById: async (id: string): Promise<OrganizationalSystemParameter> => (await api.get<OrganizationalSystemParameter>(`/organizational-system-parameters/${id}`)).data,
-  create: async (data: Partial<OrganizationalSystemParameter>): Promise<OrganizationalSystemParameter> => (await api.post<OrganizationalSystemParameter>('/organizational-system-parameters', data)).data,
-  update: async (id: string, data: Partial<OrganizationalSystemParameter>): Promise<OrganizationalSystemParameter> => (await api.put<OrganizationalSystemParameter>(`/organizational-system-parameters/${id}`, data)).data,
-  delete: async (id: string): Promise<void> => { await api.delete(`/organizational-system-parameters/${id}`) },
+  getById: async (id: string): Promise<OrganizationalSystemParameter> =>
+    (await api.get<OrganizationalSystemParameter>(`/organizational-system-parameters/${id}`)).data,
+  create: async (
+    data: Partial<OrganizationalSystemParameter>,
+  ): Promise<OrganizationalSystemParameter> =>
+    (await api.post<OrganizationalSystemParameter>('/organizational-system-parameters', data)).data,
+  update: async (
+    id: string,
+    data: Partial<OrganizationalSystemParameter>,
+  ): Promise<OrganizationalSystemParameter> =>
+    (await api.put<OrganizationalSystemParameter>(`/organizational-system-parameters/${id}`, data))
+      .data,
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/organizational-system-parameters/${id}`)
+  },
 }
 
 // ================== CASH DESK BREAK API ==================
@@ -1216,41 +1573,86 @@ export const cashDeskBreakApi = {
     const params = cashDeskId ? { cashDeskId } : {}
     return (await api.get<CashDeskBreak[]>('/cash-desk-breaks', { params })).data
   },
-  getActive: async (cashDeskId: string): Promise<CashDeskBreak | null> => (await api.get<CashDeskBreak>(`/cash-desk-breaks/active/${cashDeskId}`)).data,
-  start: async (cashDeskId: string, breakType: string, reason?: string): Promise<CashDeskBreak> => (await api.post<CashDeskBreak>('/cash-desk-breaks/start', null, { params: { cashDeskId, breakType, reason } })).data,
-  end: async (breakId: string): Promise<CashDeskBreak> => (await api.post<CashDeskBreak>(`/cash-desk-breaks/${breakId}/end`)).data,
+  getActive: async (cashDeskId: string): Promise<CashDeskBreak | null> =>
+    (await api.get<CashDeskBreak>(`/cash-desk-breaks/active/${cashDeskId}`)).data,
+  start: async (cashDeskId: string, breakType: string, reason?: string): Promise<CashDeskBreak> =>
+    (
+      await api.post<CashDeskBreak>('/cash-desk-breaks/start', null, {
+        params: { cashDeskId, breakType, reason },
+      })
+    ).data,
+  end: async (breakId: string): Promise<CashDeskBreak> =>
+    (await api.post<CashDeskBreak>(`/cash-desk-breaks/${breakId}/end`)).data,
 }
 
 // ================== CAMERA EXPORT API ==================
 
 export interface CameraExportRequest {
-  id: string; branchId: string; cameraId?: string
-  periodFrom: string; periodTo: string; reason: string; referenceNumber?: string
-  status: string; requestedBy: string; createdAt: string
-  approvedBy?: string; approvedAt?: string; rejectionReason?: string
-  requiresDualApproval?: boolean; secondApprovedBy?: string; secondApprovedAt?: string
-  exportPath?: string; exportSizeBytes?: number; manifestHash?: string; completedAt?: string; errorMessage?: string
+  id: string
+  branchId: string
+  cameraId?: string
+  periodFrom: string
+  periodTo: string
+  reason: string
+  referenceNumber?: string
+  status: string
+  requestedBy: string
+  createdAt: string
+  approvedBy?: string
+  approvedAt?: string
+  rejectionReason?: string
+  requiresDualApproval?: boolean
+  secondApprovedBy?: string
+  secondApprovedAt?: string
+  exportPath?: string
+  exportSizeBytes?: number
+  manifestHash?: string
+  completedAt?: string
+  errorMessage?: string
 }
 
 export interface ChainOfCustodyRecord {
-  id: string; exportRequestId?: string; branchId: string; cameraId?: string
-  eventType: string; actor: string; eventTimestamp: string; details?: string
-  periodFrom?: string; periodTo?: string; manifestHash?: string
+  id: string
+  exportRequestId?: string
+  branchId: string
+  cameraId?: string
+  eventType: string
+  actor: string
+  eventTimestamp: string
+  details?: string
+  periodFrom?: string
+  periodTo?: string
+  manifestHash?: string
 }
 
 export const cameraExportApi = {
-  createRequest: (p: { branchId: string; cameraId?: string; from: string; to: string; reason: string; referenceNumber?: string }) =>
-    api.post<CameraExportRequest>('/camera/export/request', null, { params: { ...p } }),
+  createRequest: (p: {
+    branchId: string
+    cameraId?: string
+    from: string
+    to: string
+    reason: string
+    referenceNumber?: string
+  }) => api.post<CameraExportRequest>('/camera/export/request', null, { params: { ...p } }),
   approve: (id: string) => api.post<CameraExportRequest>(`/camera/export/${id}/approve`),
-  approveSecond: (id: string) => api.post<CameraExportRequest>(`/camera/export/${id}/approve-second`),
-  reject: (id: string, reason: string) => api.post<CameraExportRequest>(`/camera/export/${id}/reject?reason=${encodeURIComponent(reason)}`),
+  approveSecond: (id: string) =>
+    api.post<CameraExportRequest>(`/camera/export/${id}/approve-second`),
+  reject: (id: string, reason: string) =>
+    api.post<CameraExportRequest>(
+      `/camera/export/${id}/reject?reason=${encodeURIComponent(reason)}`,
+    ),
   execute: (id: string) => api.post<CameraExportRequest>(`/camera/export/${id}/execute`),
   getById: (id: string) => api.get<CameraExportRequest>(`/camera/export/${id}`),
   getPending: () => api.get<CameraExportRequest[]>('/camera/export/pending'),
-  getByBranch: (branchId: string) => api.get<CameraExportRequest[]>(`/camera/export/branch/${branchId}`),
+  getByBranch: (branchId: string) =>
+    api.get<CameraExportRequest[]>(`/camera/export/branch/${branchId}`),
   getCustody: (id: string) => api.get<ChainOfCustodyRecord[]>(`/camera/export/${id}/custody`),
   verifyChain: (branchId: string, cameraId: string) =>
-    api.post<{ branchId: string; cameraId: string; chainIntact: boolean; verifiedAt: string }>('/camera/export/verify-chain', null, { params: { branchId, cameraId } }),
+    api.post<{ branchId: string; cameraId: string; chainIntact: boolean; verifiedAt: string }>(
+      '/camera/export/verify-chain',
+      null,
+      { params: { branchId, cameraId } },
+    ),
 }
 
 // ================== ÉRTÉKTÁR API ==================
@@ -1401,39 +1803,90 @@ export interface StockCorrectionRequest {
 }
 
 export const ertektarApi = {
-  getBankTransactions: async (): Promise<BankTransaction[]> => (await api.get<BankTransaction[]>('/ertektar/bank-transactions')).data,
-  getBankTransactionsByType: async (type: string): Promise<BankTransaction[]> => (await api.get<BankTransaction[]>('/ertektar/bank-transactions/by-type', { params: { type } })).data,
-  createBankTransaction: async (data: BankTransactionRequest): Promise<BankTransaction> => (await api.post<BankTransaction>('/ertektar/bank-transactions', data)).data,
-  updateBankTransactionStatus: async (id: number, status: VaultOperationStatus): Promise<BankTransaction> => (
-    await api.patch<BankTransaction>(`/ertektar/bank-transactions/${id}/status`, null, { params: { status } })
-  ).data,
-  confirmBankTransactionReceived: async (id: number): Promise<BankTransaction> => (await api.post<BankTransaction>(`/ertektar/bank-transactions/${id}/confirm-received`)).data,
-  confirmBankTransactionPaid: async (id: number): Promise<BankTransaction> => (await api.post<BankTransaction>(`/ertektar/bank-transactions/${id}/confirm-paid`)).data,
-  getTransfers: async (): Promise<VaultTransferItem[]> => (await api.get<VaultTransferItem[]>('/ertektar/transfers')).data,
-  getPendingTransfers: async (): Promise<VaultTransferItem[]> => (await api.get<VaultTransferItem[]>('/ertektar/transfers/pending')).data,
-  createTransfer: async (data: VaultTransferRequest): Promise<VaultTransferItem> => (await api.post<VaultTransferItem>('/ertektar/transfers', data)).data,
-  supervisorApproveTransfer: async (id: number): Promise<VaultTransferItem> => (await api.post<VaultTransferItem>(`/ertektar/transfers/${id}/supervisor-approve`)).data,
-  completeTransfer: async (id: number): Promise<VaultTransferItem> => (await api.post<VaultTransferItem>(`/ertektar/transfers/${id}/complete`)).data,
-  rejectTransfer: async (id: number): Promise<VaultTransferItem> => (await api.post<VaultTransferItem>(`/ertektar/transfers/${id}/reject`)).data,
-  getReceipts: async (): Promise<MaterialReceiptItem[]> => (await api.get<MaterialReceiptItem[]>('/ertektar/receipts')).data,
-  getReceiptsByType: async (type: string): Promise<MaterialReceiptItem[]> => (await api.get<MaterialReceiptItem[]>('/ertektar/receipts/by-type', { params: { type } })).data,
-  createReceipt: async (data: MaterialReceiptRequest): Promise<MaterialReceiptItem> => (await api.post<MaterialReceiptItem>('/ertektar/receipts', data)).data,
-  finalizeReceipt: async (id: number): Promise<MaterialReceiptItem> => (await api.post<MaterialReceiptItem>(`/ertektar/receipts/${id}/finalize`)).data,
-  getCorrections: async (): Promise<StockCorrectionItem[]> => (await api.get<StockCorrectionItem[]>('/ertektar/corrections')).data,
-  getPendingCorrections: async (): Promise<StockCorrectionItem[]> => (await api.get<StockCorrectionItem[]>('/ertektar/corrections/pending')).data,
-  createCorrection: async (data: StockCorrectionRequest): Promise<StockCorrectionItem> => (await api.post<StockCorrectionItem>('/ertektar/corrections', data)).data,
-  approveCorrection: async (id: number): Promise<StockCorrectionItem> => (await api.post<StockCorrectionItem>(`/ertektar/corrections/${id}/approve`)).data,
-  rejectCorrection: async (id: number): Promise<StockCorrectionItem> => (await api.post<StockCorrectionItem>(`/ertektar/corrections/${id}/reject`)).data,
-  getCollections: async (): Promise<ErtektarCollection[]> => (await api.get<ErtektarCollection[]>('/ertektar/collections')).data,
-  createCollection: async (data: { sourceBranchCode: string; currencyCode: string; amount: number; note?: string }): Promise<ErtektarCollection> => (await api.post<ErtektarCollection>('/ertektar/collections', data)).data,
-  updateCollectionStatus: async (id: number, status: VaultOperationStatus): Promise<ErtektarCollection> => (
-    await api.patch<ErtektarCollection>(`/ertektar/collections/${id}/status`, null, { params: { status } })
-  ).data,
-  getDistributions: async (): Promise<ErtektarDistribution[]> => (await api.get<ErtektarDistribution[]>('/ertektar/distribution')).data,
-  createDistribution: async (data: { items: Array<{ targetBranchCode: string; currencyCode: string; amount: number }>; note?: string }): Promise<ErtektarDistribution> => (await api.post<ErtektarDistribution>('/ertektar/distribution', data)).data,
-  updateDistributionStatus: async (id: number, status: VaultOperationStatus): Promise<ErtektarDistribution> => (
-    await api.patch<ErtektarDistribution>(`/ertektar/distribution/${id}/status`, null, { params: { status } })
-  ).data,
+  getBankTransactions: async (): Promise<BankTransaction[]> =>
+    (await api.get<BankTransaction[]>('/ertektar/bank-transactions')).data,
+  getBankTransactionsByType: async (type: string): Promise<BankTransaction[]> =>
+    (await api.get<BankTransaction[]>('/ertektar/bank-transactions/by-type', { params: { type } }))
+      .data,
+  createBankTransaction: async (data: BankTransactionRequest): Promise<BankTransaction> =>
+    (await api.post<BankTransaction>('/ertektar/bank-transactions', data)).data,
+  updateBankTransactionStatus: async (
+    id: number,
+    status: VaultOperationStatus,
+  ): Promise<BankTransaction> =>
+    (
+      await api.patch<BankTransaction>(`/ertektar/bank-transactions/${id}/status`, null, {
+        params: { status },
+      })
+    ).data,
+  confirmBankTransactionReceived: async (id: number): Promise<BankTransaction> =>
+    (await api.post<BankTransaction>(`/ertektar/bank-transactions/${id}/confirm-received`)).data,
+  confirmBankTransactionPaid: async (id: number): Promise<BankTransaction> =>
+    (await api.post<BankTransaction>(`/ertektar/bank-transactions/${id}/confirm-paid`)).data,
+  getTransfers: async (): Promise<VaultTransferItem[]> =>
+    (await api.get<VaultTransferItem[]>('/ertektar/transfers')).data,
+  getPendingTransfers: async (): Promise<VaultTransferItem[]> =>
+    (await api.get<VaultTransferItem[]>('/ertektar/transfers/pending')).data,
+  createTransfer: async (data: VaultTransferRequest): Promise<VaultTransferItem> =>
+    (await api.post<VaultTransferItem>('/ertektar/transfers', data)).data,
+  supervisorApproveTransfer: async (id: number): Promise<VaultTransferItem> =>
+    (await api.post<VaultTransferItem>(`/ertektar/transfers/${id}/supervisor-approve`)).data,
+  completeTransfer: async (id: number): Promise<VaultTransferItem> =>
+    (await api.post<VaultTransferItem>(`/ertektar/transfers/${id}/complete`)).data,
+  rejectTransfer: async (id: number): Promise<VaultTransferItem> =>
+    (await api.post<VaultTransferItem>(`/ertektar/transfers/${id}/reject`)).data,
+  getReceipts: async (): Promise<MaterialReceiptItem[]> =>
+    (await api.get<MaterialReceiptItem[]>('/ertektar/receipts')).data,
+  getReceiptsByType: async (type: string): Promise<MaterialReceiptItem[]> =>
+    (await api.get<MaterialReceiptItem[]>('/ertektar/receipts/by-type', { params: { type } })).data,
+  createReceipt: async (data: MaterialReceiptRequest): Promise<MaterialReceiptItem> =>
+    (await api.post<MaterialReceiptItem>('/ertektar/receipts', data)).data,
+  finalizeReceipt: async (id: number): Promise<MaterialReceiptItem> =>
+    (await api.post<MaterialReceiptItem>(`/ertektar/receipts/${id}/finalize`)).data,
+  getCorrections: async (): Promise<StockCorrectionItem[]> =>
+    (await api.get<StockCorrectionItem[]>('/ertektar/corrections')).data,
+  getPendingCorrections: async (): Promise<StockCorrectionItem[]> =>
+    (await api.get<StockCorrectionItem[]>('/ertektar/corrections/pending')).data,
+  createCorrection: async (data: StockCorrectionRequest): Promise<StockCorrectionItem> =>
+    (await api.post<StockCorrectionItem>('/ertektar/corrections', data)).data,
+  approveCorrection: async (id: number): Promise<StockCorrectionItem> =>
+    (await api.post<StockCorrectionItem>(`/ertektar/corrections/${id}/approve`)).data,
+  rejectCorrection: async (id: number): Promise<StockCorrectionItem> =>
+    (await api.post<StockCorrectionItem>(`/ertektar/corrections/${id}/reject`)).data,
+  getCollections: async (): Promise<ErtektarCollection[]> =>
+    (await api.get<ErtektarCollection[]>('/ertektar/collections')).data,
+  createCollection: async (data: {
+    sourceBranchCode: string
+    currencyCode: string
+    amount: number
+    note?: string
+  }): Promise<ErtektarCollection> =>
+    (await api.post<ErtektarCollection>('/ertektar/collections', data)).data,
+  updateCollectionStatus: async (
+    id: number,
+    status: VaultOperationStatus,
+  ): Promise<ErtektarCollection> =>
+    (
+      await api.patch<ErtektarCollection>(`/ertektar/collections/${id}/status`, null, {
+        params: { status },
+      })
+    ).data,
+  getDistributions: async (): Promise<ErtektarDistribution[]> =>
+    (await api.get<ErtektarDistribution[]>('/ertektar/distribution')).data,
+  createDistribution: async (data: {
+    items: Array<{ targetBranchCode: string; currencyCode: string; amount: number }>
+    note?: string
+  }): Promise<ErtektarDistribution> =>
+    (await api.post<ErtektarDistribution>('/ertektar/distribution', data)).data,
+  updateDistributionStatus: async (
+    id: number,
+    status: VaultOperationStatus,
+  ): Promise<ErtektarDistribution> =>
+    (
+      await api.patch<ErtektarDistribution>(`/ertektar/distribution/${id}/status`, null, {
+        params: { status },
+      })
+    ).data,
   getVatRefunds: async (from?: string, to?: string): Promise<VatRefundItem[]> => {
     const params = new URLSearchParams()
     if (from) params.set('from', from)
@@ -1441,13 +1894,16 @@ export const ertektarApi = {
     const qs = params.toString()
     return (await api.get<VatRefundItem[]>(`/vat-refund${qs ? `?${qs}` : ''}`)).data
   },
-  getVatRefund: async (id: number): Promise<VatRefundItem> => (await api.get<VatRefundItem>(`/vat-refund/${id}`)).data,
+  getVatRefund: async (id: number): Promise<VatRefundItem> =>
+    (await api.get<VatRefundItem>(`/vat-refund/${id}`)).data,
   getDailyVatRefunds: async (date?: string): Promise<VatRefundItem[]> => {
     const params = date ? { date } : undefined
     return (await api.get<VatRefundItem[]>('/vat-refund/daily', { params })).data
   },
-  createVatRefund: async (data: VatRefundRequest): Promise<VatRefundItem> => (await api.post<VatRefundItem>('/vat-refund', data)).data,
-  stornoVatRefund: async (id: number): Promise<VatRefundItem> => (await api.post<VatRefundItem>(`/vat-refund/${id}/reverse`, {})).data,
+  createVatRefund: async (data: VatRefundRequest): Promise<VatRefundItem> =>
+    (await api.post<VatRefundItem>('/vat-refund', data)).data,
+  stornoVatRefund: async (id: number): Promise<VatRefundItem> =>
+    (await api.post<VatRefundItem>(`/vat-refund/${id}/reverse`, {})).data,
 }
 
 // ================== ÁFA VISSZATÉRÍTÉS ==================
@@ -1498,8 +1954,10 @@ export interface VatRefundRequest {
 
 // ================== DAILY REPORT / DAYBOOK API ==================
 export const dailyReportApi = {
-  get: async (branchId: string, date: string) => (await api.get(`/reports/daily/${branchId}/${date}`)).data,
-  generate: async (branchId: string, date: string) => (await api.post(`/reports/daily/${branchId}/generate`, null, { params: { date } })).data,
+  get: async (branchId: string, date: string) =>
+    (await api.get(`/reports/daily/${branchId}/${date}`)).data,
+  generate: async (branchId: string, date: string) =>
+    (await api.post(`/reports/daily/${branchId}/generate`, null, { params: { date } })).data,
   submit: async (reportId: string) => (await api.post(`/reports/daily/${reportId}/submit`)).data,
 }
 
@@ -1523,18 +1981,15 @@ export const turnoverApi = {
     }
     throw new Error(`Unsupported turnover period: ${period}`)
   },
-  company: async (from: string, to: string) => (
-    await api.get('/turnover/company', { params: { from, to } })
-  ).data,
+  company: async (from: string, to: string) =>
+    (await api.get('/turnover/company', { params: { from, to } })).data,
   // FK-045 FR-9: területi (vault_territory) összesített forgalom. A vaultTerritoryId Integer
   // (a backend Branch.vaultTerritoryId típusa), a companyId szerveroldalon a JWT-ből.
-  territory: async (vaultTerritoryId: number, from: string, to: string) => (
-    await api.get('/turnover/territory', { params: { vaultTerritoryId, from, to } })
-  ).data,
+  territory: async (vaultTerritoryId: number, from: string, to: string) =>
+    (await api.get('/turnover/territory', { params: { vaultTerritoryId, from, to } })).data,
   // FK-045 FR-2/FR-3: pénztár forgalma tetszőleges dátumtartományra (a /daily csak 1 napot adott).
-  branchRange: async (branchId: string, from: string, to: string) => (
-    await api.get('/turnover/branch-range', { params: { branchId, from, to } })
-  ).data,
+  branchRange: async (branchId: string, from: string, to: string) =>
+    (await api.get('/turnover/branch-range', { params: { branchId, from, to } })).data,
 }
 
 function parseYearParam(date: string): number {
@@ -1564,9 +2019,9 @@ function parseIsoDateParts(date: string): { year: number; month: number; day: nu
   const day = Number(match[3])
   const parsed = new Date(Date.UTC(year, month - 1, day))
   if (
-    parsed.getUTCFullYear() !== year
-    || parsed.getUTCMonth() !== month - 1
-    || parsed.getUTCDate() !== day
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
   ) {
     throw new Error(`Invalid turnover date: ${date}`)
   }
@@ -1575,15 +2030,22 @@ function parseIsoDateParts(date: string): { year: number; month: number; day: nu
 
 // ================== EVENING CLOSING API ==================
 export const eveningClosingApi = {
-  preview: async (branchId: string, date: string) => (await api.get(`/evening-closing/${branchId}/${date}/preview`)).data,
-  send: async (branchId: string, date: string) => (await api.post(`/evening-closing/${branchId}/${date}/send`)).data,
-  report: async (branchId: string, date: string) => (await api.get(`/evening-closing/${branchId}/${date}/report`)).data,
+  preview: async (branchId: string, date: string) =>
+    (await api.get(`/evening-closing/${branchId}/${date}/preview`)).data,
+  send: async (branchId: string, date: string) =>
+    (await api.post(`/evening-closing/${branchId}/${date}/send`)).data,
+  report: async (branchId: string, date: string) =>
+    (await api.get(`/evening-closing/${branchId}/${date}/report`)).data,
 }
 
 // ================== DAILY CHECKLIST API ==================
 export const dailyChecklistApi = {
-  get: async (branchId: string, date: string) => (await api.get(`/daily-checklist/${branchId}/${date}`)).data,
-  updateItem: async (checklistId: string, itemNumber: number, data: Record<string, unknown>) => (await api.put(`/daily-checklist/${checklistId}/items/${itemNumber}`, data)).data,
-  complete: async (checklistId: string) => (await api.post(`/daily-checklist/${checklistId}/complete`)).data,
-  status: async (branchId: string, date: string) => (await api.get(`/daily-checklist/${branchId}/${date}/status`)).data,
+  get: async (branchId: string, date: string) =>
+    (await api.get(`/daily-checklist/${branchId}/${date}`)).data,
+  updateItem: async (checklistId: string, itemNumber: number, data: Record<string, unknown>) =>
+    (await api.put(`/daily-checklist/${checklistId}/items/${itemNumber}`, data)).data,
+  complete: async (checklistId: string) =>
+    (await api.post(`/daily-checklist/${checklistId}/complete`)).data,
+  status: async (branchId: string, date: string) =>
+    (await api.get(`/daily-checklist/${branchId}/${date}/status`)).data,
 }

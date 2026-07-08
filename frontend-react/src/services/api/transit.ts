@@ -1,7 +1,7 @@
-import { api } from "./client"
+import { api } from './client'
 
 export interface TransitItem {
-  type: "DISTRIBUTION" | "COLLECTION"
+  type: 'DISTRIBUTION' | 'COLLECTION'
   id: number
   distributionId?: number
   documentNumber: string
@@ -19,13 +19,13 @@ export interface TransitItem {
 
 export const transitApi = {
   getIncoming: async (branchCode?: string): Promise<TransitItem[]> => {
-    const r = await api.get<TransitItem[]>("/transit/incoming", {
+    const r = await api.get<TransitItem[]>('/transit/incoming', {
       params: branchCode ? { branchCode } : undefined,
     })
     return r.data ?? []
   },
   getOutgoing: async (branchCode?: string): Promise<TransitItem[]> => {
-    const r = await api.get<TransitItem[]>("/transit/outgoing", {
+    const r = await api.get<TransitItem[]>('/transit/outgoing', {
       params: branchCode ? { branchCode } : undefined,
     })
     return r.data ?? []

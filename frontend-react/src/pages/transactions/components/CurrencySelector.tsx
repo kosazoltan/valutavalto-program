@@ -20,7 +20,7 @@ export default function CurrencySelector({
 
   useEffect(() => {
     if (!selectedCurrency) return
-    const index = currencyRates.findIndex(c => c.id === selectedCurrency.id)
+    const index = currencyRates.findIndex((c) => c.id === selectedCurrency.id)
     if (index !== -1) {
       selectedIndexRef.current = index
     }
@@ -32,15 +32,17 @@ export default function CurrencySelector({
       selectedIndexRef.current = Math.max(0, selectedIndexRef.current - 1)
       const next = currencyRates[selectedIndexRef.current]
       if (next) onSelect(next)
-      ;(currencyListRef.current?.children[selectedIndexRef.current] as HTMLElement)
-        ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      ;(currencyListRef.current?.children[selectedIndexRef.current] as HTMLElement)?.scrollIntoView(
+        { block: 'nearest', behavior: 'smooth' },
+      )
     } else if (e.key === 'ArrowDown') {
       e.preventDefault()
       selectedIndexRef.current = Math.min(currencyRates.length - 1, selectedIndexRef.current + 1)
       const next = currencyRates[selectedIndexRef.current]
       if (next) onSelect(next)
-      ;(currencyListRef.current?.children[selectedIndexRef.current] as HTMLElement)
-        ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      ;(currencyListRef.current?.children[selectedIndexRef.current] as HTMLElement)?.scrollIntoView(
+        { block: 'nearest', behavior: 'smooth' },
+      )
     }
   }
 
@@ -74,15 +76,23 @@ export default function CurrencySelector({
                   {currency.code}
                   <span className="ml-2 text-xs opacity-75">({index + 1})</span>
                 </span>
-                <span className={`ml-2 text-sm ${
-                  selectedCurrency?.id === currency.id ? 'text-primary-100' : 'text-gray-500'
-                }`}>
+                <span
+                  className={`ml-2 text-sm ${
+                    selectedCurrency?.id === currency.id ? 'text-primary-100' : 'text-gray-500'
+                  }`}
+                >
                   {currency.name}
                 </span>
               </div>
               <div className="text-right text-sm font-mono">
-                <div>{t('transactions.v')}{formatDecimal(currency.buyRate, 2, 2)}</div>
-                <div>{t('transactions.e')}{formatDecimal(currency.sellRate, 2, 2)}</div>
+                <div>
+                  {t('transactions.v')}
+                  {formatDecimal(currency.buyRate, 2, 2)}
+                </div>
+                <div>
+                  {t('transactions.e')}
+                  {formatDecimal(currency.sellRate, 2, 2)}
+                </div>
               </div>
             </div>
           </button>

@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path === '/api/v1/roles' && method === 'GET') {
@@ -140,8 +148,9 @@ test('felhasználó admin mobil nézetben backend detailből nyit szerkesztést'
   await expect(page.getByRole('heading', { name: 'Felhasználók' })).toBeVisible()
   await expect(page.getByText('Lista Felhasználó')).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/users/1'
+  const detailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/users/1',
   )
   await page.getByRole('button', { name: 'Szerkesztés' }).click()
   await detailRequest
@@ -151,8 +160,8 @@ test('felhasználó admin mobil nézetben backend detailből nyit szerkesztést'
   await expect(modalInputs.nth(1)).toHaveValue('Backend Detail Felhasználó')
   await expect(modalInputs.nth(2)).toHaveValue('detail@example.com')
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

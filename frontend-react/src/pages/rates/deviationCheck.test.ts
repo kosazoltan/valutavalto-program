@@ -39,7 +39,7 @@ describe('isSignificantDeviation (FK02-B / FR-2..5)', () => {
 
   it('10% feletti eltérés → true (elgépelés-védelem)', () => {
     expect(isSignificantDeviation(400, 4000)).toBe(true) // 900%
-    expect(isSignificantDeviation(400, 200)).toBe(true)  // -50%
+    expect(isSignificantDeviation(400, 200)).toBe(true) // -50%
   })
 
   it('negatív alapnál abszolút arányt számol', () => {

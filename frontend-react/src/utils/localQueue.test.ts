@@ -177,23 +177,25 @@ describe('getReprintableReceiptDrafts — with electronAPI', () => {
 
   it('maps a single-line synced transaction to a reprintable draft', async () => {
     installElectronAPI({
-      transactions: [{
-        id: 7,
-        type: 'BUY',
-        currency_code: 'EUR',
-        foreign_amount: 100,
-        huf_amount: 39000,
-        rounded_huf_amount: 39000,
-        rate: 390,
-        handling_fee: null,
-        discount_percent: null,
-        customer_name: 'Nagy Anna',
-        customer_document_number: 'AB123456',
-        lines: null,
-        local_reference_number: 'V105000042',
-        created_at: '2026-06-04 10:15:00',
-        synced: 1,
-      }],
+      transactions: [
+        {
+          id: 7,
+          type: 'BUY',
+          currency_code: 'EUR',
+          foreign_amount: 100,
+          huf_amount: 39000,
+          rounded_huf_amount: 39000,
+          rate: 390,
+          handling_fee: null,
+          discount_percent: null,
+          customer_name: 'Nagy Anna',
+          customer_document_number: 'AB123456',
+          lines: null,
+          local_reference_number: 'V105000042',
+          created_at: '2026-06-04 10:15:00',
+          synced: 1,
+        },
+      ],
     })
 
     const result = await getReprintableReceiptDrafts(worker)
@@ -219,27 +221,41 @@ describe('getReprintableReceiptDrafts — with electronAPI', () => {
     // huf_amount-ja a fejléc ELSŐ sorának értéke (NEM az aggregátum) → a teljes fizetendőt a
     // lines-ból kell rekonstruálni (multiLinePayable), pontosan ahogy a pont-of-sale teszi.
     const lines = [
-      { currencyCode: 'EUR', banknoteCount: 100, customExchangeRate: 390, discountType: 0, foreignStatus: 'DOMESTIC' },
-      { currencyCode: 'USD', banknoteCount: 200, customExchangeRate: 360, discountType: 0, foreignStatus: 'DOMESTIC' },
+      {
+        currencyCode: 'EUR',
+        banknoteCount: 100,
+        customExchangeRate: 390,
+        discountType: 0,
+        foreignStatus: 'DOMESTIC',
+      },
+      {
+        currencyCode: 'USD',
+        banknoteCount: 200,
+        customExchangeRate: 360,
+        discountType: 0,
+        foreignStatus: 'DOMESTIC',
+      },
     ]
     installElectronAPI({
-      transactions: [{
-        id: 9,
-        type: 'SELL',
-        currency_code: 'EUR',
-        foreign_amount: 100,
-        huf_amount: 39000, // csak az első sor — NEM az aggregátum
-        rounded_huf_amount: 39000,
-        rate: 390,
-        handling_fee: 500,
-        discount_percent: 2,
-        customer_name: null,
-        customer_document_number: null,
-        lines: JSON.stringify(lines),
-        local_reference_number: 'E105000099',
-        created_at: '2026-06-04 11:00:00',
-        synced: 1,
-      }],
+      transactions: [
+        {
+          id: 9,
+          type: 'SELL',
+          currency_code: 'EUR',
+          foreign_amount: 100,
+          huf_amount: 39000, // csak az első sor — NEM az aggregátum
+          rounded_huf_amount: 39000,
+          rate: 390,
+          handling_fee: 500,
+          discount_percent: 2,
+          customer_name: null,
+          customer_document_number: null,
+          lines: JSON.stringify(lines),
+          local_reference_number: 'E105000099',
+          created_at: '2026-06-04 11:00:00',
+          synced: 1,
+        },
+      ],
     })
 
     const result = await getReprintableReceiptDrafts(worker)
@@ -247,8 +263,18 @@ describe('getReprintableReceiptDrafts — with electronAPI', () => {
     const rd = result[0]!.receiptData
     expect(rd.type).toBe('sell')
     expect(rd.transactionLines).toHaveLength(2)
-    expect(rd.transactionLines![0]).toEqual({ currencyCode: 'EUR', foreignAmount: 100, rate: 390, hufAmount: 39000 })
-    expect(rd.transactionLines![1]).toEqual({ currencyCode: 'USD', foreignAmount: 200, rate: 360, hufAmount: 72000 })
+    expect(rd.transactionLines![0]).toEqual({
+      currencyCode: 'EUR',
+      foreignAmount: 100,
+      rate: 390,
+      hufAmount: 39000,
+    })
+    expect(rd.transactionLines![1]).toEqual({
+      currencyCode: 'USD',
+      foreignAmount: 200,
+      rate: 360,
+      hufAmount: 72000,
+    })
 
     const totalRaw = 100 * 390 + 200 * 360 // 111000
     const expectedPayable = multiLinePayable(totalRaw, 'sell', 2, 500)
@@ -264,23 +290,27 @@ describe('getReprintableReceiptDrafts — with electronAPI', () => {
     // Copilot P2: hibás (nem véges) banknoteCount/customExchangeRate → a teljes payload érvénytelen,
     // így a tárolt egysoros (ismert-jó) értékekre esünk vissza, NEM 0-értékű hibás sorokra.
     installElectronAPI({
-      transactions: [{
-        id: 11,
-        type: 'BUY',
-        currency_code: 'EUR',
-        foreign_amount: 100,
-        huf_amount: 39000,
-        rounded_huf_amount: 39000,
-        rate: 390,
-        handling_fee: null,
-        discount_percent: null,
-        customer_name: null,
-        customer_document_number: null,
-        lines: JSON.stringify([{ currencyCode: 'EUR', banknoteCount: 'NEM_SZAM', customExchangeRate: 390 }]),
-        local_reference_number: 'V105000111',
-        created_at: '2026-06-04 10:30:00',
-        synced: 1,
-      }],
+      transactions: [
+        {
+          id: 11,
+          type: 'BUY',
+          currency_code: 'EUR',
+          foreign_amount: 100,
+          huf_amount: 39000,
+          rounded_huf_amount: 39000,
+          rate: 390,
+          handling_fee: null,
+          discount_percent: null,
+          customer_name: null,
+          customer_document_number: null,
+          lines: JSON.stringify([
+            { currencyCode: 'EUR', banknoteCount: 'NEM_SZAM', customExchangeRate: 390 },
+          ]),
+          local_reference_number: 'V105000111',
+          created_at: '2026-06-04 10:30:00',
+          synced: 1,
+        },
+      ],
     })
 
     const result = await getReprintableReceiptDrafts(worker)
@@ -294,36 +324,40 @@ describe('getReprintableReceiptDrafts — with electronAPI', () => {
 
   it('maps synced conversions and stornos with reprint flag', async () => {
     installElectronAPI({
-      conversions: [{
-        id: 3,
-        from_currency_code: 'EUR',
-        to_currency_code: 'USD',
-        from_amount: 100,
-        calculated_huf_amount: 39000,
-        calculated_to_amount: 108,
-        conversion_rate: 1.08,
-        customer_name: null,
-        customer_document_number: null,
-        note: 'teszt',
-        local_reference_number: 'K105000001',
-        created_at: '2026-06-04 09:00:00',
-        synced: 1,
-      }],
-      stornos: [{
-        id: 4,
-        original_receipt_number: 'V105000010',
-        currency_code: 'EUR',
-        foreign_amount: 50,
-        huf_amount: 19500,
-        exchange_rate: 390,
-        custom_exchange_rate: null,
-        reason: 'téves rögzítés',
-        customer_name: null,
-        customer_document_number: null,
-        local_reference_number: 'S105000002',
-        created_at: '2026-06-04 12:00:00',
-        synced: 1,
-      }],
+      conversions: [
+        {
+          id: 3,
+          from_currency_code: 'EUR',
+          to_currency_code: 'USD',
+          from_amount: 100,
+          calculated_huf_amount: 39000,
+          calculated_to_amount: 108,
+          conversion_rate: 1.08,
+          customer_name: null,
+          customer_document_number: null,
+          note: 'teszt',
+          local_reference_number: 'K105000001',
+          created_at: '2026-06-04 09:00:00',
+          synced: 1,
+        },
+      ],
+      stornos: [
+        {
+          id: 4,
+          original_receipt_number: 'V105000010',
+          currency_code: 'EUR',
+          foreign_amount: 50,
+          huf_amount: 19500,
+          exchange_rate: 390,
+          custom_exchange_rate: null,
+          reason: 'téves rögzítés',
+          customer_name: null,
+          customer_document_number: null,
+          local_reference_number: 'S105000002',
+          created_at: '2026-06-04 12:00:00',
+          synced: 1,
+        },
+      ],
     })
 
     const result = await getReprintableReceiptDrafts(worker)

@@ -237,7 +237,11 @@ export default function BankOrderPage() {
         api.get('/currencies'),
       ])
       setBranches(safeArray<BranchOption>(branchResponse.data).filter((b) => b.isActive !== false))
-      setCurrencies(safeArray<CurrencyOption>(currencyResponse.data).filter((c) => c.isActive !== false && c.code !== 'HUF'))
+      setCurrencies(
+        safeArray<CurrencyOption>(currencyResponse.data).filter(
+          (c) => c.isActive !== false && c.code !== 'HUF',
+        ),
+      )
     } catch (err) {
       logger.error('BankOrderPage', 'Referenciaadat hiba:', err)
       setCreateError(getErrorMessage(err))
@@ -326,7 +330,8 @@ export default function BankOrderPage() {
             <h2 className="text-sm font-semibold text-gray-800">Western Union napi keret</h2>
             {wuLimit && (
               <p className="text-xs text-gray-500">
-                {wuLimit.businessDate} · reset: {wuLimit.resetAt ? new Date(wuLimit.resetAt).toLocaleString('hu-HU') : '00:00'}
+                {wuLimit.businessDate} · reset:{' '}
+                {wuLimit.resetAt ? new Date(wuLimit.resetAt).toLocaleString('hu-HU') : '00:00'}
               </p>
             )}
           </div>
@@ -342,8 +347,14 @@ export default function BankOrderPage() {
         {!wuLimitError && wuLimit && (
           <div>
             <div className="mb-1 flex justify-between text-xs text-gray-600">
-              <span>{Number(wuLimit.usedAmount).toLocaleString('hu-HU')} {wuLimit.currencyCode} felhasználva</span>
-              <span>{Number(wuLimit.remainingAmount).toLocaleString('hu-HU')} {wuLimit.currencyCode} maradt</span>
+              <span>
+                {Number(wuLimit.usedAmount).toLocaleString('hu-HU')} {wuLimit.currencyCode}{' '}
+                felhasználva
+              </span>
+              <span>
+                {Number(wuLimit.remainingAmount).toLocaleString('hu-HU')} {wuLimit.currencyCode}{' '}
+                maradt
+              </span>
             </div>
             <div className="h-2 overflow-hidden rounded bg-gray-100">
               <div
@@ -358,7 +369,9 @@ export default function BankOrderPage() {
         )}
         <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:items-end">
           <label className="block text-sm">
-            <span className="mb-1 block text-xs font-semibold text-gray-600">Kézi fallback felhasználás (USD)</span>
+            <span className="mb-1 block text-xs font-semibold text-gray-600">
+              Kézi fallback felhasználás (USD)
+            </span>
             <input
               value={wuLimitUseAmount}
               onChange={(event) => setWuLimitUseAmount(event.target.value)}
@@ -421,7 +434,9 @@ export default function BankOrderPage() {
                   </td>
                   <td className="p-2">{o.urgency}</td>
                   <td className="p-2">
-                    <span className={`rounded px-2 py-0.5 text-xs font-semibold ${STATUS_COLORS[o.status]}`}>
+                    <span
+                      className={`rounded px-2 py-0.5 text-xs font-semibold ${STATUS_COLORS[o.status]}`}
+                    >
                       {STATUS_LABELS[o.status]}
                     </span>
                   </td>
@@ -481,7 +496,8 @@ export default function BankOrderPage() {
       )}
 
       <p className="text-xs text-gray-500">
-        A banki rendelés workflow és a Western Union napi keret aktív. Az EMERGENCY rendelés automatikus vezetői értesítést küld.
+        A banki rendelés workflow és a Western Union napi keret aktív. Az EMERGENCY rendelés
+        automatikus vezetői értesítést küld.
       </p>
 
       {(selectedOrder || detailError) && (
@@ -489,7 +505,14 @@ export default function BankOrderPage() {
           <div className="w-full max-w-2xl rounded bg-white shadow-xl">
             <div className="flex items-center justify-between border-b p-4">
               <h2 className="text-lg font-semibold">Banki rendelés részletei</h2>
-              <button type="button" onClick={() => { setSelectedOrder(null); setDetailError(null) }} className="rounded p-1 hover:bg-gray-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedOrder(null)
+                  setDetailError(null)
+                }}
+                className="rounded p-1 hover:bg-gray-100"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -503,15 +526,24 @@ export default function BankOrderPage() {
                 <>
                   <div>
                     <div className="text-xs font-semibold uppercase text-gray-500">Iroda</div>
-                    <div>{selectedOrder.branchCode} - {selectedOrder.branchName}</div>
+                    <div>
+                      {selectedOrder.branchCode} - {selectedOrder.branchName}
+                    </div>
                   </div>
                   <div>
-                    <div className="text-xs font-semibold uppercase text-gray-500">Valuta és összeg</div>
-                    <div className="font-mono">{selectedOrder.currencyCode} {Number(selectedOrder.amount).toLocaleString('hu-HU')}</div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">
+                      Valuta és összeg
+                    </div>
+                    <div className="font-mono">
+                      {selectedOrder.currencyCode}{' '}
+                      {Number(selectedOrder.amount).toLocaleString('hu-HU')}
+                    </div>
                   </div>
                   <div>
                     <div className="text-xs font-semibold uppercase text-gray-500">Státusz</div>
-                    <span className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${STATUS_COLORS[selectedOrder.status]}`}>
+                    <span
+                      className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${STATUS_COLORS[selectedOrder.status]}`}
+                    >
                       {STATUS_LABELS[selectedOrder.status]}
                     </span>
                   </div>
@@ -528,11 +560,15 @@ export default function BankOrderPage() {
                     <div>{selectedOrder.approvedByWorkerName ?? '-'}</div>
                   </div>
                   <div>
-                    <div className="text-xs font-semibold uppercase text-gray-500">Teljesítette</div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">
+                      Teljesítette
+                    </div>
                     <div>{selectedOrder.executedByWorkerName ?? '-'}</div>
                   </div>
                   <div>
-                    <div className="text-xs font-semibold uppercase text-gray-500">Bank referencia</div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">
+                      Bank referencia
+                    </div>
                     <div>{selectedOrder.bankReference ?? '-'}</div>
                   </div>
                   <div className="sm:col-span-2">
@@ -541,7 +577,9 @@ export default function BankOrderPage() {
                   </div>
                   {selectedOrder.cancellationReason && (
                     <div className="sm:col-span-2">
-                      <div className="text-xs font-semibold uppercase text-gray-500">Visszavonás indoka</div>
+                      <div className="text-xs font-semibold uppercase text-gray-500">
+                        Visszavonás indoka
+                      </div>
                       <div>{selectedOrder.cancellationReason}</div>
                     </div>
                   )}
@@ -557,7 +595,11 @@ export default function BankOrderPage() {
           <form onSubmit={handleCreate} className="w-full max-w-2xl rounded bg-white shadow-xl">
             <div className="flex items-center justify-between border-b p-4">
               <h2 className="text-lg font-semibold">Új banki rendelés</h2>
-              <button type="button" onClick={() => setShowCreate(false)} className="rounded p-1 hover:bg-gray-100">
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                className="rounded p-1 hover:bg-gray-100"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -609,7 +651,9 @@ export default function BankOrderPage() {
                 <span className="mb-1 block font-medium text-gray-700">Sürgősség</span>
                 <select
                   value={createForm.urgency}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, urgency: e.target.value as BankOrderUrgency }))}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, urgency: e.target.value as BankOrderUrgency }))
+                  }
                   className="w-full rounded border px-3 py-2"
                 >
                   <option value="NORMAL">Normál</option>

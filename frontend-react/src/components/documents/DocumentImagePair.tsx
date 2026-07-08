@@ -67,11 +67,13 @@ function DocumentViewGrantModal({ open, side, onSubmit, onCancel }: GrantModalPr
       try {
         const res = await api.get<EligibleApprover[]>('/workers/active')
         const list = Array.isArray(res.data) ? res.data : []
-        setApprovers(
-          list.filter((w) => w.role != null && ELIGIBLE_ROLES.includes(w.role)),
-        )
+        setApprovers(list.filter((w) => w.role != null && ELIGIBLE_ROLES.includes(w.role)))
       } catch (err) {
-        logger.warn('DocumentViewGrantModal', 'Engedélyező-lista betöltés hiba:', getErrorMessage(err))
+        logger.warn(
+          'DocumentViewGrantModal',
+          'Engedélyező-lista betöltés hiba:',
+          getErrorMessage(err),
+        )
         setError(t('documents.nagyitasEngedelyezoListaHiba'))
       } finally {
         setLoading(false)
@@ -112,22 +114,28 @@ function DocumentViewGrantModal({ open, side, onSubmit, onCancel }: GrantModalPr
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onCancel}
     >
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h2 id="doc-view-grant-title" className="mb-2 text-lg font-bold text-amber-800">
           {t('documents.nagyitasEngedelyKell')} — {sideLabel}
         </h2>
         <p className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {t('documents.nagyitasTorvenyiFigyelmeztetes')}
         </p>
-        <p className="mb-3 text-sm text-gray-600">
-          {t('documents.nagyitasLeiras')}
-        </p>
+        <p className="mb-3 text-sm text-gray-600">{t('documents.nagyitasLeiras')}</p>
 
         {loading ? (
-          <p className="py-4 text-center text-gray-500">{t('documents.nagyitasEngedelyezokBetoltese')}</p>
+          <p className="py-4 text-center text-gray-500">
+            {t('documents.nagyitasEngedelyezokBetoltese')}
+          </p>
         ) : (
           <>
-            <label className="mb-1 block text-sm font-semibold text-gray-700" htmlFor="doc-grant-approver">
+            <label
+              className="mb-1 block text-sm font-semibold text-gray-700"
+              htmlFor="doc-grant-approver"
+            >
               {t('documents.nagyitasEngedelyezo')}
             </label>
             <select
@@ -154,7 +162,10 @@ function DocumentViewGrantModal({ open, side, onSubmit, onCancel }: GrantModalPr
               </p>
             )}
 
-            <label className="mb-1 block text-sm font-semibold text-gray-700" htmlFor="doc-grant-pin">
+            <label
+              className="mb-1 block text-sm font-semibold text-gray-700"
+              htmlFor="doc-grant-pin"
+            >
               {t('documents.nagyitasPin')}
             </label>
             <input
@@ -178,7 +189,9 @@ function DocumentViewGrantModal({ open, side, onSubmit, onCancel }: GrantModalPr
         )}
 
         {error && (
-          <div className="mb-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>
+          <div className="mb-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+            {error}
+          </div>
         )}
 
         <div className="flex justify-end space-x-2">
@@ -202,7 +215,11 @@ function DocumentViewGrantModal({ open, side, onSubmit, onCancel }: GrantModalPr
   )
 }
 
-export default function DocumentImagePair({ documentId, hasFront, hasBack }: DocumentImagePairProps) {
+export default function DocumentImagePair({
+  documentId,
+  hasFront,
+  hasBack,
+}: DocumentImagePairProps) {
   const { t } = useTranslation()
   const [thumbFront, setThumbFront] = useState<string | null>(null)
   const [thumbBack, setThumbBack] = useState<string | null>(null)
@@ -213,7 +230,11 @@ export default function DocumentImagePair({ documentId, hasFront, hasBack }: Doc
 
   const revokeAll = useCallback(() => {
     for (const url of urlsRef.current) {
-      try { URL.revokeObjectURL(url) } catch { /* best-effort */ }
+      try {
+        URL.revokeObjectURL(url)
+      } catch {
+        /* best-effort */
+      }
     }
     urlsRef.current = []
   }, [])
@@ -249,30 +270,37 @@ export default function DocumentImagePair({ documentId, hasFront, hasBack }: Doc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId, hasFront, hasBack, revokeAll])
 
-  const handleGrantSuccess = useCallback(async (approverWorkerId: number, pin: string) => {
-    if (!grantSide) return
-    // 1) Grant kiállítása (supervisor PIN ellenőrzés a backenden).
-    await documentScannerApi.issueViewGrant(documentId, approverWorkerId, pin)
-    // 2) CSAK sikeres grant után fetch-eljük a full-res képet (törvényi kapu).
-    // A grant sikeres volt — a kép letöltésének hibája NEM PIN-hiba.
-    try {
-      const blob = await documentScannerApi.getFullImage(documentId, grantSide)
-      const url = URL.createObjectURL(blob)
-      urlsRef.current.push(url)
-      setFullImage({ side: grantSide, url })
-    } catch (imgErr) {
-      logger.warn('DocumentImagePair', 'Full-res kép letöltés hiba:', getErrorMessage(imgErr))
-      toast.error(t('documents.okmanyCaptureHiba'), t('documents.nagyitasKepLetoltesHiba'))
-    } finally {
-      setGrantSide(null)
-    }
-  }, [documentId, grantSide, t])
+  const handleGrantSuccess = useCallback(
+    async (approverWorkerId: number, pin: string) => {
+      if (!grantSide) return
+      // 1) Grant kiállítása (supervisor PIN ellenőrzés a backenden).
+      await documentScannerApi.issueViewGrant(documentId, approverWorkerId, pin)
+      // 2) CSAK sikeres grant után fetch-eljük a full-res képet (törvényi kapu).
+      // A grant sikeres volt — a kép letöltésének hibája NEM PIN-hiba.
+      try {
+        const blob = await documentScannerApi.getFullImage(documentId, grantSide)
+        const url = URL.createObjectURL(blob)
+        urlsRef.current.push(url)
+        setFullImage({ side: grantSide, url })
+      } catch (imgErr) {
+        logger.warn('DocumentImagePair', 'Full-res kép letöltés hiba:', getErrorMessage(imgErr))
+        toast.error(t('documents.okmanyCaptureHiba'), t('documents.nagyitasKepLetoltesHiba'))
+      } finally {
+        setGrantSide(null)
+      }
+    },
+    [documentId, grantSide, t],
+  )
 
   const closeFullImage = useCallback(() => {
     if (fullImage) {
       const idx = urlsRef.current.indexOf(fullImage.url)
       if (idx >= 0) {
-        try { URL.revokeObjectURL(fullImage.url) } catch { /* best-effort */ }
+        try {
+          URL.revokeObjectURL(fullImage.url)
+        } catch {
+          /* best-effort */
+        }
         urlsRef.current.splice(idx, 1)
       }
     }
@@ -285,7 +313,11 @@ export default function DocumentImagePair({ documentId, hasFront, hasBack }: Doc
       <div className="flex flex-col items-center gap-2">
         <div className="text-sm font-semibold text-gray-700">{label}</div>
         {thumbUrl ? (
-          <img src={thumbUrl} alt={label} className="max-h-48 rounded border border-gray-200 object-contain" />
+          <img
+            src={thumbUrl}
+            alt={label}
+            className="max-h-48 rounded border border-gray-200 object-contain"
+          />
         ) : thumbError ? (
           <div className="flex h-24 w-36 items-center justify-center rounded border border-red-200 bg-red-50 text-xs text-red-700">
             {thumbError}
@@ -328,7 +360,8 @@ export default function DocumentImagePair({ documentId, hasFront, hasBack }: Doc
           <div className="relative max-h-[90vh] max-w-4xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm font-semibold text-white">
-                {fullImage.side === 'FRONT' ? t('documents.elolap') : t('documents.hatlap')} — {t('documents.nagyitas')}
+                {fullImage.side === 'FRONT' ? t('documents.elolap') : t('documents.hatlap')} —{' '}
+                {t('documents.nagyitas')}
               </span>
               <button
                 onClick={closeFullImage}

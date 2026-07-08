@@ -1,5 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { adminCompanyApi, branchApi, cameraExportApi, commissionCalculationApi, documentScannerApi, handlingFeeConfigApi, handlingFeeTransactionApi, mfaAdminApi, navIntegrationApi, notificationApi, ownCompanyApi, posTerminalApi, supervisorPinApi, synchronizationApi, systemParameterApi, turnoverApi, valueBandApi, workerCommissionApi } from './settings'
+import {
+  adminCompanyApi,
+  branchApi,
+  cameraExportApi,
+  commissionCalculationApi,
+  documentScannerApi,
+  handlingFeeConfigApi,
+  handlingFeeTransactionApi,
+  mfaAdminApi,
+  navIntegrationApi,
+  notificationApi,
+  ownCompanyApi,
+  posTerminalApi,
+  supervisorPinApi,
+  synchronizationApi,
+  systemParameterApi,
+  turnoverApi,
+  valueBandApi,
+  workerCommissionApi,
+} from './settings'
 import { api } from './client'
 
 vi.mock('./client', () => {
@@ -134,7 +153,6 @@ describe('adminCompanyApi backend contract', () => {
       email: 'info@example.test',
     })
   })
-
 })
 
 describe('ownCompanyApi backend contract', () => {
@@ -176,7 +194,6 @@ describe('branchApi backend contract', () => {
       params: { activeOnly: false },
     })
   })
-
 })
 
 describe('commissionCalculationApi backend contract', () => {
@@ -226,7 +243,9 @@ describe('workerCommissionApi backend contract', () => {
   it('getById calls WorkerCommissionController ID detail endpoint', async () => {
     await workerCommissionApi.getById('11111111-1111-1111-1111-111111111111')
 
-    expect(mockApi.get).toHaveBeenCalledWith('/worker-commissions/11111111-1111-1111-1111-111111111111')
+    expect(mockApi.get).toHaveBeenCalledWith(
+      '/worker-commissions/11111111-1111-1111-1111-111111111111',
+    )
   })
 })
 
@@ -289,7 +308,10 @@ describe('documentScannerApi backend contract', () => {
   it('uploadScannedDocument calls POST /scanned-documents/upload as multipart form-data', async () => {
     const file = new File(['scan'], 'okmany.pdf', { type: 'application/pdf' })
 
-    await documentScannerApi.uploadScannedDocument(file, { documentType: 'PASSPORT', transactionId: 34 })
+    await documentScannerApi.uploadScannedDocument(file, {
+      documentType: 'PASSPORT',
+      transactionId: 34,
+    })
 
     expect(mockApi.post).toHaveBeenCalledWith('/scanned-documents/upload', expect.any(FormData), {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -478,7 +500,10 @@ describe('handlingFeeTransactionApi backend contract', () => {
   it('calculate calls POST /handling-fees/calculate with transactionId and hufAmount', async () => {
     mockApi.post.mockResolvedValue({ data: { amount: 5000, netFee: 5000, feeType: 'TIERED' } })
 
-    const result = await handlingFeeTransactionApi.calculate({ transactionId: 123, hufAmount: 750000 })
+    const result = await handlingFeeTransactionApi.calculate({
+      transactionId: 123,
+      hufAmount: 750000,
+    })
 
     expect(mockApi.post).toHaveBeenCalledWith('/handling-fees/calculate', {
       transactionId: 123,

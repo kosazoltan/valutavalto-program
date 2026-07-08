@@ -64,7 +64,7 @@ async function mockShipmentApis(page: Page, activeShipment = shipment, activeWor
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -87,19 +87,35 @@ async function mockShipmentApis(page: Page, activeShipment = shipment, activeWor
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(activeWorker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(activeWorker),
+      })
     }
 
     if (path.endsWith('/shipments') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([activeShipment]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([activeShipment]),
+      })
     }
 
     if (path.endsWith('/shipments/shipment-1') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(activeShipment) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(activeShipment),
+      })
     }
 
     if (path.endsWith('/shipments/shipment-1') && method === 'PUT') {
@@ -144,33 +160,35 @@ async function login(page: Page) {
 test('szállítmány lista detail, deliver és cancel backend workflow-t hív', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockShipmentApis(page, shipment, receiverWorker)
-  page.on('dialog', dialog => void dialog.accept())
+  page.on('dialog', (dialog) => void dialog.accept())
   await login(page)
 
   await page.goto('/shipments', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('SH-001')).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/shipments/shipment-1')
+  const detailRequest = page.waitForRequest(
+    (request) => request.method() === 'GET' && request.url().includes('/shipments/shipment-1'),
   )
   await page.getByTitle('Részletek').click()
   await detailRequest
   await expect(page.getByTestId('shipment-detail-panel')).toContainText('PL-123')
 
-  const deliverRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/shipments/shipment-1/deliver')
+  const deliverRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes('/shipments/shipment-1/deliver'),
   )
   await page.getByTitle('Megérkezett').click()
   await deliverRequest
 
-  const cancelRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/shipments/shipment-1/cancel')
+  const cancelRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes('/shipments/shipment-1/cancel'),
   )
   await page.getByTitle('Sztornó').click()
   await cancelRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
@@ -185,7 +203,9 @@ test('deliver gomb NEM latszik a felado fiok felhasznalojanak', async ({ page })
   await expect(page.getByTitle('Megérkezett')).toHaveCount(0)
 })
 
-test('szállítmány DRAFT szerkesztés mobilnézetben PUT /shipments/{id} backendhez kötött', async ({ page }) => {
+test('szállítmány DRAFT szerkesztés mobilnézetben PUT /shipments/{id} backendhez kötött', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockShipmentApis(page, draftShipment)
   await login(page)
@@ -200,8 +220,8 @@ test('szállítmány DRAFT szerkesztés mobilnézetben PUT /shipments/{id} backe
   await page.getByTestId('shipment-edit-seal').fill('PL-999')
   await page.getByTestId('shipment-edit-notes').fill('Módosított megjegyzés')
 
-  const updateRequest = page.waitForRequest(request =>
-    request.method() === 'PUT' && request.url().includes('/shipments/shipment-1')
+  const updateRequest = page.waitForRequest(
+    (request) => request.method() === 'PUT' && request.url().includes('/shipments/shipment-1'),
   )
   await page.getByTestId('shipment-save-edit').click()
   const request = await updateRequest
@@ -214,8 +234,8 @@ test('szállítmány DRAFT szerkesztés mobilnézetben PUT /shipments/{id} backe
     notes: 'Módosított megjegyzés',
   })
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

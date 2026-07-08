@@ -54,26 +54,29 @@ export default function TerritoryReconciliationPage() {
 
   const range = useMemo(() => monthRange(yearMonth), [yearMonth])
 
-  const loadTerritoryContext = useCallback(async (id: number, profitRange = range) => {
-    try {
-      setTerritoryLoading(true)
-      const [detail, profit] = await Promise.all([
-        territoryReconciliationApi.getTerritory(id),
-        profitRange
-          ? territoryReconciliationApi.getTerritoryProfit(id, profitRange.from, profitRange.to)
-          : Promise.resolve(null),
-      ])
-      setSelectedTerritory(detail)
-      setProfitSummary(profit)
-    } catch (err) {
-      setSelectedTerritory(null)
-      setProfitSummary(null)
-      setError(getErrorMessage(err))
-      logger.error('TerritoryReconciliationPage', 'loadTerritoryContext', err)
-    } finally {
-      setTerritoryLoading(false)
-    }
-  }, [range])
+  const loadTerritoryContext = useCallback(
+    async (id: number, profitRange = range) => {
+      try {
+        setTerritoryLoading(true)
+        const [detail, profit] = await Promise.all([
+          territoryReconciliationApi.getTerritory(id),
+          profitRange
+            ? territoryReconciliationApi.getTerritoryProfit(id, profitRange.from, profitRange.to)
+            : Promise.resolve(null),
+        ])
+        setSelectedTerritory(detail)
+        setProfitSummary(profit)
+      } catch (err) {
+        setSelectedTerritory(null)
+        setProfitSummary(null)
+        setError(getErrorMessage(err))
+        logger.error('TerritoryReconciliationPage', 'loadTerritoryContext', err)
+      } finally {
+        setTerritoryLoading(false)
+      }
+    },
+    [range],
+  )
 
   const loadTerritories = useCallback(async () => {
     try {
@@ -180,10 +183,14 @@ export default function TerritoryReconciliationPage() {
 
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
           <section className="rounded border border-slate-200 bg-white p-3">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">Terület kiválasztása és havi ellenőrzés</h2>
+            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+              Terület kiválasztása és havi ellenőrzés
+            </h2>
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px_auto] sm:items-end">
               <div>
-                <label className="form-label" htmlFor="territory-select">Terület</label>
+                <label className="form-label" htmlFor="territory-select">
+                  Terület
+                </label>
                 <select
                   id="territory-select"
                   className="form-input min-w-0"
@@ -203,7 +210,9 @@ export default function TerritoryReconciliationPage() {
                 </select>
               </div>
               <div>
-                <label className="form-label" htmlFor="territory-month">Hónap</label>
+                <label className="form-label" htmlFor="territory-month">
+                  Hónap
+                </label>
                 <input
                   id="territory-month"
                   type="month"
@@ -224,9 +233,19 @@ export default function TerritoryReconciliationPage() {
             </div>
 
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <InfoCell label="Terület neve" value={selectedTerritory?.name ?? 'Nincs betöltve'} loading={territoryLoading} />
-              <InfoCell label="Alaptőke" value={selectedTerritory ? fmt(selectedTerritory.baseCapital) : '-'} />
-              <InfoCell label="Jóváhagyva" value={selectedTerritory?.baseCapitalApprovedAt ?? '-'} />
+              <InfoCell
+                label="Terület neve"
+                value={selectedTerritory?.name ?? 'Nincs betöltve'}
+                loading={territoryLoading}
+              />
+              <InfoCell
+                label="Alaptőke"
+                value={selectedTerritory ? fmt(selectedTerritory.baseCapital) : '-'}
+              />
+              <InfoCell
+                label="Jóváhagyva"
+                value={selectedTerritory?.baseCapitalApprovedAt ?? '-'}
+              />
             </div>
           </section>
 
@@ -234,7 +253,9 @@ export default function TerritoryReconciliationPage() {
             <h2 className="mb-3 text-sm font-semibold text-slate-800">Új terület</h2>
             <div className="space-y-2">
               <div>
-                <label className="form-label" htmlFor="new-territory-name">Név</label>
+                <label className="form-label" htmlFor="new-territory-name">
+                  Név
+                </label>
                 <input
                   id="new-territory-name"
                   className="form-input w-full"
@@ -245,7 +266,9 @@ export default function TerritoryReconciliationPage() {
               </div>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
                 <div>
-                  <label className="form-label" htmlFor="new-base-capital">Alaptőke</label>
+                  <label className="form-label" htmlFor="new-base-capital">
+                    Alaptőke
+                  </label>
                   <input
                     id="new-base-capital"
                     type="number"
@@ -256,7 +279,9 @@ export default function TerritoryReconciliationPage() {
                   />
                 </div>
                 <div>
-                  <label className="form-label" htmlFor="new-approved-at">Jóváhagyás dátuma</label>
+                  <label className="form-label" htmlFor="new-approved-at">
+                    Jóváhagyás dátuma
+                  </label>
                   <input
                     id="new-approved-at"
                     type="date"
@@ -318,18 +343,32 @@ export default function TerritoryReconciliationPage() {
             <InfoCell label="Terület MNB-összhaszon" value={fmt(data.territoryTotalProfit)} />
           </div>
 
-          <div className={`flex items-center gap-2 text-sm ${data.reconciliationOk ? 'text-green-700' : 'text-red-600'}`}>
-            {data.reconciliationOk ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-            {data.reconciliationOk ? 'Reconciliation OK: Σ pénztár összhaszon = terület összhaszon' : 'Reconciliation eltérés!'}
+          <div
+            className={`flex items-center gap-2 text-sm ${data.reconciliationOk ? 'text-green-700' : 'text-red-600'}`}
+          >
+            {data.reconciliationOk ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : (
+              <AlertTriangle className="h-4 w-4" />
+            )}
+            {data.reconciliationOk
+              ? 'Reconciliation OK: Σ pénztár összhaszon = terület összhaszon'
+              : 'Reconciliation eltérés!'}
           </div>
 
           <div className="grid gap-2 md:hidden">
             {data.cashiers.map((cashier) => (
               <div key={cashier.branchId} className="rounded border border-slate-200 bg-white p-3">
-                <div className="text-sm font-semibold text-slate-900">{cashier.branchCode} - {cashier.branchName}</div>
+                <div className="text-sm font-semibold text-slate-900">
+                  {cashier.branchCode} - {cashier.branchName}
+                </div>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                   <InfoCell label="WAC-marzs" value={fmt(cashier.realizedMargin)} />
-                  <InfoCell label="Átértékelés" value={fmt(cashier.allocatedRevaluation)} tone={cashier.allocatedRevaluation < 0 ? 'danger' : 'ok'} />
+                  <InfoCell
+                    label="Átértékelés"
+                    value={fmt(cashier.allocatedRevaluation)}
+                    tone={cashier.allocatedRevaluation < 0 ? 'danger' : 'ok'}
+                  />
                   <InfoCell label="Összhaszon" value={fmt(cashier.totalProfit)} />
                 </div>
               </div>
@@ -340,21 +379,37 @@ export default function TerritoryReconciliationPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Pénztár</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Tiszta WAC-marzs</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Allokált átértékelés</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Összhaszon</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    Pénztár
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                    Tiszta WAC-marzs
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                    Allokált átértékelés
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                    Összhaszon
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {data.cashiers.map((cashier) => (
                   <tr key={cashier.branchId}>
-                    <td className="px-3 py-2 text-sm">{cashier.branchCode} - {cashier.branchName}</td>
-                    <td className="px-3 py-2 text-right font-mono text-sm">{fmt(cashier.realizedMargin)}</td>
-                    <td className={`px-3 py-2 text-right font-mono text-sm ${cashier.allocatedRevaluation < 0 ? 'text-red-600' : ''}`}>
+                    <td className="px-3 py-2 text-sm">
+                      {cashier.branchCode} - {cashier.branchName}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-sm">
+                      {fmt(cashier.realizedMargin)}
+                    </td>
+                    <td
+                      className={`px-3 py-2 text-right font-mono text-sm ${cashier.allocatedRevaluation < 0 ? 'text-red-600' : ''}`}
+                    >
                       {fmt(cashier.allocatedRevaluation)}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-sm font-bold">{fmt(cashier.totalProfit)}</td>
+                    <td className="px-3 py-2 text-right font-mono text-sm font-bold">
+                      {fmt(cashier.totalProfit)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -366,21 +421,37 @@ export default function TerritoryReconciliationPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Valuta</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Értéktári készlet</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">WAC</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">MNB</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Átértékelés</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                      Valuta
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      Értéktári készlet
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      WAC
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      MNB
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      Átértékelés
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {data.currencyRevaluations.map((row) => (
                     <tr key={row.currencyCode}>
                       <td className="px-3 py-2 font-mono text-sm">{row.currencyCode}</td>
-                      <td className="px-3 py-2 text-right font-mono text-sm">{(row.vaultHeldQty ?? 0).toLocaleString('hu-HU')}</td>
-                      <td className="px-3 py-2 text-right font-mono text-sm">{row.weightedAvgCost}</td>
+                      <td className="px-3 py-2 text-right font-mono text-sm">
+                        {(row.vaultHeldQty ?? 0).toLocaleString('hu-HU')}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-sm">
+                        {row.weightedAvgCost}
+                      </td>
                       <td className="px-3 py-2 text-right font-mono text-sm">{row.mnbRate}</td>
-                      <td className={`px-3 py-2 text-right font-mono text-sm ${row.revaluation < 0 ? 'text-red-600' : 'text-green-700'}`}>
+                      <td
+                        className={`px-3 py-2 text-right font-mono text-sm ${row.revaluation < 0 ? 'text-red-600' : 'text-green-700'}`}
+                      >
                         {fmt(row.revaluation)}
                       </td>
                     </tr>
@@ -406,7 +477,8 @@ function InfoCell({
   loading?: boolean
   tone?: 'ok' | 'danger'
 }) {
-  const toneClass = tone === 'danger' ? 'text-red-600' : tone === 'ok' ? 'text-green-700' : 'text-slate-900'
+  const toneClass =
+    tone === 'danger' ? 'text-red-600' : tone === 'ok' ? 'text-green-700' : 'text-slate-900'
 
   return (
     <div className="rounded border border-slate-200 bg-slate-50 p-3">

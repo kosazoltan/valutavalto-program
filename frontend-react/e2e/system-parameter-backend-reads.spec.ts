@@ -40,7 +40,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -63,19 +63,35 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/system-parameters/active') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([baseParameter]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([baseParameter]),
+      })
     }
 
     if (path.endsWith('/system-params') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([baseParameter]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([baseParameter]),
+      })
     }
 
     if (path.endsWith('/system-parameters/category/RATE') && method === 'GET') {
@@ -87,15 +103,27 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/system-parameters/key/RATE_SPREAD_EUR') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(baseParameter) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(baseParameter),
+      })
     }
 
     if (path.endsWith('/system-parameters/value/RATE_SPREAD_EUR') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify('4') })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify('4'),
+      })
     }
 
     if (path.endsWith('/system-parameters') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([baseParameter]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([baseParameter]),
+      })
     }
 
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
@@ -112,18 +140,21 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('rendszerparaméter oldal mobil nézetben backend read endpointokat használ', async ({ page }) => {
+test('rendszerparaméter oldal mobil nézetben backend read endpointokat használ', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
 
-  const activeRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/system-parameters/active'
+  const activeRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/system-parameters/active',
   )
-  const managedRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/system-params'
+  const managedRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/system-params',
   )
 
   await page.goto('/settings/parameters', { waitUntil: 'domcontentloaded' })
@@ -131,21 +162,26 @@ test('rendszerparaméter oldal mobil nézetben backend read endpointokat haszná
   await managedRequest
   await expect(page.getByRole('cell', { name: 'RATE_SPREAD_EUR', exact: true })).toBeVisible()
 
-  const categoryRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/system-parameters/category/RATE'
+  const categoryRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/system-parameters/category/RATE',
   )
   await page.locator('#system-parameter-category').selectOption('RATE')
   await categoryRequest
-  await expect(page.getByRole('cell', { name: 'CATEGORY_RATE_SPREAD_EUR', exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('cell', { name: 'CATEGORY_RATE_SPREAD_EUR', exact: true }),
+  ).toBeVisible()
 
-  const keyRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/system-parameters/key/RATE_SPREAD_EUR'
+  const keyRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/system-parameters/key/RATE_SPREAD_EUR',
   )
-  const valueRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/system-parameters/value/RATE_SPREAD_EUR'
+  const valueRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/system-parameters/value/RATE_SPREAD_EUR',
   )
   await page.locator('#system-parameter-key-lookup').fill('RATE_SPREAD_EUR')
   await page.getByRole('button', { name: /Lekérdezés/i }).click()
@@ -155,8 +191,8 @@ test('rendszerparaméter oldal mobil nézetben backend read endpointokat haszná
   await expect(page.getByText('Kulcs:')).toBeVisible()
   await expect(page.getByText('Érték:')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

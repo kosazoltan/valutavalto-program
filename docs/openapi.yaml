@@ -1027,7 +1027,7 @@ components:
           example: Euro
         symbol:
           type: string
-          example: "€"
+          example: '€'
         decimals:
           type: integer
         active:

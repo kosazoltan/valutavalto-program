@@ -49,7 +49,14 @@ describe('RateGroupPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.list.mockResolvedValue([
-      { id: 'wg1', code: 'WG01', name: 'Budapest központ', legacyGroupNumber: 1, active: true, tileColor: 'sky' },
+      {
+        id: 'wg1',
+        code: 'WG01',
+        name: 'Budapest központ',
+        legacyGroupNumber: 1,
+        active: true,
+        tileColor: 'sky',
+      },
     ])
     mocks.getBranches.mockResolvedValue([])
     mocks.currencyList.mockResolvedValue([])

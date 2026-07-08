@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,14 +52,25 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
-    if (path.endsWith('/worker-commissions/11111111-1111-1111-1111-111111111111') && method === 'GET') {
+    if (
+      path.endsWith('/worker-commissions/11111111-1111-1111-1111-111111111111') &&
+      method === 'GET'
+    ) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -149,7 +160,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('dolgozói jutalék részletek mobil nézetben backend detail endpointból nyílnak', async ({ page }) => {
+test('dolgozói jutalék részletek mobil nézetben backend detail endpointból nyílnak', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -157,9 +170,11 @@ test('dolgozói jutalék részletek mobil nézetben backend detail endpointból 
   await page.goto('/commissions', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('article').filter({ hasText: 'Lista Lajos' })).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/worker-commissions/11111111-1111-1111-1111-111111111111'
+  const detailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname ===
+        '/api/v1/worker-commissions/11111111-1111-1111-1111-111111111111',
   )
   await page.getByRole('button', { name: /^Részletek$/i }).click()
   await detailRequest
@@ -169,13 +184,15 @@ test('dolgozói jutalék részletek mobil nézetben backend detail endpointból 
   await expect(detail).toContainText('18 750 HUF')
   await expect(detail).toContainText('Vezető Vera')
 
-  const calculateRequest = page.waitForRequest(request => {
+  const calculateRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'POST'
-      && url.pathname === '/api/v1/worker-commissions/calculate'
-      && url.searchParams.get('branchId') === 'branch-123'
-      && url.searchParams.get('periodStart') === '2026-06-01'
-      && url.searchParams.get('periodEnd') === '2026-06-30'
+    return (
+      request.method() === 'POST' &&
+      url.pathname === '/api/v1/worker-commissions/calculate' &&
+      url.searchParams.get('branchId') === 'branch-123' &&
+      url.searchParams.get('periodStart') === '2026-06-01' &&
+      url.searchParams.get('periodEnd') === '2026-06-30'
+    )
   })
   const dates = page.locator('input[type="date"]')
   await dates.nth(0).fill('2026-06-01')
@@ -184,8 +201,8 @@ test('dolgozói jutalék részletek mobil nézetben backend detail endpointból 
   await calculateRequest
   await expect(page.getByRole('article').filter({ hasText: 'Számolt Sára' })).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

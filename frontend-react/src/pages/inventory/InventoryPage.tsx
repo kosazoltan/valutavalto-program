@@ -105,9 +105,8 @@ interface TransferTargetOption {
 
 function formatCurrency(value: number | null | undefined, code?: string): string {
   if (value == null) return '—'
-  const opts: Intl.NumberFormatOptions = code === 'HUF'
-    ? { maximumFractionDigits: 0 }
-    : { maximumFractionDigits: 2 }
+  const opts: Intl.NumberFormatOptions =
+    code === 'HUF' ? { maximumFractionDigits: 0 } : { maximumFractionDigits: 2 }
   return value.toLocaleString('hu-HU', opts)
 }
 
@@ -126,7 +125,7 @@ function num(value: number | string | null | undefined): number {
 /** Change-detection kulcs: csak a megjelenített számszerű mezők számítanak. */
 function serializeRows(rows: VaultStockRow[]): string {
   return JSON.stringify(
-    rows.map(r => [r.currencyCode, r.currencyName, r.opening, r.received, r.issued, r.closing]),
+    rows.map((r) => [r.currencyCode, r.currencyName, r.opening, r.received, r.issued, r.closing]),
   )
 }
 
@@ -136,13 +135,13 @@ function serializeRows(rows: VaultStockRow[]): string {
  * ezeken 403-at kapnak — ez várt állapot, NEM valódi hiba, ezért nem dobunk rá hibabannert.
  */
 const isForbiddenError = (reason: unknown): boolean =>
-  typeof reason === 'object'
-  && reason !== null
-  && (reason as { response?: { status?: number } }).response?.status === 403
+  typeof reason === 'object' &&
+  reason !== null &&
+  (reason as { response?: { status?: number } }).response?.status === 403
 
 export default function InventoryPage() {
   const { t } = useTranslation()
-  const worker = useAuthStore(s => s.worker)
+  const worker = useAuthStore((s) => s.worker)
   const [rows, setRows] = useState<VaultStockRow[]>([])
   const [banknoteRows, setBanknoteRows] = useState<BanknoteInventoryRow[]>([])
   const [lowStockRows, setLowStockRows] = useState<BanknoteInventoryRow[]>([])
@@ -158,9 +157,12 @@ export default function InventoryPage() {
   const [stockMatrixInfo, setStockMatrixInfo] = useState({ branches: 0, currencies: 0 })
   const [movementRows, setMovementRows] = useState<InventoryMovementRow[]>([])
   const [movementLogRows, setMovementLogRows] = useState<InventoryMovementRow[]>([])
-  const [selectedMovementDetail, setSelectedMovementDetail] = useState<InventoryMovementRow | null>(null)
+  const [selectedMovementDetail, setSelectedMovementDetail] = useState<InventoryMovementRow | null>(
+    null,
+  )
   const [movementDetailLoadingId, setMovementDetailLoadingId] = useState<number | null>(null)
-  const [inventoryOperationType, setInventoryOperationType] = useState<InventoryOperationType>('bankWithdraw')
+  const [inventoryOperationType, setInventoryOperationType] =
+    useState<InventoryOperationType>('bankWithdraw')
   const [inventoryCurrencyId, setInventoryCurrencyId] = useState('')
   const [inventoryCurrencies, setInventoryCurrencies] = useState<InventoryCurrencyOption[]>([])
   const [inventoryCurrenciesLoading, setInventoryCurrenciesLoading] = useState(false)
@@ -186,7 +188,9 @@ export default function InventoryPage() {
   // A WS-callback (refreshIfChanged) a legfrissebb sorokat ref-en keresztül éri el,
   // hogy ne épüljön újra a feliratkozás minden adatváltozásnál.
   const rowsRef = useRef<VaultStockRow[]>(rows)
-  useEffect(() => { rowsRef.current = rows }, [rows])
+  useEffect(() => {
+    rowsRef.current = rows
+  }, [rows])
 
   const loadData = useCallback(async () => {
     try {
@@ -247,7 +251,9 @@ export default function InventoryPage() {
           code: currency.code,
           name: currency.name,
         }))
-        .filter((currency) => Number.isInteger(currency.id) && currency.id > 0 && Boolean(currency.code))
+        .filter(
+          (currency) => Number.isInteger(currency.id) && currency.id > 0 && Boolean(currency.code),
+        )
       setInventoryCurrencies(options)
       setInventoryCurrencyId((current) => current || (options[0] ? String(options[0].id) : ''))
     } catch (err) {
@@ -265,9 +271,12 @@ export default function InventoryPage() {
     setTransferTargetsLoading(true)
     setTransferTargetsError(null)
     try {
-      const response = await api.get<TransferTargetOption[]>('/inventory/transfer-targets', { _skipGlobal403Toast: true })
-      const options = safeArray<TransferTargetOption>(response.data)
-        .filter((target) => Boolean(target.branchId))
+      const response = await api.get<TransferTargetOption[]>('/inventory/transfer-targets', {
+        _skipGlobal403Toast: true,
+      })
+      const options = safeArray<TransferTargetOption>(response.data).filter((target) =>
+        Boolean(target.branchId),
+      )
       setTransferTargets(options)
       setInventoryTargetBranchId((current) => current || (options[0]?.branchId ?? ''))
       setTransferTargetsLoaded(true)
@@ -310,12 +319,17 @@ export default function InventoryPage() {
       dailyBalanceResult,
       regenerationResult,
     ] = await Promise.allSettled([
-      api.get<CashBalanceRow[]>(`/inventory/stock/${worker.branchId}`, { _skipGlobal403Toast: true }),
-      api.get<StockMatrixDto>('/inventory/matrix', { _skipGlobal403Toast: true }),
-      api.get<{ content?: InventoryMovementRow[] } | InventoryMovementRow[]>('/inventory/movements', {
-        params: { branchId: worker.branchId, size: 5, sort: 'createdAt,desc' },
+      api.get<CashBalanceRow[]>(`/inventory/stock/${worker.branchId}`, {
         _skipGlobal403Toast: true,
       }),
+      api.get<StockMatrixDto>('/inventory/matrix', { _skipGlobal403Toast: true }),
+      api.get<{ content?: InventoryMovementRow[] } | InventoryMovementRow[]>(
+        '/inventory/movements',
+        {
+          params: { branchId: worker.branchId, size: 5, sort: 'createdAt,desc' },
+          _skipGlobal403Toast: true,
+        },
+      ),
       api.get<InventoryMovementRow[]>('/inventory-movements/movement-log', {
         params: { branchId: worker.branchId, date },
         _skipGlobal403Toast: true,
@@ -334,7 +348,9 @@ export default function InventoryPage() {
       const branchStockRows = safeArray<CashBalanceRow>(branchStockResult.value.data)
       setBranchStockRows(branchStockRows)
       const firstCurrencyId = branchStockRows.find((row) => row.currencyId != null)?.currencyId
-      setInventoryCurrencyId((current) => current || (firstCurrencyId == null ? '' : String(firstCurrencyId)))
+      setInventoryCurrencyId(
+        (current) => current || (firstCurrencyId == null ? '' : String(firstCurrencyId)),
+      )
     } else {
       setBranchStockRows([])
     }
@@ -363,8 +379,12 @@ export default function InventoryPage() {
         ? safeArray<InventoryMovementRow>(movementLogResult.value.data)
         : [],
     )
-    setDailyBalance(dailyBalanceResult.status === 'fulfilled' ? (dailyBalanceResult.value.data ?? null) : null)
-    setLastRegeneration(regenerationResult.status === 'fulfilled' ? (regenerationResult.value.data ?? null) : null)
+    setDailyBalance(
+      dailyBalanceResult.status === 'fulfilled' ? (dailyBalanceResult.value.data ?? null) : null,
+    )
+    setLastRegeneration(
+      regenerationResult.status === 'fulfilled' ? (regenerationResult.value.data ?? null) : null,
+    )
 
     // Hibabanner CSAK valódi (nem-403) hibánál. A 403 (jogosultság-hiány) a szűkebb szerepköröknél
     // várt — ilyenkor a fenti widgetek üres/scope-szűkített állapotban maradnak, de a fő értéktári
@@ -385,9 +405,9 @@ export default function InventoryPage() {
     // a backend CAST-fix után ez maradt volna az egyetlen látható „hiba".)
     const realFailure = results.find(
       (r): r is PromiseRejectedResult =>
-        r.status === 'rejected'
-        && !isForbiddenError(r.reason)
-        && !(r === regenerationResult && isNotFoundError(r.reason)),
+        r.status === 'rejected' &&
+        !isForbiddenError(r.reason) &&
+        !(r === regenerationResult && isNotFoundError(r.reason)),
     )
     if (realFailure) {
       const msg = getErrorMessage(realFailure.reason)
@@ -431,21 +451,23 @@ export default function InventoryPage() {
   useVaultStockUpdates(refreshIfChanged)
 
   const totalHufClosing = rows
-    .filter(r => r.currencyCode === 'HUF')
+    .filter((r) => r.currencyCode === 'HUF')
     .reduce((sum, r) => sum + (r.closing ?? 0), 0)
   const isVaultOperationalContext = rows.length > 0
 
-  const selectedBanknote = banknoteRows.find((row) => row.id === selectedBanknoteId) ?? banknoteRows[0]
+  const selectedBanknote =
+    banknoteRows.find((row) => row.id === selectedBanknoteId) ?? banknoteRows[0]
   const parsedBanknoteQuantity = Math.max(0, Number.parseInt(banknoteQuantity, 10) || 0)
 
-  const runBanknoteAction = async (
-    action: 'add' | 'remove' | 'count' | 'thresholds',
-  ) => {
+  const runBanknoteAction = async (action: 'add' | 'remove' | 'count' | 'thresholds') => {
     if (!worker?.branchId || !selectedBanknote) {
       setBanknoteActionMessage('Nincs kiválasztott címletsor.')
       return
     }
-    if ((action === 'add' || action === 'remove' || action === 'count') && parsedBanknoteQuantity <= 0) {
+    if (
+      (action === 'add' || action === 'remove' || action === 'count') &&
+      parsedBanknoteQuantity <= 0
+    ) {
       setBanknoteActionMessage('Adj meg pozitív darabszámot.')
       return
     }
@@ -658,19 +680,27 @@ export default function InventoryPage() {
         <h1 className="text-lg font-bold text-secondary-900 flex items-center gap-2">
           <Vault className="h-5 w-5 text-primary-700" />
           {t('inventory.ertektariKeszlet')}
-          <span className="text-xs text-gray-500 font-normal">{t('inventory.sajatValutankent')}</span>
+          <span className="text-xs text-gray-500 font-normal">
+            {t('inventory.sajatValutankent')}
+          </span>
         </h1>
         <div className="flex items-center gap-2">
           {lastRefresh && (
-            <span className="text-xs text-gray-500">
-              {lastRefresh.toLocaleTimeString('hu-HU')}
-            </span>
+            <span className="text-xs text-gray-500">{lastRefresh.toLocaleTimeString('hu-HU')}</span>
           )}
-          <button onClick={() => void loadData()} className="form-button h-8 text-xs flex items-center gap-1" title={t('common.refresh')}>
+          <button
+            onClick={() => void loadData()}
+            className="form-button h-8 text-xs flex items-center gap-1"
+            title={t('common.refresh')}
+          >
             <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
             {t('common.refresh')}
           </button>
-          <button onClick={() => window.print()} className="form-button h-8 text-xs flex items-center gap-1" title={t('common.print')}>
+          <button
+            onClick={() => window.print()}
+            className="form-button h-8 text-xs flex items-center gap-1"
+            title={t('common.print')}
+          >
             <Printer className="h-3 w-3" />
             {t('common.print')}
           </button>
@@ -681,7 +711,8 @@ export default function InventoryPage() {
       <div className="hidden print:block mb-2">
         <div className="text-base font-bold">{t('inventory.ertektariKeszlet')}</div>
         <div className="text-sm">
-          {worker?.branchName ?? worker?.branchCode ?? ''} — {new Date().toLocaleDateString('hu-HU')}
+          {worker?.branchName ?? worker?.branchCode ?? ''} —{' '}
+          {new Date().toLocaleDateString('hu-HU')}
         </div>
       </div>
 
@@ -712,14 +743,19 @@ export default function InventoryPage() {
           <div className="flex items-center gap-3">
             <Vault className="h-6 w-6 text-primary-700" />
             <div>
-              <div className="text-sm text-primary-700 font-medium">{t('inventory.ertektariZaroHufKeszlet')}</div>
+              <div className="text-sm text-primary-700 font-medium">
+                {t('inventory.ertektariZaroHufKeszlet')}
+              </div>
               <div className="text-2xl font-bold font-mono text-primary-900">
-                {totalHufClosing.toLocaleString('hu-HU', { maximumFractionDigits: 0 })} {t('common.ft')}
+                {totalHufClosing.toLocaleString('hu-HU', { maximumFractionDigits: 0 })}{' '}
+                {t('common.ft')}
               </div>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-sm text-primary-700">{rows.length} {t('inventory.valuta')}</div>
+            <div className="text-sm text-primary-700">
+              {rows.length} {t('inventory.valuta')}
+            </div>
           </div>
         </div>
       </div>
@@ -740,22 +776,33 @@ export default function InventoryPage() {
             </div>
             <div className="text-xs text-gray-500">
               {t('inventory.operativRiportokAlcim')}
-              {isVaultOperationalContext ? ` · ${t('inventory.ertektariCurrencyStockKonyveles')}` : ''}
+              {isVaultOperationalContext
+                ? ` · ${t('inventory.ertektariCurrencyStockKonyveles')}`
+                : ''}
             </div>
           </div>
-          <button type="button" onClick={() => void loadOperationalInventory()} className="form-button h-8 text-xs flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => void loadOperationalInventory()}
+            className="form-button h-8 text-xs flex items-center gap-1"
+          >
             <RefreshCw className="h-3 w-3" />
             Riportok frissítése
           </button>
         </div>
-        <div className="border-b border-gray-200 bg-white px-3 py-3" data-testid="inventory-operation-panel">
+        <div
+          className="border-b border-gray-200 bg-white px-3 py-3"
+          data-testid="inventory-operation-panel"
+        >
           <div className="grid gap-2 lg:grid-cols-[160px_120px_120px_minmax(180px,1fr)_minmax(180px,1fr)_auto] lg:items-end">
             <label className="block">
               <span className="form-label">Művelet</span>
               <select
                 className="form-input w-full"
                 value={inventoryOperationType}
-                onChange={(event) => setInventoryOperationType(event.target.value as InventoryOperationType)}
+                onChange={(event) =>
+                  setInventoryOperationType(event.target.value as InventoryOperationType)
+                }
                 aria-label="Készletművelet típusa"
               >
                 <option value="bankWithdraw">Bankból kivét</option>
@@ -784,7 +831,9 @@ export default function InventoryPage() {
               </select>
             </label>
             <label className="block">
-              <span className="form-label">{inventoryOperationType === 'correction' ? 'Új egyenleg' : 'Összeg'}</span>
+              <span className="form-label">
+                {inventoryOperationType === 'correction' ? 'Új egyenleg' : 'Összeg'}
+              </span>
               <input
                 className="form-input w-full font-mono"
                 inputMode="decimal"
@@ -799,7 +848,11 @@ export default function InventoryPage() {
                 className="form-input w-full"
                 value={inventoryOperationType === 'transfer' ? inventoryTargetBranchId : ''}
                 onChange={(event) => setInventoryTargetBranchId(event.target.value)}
-                disabled={inventoryOperationType !== 'transfer' || transferTargetsLoading || (transferTargetsLoaded && transferTargets.length === 0)}
+                disabled={
+                  inventoryOperationType !== 'transfer' ||
+                  transferTargetsLoading ||
+                  (transferTargetsLoaded && transferTargets.length === 0)
+                }
                 aria-label={t('inventory.celTelephelyKivalasztasa')}
               >
                 <option value="">
@@ -811,24 +864,33 @@ export default function InventoryPage() {
                 </option>
                 {transferTargets.map((target) => (
                   <option key={target.branchId} value={target.branchId}>
-                    {target.code} — {target.name}{target.isVault ? ` · ${t('inventory.ertektarBadge')}` : ''}
+                    {target.code} — {target.name}
+                    {target.isVault ? ` · ${t('inventory.ertektarBadge')}` : ''}
                   </option>
                 ))}
               </select>
             </label>
             <label className="block">
-              <span className="form-label">{inventoryOperationType === 'correction' ? 'Indoklás' : 'Megjegyzés'}</span>
+              <span className="form-label">
+                {inventoryOperationType === 'correction' ? 'Indoklás' : 'Megjegyzés'}
+              </span>
               <input
                 className="form-input w-full"
                 value={inventoryNotes}
                 onChange={(event) => setInventoryNotes(event.target.value)}
-                placeholder={inventoryOperationType === 'correction' ? 'Kötelező indoklás' : 'Opcionális'}
+                placeholder={
+                  inventoryOperationType === 'correction' ? 'Kötelező indoklás' : 'Opcionális'
+                }
               />
             </label>
             <button
               type="button"
               onClick={() => void submitInventoryOperation()}
-              disabled={inventoryOperationLoading || inventoryCurrenciesLoading || inventoryCurrencies.length === 0}
+              disabled={
+                inventoryOperationLoading ||
+                inventoryCurrenciesLoading ||
+                inventoryCurrencies.length === 0
+              }
               className="form-button-primary h-9 text-xs"
             >
               {inventoryOperationLoading ? 'Mentés...' : 'Művelet rögzítése'}
@@ -838,19 +900,30 @@ export default function InventoryPage() {
             <p className="mt-2 text-xs text-gray-600">{inventoryOperationMessage}</p>
           )}
           {inventoryCurrenciesError && (
-            <p className="mt-2 text-xs text-red-700">Devizalista betöltési hiba: {inventoryCurrenciesError}</p>
+            <p className="mt-2 text-xs text-red-700">
+              Devizalista betöltési hiba: {inventoryCurrenciesError}
+            </p>
           )}
-          {inventoryOperationType === 'transfer' && transferTargetsLoaded && transferTargets.length === 0 && !transferTargetsLoading && (
-            <p className="mt-2 text-xs text-gray-600">{t('inventory.nincsElerhetoCelTelephely')}</p>
-          )}
+          {inventoryOperationType === 'transfer' &&
+            transferTargetsLoaded &&
+            transferTargets.length === 0 &&
+            !transferTargetsLoading && (
+              <p className="mt-2 text-xs text-gray-600">
+                {t('inventory.nincsElerhetoCelTelephely')}
+              </p>
+            )}
           {transferTargetsError && (
-            <p className="mt-2 text-xs text-red-700">{t('inventory.celTelephelyListaBetoltesiHiba')}: {transferTargetsError}</p>
+            <p className="mt-2 text-xs text-red-700">
+              {t('inventory.celTelephelyListaBetoltesiHiba')}: {transferTargetsError}
+            </p>
           )}
         </div>
         <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded border border-gray-200 bg-white p-3">
             <div className="text-xs uppercase text-gray-500">Saját pénztárkészlet</div>
-            <div className="mt-1 text-xl font-bold text-secondary-900">{branchStockRows.length}</div>
+            <div className="mt-1 text-xl font-bold text-secondary-900">
+              {branchStockRows.length}
+            </div>
             <div className="mt-1 text-xs text-gray-600">
               {branchStockRows[0]
                 ? `${branchStockRows[0].currencyCode ?? '-'}: ${formatAmount(branchStockRows[0].currentBalance, branchStockRows[0].currencyCode)}`
@@ -870,7 +943,8 @@ export default function InventoryPage() {
               {formatAmount(dailyBalance?.closingBalance, dailyBalance?.currencyCode)}
             </div>
             <div className="mt-1 text-xs text-gray-600">
-              Be: {formatAmount(dailyBalance?.totalIn, dailyBalance?.currencyCode)} · Ki: {formatAmount(dailyBalance?.totalOut, dailyBalance?.currencyCode)}
+              Be: {formatAmount(dailyBalance?.totalIn, dailyBalance?.currencyCode)} · Ki:{' '}
+              {formatAmount(dailyBalance?.totalOut, dailyBalance?.currencyCode)}
             </div>
           </div>
           <div className="rounded border border-gray-200 bg-white p-3">
@@ -896,13 +970,23 @@ export default function InventoryPage() {
             <div className="mb-2 text-xs font-semibold uppercase text-gray-500">Mozgások</div>
             <div className="space-y-2">
               {movementRows.slice(0, 3).map((movement, idx) => (
-                <div key={movement.id ?? idx} className="rounded border border-gray-200 bg-white px-3 py-2 text-xs">
+                <div
+                  key={movement.id ?? idx}
+                  className="rounded border border-gray-200 bg-white px-3 py-2 text-xs"
+                >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-secondary-900">{movement.currencyCode ?? '-'}</span>
-                    <span className="font-mono">{formatAmount(movement.amount, movement.currencyCode)}</span>
+                    <span className="font-semibold text-secondary-900">
+                      {movement.currencyCode ?? '-'}
+                    </span>
+                    <span className="font-mono">
+                      {formatAmount(movement.amount, movement.currencyCode)}
+                    </span>
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-2 text-gray-600">
-                    <span>{movement.movementTypeDisplay ?? movement.movementType ?? 'Mozgás'} · {movement.statusDisplay ?? movement.status ?? '-'}</span>
+                    <span>
+                      {movement.movementTypeDisplay ?? movement.movementType ?? 'Mozgás'} ·{' '}
+                      {movement.statusDisplay ?? movement.status ?? '-'}
+                    </span>
                     {movement.id != null && (
                       <button
                         type="button"
@@ -919,7 +1003,10 @@ export default function InventoryPage() {
                       <button
                         type="button"
                         onClick={() => void runMovementAction(movement, 'approve')}
-                        disabled={movement.status !== 'PENDING' || movementActionId === `${movement.id}:approve`}
+                        disabled={
+                          movement.status !== 'PENDING' ||
+                          movementActionId === `${movement.id}:approve`
+                        }
                         className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-50"
                         aria-label={`Készletmozgás #${movement.id} jóváhagyása`}
                       >
@@ -928,7 +1015,10 @@ export default function InventoryPage() {
                       <button
                         type="button"
                         onClick={() => void runMovementAction(movement, 'receive')}
-                        disabled={!['IN_TRANSIT', 'APPROVED'].includes(movement.status ?? '') || movementActionId === `${movement.id}:receive`}
+                        disabled={
+                          !['IN_TRANSIT', 'APPROVED'].includes(movement.status ?? '') ||
+                          movementActionId === `${movement.id}:receive`
+                        }
                         className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-50"
                         aria-label={`Készletmozgás #${movement.id} fogadása`}
                       >
@@ -937,7 +1027,10 @@ export default function InventoryPage() {
                       <button
                         type="button"
                         onClick={() => void runMovementAction(movement, 'cancel')}
-                        disabled={movement.status !== 'PENDING' || movementActionId === `${movement.id}:cancel`}
+                        disabled={
+                          movement.status !== 'PENDING' ||
+                          movementActionId === `${movement.id}:cancel`
+                        }
                         className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-50"
                         aria-label={`Készletmozgás #${movement.id} visszavonása`}
                       >
@@ -947,35 +1040,65 @@ export default function InventoryPage() {
                   )}
                 </div>
               ))}
-              {movementRows.length === 0 && <div className="text-xs text-gray-500">Nincs mozgás adat.</div>}
+              {movementRows.length === 0 && (
+                <div className="text-xs text-gray-500">Nincs mozgás adat.</div>
+              )}
             </div>
             {selectedMovementDetail && (
-              <div className="mt-3 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-950" data-testid="inventory-movement-detail">
+              <div
+                className="mt-3 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-950"
+                data-testid="inventory-movement-detail"
+              >
                 <div className="font-semibold">Mozgás részlete #{selectedMovementDetail.id}</div>
                 <div className="mt-1 grid gap-1 sm:grid-cols-2">
                   <span>Valuta: {selectedMovementDetail.currencyCode ?? '-'}</span>
-                  <span>Összeg: {formatAmount(selectedMovementDetail.amount, selectedMovementDetail.currencyCode)}</span>
-                  <span>Státusz: {selectedMovementDetail.statusDisplay ?? selectedMovementDetail.status ?? '-'}</span>
-                  <span>Típus: {selectedMovementDetail.movementTypeDisplay ?? selectedMovementDetail.movementType ?? '-'}</span>
+                  <span>
+                    Összeg:{' '}
+                    {formatAmount(
+                      selectedMovementDetail.amount,
+                      selectedMovementDetail.currencyCode,
+                    )}
+                  </span>
+                  <span>
+                    Státusz:{' '}
+                    {selectedMovementDetail.statusDisplay ?? selectedMovementDetail.status ?? '-'}
+                  </span>
+                  <span>
+                    Típus:{' '}
+                    {selectedMovementDetail.movementTypeDisplay ??
+                      selectedMovementDetail.movementType ??
+                      '-'}
+                  </span>
                 </div>
               </div>
             )}
           </div>
           <div>
-            <div className="mb-2 text-xs font-semibold uppercase text-gray-500">Napi mozgásnapló</div>
+            <div className="mb-2 text-xs font-semibold uppercase text-gray-500">
+              Napi mozgásnapló
+            </div>
             <div className="space-y-2">
               {movementLogRows.slice(0, 3).map((movement, idx) => (
-                <div key={movement.id ?? idx} className="rounded border border-gray-200 bg-white px-3 py-2 text-xs">
+                <div
+                  key={movement.id ?? idx}
+                  className="rounded border border-gray-200 bg-white px-3 py-2 text-xs"
+                >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-secondary-900">{movement.currencyCode ?? '-'}</span>
-                    <span className="font-mono">{formatAmount(movement.amount, movement.currencyCode)}</span>
+                    <span className="font-semibold text-secondary-900">
+                      {movement.currencyCode ?? '-'}
+                    </span>
+                    <span className="font-mono">
+                      {formatAmount(movement.amount, movement.currencyCode)}
+                    </span>
                   </div>
                   <div className="mt-1 text-gray-600">
                     {(movement.fromBranchName ?? '-') + ' -> ' + (movement.toBranchName ?? '-')}
                   </div>
                 </div>
               ))}
-              {movementLogRows.length === 0 && <div className="text-xs text-gray-500">Nincs napi mozgásnapló adat.</div>}
+              {movementLogRows.length === 0 && (
+                <div className="text-xs text-gray-500">Nincs napi mozgásnapló adat.</div>
+              )}
             </div>
           </div>
         </div>
@@ -984,58 +1107,71 @@ export default function InventoryPage() {
       {/* Vault flow tábla */}
       <div className="form-panel p-0">
         <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr className="text-xs uppercase text-gray-600">
-              <th className="px-3 py-2 text-left w-20">{t('common.code')}</th>
-              <th className="px-3 py-2 text-left">{t('display.megnevezes')}</th>
-              <th className="px-3 py-2 text-right w-28">{t('inventory.nyitokeszlet')}</th>
-              <th className="px-3 py-2 text-right w-28">{t('inventory.atvettIn')}</th>
-              <th className="px-3 py-2 text-right w-28">{t('inventory.atadottOut')}</th>
-              <th className="px-3 py-2 text-right w-28">{t('inventory.zarokeszlet')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && rows.length === 0 ? (
-              <tr><td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-500">
-                  <div className="flex flex-col items-center gap-2">
-                    <Info className="h-5 w-5 text-gray-400" />
-                    <div>{t('inventory.nincsErtektariKeszletBejegyzes')}</div>
-                    <div className="text-xs text-gray-400">
-                      {t('inventory.azErtektariKeszletACollectionDistributionBankTranzakciokSoranToltodikFel')}
-                    </div>
-                  </div>
-                </td>
+          <table className="w-full min-w-[640px] text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr className="text-xs uppercase text-gray-600">
+                <th className="px-3 py-2 text-left w-20">{t('common.code')}</th>
+                <th className="px-3 py-2 text-left">{t('display.megnevezes')}</th>
+                <th className="px-3 py-2 text-right w-28">{t('inventory.nyitokeszlet')}</th>
+                <th className="px-3 py-2 text-right w-28">{t('inventory.atvettIn')}</th>
+                <th className="px-3 py-2 text-right w-28">{t('inventory.atadottOut')}</th>
+                <th className="px-3 py-2 text-right w-28">{t('inventory.zarokeszlet')}</th>
               </tr>
-            ) : rows.map((row, idx) => {
-              // FR-5: pozitív záróegyenlegű sor enyhe zöld tónussal kiemelve (a 0-egyenlegtől
-              // elkülönítve); FR-4: a többi sor zebra-csíkozással (páros/páratlan).
-              const positive = (row.closing ?? 0) > 0
-              const rowBg = positive ? 'bg-emerald-50' : (idx % 2 === 1 ? 'bg-gray-50' : '')
-              return (
-                <tr key={row.currencyCode} className={`${rowBg} hover:bg-blue-50 border-b border-gray-100 last:border-0`}>
-                  <td className="px-3 py-1.5 font-mono font-bold text-blue-700">{row.currencyCode}</td>
-                  <td className="px-3 py-1.5">{row.currencyName}</td>
-                  <td className="px-3 py-1.5 text-right font-mono text-gray-700">
-                    {formatCurrency(row.opening, row.currencyCode)}
-                  </td>
-                  <td className="px-3 py-1.5 text-right font-mono text-green-700">
-                    {formatCurrency(row.received, row.currencyCode)}
-                  </td>
-                  <td className="px-3 py-1.5 text-right font-mono text-red-700">
-                    {formatCurrency(row.issued, row.currencyCode)}
-                  </td>
-                  <td className="px-3 py-1.5 text-right font-mono font-bold text-secondary-900">
-                    {formatCurrency(row.closing, row.currencyCode)}
+            </thead>
+            <tbody>
+              {loading && rows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-500">
+                    Betöltés...
                   </td>
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-500">
+                    <div className="flex flex-col items-center gap-2">
+                      <Info className="h-5 w-5 text-gray-400" />
+                      <div>{t('inventory.nincsErtektariKeszletBejegyzes')}</div>
+                      <div className="text-xs text-gray-400">
+                        {t(
+                          'inventory.azErtektariKeszletACollectionDistributionBankTranzakciokSoranToltodikFel',
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                rows.map((row, idx) => {
+                  // FR-5: pozitív záróegyenlegű sor enyhe zöld tónussal kiemelve (a 0-egyenlegtől
+                  // elkülönítve); FR-4: a többi sor zebra-csíkozással (páros/páratlan).
+                  const positive = (row.closing ?? 0) > 0
+                  const rowBg = positive ? 'bg-emerald-50' : idx % 2 === 1 ? 'bg-gray-50' : ''
+                  return (
+                    <tr
+                      key={row.currencyCode}
+                      className={`${rowBg} hover:bg-blue-50 border-b border-gray-100 last:border-0`}
+                    >
+                      <td className="px-3 py-1.5 font-mono font-bold text-blue-700">
+                        {row.currencyCode}
+                      </td>
+                      <td className="px-3 py-1.5">{row.currencyName}</td>
+                      <td className="px-3 py-1.5 text-right font-mono text-gray-700">
+                        {formatCurrency(row.opening, row.currencyCode)}
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-mono text-green-700">
+                        {formatCurrency(row.received, row.currencyCode)}
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-mono text-red-700">
+                        {formatCurrency(row.issued, row.currencyCode)}
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-mono font-bold text-secondary-900">
+                        {formatCurrency(row.closing, row.currencyCode)}
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -1043,10 +1179,14 @@ export default function InventoryPage() {
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
           <div>
             <h2 className="text-sm font-bold text-secondary-900">Címletszintű értéktári készlet</h2>
-            <div className="text-xs text-gray-500">Backend: banknote-inventory / saját telephely</div>
+            <div className="text-xs text-gray-500">
+              Backend: banknote-inventory / saját telephely
+            </div>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
-            <span className="rounded border border-gray-200 bg-white px-2 py-1">{banknoteRows.length} címlet</span>
+            <span className="rounded border border-gray-200 bg-white px-2 py-1">
+              {banknoteRows.length} címlet
+            </span>
             {lowStockRows.length > 0 && (
               <span className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-amber-800">
                 Alacsony: {lowStockRows.length}
@@ -1072,7 +1212,8 @@ export default function InventoryPage() {
                 >
                   {banknoteRows.map((row) => (
                     <option key={row.id} value={row.id}>
-                      {row.currencyCode} {formatCurrency(row.faceValue, row.currencyCode)} · {row.quantity} db
+                      {row.currencyCode} {formatCurrency(row.faceValue, row.currencyCode)} ·{' '}
+                      {row.quantity} db
                     </option>
                   ))}
                 </select>
@@ -1110,16 +1251,36 @@ export default function InventoryPage() {
                 </label>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" className="form-button h-8 text-xs" disabled={banknoteActionLoading} onClick={() => void runBanknoteAction('add')}>
+                <button
+                  type="button"
+                  className="form-button h-8 text-xs"
+                  disabled={banknoteActionLoading}
+                  onClick={() => void runBanknoteAction('add')}
+                >
                   Bevét
                 </button>
-                <button type="button" className="form-button h-8 text-xs" disabled={banknoteActionLoading} onClick={() => void runBanknoteAction('remove')}>
+                <button
+                  type="button"
+                  className="form-button h-8 text-xs"
+                  disabled={banknoteActionLoading}
+                  onClick={() => void runBanknoteAction('remove')}
+                >
                   Kiad
                 </button>
-                <button type="button" className="form-button h-8 text-xs" disabled={banknoteActionLoading} onClick={() => void runBanknoteAction('count')}>
+                <button
+                  type="button"
+                  className="form-button h-8 text-xs"
+                  disabled={banknoteActionLoading}
+                  onClick={() => void runBanknoteAction('count')}
+                >
                   Leltárdarab
                 </button>
-                <button type="button" className="form-button-primary h-8 text-xs" disabled={banknoteActionLoading} onClick={() => void runBanknoteAction('thresholds')}>
+                <button
+                  type="button"
+                  className="form-button-primary h-8 text-xs"
+                  disabled={banknoteActionLoading}
+                  onClick={() => void runBanknoteAction('thresholds')}
+                >
                   Küszöb mentése
                 </button>
               </div>
@@ -1149,31 +1310,48 @@ export default function InventoryPage() {
                     Nincs címletszintű banknote_inventory adat ehhez a telephelyhez.
                   </td>
                 </tr>
-              ) : banknoteRows.map((row, idx) => {
-                const status = row.lowStock
-                  ? 'Alacsony'
-                  : row.overStock
-                    ? 'Túl magas'
-                    : 'Rendben'
-                const statusClass = row.lowStock
-                  ? 'border-amber-300 bg-amber-50 text-amber-800'
-                  : row.overStock
-                    ? 'border-blue-300 bg-blue-50 text-blue-800'
-                    : 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                return (
-                  <tr key={row.id} className={`${idx % 2 === 1 ? 'bg-gray-50' : ''} border-b border-gray-100 last:border-0`}>
-                    <td className="px-3 py-1.5 font-mono font-bold text-blue-700">{row.currencyCode}</td>
-                    <td className="px-3 py-1.5 text-right font-mono">{formatCurrency(row.faceValue, row.currencyCode)}</td>
-                    <td className="px-3 py-1.5 text-right font-mono">{row.quantity.toLocaleString('hu-HU')}</td>
-                    <td className="px-3 py-1.5 text-right font-mono font-semibold">{formatCurrency(row.totalValue, row.currencyCode)}</td>
-                    <td className="px-3 py-1.5 text-right font-mono text-gray-600">{row.minQuantity ?? '-'}</td>
-                    <td className="px-3 py-1.5 text-right font-mono text-gray-600">{row.maxQuantity ?? '-'}</td>
-                    <td className="px-3 py-1.5">
-                      <span className={`rounded border px-2 py-1 text-xs font-semibold ${statusClass}`}>{status}</span>
-                    </td>
-                  </tr>
-                )
-              })}
+              ) : (
+                banknoteRows.map((row, idx) => {
+                  const status = row.lowStock ? 'Alacsony' : row.overStock ? 'Túl magas' : 'Rendben'
+                  const statusClass = row.lowStock
+                    ? 'border-amber-300 bg-amber-50 text-amber-800'
+                    : row.overStock
+                      ? 'border-blue-300 bg-blue-50 text-blue-800'
+                      : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  return (
+                    <tr
+                      key={row.id}
+                      className={`${idx % 2 === 1 ? 'bg-gray-50' : ''} border-b border-gray-100 last:border-0`}
+                    >
+                      <td className="px-3 py-1.5 font-mono font-bold text-blue-700">
+                        {row.currencyCode}
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-mono">
+                        {formatCurrency(row.faceValue, row.currencyCode)}
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-mono">
+                        {row.quantity.toLocaleString('hu-HU')}
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-mono font-semibold">
+                        {formatCurrency(row.totalValue, row.currencyCode)}
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-mono text-gray-600">
+                        {row.minQuantity ?? '-'}
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-mono text-gray-600">
+                        {row.maxQuantity ?? '-'}
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <span
+                          className={`rounded border px-2 py-1 text-xs font-semibold ${statusClass}`}
+                        >
+                          {status}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -1183,7 +1361,8 @@ export default function InventoryPage() {
         <div className="no-print form-panel bg-amber-50 border-amber-200 flex items-start gap-2 text-xs text-amber-900">
           <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
           <span>
-            <strong>{t('components.megjegyzes')}</strong>{t('inventory.aNyitoAtvettAtadottNapiErtekek')}
+            <strong>{t('components.megjegyzes')}</strong>
+            {t('inventory.aNyitoAtvettAtadottNapiErtekek')}
             {t('inventory.kovetesehezAV250SprintbenKerulImplementalasraADailySnapshotMechanizmus')}
             {t('inventory.jelenlegCsakAZaroJelenlegiKeszletErhetoEl')}
           </span>

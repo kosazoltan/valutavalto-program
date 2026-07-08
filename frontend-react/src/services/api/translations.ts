@@ -33,7 +33,10 @@ export const translationApi = {
     })
     return response.data
   },
-  importMany: async (languageCode: string, translations: TranslationMap): Promise<TranslationImportResult> => {
+  importMany: async (
+    languageCode: string,
+    translations: TranslationMap,
+  ): Promise<TranslationImportResult> => {
     const response = await api.post<TranslationImportResult>('/translations/import', {
       languageCode: languageCode.trim(),
       translations,

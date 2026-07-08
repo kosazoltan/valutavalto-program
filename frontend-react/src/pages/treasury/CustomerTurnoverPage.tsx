@@ -81,7 +81,9 @@ export default function CustomerTurnoverPage() {
       {error && (
         <div className="rounded border border-red-300 bg-red-50 p-4 text-sm text-red-700">
           {error}
-          <button onClick={fetchData} className="ml-3 underline">{t('treasury.ujra')}</button>
+          <button onClick={fetchData} className="ml-3 underline">
+            {t('treasury.ujra')}
+          </button>
         </div>
       )}
 
@@ -110,7 +112,9 @@ export default function CustomerTurnoverPage() {
       ))}
 
       {!loading && data.length === 0 && (
-        <p className="py-8 text-center text-gray-400">{t('treasury.nincsUgyfelforgalomAKivalasztottNapra')}</p>
+        <p className="py-8 text-center text-gray-400">
+          {t('treasury.nincsUgyfelforgalomAKivalasztottNapra')}
+        </p>
       )}
 
       {loading && (

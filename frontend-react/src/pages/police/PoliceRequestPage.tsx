@@ -52,7 +52,7 @@ export default function PoliceRequestPage() {
       setError(null)
       const response = await api.get<PoliceRequestItem[] | PolicePageResponse>('/police/requests')
       const payload = Array.isArray(response.data) ? response.data : response.data.content
-      setItems(safeArray<typeof items[0]>(payload))
+      setItems(safeArray<(typeof items)[0]>(payload))
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('PoliceRequestPage', 'Betöltési hiba:', err)
@@ -141,12 +141,10 @@ export default function PoliceRequestPage() {
     }
   }
 
-  const filtered = items.filter(item => {
+  const filtered = items.filter((item) => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
+    return Object.values(item).some((v) => v != null && String(v).toLowerCase().includes(term))
   })
 
   return (
@@ -161,7 +159,8 @@ export default function PoliceRequestPage() {
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <button onClick={openNewForm} className="form-button-primary flex items-center gap-1">
-            <Plus className="h-4 w-4" />{t('common.new')}
+            <Plus className="h-4 w-4" />
+            {t('common.new')}
           </button>
         </div>
       </div>
@@ -171,39 +170,131 @@ export default function PoliceRequestPage() {
           <h2 className="text-base font-semibold">Új rendőrségi megkeresés</h2>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div>
-              <label htmlFor="police-request-number" className="form-label">Iktatószám</label>
-              <input id="police-request-number" value={form.requestNumber} onChange={(e) => setForm((current) => current ? { ...current, requestNumber: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="police-request-number" className="form-label">
+                Iktatószám
+              </label>
+              <input
+                id="police-request-number"
+                value={form.requestNumber}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, requestNumber: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="police-request-date" className="form-label">Dátum</label>
-              <input id="police-request-date" type="date" value={form.requestDate} onChange={(e) => setForm((current) => current ? { ...current, requestDate: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="police-request-date" className="form-label">
+                Dátum
+              </label>
+              <input
+                id="police-request-date"
+                type="date"
+                value={form.requestDate}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, requestDate: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="police-requested-by" className="form-label">Előadó</label>
-              <input id="police-requested-by" value={form.requestedBy} onChange={(e) => setForm((current) => current ? { ...current, requestedBy: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="police-requested-by" className="form-label">
+                Előadó
+              </label>
+              <input
+                id="police-requested-by"
+                value={form.requestedBy}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, requestedBy: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="police-customer-name" className="form-label">Ügyfél neve</label>
-              <input id="police-customer-name" value={form.customerName} onChange={(e) => setForm((current) => current ? { ...current, customerName: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="police-customer-name" className="form-label">
+                Ügyfél neve
+              </label>
+              <input
+                id="police-customer-name"
+                value={form.customerName}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, customerName: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="police-document-number" className="form-label">Okmányszám</label>
-              <input id="police-document-number" value={form.documentNumber} onChange={(e) => setForm((current) => current ? { ...current, documentNumber: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="police-document-number" className="form-label">
+                Okmányszám
+              </label>
+              <input
+                id="police-document-number"
+                value={form.documentNumber}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, documentNumber: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="police-date-from" className="form-label">Időszak kezdete</label>
-              <input id="police-date-from" type="date" value={form.dateRangeFrom} onChange={(e) => setForm((current) => current ? { ...current, dateRangeFrom: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="police-date-from" className="form-label">
+                Időszak kezdete
+              </label>
+              <input
+                id="police-date-from"
+                type="date"
+                value={form.dateRangeFrom}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, dateRangeFrom: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="police-date-to" className="form-label">Időszak vége</label>
-              <input id="police-date-to" type="date" value={form.dateRangeTo} onChange={(e) => setForm((current) => current ? { ...current, dateRangeTo: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="police-date-to" className="form-label">
+                Időszak vége
+              </label>
+              <input
+                id="police-date-to"
+                type="date"
+                value={form.dateRangeTo}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, dateRangeTo: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => void createRequest()} disabled={saving || !form.requestNumber.trim() || !form.requestDate || !form.requestedBy.trim()} className="form-button-primary">
+            <button
+              type="button"
+              onClick={() => void createRequest()}
+              disabled={
+                saving ||
+                !form.requestNumber.trim() ||
+                !form.requestDate ||
+                !form.requestedBy.trim()
+              }
+              className="form-button-primary"
+            >
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
-            <button type="button" onClick={() => setForm(null)} className="form-button">Mégse</button>
+            <button type="button" onClick={() => setForm(null)} className="form-button">
+              Mégse
+            </button>
           </div>
         </div>
       )}
@@ -215,7 +306,7 @@ export default function PoliceRequestPage() {
             type="text"
             placeholder="Keresés..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="form-input w-full pl-10"
           />
         </div>
@@ -237,20 +328,42 @@ export default function PoliceRequestPage() {
       {details && (
         <div className="rounded border border-gray-200 bg-white p-4 text-sm">
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-base font-semibold">Megkeresés részletei: {details.requestNumber}</h2>
-            <button type="button" onClick={() => setDetails(null)} className="form-button">Bezárás</button>
+            <h2 className="text-base font-semibold">
+              Megkeresés részletei: {details.requestNumber}
+            </h2>
+            <button type="button" onClick={() => setDetails(null)} className="form-button">
+              Bezárás
+            </button>
           </div>
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-            <div><span className="text-gray-500">Előadó:</span> {details.requestedBy ?? '-'}</div>
-            <div><span className="text-gray-500">Ügyfél:</span> {details.customerName ?? '-'}</div>
-            <div><span className="text-gray-500">Okmányszám:</span> {details.documentNumber ?? '-'}</div>
-            <div><span className="text-gray-500">Státusz:</span> {details.status ?? '-'}</div>
-            <div><span className="text-gray-500">Időszak:</span> {details.dateRangeFrom ?? '-'} - {details.dateRangeTo ?? '-'}</div>
-            <div><span className="text-gray-500">Rögzítette:</span> {details.createdByName ?? '-'}</div>
-            <div><span className="text-gray-500">Lezárva:</span> {details.completedAt ? new Date(details.completedAt).toLocaleString('hu-HU') : '-'}</div>
+            <div>
+              <span className="text-gray-500">Előadó:</span> {details.requestedBy ?? '-'}
+            </div>
+            <div>
+              <span className="text-gray-500">Ügyfél:</span> {details.customerName ?? '-'}
+            </div>
+            <div>
+              <span className="text-gray-500">Okmányszám:</span> {details.documentNumber ?? '-'}
+            </div>
+            <div>
+              <span className="text-gray-500">Státusz:</span> {details.status ?? '-'}
+            </div>
+            <div>
+              <span className="text-gray-500">Időszak:</span> {details.dateRangeFrom ?? '-'} -{' '}
+              {details.dateRangeTo ?? '-'}
+            </div>
+            <div>
+              <span className="text-gray-500">Rögzítette:</span> {details.createdByName ?? '-'}
+            </div>
+            <div>
+              <span className="text-gray-500">Lezárva:</span>{' '}
+              {details.completedAt ? new Date(details.completedAt).toLocaleString('hu-HU') : '-'}
+            </div>
           </div>
           {details.responseData && (
-            <pre className="mt-3 max-h-48 overflow-auto rounded bg-gray-50 p-3 text-xs">{details.responseData}</pre>
+            <pre className="mt-3 max-h-48 overflow-auto rounded bg-gray-50 p-3 text-xs">
+              {details.responseData}
+            </pre>
           )}
         </div>
       )}
@@ -259,44 +372,81 @@ export default function PoliceRequestPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('police.iktatoszam')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.date')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.status2')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('police.eloado')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Ügyfél</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Okmányszám</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.actions')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('police.iktatoszam')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.date')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.status2')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('police.eloado')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Ügyfél
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Okmányszám
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                {t('common.actions')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.requestNumber ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.requestDate ? new Date(item.requestDate).toLocaleString('hu-HU') : '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.requestedBy ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.customerName ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.documentNumber ?? '-'}</td>
-                <td className="px-4 py-3 text-right whitespace-nowrap">
-                  <button onClick={() => void loadDetails(item.id)} disabled={saving} className="form-button mr-2 p-1 text-blue-600" title="Részletek">
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => void processRequest(item.id)} disabled={saving || !['RECEIVED', 'PROCESSING'].includes(item.status ?? '')} className="form-button p-1 text-green-700" title="Feldolgozás">
-                    <Play className="h-4 w-4" />
-                  </button>
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
+                  Betöltés...
                 </td>
               </tr>
-            ))}
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('common.noData')}
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm">{item.requestNumber ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.requestDate ? new Date(item.requestDate).toLocaleString('hu-HU') : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.requestedBy ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.customerName ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.documentNumber ?? '-'}</td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <button
+                      onClick={() => void loadDetails(item.id)}
+                      disabled={saving}
+                      className="form-button mr-2 p-1 text-blue-600"
+                      title="Részletek"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => void processRequest(item.id)}
+                      disabled={saving || !['RECEIVED', 'PROCESSING'].includes(item.status ?? '')}
+                      className="form-button p-1 text-green-700"
+                      title="Feldolgozás"
+                    >
+                      <Play className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="text-sm text-gray-500">
-        {t('audit.osszesen')}{filtered.length} / {items.length}
+        {t('audit.osszesen')}
+        {filtered.length} / {items.length}
       </div>
     </div>
   )

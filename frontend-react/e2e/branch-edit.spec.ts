@@ -62,7 +62,12 @@ type PutCapture = { body: Record<string, unknown> | null }
  * Copilot #1076: az API teljesen mockolt, így a login determinisztikus — hard assert,
  * nem graceful skip (a skip elrejtené a valódi regressziót).
  */
-async function loginWithBranchMocks(page: Page, capture: PutCapture, branchOverride?: Partial<typeof BRANCH>, opts?: { admin403?: boolean }): Promise<void> {
+async function loginWithBranchMocks(
+  page: Page,
+  capture: PutCapture,
+  branchOverride?: Partial<typeof BRANCH>,
+  opts?: { admin403?: boolean },
+): Promise<void> {
   const branch = { ...BRANCH, ...branchOverride }
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
@@ -70,7 +75,7 @@ async function loginWithBranchMocks(page: Page, capture: PutCapture, branchOverr
     permissions: [],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -93,23 +98,43 @@ async function loginWithBranchMocks(page: Page, capture: PutCapture, branchOverr
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/dictionaries/REGION') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(REGIONS) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(REGIONS),
+      })
     }
 
     if (path.endsWith(`/branches/${branch.id}`) && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(branch) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(branch),
+      })
     }
 
     if (path.endsWith(`/branches/${branch.id}/path`) && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([branch]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([branch]),
+      })
     }
 
     if (path.endsWith(`/branches/${branch.id}/children`) && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     if (path.endsWith(`/admin/branches/${branch.id}`) && method === 'GET') {
@@ -120,7 +145,11 @@ async function loginWithBranchMocks(page: Page, capture: PutCapture, branchOverr
         return route.fulfill({
           status: 403,
           contentType: 'application/json',
-          body: JSON.stringify({ status: 403, error: 'FORBIDDEN', message: 'Nincs jogosultságod ehhez a művelethez.' }),
+          body: JSON.stringify({
+            status: 403,
+            error: 'FORBIDDEN',
+            message: 'Nincs jogosultságod ehhez a művelethez.',
+          }),
         })
       }
       return route.fulfill({
@@ -150,7 +179,11 @@ async function loginWithBranchMocks(page: Page, capture: PutCapture, branchOverr
     }
 
     if (path.endsWith('/branches') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([branch]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([branch]),
+      })
     }
 
     // Default: abort (az auth.spec.ts mintájára) — a nem mockolt végpont ne adjon hamis 200-at,
@@ -202,7 +235,9 @@ test('FK-022 FR-1/FR-3: a szerkesztő form előtöltve nyílik, a kód read-only
   await expect(codeInput).toBeDisabled()
 })
 
-test('FK-022 FR-2/FR-6: mezőmódosítás + mentés → PUT payload + vissza a listára', async ({ page }) => {
+test('FK-022 FR-2/FR-6: mezőmódosítás + mentés → PUT payload + vissza a listára', async ({
+  page,
+}) => {
   const capture: PutCapture = { body: null }
   await loginWithBranchMocks(page, capture)
   await openEditPage(page)
@@ -216,7 +251,9 @@ test('FK-022 FR-2/FR-6: mezőmódosítás + mentés → PUT payload + vissza a l
   expect(capture.body).not.toHaveProperty('code')
 })
 
-test('FK-022 FR-4/FR-11: aktív → inaktív státuszváltás megerősítéssel, Igen → isActive=false', async ({ page }) => {
+test('FK-022 FR-4/FR-11: aktív → inaktív státuszváltás megerősítéssel, Igen → isActive=false', async ({
+  page,
+}) => {
   const capture: PutCapture = { body: null }
   await loginWithBranchMocks(page, capture)
   await openEditPage(page)
@@ -232,7 +269,9 @@ test('FK-022 FR-4/FR-11: aktív → inaktív státuszváltás megerősítéssel,
   expect(capture.body).toMatchObject({ isActive: false })
 })
 
-test('FK-022 FR-4: megerősítő kérdésnél "Nem" → nincs mentés, a form megmarad', async ({ page }) => {
+test('FK-022 FR-4: megerősítő kérdésnél "Nem" → nincs mentés, a form megmarad', async ({
+  page,
+}) => {
   const capture: PutCapture = { body: null }
   await loginWithBranchMocks(page, capture)
   await openEditPage(page)
@@ -247,7 +286,9 @@ test('FK-022 FR-4: megerősítő kérdésnél "Nem" → nincs mentés, a form me
   expect(capture.body).toBeNull()
 })
 
-test('FK-022 FR-5: inaktív iroda visszaaktiválása megerősítéssel → isActive=true', async ({ page }) => {
+test('FK-022 FR-5: inaktív iroda visszaaktiválása megerősítéssel → isActive=true', async ({
+  page,
+}) => {
   const capture: PutCapture = { body: null }
   await loginWithBranchMocks(page, capture, { isActive: false })
 
@@ -265,7 +306,9 @@ test('FK-022 FR-5: inaktív iroda visszaaktiválása megerősítéssel → isAct
   expect(capture.body).toMatchObject({ isActive: true })
 })
 
-test('FK-038: /admin/branches 403 → NINCS "Hozzáférés megtagadva" toast, a form betölt (1920×1080)', async ({ page }, testInfo) => {
+test('FK-038: /admin/branches 403 → NINCS "Hozzáférés megtagadva" toast, a form betölt (1920×1080)', async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 1920, height: 1080 })
   const capture: PutCapture = { body: null }
   await loginWithBranchMocks(page, capture, undefined, { admin403: true })

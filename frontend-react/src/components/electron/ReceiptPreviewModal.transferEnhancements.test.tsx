@@ -25,7 +25,13 @@ const base: PrintReceiptData = {
 
 function renderModal(data: PrintReceiptData) {
   return render(
-    <ReceiptPreviewModal isOpen onClose={() => {}} receiptData={data} qrCodeDataUrl={null} onPrint={async () => {}} />,
+    <ReceiptPreviewModal
+      isOpen
+      onClose={() => {}}
+      receiptData={data}
+      qrCodeDataUrl={null}
+      onPrint={async () => {}}
+    />,
   )
 }
 
@@ -76,7 +82,12 @@ describe('ReceiptPreviewModal — átadás-átvétel bővítések (FK02-E transf
   })
 
   it('Fejléc-javítás FR-5: sztornó bizonylaton a jogi nyilatkozat NEM jelenik meg (átvételi irány esetén sem)', () => {
-    const { container } = renderModal({ ...base, transferDocType: 'receipt', isStorno: true, stornoReason: 'Téves' })
+    const { container } = renderModal({
+      ...base,
+      transferDocType: 'receipt',
+      isStorno: true,
+      stornoReason: 'Téves',
+    })
     expect(container.textContent ?? '').not.toContain('Büntetőjogi felelősségem tudatában')
   })
 
@@ -127,7 +138,11 @@ describe('ReceiptPreviewModal — átadás-átvétel bővítések (FK02-E transf
 
   it('regresszió: nem-HUF átadásnál hiányzó forint-érték esetén NEM jelenik meg „0 HUF"', () => {
     // online nem-HUF eset: a backend hufValue=null → roundedHufAmount=null kerül a receiptData-ba
-    const { container } = renderModal({ ...base, roundedHufAmount: undefined, hufAmount: undefined })
+    const { container } = renderModal({
+      ...base,
+      roundedHufAmount: undefined,
+      hufAmount: undefined,
+    })
     expect(container.textContent ?? '').not.toContain('Forint érték:')
   })
 })

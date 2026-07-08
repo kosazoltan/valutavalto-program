@@ -35,8 +35,22 @@ const REPORT = {
   totalBuy: 1002345,
   totalSell: 2008925,
   byCurrency: [
-    { currencyCode: 'EUR', officialRate: 405.12, buyVolume: 2000, buyHuf: 800000, sellVolume: 1500, sellHuf: 600000 },
-    { currencyCode: 'USD', officialRate: null, buyVolume: 500, buyHuf: 200000, sellVolume: 0, sellHuf: 0 },
+    {
+      currencyCode: 'EUR',
+      officialRate: 405.12,
+      buyVolume: 2000,
+      buyHuf: 800000,
+      sellVolume: 1500,
+      sellHuf: 600000,
+    },
+    {
+      currencyCode: 'USD',
+      officialRate: null,
+      buyVolume: 500,
+      buyHuf: 200000,
+      sellVolume: 0,
+      sellHuf: 0,
+    },
   ],
 }
 
@@ -77,7 +91,12 @@ describe('DailyTurnoverPage — FK-045', () => {
   })
 
   it('NFR-4: üres byCurrency → „Nincs forgalmi adat" üzenet, nem összeomlás', async () => {
-    mockCompany.mockResolvedValue({ period: '2026-06-01 - 2026-06-30', totalBuy: 0, totalSell: 0, byCurrency: [] })
+    mockCompany.mockResolvedValue({
+      period: '2026-06-01 - 2026-06-30',
+      totalBuy: 0,
+      totalSell: 0,
+      byCurrency: [],
+    })
     render(<DailyTurnoverPage />)
     fireEvent.click(screen.getByText('Időszak rendben'))
 
@@ -98,7 +117,14 @@ describe('DailyTurnoverPage — FK-045', () => {
       totalBuy: 800000,
       totalSell: 0,
       byCurrency: [
-        { currencyCode: 'EUR', officialRate: 405.12, buyVolume: 2000, buyHuf: 800000, sellVolume: 0, sellHuf: 0 },
+        {
+          currencyCode: 'EUR',
+          officialRate: 405.12,
+          buyVolume: 2000,
+          buyHuf: 800000,
+          sellVolume: 0,
+          sellHuf: 0,
+        },
       ],
     })
     render(<DailyTurnoverPage />)

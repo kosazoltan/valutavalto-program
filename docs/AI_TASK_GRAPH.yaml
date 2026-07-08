@@ -11,11 +11,11 @@ globalRules:
 
 pipelines:
   backendValidate:
-    - "cd backend && mvnw.cmd -q test"
+    - 'cd backend && mvnw.cmd -q test'
   electronValidate:
-    - "cd penztar-client && npm ci"
-    - "cd penztar-client && npm run typecheck"
-    - "cd penztar-client && npm run check:ipc"
+    - 'cd penztar-client && npm ci'
+    - 'cd penztar-client && npm run typecheck'
+    - 'cd penztar-client && npm run check:ipc'
 
 phases:
   - id: P0
@@ -34,9 +34,9 @@ phases:
           - add mandatory test step
           - add typecheck and ipc checks in CI scripts
         verify:
-          - "cd backend && mvnw.cmd -q test"
-          - "cd penztar-client && npm run typecheck"
-          - "cd penztar-client && npm run check:ipc"
+          - 'cd backend && mvnw.cmd -q test'
+          - 'cd penztar-client && npm run typecheck'
+          - 'cd penztar-client && npm run check:ipc'
         acceptance:
           - ci fails on test/type/ipc failure
 
@@ -281,13 +281,13 @@ phases:
 
 qualityGates:
   - id: QG-1
-    rule: "all critical tests pass"
+    rule: 'all critical tests pass'
   - id: QG-2
-    rule: "no unresolved migration conflicts"
+    rule: 'no unresolved migration conflicts'
   - id: QG-3
-    rule: "openapi updated when api changed"
+    rule: 'openapi updated when api changed'
   - id: QG-4
-    rule: "ipc contract check passed"
+    rule: 'ipc contract check passed'
 
 finalDefinitionOfDone:
   - camera retention and linkage proven in integration tests

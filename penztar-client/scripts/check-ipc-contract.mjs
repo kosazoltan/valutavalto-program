@@ -61,7 +61,9 @@ function collectIpcChannelConstants(filePath) {
 
   const constants = new Map();
   const content = readText(filePath);
-  const objectMatch = content.match(/export\s+const\s+IPC_CHANNELS\s*=\s*\{([\s\S]*?)\}\s*satisfies/);
+  const objectMatch = content.match(
+    /export\s+const\s+IPC_CHANNELS\s*=\s*\{([\s\S]*?)\}\s*satisfies/,
+  );
 
   if (!objectMatch) {
     return constants;
@@ -128,7 +130,9 @@ for (const filePath of electronFiles) {
 const missingHandlers = [...invokedChannels].filter((channel) => !handledChannels.has(channel));
 const unusedHandlers = [...handledChannels].filter((channel) => !invokedChannels.has(channel));
 const ignoredUnusedHandlers = unusedHandlers.filter((channel) => internalOnlyHandlers.has(channel));
-const actionableUnusedHandlers = unusedHandlers.filter((channel) => !internalOnlyHandlers.has(channel));
+const actionableUnusedHandlers = unusedHandlers.filter(
+  (channel) => !internalOnlyHandlers.has(channel),
+);
 
 logger.log('IPC contract check');
 logger.log(`- Invoked channels (preload): ${invokedChannels.size}`);
@@ -143,7 +147,9 @@ if (missingHandlers.length > 0) {
 }
 
 if (ignoredUnusedHandlers.length > 0) {
-  logger.log(`\nInfo: belső használatú handler(ek) kihagyva a warningból: ${ignoredUnusedHandlers.join(', ')}`);
+  logger.log(
+    `\nInfo: belső használatú handler(ek) kihagyva a warningból: ${ignoredUnusedHandlers.join(', ')}`,
+  );
 }
 
 if (actionableUnusedHandlers.length > 0) {

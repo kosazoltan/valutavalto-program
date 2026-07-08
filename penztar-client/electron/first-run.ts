@@ -16,7 +16,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import type { SetupWorkerOption } from '@valuta/shared-ipc';
-import { preferredRoleCodesForAppMode, resolveBootstrapRoleCodeForAppMode } from './setup-app-mode-roles';
+import {
+  preferredRoleCodesForAppMode,
+  resolveBootstrapRoleCodeForAppMode,
+} from './setup-app-mode-roles';
 
 export type { SetupWorkerOption } from '@valuta/shared-ipc';
 export { resolveBootstrapRoleCodeForAppMode } from './setup-app-mode-roles';
@@ -49,15 +52,15 @@ export interface SetupConnectionTest {
 export interface SetupSavePayload {
   branchCode: string;
   branchName: string;
-  apiUrl: string;                // pl. https://valuta.example.com/api/v1
+  apiUrl: string; // pl. https://valuta.example.com/api/v1
   companyCode: string;
   authMode?: 'password' | 'google';
   adminUsername?: string;
-  adminPassword?: string;        // új admin jelszó (min 8 kar.) jelszavas pénztáros setupnál
-  bootstrapUsername?: string;    // wizardbeli teszt-felhasználó (opcionális, csak offline módban üres)
+  adminPassword?: string; // új admin jelszó (min 8 kar.) jelszavas pénztáros setupnál
+  bootstrapUsername?: string; // wizardbeli teszt-felhasználó (opcionális, csak offline módban üres)
   bootstrapPassword?: string;
-  offlineMode: boolean;          // ha true, a szerver kapcsolatot kihagyjuk a wizardban
-  appMode?: 'penztar' | 'ertektar' | 'ertekszallito' | 'full' | 'rate-maker';  // v2.1.4: program-tipus
+  offlineMode: boolean; // ha true, a szerver kapcsolatot kihagyjuk a wizardban
+  appMode?: 'penztar' | 'ertektar' | 'ertekszallito' | 'full' | 'rate-maker'; // v2.1.4: program-tipus
   // v2.3.0: a telepito dolgozoi dropdown-bol kivalasztott worker identity.
   // Ha kitoltve -> /auth/first-time-worker-setup (meglevo worker jelszo beallitas,
   // megtartott role-lel), egyebkent /auth/bootstrap-admin (uj admin letrehozas).
@@ -83,7 +86,7 @@ export interface SetupSaveResult {
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_BRANCHES: readonly Branch[] = Object.freeze([
-  { code: 'KORUT', name: 'Korut',       city: 'Szeged', address: 'Korut 22, Szeged'   },
+  { code: 'KORUT', name: 'Korut', city: 'Szeged', address: 'Korut 22, Szeged' },
   { code: 'TISZA', name: 'Tisza Sarok', city: 'Szeged', address: 'Tisza Sarok, Szeged' },
 ]);
 
@@ -107,7 +110,10 @@ function parseEnvFile(filePath: string): Record<string, string> {
       if (eq <= 0) continue;
       const key = line.slice(0, eq).trim();
       let value = line.slice(eq + 1).trim();
-      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
         value = value.slice(1, -1);
       }
       out[key] = value;
@@ -130,13 +136,20 @@ function looksLikeValidSecret(value: string | undefined): boolean {
 function looksLikeValidApiUrl(value: string | undefined): boolean {
   if (!value) return false;
   const trimmed = value.trim();
-  if (trimmed === 'https://' || trimmed === 'http://' || trimmed === 'https' || trimmed === 'http') {
+  if (
+    trimmed === 'https://' ||
+    trimmed === 'http://' ||
+    trimmed === 'https' ||
+    trimmed === 'http'
+  ) {
     return false;
   }
   try {
     const parsed = new URL(trimmed);
-    return (parsed.protocol === 'https:' || parsed.protocol === 'http:')
-      && parsed.hostname.trim().length > 0;
+    return (
+      (parsed.protocol === 'https:' || parsed.protocol === 'http:') &&
+      parsed.hostname.trim().length > 0
+    );
   } catch {
     return false;
   }
@@ -256,39 +269,51 @@ export function persistBootstrapPasswordConfig(
   try {
     setConfig('bootstrap_password', bootstrapPassword);
     deleteConfig('bootstrap_password_encrypted');
-    log.warn('[Setup] safeStorage nem elerheto, bootstrap jelszo ideiglenesen plaintext SQLite configban marad; sikeres bootstrap login utan torlodik.');
+    log.warn(
+      '[Setup] safeStorage nem elerheto, bootstrap jelszo ideiglenesen plaintext SQLite configban marad; sikeres bootstrap login utan torlodik.',
+    );
   } catch (err) {
-    log.warn('[Setup] bootstrap jelszo fallback mentese sikertelen; meglevo bootstrap titok erintetlen marad:', err);
+    log.warn(
+      '[Setup] bootstrap jelszo fallback mentese sikertelen; meglevo bootstrap titok erintetlen marad:',
+      err,
+    );
   }
 }
 
 export function resolveEffectiveBootstrapCredentials(
-  payload: Pick<SetupSavePayload, 'adminUsername' | 'adminPassword' | 'bootstrapUsername' | 'bootstrapPassword'>,
+  payload: Pick<
+    SetupSavePayload,
+    'adminUsername' | 'adminPassword' | 'bootstrapUsername' | 'bootstrapPassword'
+  >,
   resolvedWorkerIdentity: { workerCode?: string } | null,
   options: { preserveExistingPassword?: boolean } = {},
 ): { bootstrapUsername: string; bootstrapPassword: string } {
   // Worker code precedence follows the backend identity that actually owns the password:
   // server-confirmed worker, then the login/test worker typed in the wizard, then admin fallback.
-  const workerCode = [
-    resolvedWorkerIdentity?.workerCode,
-    payload.bootstrapUsername,
-    payload.adminUsername,
-  ].find((value) => value != null && value.trim().length > 0)?.trim().toUpperCase() ?? '';
+  const workerCode =
+    [resolvedWorkerIdentity?.workerCode, payload.bootstrapUsername, payload.adminUsername]
+      .find((value) => value != null && value.trim().length > 0)
+      ?.trim()
+      .toUpperCase() ?? '';
   const currentBootstrapPassword = payload.bootstrapPassword?.trim() ?? '';
-  const bootstrapPassword = options.preserveExistingPassword && currentBootstrapPassword
-    ? currentBootstrapPassword
-    : (payload.adminPassword ?? '');
+  const bootstrapPassword =
+    options.preserveExistingPassword && currentBootstrapPassword
+      ? currentBootstrapPassword
+      : (payload.adminPassword ?? '');
   return {
     bootstrapUsername: workerCode,
     bootstrapPassword,
   };
 }
 
-function preferredBootstrapLoginRoleCodesForAppMode(appMode: SetupSavePayload['appMode'] | undefined): string[] {
+function preferredBootstrapLoginRoleCodesForAppMode(
+  appMode: SetupSavePayload['appMode'] | undefined,
+): string[] {
   const preferredCodes = preferredRoleCodesForAppMode(appMode);
   const fallbackCode = resolveBootstrapRoleCodeForAppMode(appMode);
-  return (preferredCodes.length > 0 ? preferredCodes : [fallbackCode])
-    .map(normalizeBootstrapRoleCode);
+  return (preferredCodes.length > 0 ? preferredCodes : [fallbackCode]).map(
+    normalizeBootstrapRoleCode,
+  );
 }
 
 function normalizeBootstrapRoleCode(roleCode: string): string {
@@ -323,13 +348,17 @@ export function selectBootstrapLoginRoleCode(
   const preferredRoleCodes = preferredBootstrapLoginRoleCodesForAppMode(appMode);
 
   for (const preferredRoleCode of preferredRoleCodes) {
-    const preferred = normalizedRoleCodes.find((roleCode) =>
-      normalizeBootstrapRoleCode(roleCode) === preferredRoleCode);
+    const preferred = normalizedRoleCodes.find(
+      (roleCode) => normalizeBootstrapRoleCode(roleCode) === preferredRoleCode,
+    );
     if (preferred) return preferred;
   }
 
-  const serverRole = normalizedRoleCodes.find((roleCode) =>
-    BOOTSTRAP_SERVER_ROLE_CODES.has(roleCode) || BOOTSTRAP_SERVER_ROLE_CODES.has(roleCode.toLowerCase()));
+  const serverRole = normalizedRoleCodes.find(
+    (roleCode) =>
+      BOOTSTRAP_SERVER_ROLE_CODES.has(roleCode) ||
+      BOOTSTRAP_SERVER_ROLE_CODES.has(roleCode.toLowerCase()),
+  );
   return serverRole ?? null;
 }
 
@@ -408,7 +437,11 @@ async function httpJson<T = unknown>(
     }
 
     const timer = setTimeout(() => {
-      try { request.abort(); } catch { /* ignore */ }
+      try {
+        request.abort();
+      } catch {
+        /* ignore */
+      }
       safeResolve({
         ok: false,
         status: 0,
@@ -423,7 +456,11 @@ async function httpJson<T = unknown>(
     }
     if (customHeaders) {
       for (const [k, v] of Object.entries(customHeaders)) {
-        try { request.setHeader(k, v); } catch { /* ignore header errors */ }
+        try {
+          request.setHeader(k, v);
+        } catch {
+          /* ignore header errors */
+        }
       }
     }
 
@@ -443,9 +480,10 @@ async function httpJson<T = unknown>(
         if (status >= 200 && status < 300) {
           safeResolve({ ok: true, status, body: parsed, latencyMs: 0 });
         } else {
-          const message = typeof parsed === 'object' && parsed !== null && 'message' in parsed
-            ? String((parsed as { message: unknown }).message)
-            : `HTTP ${status}`;
+          const message =
+            typeof parsed === 'object' && parsed !== null && 'message' in parsed
+              ? String((parsed as { message: unknown }).message)
+              : `HTTP ${status}`;
           safeResolve({ ok: false, status, body: parsed, errorMessage: message, latencyMs: 0 });
         }
       });
@@ -508,8 +546,18 @@ async function httpJsonWithRetry<T = unknown>(
       return last; // 4xx business error — NE retry
     }
     if (attempt === MAX_RETRIES - 1) break;
-    log.warn('[first-run httpJsonWithRetry] retry', attempt + 1, '/', MAX_RETRIES,
-        'status=', status, 'error=', last.errorMessage, 'url=', fullUrl);
+    log.warn(
+      '[first-run httpJsonWithRetry] retry',
+      attempt + 1,
+      '/',
+      MAX_RETRIES,
+      'status=',
+      status,
+      'error=',
+      last.errorMessage,
+      'url=',
+      fullUrl,
+    );
     await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt] ?? 5000));
   }
   return last as HttpResponse<T>;
@@ -572,8 +620,10 @@ export async function getBranches(apiUrl?: string, companyCode?: string): Promis
     log.info('[Setup] getBranches: backend 0 branch — static fallback.');
     return fallback();
   } catch (err: unknown) {
-    log.warn('[Setup] getBranches: backend hiba, static fallback:',
-      err instanceof Error ? err.message : String(err));
+    log.warn(
+      '[Setup] getBranches: backend hiba, static fallback:',
+      err instanceof Error ? err.message : String(err),
+    );
     return fallback();
   }
 }
@@ -590,10 +640,9 @@ export async function fetchBranchesFromBackend(
 ): Promise<Branch[] | null> {
   const base = normalizeApiBase(apiUrl);
   const url = `${base}/public/branches?companyCode=${encodeURIComponent(companyCode)}`;
-  const response = await httpJsonWithRetry<Array<{ code: string; name: string; city?: string; address?: string; isVault?: boolean }>>(
-    url,
-    { method: 'GET', timeoutMs },
-  );
+  const response = await httpJsonWithRetry<
+    Array<{ code: string; name: string; city?: string; address?: string; isVault?: boolean }>
+  >(url, { method: 'GET', timeoutMs });
   if (!response.ok || !Array.isArray(response.body)) {
     return null;
   }
@@ -633,8 +682,7 @@ export async function getWorkers(
     log.info('[Setup] getWorkers: backend 0 dolgozo.');
     return [];
   } catch (err: unknown) {
-    log.warn('[Setup] getWorkers: backend hiba:',
-      err instanceof Error ? err.message : String(err));
+    log.warn('[Setup] getWorkers: backend hiba:', err instanceof Error ? err.message : String(err));
     return [];
   }
 }
@@ -682,7 +730,10 @@ export async function waitForBackend(
   maxWaitMs = 60000,
   pollIntervalMs = 1000,
 ): Promise<{ healthy: boolean; attempts: number; lastError?: string }> {
-  const base = apiUrl.trim().replace(/\/+$/, '').replace(/\/api\/v1$/, '');
+  const base = apiUrl
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\/api\/v1$/, '');
   // A production Caddy az /actuator/* path-ot 403-mal blokkolja (management csak 127.0.0.1).
   // Ezert publikus /api/v1/auth/bootstrap-status-t hasznaljuk health checkhez.
   const healthUrl = `${base}/api/v1/auth/bootstrap-status`;
@@ -739,7 +790,8 @@ export async function bootstrapAdmin(
   }
 
   // 400 "beállítás már lezajlott" → idempotens no-op (ha valaki újra futtatja a wizardot)
-  const msg = (response.body as { message?: string } | undefined)?.message || response.errorMessage || '';
+  const msg =
+    (response.body as { message?: string } | undefined)?.message || response.errorMessage || '';
   if (response.status === 400 && msg.includes('már lezajlott')) {
     log.warn('[Setup] Bootstrap admin már lezajlott — továbbmegyünk a .env írással.');
     return { success: true, alreadyDone: true };
@@ -754,10 +806,13 @@ export async function bootstrapAdmin(
 
 async function getBootstrapCompleted(apiUrl: string, timeoutMs = 8000): Promise<boolean | null> {
   const base = normalizeApiBase(apiUrl);
-  const response = await httpJsonWithRetry<{ completed?: boolean }>(`${base}/auth/bootstrap-status`, {
-    method: 'GET',
-    timeoutMs,
-  });
+  const response = await httpJsonWithRetry<{ completed?: boolean }>(
+    `${base}/auth/bootstrap-status`,
+    {
+      method: 'GET',
+      timeoutMs,
+    },
+  );
   if (!response.ok || typeof response.body?.completed !== 'boolean') {
     return null;
   }
@@ -824,13 +879,13 @@ export async function workerFirstTimeSetup(
     };
   }
 
-  const msg = (response.body as { message?: string } | undefined)?.message || response.errorMessage || '';
+  const msg =
+    (response.body as { message?: string } | undefined)?.message || response.errorMessage || '';
   return {
     success: false,
     errorMessage: msg || `HTTP ${response.status}`,
   };
 }
-
 
 // ============ PENZTAR-ESZKOZ ONLINE REGISZTRACIO (V100) ============
 
@@ -843,10 +898,10 @@ export async function registerCashRegisterDevice(
   apiUrl: string,
   token: string,
   payload: {
-    branchCode: string;    // NEM UUID - a code (pl. BR039), a szerver lookup-olja az id-t
-    code: string;          // Egyedi eszkoz kod pl. BR039-penztar-3f2a9b0c
+    branchCode: string; // NEM UUID - a code (pl. BR039), a szerver lookup-olja az id-t
+    code: string; // Egyedi eszkoz kod pl. BR039-penztar-3f2a9b0c
     name?: string;
-    appMode: string;       // penztar | ertektar | ertekszallito | full
+    appMode: string; // penztar | ertektar | ertekszallito | full
     appVersion?: string;
     deviceFingerprint?: string;
     osInfo?: string;
@@ -868,33 +923,36 @@ export async function registerCashRegisterDevice(
     }
     const matchedBranch = branchResp.body.find((b) => b.code === payload.branchCode);
     if (!matchedBranch) {
-      return { success: false, errorMessage: `Branch code nem egyezik a szerver valaszaval: ${payload.branchCode}` };
+      return {
+        success: false,
+        errorMessage: `Branch code nem egyezik a szerver valaszaval: ${payload.branchCode}`,
+      };
     }
     const branchId = matchedBranch.id;
 
     // Step 2: POST /cash-register/register
-    const regResp = await httpJsonWithRetry<{ id: string }>(
-      `${base}/cash-register/register`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Idempotency-Key': `setup-${payload.code}-${Date.now()}`,
-        },
-        body: {
-          branchId,
-          code: payload.code,
-          name: payload.name,
-          appMode: payload.appMode,
-          appVersion: payload.appVersion,
-          deviceFingerprint: payload.deviceFingerprint,
-          osInfo: payload.osInfo,
-        },
-        timeoutMs,
+    const regResp = await httpJsonWithRetry<{ id: string }>(`${base}/cash-register/register`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Idempotency-Key': `setup-${payload.code}-${Date.now()}`,
       },
-    );
+      body: {
+        branchId,
+        code: payload.code,
+        name: payload.name,
+        appMode: payload.appMode,
+        appVersion: payload.appVersion,
+        deviceFingerprint: payload.deviceFingerprint,
+        osInfo: payload.osInfo,
+      },
+      timeoutMs,
+    });
     if (!regResp.ok || !regResp.body?.id) {
-      const msg = (regResp.body as { message?: string } | undefined)?.message || regResp.errorMessage || `HTTP ${regResp.status}`;
+      const msg =
+        (regResp.body as { message?: string } | undefined)?.message ||
+        regResp.errorMessage ||
+        `HTTP ${regResp.status}`;
       return { success: false, errorMessage: msg };
     }
     return { success: true, deviceId: regResp.body.id };
@@ -923,21 +981,21 @@ export async function bootstrapLogin(
       roleSelectionRequired?: boolean;
       roles?: string[];
       availableRoles?: Array<{ roleCode: string }>;
-    }>(
-      `${base}/auth/login`,
-      {
-        method: 'POST',
-        body: {
-          companyCode: payload.companyCode,
-          workerCode: payload.workerCode,
-          password: payload.password,
-          appMode: payload.appMode,
-        },
-        timeoutMs,
+    }>(`${base}/auth/login`, {
+      method: 'POST',
+      body: {
+        companyCode: payload.companyCode,
+        workerCode: payload.workerCode,
+        password: payload.password,
+        appMode: payload.appMode,
       },
-    );
+      timeoutMs,
+    });
     if (!resp.ok || !resp.body?.token) {
-      const msg = (resp.body as { message?: string } | undefined)?.message || resp.errorMessage || `HTTP ${resp.status}`;
+      const msg =
+        (resp.body as { message?: string } | undefined)?.message ||
+        resp.errorMessage ||
+        `HTTP ${resp.status}`;
       return { success: false, errorMessage: msg };
     }
     // Ha role selection kell, az appMode-hoz illo role-t valasztjuk ki.
@@ -981,7 +1039,10 @@ export async function testConnection(
 
   let normalizedUrl = apiUrl.trim().replace(/\/+$/, '');
   if (!/^https?:\/\//i.test(normalizedUrl)) {
-    return { success: false, errorMessage: 'A szerver URL-nek http:// vagy https:// előtaggal kell kezdődnie.' };
+    return {
+      success: false,
+      errorMessage: 'A szerver URL-nek http:// vagy https:// előtaggal kell kezdődnie.',
+    };
   }
   if (!normalizedUrl.endsWith('/api/v1')) {
     normalizedUrl = `${normalizedUrl}/api/v1`;
@@ -996,7 +1057,7 @@ export async function testConnection(
       success: response.ok,
       httpStatus: response.status || undefined,
       latencyMs: response.latencyMs,
-      errorMessage: response.ok ? undefined : (response.errorMessage || `HTTP ${response.status}`),
+      errorMessage: response.ok ? undefined : response.errorMessage || `HTTP ${response.status}`,
     };
   }
 
@@ -1004,9 +1065,9 @@ export async function testConnection(
   const response = await httpJsonWithRetry(loginUrl, {
     method: 'POST',
     body: {
-        companyCode,
-        workerCode: username,
-        password,
+      companyCode,
+      workerCode: username,
+      password,
     },
     timeoutMs,
   });
@@ -1018,8 +1079,10 @@ export async function testConnection(
   return {
     success: reachable,
     httpStatus: response.status || undefined,
-    latencyMs: response.latencyMs || (Date.now() - started),
-    errorMessage: reachable ? undefined : (response.errorMessage || `Szerverhiba: HTTP ${response.status}`),
+    latencyMs: response.latencyMs || Date.now() - started,
+    errorMessage: reachable
+      ? undefined
+      : response.errorMessage || `Szerverhiba: HTTP ${response.status}`,
   };
 }
 
@@ -1046,13 +1109,24 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
         return { success: false, envPath, errorMessage: 'Hiányzó Google azonosítási adat.' };
       }
       if (!payload.selectedWorkerCode && !payload.adminUsername) {
-        return { success: false, envPath, errorMessage: 'Hiányzó dolgozói azonosító a Google setuphoz.' };
+        return {
+          success: false,
+          envPath,
+          errorMessage: 'Hiányzó dolgozói azonosító a Google setuphoz.',
+        };
       }
     }
     if (!isGoogleAuthSetup && (!payload.adminPassword || payload.adminPassword.length < 8)) {
-      return { success: false, envPath, errorMessage: 'Az admin jelszónak legalább 8 karakteresnek kell lennie.' };
+      return {
+        success: false,
+        envPath,
+        errorMessage: 'Az admin jelszónak legalább 8 karakteresnek kell lennie.',
+      };
     }
-    if (!isGoogleAuthSetup && (!payload.adminUsername || payload.adminUsername.trim().length === 0)) {
+    if (
+      !isGoogleAuthSetup &&
+      (!payload.adminUsername || payload.adminUsername.trim().length === 0)
+    ) {
       return { success: false, envPath, errorMessage: 'Hiányzó admin felhasználói kód.' };
     }
 
@@ -1060,7 +1134,9 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     // Offline módban a lokál backend a default, online módban a user által
     // megadott Hetzner URL. A bootstrap-admin hívás ugyanezt az URL-t használja.
     const resolvedApiUrl = payload.offlineMode
-      ? (payload.apiUrl && /^https?:\/\//i.test(payload.apiUrl) ? payload.apiUrl : 'http://localhost:8080/api/v1')
+      ? payload.apiUrl && /^https?:\/\//i.test(payload.apiUrl)
+        ? payload.apiUrl
+        : 'http://localhost:8080/api/v1'
       : payload.apiUrl;
 
     // --- Backend bootstrap-admin hívás ---
@@ -1097,20 +1173,23 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     if (isGoogleAuthSetup) {
       resolvedWorkerIdentity = {
         workerCode: (
-          payload.selectedWorkerCode?.trim()
-          || payload.bootstrapUsername?.trim()
-          || payload.adminUsername?.trim()
-          || ''
+          payload.selectedWorkerCode?.trim() ||
+          payload.bootstrapUsername?.trim() ||
+          payload.adminUsername?.trim() ||
+          ''
         ).toUpperCase(),
         workerName: payload.selectedWorkerName || payload.googleName,
         workerRole: payload.selectedWorkerRole,
         branchCode: payload.branchCode,
       };
-      log.info('[Setup] Google-auth setup: nincs lokalis/admin jelszo bootstrap, worker identity:', {
-        workerCode: resolvedWorkerIdentity.workerCode,
-        workerRole: resolvedWorkerIdentity.workerRole,
-        googleEmail: payload.googleEmail,
-      });
+      log.info(
+        '[Setup] Google-auth setup: nincs lokalis/admin jelszo bootstrap, worker identity:',
+        {
+          workerCode: resolvedWorkerIdentity.workerCode,
+          workerRole: resolvedWorkerIdentity.workerRole,
+          googleEmail: payload.googleEmail,
+        },
+      );
     } else {
       // v2.3.0: Eldontes — worker first-time setup vagy legacy admin bootstrap?
       // Ha a wizard-ban kivalasztott worker (selectedWorkerCode), az uj flow-t
@@ -1127,134 +1206,138 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       });
 
       if (useWorkerFirstTimeSetup) {
-      const setupWorkerCode = (
-        payload.selectedWorkerCode?.trim()
-        || payload.bootstrapUsername?.trim()
-        || payload.adminUsername?.trim()
-        || ''
-      ).toUpperCase();
-      log.info('[Setup] Worker first-time-setup uton:', setupWorkerCode);
-      // Lezart bootstrap utan a backend a jelenlegi/kezdo worker jelszot is
-      // keri, hogy worker kod ismeretevel ne lehessen publikus fiokot atvenni.
-      const workerSetup = await workerFirstTimeSetup(resolvedApiUrl, {
-        companyCode: normalizedCompanyCode,
-        workerCode: setupWorkerCode,
-        newPassword: payload.adminPassword ?? '',
-        currentPassword: payload.bootstrapPassword?.trim() || undefined,
-        appMode: payload.appMode,
-      });
-      if (!workerSetup.success) {
-        const bootstrapCompleted = await getBootstrapCompleted(resolvedApiUrl);
-        const hint = bootstrapCompleted === true
-          ? ' Add meg a jelenlegi vagy kezdo dolgozoi jelszot az admin jelszo lepesen.'
-          : '';
-        return {
-          success: false,
-          envPath,
-          errorMessage: `A dolgozoi jelszo beallitasa nem sikerult: ${workerSetup.errorMessage ?? 'ismeretlen hiba'}${hint}`,
-        };
-      }
-      if (workerSetup.success) {
-        resolvedWorkerIdentity = workerSetup.workerIdentity ?? {
-          workerCode: setupWorkerCode,
-          workerName: payload.selectedWorkerName,
-          workerRole: payload.selectedWorkerRole,
-        };
-        log.info('[Setup] Worker first-time setup sikeres:', resolvedWorkerIdentity);
-      }
-      } else {
-      // Legacy: bootstrap-admin (uj admin worker + rendszer-flag)
-      const bootstrap = await bootstrapAdmin(resolvedApiUrl, {
-        companyCode: normalizedCompanyCode,
-        workerCode: (payload.adminUsername ?? '').trim().toUpperCase(),
-        workerName: (payload.adminUsername ?? '').trim(),
-        email: undefined,
-        newPassword: payload.adminPassword ?? '',
-      });
-      if (!bootstrap.success) {
-        return {
-          success: false,
-          envPath,
-          errorMessage: `Az admin jelszó beállítása nem sikerült a backend-en: ${bootstrap.errorMessage ?? 'ismeretlen hiba'}`,
-        };
-      }
-      if (bootstrap.alreadyDone) {
-        log.info('[Setup] Bootstrap már lefutott ezen a rendszeren — folytatjuk.');
-        preserveExistingBootstrapPassword = true;
-
-        // v2.5.37 fix: ha a bootstrap mar lezart DE a user megadott jelszot a wizardban,
-        // meg kell probalni a workerFirstTimeSetup-ot, kulonben a jelszo soha nem kerul
-        // az adatbazisba es a user nem tud bejelentkezni.
-        const fallbackWorkerCode = (
-          payload.selectedWorkerCode?.trim()
-          || payload.bootstrapUsername?.trim()
-          || payload.adminUsername?.trim()
-          || ''
+        const setupWorkerCode = (
+          payload.selectedWorkerCode?.trim() ||
+          payload.bootstrapUsername?.trim() ||
+          payload.adminUsername?.trim() ||
+          ''
         ).toUpperCase();
+        log.info('[Setup] Worker first-time-setup uton:', setupWorkerCode);
+        // Lezart bootstrap utan a backend a jelenlegi/kezdo worker jelszot is
+        // keri, hogy worker kod ismeretevel ne lehessen publikus fiokot atvenni.
+        const workerSetup = await workerFirstTimeSetup(resolvedApiUrl, {
+          companyCode: normalizedCompanyCode,
+          workerCode: setupWorkerCode,
+          newPassword: payload.adminPassword ?? '',
+          currentPassword: payload.bootstrapPassword?.trim() || undefined,
+          appMode: payload.appMode,
+        });
+        if (!workerSetup.success) {
+          const bootstrapCompleted = await getBootstrapCompleted(resolvedApiUrl);
+          const hint =
+            bootstrapCompleted === true
+              ? ' Add meg a jelenlegi vagy kezdo dolgozoi jelszot az admin jelszo lepesen.'
+              : '';
+          return {
+            success: false,
+            envPath,
+            errorMessage: `A dolgozoi jelszo beallitasa nem sikerult: ${workerSetup.errorMessage ?? 'ismeretlen hiba'}${hint}`,
+          };
+        }
+        if (workerSetup.success) {
+          resolvedWorkerIdentity = workerSetup.workerIdentity ?? {
+            workerCode: setupWorkerCode,
+            workerName: payload.selectedWorkerName,
+            workerRole: payload.selectedWorkerRole,
+          };
+          log.info('[Setup] Worker first-time setup sikeres:', resolvedWorkerIdentity);
+        }
+      } else {
+        // Legacy: bootstrap-admin (uj admin worker + rendszer-flag)
+        const bootstrap = await bootstrapAdmin(resolvedApiUrl, {
+          companyCode: normalizedCompanyCode,
+          workerCode: (payload.adminUsername ?? '').trim().toUpperCase(),
+          workerName: (payload.adminUsername ?? '').trim(),
+          email: undefined,
+          newPassword: payload.adminPassword ?? '',
+        });
+        if (!bootstrap.success) {
+          return {
+            success: false,
+            envPath,
+            errorMessage: `Az admin jelszó beállítása nem sikerült a backend-en: ${bootstrap.errorMessage ?? 'ismeretlen hiba'}`,
+          };
+        }
+        if (bootstrap.alreadyDone) {
+          log.info('[Setup] Bootstrap már lefutott ezen a rendszeren — folytatjuk.');
+          preserveExistingBootstrapPassword = true;
 
-        if (fallbackWorkerCode && payload.adminPassword) {
-          log.info('[Setup] Bootstrap lezart, workerFirstTimeSetup fallback:', fallbackWorkerCode);
-          try {
-            const fallbackSetup = await workerFirstTimeSetup(resolvedApiUrl, {
-              companyCode: normalizedCompanyCode,
-              workerCode: fallbackWorkerCode,
-              newPassword: payload.adminPassword ?? '',
-              currentPassword: payload.bootstrapPassword?.trim() || undefined,
-              appMode: payload.appMode,
-            });
-            if (fallbackSetup.success) {
-              log.info('[Setup] Worker jelszo fallback sikeres:', fallbackWorkerCode);
-              resolvedWorkerIdentity = fallbackSetup.workerIdentity ?? {
+          // v2.5.37 fix: ha a bootstrap mar lezart DE a user megadott jelszot a wizardban,
+          // meg kell probalni a workerFirstTimeSetup-ot, kulonben a jelszo soha nem kerul
+          // az adatbazisba es a user nem tud bejelentkezni.
+          const fallbackWorkerCode = (
+            payload.selectedWorkerCode?.trim() ||
+            payload.bootstrapUsername?.trim() ||
+            payload.adminUsername?.trim() ||
+            ''
+          ).toUpperCase();
+
+          if (fallbackWorkerCode && payload.adminPassword) {
+            log.info(
+              '[Setup] Bootstrap lezart, workerFirstTimeSetup fallback:',
+              fallbackWorkerCode,
+            );
+            try {
+              const fallbackSetup = await workerFirstTimeSetup(resolvedApiUrl, {
+                companyCode: normalizedCompanyCode,
                 workerCode: fallbackWorkerCode,
-                workerName: payload.selectedWorkerName,
-                workerRole: payload.selectedWorkerRole,
-              };
-            } else {
-              log.warn('[Setup] Worker jelszo fallback sikertelen:', {
+                newPassword: payload.adminPassword ?? '',
+                currentPassword: payload.bootstrapPassword?.trim() || undefined,
+                appMode: payload.appMode,
+              });
+              if (fallbackSetup.success) {
+                log.info('[Setup] Worker jelszo fallback sikeres:', fallbackWorkerCode);
+                resolvedWorkerIdentity = fallbackSetup.workerIdentity ?? {
+                  workerCode: fallbackWorkerCode,
+                  workerName: payload.selectedWorkerName,
+                  workerRole: payload.selectedWorkerRole,
+                };
+              } else {
+                log.warn('[Setup] Worker jelszo fallback sikertelen:', {
+                  workerCode: fallbackWorkerCode,
+                  company: normalizedCompanyCode,
+                  appMode: payload.appMode,
+                  error: fallbackSetup.errorMessage,
+                });
+              }
+            } catch (err) {
+              log.warn('[Setup] Worker jelszo fallback kivetel:', {
                 workerCode: fallbackWorkerCode,
                 company: normalizedCompanyCode,
                 appMode: payload.appMode,
-                error: fallbackSetup.errorMessage,
+                error: err instanceof Error ? err.message : String(err),
               });
             }
-          } catch (err) {
-            log.warn('[Setup] Worker jelszo fallback kivetel:', {
-              workerCode: fallbackWorkerCode,
-              company: normalizedCompanyCode,
-              appMode: payload.appMode,
-              error: err instanceof Error ? err.message : String(err),
-            });
           }
+        } else {
+          log.info('[Setup] Bootstrap admin sikeresen beállítva a backend-ben.');
         }
-      } else {
-        log.info('[Setup] Bootstrap admin sikeresen beállítva a backend-ben.');
-      }
-      if (!resolvedWorkerIdentity) {
-        resolvedWorkerIdentity = {
-          workerCode: (payload.adminUsername ?? '').trim().toUpperCase(),
-          workerName: 'Rendszer Admin',
-          workerRole: 'ADMIN',
-        };
-      }
+        if (!resolvedWorkerIdentity) {
+          resolvedWorkerIdentity = {
+            workerCode: (payload.adminUsername ?? '').trim().toUpperCase(),
+            workerName: 'Rendszer Admin',
+            workerRole: 'ADMIN',
+          };
+        }
       }
     }
 
-    const effectiveBootstrapCredentials =
-      resolveEffectiveBootstrapCredentials(
-        payload,
-        resolvedWorkerIdentity,
-        { preserveExistingPassword: preserveExistingBootstrapPassword },
-      );
+    const effectiveBootstrapCredentials = resolveEffectiveBootstrapCredentials(
+      payload,
+      resolvedWorkerIdentity,
+      { preserveExistingPassword: preserveExistingBootstrapPassword },
+    );
     const bootstrapRoleCode = resolveBootstrapRoleCodeForAppMode(payload.appMode);
 
     // --- Kulcs generálás ---
-    const jwtSecret = generateSecretHex(32);               // 256 bit
-    const sqlCipherKey = generateSecretHex(32);            // 256 bit
-    const offlineLicenseSecret = generateSecretHex(32);    // 256 bit
-    const googleOAuthClientId = process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID
-      || process.env.VITE_GOOGLE_CLIENT_ID
-      || process.env.GOOGLE_CLIENT_ID
-      || '';
+    const jwtSecret = generateSecretHex(32); // 256 bit
+    const sqlCipherKey = generateSecretHex(32); // 256 bit
+    const offlineLicenseSecret = generateSecretHex(32); // 256 bit
+    const googleOAuthClientId =
+      process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID ||
+      process.env.VITE_GOOGLE_CLIENT_ID ||
+      process.env.GOOGLE_CLIENT_ID ||
+      '';
 
     // --- .env írás (atomikus: .env.tmp → rename) ---
     if (!fs.existsSync(envDir)) {
@@ -1312,7 +1395,11 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       if (effectiveBootstrapCredentials.bootstrapUsername) {
         setConfig('bootstrap_worker_code', effectiveBootstrapCredentials.bootstrapUsername);
       }
-      persistBootstrapPasswordConfig(effectiveBootstrapCredentials.bootstrapPassword, setConfig, deleteConfig);
+      persistBootstrapPasswordConfig(
+        effectiveBootstrapCredentials.bootstrapPassword,
+        setConfig,
+        deleteConfig,
+      );
       setConfig('bootstrap_role_code', bootstrapRoleCode);
       // v2.3.0: a telepito-ban kivalasztott (es jelszot beallitott) dolgozo identity
       // tarolasa — ezt olvassa a LoginPage prefill-hez es UI displayhez.
@@ -1335,17 +1422,26 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
       } else {
         setConfig('install_uuid', installUuid); // mar generalva a try elott
       }
-      log.info('[Setup] SQLite server_url elmentve:', resolvedApiUrl, 'offline_mode:', payload.offlineMode);
+      log.info(
+        '[Setup] SQLite server_url elmentve:',
+        resolvedApiUrl,
+        'offline_mode:',
+        payload.offlineMode,
+      );
     } catch (err) {
       log.warn('[Setup] SQLite server_url mentes sikertelen:', err);
     }
 
     // V100: Online-modban regisztraljuk a penztar-eszkozt a backend-en
-    if (!payload.offlineMode
-        && effectiveBootstrapCredentials.bootstrapUsername
-        && effectiveBootstrapCredentials.bootstrapPassword) {
+    if (
+      !payload.offlineMode &&
+      effectiveBootstrapCredentials.bootstrapUsername &&
+      effectiveBootstrapCredentials.bootstrapPassword
+    ) {
       try {
-        log.info('[Setup] V100 device-reg: az effektív bootstrap worker/jelszó párossal loginolunk.');
+        log.info(
+          '[Setup] V100 device-reg: az effektív bootstrap worker/jelszó párossal loginolunk.',
+        );
         const login = await bootstrapLogin(resolvedApiUrl, {
           companyCode: normalizedCompanyCode,
           workerCode: effectiveBootstrapCredentials.bootstrapUsername,
@@ -1357,7 +1453,9 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
           const reg = await registerCashRegisterDevice(resolvedApiUrl, login.token, {
             branchCode: payload.branchCode,
             code: deviceCode,
-            name: payload.branchName ? `${payload.branchName} — ${payload.appMode ?? 'penztar'}` : deviceCode,
+            name: payload.branchName
+              ? `${payload.branchName} — ${payload.appMode ?? 'penztar'}`
+              : deviceCode,
             appMode: payload.appMode ?? 'penztar',
             appVersion: app.getVersion(),
             deviceFingerprint: installUuid,
@@ -1373,10 +1471,16 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
             // Nem blokkolo — a telepites tovabb megy offline modban
           }
         } else {
-          log.warn('[Setup] Bootstrap-login sikertelen a device regisztraciohoz:', login.errorMessage);
+          log.warn(
+            '[Setup] Bootstrap-login sikertelen a device regisztraciohoz:',
+            login.errorMessage,
+          );
         }
       } catch (err: unknown) {
-        log.warn('[Setup] Penztar-eszkoz regisztracio kivetel:', err instanceof Error ? err.message : err);
+        log.warn(
+          '[Setup] Penztar-eszkoz regisztracio kivetel:',
+          err instanceof Error ? err.message : err,
+        );
       }
     }
 

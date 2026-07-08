@@ -34,7 +34,7 @@ export type TransactionType =
   | 'PHONE_TOPUP'
   | 'OTHER'
   | 'PARTIAL_REFUND'
-  | 'REVERSAL';
+  | 'REVERSAL'
 
 const PREFIX_MAP: Record<string, string> = {
   SELL: 'E',
@@ -50,7 +50,7 @@ const PREFIX_MAP: Record<string, string> = {
   PHONE_TOPUP: 'X',
   OTHER: 'X',
   PARTIAL_REFUND: 'PR',
-};
+}
 
 /**
  * Bizonylat szám generálás — backend-kompatibilis formátum.
@@ -69,37 +69,37 @@ export function generateReceiptNumber(
   sequenceNumber: number,
 ): string {
   if (type === 'REVERSAL') {
-    throw new Error('REVERSAL típushoz az eredeti tranzakció típusát kell használni!');
+    throw new Error('REVERSAL típushoz az eredeti tranzakció típusát kell használni!')
   }
 
-  const prefix = PREFIX_MAP[type];
+  const prefix = PREFIX_MAP[type]
   if (!prefix) {
-    throw new Error(`Ismeretlen tranzakció típus: ${type}`);
+    throw new Error(`Ismeretlen tranzakció típus: ${type}`)
   }
 
-  const code = padBranchCode(branchCode);
-  const seq = String(sequenceNumber).padStart(6, '0');
-  return `${prefix}${code}${seq}`;
+  const code = padBranchCode(branchCode)
+  const seq = String(sequenceNumber).padStart(6, '0')
+  return `${prefix}${code}${seq}`
 }
 
 /**
  * Branch kódból 3 jegyű szám (backend extractBranchCode() logika).
  */
 function padBranchCode(code: string): string {
-  if (!code || code.trim() === '') return '000';
+  if (!code || code.trim() === '') return '000'
 
-  const numericOnly = code.replace(/[^0-9]/g, '');
+  const numericOnly = code.replace(/[^0-9]/g, '')
   if (numericOnly.length > 0) {
-    const num = parseInt(numericOnly, 10) % 1000;
-    return String(num).padStart(3, '0');
+    const num = parseInt(numericOnly, 10) % 1000
+    return String(num).padStart(3, '0')
   }
 
   // Hash-alapú fallback (egyszerűsített, determinisztikus)
-  let hash = 0;
+  let hash = 0
   for (let i = 0; i < code.length; i++) {
-    hash = ((hash << 5) - hash + code.charCodeAt(i)) | 0;
+    hash = ((hash << 5) - hash + code.charCodeAt(i)) | 0
   }
-  return String(Math.abs(hash) % 1000).padStart(3, '0');
+  return String(Math.abs(hash) % 1000).padStart(3, '0')
 }
 
 /**
@@ -108,39 +108,39 @@ function padBranchCode(code: string): string {
  * Formátum: PREFIX(1-2 karakter) + branchCode(3 számjegy) + sorszám(6 számjegy)
  */
 export function parseReceiptNumber(receiptNumber: string): {
-  prefix: string;
-  branchCode: string;
-  sequence: number;
+  prefix: string
+  branchCode: string
+  sequence: number
 } | null {
-  if (!receiptNumber || receiptNumber.length < 10) return null;
+  if (!receiptNumber || receiptNumber.length < 10) return null
 
   // Kétjegyű prefix check (PR, FF, UF)
-  let prefix: string;
-  let numericPart: string;
+  let prefix: string
+  let numericPart: string
 
   if (
     receiptNumber.length >= 2 &&
     !isDigit(receiptNumber[1]!) &&
     receiptNumber[0] !== receiptNumber[1]
   ) {
-    prefix = receiptNumber.substring(0, 2);
-    numericPart = receiptNumber.substring(2);
+    prefix = receiptNumber.substring(0, 2)
+    numericPart = receiptNumber.substring(2)
   } else {
-    prefix = receiptNumber.substring(0, 1);
-    numericPart = receiptNumber.substring(1);
+    prefix = receiptNumber.substring(0, 1)
+    numericPart = receiptNumber.substring(1)
   }
 
-  if (numericPart.length < 9) return null;
+  if (numericPart.length < 9) return null
 
-  const branchCode = numericPart.substring(0, 3);
-  const seqStr = numericPart.substring(3);
+  const branchCode = numericPart.substring(0, 3)
+  const seqStr = numericPart.substring(3)
 
-  const sequence = parseInt(seqStr, 10);
-  if (isNaN(sequence)) return null;
+  const sequence = parseInt(seqStr, 10)
+  if (isNaN(sequence)) return null
 
-  return { prefix, branchCode, sequence };
+  return { prefix, branchCode, sequence }
 }
 
 function isDigit(ch: string): boolean {
-  return ch >= '0' && ch <= '9';
+  return ch >= '0' && ch <= '9'
 }

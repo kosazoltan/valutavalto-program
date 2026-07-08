@@ -21,8 +21,18 @@ interface ShipmentCalendarPanelProps {
 
 const WEEKDAY_LABELS = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V']
 const MONTH_LABELS = [
-  'Január', 'Február', 'Március', 'Április', 'Május', 'Június',
-  'Július', 'Augusztus', 'Szeptember', 'Október', 'November', 'December',
+  'Január',
+  'Február',
+  'Március',
+  'Április',
+  'Május',
+  'Június',
+  'Július',
+  'Augusztus',
+  'Szeptember',
+  'Október',
+  'November',
+  'December',
 ]
 
 function pad2(n: number): string {
@@ -51,10 +61,12 @@ export default function ShipmentCalendarPanel({
 
   const goPrev = () =>
     setView(({ year, monthIndex }) =>
-      monthIndex === 0 ? { year: year - 1, monthIndex: 11 } : { year, monthIndex: monthIndex - 1 })
+      monthIndex === 0 ? { year: year - 1, monthIndex: 11 } : { year, monthIndex: monthIndex - 1 },
+    )
   const goNext = () =>
     setView(({ year, monthIndex }) =>
-      monthIndex === 11 ? { year: year + 1, monthIndex: 0 } : { year, monthIndex: monthIndex + 1 })
+      monthIndex === 11 ? { year: year + 1, monthIndex: 0 } : { year, monthIndex: monthIndex + 1 },
+    )
 
   const cells: Array<number | null> = []
   for (let i = 0; i < firstWeekdayMondayBased; i++) cells.push(null)
@@ -63,17 +75,33 @@ export default function ShipmentCalendarPanel({
   return (
     <div className="form-panel" data-testid="shipment-calendar">
       <div className="mb-2 flex items-center justify-between">
-        <button type="button" className="form-button p-1" onClick={goPrev} aria-label="Előző hónap" title="Előző hónap">
+        <button
+          type="button"
+          className="form-button p-1"
+          onClick={goPrev}
+          aria-label="Előző hónap"
+          title="Előző hónap"
+        >
           <ChevronLeft size={16} />
         </button>
-        <span className="font-semibold">{view.year}. {MONTH_LABELS[view.monthIndex]}</span>
-        <button type="button" className="form-button p-1" onClick={goNext} aria-label="Következő hónap" title="Következő hónap">
+        <span className="font-semibold">
+          {view.year}. {MONTH_LABELS[view.monthIndex]}
+        </span>
+        <button
+          type="button"
+          className="form-button p-1"
+          onClick={goNext}
+          aria-label="Következő hónap"
+          title="Következő hónap"
+        >
           <ChevronRight size={16} />
         </button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500">
         {WEEKDAY_LABELS.map((w) => (
-          <div key={w} className="py-1 font-medium">{w}</div>
+          <div key={w} className="py-1 font-medium">
+            {w}
+          </div>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-sm">

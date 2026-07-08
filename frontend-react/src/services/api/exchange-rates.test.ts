@@ -10,7 +10,15 @@ vi.mock('./client', () => ({
 }))
 
 import { api } from './client'
-import { currencyApi, exchangeRateApi, exchangeRateDisplayApi, exchangeRatePollingApi, rateApprovalApi, rateCreationApi, roundingRuleApi } from './exchange-rates'
+import {
+  currencyApi,
+  exchangeRateApi,
+  exchangeRateDisplayApi,
+  exchangeRatePollingApi,
+  rateApprovalApi,
+  rateCreationApi,
+  roundingRuleApi,
+} from './exchange-rates'
 
 const mockApi = vi.mocked(api)
 
@@ -31,9 +39,13 @@ describe('exchangeRateApi', () => {
 
     await expect(exchangeRateApi.uploadRateFile(file)).resolves.toBe(parsed)
 
-    expect(mockApi.post).toHaveBeenCalledWith('/exchange-rates/upload-rate-file', expect.any(FormData), {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    expect(mockApi.post).toHaveBeenCalledWith(
+      '/exchange-rates/upload-rate-file',
+      expect.any(FormData),
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      },
+    )
     const formData = mockApi.post.mock.calls[0]?.[1] as FormData
     expect(formData.get('file')).toBe(file)
   })
@@ -58,9 +70,13 @@ describe('exchangeRateApi', () => {
 
     await expect(exchangeRateApi.importRateFile(file)).resolves.toBe(imported)
 
-    expect(mockApi.post).toHaveBeenCalledWith('/exchange-rates/import-rate-file', expect.any(FormData), {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    expect(mockApi.post).toHaveBeenCalledWith(
+      '/exchange-rates/import-rate-file',
+      expect.any(FormData),
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      },
+    )
     const formData = mockApi.post.mock.calls[0]?.[1] as FormData
     expect(formData.get('file')).toBe(file)
   })
@@ -82,7 +98,9 @@ describe('exchangeRateApi', () => {
     ]
     mockApi.get.mockResolvedValueOnce({ data: history })
 
-    await expect(exchangeRateApi.getHistoryByCode('EUR', '2026-06-01', '2026-06-18')).resolves.toBe(history)
+    await expect(exchangeRateApi.getHistoryByCode('EUR', '2026-06-01', '2026-06-18')).resolves.toBe(
+      history,
+    )
 
     expect(mockApi.get).toHaveBeenCalledWith('/exchange-rates/history', {
       params: { currencyCode: 'EUR', startDate: '2026-06-01', endDate: '2026-06-18' },
@@ -147,11 +165,13 @@ describe('rateCreationApi', () => {
     }
     mockApi.put.mockResolvedValueOnce({ data: sheet })
 
-    await expect(rateCreationApi.putLocalRateMakerSheet(sheet.sheetJson, {
-      source: 'rate-maker',
-      deviceId: 'device-1',
-      baseVersion: 7,
-    })).resolves.toBe(sheet)
+    await expect(
+      rateCreationApi.putLocalRateMakerSheet(sheet.sheetJson, {
+        source: 'rate-maker',
+        deviceId: 'device-1',
+        baseVersion: 7,
+      }),
+    ).resolves.toBe(sheet)
     expect(mockApi.put).toHaveBeenCalledWith('/local-rate-maker/sheet', {
       sheetJson: sheet.sheetJson,
       source: 'rate-maker',
@@ -337,16 +357,26 @@ describe('exchangeRatePollingApi', () => {
     const result = { message: 'Margin sikeresen alkalmazva' }
     mockApi.post.mockResolvedValueOnce({ data: result })
 
-    await expect(exchangeRatePollingApi.applyMargins({ currencyId: 1, spread: 2.5 })).resolves.toBe(result)
-    expect(mockApi.post).toHaveBeenCalledWith('/rates/polling/apply-margins', { currencyId: 1, spread: 2.5 })
+    await expect(exchangeRatePollingApi.applyMargins({ currencyId: 1, spread: 2.5 })).resolves.toBe(
+      result,
+    )
+    expect(mockApi.post).toHaveBeenCalledWith('/rates/polling/apply-margins', {
+      currencyId: 1,
+      spread: 2.5,
+    })
   })
 
   it('a polling forrás módosítást a forrás azonosítójára küldi', async () => {
     const result = { id: 2, name: 'ECB', active: true, pollIntervalMinutes: 60 }
     mockApi.put.mockResolvedValueOnce({ data: result })
 
-    await expect(exchangeRatePollingApi.updateSource(2, { active: true, pollIntervalMinutes: 60 })).resolves.toBe(result)
-    expect(mockApi.put).toHaveBeenCalledWith('/rates/polling/sources/2', { active: true, pollIntervalMinutes: 60 })
+    await expect(
+      exchangeRatePollingApi.updateSource(2, { active: true, pollIntervalMinutes: 60 }),
+    ).resolves.toBe(result)
+    expect(mockApi.put).toHaveBeenCalledWith('/rates/polling/sources/2', {
+      active: true,
+      pollIntervalMinutes: 60,
+    })
   })
 })
 

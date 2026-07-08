@@ -1,6 +1,6 @@
-import { useState } from "react"
-import { X, Upload, Loader2, Check } from "lucide-react"
-import { api } from "../services/api/index"
+import { useState } from 'react'
+import { X, Upload, Loader2, Check } from 'lucide-react'
+import { api } from '../services/api/index'
 import { useTranslation } from 'react-i18next'
 
 interface Props {
@@ -17,7 +17,7 @@ interface BulkResult {
 
 export default function BulkEmailModal({ open, onClose, onSuccess }: Props) {
   const { t } = useTranslation()
-  const [csvText, setCsvText] = useState("")
+  const [csvText, setCsvText] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<BulkResult | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
@@ -28,12 +28,12 @@ export default function BulkEmailModal({ open, onClose, onSuccess }: Props) {
     const rows: { workerCode: string; email: string }[] = []
     for (const rawLine of text.split(/\r?\n/)) {
       const line = rawLine.trim()
-      if (!line || line.startsWith("#")) continue
+      if (!line || line.startsWith('#')) continue
       const parts = line.split(/[;,\t]/).map((p) => p.trim())
       if (parts.length < 2) continue
       const [code, email] = parts
       if (!code) continue
-      rows.push({ workerCode: code, email: email || "" })
+      rows.push({ workerCode: code, email: email || '' })
     }
     return rows
   }
@@ -42,17 +42,18 @@ export default function BulkEmailModal({ open, onClose, onSuccess }: Props) {
     setParseError(null)
     const rows = parse(csvText)
     if (rows.length === 0) {
-      setParseError("Nincs feldolgozhato sor. Format: workerCode;email soronkent.")
+      setParseError('Nincs feldolgozhato sor. Format: workerCode;email soronkent.')
       return
     }
     setLoading(true)
     setResult(null)
     try {
-      const idempKey = (typeof crypto !== "undefined" && crypto.randomUUID)
-        ? crypto.randomUUID()
-        : String(Date.now()) + "-" + Math.random().toString(36).slice(2)
-      const r = await api.patch<BulkResult>("/workers/bulk-email", rows, {
-        headers: { "Idempotency-Key": idempKey },
+      const idempKey =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : String(Date.now()) + '-' + Math.random().toString(36).slice(2)
+      const r = await api.patch<BulkResult>('/workers/bulk-email', rows, {
+        headers: { 'Idempotency-Key': idempKey },
       })
       setResult(r.data)
       if (r.data.updated > 0) onSuccess()
@@ -69,7 +70,9 @@ export default function BulkEmailModal({ open, onClose, onSuccess }: Props) {
         <div className="flex items-center justify-between p-4 border-b border-secondary-200">
           <div className="flex items-center gap-2">
             <Upload size={20} className="text-primary-600" />
-            <h3 className="text-lg font-bold text-secondary-900">{t('components.dolgozoiEmailEkTomegesImportja')}</h3>
+            <h3 className="text-lg font-bold text-secondary-900">
+              {t('components.dolgozoiEmailEkTomegesImportja')}
+            </h3>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-secondary-100 rounded">
             <X size={18} />
@@ -79,10 +82,11 @@ export default function BulkEmailModal({ open, onClose, onSuccess }: Props) {
         <div className="p-4 space-y-3">
           <p className="text-sm text-secondary-600">
             {t('components.illeszdBeAzExcelBolSzovegesForrasbolADolgozoiKodokatEsEmailCimeket')}
-            <b>{t('components.workercodeEmail')}</b>{t('components.formatumbanSoronkentEgyUresEmailTorol')}
+            <b>{t('components.workercodeEmail')}</b>
+            {t('components.formatumbanSoronkentEgyUresEmailTorol')}
           </p>
           <pre className="text-xs bg-secondary-50 p-2 rounded border border-secondary-200">
-{`# Pelda format (workerCode;email):
+            {`# Pelda format (workerCode;email):
 W007570;borsi.tamas@gmail.com
 W005043;dora.bognarne@ebc.hu
 W014517;barabas.marietta@ebc.hu`}
@@ -105,14 +109,25 @@ W014517;barabas.marietta@ebc.hu`}
             <div className="p-3 bg-green-50 border border-green-200 rounded text-sm">
               <div className="flex items-center gap-2 font-semibold text-green-700 mb-1">
                 <Check size={16} />
-                {t('components.siker')}{result.updated} {t('components.dolgozoEmailjeFrissitve')} {result.skipped} {t('components.kihagyva')}
+                {t('components.siker')}
+                {result.updated} {t('components.dolgozoEmailjeFrissitve')} {result.skipped}{' '}
+                {t('components.kihagyva')}
               </div>
               {result.errors.length > 0 && (
                 <div className="mt-2 max-h-40 overflow-y-auto text-xs text-red-600">
-                  <b>{t('components.hibak')}{result.errors.length}):</b>
+                  <b>
+                    {t('components.hibak')}
+                    {result.errors.length}):
+                  </b>
                   <ul className="list-disc list-inside">
-                    {result.errors.slice(0, 20).map((e, i) => <li key={i}>{e}</li>)}
-                    {result.errors.length > 20 && <li>{t('components.tovabbi')} {result.errors.length - 20} {t('components.sor')}</li>}
+                    {result.errors.slice(0, 20).map((e, i) => (
+                      <li key={i}>{e}</li>
+                    ))}
+                    {result.errors.length > 20 && (
+                      <li>
+                        {t('components.tovabbi')} {result.errors.length - 20} {t('components.sor')}
+                      </li>
+                    )}
                   </ul>
                 </div>
               )}

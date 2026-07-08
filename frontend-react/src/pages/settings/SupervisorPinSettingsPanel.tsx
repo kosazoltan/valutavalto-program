@@ -76,7 +76,8 @@ export default function SupervisorPinSettingsPanel() {
           Supervisor PIN
         </h2>
         <p className="mt-1 text-sm text-gray-600">
-          Saját telefonos jóváhagyási PIN beállítása vagy törlése. A művelethez a jelenlegi jelszó szükséges.
+          Saját telefonos jóváhagyási PIN beállítása vagy törlése. A művelethez a jelenlegi jelszó
+          szükséges.
         </p>
       </div>
 

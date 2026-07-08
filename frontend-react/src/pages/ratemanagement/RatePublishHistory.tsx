@@ -58,7 +58,9 @@ export default function RatePublishHistory() {
       {loading ? (
         <p>Betöltés...</p>
       ) : publications.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">{t('ratemanagement.nincsPublikalasiElozmeny')}</div>
+        <div className="text-center py-8 text-muted-foreground">
+          {t('ratemanagement.nincsPublikalasiElozmeny')}
+        </div>
       ) : (
         <div className="space-y-2">
           {publications.map((pub) => (
@@ -69,13 +71,18 @@ export default function RatePublishHistory() {
                     <span className="font-medium">
                       {new Date(pub.publishedAt).toLocaleString('hu-HU')}
                     </span>
-                    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-transparent">{pub.affectedBranches} {t('ratemanagement.iroda')}</span>
+                    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-transparent">
+                      {pub.affectedBranches} {t('ratemanagement.iroda')}
+                    </span>
                   </div>
                   {pub.notes && <p className="text-sm text-muted-foreground">{pub.notes}</p>}
                 </div>
                 <div className="text-right text-sm text-muted-foreground">
                   {/* FR-HL-11: a módosító NEVE (workerId helyett); fallback a workerId, ha nincs név. */}
-                  <p>{t('ratemanagement.publikalta')}{pub.publishedByName ?? pub.publishedBy}</p>
+                  <p>
+                    {t('ratemanagement.publikalta')}
+                    {pub.publishedByName ?? pub.publishedBy}
+                  </p>
                   <p className="text-xs">{pub.id.substring(0, 8)}...</p>
                 </div>
               </div>

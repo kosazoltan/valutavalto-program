@@ -11,8 +11,9 @@ export type ClosingViewFilter = 'all' | 'done' | 'notArrived'
  */
 export function isClosingDone(row: ClosingControlStatus): boolean {
   const required = row.requiredCount ?? 3
-  const completed = row.completedCount
-    ?? (Number(row.dailyClosingDone) + Number(row.eveningClosingDone) + Number(row.navClosingDone))
+  const completed =
+    row.completedCount ??
+    Number(row.dailyClosingDone) + Number(row.eveningClosingDone) + Number(row.navClosingDone)
   return completed >= required
 }
 
@@ -38,7 +39,10 @@ export function computeClosingSummary(rows: ClosingControlStatus[]): ClosingSumm
 /** Pénztárszám (branchCode) szerinti, numerikusan tudatos rendezés (BR009 < BR010 < BR105). */
 export function sortByBranchCode(rows: ClosingControlStatus[]): ClosingControlStatus[] {
   return [...rows].sort((a, b) =>
-    (a.branchCode ?? a.branchId).localeCompare(b.branchCode ?? b.branchId, 'hu', { numeric: true, sensitivity: 'base' }),
+    (a.branchCode ?? a.branchId).localeCompare(b.branchCode ?? b.branchId, 'hu', {
+      numeric: true,
+      sensitivity: 'base',
+    }),
   )
 }
 
@@ -49,8 +53,11 @@ export function matchesClosingFilter(
   query: string,
 ): boolean {
   const normalized = query.trim().toLowerCase()
-  const matchesQuery = !normalized || [row.branchCode, row.branchName, row.branchCity, row.notes]
-    .some((value) => value?.toLowerCase().includes(normalized))
+  const matchesQuery =
+    !normalized ||
+    [row.branchCode, row.branchName, row.branchCity, row.notes].some((value) =>
+      value?.toLowerCase().includes(normalized),
+    )
   if (!matchesQuery) return false
   if (filter === 'done') return isClosingDone(row)
   if (filter === 'notArrived') return !isClosingDone(row)

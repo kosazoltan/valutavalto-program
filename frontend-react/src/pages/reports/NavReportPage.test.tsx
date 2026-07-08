@@ -115,7 +115,12 @@ describe('NavReportPage', () => {
     await waitFor(() => {
       expect(mocks.getDaily).toHaveBeenCalledWith('2026-06-18')
       expect(mocks.getReportable).toHaveBeenCalledWith('2026-06-18')
-      expect(mocks.listClosings).toHaveBeenCalledWith({ dateFrom: '2026-06-18', dateTo: '2026-06-18', page: 0, size: 10 })
+      expect(mocks.listClosings).toHaveBeenCalledWith({
+        dateFrom: '2026-06-18',
+        dateTo: '2026-06-18',
+        page: 0,
+        size: 10,
+      })
     })
     expect(await screen.findByText('NAV-001')).toBeInTheDocument()
     expect(screen.getByText('Teszt Ügyfél')).toBeInTheDocument()
@@ -128,7 +133,9 @@ describe('NavReportPage', () => {
     render(<NavReportPage />)
 
     await user.click(screen.getByRole('button', { name: /reports.navReport.submit/i }))
-    await user.click(await screen.findByRole('button', { name: /reports.navReport.closings.summaryButton/i }))
+    await user.click(
+      await screen.findByRole('button', { name: /reports.navReport.closings.summaryButton/i }),
+    )
 
     const createElement = document.createElement.bind(document)
     vi.spyOn(document, 'createElement').mockImplementation((tagName, options) => {
@@ -159,10 +166,14 @@ describe('NavReportPage', () => {
 
     await user.click(screen.getByRole('button', { name: /reports.navReport.submit/i }))
     await user.type(await screen.findByLabelText('reports.navReport.discrepancy.navAmount'), '-1')
-    await user.click(screen.getByRole('button', { name: /reports.navReport.discrepancy.validate/i }))
+    await user.click(
+      screen.getByRole('button', { name: /reports.navReport.discrepancy.validate/i }),
+    )
 
     expect(mocks.validateNavAmount).not.toHaveBeenCalled()
-    expect(await screen.findByText('reports.navReport.discrepancy.errors.invalidAmount')).toBeInTheDocument()
+    expect(
+      await screen.findByText('reports.navReport.discrepancy.errors.invalidAmount'),
+    ).toBeInTheDocument()
   })
 
   it('validálja a NAV összeget pontos branch/date params értékekkel és megjeleníti az eltérést', async () => {
@@ -170,8 +181,13 @@ describe('NavReportPage', () => {
     render(<NavReportPage />)
 
     await user.click(screen.getByRole('button', { name: /reports.navReport.submit/i }))
-    await user.type(await screen.findByLabelText('reports.navReport.discrepancy.navAmount'), '1200000')
-    await user.click(screen.getByRole('button', { name: /reports.navReport.discrepancy.validate/i }))
+    await user.type(
+      await screen.findByLabelText('reports.navReport.discrepancy.navAmount'),
+      '1200000',
+    )
+    await user.click(
+      screen.getByRole('button', { name: /reports.navReport.discrepancy.validate/i }),
+    )
 
     await waitFor(() => {
       expect(mocks.validateNavAmount).toHaveBeenCalledWith('branch-1', '2026-06-18', 1_200_000)
@@ -185,9 +201,16 @@ describe('NavReportPage', () => {
     render(<NavReportPage />)
 
     await user.click(screen.getByRole('button', { name: /reports.navReport.submit/i }))
-    await user.type(await screen.findByLabelText('reports.navReport.discrepancy.navAmount'), '1200000')
-    await user.click(screen.getByRole('button', { name: /reports.navReport.discrepancy.validate/i }))
-    const approveButton = await screen.findByRole('button', { name: /reports.navReport.discrepancy.approve/i })
+    await user.type(
+      await screen.findByLabelText('reports.navReport.discrepancy.navAmount'),
+      '1200000',
+    )
+    await user.click(
+      screen.getByRole('button', { name: /reports.navReport.discrepancy.validate/i }),
+    )
+    const approveButton = await screen.findByRole('button', {
+      name: /reports.navReport.discrepancy.approve/i,
+    })
     expect(approveButton).toBeDisabled()
 
     await user.type(screen.getByLabelText('reports.navReport.discrepancy.justification'), 'Rövid')
@@ -195,7 +218,10 @@ describe('NavReportPage', () => {
     expect(mocks.approveDiscrepancy).not.toHaveBeenCalled()
 
     await user.clear(screen.getByLabelText('reports.navReport.discrepancy.justification'))
-    await user.type(screen.getByLabelText('reports.navReport.discrepancy.justification'), 'Pénztárgép kerekítési eltérés igazolva')
+    await user.type(
+      screen.getByLabelText('reports.navReport.discrepancy.justification'),
+      'Pénztárgép kerekítési eltérés igazolva',
+    )
     await user.click(approveButton)
 
     await waitFor(() => {

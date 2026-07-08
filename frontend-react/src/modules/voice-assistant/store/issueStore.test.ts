@@ -39,8 +39,15 @@ describe('issueStore CRUD', () => {
   })
 
   it('updateIssue: a mezok deepmerge-elnek (reporter), timestamp frissul', async () => {
-    const created = await createIssue({ mode: 'test', title: 'A', reporter: { displayName: 'Heni' } })
-    const updated = await updateIssue(created.id, { description: 'frissites', reporter: { workerCode: 'W-S011' } })
+    const created = await createIssue({
+      mode: 'test',
+      title: 'A',
+      reporter: { displayName: 'Heni' },
+    })
+    const updated = await updateIssue(created.id, {
+      description: 'frissites',
+      reporter: { workerCode: 'W-S011' },
+    })
     expect(updated?.description).toBe('frissites')
     expect(updated?.reporter.displayName).toBe('Heni')
     expect(updated?.reporter.workerCode).toBe('W-S011')

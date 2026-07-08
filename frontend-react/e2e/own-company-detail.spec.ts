@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/own-companies/company-1') && method === 'GET') {
@@ -124,17 +132,22 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('saját cég szerkesztés mobil nézetben ID szerinti backend detailből nyílik', async ({ page }) => {
+test('saját cég szerkesztés mobil nézetben ID szerinti backend detailből nyílik', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
 
   await page.goto('/company', { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('div.font-semibold.text-gray-900').filter({ hasText: 'Lista szerinti EBC' })).toBeVisible()
+  await expect(
+    page.locator('div.font-semibold.text-gray-900').filter({ hasText: 'Lista szerinti EBC' }),
+  ).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/own-companies/company-1'
+  const detailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/own-companies/company-1',
   )
   await page.getByRole('button', { name: /Szerkesztés/i }).click()
   await detailRequest
@@ -143,8 +156,8 @@ test('saját cég szerkesztés mobil nézetben ID szerinti backend detailből ny
   await expect(modalInputs.nth(0)).toHaveValue('Backend EBC részlet')
   await expect(modalInputs.nth(1)).toHaveValue('87654321-2-06')
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

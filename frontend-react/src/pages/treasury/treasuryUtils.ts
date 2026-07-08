@@ -54,18 +54,24 @@ export function getStockLevel(amount: number, currencyCode: string): StockLevel 
 /** CSS classes for stock level badges */
 export function stockLevelColor(level: StockLevel): string {
   switch (level) {
-    case 'CRITICAL': return 'text-danger-700 font-bold'
-    case 'LOW': return 'text-warning-700 font-semibold'
-    case 'NORMAL': return 'text-secondary-900'
+    case 'CRITICAL':
+      return 'text-danger-700 font-bold'
+    case 'LOW':
+      return 'text-warning-700 font-semibold'
+    case 'NORMAL':
+      return 'text-secondary-900'
   }
 }
 
 /** Stock level indicator emoji */
 export function stockLevelIcon(level: StockLevel): string {
   switch (level) {
-    case 'CRITICAL': return '🔴'
-    case 'LOW': return '🟡'
-    case 'NORMAL': return '🟢'
+    case 'CRITICAL':
+      return '🔴'
+    case 'LOW':
+      return '🟡'
+    case 'NORMAL':
+      return '🟢'
   }
 }
 

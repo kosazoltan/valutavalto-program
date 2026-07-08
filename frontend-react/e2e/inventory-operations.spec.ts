@@ -29,7 +29,7 @@ async function mockInventoryApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,14 +52,25 @@ async function mockInventoryApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
-    if (path.match(/\/api\/v1\/inventory\/(bank-withdraw|bank-deposit|transfer|correction)$/) && method === 'POST') {
+    if (
+      path.match(/\/api\/v1\/inventory\/(bank-withdraw|bank-deposit|transfer|correction)$/) &&
+      method === 'POST'
+    ) {
       return route.fulfill({
         status: 201,
         contentType: 'application/json',
@@ -88,11 +99,32 @@ async function mockInventoryApis(page: Page) {
       // töltődik; e nélkül a lista üres és a "Művelet rögzítése" gomb disabled marad.
       '/api/v1/currencies': [
         { id: 978, code: 'EUR', name: 'Euró', decimals: 2, active: true, displayOrder: 1 },
-        { id: 840, code: 'USD', name: 'Amerikai dollár', decimals: 2, active: true, displayOrder: 2 },
+        {
+          id: 840,
+          code: 'USD',
+          name: 'Amerikai dollár',
+          decimals: 2,
+          active: true,
+          displayOrder: 2,
+        },
       ],
       '/api/v1/inventory/vault-stock': [
-        { currencyCode: 'HUF', currencyName: 'Magyar forint', opening: 800, received: 0, issued: 0, closing: 700 },
-        { currencyCode: 'EUR', currencyName: 'Euró', opening: 300, received: 0, issued: 0, closing: 500 },
+        {
+          currencyCode: 'HUF',
+          currencyName: 'Magyar forint',
+          opening: 800,
+          received: 0,
+          issued: 0,
+          closing: 700,
+        },
+        {
+          currencyCode: 'EUR',
+          currencyName: 'Euró',
+          opening: 300,
+          received: 0,
+          issued: 0,
+          closing: 500,
+        },
       ],
       '/api/v1/inventory/stock/11111111-1111-1111-1111-111111111111': [
         {
@@ -135,7 +167,13 @@ async function mockInventoryApis(page: Page) {
         ],
       },
       '/api/v1/inventory-movements/movement-log': [
-        { id: 77, fromBranchName: 'Központ', toBranchName: 'Szekszárd Értéktár', currencyCode: 'EUR', amount: 300 },
+        {
+          id: 77,
+          fromBranchName: 'Központ',
+          toBranchName: 'Szekszárd Értéktár',
+          currencyCode: 'EUR',
+          amount: 300,
+        },
       ],
       '/api/v1/inventory-movements/daily-balance': {
         currencyCode: 'EUR',
@@ -186,7 +224,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('inventory műveleti panel mobil viewporton valós backend szerződésekre köt', async ({ page }) => {
+test('inventory műveleti panel mobil viewporton valós backend szerződésekre köt', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockInventoryApis(page)
   await login(page)
@@ -201,26 +241,27 @@ test('inventory műveleti panel mobil viewporton valós backend szerződésekre 
 
   await page.getByPlaceholder('Összeg').fill('250')
   await page.getByPlaceholder('Opcionális').fill('Mobil E2E bank kivét')
-  const bankWithdrawRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/inventory/bank-withdraw')
+  const bankWithdrawRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/inventory/bank-withdraw'),
   )
   await page.getByRole('button', { name: 'Művelet rögzítése' }).click()
   await bankWithdrawRequest
 
-  const approveRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/inventory/77/approve')
+  const approveRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/inventory/77/approve'),
   )
   await page.getByRole('button', { name: 'Készletmozgás #77 jóváhagyása' }).click()
   await approveRequest
 
-  const regenerationRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/inventory/regeneration/run')
+  const regenerationRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes('/inventory/regeneration/run'),
   )
   await page.getByRole('button', { name: 'Regenerálás futtatása' }).click()
   await regenerationRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

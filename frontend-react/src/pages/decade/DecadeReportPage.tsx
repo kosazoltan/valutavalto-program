@@ -119,7 +119,8 @@ export default function DecadeReportPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <FileSpreadsheet />{t('decade.dekadJelentesek')}
+          <FileSpreadsheet />
+          {t('decade.dekadJelentesek')}
         </h1>
       </div>
 
@@ -161,7 +162,8 @@ export default function DecadeReportPage() {
             disabled={loading || !branchId}
             className="btn-primary text-sm flex items-center gap-1"
           >
-            <FileSpreadsheet size={14} />{t('darius.generalas')}
+            <FileSpreadsheet size={14} />
+            {t('darius.generalas')}
           </button>
         </div>
       </div>
@@ -201,17 +203,28 @@ export default function DecadeReportPage() {
                     </span>
                     <StatusBadge status={r.status} />
                   </div>
-                  <div className="text-xs text-gray-500">{r.transactionCount} {t('camera.tranzakcio')}</div>
+                  <div className="text-xs text-gray-500">
+                    {r.transactionCount} {t('camera.tranzakcio')}
+                  </div>
                 </div>
                 <div className="flex gap-4 mt-1 text-xs text-gray-500">
-                  <span>{t('darius.vetel')}{formatNum(r.totalBuyHuf)} {t('components.ft')}</span>
-                  <span>{t('darius.eladas')}{formatNum(r.totalSellHuf)} {t('components.ft')}</span>
+                  <span>
+                    {t('darius.vetel')}
+                    {formatNum(r.totalBuyHuf)} {t('components.ft')}
+                  </span>
+                  <span>
+                    {t('darius.eladas')}
+                    {formatNum(r.totalSellHuf)} {t('components.ft')}
+                  </span>
                   <span
                     className={
-                      r.decadeProfitHuf >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'
+                      r.decadeProfitHuf >= 0
+                        ? 'text-green-600 font-medium'
+                        : 'text-red-600 font-medium'
                     }
                   >
-                    {t('decade.haszon')}{formatNum(r.decadeProfitHuf)} {t('common.ft')}
+                    {t('decade.haszon')}
+                    {formatNum(r.decadeProfitHuf)} {t('common.ft')}
                   </span>
                 </div>
               </div>
@@ -223,31 +236,58 @@ export default function DecadeReportPage() {
             {selected ? (
               <div className="p-3 border rounded space-y-2">
                 <h3 className="font-medium text-sm">
-                  {t('darius.reszletek')}{selected.year}. {decadeLabel(selected.decade)}
+                  {t('darius.reszletek')}
+                  {selected.year}. {decadeLabel(selected.decade)}
                 </h3>
                 <div className="text-xs space-y-1">
                   <div>
-                    {t('darius.statusz')}<StatusBadge status={selected.status} />
+                    {t('darius.statusz')}
+                    <StatusBadge status={selected.status} />
                   </div>
-                  <div>{t('decade.tranzakciok')}{selected.transactionCount}</div>
-                  <div>{t('components.kezelesiDij')}{formatNum(selected.totalHandlingFee)} {t('components.ft')}</div>
+                  <div>
+                    {t('decade.tranzakciok')}
+                    {selected.transactionCount}
+                  </div>
+                  <div>
+                    {t('components.kezelesiDij')}
+                    {formatNum(selected.totalHandlingFee)} {t('components.ft')}
+                  </div>
                   <div className="flex items-center gap-1">
                     {selected.decadeProfitHuf >= 0 ? (
                       <TrendingUp size={12} className="text-green-500" />
                     ) : (
                       <TrendingDown size={12} className="text-red-500" />
                     )}
-                    {t('decade.haszon')}{formatNum(selected.decadeProfitHuf)} {t('common.ft')}
+                    {t('decade.haszon')}
+                    {formatNum(selected.decadeProfitHuf)} {t('common.ft')}
                   </div>
                   <div className="border-t pt-1 mt-1">
-                    <div>{t('decade.nyitoKeszletertek')}{formatNum(selected.openingInventoryValueHuf)} {t('components.ft')}</div>
-                    <div>{t('decade.zaroKeszletertek')}{formatNum(selected.closingInventoryValueHuf)} {t('components.ft')}</div>
+                    <div>
+                      {t('decade.nyitoKeszletertek')}
+                      {formatNum(selected.openingInventoryValueHuf)} {t('components.ft')}
+                    </div>
+                    <div>
+                      {t('decade.zaroKeszletertek')}
+                      {formatNum(selected.closingInventoryValueHuf)} {t('components.ft')}
+                    </div>
                   </div>
                   <div className="border-t pt-1 mt-1">
-                    <div>{t('decade.forintNyito')}{formatNum(selected.forintOpening)} {t('components.ft')}</div>
-                    <div>{t('decade.forintBevetel')}{formatNum(selected.forintTotalIncome)} {t('components.ft')}</div>
-                    <div>{t('decade.forintKiadas')}{formatNum(selected.forintTotalExpense)} {t('components.ft')}</div>
-                    <div>{t('decade.forintZaro')}{formatNum(selected.forintClosing)} {t('components.ft')}</div>
+                    <div>
+                      {t('decade.forintNyito')}
+                      {formatNum(selected.forintOpening)} {t('components.ft')}
+                    </div>
+                    <div>
+                      {t('decade.forintBevetel')}
+                      {formatNum(selected.forintTotalIncome)} {t('components.ft')}
+                    </div>
+                    <div>
+                      {t('decade.forintKiadas')}
+                      {formatNum(selected.forintTotalExpense)} {t('components.ft')}
+                    </div>
+                    <div>
+                      {t('decade.forintZaro')}
+                      {formatNum(selected.forintClosing)} {t('components.ft')}
+                    </div>
                     <div
                       className={
                         selected.forintControlValid ? 'text-green-600' : 'text-red-600 font-medium'
@@ -255,23 +295,36 @@ export default function DecadeReportPage() {
                     >
                       {selected.forintControlValid ? (
                         <span className="flex items-center gap-1">
-                          <CheckCircle size={12} />{t('decade.forintKontrollOk')}
+                          <CheckCircle size={12} />
+                          {t('decade.forintKontrollOk')}
                         </span>
                       ) : (
                         <span className="flex items-center gap-1">
-                          <XCircle size={12} />{t('decade.elteres')}{formatNum(selected.forintControlDiff)} {t('common.ft')}
+                          <XCircle size={12} />
+                          {t('decade.elteres')}
+                          {formatNum(selected.forintControlDiff)} {t('common.ft')}
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="border-t pt-1 mt-1">
-                    <div>{t('decade.elsoBizonylat')}{selected.firstReceiptNumber || '—'}</div>
-                    <div>{t('decade.utolsoBizonylat')}{selected.lastReceiptNumber || '—'}</div>
-                    <div>{t('decade.kartyasFizetes')}{formatNum(selected.cardPaymentTotal)} {t('components.ft')}</div>
+                    <div>
+                      {t('decade.elsoBizonylat')}
+                      {selected.firstReceiptNumber || '—'}
+                    </div>
+                    <div>
+                      {t('decade.utolsoBizonylat')}
+                      {selected.lastReceiptNumber || '—'}
+                    </div>
+                    <div>
+                      {t('decade.kartyasFizetes')}
+                      {formatNum(selected.cardPaymentTotal)} {t('components.ft')}
+                    </div>
                   </div>
                   {selected.closedAt && (
                     <div className="border-t pt-1 mt-1 text-gray-500">
-                      {t('decade.lezarva')}{new Date(selected.closedAt).toLocaleString('hu-HU')}
+                      {t('decade.lezarva')}
+                      {new Date(selected.closedAt).toLocaleString('hu-HU')}
                     </div>
                   )}
                 </div>
@@ -283,7 +336,8 @@ export default function DecadeReportPage() {
                       onClick={() => handleClose(selected.id)}
                       className="btn-primary text-xs flex items-center gap-1"
                     >
-                      <Lock size={12} />{t('decade.lezaras')}
+                      <Lock size={12} />
+                      {t('decade.lezaras')}
                     </button>
                   </div>
                 )}
@@ -322,7 +376,9 @@ export default function DecadeReportPage() {
                 )}
               </div>
             ) : (
-              <div className="text-gray-400 text-sm text-center py-8">{t('darius.valasszonEgyJelentest')}</div>
+              <div className="text-gray-400 text-sm text-center py-8">
+                {t('darius.valasszonEgyJelentest')}
+              </div>
             )}
           </div>
         </div>

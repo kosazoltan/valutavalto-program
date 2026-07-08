@@ -71,11 +71,15 @@ export default function TrbExportPage() {
 
   const downloadFile = async (format: 'txt' | 'excel') => {
     try {
-      const res = format === 'txt'
-        ? await api.get(`/trb-export/txt?date=${date}`, { responseType: 'blob' })
-        : await api.get(`/trb-export/excel?date=${date}`, { responseType: 'blob' })
+      const res =
+        format === 'txt'
+          ? await api.get(`/trb-export/txt?date=${date}`, { responseType: 'blob' })
+          : await api.get(`/trb-export/excel?date=${date}`, { responseType: 'blob' })
       const ext = format === 'txt' ? 'txt' : 'xlsx'
-      const mime = format === 'txt' ? 'text/plain' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      const mime =
+        format === 'txt'
+          ? 'text/plain'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       const blob = new Blob([res.data], { type: mime })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -133,7 +137,9 @@ export default function TrbExportPage() {
       {error && (
         <div className="rounded border border-red-300 bg-red-50 p-4 text-sm text-red-700">
           {error}
-          <button onClick={fetchPreview} className="ml-3 underline">{t('treasury.ujra')}</button>
+          <button onClick={fetchPreview} className="ml-3 underline">
+            {t('treasury.ujra')}
+          </button>
         </div>
       )}
 
@@ -201,7 +207,9 @@ export default function TrbExportPage() {
 
               {branch.denominationLines.length > 0 && (
                 <div>
-                  <h4 className="mb-1 text-sm text-gray-600">{t('treasury.penztarallomanyCimlet')}</h4>
+                  <h4 className="mb-1 text-sm text-gray-600">
+                    {t('treasury.penztarallomanyCimlet')}
+                  </h4>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-gray-50 text-left">
@@ -212,7 +220,10 @@ export default function TrbExportPage() {
                     </thead>
                     <tbody>
                       {branch.denominationLines.map((line, idx) => (
-                        <tr key={`${line.currencyCode}-${line.denomination}-${idx}`} className="border-b">
+                        <tr
+                          key={`${line.currencyCode}-${line.denomination}-${idx}`}
+                          className="border-b"
+                        >
                           <td className="px-3 py-1 font-mono">{line.currencyCode}</td>
                           <td className="px-3 py-1 text-right">{formatNum(line.denomination)}</td>
                           <td className="px-3 py-1 text-right">{line.quantity}</td>

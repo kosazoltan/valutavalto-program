@@ -55,10 +55,13 @@ describe('sheet0RowToValues', () => {
 describe('loadSheet0ByCurrency', () => {
   it('valutakód → A–I map a 0-s lap localStorage-ból', () => {
     const s = memStorage()
-    s.setItem('arfolyamkeszito.mainSheet.v1', JSON.stringify([
-      { currency: 'EUR', settlement: 400, weakMultiSell: 405 },
-      { currency: 'usd', settlement: 360 },
-    ]))
+    s.setItem(
+      'arfolyamkeszito.mainSheet.v1',
+      JSON.stringify([
+        { currency: 'EUR', settlement: 400, weakMultiSell: 405 },
+        { currency: 'usd', settlement: 360 },
+      ]),
+    )
     const map = loadSheet0ByCurrency(s)
     expect(map.get('EUR')).toEqual({ A: 400, F: 405 })
     expect(map.get('USD')).toEqual({ A: 360 }) // upper-case kulcs
@@ -92,15 +95,18 @@ describe('rate-maker szerveroldali munkaív snapshot', () => {
 
   it('importnál eldobja az idegen kulcsokat és a hibás snapshotot', () => {
     const s = memStorage()
-    const imported = importRateMakerSheetSnapshot(JSON.stringify({
-      version: 1,
-      savedAt: '2026-06-18T10:00:00',
-      entries: {
-        'arfolyamkeszito.mainSheet.v1': '[{"currency":"EUR"}]',
-        auth_token: 'tilos',
-        'arfolyamkeszito.workgroupSheet.formulas.v1.g-1': '{"1.buyRate":"J-1"}',
-      },
-    }), s)
+    const imported = importRateMakerSheetSnapshot(
+      JSON.stringify({
+        version: 1,
+        savedAt: '2026-06-18T10:00:00',
+        entries: {
+          'arfolyamkeszito.mainSheet.v1': '[{"currency":"EUR"}]',
+          auth_token: 'tilos',
+          'arfolyamkeszito.workgroupSheet.formulas.v1.g-1': '{"1.buyRate":"J-1"}',
+        },
+      }),
+      s,
+    )
 
     expect(imported).toBe(2)
     expect(s.getItem('arfolyamkeszito.mainSheet.v1')).toBe('[{"currency":"EUR"}]')
@@ -150,7 +156,10 @@ describe('group fix rátaértékek round-trip (FK02-B / FR-11, FR-12)', () => {
     const s = memStorage()
     saveGroupRateValues('wg-1', { 'cur-1.buyRate': '400.5', 'cur-2.limit1SellRate': '0.85' }, s)
     saveGroupRateValues('wg-2', { 'cur-1.buyRate': '999' }, s)
-    expect(loadGroupRateValues('wg-1', s)).toEqual({ 'cur-1.buyRate': '400.5', 'cur-2.limit1SellRate': '0.85' })
+    expect(loadGroupRateValues('wg-1', s)).toEqual({
+      'cur-1.buyRate': '400.5',
+      'cur-2.limit1SellRate': '0.85',
+    })
     expect(loadGroupRateValues('wg-2', s)).toEqual({ 'cur-1.buyRate': '999' })
   })
 
@@ -173,7 +182,9 @@ describe('group fix rátaértékek round-trip (FK02-B / FR-11, FR-12)', () => {
 
 describe('tartós offline SQLite réteg (FK02-B / FR-11, FR-12)', () => {
   const g = globalThis as { electronAPI?: unknown }
-  afterEach(() => { delete g.electronAPI })
+  afterEach(() => {
+    delete g.electronAPI
+  })
 
   it('böngészőben (nincs electronAPI) → save no-op, load üres (nem dob)', async () => {
     saveGroupRateValuesToOfflineDb('wg-1', { 'cur-1.buyRate': '400' })
@@ -182,21 +193,42 @@ describe('tartós offline SQLite réteg (FK02-B / FR-11, FR-12)', () => {
 
   it('Electronban: save átadja a groupId+values payloadot a localFirst IPC-nek', () => {
     const calls: Array<{ groupId: string; values: Record<string, string> }> = []
-    g.electronAPI = { localFirst: { saveGroupRateValues: (p: { groupId: string; values: Record<string, string> }) => { calls.push(p); return Promise.resolve({ ok: true }) } } }
-    saveGroupRateValuesToOfflineDb('wg-7', { 'cur-1.buyRate': '400', 'cur-2.limit1SellRate': '0.9' })
-    expect(calls).toEqual([{ groupId: 'wg-7', values: { 'cur-1.buyRate': '400', 'cur-2.limit1SellRate': '0.9' } }])
+    g.electronAPI = {
+      localFirst: {
+        saveGroupRateValues: (p: { groupId: string; values: Record<string, string> }) => {
+          calls.push(p)
+          return Promise.resolve({ ok: true })
+        },
+      },
+    }
+    saveGroupRateValuesToOfflineDb('wg-7', {
+      'cur-1.buyRate': '400',
+      'cur-2.limit1SellRate': '0.9',
+    })
+    expect(calls).toEqual([
+      { groupId: 'wg-7', values: { 'cur-1.buyRate': '400', 'cur-2.limit1SellRate': '0.9' } },
+    ])
   })
 
   it('Electronban: load a localFirst IPC válaszát adja vissza', async () => {
-    g.electronAPI = { localFirst: { getGroupRateValues: (id: string) => Promise.resolve(id === 'wg-7' ? { 'cur-1.buyRate': '400' } : {}) } }
-    await expect(loadGroupRateValuesFromOfflineDb('wg-7')).resolves.toEqual({ 'cur-1.buyRate': '400' })
+    g.electronAPI = {
+      localFirst: {
+        getGroupRateValues: (id: string) =>
+          Promise.resolve(id === 'wg-7' ? { 'cur-1.buyRate': '400' } : {}),
+      },
+    }
+    await expect(loadGroupRateValuesFromOfflineDb('wg-7')).resolves.toEqual({
+      'cur-1.buyRate': '400',
+    })
   })
 
   it('IPC-hiba esetén save nem dob, load üreset ad (best-effort)', async () => {
-    g.electronAPI = { localFirst: {
-      saveGroupRateValues: () => Promise.reject(new Error('ipc fail')),
-      getGroupRateValues: () => Promise.reject(new Error('ipc fail')),
-    } }
+    g.electronAPI = {
+      localFirst: {
+        saveGroupRateValues: () => Promise.reject(new Error('ipc fail')),
+        getGroupRateValues: () => Promise.reject(new Error('ipc fail')),
+      },
+    }
     expect(() => saveGroupRateValuesToOfflineDb('wg-1', { 'cur-1.buyRate': '1' })).not.toThrow()
     await expect(loadGroupRateValuesFromOfflineDb('wg-1')).resolves.toEqual({})
   })
@@ -204,7 +236,14 @@ describe('tartós offline SQLite réteg (FK02-B / FR-11, FR-12)', () => {
   it('persistGroupRateValues dual-write: localStorage ÉS SQLite IPC is megkapja (review P0/P1 fix)', () => {
     localStorage.clear()
     const calls: Array<{ groupId: string; values: Record<string, string> }> = []
-    g.electronAPI = { localFirst: { saveGroupRateValues: (p: { groupId: string; values: Record<string, string> }) => { calls.push(p); return Promise.resolve({ ok: true }) } } }
+    g.electronAPI = {
+      localFirst: {
+        saveGroupRateValues: (p: { groupId: string; values: Record<string, string> }) => {
+          calls.push(p)
+          return Promise.resolve({ ok: true })
+        },
+      },
+    }
     persistGroupRateValues('wg-9', { 'cur-1.buyRate': '410' })
     // localStorage szinkron út
     expect(loadGroupRateValues('wg-9')).toEqual({ 'cur-1.buyRate': '410' })

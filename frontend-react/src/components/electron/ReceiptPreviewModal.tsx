@@ -29,24 +29,24 @@
  *       cimke (kotelezo szoveg az adott osszeg-savnal)
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PrintReceiptData } from '@/types/receipt';
-import { logger } from '../../utils/logger';
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { PrintReceiptData } from '@/types/receipt'
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
 const MEDIUM_THRESHOLD = 100_000
 const HIGH_THRESHOLD = 300_000
 
 interface ReceiptPreviewModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  receiptData: PrintReceiptData | null;
-  qrCodeDataUrl: string | null;
-  onPrint: () => Promise<void>;
-  variant?: 'official' | 'draft';
-  statusMessage?: string | null;
-  printLabel?: string;
-  allowPrint?: boolean;
+  isOpen: boolean
+  onClose: () => void
+  receiptData: PrintReceiptData | null
+  qrCodeDataUrl: string | null
+  onPrint: () => Promise<void>
+  variant?: 'official' | 'draft'
+  statusMessage?: string | null
+  printLabel?: string
+  allowPrint?: boolean
 }
 
 export default function ReceiptPreviewModal({
@@ -61,45 +61,45 @@ export default function ReceiptPreviewModal({
   allowPrint = true,
 }: ReceiptPreviewModalProps) {
   const { t } = useTranslation()
-  const [isPrinting, setIsPrinting] = useState(false);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     return () => {
       if (closeTimerRef.current) {
-        clearTimeout(closeTimerRef.current);
+        clearTimeout(closeTimerRef.current)
       }
-    };
-  }, []);
+    }
+  }, [])
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        onClose()
       }
-    };
+    }
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
 
   const handlePrint = useCallback(async () => {
-    setIsPrinting(true);
+    setIsPrinting(true)
     try {
-      await onPrint();
+      await onPrint()
       closeTimerRef.current = setTimeout(() => {
-        setIsPrinting(false);
-        onClose();
-      }, 2000);
+        setIsPrinting(false)
+        onClose()
+      }, 2000)
     } catch (err) {
-      logger.error('ReceiptPreviewModal', 'Nyomtatás hiba:', err);
-      setIsPrinting(false);
+      logger.error('ReceiptPreviewModal', 'Nyomtatás hiba:', err)
+      setIsPrinting(false)
     }
-  }, [onPrint, onClose]);
+  }, [onPrint, onClose])
 
-  if (!isOpen || !receiptData) return null;
+  if (!isOpen || !receiptData) return null
 
   const company =
     receiptData.companyType === 'BEST_CHANGE'
@@ -114,7 +114,7 @@ export default function ReceiptPreviewModal({
           fullName: 'EXPRESSZ ÉKSZERHÁZ ÉS MINIBANK KFT.',
           taxNumber: '14040535-2-02',
           address: 'Szeged, Klauzál tér 3.',
-        };
+        }
 
   const subtypeHu: Record<string, string> = {
     buy: 'Valuta vétel',
@@ -124,7 +124,7 @@ export default function ReceiptPreviewModal({
     transfer: 'Átadási bizonylat',
     closing: 'Napi zárás',
     cancelled_transaction: 'Megszakított tranzakció',
-  };
+  }
 
   const subtypeEn: Record<string, string> = {
     buy: 'EXCHANGE (PURCHASE)',
@@ -134,61 +134,76 @@ export default function ReceiptPreviewModal({
     transfer: 'TRANSFER',
     closing: 'DAILY CLOSING',
     cancelled_transaction: 'CANCELLED TRANSACTION',
-  };
+  }
 
   const formatAmount = (value: number | undefined) =>
-    value !== undefined ? value.toLocaleString('hu-HU', { maximumFractionDigits: 2 }) : '—';
+    value !== undefined ? value.toLocaleString('hu-HU', { maximumFractionDigits: 2 }) : '—'
 
   const formatRate = (value: number | undefined) =>
     value !== undefined
       ? value.toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
-      : '—';
+      : '—'
 
   const formatInt = (value: number | undefined) =>
-    value !== undefined ? Math.round(value).toLocaleString('hu-HU') : '0';
+    value !== undefined ? Math.round(value).toLocaleString('hu-HU') : '0'
 
   // Codex PR #1102 P1: a küszöbök az AML-lel azonos FIZETENDŐ összegre (díjjal) számolnak.
   // Copilot #1110: a dokumentált fallback-lánc a printer isHighValueReceipt-tel egyezően
   // payableHufAmount ?? roundedHufAmount ?? hufAmount — a csak roundedHufAmount-ot hordozó
   // (pl. többsoros) bizonylatokon e nélkül a 300k+ blokkok tévesen elmaradtak volna.
-  const absHuf = Math.abs(receiptData.payableHufAmount ?? receiptData.roundedHufAmount ?? receiptData.hufAmount ?? 0);
-  const isMediumValue = absHuf >= MEDIUM_THRESHOLD;
-  const isHighValue = absHuf >= HIGH_THRESHOLD;
+  const absHuf = Math.abs(
+    receiptData.payableHufAmount ?? receiptData.roundedHufAmount ?? receiptData.hufAmount ?? 0,
+  )
+  const isMediumValue = absHuf >= MEDIUM_THRESHOLD
+  const isHighValue = absHuf >= HIGH_THRESHOLD
   // Codex P2 #1110: a PepKind nyers kódja (CSALADTAG/PARLAMENTI/...) emberi szövegre fordul
   // — a penztar-client printer.ts pepKindReceiptText tükre (külön package, ezért lokál másolat).
   const pepKindText = (() => {
-    const k = receiptData.customerPepKind?.trim();
-    if (!k) return undefined;
+    const k = receiptData.customerPepKind?.trim()
+    if (!k) return undefined
     switch (k) {
-      case 'CSALADTAG': return 'kiemelt közszereplő családtagja';
-      case 'KOZELI_MUNKATARS': return 'kiemelt közszereplő közeli munkatársa';
-      case 'KORMANYFO': return 'kormányfő / miniszter / államtitkár';
-      case 'PARLAMENTI': return 'országgyűlési / önkormányzati képviselő';
-      case 'NAV_VEZETO': return 'NAV / állami vállalat felsővezetés';
-      case 'EGYEB': return 'egyéb kiemelt közszereplő';
-      default: return k;
+      case 'CSALADTAG':
+        return 'kiemelt közszereplő családtagja'
+      case 'KOZELI_MUNKATARS':
+        return 'kiemelt közszereplő közeli munkatársa'
+      case 'KORMANYFO':
+        return 'kormányfő / miniszter / államtitkár'
+      case 'PARLAMENTI':
+        return 'országgyűlési / önkormányzati képviselő'
+      case 'NAV_VEZETO':
+        return 'NAV / állami vállalat felsővezetés'
+      case 'EGYEB':
+        return 'egyéb kiemelt közszereplő'
+      default:
+        return k
     }
-  })();
+  })()
   // Batch2-D: orosz EUR-vásárlási nyilatkozat triggere (legacy EzoroszUgyfel tükre,
   // a printer.ts isRussianEurPurchase-zal egyezően): EUR eladás + orosz állampolgár + 300k+.
-  const nationalityLower = (receiptData.customerNationality ?? '').trim().toLowerCase();
-  const isRussianEurPurchase = receiptData.type === 'sell' && isHighValue
-    && (nationalityLower === 'ru' || nationalityLower === 'rus'
-      || nationalityLower.includes('orosz') || nationalityLower.includes('russia'))
-    && (receiptData.currencyCode === 'EUR'
-      || (receiptData.transactionLines ?? []).some(l => l.currencyCode === 'EUR'));
+  const nationalityLower = (receiptData.customerNationality ?? '').trim().toLowerCase()
+  const isRussianEurPurchase =
+    receiptData.type === 'sell' &&
+    isHighValue &&
+    (nationalityLower === 'ru' ||
+      nationalityLower === 'rus' ||
+      nationalityLower.includes('orosz') ||
+      nationalityLower.includes('russia')) &&
+    (receiptData.currencyCode === 'EUR' ||
+      (receiptData.transactionLines ?? []).some((l) => l.currencyCode === 'EUR'))
   // Átadási bizonylat (értéktári átadás-átvétel): nincs ügyfél / deviza-státusz / jogcím-nyilatkozat,
   // ezeket a tranzakció-specifikus szekciókat a transfer bizonylaton elrejtjük.
-  const isTransfer = receiptData.type === 'transfer';
+  const isTransfer = receiptData.type === 'transfer'
   // FR-2/FR-13: a transfer bizonylat címe — átadás/átvétel, sztornónál „SZTORNÓ BIZONYLAT".
   const transferTitle = receiptData.isStorno
     ? 'SZTORNÓ BIZONYLAT'
-    : receiptData.transferDocType === 'receipt' ? 'Átvételi bizonylat' : 'Átadási bizonylat';
+    : receiptData.transferDocType === 'receipt'
+      ? 'Átvételi bizonylat'
+      : 'Átadási bizonylat'
 
-  const roundingDiff = receiptData.roundingDiff ?? 0;
-  const netTotal = receiptData.roundedHufAmount ?? receiptData.hufAmount ?? 0;
-  const fee = receiptData.handlingFee ?? 0;
-  const paid = netTotal + fee;
+  const roundingDiff = receiptData.roundingDiff ?? 0
+  const netTotal = receiptData.roundedHufAmount ?? receiptData.hufAmount ?? 0
+  const fee = receiptData.handlingFee ?? 0
+  const paid = netTotal + fee
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -196,7 +211,7 @@ export default function ReceiptPreviewModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-xl font-bold text-gray-800">{t('components.bizonylatElonezet2')}</h2>
-          { }
+          {}
           <button
             onClick={onClose}
             className="rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
@@ -204,14 +219,15 @@ export default function ReceiptPreviewModal({
           >
             ✕
           </button>
-          { }
+          {}
         </div>
 
         {/* Receipt content — 80mm thermal printer format */}
         <div className="flex-1 overflow-y-auto p-4">
           {(variant === 'draft' || statusMessage) && (
             <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              {statusMessage ?? 'Szigorú számadású bizonylat — helyileg már véglegesítve (NGM 23/2014). Szerver-szinkron folyamatban, a sorszám nem változik.'}
+              {statusMessage ??
+                'Szigorú számadású bizonylat — helyileg már véglegesítve (NGM 23/2014). Szerver-szinkron folyamatban, a sorszám nem változik.'}
             </div>
           )}
           <div
@@ -239,7 +255,9 @@ export default function ReceiptPreviewModal({
                 <p className="text-xs">Tel: {receiptData.vaultPhone}</p>
               )}
               <p className="text-xs">Adószám: {company.taxNumber}</p>
-              <p className="text-sm font-bold mt-1">{isTransfer ? transferTitle : (subtypeHu[receiptData.type] ?? receiptData.type)}</p>
+              <p className="text-sm font-bold mt-1">
+                {isTransfer ? transferTitle : (subtypeHu[receiptData.type] ?? receiptData.type)}
+              </p>
               <p className="text-xs">{isTransfer ? '' : (subtypeEn[receiptData.type] ?? '')}</p>
             </div>
 
@@ -247,12 +265,17 @@ export default function ReceiptPreviewModal({
 
             {/* === BIZONYLAT ADATOK (kétnyelvű) === */}
             <div className="space-y-0.5">
-              <p><span className="font-semibold">Sorszám (INVOICE NR):</span> {receiptData.receiptNumber}</p>
-              <p><span className="font-semibold">Dátum (DATE):</span> {receiptData.date}</p>
-              <p><span className="font-semibold">Idő (TIME):</span> {receiptData.time}</p>
-              {receiptData.navReceiptNumber && (
-                <p>(Nyugtaszám: {receiptData.navReceiptNumber})</p>
-              )}
+              <p>
+                <span className="font-semibold">Sorszám (INVOICE NR):</span>{' '}
+                {receiptData.receiptNumber}
+              </p>
+              <p>
+                <span className="font-semibold">Dátum (DATE):</span> {receiptData.date}
+              </p>
+              <p>
+                <span className="font-semibold">Idő (TIME):</span> {receiptData.time}
+              </p>
+              {receiptData.navReceiptNumber && <p>(Nyugtaszám: {receiptData.navReceiptNumber})</p>}
             </div>
 
             <div className="my-3 border-t border-gray-300" />
@@ -260,7 +283,7 @@ export default function ReceiptPreviewModal({
             {/* === ÁFA-MENTESSÉG (a valutatáblázat ELŐTT) === */}
             <div className="text-[9px]">
               <p>Szj - 67.13.10.0</p>
-              <p>Adómentes  a szolgáltatás nyújtása a 2007</p>
+              <p>Adómentes a szolgáltatás nyújtása a 2007</p>
               <p>M.Á.A. evi CXVII tv. 86 § e) alapján</p>
               <p>mentes az adó alól</p>
             </div>
@@ -271,22 +294,30 @@ export default function ReceiptPreviewModal({
             {(receiptData.type === 'sell' || receiptData.type === 'buy') && (
               <>
                 <div className="flex justify-between text-[9px] font-bold">
-                  <span>V.nem</span><span>Árf.</span><span>B.jegy</span><span>Forint</span>
+                  <span>V.nem</span>
+                  <span>Árf.</span>
+                  <span>B.jegy</span>
+                  <span>Forint</span>
                 </div>
                 <div className="flex justify-between text-[8px]">
-                  <span>CURR.</span><span>RATE</span><span>CASH</span><span>VALUE</span>
+                  <span>CURR.</span>
+                  <span>RATE</span>
+                  <span>CASH</span>
+                  <span>VALUE</span>
                 </div>
                 <div className="my-1 border-t border-gray-400" />
                 {/* Multi-line aggregate (2026-06-04): minden valuta-sor egy sorban, EGY bizonylatszám alatt.
                     Egysoros bizonylatnál a fejléc currencyCode/rate/foreignAmount/hufAmount jelenik meg (változatlan). */}
                 {(receiptData.transactionLines && receiptData.transactionLines.length > 0
                   ? receiptData.transactionLines
-                  : [{
-                      currencyCode: receiptData.currencyCode ?? '—',
-                      rate: receiptData.rate ?? 0,
-                      foreignAmount: receiptData.foreignAmount ?? 0,
-                      hufAmount: receiptData.hufAmount ?? 0,
-                    }]
+                  : [
+                      {
+                        currencyCode: receiptData.currencyCode ?? '—',
+                        rate: receiptData.rate ?? 0,
+                        foreignAmount: receiptData.foreignAmount ?? 0,
+                        hufAmount: receiptData.hufAmount ?? 0,
+                      },
+                    ]
                 ).map((ln, i) => (
                   <div className="flex justify-between" key={`${ln.currencyCode}-${i}`}>
                     <span className="font-bold">{ln.currencyCode || '—'}</span>
@@ -299,10 +330,22 @@ export default function ReceiptPreviewModal({
 
                 {/* Összesítés */}
                 <div className="space-y-0.5">
-                  <div className="flex justify-between"><span>Kerekítés (ROUNDING):</span><span>{formatInt(roundingDiff)}</span></div>
-                  <div className="flex justify-between"><span>Nettó Ft (SUM TOTAL):</span><span>{formatInt(netTotal)}</span></div>
-                  <div className="flex justify-between"><span>Kez.kltsg (HANDLING FEE):</span><span>{formatInt(fee)}</span></div>
-                  <div className="flex justify-between font-bold text-sm"><span>Kifizetve:(PAID):</span><span>{formatInt(paid)}</span></div>
+                  <div className="flex justify-between">
+                    <span>Kerekítés (ROUNDING):</span>
+                    <span>{formatInt(roundingDiff)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Nettó Ft (SUM TOTAL):</span>
+                    <span>{formatInt(netTotal)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Kez.kltsg (HANDLING FEE):</span>
+                    <span>{formatInt(fee)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-sm">
+                    <span>Kifizetve:(PAID):</span>
+                    <span>{formatInt(paid)}</span>
+                  </div>
                 </div>
               </>
             )}
@@ -310,10 +353,20 @@ export default function ReceiptPreviewModal({
             {receiptData.type === 'conversion' && (
               <div className="space-y-1">
                 <p className="font-semibold">Konverzió</p>
-                <p><span>Forrás:</span> {formatAmount(receiptData.sourceAmount)} {receiptData.sourceCurrencyCode ?? ''}</p>
-                <p><span>Cél:</span> {formatAmount(receiptData.targetAmount)} {receiptData.targetCurrencyCode ?? ''}</p>
-                <p><span>Köztes HUF:</span> {formatAmount(receiptData.hufAmount)} Ft</p>
-                <p><span>Árfolyam:</span> {formatRate(receiptData.rate)}</p>
+                <p>
+                  <span>Forrás:</span> {formatAmount(receiptData.sourceAmount)}{' '}
+                  {receiptData.sourceCurrencyCode ?? ''}
+                </p>
+                <p>
+                  <span>Cél:</span> {formatAmount(receiptData.targetAmount)}{' '}
+                  {receiptData.targetCurrencyCode ?? ''}
+                </p>
+                <p>
+                  <span>Köztes HUF:</span> {formatAmount(receiptData.hufAmount)} Ft
+                </p>
+                <p>
+                  <span>Árfolyam:</span> {formatRate(receiptData.rate)}
+                </p>
               </div>
             )}
 
@@ -321,12 +374,24 @@ export default function ReceiptPreviewModal({
               <div className="space-y-1">
                 <p className="font-semibold text-red-700">Sztornózott tranzakció</p>
                 {receiptData.originalReceiptNumber && (
-                  <p><span className="font-semibold">Eredeti bizonylat:</span> {receiptData.originalReceiptNumber}</p>
+                  <p>
+                    <span className="font-semibold">Eredeti bizonylat:</span>{' '}
+                    {receiptData.originalReceiptNumber}
+                  </p>
                 )}
-                <p><span>Valutanem:</span> {receiptData.currencyCode ?? '—'}</p>
-                <p><span>Összeg:</span> {formatAmount(receiptData.foreignAmount)} {receiptData.currencyCode ?? ''}</p>
-                <p><span>Árfolyam:</span> {formatRate(receiptData.rate)}</p>
-                <p className="font-bold">HUF: {formatAmount(receiptData.roundedHufAmount ?? receiptData.hufAmount)} Ft</p>
+                <p>
+                  <span>Valutanem:</span> {receiptData.currencyCode ?? '—'}
+                </p>
+                <p>
+                  <span>Összeg:</span> {formatAmount(receiptData.foreignAmount)}{' '}
+                  {receiptData.currencyCode ?? ''}
+                </p>
+                <p>
+                  <span>Árfolyam:</span> {formatRate(receiptData.rate)}
+                </p>
+                <p className="font-bold">
+                  HUF: {formatAmount(receiptData.roundedHufAmount ?? receiptData.hufAmount)} Ft
+                </p>
                 {receiptData.stornoReason && (
                   <>
                     <div className="my-1 border-t border-gray-400" />
@@ -363,13 +428,15 @@ export default function ReceiptPreviewModal({
                     </tbody>
                   </table>
                 )}
-                <p className="font-bold">HUF érték: {formatInt(receiptData.roundedHufAmount ?? receiptData.hufAmount)} Ft</p>
+                <p className="font-bold">
+                  HUF érték: {formatInt(receiptData.roundedHufAmount ?? receiptData.hufAmount)} Ft
+                </p>
                 {receiptData.stornoReason && (
-                  <p><span className="font-semibold">Indok:</span> {receiptData.stornoReason}</p>
+                  <p>
+                    <span className="font-semibold">Indok:</span> {receiptData.stornoReason}
+                  </p>
                 )}
-                {receiptData.note && (
-                  <p className="text-[9px] italic">{receiptData.note}</p>
-                )}
+                {receiptData.note && <p className="text-[9px] italic">{receiptData.note}</p>}
               </div>
             )}
 
@@ -377,13 +444,21 @@ export default function ReceiptPreviewModal({
               <div className="space-y-1">
                 <p className="font-semibold">Átadás-átvétel</p>
                 {/* FR-2: az Átadó és Átvevő kötelező mezők — mindig megjelennek (hiány esetén „—"). */}
-                <p><span className="font-semibold">Átadó:</span> {receiptData.branchCode || '—'}</p>
-                <p><span className="font-semibold">Átvevő:</span> {receiptData.transferTarget || '—'}</p>
+                <p>
+                  <span className="font-semibold">Átadó:</span> {receiptData.branchCode || '—'}
+                </p>
+                <p>
+                  <span className="font-semibold">Átvevő:</span> {receiptData.transferTarget || '—'}
+                </p>
                 {receiptData.carrierName && (
-                  <p><span className="font-semibold">Szállító:</span> {receiptData.carrierName}</p>
+                  <p>
+                    <span className="font-semibold">Szállító:</span> {receiptData.carrierName}
+                  </p>
                 )}
                 {receiptData.sealNumber && (
-                  <p><span className="font-semibold">Plombaszám:</span> {receiptData.sealNumber}</p>
+                  <p>
+                    <span className="font-semibold">Plombaszám:</span> {receiptData.sealNumber}
+                  </p>
                 )}
                 {/* Penztar-batch A.1 (2026-06-12): több-valutás átadólapon MINDEN sor
                     megjelenik — egysorosnál a korábbi fejléc-mezős megjelenítés marad. */}
@@ -399,29 +474,47 @@ export default function ReceiptPreviewModal({
                 ) : (
                   <>
                     {receiptData.currencyCode && (
-                      <p><span className="font-semibold">Valuta:</span> {receiptData.currencyCode}</p>
+                      <p>
+                        <span className="font-semibold">Valuta:</span> {receiptData.currencyCode}
+                      </p>
                     )}
                     {receiptData.foreignAmount !== undefined && (
-                      <p><span className="font-semibold">Összeg:</span> {formatAmount(receiptData.foreignAmount)} {receiptData.currencyCode ?? ''}</p>
+                      <p>
+                        <span className="font-semibold">Összeg:</span>{' '}
+                        {formatAmount(receiptData.foreignAmount)} {receiptData.currencyCode ?? ''}
+                      </p>
                     )}
                   </>
                 )}
                 {/* Batch2-E: árfolyam a deviza-bizonylaton (HUF-átadásnál nincs árfolyam sor). */}
                 {receiptData.rate != null && receiptData.currencyCode !== 'HUF' && (
-                  <p><span className="font-semibold">Árfolyam:</span> {formatRate(receiptData.rate)}</p>
+                  <p>
+                    <span className="font-semibold">Árfolyam:</span> {formatRate(receiptData.rate)}
+                  </p>
                 )}
                 {(receiptData.roundedHufAmount != null || receiptData.hufAmount != null) && (
-                  <p><span className="font-semibold">Forint érték:</span> {formatInt(receiptData.roundedHufAmount ?? receiptData.hufAmount)} HUF</p>
+                  <p>
+                    <span className="font-semibold">Forint érték:</span>{' '}
+                    {formatInt(receiptData.roundedHufAmount ?? receiptData.hufAmount)} HUF
+                  </p>
                 )}
                 {receiptData.deliveryDate && (
-                  <p><span className="font-semibold">Kézbesítési dátum:</span> {receiptData.deliveryDate}</p>
+                  <p>
+                    <span className="font-semibold">Kézbesítési dátum:</span>{' '}
+                    {receiptData.deliveryDate}
+                  </p>
                 )}
                 {receiptData.transferNote && (
-                  <p><span className="font-semibold">Megjegyzés:</span> {receiptData.transferNote}</p>
+                  <p>
+                    <span className="font-semibold">Megjegyzés:</span> {receiptData.transferNote}
+                  </p>
                 )}
                 {/* FR-15: sztornó indoklása a sztornó bizonylaton. */}
                 {receiptData.isStorno && receiptData.stornoReason && (
-                  <p><span className="font-semibold">Sztornó indoklása:</span> {receiptData.stornoReason}</p>
+                  <p>
+                    <span className="font-semibold">Sztornó indoklása:</span>{' '}
+                    {receiptData.stornoReason}
+                  </p>
                 )}
                 {/* FR-17..19: opcionális címletezési táblázat — csak ha van megadott sor. */}
                 {receiptData.denominations && receiptData.denominations.length > 0 && (
@@ -440,7 +533,10 @@ export default function ReceiptPreviewModal({
                           <tr key={i}>
                             <td className="text-left">{d.quantity}</td>
                             <td className="text-right">{formatAmount(d.faceValue)}</td>
-                            <td className="text-right">{formatAmount(d.lineTotal)} {d.currencyCode ?? receiptData.currencyCode ?? ''}</td>
+                            <td className="text-right">
+                              {formatAmount(d.lineTotal)}{' '}
+                              {d.currencyCode ?? receiptData.currencyCode ?? ''}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -451,185 +547,252 @@ export default function ReceiptPreviewModal({
             )}
 
             {/* Tranzakció-specifikus szekciók (ügyfél / deviza-státusz / jogcím) — átadási bizonylaton elrejtve. */}
-            {!isTransfer && (<>
-            <div className="my-3 border-t border-gray-300" />
+            {!isTransfer && (
+              <>
+                <div className="my-3 border-t border-gray-300" />
 
-            {/* === ÜGYFÉL ADATOK (3 szintű) === */}
-            <div className="text-center font-bold mb-1">--- ügyfél adatai ---</div>
+                {/* === ÜGYFÉL ADATOK (3 szintű) === */}
+                <div className="text-center font-bold mb-1">--- ügyfél adatai ---</div>
 
-            {isMediumValue && (
-              <div className="space-y-0.5">
-                {receiptData.customerName && <p>Neve: {receiptData.customerName}</p>}
-                {receiptData.customerMotherName && <p>Anyja neve: {receiptData.customerMotherName}</p>}
-                {receiptData.customerBirthPlace && <p>Szül-i hely: {receiptData.customerBirthPlace}</p>}
-                {receiptData.customerBirthDate && <p>Szül-i idő: {receiptData.customerBirthDate}</p>}
+                {isMediumValue && (
+                  <div className="space-y-0.5">
+                    {receiptData.customerName && <p>Neve: {receiptData.customerName}</p>}
+                    {receiptData.customerMotherName && (
+                      <p>Anyja neve: {receiptData.customerMotherName}</p>
+                    )}
+                    {receiptData.customerBirthPlace && (
+                      <p>Szül-i hely: {receiptData.customerBirthPlace}</p>
+                    )}
+                    {receiptData.customerBirthDate && (
+                      <p>Szül-i idő: {receiptData.customerBirthDate}</p>
+                    )}
 
+                    {isHighValue && (
+                      <>
+                        {receiptData.customerAddress && (
+                          <p>Lakcím(ADDRESS): {receiptData.customerAddress}</p>
+                        )}
+                        {receiptData.customerDocType && (
+                          <p>DOC TYPE: {receiptData.customerDocType}</p>
+                        )}
+                        {receiptData.customerDocNumber && (
+                          <p>NR.: {receiptData.customerDocNumber}</p>
+                        )}
+                        {/* Penztar-batch C.1: PEP-minőség is megjelenik, ha ismert (emberi szöveg, nem kód). */}
+                        <p>
+                          {receiptData.customerIsPep
+                            ? `Az ügyfél kiemelt közszereplő${pepKindText ? ` (${pepKindText})` : ''}`
+                            : 'Az ügyfél nem közszereplő'}
+                        </p>
+                        {/* V325 (Batch3-C): JOGI SZEMÉLY blokk — a legacy BLOKNYOM jogi
+                        ágának tükre (a nyomtatóval/backenddel egyezően). */}
+                        {receiptData.isLegalEntityCustomer && (
+                          <div className="mt-1 space-y-0.5">
+                            {receiptData.legalEntityName && (
+                              <>
+                                <p>Jogi személy neve:</p>
+                                <p className="pl-2 font-bold">{receiptData.legalEntityName}</p>
+                              </>
+                            )}
+                            {receiptData.legalEntitySeat && (
+                              <>
+                                <p>Jogi személy székhelye:</p>
+                                <p className="pl-2">{receiptData.legalEntitySeat}</p>
+                              </>
+                            )}
+                            {receiptData.legalDeedNumber && (
+                              <p>Okiratszám: {receiptData.legalDeedNumber}</p>
+                            )}
+                            {receiptData.legalEntityTaxNumber && (
+                              <p>Adószám: {receiptData.legalEntityTaxNumber}</p>
+                            )}
+                            {receiptData.customerName && (
+                              <>
+                                <p>Megbízott neve:</p>
+                                <p className="pl-2">{receiptData.customerName}</p>
+                              </>
+                            )}
+                            {receiptData.customerAddress && (
+                              <>
+                                <p>Megbízott címe:</p>
+                                <p className="pl-2">{receiptData.customerAddress}</p>
+                              </>
+                            )}
+                            {(receiptData.beneficialOwners?.length ?? 0) > 0 && (
+                              <>
+                                <div className="my-1 border-t border-gray-300" />
+                                <p className="font-bold">Tényleges tulajdonosok adatai:</p>
+                                {receiptData.beneficialOwners!.map((o, i) => (
+                                  <div key={i} className="mt-1">
+                                    <p>{i + 1}. tulajdonos:</p>
+                                    <p className="pl-2">{o.name}</p>
+                                    {o.address && <p className="pl-2">{o.address}</p>}
+                                    {(o.birthPlace || o.birthDate) && (
+                                      <p className="pl-2">
+                                        {`${o.birthPlace ?? ''} ${o.birthDate ?? ''}`.trim()}
+                                      </p>
+                                    )}
+                                    {o.nationality && <p className="pl-2">{o.nationality}</p>}
+                                    {o.residenceAbroad && (
+                                      <p className="pl-2">{o.residenceAbroad}</p>
+                                    )}
+                                    {o.interestNature && <p className="pl-2">{o.interestNature}</p>}
+                                    {o.interestExtent && <p className="pl-2">{o.interestExtent}</p>}
+                                    <p className="pl-2">
+                                      {o.isPep ? 'A tulaj közszereplő' : 'Nem közszereplő'}
+                                    </p>
+                                  </div>
+                                ))}
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <p className="mt-1">Az ügyletet készpénzben teljesítjük</p>
+                <p>
+                  Deviza-státusz:{' '}
+                  {receiptData.foreignStatus == null
+                    ? '—'
+                    : receiptData.foreignStatus === 'FOREIGN'
+                      ? 'Külföldi'
+                      : 'Belföldi'}
+                </p>
+
+                <div className="my-3 border-t border-gray-300" />
+
+                {/* === 300k+ FELETT: Bankpartner + marketing + jogcím === */}
                 {isHighValue && (
                   <>
-                    {receiptData.customerAddress && <p>Lakcím(ADDRESS): {receiptData.customerAddress}</p>}
-                    {receiptData.customerDocType && <p>DOC TYPE: {receiptData.customerDocType}</p>}
-                    {receiptData.customerDocNumber && <p>NR.: {receiptData.customerDocNumber}</p>}
-                    {/* Penztar-batch C.1: PEP-minőség is megjelenik, ha ismert (emberi szöveg, nem kód). */}
-                    <p>
-                      {receiptData.customerIsPep
-                        ? `Az ügyfél kiemelt közszereplő${pepKindText ? ` (${pepKindText})` : ''}`
-                        : 'Az ügyfél nem közszereplő'}
-                    </p>
-                    {/* V325 (Batch3-C): JOGI SZEMÉLY blokk — a legacy BLOKNYOM jogi
-                        ágának tükre (a nyomtatóval/backenddel egyezően). */}
-                    {receiptData.isLegalEntityCustomer && (
-                      <div className="mt-1 space-y-0.5">
-                        {receiptData.legalEntityName && (
-                          <>
-                            <p>Jogi személy neve:</p>
-                            <p className="pl-2 font-bold">{receiptData.legalEntityName}</p>
-                          </>
-                        )}
-                        {receiptData.legalEntitySeat && (
-                          <>
-                            <p>Jogi személy székhelye:</p>
-                            <p className="pl-2">{receiptData.legalEntitySeat}</p>
-                          </>
-                        )}
-                        {receiptData.legalDeedNumber && <p>Okiratszám: {receiptData.legalDeedNumber}</p>}
-                        {receiptData.legalEntityTaxNumber && <p>Adószám: {receiptData.legalEntityTaxNumber}</p>}
-                        {receiptData.customerName && (
-                          <>
-                            <p>Megbízott neve:</p>
-                            <p className="pl-2">{receiptData.customerName}</p>
-                          </>
-                        )}
-                        {receiptData.customerAddress && (
-                          <>
-                            <p>Megbízott címe:</p>
-                            <p className="pl-2">{receiptData.customerAddress}</p>
-                          </>
-                        )}
-                        {(receiptData.beneficialOwners?.length ?? 0) > 0 && (
-                          <>
-                            <div className="my-1 border-t border-gray-300" />
-                            <p className="font-bold">Tényleges tulajdonosok adatai:</p>
-                            {receiptData.beneficialOwners!.map((o, i) => (
-                              <div key={i} className="mt-1">
-                                <p>{i + 1}. tulajdonos:</p>
-                                <p className="pl-2">{o.name}</p>
-                                {o.address && <p className="pl-2">{o.address}</p>}
-                                {(o.birthPlace || o.birthDate) && (
-                                  <p className="pl-2">{`${o.birthPlace ?? ''} ${o.birthDate ?? ''}`.trim()}</p>
-                                )}
-                                {o.nationality && <p className="pl-2">{o.nationality}</p>}
-                                {o.residenceAbroad && <p className="pl-2">{o.residenceAbroad}</p>}
-                                {o.interestNature && <p className="pl-2">{o.interestNature}</p>}
-                                {o.interestExtent && <p className="pl-2">{o.interestExtent}</p>}
-                                <p className="pl-2">{o.isPep ? 'A tulaj közszereplő' : 'Nem közszereplő'}</p>
-                              </div>
-                            ))}
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
+                    <div className="text-center space-y-0.5 mb-2">
+                      <p>Raiffeisen Bank Zrt.</p>
+                      <p>KIEMELT KÖZVETÍTŐJE</p>
+                    </div>
+                    <div className="my-2 border-t border-gray-300" />
+                    <div className="text-center font-bold space-y-0.5 mb-2">
+                      <p>EXCLUSIVE CHANGE</p>
+                      <p>KEDVEZŐBB,</p>
+                      <p>GYORSABB,</p>
+                      <p>BIZTONSÁGOSABB</p>
+                    </div>
+                    <div className="my-2 border-t border-gray-300" />
 
-            <p className="mt-1">Az ügyletet készpénzben teljesítjük</p>
-            <p>Deviza-státusz: {receiptData.foreignStatus == null ? '—' : (receiptData.foreignStatus === 'FOREIGN' ? 'Külföldi' : 'Belföldi')}</p>
-
-            <div className="my-3 border-t border-gray-300" />
-
-            {/* === 300k+ FELETT: Bankpartner + marketing + jogcím === */}
-            {isHighValue && (
-              <>
-                <div className="text-center space-y-0.5 mb-2">
-                  <p>Raiffeisen Bank Zrt.</p>
-                  <p>KIEMELT KÖZVETÍTŐJE</p>
-                </div>
-                <div className="my-2 border-t border-gray-300" />
-                <div className="text-center font-bold space-y-0.5 mb-2">
-                  <p>EXCLUSIVE CHANGE</p>
-                  <p>KEDVEZŐBB,</p>
-                  <p>GYORSABB,</p>
-                  <p>BIZTONSÁGOSABB</p>
-                </div>
-                <div className="my-2 border-t border-gray-300" />
-
-                <div className="mb-2">
-                  <p className="font-bold">JOGCÍM NYILATKOZAT</p>
-                  {/* Penztar-batch C.1: a „saját nevemben / <képviselt> nevében" ág a TÉNYLEGES
+                    <div className="mb-2">
+                      <p className="font-bold">JOGCÍM NYILATKOZAT</p>
+                      {/* Penztar-batch C.1: a „saját nevemben / <képviselt> nevében" ág a TÉNYLEGES
                       onOwnBehalf flagből — a korábbi statikus „saját nevemben" szöveg helyett
                       (a kanonikus backend EscPosReceiptService logikájával egyezően). */}
-                  {receiptData.customerOnOwnBehalf === false && receiptData.customerActorName ? (
-                    <>
-                      <p className="text-[9px] leading-tight">
-                        Büntetőjogi felelősségem tudatában nyilatkozom, hogy a fenti tranzakciót{' '}
-                        <span className="font-bold">{receiptData.customerActorName}</span> nevében bonyolítom,
-                      </p>
-                      <p className="text-[9px] leading-tight">Képviselt fél adatai:</p>
-                      {receiptData.customerActorBirthPlace && <p className="text-[9px] pl-2">szül.hely: {receiptData.customerActorBirthPlace}</p>}
-                      {receiptData.customerActorBirthDate && <p className="text-[9px] pl-2">szül.idő: {receiptData.customerActorBirthDate}</p>}
-                      {receiptData.customerActorMotherName && <p className="text-[9px] pl-2">anyja: {receiptData.customerActorMotherName}</p>}
-                      {receiptData.customerActorNationality && <p className="text-[9px] pl-2">állampolg.: {receiptData.customerActorNationality}</p>}
-                      {receiptData.customerActorDocumentNumber && (
-                        <p className="text-[9px] pl-2">{receiptData.customerActorDocumentType ?? 'okmány'}: {receiptData.customerActorDocumentNumber}</p>
+                      {receiptData.customerOnOwnBehalf === false &&
+                      receiptData.customerActorName ? (
+                        <>
+                          <p className="text-[9px] leading-tight">
+                            Büntetőjogi felelősségem tudatában nyilatkozom, hogy a fenti tranzakciót{' '}
+                            <span className="font-bold">{receiptData.customerActorName}</span>{' '}
+                            nevében bonyolítom,
+                          </p>
+                          <p className="text-[9px] leading-tight">Képviselt fél adatai:</p>
+                          {receiptData.customerActorBirthPlace && (
+                            <p className="text-[9px] pl-2">
+                              szül.hely: {receiptData.customerActorBirthPlace}
+                            </p>
+                          )}
+                          {receiptData.customerActorBirthDate && (
+                            <p className="text-[9px] pl-2">
+                              szül.idő: {receiptData.customerActorBirthDate}
+                            </p>
+                          )}
+                          {receiptData.customerActorMotherName && (
+                            <p className="text-[9px] pl-2">
+                              anyja: {receiptData.customerActorMotherName}
+                            </p>
+                          )}
+                          {receiptData.customerActorNationality && (
+                            <p className="text-[9px] pl-2">
+                              állampolg.: {receiptData.customerActorNationality}
+                            </p>
+                          )}
+                          {receiptData.customerActorDocumentNumber && (
+                            <p className="text-[9px] pl-2">
+                              {receiptData.customerActorDocumentType ?? 'okmány'}:{' '}
+                              {receiptData.customerActorDocumentNumber}
+                            </p>
+                          )}
+                          {receiptData.customerActorAddress && (
+                            <p className="text-[9px] pl-2">
+                              lakcím: {receiptData.customerActorAddress}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-[9px] leading-tight">
+                          Büntetőjogi felelősségem tudatában nyilatkozom, hogy a fenti tranzakciót
+                          saját nevemben bonyolítom,
+                        </p>
                       )}
-                      {receiptData.customerActorAddress && <p className="text-[9px] pl-2">lakcím: {receiptData.customerActorAddress}</p>}
-                    </>
-                  ) : (
-                    <p className="text-[9px] leading-tight">
-                      Büntetőjogi felelősségem tudatában nyilatkozom, hogy a fenti tranzakciót saját nevemben bonyolítom,
-                    </p>
-                  )}
-                  {/* Batch2-D (Fabulya-teszt 2026-06-12): a legacy Jogcimnyilatkozat (BLOKNYOM)
+                      {/* Batch2-D (Fabulya-teszt 2026-06-12): a legacy Jogcimnyilatkozat (BLOKNYOM)
                       további kötelező elemei — első személyű PEP-nyilatkozat, 5 munkanapos
                       adatváltozás-klauzula, dedikált ügyfél-aláírás — a nyomtatóval egyezően.
                       Codex/Copilot #1110: ismeretlen PEP-státusznál (null) NINCS PEP-mondat
                       (a printer/backend guardjával azonosan); a minőség emberi szövegként,
                       a nyomtatóval azonos sortöréssel. */}
-                  {receiptData.customerIsPep != null && (
-                    receiptData.customerIsPep ? (
-                      <>
-                        <p className="text-[9px] leading-tight mt-1">Kiemelt közszereplő (vagyok),</p>
-                        {pepKindText && <p className="text-[9px] leading-tight">mint: {pepKindText}</p>}
-                      </>
-                    ) : (
-                      <p className="text-[9px] leading-tight mt-1">Nem (vagyok) kiemelt közszereplő.</p>
-                    )
-                  )}
-                  <p className="text-[9px] leading-tight mt-1">
-                    Tudomásom van arról, hogy 5 (öt) munkanapon belül köteles vagyok bejelenteni
-                    a szolgáltatónak a fenti adatokban, vagy a saját adataimban bekövetkező
-                    esetleges változásokat, és e kötelezettség elmulasztásából eredő kár engem terhel.
-                  </p>
-                  {receiptData.sourceOfFunds && (
-                    <p className="mt-1">Pénzeszközöm forrása: <span className="font-bold">{receiptData.sourceOfFunds}</span></p>
-                  )}
-                  <p className="mt-3 text-center">.....................................</p>
-                  <p className="text-center">ügyfél aláírása</p>
-                </div>
-                <div className="my-2 border-t border-gray-300" />
+                      {receiptData.customerIsPep != null &&
+                        (receiptData.customerIsPep ? (
+                          <>
+                            <p className="text-[9px] leading-tight mt-1">
+                              Kiemelt közszereplő (vagyok),
+                            </p>
+                            {pepKindText && (
+                              <p className="text-[9px] leading-tight">mint: {pepKindText}</p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-[9px] leading-tight mt-1">
+                            Nem (vagyok) kiemelt közszereplő.
+                          </p>
+                        ))}
+                      <p className="text-[9px] leading-tight mt-1">
+                        Tudomásom van arról, hogy 5 (öt) munkanapon belül köteles vagyok bejelenteni
+                        a szolgáltatónak a fenti adatokban, vagy a saját adataimban bekövetkező
+                        esetleges változásokat, és e kötelezettség elmulasztásából eredő kár engem
+                        terhel.
+                      </p>
+                      {receiptData.sourceOfFunds && (
+                        <p className="mt-1">
+                          Pénzeszközöm forrása:{' '}
+                          <span className="font-bold">{receiptData.sourceOfFunds}</span>
+                        </p>
+                      )}
+                      <p className="mt-3 text-center">.....................................</p>
+                      <p className="text-center">ügyfél aláírása</p>
+                    </div>
+                    <div className="my-2 border-t border-gray-300" />
+                  </>
+                )}
+
+                {/* Batch2-D: orosz állampolgár EUR-vásárlása 300k+ felett → kétnyelvű
+                személyes-használat nyilatkozat (legacy OroszNyilatkozat tükre). */}
+                {isRussianEurPurchase && (
+                  <div className="mb-2">
+                    <div className="my-2 border-t border-gray-300" />
+                    <p className="text-center font-bold">NYILATKOZAT/DECLARATION</p>
+                    <div className="my-2 border-t border-gray-300" />
+                    <p className="text-[9px] leading-tight">
+                      Alulírott {(receiptData.customerName ?? '').trim().substring(0, 30)}{' '}
+                      kijelentem, hogy az általam vásárolt EUR valutát személyes használatra
+                      váltottam.
+                    </p>
+                    <p className="text-[9px] leading-tight mt-1">
+                      /I declare that the just purchased EUR currency is for my personal usage.
+                    </p>
+                    <p className="mt-3 text-center">.....................................</p>
+                    <p className="text-center">ügyfél aláírása/signature of buyer</p>
+                  </div>
+                )}
               </>
             )}
-
-            {/* Batch2-D: orosz állampolgár EUR-vásárlása 300k+ felett → kétnyelvű
-                személyes-használat nyilatkozat (legacy OroszNyilatkozat tükre). */}
-            {isRussianEurPurchase && (
-              <div className="mb-2">
-                <div className="my-2 border-t border-gray-300" />
-                <p className="text-center font-bold">NYILATKOZAT/DECLARATION</p>
-                <div className="my-2 border-t border-gray-300" />
-                <p className="text-[9px] leading-tight">
-                  Alulírott {(receiptData.customerName ?? '').trim().substring(0, 30)} kijelentem,
-                  hogy az általam vásárolt EUR valutát személyes használatra váltottam.
-                </p>
-                <p className="text-[9px] leading-tight mt-1">
-                  /I declare that the just purchased EUR currency is for my personal usage.
-                </p>
-                <p className="mt-3 text-center">.....................................</p>
-                <p className="text-center">ügyfél aláírása/signature of buyer</p>
-              </div>
-            )}
-            </>)}
 
             {/* FR-5: kötelező jogi nyilatkozat — KIZÁRÓLAG átvételi bizonylaton (átadásin és sztornón NEM). */}
             {isTransfer && receiptData.transferDocType === 'receipt' && !receiptData.isStorno && (
@@ -644,7 +807,9 @@ export default function ReceiptPreviewModal({
             )}
 
             {/* === Pénztáros / Átadó + aláírás === */}
-            <p className="mb-1">{isTransfer ? 'Ügyintéző' : 'Pénztáros'}: {receiptData.cashierName}</p>
+            <p className="mb-1">
+              {isTransfer ? 'Ügyintéző' : 'Pénztáros'}: {receiptData.cashierName}
+            </p>
             <div className="flex justify-around mt-3 mb-2">
               <div className="text-center">
                 <div className="border-t border-black w-16 mx-auto mb-0.5" />
@@ -681,7 +846,9 @@ export default function ReceiptPreviewModal({
             <div className="my-3 border-t-2 border-gray-400" />
             <div className="text-center text-[9px] text-gray-600">
               <p>Köszönjük, hogy minket választott!</p>
-              <p className="mt-1">A bizonylat a pénzmosás elleni törvény alapján nem helyettesíti a számlát.</p>
+              <p className="mt-1">
+                A bizonylat a pénzmosás elleni törvény alapján nem helyettesíti a számlát.
+              </p>
             </div>
           </div>
         </div>
@@ -693,7 +860,9 @@ export default function ReceiptPreviewModal({
             disabled={isPrinting || !allowPrint}
             className="flex-1 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
-            {isPrinting ? 'Nyomtatás...' : (printLabel ?? (variant === 'draft' ? 'Vázlat nyomtatása' : 'Nyomtatás'))}
+            {isPrinting
+              ? 'Nyomtatás...'
+              : (printLabel ?? (variant === 'draft' ? 'Vázlat nyomtatása' : 'Nyomtatás'))}
           </button>
 
           <button
@@ -706,5 +875,5 @@ export default function ReceiptPreviewModal({
         </div>
       </div>
     </div>
-  );
+  )
 }

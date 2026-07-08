@@ -1,6 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Vault, Lock, Unlock, Plus, Minus, AlertTriangle, CheckCircle, Clock, FileCheck, Info, X } from 'lucide-react'
+import {
+  Vault,
+  Lock,
+  Unlock,
+  Plus,
+  Minus,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  FileCheck,
+  Info,
+  X,
+} from 'lucide-react'
 import { NumberInput } from '../../components/NumberInput'
 import { cashBalanceApi, dailySessionApi } from '../../services/api/index'
 import type { BranchBalanceSummary, CashBalance, DailySession } from '../../services/api/index'
@@ -55,7 +67,7 @@ function formatOpenedAtTimestamp(raw: string | null | undefined): string {
   // (a `!raw` mar fed-i, de explicit `.trim()` kontaminacios szunkozt is)
   if (!raw?.trim()) return '—'
   const d = new Date(raw)
-  if (isNaN(d.getTime())) return raw  // fallback: raw if parse-fail
+  if (isNaN(d.getTime())) return raw // fallback: raw if parse-fail
   const date = d.toLocaleDateString('hu-HU', { year: 'numeric', month: '2-digit', day: '2-digit' })
   const time = d.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })
   return `${date} ${time}`
@@ -88,7 +100,11 @@ export default function CashDeskPage() {
     loadingRef.current = true
     setLoading(true)
     try {
-      const [balances, session, branchSummary]: [CashBalance[], DailySession | null, BranchBalanceSummary | null] = await Promise.all([
+      const [balances, session, branchSummary]: [
+        CashBalance[],
+        DailySession | null,
+        BranchBalanceSummary | null,
+      ] = await Promise.all([
         cashBalanceApi.list().catch(() => [] as CashBalance[]),
         dailySessionApi.getCurrent().catch(() => null),
         cashBalanceApi.getSummary().catch(() => null),
@@ -141,7 +157,9 @@ export default function CashDeskPage() {
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     // Focus event: a felhasználó visszakattint az ablakra (pl. Electron)
-    const handleFocus = () => { void loadData() }
+    const handleFocus = () => {
+      void loadData()
+    }
     window.addEventListener('focus', handleFocus)
 
     const interval = setInterval(() => {
@@ -168,7 +186,7 @@ export default function CashDeskPage() {
       return
     }
     try {
-      const currencyBalance = status.balances.find(b => b.currency === movementCurrency)
+      const currencyBalance = status.balances.find((b) => b.currency === movementCurrency)
       if (!currencyBalance) {
         toast.error('Hiba', 'Ismeretlen valutanem')
         return
@@ -210,10 +228,10 @@ export default function CashDeskPage() {
 
   const fallbackHufBalance = status.balances.find((item) => item.currency === 'HUF')?.balance ?? 0
   const codeCheckMatches =
-    !!selectedBalance
-    && !!codeCheckBalance
-    && selectedBalance.currencyId === codeCheckBalance.currencyId
-    && selectedBalance.currencyCode === codeCheckBalance.currencyCode
+    !!selectedBalance &&
+    !!codeCheckBalance &&
+    selectedBalance.currencyId === codeCheckBalance.currencyId &&
+    selectedBalance.currencyCode === codeCheckBalance.currencyCode
   const selectedBalanceTitle = selectedBalance
     ? `${selectedBalance.currencyCode} ${cashDeskLabels.detailSuffix}`
     : ''
@@ -249,19 +267,25 @@ export default function CashDeskPage() {
       </div>
 
       {/* Status Banner — compact */}
-      <div className={`form-panel flex items-center justify-between px-3 py-1.5 ${
-        status.isOpen ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-      }`}>
+      <div
+        className={`form-panel flex items-center justify-between px-3 py-1.5 ${
+          status.isOpen ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+        }`}
+      >
         <div className="flex items-center gap-1.5">
           {status.isOpen ? (
             <>
               <CheckCircle className="text-green-600" size={16} />
-              <span className="text-green-800 font-semibold text-sm">{t('cashdesk.penztarNyitva')}</span>
+              <span className="text-green-800 font-semibold text-sm">
+                {t('cashdesk.penztarNyitva')}
+              </span>
             </>
           ) : (
             <>
               <Lock className="text-red-600" size={16} />
-              <span className="text-red-800 font-semibold text-sm">{t('cashdesk.penztarZarva')}</span>
+              <span className="text-red-800 font-semibold text-sm">
+                {t('cashdesk.penztarZarva')}
+              </span>
             </>
           )}
         </div>
@@ -269,18 +293,24 @@ export default function CashDeskPage() {
           <span className="flex items-center gap-1">
             <Clock size={12} />
             {/* v2.3.38 (B12 audit fix): ISO timestamp -> hu-HU formatum (NEM raw "2026-04-29T11:43:07.623294") */}
-            {t('cashdesk.nyitva')}{formatOpenedAtTimestamp(status.openedAt)}
+            {t('cashdesk.nyitva')}
+            {formatOpenedAtTimestamp(status.openedAt)}
           </span>
           {/* v2.3.42 (Sourcery #303): ures string-et is missing-kent kezeljuk
               (a `??` csak null/undefined fallback, NEM ures string) */}
-          <span>{t('cashdesk.kezelo')}{status.openedBy?.trim() ? status.openedBy : '—'}</span>
+          <span>
+            {t('cashdesk.kezelo')}
+            {status.openedBy?.trim() ? status.openedBy : '—'}
+          </span>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <div className="form-panel p-2">
           <div className="text-[10px] text-gray-500 uppercase">{cashDeskLabels.currencies}</div>
-          <div className="text-base font-bold text-gray-900">{summary?.totalCurrencies ?? status.balances.length}</div>
+          <div className="text-base font-bold text-gray-900">
+            {summary?.totalCurrencies ?? status.balances.length}
+          </div>
         </div>
         <div className="form-panel p-2">
           <div className="text-[10px] text-gray-500 uppercase">{cashDeskLabels.hufStock}</div>
@@ -290,11 +320,15 @@ export default function CashDeskPage() {
         </div>
         <div className="form-panel p-2">
           <div className="text-[10px] text-gray-500 uppercase">{cashDeskLabels.lowAlert}</div>
-          <div className="text-base font-bold text-orange-700">{summary?.lowBalanceAlerts ?? 0}</div>
+          <div className="text-base font-bold text-orange-700">
+            {summary?.lowBalanceAlerts ?? 0}
+          </div>
         </div>
         <div className="form-panel p-2">
           <div className="text-[10px] text-gray-500 uppercase">{cashDeskLabels.highAlert}</div>
-          <div className="text-base font-bold text-yellow-700">{summary?.highBalanceAlerts ?? 0}</div>
+          <div className="text-base font-bold text-yellow-700">
+            {summary?.highBalanceAlerts ?? 0}
+          </div>
         </div>
       </div>
 
@@ -305,14 +339,20 @@ export default function CashDeskPage() {
             <h2 className="text-sm font-semibold text-gray-700">{t('cashdesk.penzkeszlet')}</h2>
             <div className="flex gap-1.5">
               <button
-                onClick={() => { setMovementType('in'); setShowMovementDialog(true); }}
+                onClick={() => {
+                  setMovementType('in')
+                  setShowMovementDialog(true)
+                }}
                 className="form-button flex items-center gap-1 h-6 text-[11px] px-2"
               >
                 <Plus size={12} />
                 {t('cashdesk.bevet')}
               </button>
               <button
-                onClick={() => { setMovementType('out'); setShowMovementDialog(true); }}
+                onClick={() => {
+                  setMovementType('out')
+                  setShowMovementDialog(true)
+                }}
                 className="form-button flex items-center gap-1 h-6 text-[11px] px-2"
               >
                 <Minus size={12} />
@@ -327,20 +367,32 @@ export default function CashDeskPage() {
                 <tr className="text-[10px] uppercase text-gray-500">
                   <th className="px-3 py-1 text-left w-16">{t('common.currency')}</th>
                   <th className="px-2 py-1 text-right">{t('cashdesk.keszlet')}</th>
-                  <th className="px-2 py-1 text-right text-gray-400 w-24">{t('cashdesk.minMax')}</th>
-                  <th className="px-2 py-1 text-center w-16"><span className="sr-only">{t('common.status')}</span></th>
+                  <th className="px-2 py-1 text-right text-gray-400 w-24">
+                    {t('cashdesk.minMax')}
+                  </th>
+                  <th className="px-2 py-1 text-center w-16">
+                    <span className="sr-only">{t('common.status')}</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {status.balances.map((item, idx) => {
-                  const balanceStatus = getBalanceStatus(item.balance, item.minBalance, item.maxBalance)
+                  const balanceStatus = getBalanceStatus(
+                    item.balance,
+                    item.minBalance,
+                    item.maxBalance,
+                  )
                   return (
                     <tr
                       key={item.currency}
                       className={`border-b border-gray-100 last:border-0 ${
-                        balanceStatus === 'low' ? 'bg-orange-50' :
-                        balanceStatus === 'high' ? 'bg-yellow-50' :
-                        idx % 2 === 1 ? 'bg-gray-50' : ''
+                        balanceStatus === 'low'
+                          ? 'bg-orange-50'
+                          : balanceStatus === 'high'
+                            ? 'bg-yellow-50'
+                            : idx % 2 === 1
+                              ? 'bg-gray-50'
+                              : ''
                       }`}
                     >
                       <td className="px-3 py-1">
@@ -352,15 +404,20 @@ export default function CashDeskPage() {
                         </span>
                       </td>
                       <td className="px-2 py-1 text-right text-[10px] text-gray-400 font-mono">
-                        {item.minBalance.toLocaleString('hu-HU')} - {item.maxBalance.toLocaleString('hu-HU')}
+                        {item.minBalance.toLocaleString('hu-HU')} -{' '}
+                        {item.maxBalance.toLocaleString('hu-HU')}
                       </td>
                       <td className="px-2 py-1 text-center">
                         <div className="flex items-center justify-center gap-1">
                           {balanceStatus === 'low' && (
-                            <span title={t('cashdesk.alacsonyKeszlet')}><AlertTriangle size={12} className="text-orange-500 inline" /></span>
+                            <span title={t('cashdesk.alacsonyKeszlet')}>
+                              <AlertTriangle size={12} className="text-orange-500 inline" />
+                            </span>
                           )}
                           {balanceStatus === 'high' && (
-                            <span title={t('cashdesk.magasKeszlet')}><AlertTriangle size={12} className="text-yellow-500 inline" /></span>
+                            <span title={t('cashdesk.magasKeszlet')}>
+                              <AlertTriangle size={12} className="text-yellow-500 inline" />
+                            </span>
                           )}
                           <button
                             type="button"
@@ -381,17 +438,23 @@ export default function CashDeskPage() {
             </table>
           </div>
           {detailError && (
-            <div className="px-3 py-2 text-xs text-red-700 bg-red-50 border-t border-red-100">{detailError}</div>
+            <div className="px-3 py-2 text-xs text-red-700 bg-red-50 border-t border-red-100">
+              {detailError}
+            </div>
           )}
         </div>
 
         {/* Today's Stats — compact */}
         <div className="form-panel p-2">
-          <h2 className="text-sm font-semibold text-gray-700 mb-1.5">{t('cashdesk.maiStatisztika')}</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-1.5">
+            {t('cashdesk.maiStatisztika')}
+          </h2>
           <div className="space-y-1.5">
             <div className="bg-blue-50 px-2.5 py-1.5 rounded">
               <div className="text-[10px] text-blue-600">{t('archiving.tranzakciok')}</div>
-              <div className="text-base font-bold text-blue-800">{status.todayStats.transactions}</div>
+              <div className="text-base font-bold text-blue-800">
+                {status.todayStats.transactions}
+              </div>
             </div>
             <div className="bg-green-50 px-2.5 py-1.5 rounded">
               <div className="text-[10px] text-green-600">{t('cashdesk.vetelOsszesen')}</div>
@@ -419,11 +482,10 @@ export default function CashDeskPage() {
         <div className="form-panel p-2">
           <div className="flex items-start justify-between gap-2 border-b border-gray-200 pb-1.5">
             <div>
-              <h2 className="text-sm font-semibold text-gray-700">
-                {selectedBalanceTitle}
-              </h2>
+              <h2 className="text-sm font-semibold text-gray-700">{selectedBalanceTitle}</h2>
               <div className="text-[11px] text-gray-500">
-                {selectedBalance.currencyName ?? 'Valuta'} - {selectedBalance.branchName ?? 'Aktuális pénztár'}
+                {selectedBalance.currencyName ?? 'Valuta'} -{' '}
+                {selectedBalance.branchName ?? 'Aktuális pénztár'}
               </div>
             </div>
             <button
@@ -442,25 +504,34 @@ export default function CashDeskPage() {
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 pt-2 text-xs">
             <div>
               <div className="text-gray-500">{cashDeskLabels.current}</div>
-              <div className="font-mono font-bold text-gray-900">{selectedBalance.currentBalance.toLocaleString('hu-HU')}</div>
+              <div className="font-mono font-bold text-gray-900">
+                {selectedBalance.currentBalance.toLocaleString('hu-HU')}
+              </div>
             </div>
             <div>
               <div className="text-gray-500">{cashDeskLabels.opening}</div>
-              <div className="font-mono font-bold text-gray-900">{selectedBalance.openingBalance.toLocaleString('hu-HU')}</div>
+              <div className="font-mono font-bold text-gray-900">
+                {selectedBalance.openingBalance.toLocaleString('hu-HU')}
+              </div>
             </div>
             <div>
               <div className="text-gray-500">{cashDeskLabels.dailyChange}</div>
-              <div className="font-mono font-bold text-gray-900">{(selectedBalance.dailyChange ?? 0).toLocaleString('hu-HU')}</div>
+              <div className="font-mono font-bold text-gray-900">
+                {(selectedBalance.dailyChange ?? 0).toLocaleString('hu-HU')}
+              </div>
             </div>
             <div>
               <div className="text-gray-500">{cashDeskLabels.limit}</div>
               <div className="font-mono font-bold text-gray-900">
-                {(selectedBalance.minBalance ?? 0).toLocaleString('hu-HU')} - {(selectedBalance.maxBalance ?? 0).toLocaleString('hu-HU')}
+                {(selectedBalance.minBalance ?? 0).toLocaleString('hu-HU')} -{' '}
+                {(selectedBalance.maxBalance ?? 0).toLocaleString('hu-HU')}
               </div>
             </div>
             <div>
               <div className="text-gray-500">{cashDeskLabels.codeCheck}</div>
-              <div className={`font-semibold ${codeCheckMatches ? 'text-green-700' : 'text-orange-700'}`}>
+              <div
+                className={`font-semibold ${codeCheckMatches ? 'text-green-700' : 'text-orange-700'}`}
+              >
                 {codeCheckMatches ? cashDeskLabels.codeCheckOk : cashDeskLabels.codeCheckMismatch}
               </div>
             </div>
@@ -530,16 +601,10 @@ export default function CashDeskPage() {
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-4">
-              <button
-                onClick={() => setShowMovementDialog(false)}
-                className="form-button"
-              >
+              <button onClick={() => setShowMovementDialog(false)} className="form-button">
                 {t('common.cancel')}
               </button>
-              <button
-                onClick={handleMovement}
-                className="form-button-primary"
-              >
+              <button onClick={handleMovement} className="form-button-primary">
                 {movementType === 'in' ? 'Bevételezés' : 'Kivételezés'}
               </button>
             </div>

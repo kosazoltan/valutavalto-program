@@ -12,5 +12,5 @@
  * @returns tiszta tipusolt tomb (ures ha nem array)
  */
 export function asArray<T>(data: unknown): T[] {
-    return Array.isArray(data) ? (data as T[]) : []
+  return Array.isArray(data) ? (data as T[]) : []
 }

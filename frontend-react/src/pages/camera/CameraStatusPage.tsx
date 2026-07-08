@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { HardDrive, RefreshCw, Trash2 } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
 const isElectron = () => !!window.electronAPI
@@ -78,9 +78,10 @@ export default function CameraStatusPage() {
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
   }
 
-  const usagePercent = stats && (stats.totalUsageBytes + stats.availableSpaceBytes) > 0
-    ? ((stats.totalUsageBytes / (stats.totalUsageBytes + stats.availableSpaceBytes)) * 100)
-    : 0
+  const usagePercent =
+    stats && stats.totalUsageBytes + stats.availableSpaceBytes > 0
+      ? (stats.totalUsageBytes / (stats.totalUsageBytes + stats.availableSpaceBytes)) * 100
+      : 0
 
   return (
     <div className="space-y-3">
@@ -88,7 +89,9 @@ export default function CameraStatusPage() {
         <h1 className="text-lg font-bold flex items-center gap-2">
           <HardDrive className="h-6 w-6" />
           {t('camera.kameraRendszerAllapot')}
-          {isElectron() && <span className="text-sm font-normal text-muted-foreground">{t('camera.lokalis')}</span>}
+          {isElectron() && (
+            <span className="text-sm font-normal text-muted-foreground">{t('camera.lokalis')}</span>
+          )}
         </h1>
         <div className="flex gap-2">
           <button
@@ -122,7 +125,9 @@ export default function CameraStatusPage() {
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="p-4">
                 <p className="text-sm text-muted-foreground">{t('camera.tarhelyhasznalat')}</p>
-                <p className="text-3xl font-bold">{stats ? formatSize(stats.totalUsageBytes) : '-'}</p>
+                <p className="text-3xl font-bold">
+                  {stats ? formatSize(stats.totalUsageBytes) : '-'}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {stats ? formatSize(stats.availableSpaceBytes) : '-'} {t('common.szabad')}
                 </p>
@@ -142,7 +147,9 @@ export default function CameraStatusPage() {
                 <p className="text-3xl font-bold" data-testid="camera-pending-uploads">
                   {uploadStatus?.pendingUploads ?? 0}
                 </p>
-                <p className="text-xs text-muted-foreground">{t('camera.szerverOldaliUploadSor')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('camera.szerverOldaliUploadSor')}
+                </p>
               </div>
             </div>
           </div>
@@ -156,12 +163,19 @@ export default function CameraStatusPage() {
                 <div className="w-full bg-muted rounded-full h-4 overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all ${
-                      usagePercent > 90 ? 'bg-red-500' : usagePercent > 70 ? 'bg-yellow-500' : 'bg-green-500'
+                      usagePercent > 90
+                        ? 'bg-red-500'
+                        : usagePercent > 70
+                          ? 'bg-yellow-500'
+                          : 'bg-green-500'
                     }`}
                     style={{ width: `${Math.min(usagePercent, 100)}%` }}
                   />
                 </div>
-                <p className="text-sm text-muted-foreground mt-2">{usagePercent.toFixed(1)}{t('camera.hasznalat')}</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {usagePercent.toFixed(1)}
+                  {t('camera.hasznalat')}
+                </p>
               </div>
             </div>
           )}

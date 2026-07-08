@@ -44,7 +44,7 @@ async function mockCashDeskApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -67,11 +67,19 @@ async function mockCashDeskApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     const bodies: Record<string, unknown> = {
@@ -114,7 +122,11 @@ async function mockCashDeskApis(page: Page) {
 
     const body = bodies[path]
     if (body !== undefined) {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(body),
+      })
     }
 
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
@@ -131,13 +143,17 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('pénztár mobil viewporton használja a cash balance summary és detail végpontokat', async ({ page }) => {
+test('pénztár mobil viewporton használja a cash balance summary és detail végpontokat', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockCashDeskApis(page)
   await login(page)
 
-  const summaryRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/cash-balances/summary'
+  const summaryRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/cash-balances/summary',
   )
   await page.goto('/cashdesk', { waitUntil: 'domcontentloaded' })
   await summaryRequest
@@ -146,11 +162,15 @@ test('pénztár mobil viewporton használja a cash balance summary és detail v�
   await expect(page.getByText(/250\s*000\s+Ft/)).toBeVisible()
   await expect(page.getByText('Alacsony jelzés')).toBeVisible()
 
-  const byIdRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/cash-balances/currency/1'
+  const byIdRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/cash-balances/currency/1',
   )
-  const byCodeRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/cash-balances/code/EUR'
+  const byCodeRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/cash-balances/code/EUR',
   )
   await page.getByRole('button', { name: 'EUR részletek' }).click()
   await byIdRequest
@@ -159,8 +179,8 @@ test('pénztár mobil viewporton használja a cash balance summary és detail v�
   await expect(page.getByText('EUR pénzkészlet részletek')).toBeVisible()
   await expect(page.getByText('ID és kód egyezik')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

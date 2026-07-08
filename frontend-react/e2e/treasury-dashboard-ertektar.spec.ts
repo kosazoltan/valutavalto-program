@@ -29,7 +29,7 @@ async function mockTreasuryApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -60,10 +60,19 @@ async function mockTreasuryApis(page: Page) {
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
-    if (path.match(/\/api\/v1\/ertektar\/(collections|distribution|bank-transactions)\/\d+\/status$/) && method === 'PATCH') {
+    if (
+      path.match(
+        /\/api\/v1\/ertektar\/(collections|distribution|bank-transactions)\/\d+\/status$/,
+      ) &&
+      method === 'PATCH'
+    ) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -93,18 +102,48 @@ async function mockTreasuryApis(page: Page) {
       '/api/v1/cash-balances/company-position': {
         companyId: 'company-1',
         timestamp: '2026-06-19T08:00:00',
-        currencyPositions: [{ currencyCode: 'EUR', totalBalance: 100, branchCount: 1, hufValue: 40000 }],
+        currencyPositions: [
+          { currencyCode: 'EUR', totalBalance: 100, branchCount: 1, hufValue: 40000 },
+        ],
         grandTotalHuf: 1235000,
       },
       '/api/v1/cash-balances/company-totals': [
-        { currencyId: 1, currencyCode: 'EUR', currencyName: 'Euró', totalBalance: 1000, branchCount: 2 },
-        { currencyId: 2, currencyCode: 'USD', currencyName: 'Dollár', totalBalance: 500, branchCount: 1 },
+        {
+          currencyId: 1,
+          currencyCode: 'EUR',
+          currencyName: 'Euró',
+          totalBalance: 1000,
+          branchCount: 2,
+        },
+        {
+          currencyId: 2,
+          currencyCode: 'USD',
+          currencyName: 'Dollár',
+          totalBalance: 500,
+          branchCount: 1,
+        },
       ],
       '/api/v1/cash-balances/alerts/low': [
-        { id: 3, branchId: 'branch-2', branchName: 'Pécs', currencyId: 1, currencyCode: 'EUR', currentBalance: 2, openingBalance: 0 },
+        {
+          id: 3,
+          branchId: 'branch-2',
+          branchName: 'Pécs',
+          currencyId: 1,
+          currencyCode: 'EUR',
+          currentBalance: 2,
+          openingBalance: 0,
+        },
       ],
       '/api/v1/cash-balances/alerts/high': [
-        { id: 4, branchId: 'branch-1', branchName: 'Szeged', currencyId: 2, currencyCode: 'USD', currentBalance: 9999, openingBalance: 0 },
+        {
+          id: 4,
+          branchId: 'branch-1',
+          branchName: 'Szeged',
+          currencyId: 2,
+          currencyCode: 'USD',
+          currentBalance: 9999,
+          openingBalance: 0,
+        },
       ],
       '/api/v1/treasury/dashboard': {
         totalProfit: 25000,
@@ -113,30 +152,74 @@ async function mockTreasuryApis(page: Page) {
         currencyTotals: {},
       },
       '/api/v1/treasury/branch-comparison': [
-        { branchId: 'branch-1', branchCode: 'SZEGED', branchName: 'Szeged', totalProfit: 25000, transactionCount: 17 },
+        {
+          branchId: 'branch-1',
+          branchCode: 'SZEGED',
+          branchName: 'Szeged',
+          totalProfit: 25000,
+          transactionCount: 17,
+        },
       ],
       '/api/v1/treasury/submission-status': [
         { branchId: 'branch-1', branchCode: 'SZEGED', branchName: 'Szeged', submitted: true },
         { branchId: 'branch-2', branchCode: 'PECS', branchName: 'Pécs', submitted: false },
       ],
       '/api/v1/treasury/bank-flow': [
-        { currencyCode: 'EUR', currencyName: 'Euró', totalWithdraw: 2000000, totalDeposit: 500000, netFlow: 1500000 },
+        {
+          currencyCode: 'EUR',
+          currencyName: 'Euró',
+          totalWithdraw: 2000000,
+          totalDeposit: 500000,
+          netFlow: 1500000,
+        },
       ],
       '/api/v1/treasury/branch-group-summary': [
-        { id: 'group-1', code: 'DEL', name: 'Dél', totalProfit: 25000, transactionCount: 17, branchCount: 2 },
+        {
+          id: 'group-1',
+          code: 'DEL',
+          name: 'Dél',
+          totalProfit: 25000,
+          transactionCount: 17,
+          branchCount: 2,
+        },
       ],
       '/api/v1/treasury/company-summary': [
-        { id: 'company-1', code: 'EBC', name: 'EBC', totalProfit: 50000, transactionCount: 30, branchCount: 2 },
+        {
+          id: 'company-1',
+          code: 'EBC',
+          name: 'EBC',
+          totalProfit: 50000,
+          transactionCount: 30,
+          branchCount: 2,
+        },
       ],
       '/api/v1/ertektar/branches': {
-        'branch-1': { branchId: 'branch-1', isOnline: true, dailyTransactionCount: 12, dailyVolumeHuf: 1200000, openAlerts: 0 },
-        'branch-2': { branchId: 'branch-2', isOnline: false, dailyTransactionCount: 3, dailyVolumeHuf: 250000, openAlerts: 1 },
+        'branch-1': {
+          branchId: 'branch-1',
+          isOnline: true,
+          dailyTransactionCount: 12,
+          dailyVolumeHuf: 1200000,
+          openAlerts: 0,
+        },
+        'branch-2': {
+          branchId: 'branch-2',
+          isOnline: false,
+          dailyTransactionCount: 3,
+          dailyVolumeHuf: 250000,
+          openAlerts: 1,
+        },
       },
       '/api/v1/ertektar/reports/consolidated': {
         dateFrom: '2026-06-01',
         dateTo: '2026-06-19',
         branches: [
-          { branchCode: 'SZEGED', branchName: 'Szeged', totalTransactions: 17, totalHufTurnover: 1700000, totalFees: 25000 },
+          {
+            branchCode: 'SZEGED',
+            branchName: 'Szeged',
+            totalTransactions: 17,
+            totalHufTurnover: 1700000,
+            totalFees: 25000,
+          },
         ],
         totals: {
           totalTransactions: 17,
@@ -160,7 +243,14 @@ async function mockTreasuryApis(page: Page) {
         {
           id: 12,
           status: 'IN_PROGRESS',
-          lines: [{ targetBranchCode: 'PECS', targetBranchName: 'Pécs', currencyCode: 'USD', amount: 500 }],
+          lines: [
+            {
+              targetBranchCode: 'PECS',
+              targetBranchName: 'Pécs',
+              currencyCode: 'USD',
+              amount: 500,
+            },
+          ],
         },
       ],
       '/api/v1/ertektar/bank-transactions': [
@@ -181,7 +271,11 @@ async function mockTreasuryApis(page: Page) {
 
     const body = bodies[path]
     if (body !== undefined) {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(body),
+      })
     }
 
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
@@ -198,25 +292,36 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('értéktári dashboard mobil viewporton használja az ErtektarController riport és branch endpointjait', async ({ page }) => {
+test('értéktári dashboard mobil viewporton használja az ErtektarController riport és branch endpointjait', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockTreasuryApis(page)
   await login(page)
 
-  const branchesRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/ertektar/branches'
+  const branchesRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/ertektar/branches',
   )
-  const consolidatedRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/ertektar/reports/consolidated'
+  const consolidatedRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/ertektar/reports/consolidated',
   )
-  const companyTotalsRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/cash-balances/company-totals'
+  const companyTotalsRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/cash-balances/company-totals',
   )
-  const lowAlertsRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/cash-balances/alerts/low'
+  const lowAlertsRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/cash-balances/alerts/low',
   )
-  const highAlertsRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/cash-balances/alerts/high'
+  const highAlertsRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/cash-balances/alerts/high',
   )
   await page.goto('/treasury', { waitUntil: 'domcontentloaded' })
   await branchesRequest
@@ -237,17 +342,18 @@ test('értéktári dashboard mobil viewporton használja az ErtektarController r
   await expect(page.getByText(/EUR\s+1\s*000/)).toBeVisible()
   await expect(page.getByTestId('ertektar-status-control')).toBeVisible()
   await expect(page.getByText('Értéktári státusz kontroll')).toBeVisible()
-  page.on('dialog', dialog => dialog.accept())
-  const collectionStatusRequest = page.waitForRequest(request =>
-    request.method() === 'PATCH'
-    && new URL(request.url()).pathname === '/api/v1/ertektar/collections/11/status'
-    && new URL(request.url()).searchParams.get('status') === 'COMPLETED'
+  page.on('dialog', (dialog) => dialog.accept())
+  const collectionStatusRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'PATCH' &&
+      new URL(request.url()).pathname === '/api/v1/ertektar/collections/11/status' &&
+      new URL(request.url()).searchParams.get('status') === 'COMPLETED',
   )
   await page.getByRole('button', { name: 'Begyűjtés #11 státusz COMPLETED' }).click()
   await collectionStatusRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

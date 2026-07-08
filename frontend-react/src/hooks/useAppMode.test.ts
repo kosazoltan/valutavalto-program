@@ -42,8 +42,8 @@ describe('useAppMode', () => {
   })
 
   it('returns mode="penztar" initially in Electron mode', async () => {
-    mockIsElectron.mockReturnValue(true);
-    (window as any).electronAPI = {
+    mockIsElectron.mockReturnValue(true)
+    ;(window as any).electronAPI = {
       getConfig: vi.fn().mockResolvedValue('penztar'),
     }
 
@@ -63,8 +63,8 @@ describe('useAppMode', () => {
   })
 
   it('returns mode="ertektar" in Electron when config says so', async () => {
-    mockIsElectron.mockReturnValue(true);
-    (window as any).electronAPI = {
+    mockIsElectron.mockReturnValue(true)
+    ;(window as any).electronAPI = {
       getConfig: vi.fn().mockResolvedValue('ertektar'),
     }
 
@@ -80,8 +80,8 @@ describe('useAppMode', () => {
   })
 
   it('returns mode="ertekszallito" in Electron when config says so', async () => {
-    mockIsElectron.mockReturnValue(true);
-    (window as any).electronAPI = {
+    mockIsElectron.mockReturnValue(true)
+    ;(window as any).electronAPI = {
       getConfig: vi.fn().mockResolvedValue('ertekszallito'),
     }
 
@@ -97,8 +97,8 @@ describe('useAppMode', () => {
   })
 
   it('defaults to "penztar" in Electron when config returns unknown value', async () => {
-    mockIsElectron.mockReturnValue(true);
-    (window as any).electronAPI = {
+    mockIsElectron.mockReturnValue(true)
+    ;(window as any).electronAPI = {
       getConfig: vi.fn().mockResolvedValue('unknown_mode'),
     }
 
@@ -114,8 +114,8 @@ describe('useAppMode', () => {
   })
 
   it('defaults to "penztar" in Electron when getConfig throws', async () => {
-    mockIsElectron.mockReturnValue(true);
-    (window as any).electronAPI = {
+    mockIsElectron.mockReturnValue(true)
+    ;(window as any).electronAPI = {
       getConfig: vi.fn().mockRejectedValue(new Error('config error')),
     }
 
@@ -131,8 +131,8 @@ describe('useAppMode', () => {
   })
 
   it('defaults to "penztar" in Electron when getConfig returns null', async () => {
-    mockIsElectron.mockReturnValue(true);
-    (window as any).electronAPI = {
+    mockIsElectron.mockReturnValue(true)
+    ;(window as any).electronAPI = {
       getConfig: vi.fn().mockResolvedValue(null),
     }
 

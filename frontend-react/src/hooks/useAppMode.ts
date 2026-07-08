@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { isElectron } from '@/utils/electron';
-import { logger } from '../utils/logger';
-import { isAppMode } from '../types/appMode';
-import type { AppMode } from '../types/appMode';
-import { getSessionAppMode } from '../utils/sessionAppMode';
+import { useState, useEffect } from 'react'
+import { isElectron } from '@/utils/electron'
+import { logger } from '../utils/logger'
+import { isAppMode } from '../types/appMode'
+import type { AppMode } from '../types/appMode'
+import { getSessionAppMode } from '../utils/sessionAppMode'
 
 /**
  * App mód típus — kiterjesztve a frontend-react 'full' móddal.
@@ -14,7 +14,7 @@ import { getSessionAppMode } from '../utils/sessionAppMode';
  * - 'rate-maker': Electron főértéktárosi árfolyamkészítő
  * - 'ertekszallito': Electron értékszállító mód
  */
-export type { AppMode } from '../types/appMode';
+export type { AppMode } from '../types/appMode'
 
 /**
  * App mód betöltése:
@@ -24,33 +24,33 @@ export type { AppMode } from '../types/appMode';
 async function loadAppMode(): Promise<AppMode> {
   // HIBA 2026-05-26 (mód-választó): a belépés után választott mód elsőbbséget élvez
   // a telepített `app_mode` config felett (a futó munkamenetre).
-  const sessionMode = getSessionAppMode();
+  const sessionMode = getSessionAppMode()
   if (sessionMode) {
-    return sessionMode;
+    return sessionMode
   }
 
   if (!isElectron()) {
-    return 'full';
+    return 'full'
   }
 
   try {
-    const stored = await window.electronAPI?.getConfig('app_mode');
+    const stored = await window.electronAPI?.getConfig('app_mode')
     if (isAppMode(stored)) {
-      return stored;
+      return stored
     }
   } catch (err) {
-    logger.error('useAppMode', 'Config betöltési hiba:', err);
+    logger.error('useAppMode', 'Config betöltési hiba:', err)
   }
 
   if (import.meta.env.VITE_APP_FLAVOR === 'rate-maker') {
-    return 'rate-maker';
+    return 'rate-maker'
   }
   if (import.meta.env.VITE_APP_FLAVOR === 'central-workstation') {
-    return 'full';
+    return 'full'
   }
 
   // Electron default: penztar
-  return 'penztar';
+  return 'penztar'
 }
 
 /**
@@ -64,43 +64,43 @@ async function loadAppMode(): Promise<AppMode> {
 export function useAppMode(): { mode: AppMode; isLoading: boolean } {
   // Böngészőben rögtön 'full', Electronban az adott telepített kliens módja az átmeneti állapot
   const [mode, setMode] = useState<AppMode>(() => {
-    const sessionMode = getSessionAppMode();
-    if (sessionMode) return sessionMode;
-    if (!isElectron()) return 'full';
-    if (import.meta.env.VITE_APP_FLAVOR === 'central-workstation') return 'full';
-    return import.meta.env.VITE_APP_FLAVOR === 'rate-maker' ? 'rate-maker' : 'penztar';
-  });
-  const [isLoading, setIsLoading] = useState(() => isElectron());
+    const sessionMode = getSessionAppMode()
+    if (sessionMode) return sessionMode
+    if (!isElectron()) return 'full'
+    if (import.meta.env.VITE_APP_FLAVOR === 'central-workstation') return 'full'
+    return import.meta.env.VITE_APP_FLAVOR === 'rate-maker' ? 'rate-maker' : 'penztar'
+  })
+  const [isLoading, setIsLoading] = useState(() => isElectron())
 
   useEffect(() => {
     if (!isElectron()) {
       // Böngészőben nincs aszinkron munka — mód már helyes az initializer-ből
-      return;
+      return
     }
 
-    let cancelled = false;
+    let cancelled = false
 
     const load = async () => {
       try {
-        const loaded = await loadAppMode();
+        const loaded = await loadAppMode()
         if (!cancelled) {
-          setMode(loaded);
+          setMode(loaded)
         }
       } catch (err) {
-        logger.error('useAppMode', 'Hiba:', err);
+        logger.error('useAppMode', 'Hiba:', err)
       } finally {
         if (!cancelled) {
-          setIsLoading(false);
+          setIsLoading(false)
         }
       }
-    };
+    }
 
-    void load();
+    void load()
 
     return () => {
-      cancelled = true;
-    };
-  }, []);
+      cancelled = true
+    }
+  }, [])
 
-  return { mode, isLoading };
+  return { mode, isLoading }
 }

@@ -114,11 +114,11 @@ describe('matchesPeriod (EXCMD b5b FR-BSZUR-02 hatókör/időszak)', () => {
   })
 
   it('CUSTOM: nyitott végek (csak tól / csak ig / egyik sem)', () => {
-    expect(matchesPeriod('2026-12-31', 'CUSTOM', '', '2026-04-10', '')).toBe(true)  // csak tól
+    expect(matchesPeriod('2026-12-31', 'CUSTOM', '', '2026-04-10', '')).toBe(true) // csak tól
     expect(matchesPeriod('2026-01-01', 'CUSTOM', '', '2026-04-10', '')).toBe(false)
-    expect(matchesPeriod('2026-01-01', 'CUSTOM', '', '', '2026-04-20')).toBe(true)  // csak ig
+    expect(matchesPeriod('2026-01-01', 'CUSTOM', '', '', '2026-04-20')).toBe(true) // csak ig
     expect(matchesPeriod('2026-12-31', 'CUSTOM', '', '', '2026-04-20')).toBe(false)
-    expect(matchesPeriod('2026-06-15', 'CUSTOM', '', '', '')).toBe(true)            // egyik sem → minden átmegy
+    expect(matchesPeriod('2026-06-15', 'CUSTOM', '', '', '')).toBe(true) // egyik sem → minden átmegy
   })
 
   it('nem-ALL módban a hiányzó/rövid dátum NEM esik bele (defenzív)', () => {
@@ -139,10 +139,22 @@ describe('periodToBackendRange (EXCMD b5b FR-BSZUR-02 backend from/to)', () => {
   })
 
   it('MONTH → a hónap első/utolsó napja (tényleges hónaphossz)', () => {
-    expect(periodToBackendRange('MONTH', '2026-04', '', '')).toEqual({ from: '2026-04-01', to: '2026-04-30' })
-    expect(periodToBackendRange('MONTH', '2026-02', '', '')).toEqual({ from: '2026-02-01', to: '2026-02-28' }) // 2026 nem szökőév
-    expect(periodToBackendRange('MONTH', '2024-02', '', '')).toEqual({ from: '2024-02-01', to: '2024-02-29' }) // 2024 szökőév
-    expect(periodToBackendRange('MONTH', '2026-12', '', '')).toEqual({ from: '2026-12-01', to: '2026-12-31' })
+    expect(periodToBackendRange('MONTH', '2026-04', '', '')).toEqual({
+      from: '2026-04-01',
+      to: '2026-04-30',
+    })
+    expect(periodToBackendRange('MONTH', '2026-02', '', '')).toEqual({
+      from: '2026-02-01',
+      to: '2026-02-28',
+    }) // 2026 nem szökőév
+    expect(periodToBackendRange('MONTH', '2024-02', '', '')).toEqual({
+      from: '2024-02-01',
+      to: '2024-02-29',
+    }) // 2024 szökőév
+    expect(periodToBackendRange('MONTH', '2026-12', '', '')).toEqual({
+      from: '2026-12-01',
+      to: '2026-12-31',
+    })
   })
 
   it('MONTH üres hónappal → üres (nincs szűrés)', () => {
@@ -150,19 +162,37 @@ describe('periodToBackendRange (EXCMD b5b FR-BSZUR-02 backend from/to)', () => {
   })
 
   it('CUSTOM → from/to átadva, üres vég → undefined (nyitott)', () => {
-    expect(periodToBackendRange('CUSTOM', '', '2026-04-10', '2026-04-20')).toEqual({ from: '2026-04-10', to: '2026-04-20' })
-    expect(periodToBackendRange('CUSTOM', '', '2026-04-10', '')).toEqual({ from: '2026-04-10', to: undefined })
-    expect(periodToBackendRange('CUSTOM', '', '', '2026-04-20')).toEqual({ from: undefined, to: '2026-04-20' })
+    expect(periodToBackendRange('CUSTOM', '', '2026-04-10', '2026-04-20')).toEqual({
+      from: '2026-04-10',
+      to: '2026-04-20',
+    })
+    expect(periodToBackendRange('CUSTOM', '', '2026-04-10', '')).toEqual({
+      from: '2026-04-10',
+      to: undefined,
+    })
+    expect(periodToBackendRange('CUSTOM', '', '', '2026-04-20')).toEqual({
+      from: undefined,
+      to: '2026-04-20',
+    })
     expect(periodToBackendRange('CUSTOM', '', '', '')).toEqual({ from: undefined, to: undefined })
   })
 })
 
 describe('matchesCustomerFilters / hasActiveCustomerFilter (EXCMD b5b FR-BSZUR-03)', () => {
   const base: Receipt = {
-    id: '1', receiptNumber: 'V017000001', receiptType: 'BUY', issueDate: '2026-04-29', isPrinted: true,
-    customerName: 'Kovács János', customerMotherName: 'Nagy Erzsébet', customerBirthPlace: 'Budapest',
-    customerBirthDate: '1985-03-12', customerNationality: 'magyar', customerAddress: '1011 Budapest, Fő utca 1.',
-    customerDocumentType: 'Személyi igazolvány', customerDocumentNumber: 'AB123456',
+    id: '1',
+    receiptNumber: 'V017000001',
+    receiptType: 'BUY',
+    issueDate: '2026-04-29',
+    isPrinted: true,
+    customerName: 'Kovács János',
+    customerMotherName: 'Nagy Erzsébet',
+    customerBirthPlace: 'Budapest',
+    customerBirthDate: '1985-03-12',
+    customerNationality: 'magyar',
+    customerAddress: '1011 Budapest, Fő utca 1.',
+    customerDocumentType: 'Személyi igazolvány',
+    customerDocumentNumber: 'AB123456',
   }
 
   it('üres szűrő → minden átmegy', () => {
@@ -177,8 +207,12 @@ describe('matchesCustomerFilters / hasActiveCustomerFilter (EXCMD b5b FR-BSZUR-0
   })
 
   it('több mező = ÉS-kapcsolat', () => {
-    expect(matchesCustomerFilters(base, { customerName: 'kovács', customerNationality: 'magyar' })).toBe(true)
-    expect(matchesCustomerFilters(base, { customerName: 'kovács', customerNationality: 'német' })).toBe(false)
+    expect(
+      matchesCustomerFilters(base, { customerName: 'kovács', customerNationality: 'magyar' }),
+    ).toBe(true)
+    expect(
+      matchesCustomerFilters(base, { customerName: 'kovács', customerNationality: 'német' }),
+    ).toBe(false)
   })
 
   it('születési idő részleges (hónap-előtag) is egyezik', () => {
@@ -202,8 +236,14 @@ describe('matchesCustomerFilters / hasActiveCustomerFilter (EXCMD b5b FR-BSZUR-0
 
   it('a 8 FR-BSZUR-03 mező + az FR-BSZUR-04 képviselő-mező definiált (LEÁNYKORI NEVE nélkül)', () => {
     expect(CUSTOMER_FILTER_FIELDS.map((f) => f.key)).toEqual([
-      'customerName', 'customerMotherName', 'customerBirthPlace', 'customerBirthDate',
-      'customerNationality', 'customerAddress', 'customerDocumentType', 'customerDocumentNumber',
+      'customerName',
+      'customerMotherName',
+      'customerBirthPlace',
+      'customerBirthDate',
+      'customerNationality',
+      'customerAddress',
+      'customerDocumentType',
+      'customerDocumentNumber',
       // FR-BSZUR-04: képviselő / meghatalmazott neve (jogi személy képviselője a tx-snapshotból).
       'customerActorName',
     ])
@@ -279,9 +319,18 @@ describe('buildCancelledTransactionPrintData (MEGSEM fizikai nyomtatás)', () =>
   })
 
   it('sérült vagy hiányos tartalmat nem enged nyomtatható adatként tovább', () => {
-    expect(buildCancelledTransactionPrintData({ ...cancelledReceipt, content: '{bad-json' }, worker)).toBeNull()
-    expect(buildCancelledTransactionPrintData({ ...cancelledReceipt, content: JSON.stringify({ lines: [] }) }, worker)).toBeNull()
-    expect(buildCancelledTransactionPrintData({ ...cancelledReceipt, receiptType: 'BUY' }, worker)).toBeNull()
+    expect(
+      buildCancelledTransactionPrintData({ ...cancelledReceipt, content: '{bad-json' }, worker),
+    ).toBeNull()
+    expect(
+      buildCancelledTransactionPrintData(
+        { ...cancelledReceipt, content: JSON.stringify({ lines: [] }) },
+        worker,
+      ),
+    ).toBeNull()
+    expect(
+      buildCancelledTransactionPrintData({ ...cancelledReceipt, receiptType: 'BUY' }, worker),
+    ).toBeNull()
   })
 })
 

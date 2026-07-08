@@ -16,7 +16,7 @@ import { reportApi, notificationApi } from '../../services/api/index'
 import type { DailyClosingReport, Notification as AppNotification } from '../../services/api/index'
 import { formatMillions, formatInteger, todayISO } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
 type TabType = 'reports' | 'circulars'
@@ -85,26 +85,37 @@ export default function ReportsCirculars() {
 
   // Hotkeys
   useHotkeys('n', () => setShowNewCircular(true), { enableOnFormTags: false })
-  useHotkeys('escape', () => {
-    setShowNewCircular(false)
-    setShowCircularDetail(null)
-  }, { enableOnFormTags: true })
-
-  const handleCircularSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!circularTitle || !circularContent) return
-    try {
-      const typeStr = circularUrgent ? 'URGENT' : 'INFO'
-      await notificationApi.send({ title: circularTitle, message: circularContent, type: typeStr })
+  useHotkeys(
+    'escape',
+    () => {
       setShowNewCircular(false)
-      setCircularTitle('')
-      setCircularContent('')
-      setCircularUrgent(false)
-      void fetchData()
-    } catch (err) {
-      logger.error('ReportsCirculars', 'Send circular error:', err)
-    }
-  }, [circularTitle, circularContent, circularUrgent, fetchData])
+      setShowCircularDetail(null)
+    },
+    { enableOnFormTags: true },
+  )
+
+  const handleCircularSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      if (!circularTitle || !circularContent) return
+      try {
+        const typeStr = circularUrgent ? 'URGENT' : 'INFO'
+        await notificationApi.send({
+          title: circularTitle,
+          message: circularContent,
+          type: typeStr,
+        })
+        setShowNewCircular(false)
+        setCircularTitle('')
+        setCircularContent('')
+        setCircularUrgent(false)
+        void fetchData()
+      } catch (err) {
+        logger.error('ReportsCirculars', 'Send circular error:', err)
+      }
+    },
+    [circularTitle, circularContent, circularUrgent, fetchData],
+  )
 
   if (loading) return <TableSkeleton rows={6} cols={6} />
 
@@ -122,7 +133,9 @@ export default function ReportsCirculars() {
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-secondary-900">{t('treasury.napiJelentesampKorlevel')}</h1>
+        <h1 className="text-xl font-bold text-secondary-900">
+          {t('treasury.napiJelentesampKorlevel')}
+        </h1>
         <span className="text-sm text-secondary-500">📅 {todayISO()}</span>
       </div>
 
@@ -163,7 +176,8 @@ export default function ReportsCirculars() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-secondary-900 flex items-center gap-2">
                 <FileText size={20} className="text-primary-600" />
-                {t('treasury.bekuldesiStatusz')}{submittedCount}/{totalCount} {t('treasury.irodaZarojelben')}
+                {t('treasury.bekuldesiStatusz')}
+                {submittedCount}/{totalCount} {t('treasury.irodaZarojelben')}
               </h2>
               {submittedCount === totalCount && totalCount > 0 && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-success-50 border border-success-200 rounded-lg text-sm font-semibold text-success-700">
@@ -204,7 +218,9 @@ export default function ReportsCirculars() {
           {/* Consolidated Report Table */}
           <div className="form-panel">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-secondary-900">{t('treasury.konszolidaltNapiJelentes')}</h2>
+              <h2 className="text-lg font-bold text-secondary-900">
+                {t('treasury.konszolidaltNapiJelentes')}
+              </h2>
               <button className="form-button h-8 text-xs">
                 <Download size={16} />
                 <span>{t('treasury.exportPdf')}</span>
@@ -278,17 +294,23 @@ export default function ReportsCirculars() {
           {dailyReport && (
             <div className="form-panel">
               <h2 className="text-lg font-bold text-secondary-900 mb-4">
-                {t('treasury.reszletesForgalom')}{dailyReport.branchName}
+                {t('treasury.reszletesForgalom')}
+                {dailyReport.branchName}
               </h2>
               <div className="grid grid-cols-4 gap-4">
                 <StatBox label="Vétel (db)" value={formatInteger(dailyReport.buyCount)} />
                 <StatBox label="Eladás (db)" value={formatInteger(dailyReport.sellCount)} />
                 <StatBox label="Sztornó (db)" value={formatInteger(dailyReport.reversalCount)} />
-                <StatBox label="Nyitó egyenleg" value={formatMillions(dailyReport.openingBalanceHuf)} />
+                <StatBox
+                  label="Nyitó egyenleg"
+                  value={formatMillions(dailyReport.openingBalanceHuf)}
+                />
               </div>
               {dailyReport.currencyTurnovers && dailyReport.currencyTurnovers.length > 0 && (
                 <div className="mt-4">
-                  <h3 className="text-sm font-semibold text-secondary-700 mb-2">{t('treasury.valutankentiBontas')}</h3>
+                  <h3 className="text-sm font-semibold text-secondary-700 mb-2">
+                    {t('treasury.valutankentiBontas')}
+                  </h3>
                   <table className="data-grid w-full">
                     <thead>
                       <tr>
@@ -326,7 +348,10 @@ export default function ReportsCirculars() {
               <Bell size={20} className="text-accent-600" />
               {t('treasury.korlevelek')}
             </h2>
-            <button onClick={() => setShowNewCircular(true)} className="form-button-primary h-8 text-xs">
+            <button
+              onClick={() => setShowNewCircular(true)}
+              className="form-button-primary h-8 text-xs"
+            >
               <Plus size={16} />
               <span>{t('treasury.ujKorlevel')}</span>
             </button>
@@ -344,9 +369,7 @@ export default function ReportsCirculars() {
                 <div
                   key={circular.id}
                   className={`p-4 rounded-lg border ${
-                    isUrgent
-                      ? 'border-danger-200 bg-danger-50'
-                      : 'border-primary-200 bg-primary-50'
+                    isUrgent ? 'border-danger-200 bg-danger-50' : 'border-primary-200 bg-primary-50'
                   }`}
                 >
                   <div className="flex items-start justify-between mb-2">
@@ -375,7 +398,9 @@ export default function ReportsCirculars() {
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-secondary-600">{t('darius.statusz')}</span>
-                    <span className={`font-semibold ${circular.isRead ? 'text-success-700' : 'text-warning-700'}`}>
+                    <span
+                      className={`font-semibold ${circular.isRead ? 'text-success-700' : 'text-warning-700'}`}
+                    >
                       {circular.isRead ? 'Olvasva' : 'Olvasatlan'}
                     </span>
                   </div>
@@ -391,8 +416,13 @@ export default function ReportsCirculars() {
         <ModalOverlay onClose={() => setShowNewCircular(false)}>
           <div className="bg-white rounded-lg shadow-xl p-4 max-w-2xl w-full mx-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-bold text-secondary-900">{t('treasury.ujKorlevelKuldese')}</h2>
-              <button onClick={() => setShowNewCircular(false)} className="text-secondary-400 hover:text-secondary-600">
+              <h2 className="text-xl font-bold text-secondary-900">
+                {t('treasury.ujKorlevelKuldese')}
+              </h2>
+              <button
+                onClick={() => setShowNewCircular(false)}
+                className="text-secondary-400 hover:text-secondary-600"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -450,13 +480,18 @@ export default function ReportsCirculars() {
       {showCircularDetail && (
         <ModalOverlay onClose={() => setShowCircularDetail(null)}>
           <div className="bg-white rounded-lg shadow-xl p-4 max-w-lg w-full mx-4">
-            <h2 className="text-xl font-bold text-secondary-900 mb-4">{showCircularDetail.title}</h2>
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">
+              {showCircularDetail.title}
+            </h2>
             <div className="space-y-3 text-sm">
               <div className="p-4 bg-secondary-50 rounded-lg text-secondary-700">
                 {showCircularDetail.message}
               </div>
               <div className="flex justify-between text-xs text-secondary-500">
-                <span>{t('cashdesk.tipus')}{showCircularDetail.type}</span>
+                <span>
+                  {t('cashdesk.tipus')}
+                  {showCircularDetail.type}
+                </span>
                 <span>{new Date(showCircularDetail.createdAt).toLocaleString('hu-HU')}</span>
               </div>
             </div>
@@ -486,7 +521,10 @@ function StatBox({ label, value }: { label: string; value: string }) {
 
 function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
       <div onClick={(e) => e.stopPropagation()}>{children}</div>
     </div>
   )

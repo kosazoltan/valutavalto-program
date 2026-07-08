@@ -47,8 +47,13 @@ vi.mock('../../utils/logger', () => ({
 // A FK-11 újranyomtatás a meglévő (változatlan) ReceiptPreviewModal-t használja; itt stubbal
 // helyettesítjük, hogy a ShipmentListPage logikáját (lekérés + modal nyitás) izoláltan teszteljük.
 vi.mock('../../components/electron', () => ({
-  ReceiptPreviewModal: ({ isOpen, receiptData }: { isOpen: boolean; receiptData: { receiptNumber?: string } | null }) =>
-    isOpen ? <div data-testid="receipt-modal">{receiptData?.receiptNumber}</div> : null,
+  ReceiptPreviewModal: ({
+    isOpen,
+    receiptData,
+  }: {
+    isOpen: boolean
+    receiptData: { receiptNumber?: string } | null
+  }) => (isOpen ? <div data-testid="receipt-modal">{receiptData?.receiptNumber}</div> : null),
 }))
 vi.mock('../../utils/electron', () => ({ isElectron: () => false }))
 vi.mock('../../components/ui/toaster', () => ({
@@ -90,7 +95,11 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
     mocks.findByStatus.mockResolvedValue([approvedShipment])
     mocks.findByBranch.mockResolvedValue([approvedShipment])
     mocks.get.mockResolvedValue(approvedShipment)
-    mocks.update.mockResolvedValue({ ...draftShipment, notes: 'Módosított megjegyzés', sealNumber: 'PL-999' })
+    mocks.update.mockResolvedValue({
+      ...draftShipment,
+      notes: 'Módosított megjegyzés',
+      sealNumber: 'PL-999',
+    })
     mocks.approve.mockResolvedValue({ ...approvedShipment, requestStatus: 'APPROVED' })
     mocks.reject.mockResolvedValue({ ...approvedShipment, requestStatus: 'REJECTED' })
     mocks.deliver.mockResolvedValue({ ...approvedShipment, requestStatus: 'DELIVERED' })
@@ -105,7 +114,11 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
 
   it('a részletek gomb a GET /shipments/{id} backend szerződést hívja és panelt nyit', async () => {
     const user = userEvent.setup()
-    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
 
     await waitFor(() => expect(mocks.findByStatus).toHaveBeenCalledWith('SUBMITTED'))
     await user.click(await screen.findByTitle('Részletek'))
@@ -124,7 +137,11 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
     const incoming = { ...approvedShipment, targetBranchId: 'branch-1' }
     mocks.findByStatus.mockResolvedValue([incoming])
     const user = userEvent.setup()
-    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
 
     await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
     expect(screen.queryByTitle('Visszavonás')).toBeNull()
@@ -140,7 +157,11 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
   it('FR-6: a "Megérkezett" gomb csak az ÁTVEVŐ (target) fiók felhasználójának látszik', async () => {
     // A bejelentkezett user branchId='branch-1'; a shipment ÁTVEVŐJE is branch-1 → gomb látható.
     mocks.findByStatus.mockResolvedValue([{ ...approvedShipment, targetBranchId: 'branch-1' }])
-    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
 
     await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
     expect(screen.getByTitle('Megérkezett')).toBeInTheDocument()
@@ -150,7 +171,11 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
     // A bejelentkezett user branchId='branch-1', de a shipment ÁTVEVŐJE branch-2 → ő az átadó
     // oldalon van, a gombot egyáltalán nem szabad látnia (FR-6: rejtve, nem disabled).
     mocks.findByStatus.mockResolvedValue([{ ...approvedShipment, targetBranchId: 'branch-2' }])
-    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
 
     await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
     expect(screen.queryByTitle('Megérkezett')).toBeNull()
@@ -160,7 +185,11 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
     mocks.findByStatus.mockResolvedValue([draftShipment])
     mocks.get.mockResolvedValue(draftShipment)
     const user = userEvent.setup()
-    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
 
     await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
     await user.click(screen.getByTitle('Részletek'))
@@ -186,7 +215,11 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
   })
 
   it('FR-1: két fül látható, alapból a "Ma" aktív', async () => {
-    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
     await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
 
     expect(screen.getByTestId('shipment-tab-today')).toBeInTheDocument()
@@ -198,9 +231,18 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
   it('FR-2: a "Ma" fülön csak az aznapi bizonylat látszik, a másik napi nem', async () => {
     mocks.findByStatus.mockResolvedValue([
       approvedShipment,
-      { ...approvedShipment, id: 'shipment-2', requestNumber: 'SH-OLD', requestedDeliveryDate: OTHER_DAY },
+      {
+        ...approvedShipment,
+        id: 'shipment-2',
+        requestNumber: 'SH-OLD',
+        requestedDeliveryDate: OTHER_DAY,
+      },
     ])
-    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
 
     await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
     expect(screen.queryByText('SH-OLD')).toBeNull()
@@ -209,7 +251,11 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
   it('FR-12: a REJECTED státusz szűrhető és "Elutasítva" badge-dzsel jelenik meg', async () => {
     const user = userEvent.setup()
     mocks.findByStatus.mockResolvedValue([{ ...approvedShipment, requestStatus: 'REJECTED' }])
-    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
 
     await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
     await user.selectOptions(screen.getByRole('combobox'), 'REJECTED')
@@ -220,7 +266,11 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
 
   it('FR-10: a "Korábbi" fülön nincs státuszszűrő, naptár + üres állapot jelenik meg', async () => {
     const user = userEvent.setup()
-    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
     await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
 
     await user.click(screen.getByTestId('shipment-tab-past'))
@@ -233,7 +283,11 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
 
   it('FR-8/FR-9/FR-11: "Korábbi" fülön napra kattintva a lista csak megtekintés + újranyomtatás gombot ad, és az újranyomtatás GET /shipments/{id}-t hív', async () => {
     const user = userEvent.setup()
-    render(<MemoryRouter><ShipmentListPage /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
     await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
 
     await user.click(screen.getByTestId('shipment-tab-past'))

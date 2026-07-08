@@ -40,7 +40,13 @@ function approverLabel(a: EligibleApprover): string {
   return composed || `#${a.id}`
 }
 
-export default function StornoPinApprovalModal({ open, currentWorkerId, approvalId, onApproved, onCancel }: Props) {
+export default function StornoPinApprovalModal({
+  open,
+  currentWorkerId,
+  approvalId,
+  onApproved,
+  onCancel,
+}: Props) {
   const [approvers, setApprovers] = useState<EligibleApprover[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pin, setPin] = useState('')
@@ -67,7 +73,11 @@ export default function StornoPinApprovalModal({ open, currentWorkerId, approval
           ),
         )
       } catch (err) {
-        logger.error('StornoPinApprovalModal', 'Jóváhagyó-lista betöltési hiba:', getErrorMessage(err))
+        logger.error(
+          'StornoPinApprovalModal',
+          'Jóváhagyó-lista betöltési hiba:',
+          getErrorMessage(err),
+        )
         setError('Nem sikerült betölteni a jóváhagyásra jogosult dolgozók listáját.')
       } finally {
         setLoading(false)
@@ -86,7 +96,8 @@ export default function StornoPinApprovalModal({ open, currentWorkerId, approval
       onApproved(approval)
     } catch (err) {
       logger.warn('StornoPinApprovalModal', 'PIN-jóváhagyás hiba:', getErrorMessage(err))
-      const errorBody = (err as { response?: { data?: { message?: string; error?: string } } }).response?.data
+      const errorBody = (err as { response?: { data?: { message?: string; error?: string } } })
+        .response?.data
       setError(errorBody?.message ?? errorBody?.error ?? 'Hibás PIN vagy ideiglenes lockout')
       setPin('')
     } finally {
@@ -128,8 +139,8 @@ export default function StornoPinApprovalModal({ open, currentWorkerId, approval
           Telefonos supervisor-jóváhagyás
         </h2>
         <p className="mb-4 text-sm text-gray-600">
-          Hívja fel a supervisort, válassza ki a nevét, majd írja be a telefonon
-          bediktált 4-6 számjegyű PIN-t.
+          Hívja fel a supervisort, válassza ki a nevét, majd írja be a telefonon bediktált 4-6
+          számjegyű PIN-t.
         </p>
 
         <label className="form-label">Jóváhagyó supervisor</label>
@@ -190,8 +201,8 @@ export default function StornoPinApprovalModal({ open, currentWorkerId, approval
         </div>
 
         <p className="mt-4 text-xs text-gray-500">
-          3 hibás próbálkozás után 5 perc lockout lép életbe. A jóváhagyó nem lehet
-          a kérelmező és nem lehet a bejelentkezett dolgozó (4-szem-elv).
+          3 hibás próbálkozás után 5 perc lockout lép életbe. A jóváhagyó nem lehet a kérelmező és
+          nem lehet a bejelentkezett dolgozó (4-szem-elv).
         </p>
       </div>
     </div>

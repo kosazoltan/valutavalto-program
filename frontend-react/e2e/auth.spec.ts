@@ -34,7 +34,7 @@ test('login oldal megjelenik', async ({ page }) => {
 })
 
 test('hibás login → error üzenet', async ({ page }) => {
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     if (url.pathname.endsWith('/auth/login')) {
       return route.fulfill({
@@ -55,7 +55,10 @@ test('hibás login → error üzenet', async ({ page }) => {
   await page.getByRole('button', { name: /Bejelentkezés/i }).click()
 
   // Vagy error üzenet, vagy továbbra is a login oldalon vagyunk
-  const hasError = await page.locator('[role="alert"]').isVisible().catch(() => false)
+  const hasError = await page
+    .locator('[role="alert"]')
+    .isVisible()
+    .catch(() => false)
   const stillOnLogin = await page.url().includes('/login')
 
   expect(hasError || stillOnLogin).toBe(true)
@@ -68,7 +71,7 @@ test('sikeres login → redirect dashboard-ra', async ({ page }) => {
     permissions: ['TRADE_EXECUTE'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -120,7 +123,7 @@ test('MFA-köteles login → TOTP ellenőrzés után redirect', async ({ page })
     permissions: ['TRADE_EXECUTE'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -179,15 +182,15 @@ test('MFA-köteles login → TOTP ellenőrzés után redirect', async ({ page })
   await expect(page.getByRole('button', { name: 'MFA ellenőrzés' })).toBeDisabled()
   await page.getByTestId('login-mfa-code').fill('123456')
 
-  const verifyRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/mfa/verify')
+  const verifyRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/mfa/verify'),
   )
   await page.getByRole('button', { name: 'MFA ellenőrzés' }).click()
   await verifyRequest
 
   await expect(page).toHaveURL(/\/central-workstation$/)
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

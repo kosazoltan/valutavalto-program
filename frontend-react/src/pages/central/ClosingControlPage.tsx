@@ -43,7 +43,9 @@ export default function ClosingControlPage() {
   const [loading, setLoading] = useState(false)
   const [alertingBranchId, setAlertingBranchId] = useState<string | null>(null)
   const [detailLoadingBranchId, setDetailLoadingBranchId] = useState<string | null>(null)
-  const [selectedBranchStatus, setSelectedBranchStatus] = useState<ClosingControlStatus | null>(null)
+  const [selectedBranchStatus, setSelectedBranchStatus] = useState<ClosingControlStatus | null>(
+    null,
+  )
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -77,7 +79,9 @@ export default function ClosingControlPage() {
   )
 
   const handleAlert = async (row: ClosingControlStatus) => {
-    const branchLabel = row.branchCode ? `${row.branchCode} - ${row.branchName ?? row.branchId}` : row.branchName ?? row.branchId
+    const branchLabel = row.branchCode
+      ? `${row.branchCode} - ${row.branchName ?? row.branchId}`
+      : (row.branchName ?? row.branchId)
     const message = `${date} napi zárási beérkezés hiányzik vagy nem teljes. Kérjük az iroda zárását és szinkronját ellenőrizni.`
     try {
       setAlertingBranchId(row.branchId)
@@ -112,7 +116,9 @@ export default function ClosingControlPage() {
             <Clock className="h-5 w-5 text-slate-700" />
             <div>
               <h1 className="text-lg font-semibold text-slate-900">Zárás beérkezés felügyelet</h1>
-              <div className="text-xs text-slate-500">Napi zárások és nyitások beérkezésének valós idejű állapota</div>
+              <div className="text-xs text-slate-500">
+                Napi zárások és nyitások beérkezésének valós idejű állapota
+              </div>
             </div>
           </div>
           <button
@@ -207,23 +213,34 @@ export default function ClosingControlPage() {
               <div className="text-xs text-sky-700">{selectedBranchStatus.controlDate}</div>
             </div>
             <div className="grid gap-2 text-xs sm:grid-cols-3">
-              <div className={`rounded px-2 py-1.5 font-semibold ${selectedBranchStatus.dailyClosingDone ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+              <div
+                className={`rounded px-2 py-1.5 font-semibold ${selectedBranchStatus.dailyClosingDone ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}
+              >
                 Napi zárás: {selectedBranchStatus.dailyClosingDone ? 'rendben' : 'hiányzik'}
               </div>
-              <div className={`rounded px-2 py-1.5 font-semibold ${selectedBranchStatus.eveningClosingDone ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+              <div
+                className={`rounded px-2 py-1.5 font-semibold ${selectedBranchStatus.eveningClosingDone ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}
+              >
                 Esti zárás: {selectedBranchStatus.eveningClosingDone ? 'rendben' : 'hiányzik'}
               </div>
-              <div className={`rounded px-2 py-1.5 font-semibold ${selectedBranchStatus.navClosingDone ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+              <div
+                className={`rounded px-2 py-1.5 font-semibold ${selectedBranchStatus.navClosingDone ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}
+              >
                 NAV zárás: {selectedBranchStatus.navClosingDone ? 'rendben' : 'hiányzik'}
               </div>
             </div>
             {(selectedBranchStatus.lastTransactionAt || selectedBranchStatus.notes) && (
               <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
                 {selectedBranchStatus.lastTransactionAt && (
-                  <div><span className="font-semibold">Utolsó tranzakció:</span> {selectedBranchStatus.lastTransactionAt}</div>
+                  <div>
+                    <span className="font-semibold">Utolsó tranzakció:</span>{' '}
+                    {selectedBranchStatus.lastTransactionAt}
+                  </div>
                 )}
                 {selectedBranchStatus.notes && (
-                  <div><span className="font-semibold">Megjegyzés:</span> {selectedBranchStatus.notes}</div>
+                  <div>
+                    <span className="font-semibold">Megjegyzés:</span> {selectedBranchStatus.notes}
+                  </div>
                 )}
               </div>
             )}
@@ -246,9 +263,12 @@ export default function ClosingControlPage() {
                 >
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="font-semibold text-slate-900">{row.branchCode ?? row.branchId.slice(0, 8)}</div>
+                      <div className="font-semibold text-slate-900">
+                        {row.branchCode ?? row.branchId.slice(0, 8)}
+                      </div>
                       <div className="truncate text-xs text-slate-500" title={row.branchName ?? ''}>
-                        {row.branchName ?? 'Névtelen iroda'}{row.branchCity ? `, ${row.branchCity}` : ''}
+                        {row.branchName ?? 'Névtelen iroda'}
+                        {row.branchCity ? `, ${row.branchCity}` : ''}
                       </div>
                     </div>
                     <div className="flex shrink-0 gap-1">
@@ -260,13 +280,20 @@ export default function ClosingControlPage() {
                         disabled={detailLoadingBranchId === row.branchId}
                         className="rounded border border-sky-300 bg-sky-50 p-1.5 text-sky-800 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <Info size={14} className={detailLoadingBranchId === row.branchId ? 'animate-pulse' : ''} />
+                        <Info
+                          size={14}
+                          className={detailLoadingBranchId === row.branchId ? 'animate-pulse' : ''}
+                        />
                       </button>
                       <button
                         type="button"
                         title="Napló"
                         aria-label={`Napló megnyitása — ${row.branchCode ?? row.branchName ?? row.branchId}`}
-                        onClick={() => navigate(`/daybook?branchId=${encodeURIComponent(row.branchId)}&date=${encodeURIComponent(date)}`)}
+                        onClick={() =>
+                          navigate(
+                            `/daybook?branchId=${encodeURIComponent(row.branchId)}&date=${encodeURIComponent(date)}`,
+                          )
+                        }
                         className="rounded border border-slate-300 bg-white p-1.5 text-slate-600 hover:bg-slate-50"
                       >
                         <Eye size={14} />
@@ -298,7 +325,9 @@ export default function ClosingControlPage() {
         )}
 
         {loading && (
-          <div className="rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-slate-500">Betöltés...</div>
+          <div className="rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-slate-500">
+            Betöltés...
+          </div>
         )}
       </div>
     </div>

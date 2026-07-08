@@ -54,7 +54,7 @@ export default function StornoApprovalListPage() {
       setMessage(
         approved
           ? `Sztornó-kérés engedélyezve (${approval.receiptNumber || approval.transactionId}).`
-          : `Sztornó-kérés elutasítva (${approval.receiptNumber || approval.transactionId}).`
+          : `Sztornó-kérés elutasítva (${approval.receiptNumber || approval.transactionId}).`,
       )
       await loadPending()
     } catch (err) {
@@ -75,7 +75,11 @@ export default function StornoApprovalListPage() {
           <ClipboardCheck size={22} className="text-gray-700" />
           <h1 className="text-xl font-bold text-gray-800">Sztornó jóváhagyások</h1>
         </div>
-        <button onClick={() => void loadPending()} disabled={loading} className="toolbar-button flex items-center gap-2">
+        <button
+          onClick={() => void loadPending()}
+          disabled={loading}
+          className="toolbar-button flex items-center gap-2"
+        >
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           Frissítés
         </button>
@@ -117,7 +121,9 @@ export default function StornoApprovalListPage() {
             </div>
             <div>
               <label className="form-label">Kérelmező</label>
-              <div className="form-input bg-gray-50">{approval.workerName || approval.workerId}</div>
+              <div className="form-input bg-gray-50">
+                {approval.workerName || approval.workerId}
+              </div>
             </div>
             <div>
               <label className="form-label">Kérés időpontja</label>
@@ -158,7 +164,7 @@ export default function StornoApprovalListPage() {
             </button>
             <button
               onClick={() => void handleDecision(approval, false)}
-              disabled={actingId === approval.id || !(rejectReasons[approval.id]?.trim())}
+              disabled={actingId === approval.id || !rejectReasons[approval.id]?.trim()}
               className="form-button flex items-center gap-2 text-red-700"
             >
               <XCircle size={16} />

@@ -1,6 +1,8 @@
 // dotenv only in development — not bundled in production asar
 // NOTE: Cannot use top-level await here — CJS output format (vite-plugin-electron/rolldown)
-import('dotenv/config').catch(() => { /* production: dotenv not available, safe to skip */ });
+import('dotenv/config').catch(() => {
+  /* production: dotenv not available, safe to skip */
+});
 import { app, BrowserWindow, ipcMain, dialog, protocol, net, safeStorage, session } from 'electron';
 import { initAutoUpdate } from './auto-update';
 import { release as getOsRelease } from 'node:os';
@@ -101,14 +103,24 @@ import {
   getCachedWorkers,
   getCachedWorkerTimestamp,
 } from './sqlite';
-import { printReceipt, type PrintReceiptData, PRINTER_CONFIG_KEY, SERIAL_PORT_CONFIG_KEY } from './printer';
+import {
+  printReceipt,
+  type PrintReceiptData,
+  PRINTER_CONFIG_KEY,
+  SERIAL_PORT_CONFIG_KEY,
+} from './printer';
 import { syncEngine } from './sync-engine';
 import { registerCameraHandlers } from './camera';
 import { registerVideoManagerHandlers } from './video-manager';
 import { registerScannerHandlers, SCAN_DIR } from './scanner';
 import { assertInsideBase, validateDocumentType } from './path-guard';
 import { registerUpdaterHandlers } from './updater';
-import { performGoogleOAuthFlow, performGoogleOAuthFlowWithBackendLogin, performPasswordLoginMainProcess, GoogleOAuthFailedException } from './google-oauth';
+import {
+  performGoogleOAuthFlow,
+  performGoogleOAuthFlowWithBackendLogin,
+  performPasswordLoginMainProcess,
+  GoogleOAuthFailedException,
+} from './google-oauth';
 import { initErrorReporter, reportError, setUserIdentifier } from './error-reporter';
 import { fetchViaElectronNetWithRetry, type ApiProxyRequest } from './api-proxy';
 import {
@@ -119,7 +131,6 @@ import {
   type CustomerDisplayPayload,
 } from './customer-display';
 import {
-
   isFirstRun,
   getBranches,
   getWorkers,
@@ -145,7 +156,10 @@ function loadProductionUrls(): { api_url: string; base_url: string; domain: stri
     // biztositjuk, hogy legalabb egy ismert-jo default-tal ujrainduljon az app.
     // Ez NEM SSOT violation - ez szandekos duplikacio utolso menedekkent.
     // AI review (Sourcery PR #174): full error object logging, hogy a stack trace megmaradjon
-    log.error(`[ProductionUrls] CRITICAL: config load failed (${configPath}). Fallback to hardcoded defaults - ez a build-csomag serult!`, err);
+    log.error(
+      `[ProductionUrls] CRITICAL: config load failed (${configPath}). Fallback to hardcoded defaults - ez a build-csomag serult!`,
+      err,
+    );
     return {
       api_url: 'https://excvaluta.com/api/v1',
       base_url: 'https://excvaluta.com',
@@ -171,18 +185,24 @@ function resolveConfiguredApiUrl(): string {
     }
     return normalizeApiUrl(configured);
   } catch (err) {
-    log.warn('[App] server_url invalid, fallback production URL:',
-        err instanceof Error ? err.message : String(err));
+    log.warn(
+      '[App] server_url invalid, fallback production URL:',
+      err instanceof Error ? err.message : String(err),
+    );
     return fallback;
   }
 }
 
-const isDev = !app.isPackaged && !process.argv.includes('--force-packaged') && process.env.ELECTRON_FORCE_PACKAGED !== '1';
+const isDev =
+  !app.isPackaged &&
+  !process.argv.includes('--force-packaged') &&
+  process.env.ELECTRON_FORCE_PACKAGED !== '1';
 const devServerUrl = process.env.ELECTRON_RENDERER_URL ?? 'http://127.0.0.1:3000';
 
 const devUserDataDir = process.env.ELECTRON_DEV_USER_DATA;
 const shouldAutoOpenDevTools =
-  isDev && ['1', 'true', 'yes', 'on'].includes((process.env.ELECTRON_OPEN_DEVTOOLS ?? '').toLowerCase());
+  isDev &&
+  ['1', 'true', 'yes', 'on'].includes((process.env.ELECTRON_OPEN_DEVTOOLS ?? '').toLowerCase());
 
 // Force a local writable profile/cache path when ELECTRON_DEV_USER_DATA is set (dev or E2E test).
 if (devUserDataDir) {
@@ -220,22 +240,22 @@ log.transports.console.level = isDev ? 'debug' : 'warn';
 // (12 electron process, 3 main window cacheloda al a Task Manager-ben).
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
-    log.info('[Electron] Mar fut egy penztar-client instance, exit.');
-    app.quit();
-    process.exit(0);
+  log.info('[Electron] Mar fut egy penztar-client instance, exit.');
+  app.quit();
+  process.exit(0);
 }
 
 app.on('second-instance', (_event, _commandLine, _workingDirectory) => {
-    // Masodik indulaskor: az elso ablakot hozza elotertbe es focus-olja
-    const allWindows = BrowserWindow.getAllWindows();
-    const mainWin = allWindows.length > 0 ? allWindows[0] : undefined;
-    if (mainWin) {
-        if (mainWin.isMinimized()) mainWin.restore();
-        mainWin.focus();
-        log.info('[Electron] Second-instance blocked, focused existing window.');
-    } else {
-        log.warn('[Electron] Second-instance event, but no main window found.');
-    }
+  // Masodik indulaskor: az elso ablakot hozza elotertbe es focus-olja
+  const allWindows = BrowserWindow.getAllWindows();
+  const mainWin = allWindows.length > 0 ? allWindows[0] : undefined;
+  if (mainWin) {
+    if (mainWin.isMinimized()) mainWin.restore();
+    mainWin.focus();
+    log.info('[Electron] Second-instance blocked, focused existing window.');
+  } else {
+    log.warn('[Electron] Second-instance event, but no main window found.');
+  }
 });
 
 process.on('uncaughtException', (err) => {
@@ -284,7 +304,7 @@ function createWindow(): void {
       dialog.showErrorBox(
         'Fejlesztői indítási hiba',
         `A renderer nem tudott csatlakozni a dev szerverhez: ${devServerUrl}\n\n` +
-        'Ellenőrizze, hogy a Vite szerver fut-e, majd indítsa újra az alkalmazást.',
+          'Ellenőrizze, hogy a Vite szerver fut-e, majd indítsa újra az alkalmazást.',
       );
     };
 
@@ -300,14 +320,18 @@ function createWindow(): void {
 
   // Renderer process hibák logolása — production-ben is lássuk mi történik
   mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
-    if (level >= 2) { // warning és error
+    if (level >= 2) {
+      // warning és error
       log.warn(`[Renderer] L${level} ${sourceId}:${line} — ${message}`);
     }
   });
 
-  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
-    log.error(`[Renderer] did-fail-load ${errorCode} ${errorDescription} @ ${validatedURL}`);
-  });
+  mainWindow.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription, validatedURL) => {
+      log.error(`[Renderer] did-fail-load ${errorCode} ${errorDescription} @ ${validatedURL}`);
+    },
+  );
 
   // Ha a renderer process crash-el, jelenjen meg hibaüzenet
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
@@ -328,7 +352,7 @@ function createWindow(): void {
   // Security: blokkolja az ismeretlen URL-ekre való navigálást (XSS/phishing védelem)
   mainWindow.webContents.on('will-navigate', (event, url) => {
     const allowed = ['app://localhost', devServerUrl];
-    if (!allowed.some(origin => url.startsWith(origin))) {
+    if (!allowed.some((origin) => url.startsWith(origin))) {
       log.warn(`[Security] Blocked navigation to: ${url}`);
       event.preventDefault();
     }
@@ -356,10 +380,12 @@ ipcMain.handle('print-receipt', async (_event, dataJson: string): Promise<boolea
     // Korabban a felhasznalo nem latta, hogy a print-config hianyos volt — most az
     // electron-log fajl-ban explicit szerepel.
     if (!printerName && !serialPort) {
-      console.warn('[IPC] print-receipt: NEM konfigurált sem PRINTER_CONFIG_KEY (printer.deviceName), '
-        + 'sem SERIAL_PORT_CONFIG_KEY (printer.serialPort) — Electron default printer fallback aktiv. '
-        + 'Beallitasok > Nyomtatas → konfiguraljon nyomtatot, ha az alapertelmezett rendszer nyomtato '
-        + 'nem elerheto.');
+      console.warn(
+        '[IPC] print-receipt: NEM konfigurált sem PRINTER_CONFIG_KEY (printer.deviceName), ' +
+          'sem SERIAL_PORT_CONFIG_KEY (printer.serialPort) — Electron default printer fallback aktiv. ' +
+          'Beallitasok > Nyomtatas → konfiguraljon nyomtatot, ha az alapertelmezett rendszer nyomtato ' +
+          'nem elerheto.',
+      );
     }
     return await printReceipt(data, printerName, serialPort);
   } catch (err) {
@@ -407,245 +433,286 @@ ipcMain.handle('setup:check', async () => {
   return isFirstRun();
 });
 
-ipcMain.handle('setup:branches', async (
-  _event,
-  params?: { apiUrl?: string; companyCode?: string },
-) => {
-  return await getBranches(params?.apiUrl, params?.companyCode);
-});
+ipcMain.handle(
+  'setup:branches',
+  async (_event, params?: { apiUrl?: string; companyCode?: string }) => {
+    return await getBranches(params?.apiUrl, params?.companyCode);
+  },
+);
 
-ipcMain.handle(IPC_CHANNELS.SETUP_WORKERS, async (
-  _event,
-  params: SetupWorkersRequest,
-): Promise<SetupWorkerOption[]> => {
-  const apiUrl = params?.apiUrl?.trim() ?? '';
-  const companyCode = params?.companyCode?.trim() ?? '';
-  const branchCode = params?.branchCode?.trim() ?? '';
+ipcMain.handle(
+  IPC_CHANNELS.SETUP_WORKERS,
+  async (_event, params: SetupWorkersRequest): Promise<SetupWorkerOption[]> => {
+    const apiUrl = params?.apiUrl?.trim() ?? '';
+    const companyCode = params?.companyCode?.trim() ?? '';
+    const branchCode = params?.branchCode?.trim() ?? '';
 
-  if (!apiUrl || !companyCode || !branchCode) {
-    log.warn('[IPC] setup:workers hianyos parameterek, ures dolgozoi lista.', {
-      hasApiUrl: Boolean(apiUrl),
-      hasCompanyCode: Boolean(companyCode),
-      hasBranchCode: Boolean(branchCode),
-    });
-    return [];
-  }
+    if (!apiUrl || !companyCode || !branchCode) {
+      log.warn('[IPC] setup:workers hianyos parameterek, ures dolgozoi lista.', {
+        hasApiUrl: Boolean(apiUrl),
+        hasCompanyCode: Boolean(companyCode),
+        hasBranchCode: Boolean(branchCode),
+      });
+      return [];
+    }
 
-  return await getWorkers(apiUrl, companyCode, branchCode);
-});
+    return await getWorkers(apiUrl, companyCode, branchCode);
+  },
+);
 
-ipcMain.handle('setup:test-connection', async (
-  _event,
-  params: { apiUrl: string; companyCode: string; username: string; password: string },
-) => {
-  return await testConnection(params.apiUrl, params.companyCode, params.username, params.password);
-});
+ipcMain.handle(
+  'setup:test-connection',
+  async (
+    _event,
+    params: { apiUrl: string; companyCode: string; username: string; password: string },
+  ) => {
+    return await testConnection(
+      params.apiUrl,
+      params.companyCode,
+      params.username,
+      params.password,
+    );
+  },
+);
 
 ipcMain.handle('setup:save', async (_event, payload: SetupSavePayload) => {
   return await saveSetupConfig(payload);
 });
 
-ipcMain.handle('save-pending-transaction', async (
-  _event,
-  type: 'SELL' | 'BUY',
-  currencyCode: string,
-  foreignAmount: number,
-  hufAmount: number,
-  roundedHufAmount: number,
-  rate: number,
-  handlingFee: number | null,
-  discountPercent: number | null,
-  customerIdentifier: string | null,
-  customerName: string | null,
-  customerDocumentNumber: string | null,
-  customerAddress: string | null,
-  denominations: string | null,
-  sourceOfFunds: string | null,
-  customerIsPep: boolean | null,
-  foreignStatus: 'DOMESTIC' | 'FOREIGN' | null,
-): Promise<number> => {
-  return savePendingTransaction(
-    type,
-    currencyCode,
-    foreignAmount,
-    hufAmount,
-    roundedHufAmount,
-    rate,
-    handlingFee,
-    discountPercent,
-    customerIdentifier,
-    customerName,
-    customerDocumentNumber,
-    customerAddress,
-    denominations,
-    sourceOfFunds,
-    customerIsPep,
-    foreignStatus,
-  );
-});
+ipcMain.handle(
+  'save-pending-transaction',
+  async (
+    _event,
+    type: 'SELL' | 'BUY',
+    currencyCode: string,
+    foreignAmount: number,
+    hufAmount: number,
+    roundedHufAmount: number,
+    rate: number,
+    handlingFee: number | null,
+    discountPercent: number | null,
+    customerIdentifier: string | null,
+    customerName: string | null,
+    customerDocumentNumber: string | null,
+    customerAddress: string | null,
+    denominations: string | null,
+    sourceOfFunds: string | null,
+    customerIsPep: boolean | null,
+    foreignStatus: 'DOMESTIC' | 'FOREIGN' | null,
+  ): Promise<number> => {
+    return savePendingTransaction(
+      type,
+      currencyCode,
+      foreignAmount,
+      hufAmount,
+      roundedHufAmount,
+      rate,
+      handlingFee,
+      discountPercent,
+      customerIdentifier,
+      customerName,
+      customerDocumentNumber,
+      customerAddress,
+      denominations,
+      sourceOfFunds,
+      customerIsPep,
+      foreignStatus,
+    );
+  },
+);
 
 // V235 (2026-05-19 HIBA #14 + #15 + #17 + #18): bővített IPC channel
 // objektum-paraméterrel a teljes Pmt. customer-snapshot mentéséhez.
-ipcMain.handle('save-pending-transaction-v2', async (
-  _event,
-  input: PendingTransactionInputV2,
-): Promise<number> => {
-  return savePendingTransactionV2(input);
-});
+ipcMain.handle(
+  'save-pending-transaction-v2',
+  async (_event, input: PendingTransactionInputV2): Promise<number> => {
+    return savePendingTransactionV2(input);
+  },
+);
 
-ipcMain.handle('get-pending-transactions', async (): Promise<ReturnType<typeof getPendingTransactions>> => {
-  return getPendingTransactions();
-});
+ipcMain.handle(
+  'get-pending-transactions',
+  async (): Promise<ReturnType<typeof getPendingTransactions>> => {
+    return getPendingTransactions();
+  },
+);
 
 // 2026-06-04 (audit-fix): a nyugta-nyomtatáshoz a TÉNYLEGES szigorú helyi sorszám lekérdezése
 // a mentett pending-sor ID-je alapján (nem fabrikált P-<timestamp>).
-ipcMain.handle('get-pending-transaction-ref-by-id', async (
-  _event,
-  id: number,
-): Promise<string | null> => {
-  return getPendingTransactionRefById(id);
-});
+ipcMain.handle(
+  'get-pending-transaction-ref-by-id',
+  async (_event, id: number): Promise<string | null> => {
+    return getPendingTransactionRefById(id);
+  },
+);
 
 // 2026-06-04 (audit-fix, buy/sell-paritás): a szállítólevél-nyomtatáshoz a TÉNYLEGES átadólap-
 // sorszám lekérdezése a mentett transfer pending-sor ID-je alapján (nem fabrikált LOCAL-<dátum>-#<id>).
-ipcMain.handle('get-pending-transfer-ref-by-id', async (
-  _event,
-  id: number,
-): Promise<string | null> => {
-  return getPendingTransferRefById(id);
-});
+ipcMain.handle(
+  'get-pending-transfer-ref-by-id',
+  async (_event, id: number): Promise<string | null> => {
+    return getPendingTransferRefById(id);
+  },
+);
 
-ipcMain.handle('save-pending-conversion', async (
-  _event,
-  fromCurrencyId: number | null,
-  fromCurrencyCode: string,
-  toCurrencyId: number | null,
-  toCurrencyCode: string,
-  fromAmount: number,
-  calculatedHufAmount: number,
-  calculatedToAmount: number,
-  conversionRate: number,
-  handlingFee: number | null,
-  customerId: string | null,
-  customerName: string | null,
-  customerDocumentNumber: string | null,
-  note: string | null,
-): Promise<number> => {
-  return savePendingConversion(
-    fromCurrencyId,
-    fromCurrencyCode,
-    toCurrencyId,
-    toCurrencyCode,
-    fromAmount,
-    calculatedHufAmount,
-    calculatedToAmount,
-    conversionRate,
-    handlingFee,
-    customerId,
-    customerName,
-    customerDocumentNumber,
-    note,
-  );
-});
+ipcMain.handle(
+  'save-pending-conversion',
+  async (
+    _event,
+    fromCurrencyId: number | null,
+    fromCurrencyCode: string,
+    toCurrencyId: number | null,
+    toCurrencyCode: string,
+    fromAmount: number,
+    calculatedHufAmount: number,
+    calculatedToAmount: number,
+    conversionRate: number,
+    handlingFee: number | null,
+    customerId: string | null,
+    customerName: string | null,
+    customerDocumentNumber: string | null,
+    note: string | null,
+  ): Promise<number> => {
+    return savePendingConversion(
+      fromCurrencyId,
+      fromCurrencyCode,
+      toCurrencyId,
+      toCurrencyCode,
+      fromAmount,
+      calculatedHufAmount,
+      calculatedToAmount,
+      conversionRate,
+      handlingFee,
+      customerId,
+      customerName,
+      customerDocumentNumber,
+      note,
+    );
+  },
+);
 
 // V235 + V236 (2026-05-19 Codex P1 #695): bővített Konverzio IPC channel
 // objektum-paraméterrel, teljes Pmt. customer-snapshot mentéséhez.
-ipcMain.handle('save-pending-conversion-v2', async (
-  _event,
-  input: PendingConversionInputV2,
-): Promise<number> => {
-  return savePendingConversionV2(input);
-});
+ipcMain.handle(
+  'save-pending-conversion-v2',
+  async (_event, input: PendingConversionInputV2): Promise<number> => {
+    return savePendingConversionV2(input);
+  },
+);
 
-ipcMain.handle('get-pending-conversions', async (): Promise<ReturnType<typeof getPendingConversions>> => {
-  return getPendingConversions();
-});
+ipcMain.handle(
+  'get-pending-conversions',
+  async (): Promise<ReturnType<typeof getPendingConversions>> => {
+    return getPendingConversions();
+  },
+);
 
-ipcMain.handle('save-pending-bank-transaction', async (
-  _event,
-  transactionType: 'BUY' | 'SELL',
-  currencyCode: string,
-  amount: number,
-  exchangeRate: number,
-  hufAmount: number,
-  vaultTerritoryId: number | null,
-  bankName: string | null,
-  bankReference: string | null,
-  note: string | null,
-): Promise<number> => {
-  return savePendingBankTransaction(
-    transactionType,
-    currencyCode,
-    amount,
-    exchangeRate,
-    hufAmount,
-    vaultTerritoryId,
-    bankName,
-    bankReference,
-    note,
-  );
-});
+ipcMain.handle(
+  'save-pending-bank-transaction',
+  async (
+    _event,
+    transactionType: 'BUY' | 'SELL',
+    currencyCode: string,
+    amount: number,
+    exchangeRate: number,
+    hufAmount: number,
+    vaultTerritoryId: number | null,
+    bankName: string | null,
+    bankReference: string | null,
+    note: string | null,
+  ): Promise<number> => {
+    return savePendingBankTransaction(
+      transactionType,
+      currencyCode,
+      amount,
+      exchangeRate,
+      hufAmount,
+      vaultTerritoryId,
+      bankName,
+      bankReference,
+      note,
+    );
+  },
+);
 
-ipcMain.handle('get-pending-bank-transactions', async (): Promise<ReturnType<typeof getPendingBankTransactions>> => {
-  return getPendingBankTransactions();
-});
+ipcMain.handle(
+  'get-pending-bank-transactions',
+  async (): Promise<ReturnType<typeof getPendingBankTransactions>> => {
+    return getPendingBankTransactions();
+  },
+);
 
-ipcMain.handle('save-pending-storno', async (_event, payload: PendingStornoInput): Promise<number> => {
-  return savePendingStorno(payload);
-});
+ipcMain.handle(
+  'save-pending-storno',
+  async (_event, payload: PendingStornoInput): Promise<number> => {
+    return savePendingStorno(payload);
+  },
+);
 
 ipcMain.handle('get-pending-stornos', async (): Promise<ReturnType<typeof getPendingStornos>> => {
   return getPendingStornos();
 });
 
 // Offline átadás-átvétel SZTORNÓ (internetkimaradáskor): queue → sync → backend visszafordítás.
-ipcMain.handle('save-pending-transfer-storno', async (_event, payload: PendingTransferStornoInput): Promise<number> => {
-  return savePendingTransferStorno(payload);
-});
+ipcMain.handle(
+  'save-pending-transfer-storno',
+  async (_event, payload: PendingTransferStornoInput): Promise<number> => {
+    return savePendingTransferStorno(payload);
+  },
+);
 
 // FS-C: körlevél-válasz offline outbox (sync-engine küldi a backendre).
-ipcMain.handle('save-pending-circular-reply', async (_event, payload: PendingCircularReplyInput): Promise<number> => {
-  return savePendingCircularReply(payload);
-});
+ipcMain.handle(
+  'save-pending-circular-reply',
+  async (_event, payload: PendingCircularReplyInput): Promise<number> => {
+    return savePendingCircularReply(payload);
+  },
+);
 
 // FS-5: okmány-képpár feltöltési outbox (scan → center, törlés nyugtázás után).
-ipcMain.handle(IPC_CHANNELS.QUEUE_SCANNED_DOCUMENT, async (_event, input: QueueScannedDocumentInput): Promise<number> => {
-  if (!Number.isInteger(input.customerId) || input.customerId <= 0) {
-    throw new Error('Invalid customerId');
-  }
-  validateDocumentType(input.documentType);
-  assertInsideBase(input.frontPath, SCAN_DIR, 'frontPath');
-  assertInsideBase(input.backPath, SCAN_DIR, 'backPath');
-  return savePendingScannedDocument(input);
-});
+ipcMain.handle(
+  IPC_CHANNELS.QUEUE_SCANNED_DOCUMENT,
+  async (_event, input: QueueScannedDocumentInput): Promise<number> => {
+    if (!Number.isInteger(input.customerId) || input.customerId <= 0) {
+      throw new Error('Invalid customerId');
+    }
+    validateDocumentType(input.documentType);
+    assertInsideBase(input.frontPath, SCAN_DIR, 'frontPath');
+    assertInsideBase(input.backPath, SCAN_DIR, 'backPath');
+    return savePendingScannedDocument(input);
+  },
+);
 
-ipcMain.handle('get-pending-transfer-stornos', async (): Promise<ReturnType<typeof getPendingTransferStornos>> => {
-  return getPendingTransferStornos();
-});
+ipcMain.handle(
+  'get-pending-transfer-stornos',
+  async (): Promise<ReturnType<typeof getPendingTransferStornos>> => {
+    return getPendingTransferStornos();
+  },
+);
 
 // Fizikai ujranyomtatas (Codex P2 #1035): a mar szinkronizalt (synced = 1) bizonylatok
 // legutobbi sorai, hogy egy meghiusult fizikai nyomtatas (papirelakadas) utan az operator a
 // lokalis receiptData-bol ESC/POS-on UJRA tudja nyomtatni. A sync-engine erintetlen (synced = 0).
-ipcMain.handle('get-reprintable-transactions', async (
-  _event,
-  limit?: number,
-): Promise<ReturnType<typeof getReprintableTransactions>> => {
-  return getReprintableTransactions(limit);
-});
+ipcMain.handle(
+  'get-reprintable-transactions',
+  async (_event, limit?: number): Promise<ReturnType<typeof getReprintableTransactions>> => {
+    return getReprintableTransactions(limit);
+  },
+);
 
-ipcMain.handle('get-reprintable-conversions', async (
-  _event,
-  limit?: number,
-): Promise<ReturnType<typeof getReprintableConversions>> => {
-  return getReprintableConversions(limit);
-});
+ipcMain.handle(
+  'get-reprintable-conversions',
+  async (_event, limit?: number): Promise<ReturnType<typeof getReprintableConversions>> => {
+    return getReprintableConversions(limit);
+  },
+);
 
-ipcMain.handle('get-reprintable-stornos', async (
-  _event,
-  limit?: number,
-): Promise<ReturnType<typeof getReprintableStornos>> => {
-  return getReprintableStornos(limit);
-});
+ipcMain.handle(
+  'get-reprintable-stornos',
+  async (_event, limit?: number): Promise<ReturnType<typeof getReprintableStornos>> => {
+    return getReprintableStornos(limit);
+  },
+);
 
 ipcMain.handle('get-pending-transaction-count', async (): Promise<number> => {
   return getPendingTransactionCount();
@@ -701,68 +768,103 @@ ipcMain.handle('get-printers', async (): Promise<Electron.PrinterInfo[]> => {
 
 // --- Értéktár Offline IPC Handlers ---
 
-ipcMain.handle('save-pending-distribution', async (
-  _event,
-  targetBranchCode: string,
-  currencyCode: string,
-  amount: number,
-  denominations: string | null,
-  note: string | null,
-): Promise<number> => {
-  return savePendingDistribution(targetBranchCode, currencyCode, amount, denominations, note);
-});
+ipcMain.handle(
+  'save-pending-distribution',
+  async (
+    _event,
+    targetBranchCode: string,
+    currencyCode: string,
+    amount: number,
+    denominations: string | null,
+    note: string | null,
+  ): Promise<number> => {
+    return savePendingDistribution(targetBranchCode, currencyCode, amount, denominations, note);
+  },
+);
 
-ipcMain.handle('save-pending-transfer', async (
-  _event,
-  targetBranchId: string | null,
-  targetBranchCode: string,
-  currencyId: number | null,
-  currencyCode: string,
-  amount: number,
-  hufValue: number | null,
-  transferType: string | null,
-  denominations: string | null,
-  note: string | null,
-  carrierName: string | null = null,
-  sealNumber: string | null = null,
-  direction: string | null = null,
-  lines: string | null = null,
-): Promise<number> => {
-  return savePendingTransfer(targetBranchId, targetBranchCode, currencyId, currencyCode, amount, hufValue, transferType, denominations, note, carrierName, sealNumber, direction, lines);
-});
+ipcMain.handle(
+  'save-pending-transfer',
+  async (
+    _event,
+    targetBranchId: string | null,
+    targetBranchCode: string,
+    currencyId: number | null,
+    currencyCode: string,
+    amount: number,
+    hufValue: number | null,
+    transferType: string | null,
+    denominations: string | null,
+    note: string | null,
+    carrierName: string | null = null,
+    sealNumber: string | null = null,
+    direction: string | null = null,
+    lines: string | null = null,
+  ): Promise<number> => {
+    return savePendingTransfer(
+      targetBranchId,
+      targetBranchCode,
+      currencyId,
+      currencyCode,
+      amount,
+      hufValue,
+      transferType,
+      denominations,
+      note,
+      carrierName,
+      sealNumber,
+      direction,
+      lines,
+    );
+  },
+);
 
-ipcMain.handle('get-pending-transfers', async (): Promise<ReturnType<typeof getPendingTransfers>> => {
-  return getPendingTransfers();
-});
+ipcMain.handle(
+  'get-pending-transfers',
+  async (): Promise<ReturnType<typeof getPendingTransfers>> => {
+    return getPendingTransfers();
+  },
+);
 
-ipcMain.handle('save-pending-collection', async (
-  _event,
-  sourceBranchCode: string,
-  currencyCode: string,
-  amount: number,
-  note: string | null,
-): Promise<number> => {
-  return savePendingCollection(sourceBranchCode, currencyCode, amount, note);
-});
+ipcMain.handle(
+  'save-pending-collection',
+  async (
+    _event,
+    sourceBranchCode: string,
+    currencyCode: string,
+    amount: number,
+    note: string | null,
+  ): Promise<number> => {
+    return savePendingCollection(sourceBranchCode, currencyCode, amount, note);
+  },
+);
 
 // Sprint 7.1: offline stocktake item count queue
-ipcMain.handle('queue-stocktake-count', async (
-  _event,
-  itemId: string,
-  actualQuantity: number,
-  note: string | null,
-  idempotencyKey: string | null,
-): Promise<number> => {
-  return queueStocktakeCount(itemId, actualQuantity, note, idempotencyKey);
-});
+ipcMain.handle(
+  'queue-stocktake-count',
+  async (
+    _event,
+    itemId: string,
+    actualQuantity: number,
+    note: string | null,
+    idempotencyKey: string | null,
+  ): Promise<number> => {
+    return queueStocktakeCount(itemId, actualQuantity, note, idempotencyKey);
+  },
+);
 
-ipcMain.handle('save-pending-handover-operation', async (_event, payload: PendingHandoverOperationInput): Promise<number> => {
-  return savePendingHandoverOperation(payload);
-});
+ipcMain.handle(
+  'save-pending-handover-operation',
+  async (_event, payload: PendingHandoverOperationInput): Promise<number> => {
+    return savePendingHandoverOperation(payload);
+  },
+);
 
-ipcMain.handle('get-pending-handover-operations', async (): Promise<ReturnType<typeof getPendingHandoverOperations>> => {
-  return getPendingHandoverOperations();
-});
+ipcMain.handle(
+  'get-pending-handover-operations',
+  async (): Promise<ReturnType<typeof getPendingHandoverOperations>> => {
+    return getPendingHandoverOperations();
+  },
+);
 
 ipcMain.handle('get-cached-branch-statuses', async () => {
   return getCachedBranchStatuses();
@@ -792,20 +894,26 @@ ipcMain.handle('get-cached-worker-timestamp', async () => {
   return getCachedWorkerTimestamp();
 });
 
-ipcMain.handle('save-local-audit-event', async (_event, payload: {
-  entityType: string;
-  eventType: string;
-  referenceNumber?: string | null;
-  entityId?: string | null;
-  payload: unknown;
-  customerSnapshot?: unknown;
-  identificationSnapshot?: unknown;
-  rateSnapshot?: unknown;
-  status?: string;
-  retentionDays?: number;
-}): Promise<number> => {
-  return saveLocalAuditEvent(payload);
-});
+ipcMain.handle(
+  'save-local-audit-event',
+  async (
+    _event,
+    payload: {
+      entityType: string;
+      eventType: string;
+      referenceNumber?: string | null;
+      entityId?: string | null;
+      payload: unknown;
+      customerSnapshot?: unknown;
+      identificationSnapshot?: unknown;
+      rateSnapshot?: unknown;
+      status?: string;
+      retentionDays?: number;
+    },
+  ): Promise<number> => {
+    return saveLocalAuditEvent(payload);
+  },
+);
 
 ipcMain.handle('get-local-audit-events', async (_event, limit?: number) => {
   return getLocalAuditEvents(limit ?? 200);
@@ -816,7 +924,9 @@ ipcMain.handle('get-local-audit-events', async (_event, limit?: number) => {
 ipcMain.handle('secure-store-token', async (_event, token: string): Promise<boolean> => {
   try {
     if (!safeStorage.isEncryptionAvailable()) {
-      log.warn('[SafeStorage] Encryption not available — token stored in-memory only, NOT persisted to disk');
+      log.warn(
+        '[SafeStorage] Encryption not available — token stored in-memory only, NOT persisted to disk',
+      );
       // Security: NEM mentjuk plaintext-ben a diskre. Csak session-szintu valtozo.
       (global as Record<string, unknown>).__volatile_auth_token = token;
       return true;
@@ -886,14 +996,20 @@ app.whenReady().then(async () => {
     if (fs.existsSync(envPath)) {
       const raw = fs.readFileSync(envPath, 'utf8');
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const dotenv = require('dotenv') as { parse: (input: string | Buffer) => Record<string, string> };
+      const dotenv = require('dotenv') as {
+        parse: (input: string | Buffer) => Record<string, string>;
+      };
       const parsed = dotenv.parse(raw);
       for (const [k, v] of Object.entries(parsed)) {
         if (!process.env[k]) process.env[k] = v;
       }
-      log.info(`[App] userData/.env betoltve a process.env-be (${Object.keys(parsed).length} kulcs)`);
+      log.info(
+        `[App] userData/.env betoltve a process.env-be (${Object.keys(parsed).length} kulcs)`,
+      );
     } else {
-      log.warn('[App] userData/.env nem letezik — Google OAuth lehet sikertelen amig a SetupWizard be nem allitja.');
+      log.warn(
+        '[App] userData/.env nem letezik — Google OAuth lehet sikertelen amig a SetupWizard be nem allitja.',
+      );
     }
   } catch (err) {
     log.error('[App] userData/.env betoltesi hiba:', err);
@@ -935,28 +1051,30 @@ app.whenReady().then(async () => {
   //      permission-okra (notifications, geolocation, midi, clipboard, ...) a BIZTONSAGOS
   //      DEFAULT = DENY. Penzugyi kliensben nincs default-allow; csak a `media` (mic,
   //      voice-assistant) engedelyezett, az is csak explicit origin-allowlisttel (lent).
-  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
-    if (permission !== 'media') {
-      log.warn('[Security] Non-media permission elutasitva (default-deny):', permission);
-      callback(false);
-      return;
-    }
-    try {
-      const url = new URL(String(details?.requestingUrl ?? ''));
-      const isLocalApp = url.protocol === 'app:' && url.hostname === 'localhost';
-      const isLocalHttp = url.protocol === 'http:' && url.hostname === 'localhost';
-      const isProduction = url.protocol === 'https:' && url.hostname === 'excvaluta.com';
-      if (isLocalApp || isLocalHttp || isProduction) {
-        log.info('[VoiceAssistant] media (mic) engedely megadva:', url.origin);
-        callback(true);
+  session.defaultSession.setPermissionRequestHandler(
+    (_webContents, permission, callback, details) => {
+      if (permission !== 'media') {
+        log.warn('[Security] Non-media permission elutasitva (default-deny):', permission);
+        callback(false);
         return;
       }
-      log.warn('[VoiceAssistant] media (mic) engedely elutasitva (idegen origin):', url.origin);
-    } catch (err) {
-      log.warn('[VoiceAssistant] media (mic) URL parse hiba — elutasitva:', err);
-    }
-    callback(false);
-  });
+      try {
+        const url = new URL(String(details?.requestingUrl ?? ''));
+        const isLocalApp = url.protocol === 'app:' && url.hostname === 'localhost';
+        const isLocalHttp = url.protocol === 'http:' && url.hostname === 'localhost';
+        const isProduction = url.protocol === 'https:' && url.hostname === 'excvaluta.com';
+        if (isLocalApp || isLocalHttp || isProduction) {
+          log.info('[VoiceAssistant] media (mic) engedely megadva:', url.origin);
+          callback(true);
+          return;
+        }
+        log.warn('[VoiceAssistant] media (mic) engedely elutasitva (idegen origin):', url.origin);
+      } catch (err) {
+        log.warn('[VoiceAssistant] media (mic) URL parse hiba — elutasitva:', err);
+      }
+      callback(false);
+    },
+  );
 
   // IPC handlers regisztráció (app.whenReady() UTÁN, hogy ipcMain elérhető legyen)
   registerCameraHandlers();
@@ -966,22 +1084,36 @@ app.whenReady().then(async () => {
 
   // v2.5.13 NEM-INFORMATIKUS-FELHASZNALO ALAPELV: automatikus hibajelentes indul
   initErrorReporter();
-  log.info('[App] Error reporter initialized -> POST excvaluta.com/api/v1/diagnostics/error-report');
+  log.info(
+    '[App] Error reporter initialized -> POST excvaluta.com/api/v1/diagnostics/error-report',
+  );
 
   // IPC: a renderer (axios interceptor + window.onerror) ide kuldi a JS hibakat
-  ipcMain.handle('diagnostics:report-error', async (_event, payload: {
-    component?: string;
-    message: string;
-    stack?: string;
-    context?: Record<string, unknown>;
-  }) => {
-    const component = (payload.component ?? 'electron-renderer') as
-        'electron-main' | 'electron-renderer' | 'nsis-installer' | 'axios-http' | 'setup-wizard' | 'sync-engine' | 'other';
-    const err = new Error(payload.message);
-    if (payload.stack) err.stack = payload.stack;
-    reportError(component, err, payload.context);
-    return { ok: true };
-  });
+  ipcMain.handle(
+    'diagnostics:report-error',
+    async (
+      _event,
+      payload: {
+        component?: string;
+        message: string;
+        stack?: string;
+        context?: Record<string, unknown>;
+      },
+    ) => {
+      const component = (payload.component ?? 'electron-renderer') as
+        | 'electron-main'
+        | 'electron-renderer'
+        | 'nsis-installer'
+        | 'axios-http'
+        | 'setup-wizard'
+        | 'sync-engine'
+        | 'other';
+      const err = new Error(payload.message);
+      if (payload.stack) err.stack = payload.stack;
+      reportError(component, err, payload.context);
+      return { ok: true };
+    },
+  );
 
   // IPC: a Login flow utan a renderer atadhatja a felhasznalo email-jet (audit)
   ipcMain.handle('diagnostics:set-user-identifier', async (_event, id: string | null) => {
@@ -996,14 +1128,16 @@ app.whenReady().then(async () => {
   // OAuth flow-t es a vegen vissza-adja a Google ID tokent — a renderer ezt elkuldi a
   // backend `/api/v1/auth/google-login` endpointnak (ugyanaz mint a webes felulet).
   ipcMain.handle('auth:google-oauth-flow', async () => {
-    const clientId = process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID
-        ?? process.env.GOOGLE_DESKTOP_CLIENT_ID
-        ?? '';
-    const clientSecret = process.env.VITE_GOOGLE_DESKTOP_CLIENT_SECRET
-        ?? process.env.GOOGLE_DESKTOP_CLIENT_SECRET
-        ?? '';
+    const clientId =
+      process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID ?? process.env.GOOGLE_DESKTOP_CLIENT_ID ?? '';
+    const clientSecret =
+      process.env.VITE_GOOGLE_DESKTOP_CLIENT_SECRET ??
+      process.env.GOOGLE_DESKTOP_CLIENT_SECRET ??
+      '';
     if (!clientId || !clientSecret) {
-      log.error('[main] auth:google-oauth-flow MISCONFIGURED — VITE_GOOGLE_DESKTOP_CLIENT_ID/SECRET hianyzik');
+      log.error(
+        '[main] auth:google-oauth-flow MISCONFIGURED — VITE_GOOGLE_DESKTOP_CLIENT_ID/SECRET hianyzik',
+      );
       throw new Error('Google Desktop OAuth client nincs konfiguralva. Kerd az adminisztratort.');
     }
     try {
@@ -1024,78 +1158,99 @@ app.whenReady().then(async () => {
   // a TLS handshake utan leejti. A main-process electron.net.request megbizhatobb
   // (Windows certificate store + Chromium switches mind alkalmazva, NEM renderer fetch).
   // Plus: 3-szor probalja a backend POST-ot (1s, 3s, 5s wait) ha network-level error.
-  ipcMain.handle('auth:google-oauth-flow-with-backend', async (_evt, payload?: { appMode?: string; supportsVaultWorkerSelection?: boolean }) => {
-    const clientId = process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID
-        ?? process.env.GOOGLE_DESKTOP_CLIENT_ID
-        ?? '';
-    const clientSecret = process.env.VITE_GOOGLE_DESKTOP_CLIENT_SECRET
-        ?? process.env.GOOGLE_DESKTOP_CLIENT_SECRET
-        ?? '';
-    if (!clientId || !clientSecret) {
-      log.error('[main] auth:google-oauth-flow-with-backend MISCONFIGURED');
-      return { ok: false, code: 'MISCONFIGURED',
-          message: 'Google Desktop OAuth client nincs konfiguralva. Kerd az adminisztratort.' };
-    }
-    const apiBaseUrl = resolveConfiguredApiUrl();
-    try {
-      const result = await performGoogleOAuthFlowWithBackendLogin({
-        clientId,
-        clientSecret,
-        apiBaseUrl,
-        appMode: payload?.appMode,
-        supportsVaultWorkerSelection: payload?.supportsVaultWorkerSelection === true,
-      });
-      log.info('[main] Google OAuth + backend login OK for:', result.email ?? '(unknown)');
-      // FK-ÉRTÉKTÁR (V285): idToken visszaadva, hogy a renderer a dolgozóválasztó 2. fázist
-      // (select-worker) ugyanazzal a Google ID tokennel tudja hívni.
-      return { ok: true, response: result.response, email: result.email, idToken: result.idToken };
-    } catch (err) {
-      if (err instanceof GoogleOAuthFailedException) {
-        log.warn('[main] Google OAuth + backend login failed:', err.code, err.message);
-        return { ok: false, code: err.code, message: err.message };
+  ipcMain.handle(
+    'auth:google-oauth-flow-with-backend',
+    async (_evt, payload?: { appMode?: string; supportsVaultWorkerSelection?: boolean }) => {
+      const clientId =
+        process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID ?? process.env.GOOGLE_DESKTOP_CLIENT_ID ?? '';
+      const clientSecret =
+        process.env.VITE_GOOGLE_DESKTOP_CLIENT_SECRET ??
+        process.env.GOOGLE_DESKTOP_CLIENT_SECRET ??
+        '';
+      if (!clientId || !clientSecret) {
+        log.error('[main] auth:google-oauth-flow-with-backend MISCONFIGURED');
+        return {
+          ok: false,
+          code: 'MISCONFIGURED',
+          message: 'Google Desktop OAuth client nincs konfiguralva. Kerd az adminisztratort.',
+        };
       }
-      log.error('[main] Google OAuth + backend login unexpected error:', err);
-      return { ok: false, code: 'UNEXPECTED', message: (err as Error).message };
-    }
-  });
+      const apiBaseUrl = resolveConfiguredApiUrl();
+      try {
+        const result = await performGoogleOAuthFlowWithBackendLogin({
+          clientId,
+          clientSecret,
+          apiBaseUrl,
+          appMode: payload?.appMode,
+          supportsVaultWorkerSelection: payload?.supportsVaultWorkerSelection === true,
+        });
+        log.info('[main] Google OAuth + backend login OK for:', result.email ?? '(unknown)');
+        // FK-ÉRTÉKTÁR (V285): idToken visszaadva, hogy a renderer a dolgozóválasztó 2. fázist
+        // (select-worker) ugyanazzal a Google ID tokennel tudja hívni.
+        return {
+          ok: true,
+          response: result.response,
+          email: result.email,
+          idToken: result.idToken,
+        };
+      } catch (err) {
+        if (err instanceof GoogleOAuthFailedException) {
+          log.warn('[main] Google OAuth + backend login failed:', err.code, err.message);
+          return { ok: false, code: err.code, message: err.message };
+        }
+        log.error('[main] Google OAuth + backend login unexpected error:', err);
+        return { ok: false, code: 'UNEXPECTED', message: (err as Error).message };
+      }
+    },
+  );
 
   // v2.5.21 ALTALANOS BEJELENTKEZESI FIX: a sima jelszavas /auth/login is main process-en,
   // ESET MITM kompatibilis Windows cert store + Schannel-en, 3x retry network errorra.
   // A renderer axios.post (Chromium fetch) nehany kliensen leejti a POST connection-t
   // (Borsi laptop, Fabuja Zsuzsa) — a main-process net.request megbizhatobb stack.
-  ipcMain.handle('auth:password-login', async (_evt, payload: {
-    companyCode: string;
-    workerCode: string;
-    password: string;
-    appMode?: string;
-  }) => {
-    if (!payload || !payload.companyCode || !payload.workerCode || !payload.password) {
-      return { ok: false, code: 'BAD_REQUEST', message: 'companyCode, workerCode, password kotelezo' };
-    }
-    const apiBaseUrl = resolveConfiguredApiUrl();
-    try {
-      const response = await performPasswordLoginMainProcess({
-        apiBaseUrl,
-        companyCode: payload.companyCode,
-        workerCode: payload.workerCode,
-        password: payload.password,
-        appMode: payload.appMode,
-      });
-      log.info('[main] Password login OK for worker:', payload.workerCode);
-      return { ok: true, response };
-    } catch (err) {
-      if (err instanceof GoogleOAuthFailedException) {
-        const code = err.code ?? 'UNKNOWN';
-        const isHttp4xx = code.startsWith('HTTP_4');
-        if (!isHttp4xx) {
-          log.warn('[main] Password login network/timeout failed:', code, err.message);
-        }
-        return { ok: false, code, message: err.message };
+  ipcMain.handle(
+    'auth:password-login',
+    async (
+      _evt,
+      payload: {
+        companyCode: string;
+        workerCode: string;
+        password: string;
+        appMode?: string;
+      },
+    ) => {
+      if (!payload || !payload.companyCode || !payload.workerCode || !payload.password) {
+        return {
+          ok: false,
+          code: 'BAD_REQUEST',
+          message: 'companyCode, workerCode, password kotelezo',
+        };
       }
-      log.error('[main] Password login unexpected error:', err);
-      return { ok: false, code: 'UNEXPECTED', message: (err as Error).message };
-    }
-  });
+      const apiBaseUrl = resolveConfiguredApiUrl();
+      try {
+        const response = await performPasswordLoginMainProcess({
+          apiBaseUrl,
+          companyCode: payload.companyCode,
+          workerCode: payload.workerCode,
+          password: payload.password,
+          appMode: payload.appMode,
+        });
+        log.info('[main] Password login OK for worker:', payload.workerCode);
+        return { ok: true, response };
+      } catch (err) {
+        if (err instanceof GoogleOAuthFailedException) {
+          const code = err.code ?? 'UNKNOWN';
+          const isHttp4xx = code.startsWith('HTTP_4');
+          if (!isHttp4xx) {
+            log.warn('[main] Password login network/timeout failed:', code, err.message);
+          }
+          return { ok: false, code, message: err.message };
+        }
+        log.error('[main] Password login unexpected error:', err);
+        return { ok: false, code: 'UNEXPECTED', message: (err as Error).message };
+      }
+    },
+  );
 
   // v2.5.25 ALTALANOS API PROXY: MINDEN renderer HTTP hivas a main process electron.net.request-en
   // megy at, NEM renderer Chromium fetch/axios. Ez a vegleges megoldas az ESET/Kaspersky/Bitdefender
@@ -1104,7 +1259,13 @@ app.whenReady().then(async () => {
   // arfolyam-lekerdezes, tranzakcio-rogzites, stb.
   ipcMain.handle('api:fetch', async (_evt, params: ApiProxyRequest) => {
     if (!params || !params.url || !params.method) {
-      return { ok: false, status: 0, statusText: 'BAD_REQUEST', headers: {}, body: '{"error":"url and method required"}' };
+      return {
+        ok: false,
+        status: 0,
+        statusText: 'BAD_REQUEST',
+        headers: {},
+        body: '{"error":"url and method required"}',
+      };
     }
     const apiBaseUrl = resolveConfiguredApiUrl();
     const fullUrl = params.url.startsWith('http') ? params.url : `${apiBaseUrl}${params.url}`;
@@ -1116,8 +1277,20 @@ app.whenReady().then(async () => {
       return await fetchViaElectronNetWithRetry({ ...params, url: fullUrl });
     } catch (err) {
       const msg = (err instanceof Error ? err.message : String(err)) || 'Unknown error';
-      log.warn('[main] api:fetch failed (retries exhausted) for', params.method, params.url, ':', msg);
-      return { ok: false, status: 0, statusText: 'NETWORK_ERROR', headers: {}, body: JSON.stringify({ error: msg }) };
+      log.warn(
+        '[main] api:fetch failed (retries exhausted) for',
+        params.method,
+        params.url,
+        ':',
+        msg,
+      );
+      return {
+        ok: false,
+        status: 0,
+        statusText: 'NETWORK_ERROR',
+        headers: {},
+        body: JSON.stringify({ error: msg }),
+      };
     }
   });
 
@@ -1126,20 +1299,26 @@ app.whenReady().then(async () => {
   // monitoron (vagy keret-nélküli alwaysOnTop overlay-t, ha csak egy monitor van)
   // és a tranzakció részleteit (típus, valuta, összeg, árfolyam, díj, HUF végösszeg)
   // jeleníti meg az ügyfél számára.
-  ipcMain.handle('customer-display:show', async (_evt, preferSecondMonitor?: boolean): Promise<boolean> => {
-    try {
-      const rendererUrl = isDev ? devServerUrl : 'app://localhost/';
-      createCustomerDisplay(rendererUrl, preferSecondMonitor !== false);
-      return true;
-    } catch (err) {
-      log.error('[IPC] customer-display:show error:', err);
-      return false;
-    }
-  });
+  ipcMain.handle(
+    'customer-display:show',
+    async (_evt, preferSecondMonitor?: boolean): Promise<boolean> => {
+      try {
+        const rendererUrl = isDev ? devServerUrl : 'app://localhost/';
+        createCustomerDisplay(rendererUrl, preferSecondMonitor !== false);
+        return true;
+      } catch (err) {
+        log.error('[IPC] customer-display:show error:', err);
+        return false;
+      }
+    },
+  );
 
-  ipcMain.handle('customer-display:update', async (_evt, payload: CustomerDisplayPayload): Promise<void> => {
-    updateCustomerDisplay(payload ?? {});
-  });
+  ipcMain.handle(
+    'customer-display:update',
+    async (_evt, payload: CustomerDisplayPayload): Promise<void> => {
+      updateCustomerDisplay(payload ?? {});
+    },
+  );
 
   ipcMain.handle('customer-display:hide', async (): Promise<void> => {
     hideCustomerDisplay();
@@ -1197,16 +1376,19 @@ app.whenReady().then(async () => {
       // TS2532 fix: a regex .match capture group `apiUrlMatch[1]` lehet undefined,
       // ha a group nem fogott meg semmit. Optional chaining + nullish coalescing.
       const currentApiUrl = (apiUrlMatch?.[1] ?? '').trim();
-      const needsMigration = !currentApiUrl
-          || currentApiUrl === 'https://'
-          || currentApiUrl === 'http://'
-          || currentApiUrl === 'https'
-          || /^https?:\/\/?$/.test(currentApiUrl);
+      const needsMigration =
+        !currentApiUrl ||
+        currentApiUrl === 'https://' ||
+        currentApiUrl === 'http://' ||
+        currentApiUrl === 'https' ||
+        /^https?:\/\/?$/.test(currentApiUrl);
       if (needsMigration) {
-        log.warn(`[App] userData .env migration: VITE_API_URL="${currentApiUrl}" -> https://excvaluta.com/api/v1`);
+        log.warn(
+          `[App] userData .env migration: VITE_API_URL="${currentApiUrl}" -> https://excvaluta.com/api/v1`,
+        );
         const fixedEnv = rawEnv.replace(
-            /^VITE_API_URL\s*=.*$/m,
-            'VITE_API_URL="https://excvaluta.com/api/v1"'
+          /^VITE_API_URL\s*=.*$/m,
+          'VITE_API_URL="https://excvaluta.com/api/v1"',
         );
         const tmpPath = `${userDataEnvPath}.tmp`;
         fs.writeFileSync(tmpPath, fixedEnv, { encoding: 'utf8', mode: 0o600 });
@@ -1215,8 +1397,10 @@ app.whenReady().then(async () => {
       }
     }
   } catch (migrationErr) {
-    log.warn('[App] userData .env migration kihagyva (nem kritikus):',
-        migrationErr instanceof Error ? migrationErr.message : migrationErr);
+    log.warn(
+      '[App] userData .env migration kihagyva (nem kritikus):',
+      migrationErr instanceof Error ? migrationErr.message : migrationErr,
+    );
   }
 
   try {
@@ -1243,26 +1427,31 @@ app.whenReady().then(async () => {
   // parsing szemantika erdekeben (dev+packaged egyforman viselkedik).
   const readPersistedEnv = (): Record<string, string> => {
     try {
-      const envPath = path.join(app.getPath("userData"), ".env");
+      const envPath = path.join(app.getPath('userData'), '.env');
       if (!fs.existsSync(envPath)) return {};
-      const raw = fs.readFileSync(envPath, "utf8");
+      const raw = fs.readFileSync(envPath, 'utf8');
       // Dinamikus import - dev modban dotenv elerheto, production ASAR-ban is bundle-olva.
       // Ha valami miatt nem elerheto (pl. regressio), fallback a korabbi manualis parserra.
       try {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const dotenv = require("dotenv") as { parse: (input: string | Buffer) => Record<string, string> };
+        const dotenv = require('dotenv') as {
+          parse: (input: string | Buffer) => Record<string, string>;
+        };
         return dotenv.parse(raw);
       } catch {
         // Fallback: minimal inline parser (csak ha dotenv nem elerheto)
         const out: Record<string, string> = {};
         for (const rawLine of raw.split(/\r?\n/)) {
           const line = rawLine.trim();
-          if (!line || line.startsWith("#")) continue;
-          const eq = line.indexOf("=");
+          if (!line || line.startsWith('#')) continue;
+          const eq = line.indexOf('=');
           if (eq <= 0) continue;
           const key = line.slice(0, eq).trim();
           let value = line.slice(eq + 1).trim();
-          if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+          if (
+            (value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))
+          ) {
             value = value.slice(1, -1);
           }
           out[key] = value;
@@ -1274,28 +1463,43 @@ app.whenReady().then(async () => {
     }
   };
   const persistedEnv = readPersistedEnv();
-  const envBranchCode = (process.env.VITE_BRANCH_CODE ?? persistedEnv.VITE_BRANCH_CODE ?? "").trim();
-  const envCompanyCode = (process.env.VITE_COMPANY_CODE ?? process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE
-    ?? persistedEnv.VITE_COMPANY_CODE ?? persistedEnv.PENZTAR_BOOTSTRAP_COMPANY_CODE ?? "").trim();
-  const envApiUrl = (process.env.VITE_API_URL ?? persistedEnv.VITE_API_URL ?? "").trim();
+  const envBranchCode = (
+    process.env.VITE_BRANCH_CODE ??
+    persistedEnv.VITE_BRANCH_CODE ??
+    ''
+  ).trim();
+  const envCompanyCode = (
+    process.env.VITE_COMPANY_CODE ??
+    process.env.PENZTAR_BOOTSTRAP_COMPANY_CODE ??
+    persistedEnv.VITE_COMPANY_CODE ??
+    persistedEnv.PENZTAR_BOOTSTRAP_COMPANY_CODE ??
+    ''
+  ).trim();
+  const envApiUrl = (process.env.VITE_API_URL ?? persistedEnv.VITE_API_URL ?? '').trim();
 
   try {
-    const existingBranchCode = getConfig("branch_code");
+    const existingBranchCode = getConfig('branch_code');
     if (!existingBranchCode) {
       if (envBranchCode) {
-        setConfig("branch_code", envBranchCode);
-        log.info(`[App] Auto-migration: branch_code='${envBranchCode}' atmasolva a .env-bol az SQLite config-ba.`);
+        setConfig('branch_code', envBranchCode);
+        log.info(
+          `[App] Auto-migration: branch_code='${envBranchCode}' atmasolva a .env-bol az SQLite config-ba.`,
+        );
       } else {
-        log.warn("[App] branch_code hianyzik az SQLite config-bol ES a .env VITE_BRANCH_CODE-bol is. A tranzakciok elszalnak - futtasd a SetupWizardot vagy toltsd ki a .env-et.");
+        log.warn(
+          '[App] branch_code hianyzik az SQLite config-bol ES a .env VITE_BRANCH_CODE-bol is. A tranzakciok elszalnak - futtasd a SetupWizardot vagy toltsd ki a .env-et.',
+        );
       }
     }
-    const existingCompany = getConfig("bootstrap_company_code");
+    const existingCompany = getConfig('bootstrap_company_code');
     if (!existingCompany && envCompanyCode) {
-      setConfig("bootstrap_company_code", envCompanyCode);
-      log.info(`[App] Auto-migration: bootstrap_company_code='${envCompanyCode}' atmasolva a .env-bol.`);
+      setConfig('bootstrap_company_code', envCompanyCode);
+      log.info(
+        `[App] Auto-migration: bootstrap_company_code='${envCompanyCode}' atmasolva a .env-bol.`,
+      );
     }
   } catch (migrationErr) {
-    log.warn("[App] Auto-migration warning (nem kritikus):", migrationErr);
+    log.warn('[App] Auto-migration warning (nem kritikus):', migrationErr);
   }
 
   // v2.3.0 kritikus bugfix: Electron Network Error (localhost:8080) megoldasa.
@@ -1310,16 +1514,18 @@ app.whenReady().then(async () => {
   // 3. Ha nincs -> SSOT production-urls.json default-ra allitjuk
   // 4. A .env VITE_API_URL csak dev mode-ban szamit, production-ban ignore
   {
-    const currentServerUrl = getConfig("server_url");
+    const currentServerUrl = getConfig('server_url');
     const isDev = !app.isPackaged;
     // v2.3.1 Codex P1 fix #219: offline mode eseten a SetupWizard szandekosan
     // localhost/LAN URL-t ment. Ezt NEM szabad prod URL-re felulirni!
-    const offlineMode = getConfig("offline_mode") === "true";
+    const offlineMode = getConfig('offline_mode') === 'true';
 
     const isLocalhost = (url: string | null | undefined): boolean => {
       if (!url) return false;
       const lower = url.toLowerCase();
-      return lower.includes("localhost") || lower.includes("127.0.0.1") || lower.includes("192.168.");
+      return (
+        lower.includes('localhost') || lower.includes('127.0.0.1') || lower.includes('192.168.')
+      );
     };
 
     if (offlineMode && currentServerUrl) {
@@ -1331,15 +1537,17 @@ app.whenReady().then(async () => {
       log.info(`[App] server_url megtartva (user-beallitas): ${currentServerUrl}`);
     } else if (isDev && envApiUrl) {
       // Dev mode: .env VITE_API_URL-t respektaljuk (gyakori dev override)
-      setConfig("server_url", envApiUrl);
+      setConfig('server_url', envApiUrl);
       log.info(`[App] server_url (dev): ${envApiUrl}`);
     } else {
       // Production + ures / localhost server_url -> SSOT prod URL-re
       const prodUrls = loadProductionUrls();
-      setConfig("server_url", prodUrls.api_url);
+      setConfig('server_url', prodUrls.api_url);
       log.info(`[App] server_url default (SSOT prod): ${prodUrls.api_url}`);
       if (isLocalhost(currentServerUrl)) {
-        log.warn(`[App] Elozo server_url (${currentServerUrl}) localhost volt -> felulirva prod-ra`);
+        log.warn(
+          `[App] Elozo server_url (${currentServerUrl}) localhost volt -> felulirva prod-ra`,
+        );
       }
     }
   }

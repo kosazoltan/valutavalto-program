@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 
 /**
  * Menüszűrés logika tesztek — MainLayout menuGroups és modes property alapján.
- * 
+ *
  * A menuGroups definícióból és a szűrő logikából kiemelt, izolált unit tesztek.
  * Nem rendereli a teljes MainLayout-ot (session API stb.), csak a szűrési logikát teszteli.
  */
@@ -26,7 +26,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { path: '/dashboard', label: 'Irányítópult' },
       { path: '/cashier', label: 'Pénztáros műveletek', modes: ['penztar', 'ertektar'] },
-    ]
+    ],
   },
   {
     label: 'Tranzakciók',
@@ -34,7 +34,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { path: '/transactions/new', label: 'Új tranzakció' },
       { path: '/transactions', label: 'Tranzakciólista' },
-    ]
+    ],
   },
   {
     label: 'Ügyfelek & Árfolyamok',
@@ -42,7 +42,7 @@ const menuGroups: MenuGroup[] = [
       { path: '/customers', label: 'Ügyfelek' },
       { path: '/rates', label: 'Árfolyamok' },
       { path: '/rates/creation', label: 'Árfolyam készítés' },
-    ]
+    ],
   },
   {
     label: 'Pénztár & Riportok',
@@ -50,13 +50,11 @@ const menuGroups: MenuGroup[] = [
     items: [
       { path: '/cashdesk', label: 'Pénztár' },
       { path: '/reports', label: 'Riportok' },
-    ]
+    ],
   },
   {
     label: 'Értéktár',
-    items: [
-      { path: '/treasury', label: 'Értéktári Dashboard' },
-    ]
+    items: [{ path: '/treasury', label: 'Értéktári Dashboard' }],
   },
   {
     label: 'Kamera',
@@ -66,7 +64,7 @@ const menuGroups: MenuGroup[] = [
       { path: '/camera/playback', label: 'Visszajátszás' },
       { path: '/camera/export', label: 'Export & Custody' },
       { path: '/camera/status', label: 'Állapot' },
-    ]
+    ],
   },
   {
     label: 'Adminisztráció',
@@ -74,8 +72,8 @@ const menuGroups: MenuGroup[] = [
       { path: '/audit-log', label: 'Audit Log' },
       { path: '/local-queue', label: 'Helyi Queue' },
       { path: '/settings', label: 'Rendszer beállítások' },
-    ]
-  }
+    ],
+  },
 ]
 
 // --- A szűrő logika — pontosan a MainLayout-ban használt pattern ---
@@ -84,7 +82,9 @@ function filterMenuGroups(groups: MenuGroup[], appMode: string): MenuGroup[] {
     .filter((group) => !('modes' in group) || (group.modes as readonly string[]).includes(appMode))
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => !('modes' in item) || (item.modes as readonly string[]).includes(appMode)),
+      items: group.items.filter(
+        (item) => !('modes' in item) || (item.modes as readonly string[]).includes(appMode),
+      ),
     }))
     .filter((group) => group.items.length > 0)
 }
@@ -160,9 +160,17 @@ describe('Menü szűrés — full mód (szerver)', () => {
   it('Összesített rejtett elemek: Tranzakciók, Pénztár & Riportok, Kamera, Pénztáros műveletek', () => {
     const allLabels = getVisibleLabels(menuGroups, mode)
     const shouldBeHidden = [
-      'Tranzakciók', 'Új tranzakció', 'Tranzakciólista',
-      'Pénztár & Riportok', 'Pénztár', 'Riportok',
-      'Kamera', 'Élő kép', 'Visszajátszás', 'Export & Custody', 'Állapot',
+      'Tranzakciók',
+      'Új tranzakció',
+      'Tranzakciólista',
+      'Pénztár & Riportok',
+      'Pénztár',
+      'Riportok',
+      'Kamera',
+      'Élő kép',
+      'Visszajátszás',
+      'Export & Custody',
+      'Állapot',
       'Pénztáros műveletek',
     ]
     for (const label of shouldBeHidden) {
@@ -180,8 +188,13 @@ describe('Menü szűrés — penztar mód', () => {
   it('Összes szekció megjelenik', () => {
     const groups = getVisibleGroupLabels(menuGroups, mode)
     expect(groups).toEqual([
-      'Főoldal', 'Tranzakciók', 'Ügyfelek & Árfolyamok',
-      'Pénztár & Riportok', 'Értéktár', 'Kamera', 'Adminisztráció'
+      'Főoldal',
+      'Tranzakciók',
+      'Ügyfelek & Árfolyamok',
+      'Pénztár & Riportok',
+      'Értéktár',
+      'Kamera',
+      'Adminisztráció',
     ])
   })
 
@@ -218,8 +231,13 @@ describe('Menü szűrés — ertektar mód', () => {
   it('Összes szekció megjelenik', () => {
     const groups = getVisibleGroupLabels(menuGroups, mode)
     expect(groups).toEqual([
-      'Főoldal', 'Tranzakciók', 'Ügyfelek & Árfolyamok',
-      'Pénztár & Riportok', 'Értéktár', 'Kamera', 'Adminisztráció'
+      'Főoldal',
+      'Tranzakciók',
+      'Ügyfelek & Árfolyamok',
+      'Pénztár & Riportok',
+      'Értéktár',
+      'Kamera',
+      'Adminisztráció',
     ])
   })
 
@@ -252,7 +270,7 @@ describe('Menü szűrés — ismeretlen mód', () => {
 describe('Menü szűrés — edge case-ek', () => {
   it('Üres modes tömb → soha nem jelenik meg', () => {
     const testGroups: MenuGroup[] = [
-      { label: 'Test', modes: [], items: [{ path: '/test', label: 'Test item' }] }
+      { label: 'Test', modes: [], items: [{ path: '/test', label: 'Test item' }] },
     ]
     const result = filterMenuGroups(testGroups, 'penztar')
     expect(result).toHaveLength(0)
@@ -260,7 +278,7 @@ describe('Menü szűrés — edge case-ek', () => {
 
   it('modes nélküli csoport → mindig megjelenik', () => {
     const testGroups: MenuGroup[] = [
-      { label: 'Always', items: [{ path: '/always', label: 'Always item' }] }
+      { label: 'Always', items: [{ path: '/always', label: 'Always item' }] },
     ]
     const result = filterMenuGroups(testGroups, 'full')
     expect(result).toHaveLength(1)
@@ -269,9 +287,7 @@ describe('Menü szűrés — edge case-ek', () => {
 
   it('Csoport megjelenik de minden item rejtett → csoport is eltűnik', () => {
     const testGroups: MenuGroup[] = [
-      { label: 'Empty', items: [
-        { path: '/hidden', label: 'Hidden', modes: ['penztar'] },
-      ]}
+      { label: 'Empty', items: [{ path: '/hidden', label: 'Hidden', modes: ['penztar'] }] },
     ]
     const result = filterMenuGroups(testGroups, 'full')
     expect(result).toHaveLength(0)
@@ -279,9 +295,13 @@ describe('Menü szűrés — edge case-ek', () => {
 
   it('Csoport rejtett → itemjei nem számítanak', () => {
     const testGroups: MenuGroup[] = [
-      { label: 'Hidden Group', modes: ['penztar'], items: [
-        { path: '/item1', label: 'Item 1' }, // nincs modes → elméletileg minden módban
-      ]}
+      {
+        label: 'Hidden Group',
+        modes: ['penztar'],
+        items: [
+          { path: '/item1', label: 'Item 1' }, // nincs modes → elméletileg minden módban
+        ],
+      },
     ]
     const result = filterMenuGroups(testGroups, 'full')
     expect(result).toHaveLength(0)

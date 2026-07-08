@@ -1,9 +1,23 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
-import { User, Search, CheckCircle, Loader2, AlertTriangle, X, Shield, ShieldCheck, ShieldAlert } from 'lucide-react'
+import {
+  User,
+  Search,
+  CheckCircle,
+  Loader2,
+  AlertTriangle,
+  X,
+  Shield,
+  ShieldCheck,
+  ShieldAlert,
+} from 'lucide-react'
 import type { IdentificationLevel } from '../hooks/useIdentificationLevel'
 import { customerApi, amlApi, dictionaryApi } from '../../../services/api/index'
 import type { DictionaryEntry } from '../../../services/api/settings'
-import type { Customer as ApiCustomer, CustomerCreateRequest, AmlCheckResultDto } from '../../../services/api/transactions'
+import type {
+  Customer as ApiCustomer,
+  CustomerCreateRequest,
+  AmlCheckResultDto,
+} from '../../../services/api/transactions'
 import { logger } from '../../../utils/logger'
 import { toast } from '../../../components/ui/toaster'
 import { getErrorMessage } from '../../../utils/errorHandling'
@@ -24,7 +38,8 @@ import {
  * - NAV_VEZETO         — NAV felsovezetes, allami-tulajdonu vallalat felsovezetes
  * - EGYEB              — egyeb kiemelt kozszereploi minoseg
  */
-export type PepKind = 'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+export type PepKind =
+  'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
 
 /**
  * V235 (2026-05-19 HIBA #17): actor (kepviselt fel) teljes azonositasi adatai.
@@ -94,8 +109,15 @@ export interface BeneficialOwnerForm {
 }
 
 const EMPTY_OWNER: BeneficialOwnerForm = {
-  name: '', address: '', birthPlace: '', birthDate: '', nationality: '',
-  residenceAbroad: '', interestNature: '', interestExtent: '', isPep: false,
+  name: '',
+  address: '',
+  birthPlace: '',
+  birthDate: '',
+  nationality: '',
+  residenceAbroad: '',
+  interestNature: '',
+  interestExtent: '',
+  isPep: false,
 }
 
 interface CustomerPanelProps {
@@ -137,13 +159,13 @@ const LEVEL_DESCRIPTIONS: Record<IdentificationLevel, string> = {
 // Csak az ismert tranziens halozati hibakod-ok kapnak degradalt modot. Ismeretlen
 // vagy uj axios error code (pl. ERR_INVALID_URL, adapter/config errors) -> fail-closed.
 const RETRYABLE_AXIOS_CODES = new Set([
-  'ERR_NETWORK',       // network unavailable (offline, dns)
-  'ECONNREFUSED',      // server not running on port
-  'ECONNABORTED',      // axios timeout
-  'ECONNRESET',        // connection dropped
-  'ETIMEDOUT',         // os-level timeout
-  'ENOTFOUND',         // dns resolution failed
-  'EAI_AGAIN',         // dns temporary failure
+  'ERR_NETWORK', // network unavailable (offline, dns)
+  'ECONNREFUSED', // server not running on port
+  'ECONNABORTED', // axios timeout
+  'ECONNRESET', // connection dropped
+  'ETIMEDOUT', // os-level timeout
+  'ENOTFOUND', // dns resolution failed
+  'EAI_AGAIN', // dns temporary failure
 ])
 
 function isRetryableAmlError(err: unknown): boolean {
@@ -154,7 +176,7 @@ function isRetryableAmlError(err: unknown): boolean {
   }
   const status = axErr?.response?.status
   if (status === undefined) return false
-  return status >= 500 && status <= 599  // 5xx: server-side fail (intermittens) -> degradalt
+  return status >= 500 && status <= 599 // 5xx: server-side fail (intermittens) -> degradalt
 }
 
 export default function CustomerPanel({
@@ -185,10 +207,17 @@ export default function CustomerPanel({
   const [nationalities, setNationalities] = useState<DictionaryEntry[]>([])
   useEffect(() => {
     let cancelled = false
-    dictionaryApi.getByCategory('NATIONALITY')
-      .then((list) => { if (!cancelled) setNationalities(list ?? []) })
-      .catch(() => { if (!cancelled) setNationalities([]) })
-    return () => { cancelled = true }
+    dictionaryApi
+      .getByCategory('NATIONALITY')
+      .then((list) => {
+        if (!cancelled) setNationalities(list ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) setNationalities([])
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
   const [customerBirthPlace, setCustomerBirthPlace] = useState('')
   const [customerBirthDate, setCustomerBirthDate] = useState('')
@@ -230,18 +259,27 @@ export default function CustomerPanel({
   // V325: a jogi szemely mezok kozos csomagja MINDKET adat-osszeallitasi ponthoz
   // (kivalasztott + kezi ugyfel) — kikapcsolt allapotban ures (stale-data vedelem,
   // a Copilot #695 actorName-mintajaval azonosan).
-  const legalEntityData = useCallback((): Partial<CustomerPanelData> => (
-    isLegalEntity
-      ? {
-        isLegalEntity: true,
-        legalEntityName: legalEntityName.trim() || undefined,
-        legalEntitySeat: legalEntitySeat.trim() || undefined,
-        legalEntityTaxNumber: legalEntityTaxNumber.trim() || undefined,
-        legalDeedNumber: legalDeedNumber.trim() || undefined,
-        beneficialOwners: beneficialOwners.filter(o => o.name.trim() !== ''),
-      }
-      : { isLegalEntity: false }
-  ), [isLegalEntity, legalEntityName, legalEntitySeat, legalEntityTaxNumber, legalDeedNumber, beneficialOwners])
+  const legalEntityData = useCallback(
+    (): Partial<CustomerPanelData> =>
+      isLegalEntity
+        ? {
+            isLegalEntity: true,
+            legalEntityName: legalEntityName.trim() || undefined,
+            legalEntitySeat: legalEntitySeat.trim() || undefined,
+            legalEntityTaxNumber: legalEntityTaxNumber.trim() || undefined,
+            legalDeedNumber: legalDeedNumber.trim() || undefined,
+            beneficialOwners: beneficialOwners.filter((o) => o.name.trim() !== ''),
+          }
+        : { isLegalEntity: false },
+    [
+      isLegalEntity,
+      legalEntityName,
+      legalEntitySeat,
+      legalEntityTaxNumber,
+      legalDeedNumber,
+      beneficialOwners,
+    ],
+  )
 
   const [amlResult, setAmlResult] = useState<AmlCheckResultDto | null>(null)
   const [amlChecking, setAmlChecking] = useState(false)
@@ -271,109 +309,158 @@ export default function CustomerPanel({
     }, 400)
   }, [])
 
-  const runAmlCheck = useCallback(async (customerId: number, data: CustomerPanelData) => {
-    if (!customerId || hufTotal <= 0) return data
-    setAmlChecking(true)
-    try {
-      const result = await amlApi.checkAllThresholds(String(customerId), hufTotal)
-      setAmlResult(result)
-      onAmlResult?.(result)
-      return { ...data, amlVerified: true }
-    } catch (err) {
-      // Codex P1 #586 iter-3 fix: HTTP 500 (intermittens backend hiba) is degradalt mod-kepes,
-      // mint az 502/503/504. Az isRetryableAmlError helper egyseges 5xx + no-response logika.
-      if (!isRetryableAmlError(err)) {
-        // Auth (401/403), validation (4xx) — fail-closed.
-        logger.warn('CustomerPanel', 'AML check failed with non-retryable error — fail-closed', err)
-        const blockedResult: AmlCheckResultDto = {
-          transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
-          requiresId: true, requiresEnhanced: false, blocked: true,
-          warnings: ['AML ellenőrzés szerver-oldali hibával elutasitva (auth / validation). A tranzakció blokkolt.'],
+  const runAmlCheck = useCallback(
+    async (customerId: number, data: CustomerPanelData) => {
+      if (!customerId || hufTotal <= 0) return data
+      setAmlChecking(true)
+      try {
+        const result = await amlApi.checkAllThresholds(String(customerId), hufTotal)
+        setAmlResult(result)
+        onAmlResult?.(result)
+        return { ...data, amlVerified: true }
+      } catch (err) {
+        // Codex P1 #586 iter-3 fix: HTTP 500 (intermittens backend hiba) is degradalt mod-kepes,
+        // mint az 502/503/504. Az isRetryableAmlError helper egyseges 5xx + no-response logika.
+        if (!isRetryableAmlError(err)) {
+          // Auth (401/403), validation (4xx) — fail-closed.
+          logger.warn(
+            'CustomerPanel',
+            'AML check failed with non-retryable error — fail-closed',
+            err,
+          )
+          const blockedResult: AmlCheckResultDto = {
+            transactionType: 0,
+            weeklyTotal: 0,
+            yearlyMax: 0,
+            quarterlyCount: 0,
+            quarterlyTotal: 0,
+            requiresId: true,
+            requiresEnhanced: false,
+            blocked: true,
+            warnings: [
+              'AML ellenőrzés szerver-oldali hibával elutasitva (auth / validation). A tranzakció blokkolt.',
+            ],
+          }
+          setAmlResult(blockedResult)
+          onAmlResult?.(blockedResult)
+          return data
         }
-        setAmlResult(blockedResult)
-        onAmlResult?.(blockedResult)
-        return data
+        // Local-first: network/5xx -> degradalt mod a CashierTransactionPage confirm-javal.
+        logger.warn('CustomerPanel', 'AML check failed — degraded mode (network/5xx)', err)
+        const degradedResult: AmlCheckResultDto = {
+          transactionType: 0,
+          weeklyTotal: 0,
+          yearlyMax: 0,
+          quarterlyCount: 0,
+          quarterlyTotal: 0,
+          requiresId: true,
+          requiresEnhanced: false,
+          blocked: false,
+          warnings: [
+            '[OFFLINE_DEGRADED] AML ellenőrzés nem sikerült (hálózati/szerver hiba).',
+            'A tranzakció folytatható megerősítéssel, de utólagos központi ellenőrzésre kerül.',
+          ],
+        }
+        setAmlResult(degradedResult)
+        onAmlResult?.(degradedResult)
+        return { ...data, amlVerified: false }
+      } finally {
+        setAmlChecking(false)
       }
-      // Local-first: network/5xx -> degradalt mod a CashierTransactionPage confirm-javal.
-      logger.warn('CustomerPanel', 'AML check failed — degraded mode (network/5xx)', err)
-      const degradedResult: AmlCheckResultDto = {
-        transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
-        requiresId: true, requiresEnhanced: false, blocked: false,
-        warnings: [
-          '[OFFLINE_DEGRADED] AML ellenőrzés nem sikerült (hálózati/szerver hiba).',
-          'A tranzakció folytatható megerősítéssel, de utólagos központi ellenőrzésre kerül.',
-        ],
+    },
+    [hufTotal, onAmlResult],
+  )
+
+  const handleSelectCustomer = useCallback(
+    async (customer: ApiCustomer) => {
+      // V325 (Batch3-C, Codex P2 #1116): a kivalasztott-ugyfel utvonal nem megy at a
+      // missingRequiredFields kapun, ezert itt kulon guard — jogi szemely jelolesnel
+      // az entitas-torzsadat + legalabb egy tenyleges tulajdonos nelkul nem mehet tovabb.
+      if (
+        isLegalEntity &&
+        (!legalEntityName.trim() ||
+          !legalEntitySeat.trim() ||
+          !beneficialOwners.some((o) => o.name.trim()))
+      ) {
+        toast.warning(
+          'Hiányzó jogi személy adatok',
+          'Jogi személy nevében eljárásnál a jogi személy neve, székhelye és legalább egy tényleges tulajdonos megadása kötelező.',
+        )
+        return
       }
-      setAmlResult(degradedResult)
-      onAmlResult?.(degradedResult)
-      return { ...data, amlVerified: false }
-    } finally {
-      setAmlChecking(false)
-    }
-  }, [hufTotal, onAmlResult])
+      setSelectedCustomer(customer)
+      setShowResults(false)
+      setSearchQuery('')
 
-  const handleSelectCustomer = useCallback(async (customer: ApiCustomer) => {
-    // V325 (Batch3-C, Codex P2 #1116): a kivalasztott-ugyfel utvonal nem megy at a
-    // missingRequiredFields kapun, ezert itt kulon guard — jogi szemely jelolesnel
-    // az entitas-torzsadat + legalabb egy tenyleges tulajdonos nelkul nem mehet tovabb.
-    if (isLegalEntity
-        && (!legalEntityName.trim() || !legalEntitySeat.trim()
-          || !beneficialOwners.some((o) => o.name.trim()))) {
-      toast.warning(
-        'Hiányzó jogi személy adatok',
-        'Jogi személy nevében eljárásnál a jogi személy neve, székhelye és legalább egy tényleges tulajdonos megadása kötelező.',
-      )
-      return
-    }
-    setSelectedCustomer(customer)
-    setShowResults(false)
-    setSearchQuery('')
+      let data: CustomerPanelData = {
+        id: customer.id,
+        name: customer.name,
+        documentType: customer.documentType ?? 'ID_CARD',
+        documentNumber: customer.documentNumber ?? '',
+        nationality: customer.nationality ?? 'Magyar',
+        birthPlace: customer.birthPlace,
+        birthDate: customer.birthDate,
+        birthName: customer.birthName,
+        motherName: customer.motherName,
+        address: customer.address,
+        residence: customer.residence,
+        addressCardNumber: customer.addressCardNumber,
+        amlVerified: false,
+        // V229 (HIBA #8): 300k+ JOGCIM nyilatkozat mezok a state-bol
+        isPep,
+        sourceOfFunds: sourceOfFunds.trim() || undefined,
+        sourceOfFundsDocType: sourceOfFundsDocType || undefined,
+        sourceOfFundsDocDate: sourceOfFundsDocDate || undefined,
+        onOwnBehalf,
+        actorName: actorName.trim() || undefined,
+        // V235 (HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
+        pepKind: isPep && pepKind ? (pepKind as PepKind) : null,
+        actorIdentity: !onOwnBehalf
+          ? {
+              name: actorName.trim(),
+              birthPlace: actorBirthPlace.trim() || undefined,
+              birthDate: actorBirthDate || undefined,
+              motherName: actorMotherName.trim() || undefined,
+              nationality: actorNationality.trim() || undefined,
+              documentType: actorDocumentType,
+              documentNumber: actorDocumentNumber.trim() || undefined,
+              address: actorAddress.trim() || undefined,
+            }
+          : null,
+        // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok
+        ...legalEntityData(),
+      }
 
-    let data: CustomerPanelData = {
-      id: customer.id,
-      name: customer.name,
-      documentType: customer.documentType ?? 'ID_CARD',
-      documentNumber: customer.documentNumber ?? '',
-      nationality: customer.nationality ?? 'Magyar',
-      birthPlace: customer.birthPlace,
-      birthDate: customer.birthDate,
-      birthName: customer.birthName,
-      motherName: customer.motherName,
-      address: customer.address,
-      residence: customer.residence,
-      addressCardNumber: customer.addressCardNumber,
-      amlVerified: false,
-      // V229 (HIBA #8): 300k+ JOGCIM nyilatkozat mezok a state-bol
+      if (customer.id && hufTotal > 0) {
+        data = await runAmlCheck(customer.id, data)
+      }
+      onCustomerReady(data)
+    },
+    [
+      hufTotal,
+      onCustomerReady,
+      runAmlCheck,
       isPep,
-      sourceOfFunds: sourceOfFunds.trim() || undefined,
-      sourceOfFundsDocType: sourceOfFundsDocType || undefined,
-      sourceOfFundsDocDate: sourceOfFundsDocDate || undefined,
+      sourceOfFunds,
+      sourceOfFundsDocType,
+      sourceOfFundsDocDate,
       onOwnBehalf,
-      actorName: actorName.trim() || undefined,
-      // V235 (HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
-      pepKind: isPep && pepKind ? (pepKind as PepKind) : null,
-      actorIdentity: !onOwnBehalf ? {
-        name: actorName.trim(),
-        birthPlace: actorBirthPlace.trim() || undefined,
-        birthDate: actorBirthDate || undefined,
-        motherName: actorMotherName.trim() || undefined,
-        nationality: actorNationality.trim() || undefined,
-        documentType: actorDocumentType,
-        documentNumber: actorDocumentNumber.trim() || undefined,
-        address: actorAddress.trim() || undefined,
-      } : null,
-      // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok
-      ...legalEntityData(),
-    }
-
-    if (customer.id && hufTotal > 0) {
-      data = await runAmlCheck(customer.id, data)
-    }
-    onCustomerReady(data)
-  }, [hufTotal, onCustomerReady, runAmlCheck, isPep, sourceOfFunds, sourceOfFundsDocType, sourceOfFundsDocDate, onOwnBehalf, actorName,
-      pepKind, actorBirthPlace, actorBirthDate, actorMotherName, actorNationality,
-      actorDocumentType, actorDocumentNumber, actorAddress, legalEntityData,
-      isLegalEntity, legalEntityName, legalEntitySeat, beneficialOwners])
+      actorName,
+      pepKind,
+      actorBirthPlace,
+      actorBirthDate,
+      actorMotherName,
+      actorNationality,
+      actorDocumentType,
+      actorDocumentNumber,
+      actorAddress,
+      legalEntityData,
+      isLegalEntity,
+      legalEntityName,
+      legalEntitySeat,
+      beneficialOwners,
+    ],
+  )
 
   // Collect missing required fields per identification level. Empty array = form OK.
   // 2026-05-15 user-direktíva: SIMPLIFIED (100-300k) szinthez Pmt. 2017. évi LIII. tv.
@@ -396,12 +483,12 @@ export default function CustomerPanel({
       // V235 (HIBA #17 2026-05-19): ha mas neveben jar el, az actor teljes
       // azonositasa is kotelezo (Pmt. tv. 6.§ (2)). NEM eleg csak a nev!
       if (!onOwnBehalf) {
-        if (!actorName.trim())          missing.push('Képviselt fél neve')
-        if (!actorBirthPlace.trim())    missing.push('Képviselt fél szül. helye')
-        if (!actorBirthDate)            missing.push('Képviselt fél szül. ideje')
-        if (!actorMotherName.trim())    missing.push('Képviselt fél anyja neve')
+        if (!actorName.trim()) missing.push('Képviselt fél neve')
+        if (!actorBirthPlace.trim()) missing.push('Képviselt fél szül. helye')
+        if (!actorBirthDate) missing.push('Képviselt fél szül. ideje')
+        if (!actorMotherName.trim()) missing.push('Képviselt fél anyja neve')
         if (!actorDocumentNumber.trim()) missing.push('Képviselt fél okmányszáma')
-        if (!actorAddress.trim())       missing.push('Képviselt fél lakcíme')
+        if (!actorAddress.trim()) missing.push('Képviselt fél lakcíme')
       }
       // V235 (HIBA #15 2026-05-19): ha PEP, a minoseget is meg kell jelolni
       if (isPep && !pepKind) missing.push('PEP minőség')
@@ -412,13 +499,36 @@ export default function CustomerPanel({
     if (isLegalEntity) {
       if (!legalEntityName.trim()) missing.push('Jogi személy neve')
       if (!legalEntitySeat.trim()) missing.push('Jogi személy székhelye')
-      if (!beneficialOwners.some((o) => o.name.trim())) missing.push('Tényleges tulajdonos (legalább egy)')
+      if (!beneficialOwners.some((o) => o.name.trim()))
+        missing.push('Tényleges tulajdonos (legalább egy)')
     }
     if (!privacyNoticeAccepted) missing.push('Adatkezelési tájékoztató')
     return missing
-  }, [identificationLevel, customerName, customerDocNumber, customerBirthPlace, customerBirthDate, customerMotherName, customerAddress, hufTotal, sourceOfFunds, onOwnBehalf, actorName,
-      isPep, pepKind, actorBirthPlace, actorBirthDate, actorMotherName, actorDocumentNumber, actorAddress, privacyNoticeAccepted,
-      isLegalEntity, legalEntityName, legalEntitySeat, beneficialOwners])
+  }, [
+    identificationLevel,
+    customerName,
+    customerDocNumber,
+    customerBirthPlace,
+    customerBirthDate,
+    customerMotherName,
+    customerAddress,
+    hufTotal,
+    sourceOfFunds,
+    onOwnBehalf,
+    actorName,
+    isPep,
+    pepKind,
+    actorBirthPlace,
+    actorBirthDate,
+    actorMotherName,
+    actorDocumentNumber,
+    actorAddress,
+    privacyNoticeAccepted,
+    isLegalEntity,
+    legalEntityName,
+    legalEntitySeat,
+    beneficialOwners,
+  ])
 
   const handleSaveManualCustomer = useCallback(async () => {
     // Replace silent `return` with explicit toast — user-visible feedback per #581 bug report
@@ -460,7 +570,9 @@ export default function CustomerPanel({
           if (customerDocNumber.trim()) {
             savedCustomer = await customerApi.getByDocumentNumber(customerDocNumber.trim())
           }
-        } catch { /* proceed without ID */ }
+        } catch {
+          /* proceed without ID */
+        }
       }
 
       // 2026-05-15 user-direktíva (HIBA #9): ha a create + fallback IS sikertelen,
@@ -489,26 +601,28 @@ export default function CustomerPanel({
         // V229 (HIBA #8): 300k+ JOGCIM nyilatkozat
         isPep,
         sourceOfFunds: sourceOfFunds.trim() || undefined,
-      sourceOfFundsDocType: sourceOfFundsDocType || undefined,
-      sourceOfFundsDocDate: sourceOfFundsDocDate || undefined,
+        sourceOfFundsDocType: sourceOfFundsDocType || undefined,
+        sourceOfFundsDocDate: sourceOfFundsDocDate || undefined,
         onOwnBehalf,
         // Copilot P2 (PR #695): csak akkor adjuk at az actorName-et ha
         // tenyleg "mas neveben" jar el — egyebkent stale data maradhatna
         // a kliensben (user kitoltotte, majd visszakapcsolt "Sajat nevben"-re).
-        actorName: !onOwnBehalf ? (actorName.trim() || undefined) : undefined,
+        actorName: !onOwnBehalf ? actorName.trim() || undefined : undefined,
         // V235 (HIBA #15): PEP minoseg, ha isPep=true
         pepKind: isPep && pepKind ? (pepKind as PepKind) : null,
         // V235 (HIBA #17): actor teljes azonositasa, ha !onOwnBehalf
-        actorIdentity: !onOwnBehalf ? {
-          name: actorName.trim(),
-          birthPlace: actorBirthPlace.trim() || undefined,
-          birthDate: actorBirthDate || undefined,
-          motherName: actorMotherName.trim() || undefined,
-          nationality: actorNationality.trim() || undefined,
-          documentType: actorDocumentType,
-          documentNumber: actorDocumentNumber.trim() || undefined,
-          address: actorAddress.trim() || undefined,
-        } : null,
+        actorIdentity: !onOwnBehalf
+          ? {
+              name: actorName.trim(),
+              birthPlace: actorBirthPlace.trim() || undefined,
+              birthDate: actorBirthDate || undefined,
+              motherName: actorMotherName.trim() || undefined,
+              nationality: actorNationality.trim() || undefined,
+              documentType: actorDocumentType,
+              documentNumber: actorDocumentNumber.trim() || undefined,
+              address: actorAddress.trim() || undefined,
+            }
+          : null,
         // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok
         ...legalEntityData(),
       }
@@ -518,9 +632,17 @@ export default function CustomerPanel({
         data = await runAmlCheck(savedCustomer.id, data)
       } else if (hufTotal >= 100_000) {
         const warnResult: AmlCheckResultDto = {
-          transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
-          requiresId: true, requiresEnhanced: false, blocked: false,
-          warnings: ['Ugyfel mentese nem sikerult — AML ellenorzes korlátozott, az adatok kézi rögzítéssel kerülnek a tranzakcióba'],
+          transactionType: 0,
+          weeklyTotal: 0,
+          yearlyMax: 0,
+          quarterlyCount: 0,
+          quarterlyTotal: 0,
+          requiresId: true,
+          requiresEnhanced: false,
+          blocked: false,
+          warnings: [
+            'Ugyfel mentese nem sikerult — AML ellenorzes korlátozott, az adatok kézi rögzítéssel kerülnek a tranzakcióba',
+          ],
         }
         setAmlResult(warnResult)
         onAmlResult?.(warnResult)
@@ -532,7 +654,26 @@ export default function CustomerPanel({
     } finally {
       setIsSaving(false)
     }
-  }, [missingRequiredFields, customerName, customerDocType, customerDocNumber, customerNationality, customerBirthPlace, customerBirthDate, customerBirthName, customerMotherName, customerAddress, customerResidence, customerAddressCardNumber, isPep, hufTotal, identificationLevel, onCustomerReady, onAmlResult, runAmlCheck])
+  }, [
+    missingRequiredFields,
+    customerName,
+    customerDocType,
+    customerDocNumber,
+    customerNationality,
+    customerBirthPlace,
+    customerBirthDate,
+    customerBirthName,
+    customerMotherName,
+    customerAddress,
+    customerResidence,
+    customerAddressCardNumber,
+    isPep,
+    hufTotal,
+    identificationLevel,
+    onCustomerReady,
+    onAmlResult,
+    runAmlCheck,
+  ])
 
   const handleClearCustomer = useCallback(() => {
     setSelectedCustomer(null)
@@ -581,9 +722,22 @@ export default function CustomerPanel({
         addressCardNumber: customerAddressCardNumber.trim() || undefined,
       })
     }
-  }, [identificationLevel, customerNationality, customerName, customerDocType, customerDocNumber,
-    customerBirthPlace, customerBirthDate, customerBirthName, customerMotherName,
-    customerAddress, customerResidence, customerAddressCardNumber, selectedCustomer, onCustomerReady])
+  }, [
+    identificationLevel,
+    customerNationality,
+    customerName,
+    customerDocType,
+    customerDocNumber,
+    customerBirthPlace,
+    customerBirthDate,
+    customerBirthName,
+    customerMotherName,
+    customerAddress,
+    customerResidence,
+    customerAddressCardNumber,
+    selectedCustomer,
+    onCustomerReady,
+  ])
 
   // Re-run AML when hufTotal changes. Codex P1 #586 fix: isRetryableAmlError helper
   // egyseges no-response + 5xx kvalifikalas (HTTP 500 is degradalt mod-kepes).
@@ -597,17 +751,31 @@ export default function CustomerPanel({
         } catch (err) {
           if (!isRetryableAmlError(err)) {
             const blockedResult: AmlCheckResultDto = {
-              transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
-              requiresId: true, requiresEnhanced: false, blocked: true,
-              warnings: ['AML újraellenőrzés szerver-oldali hibával elutasitva. A tranzakció blokkolt.'],
+              transactionType: 0,
+              weeklyTotal: 0,
+              yearlyMax: 0,
+              quarterlyCount: 0,
+              quarterlyTotal: 0,
+              requiresId: true,
+              requiresEnhanced: false,
+              blocked: true,
+              warnings: [
+                'AML újraellenőrzés szerver-oldali hibával elutasitva. A tranzakció blokkolt.',
+              ],
             }
             setAmlResult(blockedResult)
             onAmlResult?.(blockedResult)
             return
           }
           const degradedResult: AmlCheckResultDto = {
-            transactionType: 0, weeklyTotal: 0, yearlyMax: 0, quarterlyCount: 0, quarterlyTotal: 0,
-            requiresId: true, requiresEnhanced: false, blocked: false,
+            transactionType: 0,
+            weeklyTotal: 0,
+            yearlyMax: 0,
+            quarterlyCount: 0,
+            quarterlyTotal: 0,
+            requiresId: true,
+            requiresEnhanced: false,
+            blocked: false,
             warnings: [
               '[OFFLINE_DEGRADED] AML újraellenőrzés nem sikerült (hálózati/szerver hiba).',
               'A tranzakció folytatható megerősítéssel, de utólagos központi ellenőrzésre kerül.',
@@ -624,7 +792,8 @@ export default function CustomerPanel({
   const showFull = identificationLevel === 'FULL'
   const isFormValid = missingRequiredFields.length === 0
 
-  const fieldClass = "w-full h-9 px-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent"
+  const fieldClass =
+    'w-full h-9 px-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white focus:ring-2 focus:border-transparent'
   const fieldStyle = { '--tw-ring-color': 'var(--primary)' } as React.CSSProperties
 
   return (
@@ -642,7 +811,8 @@ export default function CustomerPanel({
           const disabled = levelIdx < minIdx
           const active = level === identificationLevel
 
-          const IconComponent = level === 'SIMPLE' ? Shield : level === 'SIMPLIFIED' ? ShieldCheck : ShieldAlert
+          const IconComponent =
+            level === 'SIMPLE' ? Shield : level === 'SIMPLIFIED' ? ShieldCheck : ShieldAlert
 
           return (
             <button
@@ -659,7 +829,9 @@ export default function CustomerPanel({
             >
               <IconComponent className="w-4 h-4" />
               <span>{LEVEL_LABELS[level]}</span>
-              <span className="font-normal text-[10px] opacity-70">{LEVEL_DESCRIPTIONS[level]}</span>
+              <span className="font-normal text-[10px] opacity-70">
+                {LEVEL_DESCRIPTIONS[level]}
+              </span>
             </button>
           )
         })}
@@ -686,13 +858,17 @@ export default function CustomerPanel({
 
       {/* AML warnings */}
       {amlResult && (amlResult.blocked || amlResult.warnings.length > 0) && (
-        <div className={`border-2 rounded-lg p-3 text-sm ${
-          amlResult.blocked
-            ? 'bg-red-50 dark:bg-red-950/30 border-red-500 text-red-800 dark:text-red-200'
-            : 'bg-yellow-50 dark:bg-yellow-950/30 border-yellow-400 text-yellow-800 dark:text-yellow-200'
-        }`}>
+        <div
+          className={`border-2 rounded-lg p-3 text-sm ${
+            amlResult.blocked
+              ? 'bg-red-50 dark:bg-red-950/30 border-red-500 text-red-800 dark:text-red-200'
+              : 'bg-yellow-50 dark:bg-yellow-950/30 border-yellow-400 text-yellow-800 dark:text-yellow-200'
+          }`}
+        >
           <p className="font-bold mb-1">
-            {amlResult.blocked ? 'TRANZAKCIO BLOKKOLT — AML szabalysertes' : 'AML figyelmeztetesek:'}
+            {amlResult.blocked
+              ? 'TRANZAKCIO BLOKKOLT — AML szabalysertes'
+              : 'AML figyelmeztetesek:'}
           </p>
           {amlResult.warnings.map((w, i) => (
             <p key={i}>- {w}</p>
@@ -713,73 +889,108 @@ export default function CustomerPanel({
           <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-700 rounded-lg flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CheckCircle size={18} className="text-green-600 dark:text-green-400" />
-              <span className="text-green-700 dark:text-green-300 font-semibold">{t('transactions.ugyfelKivalasztva')}</span>
+              <span className="text-green-700 dark:text-green-300 font-semibold">
+                {t('transactions.ugyfelKivalasztva')}
+              </span>
             </div>
-            <button onClick={handleClearCustomer} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+            <button
+              onClick={handleClearCustomer}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            >
               <X size={18} />
             </button>
           </div>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('competitors.nev')}</label>
-              <div className="font-semibold text-gray-900 dark:text-white">{selectedCustomer.name}</div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                {t('competitors.nev')}
+              </label>
+              <div className="font-semibold text-gray-900 dark:text-white">
+                {selectedCustomer.name}
+              </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.allampolgarsag')}</label>
-              <div className="text-gray-900 dark:text-white">{selectedCustomer.nationality ?? 'Magyar'}</div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                {t('transactions.allampolgarsag')}
+              </label>
+              <div className="text-gray-900 dark:text-white">
+                {selectedCustomer.nationality ?? 'Magyar'}
+              </div>
             </div>
             {selectedCustomer.documentType && (
               <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('sanction.okmany')}</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {t('sanction.okmany')}
+                </label>
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.documentType}</div>
               </div>
             )}
             {selectedCustomer.documentNumber && (
               <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.okmanySzam')}</label>
-                <div className="font-mono text-gray-900 dark:text-white">{selectedCustomer.documentNumber}</div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {t('transactions.okmanySzam')}
+                </label>
+                <div className="font-mono text-gray-900 dark:text-white">
+                  {selectedCustomer.documentNumber}
+                </div>
               </div>
             )}
             {selectedCustomer.birthPlace && (
               <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.szuletesiHely')}</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {t('transactions.szuletesiHely')}
+                </label>
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.birthPlace}</div>
               </div>
             )}
             {selectedCustomer.birthDate && (
               <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.szuletesiIdo')}</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {t('transactions.szuletesiIdo')}
+                </label>
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.birthDate}</div>
               </div>
             )}
             {selectedCustomer.birthName && (
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.elozoNev')}</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {t('transactions.elozoNev')}
+                </label>
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.birthName}</div>
               </div>
             )}
             {selectedCustomer.motherName && (
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('common.motherName')}</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {t('common.motherName')}
+                </label>
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.motherName}</div>
               </div>
             )}
             {selectedCustomer.address && (
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.lakcim')}</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {t('transactions.lakcim')}
+                </label>
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.address}</div>
               </div>
             )}
             {selectedCustomer.residence && (
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.tartozkodasiHely')}</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {t('transactions.tartozkodasiHely')}
+                </label>
                 <div className="text-gray-900 dark:text-white">{selectedCustomer.residence}</div>
               </div>
             )}
             {selectedCustomer.addressCardNumber && (
               <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('transactions.lakcimkartyaSzam')}</label>
-                <div className="font-mono text-gray-900 dark:text-white">{selectedCustomer.addressCardNumber}</div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {t('transactions.lakcimkartyaSzam')}
+                </label>
+                <div className="font-mono text-gray-900 dark:text-white">
+                  {selectedCustomer.addressCardNumber}
+                </div>
               </div>
             )}
           </div>
@@ -788,29 +999,35 @@ export default function CustomerPanel({
         /* SIMPLE — only nationality */
         <div className="p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.allampolgarsag')}</label>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">
+              {t('transactions.allampolgarsag')}
+            </label>
             <select
               className={fieldClass}
               style={fieldStyle}
               value={customerNationality}
               onChange={(e) => setCustomerNationality(e.target.value)}
             >
-              {nationalities.length > 0
-                ? nationalities.map((n) => (
-                    <option key={n.code} value={n.nameHu || n.name}>{n.nameHu || n.name}</option>
-                  ))
-                : (
-                  <>
-                    <option>{t('settings.magyar')}</option>
-                    <option>{t('transactions.euAllampolgarsag')}</option>
-                    <option>{t('transactions.egyeb')}</option>
-                  </>
-                )}
+              {nationalities.length > 0 ? (
+                nationalities.map((n) => (
+                  <option key={n.code} value={n.nameHu || n.name}>
+                    {n.nameHu || n.name}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option>{t('settings.magyar')}</option>
+                  <option>{t('transactions.euAllampolgarsag')}</option>
+                  <option>{t('transactions.egyeb')}</option>
+                </>
+              )}
             </select>
           </div>
           <div className="text-center text-gray-500 dark:text-gray-400 py-2">
             <User size={32} className="mx-auto mb-1 text-gray-300 dark:text-gray-600" />
-            <div className="text-sm">{t('transactions.100000FtAlattTovabbiAzonositasNemSzukseges')}</div>
+            <div className="text-sm">
+              {t('transactions.100000FtAlattTovabbiAzonositasNemSzukseges')}
+            </div>
           </div>
         </div>
       ) : (
@@ -829,7 +1046,9 @@ export default function CustomerPanel({
                 placeholder="Nev vagy okmanyszam kereses..."
               />
               <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-              {isSearching && <Loader2 className="absolute right-3 top-2.5 w-4 h-4 animate-spin text-gray-400" />}
+              {isSearching && (
+                <Loader2 className="absolute right-3 top-2.5 w-4 h-4 animate-spin text-gray-400" />
+              )}
             </div>
 
             {showResults && searchResults.length > 0 && (
@@ -840,7 +1059,9 @@ export default function CustomerPanel({
                     onClick={() => void handleSelectCustomer(c)}
                     className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-0"
                   >
-                    <div className="font-medium text-sm text-gray-900 dark:text-white">{c.name}</div>
+                    <div className="font-medium text-sm text-gray-900 dark:text-white">
+                      {c.name}
+                    </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
                       {c.documentType}: {c.documentNumber} | {c.nationality ?? 'Magyar'}
                     </div>
@@ -848,50 +1069,87 @@ export default function CustomerPanel({
                 ))}
               </div>
             )}
-            {showResults && searchResults.length === 0 && !isSearching && searchQuery.trim().length >= 2 && (
-              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 text-sm text-gray-500">
-                {t('transactions.nemTalalhatoUgyfelAdjaMegAzAdatokatKezzel')}
-              </div>
-            )}
+            {showResults &&
+              searchResults.length === 0 &&
+              !isSearching &&
+              searchQuery.trim().length >= 2 && (
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 text-sm text-gray-500">
+                  {t('transactions.nemTalalhatoUgyfelAdjaMegAzAdatokatKezzel')}
+                </div>
+              )}
           </div>
 
           {/* Manual entry */}
           <div className="p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t('transactions.kezzelMegadas')}</p>
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              {t('transactions.kezzelMegadas')}
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {/* --- Always shown for SIMPLIFIED+ --- */}
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.nev')}</label>
-                <input type="text" className={fieldClass} style={fieldStyle} data-testid="customer-name-input"
-                  value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">
+                  {t('transactions.nev')}
+                </label>
+                <input
+                  type="text"
+                  className={fieldClass}
+                  style={fieldStyle}
+                  data-testid="customer-name-input"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.szuletesiIdo2')}</label>
-                <input type="date" className={fieldClass} style={fieldStyle} data-testid="customer-birth-date-input"
-                  value={customerBirthDate} onChange={(e) => setCustomerBirthDate(e.target.value)} />
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">
+                  {t('transactions.szuletesiIdo2')}
+                </label>
+                <input
+                  type="date"
+                  className={fieldClass}
+                  style={fieldStyle}
+                  data-testid="customer-birth-date-input"
+                  value={customerBirthDate}
+                  onChange={(e) => setCustomerBirthDate(e.target.value)}
+                />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.szuletesiHely2')}</label>
-                <input type="text" className={fieldClass} style={fieldStyle} data-testid="customer-birth-place-input"
-                  value={customerBirthPlace} onChange={(e) => setCustomerBirthPlace(e.target.value)} />
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">
+                  {t('transactions.szuletesiHely2')}
+                </label>
+                <input
+                  type="text"
+                  className={fieldClass}
+                  style={fieldStyle}
+                  data-testid="customer-birth-place-input"
+                  value={customerBirthPlace}
+                  onChange={(e) => setCustomerBirthPlace(e.target.value)}
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.allampolgarsag2')}</label>
-                <select className={fieldClass} style={fieldStyle}
-                  value={customerNationality} onChange={(e) => setCustomerNationality(e.target.value)}>
-                  {nationalities.length > 0
-                    ? nationalities.map((n) => (
-                        <option key={n.code} value={n.nameHu || n.name}>{n.nameHu || n.name}</option>
-                      ))
-                    : (
-                      <>
-                        <option>{t('settings.magyar')}</option>
-                        <option>{t('transactions.euAllampolgarsag')}</option>
-                        <option>{t('transactions.egyeb')}</option>
-                      </>
-                    )}
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">
+                  {t('transactions.allampolgarsag2')}
+                </label>
+                <select
+                  className={fieldClass}
+                  style={fieldStyle}
+                  value={customerNationality}
+                  onChange={(e) => setCustomerNationality(e.target.value)}
+                >
+                  {nationalities.length > 0 ? (
+                    nationalities.map((n) => (
+                      <option key={n.code} value={n.nameHu || n.name}>
+                        {n.nameHu || n.name}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option>{t('settings.magyar')}</option>
+                      <option>{t('transactions.euAllampolgarsag')}</option>
+                      <option>{t('transactions.egyeb')}</option>
+                    </>
+                  )}
                 </select>
               </div>
 
@@ -902,21 +1160,37 @@ export default function CustomerPanel({
               {showFull && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.okmanyTipus')}</label>
-                    <select className={fieldClass} style={fieldStyle}
-                      value={customerDocType} onChange={(e) => setCustomerDocType(e.target.value)}>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">
+                      {t('transactions.okmanyTipus')}
+                    </label>
+                    <select
+                      className={fieldClass}
+                      style={fieldStyle}
+                      value={customerDocType}
+                      onChange={(e) => setCustomerDocType(e.target.value)}
+                    >
                       <option value="ID_CARD">{t('transactions.szemelyiIgazolvany')}</option>
                       <option value="PASSPORT">{t('transactions.utlevel')}</option>
                       <option value="DRIVING_LICENSE">{t('transactions.vezetoiEngedely')}</option>
-                      <option value="RESIDENCE_PERMIT">{t('transactions.tartozkodasiEngedely')}</option>
+                      <option value="RESIDENCE_PERMIT">
+                        {t('transactions.tartozkodasiEngedely')}
+                      </option>
                       <option value="OTHER">{t('transactions.egyeb')}</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.okmanyszam')}</label>
-                    <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle} data-testid="customer-doc-number-input"
-                      value={customerDocNumber} onChange={(e) => setCustomerDocNumber(e.target.value)} />
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">
+                      {t('transactions.okmanyszam')}
+                    </label>
+                    <input
+                      type="text"
+                      className={`${fieldClass} font-mono`}
+                      style={fieldStyle}
+                      data-testid="customer-doc-number-input"
+                      value={customerDocNumber}
+                      onChange={(e) => setCustomerDocNumber(e.target.value)}
+                    />
                   </div>
                 </>
               )}
@@ -925,30 +1199,67 @@ export default function CustomerPanel({
               {showFull && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.elozoNevSzulNev')}</label>
-                    <input type="text" className={fieldClass} style={fieldStyle}
-                      value={customerBirthName} onChange={(e) => setCustomerBirthName(e.target.value)} />
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">
+                      {t('transactions.elozoNevSzulNev')}
+                    </label>
+                    <input
+                      type="text"
+                      className={fieldClass}
+                      style={fieldStyle}
+                      value={customerBirthName}
+                      onChange={(e) => setCustomerBirthName(e.target.value)}
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.anyjaNeve')}</label>
-                    <input type="text" className={fieldClass} style={fieldStyle} data-testid="customer-mother-name-input"
-                      value={customerMotherName} onChange={(e) => setCustomerMotherName(e.target.value)} />
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">
+                      {t('transactions.anyjaNeve')}
+                    </label>
+                    <input
+                      type="text"
+                      className={fieldClass}
+                      style={fieldStyle}
+                      data-testid="customer-mother-name-input"
+                      value={customerMotherName}
+                      onChange={(e) => setCustomerMotherName(e.target.value)}
+                    />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.lakcimEsIranyitoszam')}</label>
-                    <input type="text" className={fieldClass} style={fieldStyle} data-testid="customer-address-input"
-                      value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)}
-                      placeholder="pl. 1234 Budapest, Fo utca 1." />
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">
+                      {t('transactions.lakcimEsIranyitoszam')}
+                    </label>
+                    <input
+                      type="text"
+                      className={fieldClass}
+                      style={fieldStyle}
+                      data-testid="customer-address-input"
+                      value={customerAddress}
+                      onChange={(e) => setCustomerAddress(e.target.value)}
+                      placeholder="pl. 1234 Budapest, Fo utca 1."
+                    />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.tartozkodasiHely')}</label>
-                    <input type="text" className={fieldClass} style={fieldStyle}
-                      value={customerResidence} onChange={(e) => setCustomerResidence(e.target.value)} />
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">
+                      {t('transactions.tartozkodasiHely')}
+                    </label>
+                    <input
+                      type="text"
+                      className={fieldClass}
+                      style={fieldStyle}
+                      value={customerResidence}
+                      onChange={(e) => setCustomerResidence(e.target.value)}
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{t('transactions.lakcimkartyaSzama')}</label>
-                    <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle}
-                      value={customerAddressCardNumber} onChange={(e) => setCustomerAddressCardNumber(e.target.value)} />
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">
+                      {t('transactions.lakcimkartyaSzama')}
+                    </label>
+                    <input
+                      type="text"
+                      className={`${fieldClass} font-mono`}
+                      style={fieldStyle}
+                      value={customerAddressCardNumber}
+                      onChange={(e) => setCustomerAddressCardNumber(e.target.value)}
+                    />
                   </div>
                 </>
               )}
@@ -968,7 +1279,7 @@ export default function CustomerPanel({
                     className={fieldClass}
                     style={fieldStyle}
                     data-testid="customer-pep-kind-select"
-                    value={isPep ? (pepKind || 'EGYEB') : 'NEM'}
+                    value={isPep ? pepKind || 'EGYEB' : 'NEM'}
                     onChange={(e) => {
                       const v = e.target.value
                       if (v === 'NEM') {
@@ -982,9 +1293,13 @@ export default function CustomerPanel({
                   >
                     <option value="NEM">Nem közszereplő</option>
                     <option value="CSALADTAG">Igen — kiemelt közszereplő családtagja</option>
-                    <option value="KOZELI_MUNKATARS">Igen — közeli munkatárs / üzleti partner</option>
+                    <option value="KOZELI_MUNKATARS">
+                      Igen — közeli munkatárs / üzleti partner
+                    </option>
                     <option value="KORMANYFO">Igen — miniszter / államtitkár / kormányfő</option>
-                    <option value="PARLAMENTI">Igen — országgyűlési / önkormányzati képviselő</option>
+                    <option value="PARLAMENTI">
+                      Igen — országgyűlési / önkormányzati képviselő
+                    </option>
                     <option value="NAV_VEZETO">Igen — NAV / állami vállalat felsővezetés</option>
                     <option value="EGYEB">Igen — egyéb kiemelt közszereplő</option>
                   </select>
@@ -993,11 +1308,21 @@ export default function CustomerPanel({
                   <label className="text-xs flex items-center gap-1.5">
                     <span>Saját nevében jár el?</span>
                     <label className="inline-flex items-center gap-1">
-                      <input type="radio" name="onOwnBehalf" checked={onOwnBehalf} onChange={() => setOnOwnBehalf(true)} />
+                      <input
+                        type="radio"
+                        name="onOwnBehalf"
+                        checked={onOwnBehalf}
+                        onChange={() => setOnOwnBehalf(true)}
+                      />
                       <span>Igen</span>
                     </label>
                     <label className="inline-flex items-center gap-1">
-                      <input type="radio" name="onOwnBehalf" checked={!onOwnBehalf} onChange={() => setOnOwnBehalf(false)} />
+                      <input
+                        type="radio"
+                        name="onOwnBehalf"
+                        checked={!onOwnBehalf}
+                        onChange={() => setOnOwnBehalf(false)}
+                      />
                       <span>Nem</span>
                     </label>
                   </label>
@@ -1012,57 +1337,81 @@ export default function CustomerPanel({
                     </div>
                     <div>
                       <label className="text-xs block">Név *</label>
-                      <input type="text" className={fieldClass} style={fieldStyle}
+                      <input
+                        type="text"
+                        className={fieldClass}
+                        style={fieldStyle}
                         data-testid="actor-name-input"
                         value={actorName}
                         onChange={(e) => setActorName(e.target.value)}
-                        placeholder="A képviselt fél teljes neve" />
+                        placeholder="A képviselt fél teljes neve"
+                      />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-xs block">Születési hely *</label>
-                        <input type="text" className={fieldClass} style={fieldStyle}
+                        <input
+                          type="text"
+                          className={fieldClass}
+                          style={fieldStyle}
                           data-testid="actor-birth-place-input"
                           value={actorBirthPlace}
-                          onChange={(e) => setActorBirthPlace(e.target.value)} />
+                          onChange={(e) => setActorBirthPlace(e.target.value)}
+                        />
                       </div>
                       <div>
                         <label className="text-xs block">Születési idő *</label>
-                        <input type="date" className={fieldClass} style={fieldStyle}
+                        <input
+                          type="date"
+                          className={fieldClass}
+                          style={fieldStyle}
                           data-testid="actor-birth-date-input"
                           value={actorBirthDate}
-                          onChange={(e) => setActorBirthDate(e.target.value)} />
+                          onChange={(e) => setActorBirthDate(e.target.value)}
+                        />
                       </div>
                       <div>
                         <label className="text-xs block">Anyja neve *</label>
-                        <input type="text" className={fieldClass} style={fieldStyle}
+                        <input
+                          type="text"
+                          className={fieldClass}
+                          style={fieldStyle}
                           data-testid="actor-mother-name-input"
                           value={actorMotherName}
-                          onChange={(e) => setActorMotherName(e.target.value)} />
+                          onChange={(e) => setActorMotherName(e.target.value)}
+                        />
                       </div>
                       <div>
                         <label className="text-xs block">Állampolgárság</label>
-                        <select className={fieldClass} style={fieldStyle}
+                        <select
+                          className={fieldClass}
+                          style={fieldStyle}
                           value={actorNationality}
-                          onChange={(e) => setActorNationality(e.target.value)}>
-                          {nationalities.length > 0
-                            ? nationalities.map((n) => (
-                                <option key={n.code} value={n.nameHu || n.name}>{n.nameHu || n.name}</option>
-                              ))
-                            : (
-                              <>
-                                <option>Magyar</option>
-                                <option>EU-állampolgárság</option>
-                                <option>Egyéb</option>
-                              </>
-                            )}
+                          onChange={(e) => setActorNationality(e.target.value)}
+                        >
+                          {nationalities.length > 0 ? (
+                            nationalities.map((n) => (
+                              <option key={n.code} value={n.nameHu || n.name}>
+                                {n.nameHu || n.name}
+                              </option>
+                            ))
+                          ) : (
+                            <>
+                              <option>Magyar</option>
+                              <option>EU-állampolgárság</option>
+                              <option>Egyéb</option>
+                            </>
+                          )}
                         </select>
                       </div>
                       <div>
                         <label className="text-xs block">Okmány típus</label>
-                        <select className={fieldClass} style={fieldStyle}
+                        <select
+                          className={fieldClass}
+                          style={fieldStyle}
                           value={actorDocumentType}
-                          onChange={(e) => setActorDocumentType(e.target.value)}>
+                          onChange={(e) => setActorDocumentType(e.target.value)}
+                        >
                           <option value="ID_CARD">Személyi igazolvány</option>
                           <option value="PASSPORT">Útlevél</option>
                           <option value="DRIVING_LICENSE">Vezetői engedély</option>
@@ -1072,19 +1421,27 @@ export default function CustomerPanel({
                       </div>
                       <div>
                         <label className="text-xs block">Okmányszám *</label>
-                        <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle}
+                        <input
+                          type="text"
+                          className={`${fieldClass} font-mono`}
+                          style={fieldStyle}
                           data-testid="actor-doc-number-input"
                           value={actorDocumentNumber}
-                          onChange={(e) => setActorDocumentNumber(e.target.value)} />
+                          onChange={(e) => setActorDocumentNumber(e.target.value)}
+                        />
                       </div>
                     </div>
                     <div>
                       <label className="text-xs block">Lakcím *</label>
-                      <input type="text" className={fieldClass} style={fieldStyle}
+                      <input
+                        type="text"
+                        className={fieldClass}
+                        style={fieldStyle}
                         data-testid="actor-address-input"
                         value={actorAddress}
                         onChange={(e) => setActorAddress(e.target.value)}
-                        placeholder="pl. 1234 Budapest, Fo utca 1." />
+                        placeholder="pl. 1234 Budapest, Fo utca 1."
+                      />
                     </div>
                   </div>
                 )}
@@ -1093,10 +1450,12 @@ export default function CustomerPanel({
                     (megbízott) adatai a fenti ügyfél-mezőkben. */}
                 <div className="flex items-center gap-4">
                   <label className="text-xs flex items-center gap-1.5">
-                    <input type="checkbox"
+                    <input
+                      type="checkbox"
                       data-testid="legal-entity-checkbox"
                       checked={isLegalEntity}
-                      onChange={(e) => setIsLegalEntity(e.target.checked)} />
+                      onChange={(e) => setIsLegalEntity(e.target.checked)}
+                    />
                     <span>Jogi személy nevében jár el?</span>
                   </label>
                 </div>
@@ -1107,109 +1466,180 @@ export default function CustomerPanel({
                     </div>
                     <div>
                       <label className="text-xs block">Jogi személy neve *</label>
-                      <input type="text" className={fieldClass} style={fieldStyle}
+                      <input
+                        type="text"
+                        className={fieldClass}
+                        style={fieldStyle}
                         data-testid="legal-entity-name-input"
                         value={legalEntityName}
                         onChange={(e) => setLegalEntityName(e.target.value)}
-                        placeholder="pl. Példa Kft." />
+                        placeholder="pl. Példa Kft."
+                      />
                     </div>
                     <div>
                       <label className="text-xs block">Székhely *</label>
-                      <input type="text" className={fieldClass} style={fieldStyle}
+                      <input
+                        type="text"
+                        className={fieldClass}
+                        style={fieldStyle}
                         data-testid="legal-entity-seat-input"
                         value={legalEntitySeat}
                         onChange={(e) => setLegalEntitySeat(e.target.value)}
-                        placeholder="pl. 6722 Szeged, Tisza L. krt 57." />
+                        placeholder="pl. 6722 Szeged, Tisza L. krt 57."
+                      />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-xs block">Adószám</label>
-                        <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle}
+                        <input
+                          type="text"
+                          className={`${fieldClass} font-mono`}
+                          style={fieldStyle}
                           data-testid="legal-entity-tax-input"
                           value={legalEntityTaxNumber}
                           onChange={(e) => setLegalEntityTaxNumber(e.target.value)}
-                          placeholder="12345678-2-06" />
+                          placeholder="12345678-2-06"
+                        />
                       </div>
                       <div>
                         <label className="text-xs block">Okiratszám / cégjegyzékszám</label>
-                        <input type="text" className={`${fieldClass} font-mono`} style={fieldStyle}
+                        <input
+                          type="text"
+                          className={`${fieldClass} font-mono`}
+                          style={fieldStyle}
                           data-testid="legal-deed-number-input"
                           value={legalDeedNumber}
                           onChange={(e) => setLegalDeedNumber(e.target.value)}
-                          placeholder="06-09-123456" />
+                          placeholder="06-09-123456"
+                        />
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">
                         Tényleges tulajdonosok (max 4)
                       </span>
-                      <button type="button"
+                      <button
+                        type="button"
                         data-testid="add-owner-button"
                         disabled={beneficialOwners.length >= 4}
-                        onClick={() => setBeneficialOwners(prev => [...prev, { ...EMPTY_OWNER }])}
-                        className="text-xs px-2 py-0.5 rounded border border-indigo-400 hover:bg-indigo-200/50 disabled:opacity-40">
+                        onClick={() => setBeneficialOwners((prev) => [...prev, { ...EMPTY_OWNER }])}
+                        className="text-xs px-2 py-0.5 rounded border border-indigo-400 hover:bg-indigo-200/50 disabled:opacity-40"
+                      >
                         + Tulajdonos
                       </button>
                     </div>
                     {beneficialOwners.map((o, idx) => {
                       const upd = (patch: Partial<BeneficialOwnerForm>) =>
-                        setBeneficialOwners(prev => prev.map((x, i) => (i === idx ? { ...x, ...patch } : x)))
+                        setBeneficialOwners((prev) =>
+                          prev.map((x, i) => (i === idx ? { ...x, ...patch } : x)),
+                        )
                       return (
-                        <div key={idx} className="p-2 rounded border border-indigo-300 dark:border-indigo-700 space-y-1.5">
+                        <div
+                          key={idx}
+                          className="p-2 rounded border border-indigo-300 dark:border-indigo-700 space-y-1.5"
+                        >
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-semibold">{idx + 1}. tulajdonos</span>
-                            <button type="button" className="text-xs text-red-600 hover:underline"
-                              onClick={() => setBeneficialOwners(prev => prev.filter((_, i) => i !== idx))}>
+                            <button
+                              type="button"
+                              className="text-xs text-red-600 hover:underline"
+                              onClick={() =>
+                                setBeneficialOwners((prev) => prev.filter((_, i) => i !== idx))
+                              }
+                            >
                               Eltávolítás
                             </button>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div>
                               <label className="text-xs block">Név *</label>
-                              <input type="text" className={fieldClass} style={fieldStyle}
-                                value={o.name} onChange={(e) => upd({ name: e.target.value })} />
+                              <input
+                                type="text"
+                                className={fieldClass}
+                                style={fieldStyle}
+                                value={o.name}
+                                onChange={(e) => upd({ name: e.target.value })}
+                              />
                             </div>
                             <div>
                               <label className="text-xs block">Lakcím</label>
-                              <input type="text" className={fieldClass} style={fieldStyle}
-                                value={o.address} onChange={(e) => upd({ address: e.target.value })} />
+                              <input
+                                type="text"
+                                className={fieldClass}
+                                style={fieldStyle}
+                                value={o.address}
+                                onChange={(e) => upd({ address: e.target.value })}
+                              />
                             </div>
                             <div>
                               <label className="text-xs block">Születési hely</label>
-                              <input type="text" className={fieldClass} style={fieldStyle}
-                                value={o.birthPlace} onChange={(e) => upd({ birthPlace: e.target.value })} />
+                              <input
+                                type="text"
+                                className={fieldClass}
+                                style={fieldStyle}
+                                value={o.birthPlace}
+                                onChange={(e) => upd({ birthPlace: e.target.value })}
+                              />
                             </div>
                             <div>
                               <label className="text-xs block">Születési idő</label>
-                              <input type="date" className={fieldClass} style={fieldStyle}
-                                value={o.birthDate} onChange={(e) => upd({ birthDate: e.target.value })} />
+                              <input
+                                type="date"
+                                className={fieldClass}
+                                style={fieldStyle}
+                                value={o.birthDate}
+                                onChange={(e) => upd({ birthDate: e.target.value })}
+                              />
                             </div>
                             <div>
                               <label className="text-xs block">Állampolgárság</label>
-                              <input type="text" className={fieldClass} style={fieldStyle}
-                                value={o.nationality} onChange={(e) => upd({ nationality: e.target.value })} />
+                              <input
+                                type="text"
+                                className={fieldClass}
+                                style={fieldStyle}
+                                value={o.nationality}
+                                onChange={(e) => upd({ nationality: e.target.value })}
+                              />
                             </div>
                             <div>
                               <label className="text-xs block">Külföldi tartózkodási hely</label>
-                              <input type="text" className={fieldClass} style={fieldStyle}
-                                value={o.residenceAbroad} onChange={(e) => upd({ residenceAbroad: e.target.value })} />
+                              <input
+                                type="text"
+                                className={fieldClass}
+                                style={fieldStyle}
+                                value={o.residenceAbroad}
+                                onChange={(e) => upd({ residenceAbroad: e.target.value })}
+                              />
                             </div>
                             <div>
                               <label className="text-xs block">Érdekeltség jellege</label>
-                              <input type="text" className={fieldClass} style={fieldStyle}
-                                value={o.interestNature} onChange={(e) => upd({ interestNature: e.target.value })}
-                                placeholder="pl. tulajdonos" />
+                              <input
+                                type="text"
+                                className={fieldClass}
+                                style={fieldStyle}
+                                value={o.interestNature}
+                                onChange={(e) => upd({ interestNature: e.target.value })}
+                                placeholder="pl. tulajdonos"
+                              />
                             </div>
                             <div>
                               <label className="text-xs block">Részesedés mértéke</label>
-                              <input type="text" className={fieldClass} style={fieldStyle}
-                                value={o.interestExtent} onChange={(e) => upd({ interestExtent: e.target.value })}
-                                placeholder="pl. 50%" />
+                              <input
+                                type="text"
+                                className={fieldClass}
+                                style={fieldStyle}
+                                value={o.interestExtent}
+                                onChange={(e) => upd({ interestExtent: e.target.value })}
+                                placeholder="pl. 50%"
+                              />
                             </div>
                           </div>
                           <label className="text-xs flex items-center gap-1.5">
-                            <input type="checkbox" checked={o.isPep}
-                              onChange={(e) => upd({ isPep: e.target.checked })} />
+                            <input
+                              type="checkbox"
+                              checked={o.isPep}
+                              onChange={(e) => upd({ isPep: e.target.checked })}
+                            />
                             <span>Kiemelt közszereplő</span>
                           </label>
                         </div>
@@ -1219,10 +1649,14 @@ export default function CustomerPanel({
                 )}
                 <div>
                   <label className="text-xs block">Pénzeszközök forrása *</label>
-                  <input type="text" className={fieldClass} style={fieldStyle}
+                  <input
+                    type="text"
+                    className={fieldClass}
+                    style={fieldStyle}
                     value={sourceOfFunds}
                     onChange={(e) => setSourceOfFunds(e.target.value)}
-                    placeholder="pl. munkabér, megtakarítás, vállalkozási bevétel" />
+                    placeholder="pl. munkabér, megtakarítás, vállalkozási bevétel"
+                  />
                 </div>
                 {/* AML 50M (Pmt./MNB 14/2025 V.2.5): 50M Ft feletti ügyletnél KÖTELEZŐ strukturált
                     forrás-dokumentum — közjegyző/ügyvéd ellenjegyzésű teljes bizonyító erejű magánokirat
@@ -1230,24 +1664,39 @@ export default function CustomerPanel({
                 {hufTotal >= 50_000_000 && (
                   <>
                     <div>
-                      <label className="text-xs block">Forrás-dokumentum (50M felett kötelező) *</label>
-                      <select className={fieldClass} style={fieldStyle}
+                      <label className="text-xs block">
+                        Forrás-dokumentum (50M felett kötelező) *
+                      </label>
+                      <select
+                        className={fieldClass}
+                        style={fieldStyle}
                         data-testid="source-of-funds-doctype"
                         value={sourceOfFundsDocType}
-                        onChange={(e) => setSourceOfFundsDocType(e.target.value)}>
+                        onChange={(e) => setSourceOfFundsDocType(e.target.value)}
+                      >
                         <option value="">— válassz —</option>
-                        <option value="MAGANOKIRAT_KOZJEGYZO">Közjegyző által ellenjegyzett magánokirat</option>
-                        <option value="MAGANOKIRAT_UGYVED">Ügyvéd által ellenjegyzett magánokirat</option>
+                        <option value="MAGANOKIRAT_KOZJEGYZO">
+                          Közjegyző által ellenjegyzett magánokirat
+                        </option>
+                        <option value="MAGANOKIRAT_UGYVED">
+                          Ügyvéd által ellenjegyzett magánokirat
+                        </option>
                         <option value="BANK_SZLIP">Banki bizonylat / szlip (max. 3 éves)</option>
                       </select>
                     </div>
                     {sourceOfFundsDocType === 'BANK_SZLIP' && (
                       <div>
-                        <label className="text-xs block">Banki bizonylat kiállítási dátuma (max. 3 év) *</label>
-                        <input type="date" className={fieldClass} style={fieldStyle}
+                        <label className="text-xs block">
+                          Banki bizonylat kiállítási dátuma (max. 3 év) *
+                        </label>
+                        <input
+                          type="date"
+                          className={fieldClass}
+                          style={fieldStyle}
                           data-testid="source-of-funds-docdate"
                           value={sourceOfFundsDocDate}
-                          onChange={(e) => setSourceOfFundsDocDate(e.target.value)} />
+                          onChange={(e) => setSourceOfFundsDocDate(e.target.value)}
+                        />
                       </div>
                     )}
                   </>

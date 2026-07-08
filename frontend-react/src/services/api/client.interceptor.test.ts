@@ -4,7 +4,9 @@ import type { InternalAxiosRequestConfig } from 'axios'
 // FK-016: a central-workstation flavorban a /branches GET-ekhez clientType=CENTRAL kerül.
 // A request-interceptor handlert elkapjuk az axios.create mockból, majd közvetlenül hívjuk.
 const { capturedRequestHandlers, flavorMock } = vi.hoisted(() => ({
-  capturedRequestHandlers: [] as Array<(c: InternalAxiosRequestConfig) => InternalAxiosRequestConfig>,
+  capturedRequestHandlers: [] as Array<
+    (c: InternalAxiosRequestConfig) => InternalAxiosRequestConfig
+  >,
   flavorMock: { isCentral: false },
 }))
 
@@ -26,7 +28,11 @@ vi.mock('axios', async () => {
       create: vi.fn(() => ({
         defaults: { baseURL: '/api/v1' },
         interceptors: {
-          request: { use: vi.fn((fn: (c: InternalAxiosRequestConfig) => InternalAxiosRequestConfig) => { capturedRequestHandlers.push(fn) }) },
+          request: {
+            use: vi.fn((fn: (c: InternalAxiosRequestConfig) => InternalAxiosRequestConfig) => {
+              capturedRequestHandlers.push(fn)
+            }),
+          },
           response: { use: vi.fn() },
         },
         post: vi.fn(),
@@ -46,7 +52,9 @@ function run(config: Partial<InternalAxiosRequestConfig>): InternalAxiosRequestC
 }
 
 describe('FK-016 — client.ts request interceptor (clientType=CENTRAL)', () => {
-  beforeEach(() => { flavorMock.isCentral = false })
+  beforeEach(() => {
+    flavorMock.isCentral = false
+  })
 
   it('regisztrálódott egy request-interceptor', () => {
     expect(typeof requestInterceptor).toBe('function')

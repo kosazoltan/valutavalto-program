@@ -150,25 +150,37 @@ describe('LedDisplayPage backend contract', () => {
     fireEvent.click(screen.getByText('Mentés'))
 
     await waitFor(() => {
-      expect(mockApi.put).toHaveBeenCalledWith('/led/config', expect.objectContaining({
-        branchId: 'branch-1',
-        displayType: 'SERIAL',
-      }))
-      expect(mockApi.put).toHaveBeenCalledWith('/led-display/config/branch-1', expect.objectContaining({
-        branchId: 'branch-1',
-        displayType: 'SERIAL',
-      }))
+      expect(mockApi.put).toHaveBeenCalledWith(
+        '/led/config',
+        expect.objectContaining({
+          branchId: 'branch-1',
+          displayType: 'SERIAL',
+        }),
+      )
+      expect(mockApi.put).toHaveBeenCalledWith(
+        '/led-display/config/branch-1',
+        expect.objectContaining({
+          branchId: 'branch-1',
+          displayType: 'SERIAL',
+        }),
+      )
     })
 
     fireEvent.click(screen.getAllByTitle('Szerkesztés')[0]!)
     await screen.findByText('LED konfiguráció')
-    fireEvent.change(screen.getByLabelText('Egyéni szöveg'), { target: { value: 'Akciós árfolyam' } })
+    fireEvent.change(screen.getByLabelText('Egyéni szöveg'), {
+      target: { value: 'Akciós árfolyam' },
+    })
     fireEvent.click(screen.getByText('Szöveg küldése'))
 
     await waitFor(() => {
-      expect(mockApi.post).toHaveBeenCalledWith('/led/scrolling-text', { text: 'Akciós árfolyam' }, {
-        params: { branchId: 'branch-1' },
-      })
+      expect(mockApi.post).toHaveBeenCalledWith(
+        '/led/scrolling-text',
+        { text: 'Akciós árfolyam' },
+        {
+          params: { branchId: 'branch-1' },
+        },
+      )
       expect(mockApi.post).toHaveBeenCalledWith('/led-display/text/branch-1', 'Akciós árfolyam', {
         headers: { 'Content-Type': 'text/plain' },
       })

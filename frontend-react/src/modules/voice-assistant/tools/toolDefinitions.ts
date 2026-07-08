@@ -98,7 +98,10 @@ export const TOOLS: OpenAiTool[] = [
       required: ['title', 'body'],
       properties: {
         title: { type: 'string', description: 'Egy soros cim, max 80 karakter.' },
-        body: { type: 'string', description: 'A kollega altal mondott szoveg, kicsit takarosabban.' },
+        body: {
+          type: 'string',
+          description: 'A kollega altal mondott szoveg, kicsit takarosabban.',
+        },
         affected_module: {
           type: 'string',
           description: 'Ha kideritheto, melyik modul. Egyebkent "altalanos".',

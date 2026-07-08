@@ -33,7 +33,11 @@ async function http(url, init = {}) {
   const resp = await fetch(url, init)
   const text = await resp.text()
   let body
-  try { body = JSON.parse(text) } catch { body = text }
+  try {
+    body = JSON.parse(text)
+  } catch {
+    body = text
+  }
   return { ok: resp.ok, status: resp.status, body }
 }
 
@@ -80,23 +84,29 @@ async function generate() {
   const token = await login()
   console.log(`[typegen] JWT token: ${token.length} char`)
   const spec = await fetchSpec(token)
-  console.log(`[typegen] spec OK: ${Object.keys(spec.paths || {}).length} path, ${Object.keys(spec.components?.schemas || {}).length} schema`)
+  console.log(
+    `[typegen] spec OK: ${Object.keys(spec.paths || {}).length} path, ${Object.keys(spec.components?.schemas || {}).length} schema`,
+  )
 
   if (!existsSync(OUTPUT_DIR)) await mkdir(OUTPUT_DIR, { recursive: true })
   const specFile = resolve(OUTPUT_DIR, 'openapi.json')
   await writeFile(specFile, JSON.stringify(spec, null, 2), 'utf-8')
 
   const child = spawn('npx', ['-y', 'openapi-typescript@^7', specFile, '-o', OUTPUT_FILE], {
-    stdio: 'inherit', shell: true, cwd: ROOT,
+    stdio: 'inherit',
+    shell: true,
+    cwd: ROOT,
   })
   await new Promise((done, fail) => {
-    child.on('exit', code => code === 0 ? done() : fail(new Error(`openapi-typescript exit ${code}`)))
+    child.on('exit', (code) =>
+      code === 0 ? done() : fail(new Error(`openapi-typescript exit ${code}`)),
+    )
     child.on('error', fail)
   })
   console.log(`[typegen] OK: ${OUTPUT_FILE}`)
 }
 
-generate().catch(err => {
+generate().catch((err) => {
   console.error('[typegen] HIBA:', err.message)
   process.exit(1)
 })

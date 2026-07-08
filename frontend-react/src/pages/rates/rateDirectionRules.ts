@@ -45,7 +45,11 @@ function checkRow(row: RateDirectionRow): RateDirectionViolation[] {
   // (a hívó számokat ad át, de NaN/Infinity/0 ne adjon hamis vagy hibás riasztást).
   if (!Number.isFinite(row.settlement) || row.settlement <= 0) return violations
 
-  if (Number.isFinite(row.sellRate) && row.sellRate > 0 && row.sellRate < row.settlement - EPSILON) {
+  if (
+    Number.isFinite(row.sellRate) &&
+    row.sellRate > 0 &&
+    row.sellRate < row.settlement - EPSILON
+  ) {
     violations.push({
       currencyCode: row.currencyCode,
       type: 'SELL_BELOW_SETTLEMENT',

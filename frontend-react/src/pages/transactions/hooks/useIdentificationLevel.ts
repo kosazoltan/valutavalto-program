@@ -20,7 +20,7 @@ export function useIdentificationLevel(hufAmount: string) {
     }
 
     setMinimumLevel(minLevel)
-    setSelectedLevel(prev => {
+    setSelectedLevel((prev) => {
       const levels: IdentificationLevel[] = ['SIMPLE', 'SIMPLIFIED', 'FULL']
       const minIdx = levels.indexOf(minLevel)
       const prevIdx = levels.indexOf(prev)
@@ -30,14 +30,17 @@ export function useIdentificationLevel(hufAmount: string) {
     setRequiresSourceVerification(huf >= 3_500_000)
   }, [hufAmount])
 
-  const setLevel = useCallback((level: IdentificationLevel) => {
-    const levels: IdentificationLevel[] = ['SIMPLE', 'SIMPLIFIED', 'FULL']
-    const minIdx = levels.indexOf(minimumLevel)
-    const reqIdx = levels.indexOf(level)
-    if (reqIdx >= minIdx) {
-      setSelectedLevel(level)
-    }
-  }, [minimumLevel])
+  const setLevel = useCallback(
+    (level: IdentificationLevel) => {
+      const levels: IdentificationLevel[] = ['SIMPLE', 'SIMPLIFIED', 'FULL']
+      const minIdx = levels.indexOf(minimumLevel)
+      const reqIdx = levels.indexOf(level)
+      if (reqIdx >= minIdx) {
+        setSelectedLevel(level)
+      }
+    },
+    [minimumLevel],
+  )
 
   return {
     identificationLevel: selectedLevel,

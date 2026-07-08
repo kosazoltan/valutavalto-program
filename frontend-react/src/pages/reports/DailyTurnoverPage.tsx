@@ -158,14 +158,17 @@ export default function DailyTurnoverPage() {
   const fmtHuf = (n: number) =>
     (n ?? 0).toLocaleString('hu-HU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Ft'
   const fmtRate = (r: number | null) =>
-    r == null ? '–' : r.toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+    r == null
+      ? '–'
+      : r.toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
 
   // FR-6: a táblázat MINDEN aktív valutát mutat. A backend csak a forgalmazott valutákat adja vissza
   // (GROUP BY currency), ezért a hiányzó aktív valutákat üres (0/„–") sorként pótoljuk — nem rejtjük.
   const rows = useMemo<CurrencyTurnoverRow[]>(() => {
     if (!data) return []
     const byCode = new Map(data.byCurrency.map((r) => [r.currencyCode, r]))
-    const order = activeCurrencies.length > 0 ? activeCurrencies : data.byCurrency.map((r) => r.currencyCode)
+    const order =
+      activeCurrencies.length > 0 ? activeCurrencies : data.byCurrency.map((r) => r.currencyCode)
     // a backend-ben szereplő, de a katalógusban (még) nem listázott kódokat is megtartjuk a végén
     const extra = data.byCurrency.map((r) => r.currencyCode).filter((c) => !order.includes(c))
     return [...order, ...extra].map(
@@ -185,7 +188,20 @@ export default function DailyTurnoverPage() {
     const cur = Number(yearStr)
     return [cur - 2, cur - 1, cur, cur + 1]
   }, [yearStr])
-  const months = ['Január', 'Február', 'Március', 'Április', 'Május', 'Június', 'Július', 'Augusztus', 'Szeptember', 'Október', 'November', 'December']
+  const months = [
+    'Január',
+    'Február',
+    'Március',
+    'Április',
+    'Május',
+    'Június',
+    'Július',
+    'Augusztus',
+    'Szeptember',
+    'Október',
+    'November',
+    'December',
+  ]
 
   return (
     <div className="space-y-4">
@@ -198,17 +214,31 @@ export default function DailyTurnoverPage() {
       <div className="form-panel flex gap-3 items-end flex-wrap">
         <div>
           <label className="form-label">Év</label>
-          <select className="form-input" aria-label="Év" value={year} onChange={(e) => setYear(Number(e.target.value))}>
+          <select
+            className="form-input"
+            aria-label="Év"
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+          >
             {years.map((y) => (
-              <option key={y} value={y}>{y}</option>
+              <option key={y} value={y}>
+                {y}
+              </option>
             ))}
           </select>
         </div>
         <div>
           <label className="form-label">Hónap</label>
-          <select className="form-input" aria-label="Hónap" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+          <select
+            className="form-input"
+            aria-label="Hónap"
+            value={month}
+            onChange={(e) => setMonth(Number(e.target.value))}
+          >
             {months.map((m, i) => (
-              <option key={m} value={i + 1}>{m}</option>
+              <option key={m} value={i + 1}>
+                {m}
+              </option>
             ))}
           </select>
         </div>
@@ -260,7 +290,9 @@ export default function DailyTurnoverPage() {
             >
               <option value="">— válasszon —</option>
               {territories.map((tr) => (
-                <option key={tr.id} value={tr.id}>{tr.name}</option>
+                <option key={tr.id} value={tr.id}>
+                  {tr.name}
+                </option>
               ))}
             </select>
           </div>
@@ -268,22 +300,35 @@ export default function DailyTurnoverPage() {
         {unitMode === 'branch' && (
           <div>
             <label className="form-label">Pénztár</label>
-            <select className="form-input" aria-label="Pénztár" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+            <select
+              className="form-input"
+              aria-label="Pénztár"
+              value={branchId}
+              onChange={(e) => setBranchId(e.target.value)}
+            >
               <option value="">— válasszon —</option>
               {cashierBranches.map((b) => (
-                <option key={b.id} value={b.id}>{b.code} — {b.name}</option>
+                <option key={b.id} value={b.id}>
+                  {b.code} — {b.name}
+                </option>
               ))}
             </select>
           </div>
         )}
-        <button onClick={() => void loadTurnover()} disabled={loading} className="form-button-primary">
+        <button
+          onClick={() => void loadTurnover()}
+          disabled={loading}
+          className="form-button-primary"
+        >
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           Időszak rendben
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
       )}
 
       {data && (
@@ -294,7 +339,9 @@ export default function DailyTurnoverPage() {
               {t('reports.devizankentiForgalom')} — {data.period}
             </h2>
             {(data?.byCurrency.length ?? 0) === 0 ? (
-              <div className="text-center text-gray-500 py-4">Nincs forgalmi adat a megadott időszakra</div>
+              <div className="text-center text-gray-500 py-4">
+                Nincs forgalmi adat a megadott időszakra
+              </div>
             ) : (
               <table className="data-grid w-full text-sm">
                 <thead>

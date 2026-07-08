@@ -51,17 +51,19 @@ const mocks = vi.hoisted(() => ({
     legalEntitySeat: '1051 Budapest, Cég utca 3.',
     legalEntityTaxNumber: '12345678-2-41',
     legalDeedNumber: 'CÉG-2026/1',
-    beneficialOwners: [{
-      name: 'Tulajdonos Tímea',
-      address: '9021 Győr, Owner utca 4.',
-      birthPlace: 'Győr',
-      birthDate: '1970-05-06',
-      nationality: 'HU',
-      residenceAbroad: 'N',
-      interestNature: 'Tulajdonrész',
-      interestExtent: '75%',
-      isPep: true,
-    }],
+    beneficialOwners: [
+      {
+        name: 'Tulajdonos Tímea',
+        address: '9021 Győr, Owner utca 4.',
+        birthPlace: 'Győr',
+        birthDate: '1970-05-06',
+        nationality: 'HU',
+        residenceAbroad: 'N',
+        interestNature: 'Tulajdonrész',
+        interestExtent: '75%',
+        isPep: true,
+      },
+    ],
   },
 }))
 
@@ -118,15 +120,16 @@ vi.mock('../../stores/authStore', () => ({
 }))
 
 vi.mock('../../components/auth/AmlApproverModal', () => ({
-  default: (props: any) => props.open ? (
-    <button
-      type="button"
-      data-testid="aml-approve"
-      onClick={() => props.onApproved(42, 'Teszt Vezető')}
-    >
-      AML approve
-    </button>
-  ) : null,
+  default: (props: any) =>
+    props.open ? (
+      <button
+        type="button"
+        data-testid="aml-approve"
+        onClick={() => props.onApproved(42, 'Teszt Vezető')}
+      >
+        AML approve
+      </button>
+    ) : null,
   toApprovalCustomer: (c: any) => c,
 }))
 
@@ -141,12 +144,28 @@ vi.mock('../../utils/electronTransactions', () => ({
 vi.mock('./hooks/useTransactionRates', () => ({
   useTransactionRates: () => ({
     currencyRates: [
-      { id: '1', code: 'EUR', name: 'Euró', buyRate: 391.50, sellRate: 398.50, unit: 1 },
-      { id: '2', code: 'USD', name: 'US Dollár', buyRate: 358.20, sellRate: 365.80, unit: 1 },
+      { id: '1', code: 'EUR', name: 'Euró', buyRate: 391.5, sellRate: 398.5, unit: 1 },
+      { id: '2', code: 'USD', name: 'US Dollár', buyRate: 358.2, sellRate: 365.8, unit: 1 },
     ],
     rawExchangeRates: [
-      { currencyId: 1, currencyCode: 'EUR', currencyName: 'Euró', baseBuyRate: 391.50, baseSellRate: 398.50, active: true, officialRate: 395 },
-      { currencyId: 2, currencyCode: 'USD', currencyName: 'US Dollár', baseBuyRate: 358.20, baseSellRate: 365.80, active: true, officialRate: 362 },
+      {
+        currencyId: 1,
+        currencyCode: 'EUR',
+        currencyName: 'Euró',
+        baseBuyRate: 391.5,
+        baseSellRate: 398.5,
+        active: true,
+        officialRate: 395,
+      },
+      {
+        currencyId: 2,
+        currencyCode: 'USD',
+        currencyName: 'US Dollár',
+        baseBuyRate: 358.2,
+        baseSellRate: 365.8,
+        active: true,
+        officialRate: 362,
+      },
     ],
     electronQueueAvailable: mocks.electronQueueAvailable,
   }),
@@ -196,9 +215,17 @@ vi.mock('./components/CustomerPanel', () => ({
       data-huf-total={String(hufTotal)}
     >
       <button type="button" data-testid="level-full" onClick={() => onLevelChange('FULL')} />
-      <button type="button" data-testid="fill-customer" onClick={() => onCustomerReady(mocks.fullAmlCustomer)} />
+      <button
+        type="button"
+        data-testid="fill-customer"
+        onClick={() => onCustomerReady(mocks.fullAmlCustomer)}
+      />
       <button type="button" data-testid="clear-customer" onClick={() => onCustomerReady(null)} />
-      <button type="button" data-testid="aml-block" onClick={() => onAmlResult?.({ blocked: true, warnings: [] })} />
+      <button
+        type="button"
+        data-testid="aml-block"
+        onClick={() => onAmlResult?.({ blocked: true, warnings: [] })}
+      />
       <button
         type="button"
         data-testid="aml-block-submit"
@@ -415,7 +442,7 @@ describe('TransactionPage', () => {
         expect.objectContaining({
           currencyId: 1,
           currencyAmount: 100,
-          customExchangeRate: 391.50,
+          customExchangeRate: 391.5,
           customerName: 'Kiss János',
         }),
       )
@@ -423,19 +450,21 @@ describe('TransactionPage', () => {
 
     const payload = firstBuyPayload()
     expect(payload).not.toHaveProperty('customerId')
-    expect(payload).toEqual(expect.objectContaining({
-      customerIsPep: true,
-      customerPepKind: 'KORMANYFO',
-      sourceOfFunds: 'SAVINGS',
-      sourceOfFundsDocType: 'BANK_STATEMENT',
-      sourceOfFundsDocDate: '2026-01-15',
-      customerOnOwnBehalf: false,
-      customerActorName: 'Meghatalmazott Péter',
-      customerActorDocumentNumber: 'P1234567',
-      isLegalEntityCustomer: true,
-      legalEntityName: 'Teszt Kft.',
-      legalEntityTaxNumber: '12345678-2-41',
-    }))
+    expect(payload).toEqual(
+      expect.objectContaining({
+        customerIsPep: true,
+        customerPepKind: 'KORMANYFO',
+        sourceOfFunds: 'SAVINGS',
+        sourceOfFundsDocType: 'BANK_STATEMENT',
+        sourceOfFundsDocDate: '2026-01-15',
+        customerOnOwnBehalf: false,
+        customerActorName: 'Meghatalmazott Péter',
+        customerActorDocumentNumber: 'P1234567',
+        isLegalEntityCustomer: true,
+        legalEntityName: 'Teszt Kft.',
+        legalEntityTaxNumber: '12345678-2-41',
+      }),
+    )
     expect(payload.beneficialOwners).toEqual([
       expect.objectContaining({
         name: 'Tulajdonos Tímea',
@@ -467,16 +496,18 @@ describe('TransactionPage', () => {
       expect(mocks.saveAndSyncPendingBuySell).toHaveBeenCalled()
     })
     const entry = mocks.saveAndSyncPendingBuySell.mock.calls[0]![0][0]
-    expect(entry).toEqual(expect.objectContaining({
-      customerIsPep: true,
-      customerPepKind: 'KORMANYFO',
-      sourceOfFunds: 'SAVINGS',
-      customerOnOwnBehalf: false,
-      customerActorName: 'Meghatalmazott Péter',
-      customerActorDocumentNumber: 'P1234567',
-      isLegalEntityCustomer: true,
-      legalEntityName: 'Teszt Kft.',
-    }))
+    expect(entry).toEqual(
+      expect.objectContaining({
+        customerIsPep: true,
+        customerPepKind: 'KORMANYFO',
+        sourceOfFunds: 'SAVINGS',
+        customerOnOwnBehalf: false,
+        customerActorName: 'Meghatalmazott Péter',
+        customerActorDocumentNumber: 'P1234567',
+        isLegalEntityCustomer: true,
+        legalEntityName: 'Teszt Kft.',
+      }),
+    )
     expect(typeof entry.beneficialOwnersJson).toBe('string')
     const owners = JSON.parse(entry.beneficialOwnersJson)
     expect(owners[0].name).toBe('Tulajdonos Tímea')
@@ -556,7 +587,7 @@ describe('TransactionPage', () => {
         expect.objectContaining({
           currencyId: 1,
           currencyAmount: 100,
-          customExchangeRate: 398.50,
+          customExchangeRate: 398.5,
           customerIsPep: true,
           customerPepKind: 'KORMANYFO',
           sourceOfFunds: 'SAVINGS',

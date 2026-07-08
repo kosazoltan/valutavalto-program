@@ -77,7 +77,9 @@ describe('ValueBandSettingsPage', () => {
     await user.type(screen.getByLabelText('Jövedelemforrás / fokozott küszöb'), '10000000')
     await user.clear(screen.getByLabelText('Göngyölési ablak napok'))
     await user.type(screen.getByLabelText('Göngyölési ablak napok'), '8')
-    fireEvent.change(screen.getByLabelText('Érvényesség kezdete'), { target: { value: '2099-02-01' } })
+    fireEvent.change(screen.getByLabelText('Érvényesség kezdete'), {
+      target: { value: '2099-02-01' },
+    })
     await user.click(screen.getByRole('button', { name: /Új sáv mentése/i }))
 
     await waitFor(() => {

@@ -14,7 +14,16 @@
 
 /** A 10 fix banki/speciális partner kódja (VAULT_COUNTERPARTY). FK-014 acceptance forrása. */
 export const VAULT_COUNTERPARTY_CODES = [
-  'PRB', 'UPT', 'TRB', 'ERB', 'FRB', 'RB', 'JRB', 'MNB', 'TH', 'FOP1',
+  'PRB',
+  'UPT',
+  'TRB',
+  'ERB',
+  'FRB',
+  'RB',
+  'JRB',
+  'MNB',
+  'TH',
+  'FOP1',
 ] as const
 
 const COUNTERPARTY_CODE_SET = new Set<string>(VAULT_COUNTERPARTY_CODES)

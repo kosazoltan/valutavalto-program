@@ -19,15 +19,14 @@ export default function OrganizationPage() {
     code: '',
     name: '',
     description: '',
-    isActive: true
+    isActive: true,
   })
 
   const filteredOrganizations = useMemo(() => {
     if (!searchTerm) return organizations
     const term = searchTerm.toLowerCase()
-    return organizations.filter(o =>
-      o.code?.toLowerCase().includes(term) ||
-      o.name?.toLowerCase().includes(term)
+    return organizations.filter(
+      (o) => o.code?.toLowerCase().includes(term) || o.name?.toLowerCase().includes(term),
     )
   }, [organizations, searchTerm])
 
@@ -129,7 +128,11 @@ export default function OrganizationPage() {
           <Building />
           {t('organizations.szervezetek')}
         </h1>
-        <button type="button" onClick={handleCreate} className="form-button-primary flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleCreate}
+          className="form-button-primary flex items-center gap-2"
+        >
           <Plus size={16} />
           {t('organizations.ujSzervezet')}
         </button>
@@ -149,7 +152,9 @@ export default function OrganizationPage() {
           </div>
           <div className="rounded border border-emerald-200 bg-emerald-50 p-3">
             <div className="text-xs text-emerald-700">Aktív szervezet</div>
-            <div className="text-2xl font-semibold text-emerald-800">{activeOrganizations.length}</div>
+            <div className="text-2xl font-semibold text-emerald-800">
+              {activeOrganizations.length}
+            </div>
           </div>
           <div className="rounded border border-blue-200 bg-blue-50 p-3">
             <div className="text-xs text-blue-700">Gyökér szervezet</div>
@@ -162,8 +167,17 @@ export default function OrganizationPage() {
         <div>
           <label className="form-label">{t('common.search')}</label>
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-            <input type="text" className="form-input pl-8" placeholder="Kód vagy név..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <Search
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={16}
+            />
+            <input
+              type="text"
+              className="form-input pl-8"
+              placeholder="Kód vagy név..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </div>
       </div>
@@ -172,17 +186,78 @@ export default function OrganizationPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 w-full max-w-2xl">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold">{editingOrg ? 'Szervezet szerkesztése' : 'Új szervezet'}</h2>
-              <button type="button" onClick={() => { setShowForm(false); setEditingOrg(null) }} className="text-gray-500"><X size={20} /></button>
+              <h2 className="text-lg font-bold">
+                {editingOrg ? 'Szervezet szerkesztése' : 'Új szervezet'}
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForm(false)
+                  setEditingOrg(null)
+                }}
+                className="text-gray-500"
+              >
+                <X size={20} />
+              </button>
             </div>
             <div className="space-y-4">
-              <div><label className="form-label">{t('common.codeRequired')}</label><input type="text" className="form-input" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} /></div>
-              <div><label className="form-label">{t('common.nameRequired')}</label><input type="text" className="form-input" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} /></div>
-              <div><label className="form-label">{t('common.description')}</label><textarea className="form-input" rows={3} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} /></div>
-              <div><label className="flex items-center gap-2"><input type="checkbox" className="rounded" checked={formData.isActive ?? true} onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })} /><span>{t('common.active')}</span></label></div>
+              <div>
+                <label className="form-label">{t('common.codeRequired')}</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="form-label">{t('common.nameRequired')}</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="form-label">{t('common.description')}</label>
+                <textarea
+                  className="form-input"
+                  rows={3}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="rounded"
+                    checked={formData.isActive ?? true}
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                  />
+                  <span>{t('common.active')}</span>
+                </label>
+              </div>
               <div className="flex justify-end gap-2 pt-4 border-t">
-                <button type="button" onClick={() => { setShowForm(false); setEditingOrg(null) }} className="form-button">{t('common.cancel')}</button>
-                <button type="button" onClick={handleSave} className="form-button-primary flex items-center gap-2"><Save size={16} />{t('common.save')}</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForm(false)
+                    setEditingOrg(null)
+                  }}
+                  className="form-button"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="form-button-primary flex items-center gap-2"
+                >
+                  <Save size={16} />
+                  {t('common.save')}
+                </button>
               </div>
             </div>
           </div>
@@ -192,18 +267,32 @@ export default function OrganizationPage() {
       <div className="form-panel overflow-x-auto">
         <table className="data-grid w-full">
           <thead>
-            <tr><th>{t('common.code')}</th><th>{t('common.name')}</th><th>{t('organizations.szulo')}</th><th>{t('common.status')}</th><th>{t('common.actions')}</th></tr>
+            <tr>
+              <th>{t('common.code')}</th>
+              <th>{t('common.name')}</th>
+              <th>{t('organizations.szulo')}</th>
+              <th>{t('common.status')}</th>
+              <th>{t('common.actions')}</th>
+            </tr>
           </thead>
           <tbody>
             {filteredOrganizations.length === 0 ? (
-              <tr><td colSpan={5} className="text-center text-gray-500 py-4">{t('common.noResult')}</td></tr>
+              <tr>
+                <td colSpan={5} className="text-center text-gray-500 py-4">
+                  {t('common.noResult')}
+                </td>
+              </tr>
             ) : (
               filteredOrganizations.map((o) => (
                 <tr key={o.id}>
                   <td className="font-mono text-sm">{o.code}</td>
                   <td>{o.name}</td>
                   <td>{o.parentName || '-'}</td>
-                  <td><span className={`badge ${o.isActive ? 'badge-green' : 'badge-red'}`}>{o.isActive ? 'Aktív' : 'Inaktív'}</span></td>
+                  <td>
+                    <span className={`badge ${o.isActive ? 'badge-green' : 'badge-red'}`}>
+                      {o.isActive ? 'Aktív' : 'Inaktív'}
+                    </span>
+                  </td>
                   <td>
                     <div className="flex gap-2">
                       <button
@@ -212,12 +301,28 @@ export default function OrganizationPage() {
                         disabled={detailLoadingId === o.id}
                         className="form-button text-xs disabled:opacity-50"
                       >
-                        <Edit size={12} className={detailLoadingId === o.id ? 'animate-pulse' : ''} />{t('common.edit')}
+                        <Edit
+                          size={12}
+                          className={detailLoadingId === o.id ? 'animate-pulse' : ''}
+                        />
+                        {t('common.edit')}
                       </button>
-                      <button type="button" onClick={() => void handleArchive(o.id)} className="form-button text-xs text-amber-700">
-                        <Archive size={12} />{t('archiving.archivalas')}
+                      <button
+                        type="button"
+                        onClick={() => void handleArchive(o.id)}
+                        className="form-button text-xs text-amber-700"
+                      >
+                        <Archive size={12} />
+                        {t('archiving.archivalas')}
                       </button>
-                      <button type="button" onClick={() => handleDelete(o.id)} className="form-button text-xs text-red-600"><Trash2 size={12} />{t('common.delete')}</button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(o.id)}
+                        className="form-button text-xs text-red-600"
+                      >
+                        <Trash2 size={12} />
+                        {t('common.delete')}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -229,4 +334,3 @@ export default function OrganizationPage() {
     </div>
   )
 }
-

@@ -4,11 +4,7 @@
 export { TOOLS } from './toolDefinitions'
 export type { OpenAiTool, ToolName } from './toolDefinitions'
 
-export {
-  dispatchToolCall,
-  createDefaultToolContext,
-  finalizeReportShortcut,
-} from './toolHandlers'
+export { dispatchToolCall, createDefaultToolContext, finalizeReportShortcut } from './toolHandlers'
 export type {
   ToolContext,
   UserInfo,

@@ -1,5 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
-import { FileSpreadsheet, CheckCircle, XCircle, Clock, RefreshCw, Send, ThumbsUp, AlertTriangle, Calendar } from 'lucide-react'
+import {
+  FileSpreadsheet,
+  CheckCircle,
+  XCircle,
+  Clock,
+  RefreshCw,
+  Send,
+  ThumbsUp,
+  AlertTriangle,
+  Calendar,
+} from 'lucide-react'
 import { dariusApi, DariusDailyReport, DariusMonthlyDto } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
@@ -12,18 +22,28 @@ const STATUS_LABELS: Record<string, { label: string; color: string; icon: typeof
   DRAFT: { label: 'Vázlat', color: 'bg-gray-100 text-gray-700', icon: Clock },
   GENERATED: { label: 'Generálva', color: 'bg-blue-100 text-blue-700', icon: FileSpreadsheet },
   SUBMITTED: { label: 'Beküldve', color: 'bg-yellow-100 text-yellow-700', icon: Send },
-  ACKNOWLEDGED: { label: 'Visszaigazolva', color: 'bg-green-100 text-green-700', icon: CheckCircle },
+  ACKNOWLEDGED: {
+    label: 'Visszaigazolva',
+    color: 'bg-green-100 text-green-700',
+    icon: CheckCircle,
+  },
   FAILED: { label: 'Sikertelen', color: 'bg-red-100 text-red-700', icon: XCircle },
 }
 
-function formatDate(d: string) { return d ? new Date(d).toLocaleDateString('hu-HU') : '—' }
-function formatNum(n?: number) { return n != null ? n.toLocaleString('hu-HU') : '—' }
+function formatDate(d: string) {
+  return d ? new Date(d).toLocaleDateString('hu-HU') : '—'
+}
+function formatNum(n?: number) {
+  return n != null ? n.toLocaleString('hu-HU') : '—'
+}
 
 export default function DariusReportPage() {
   const { t } = useTranslation()
   const [tab, setTab] = useState<Tab>('daily')
   const [dateFrom, setDateFrom] = useState(() => {
-    const d = new Date(); d.setDate(1); return localIsoDate(d)
+    const d = new Date()
+    d.setDate(1)
+    return localIsoDate(d)
   })
   const [dateTo, setDateTo] = useState(() => localIsoDate())
   const [reports, setReports] = useState<DariusDailyReport[]>([])
@@ -38,31 +58,43 @@ export default function DariusReportPage() {
   const [ackSaving, setAckSaving] = useState(false)
 
   const loadReports = useCallback(async () => {
-    setLoading(true); setError('')
+    setLoading(true)
+    setError('')
     try {
       const res = await dariusApi.getRange(dateFrom, dateTo)
       setReports(safeArray<DariusDailyReport>(res?.data))
-    } catch (err) { setError(getErrorMessage(err)) }
-    finally { setLoading(false) }
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
   }, [dateFrom, dateTo])
 
   const loadMonthly = useCallback(async () => {
-    setLoading(true); setError('')
+    setLoading(true)
+    setError('')
     try {
       const d = new Date(dateFrom)
       const res = await dariusApi.getMonthly(d.getFullYear(), d.getMonth() + 1)
       setMonthly(res.data)
-    } catch (err) { setError(getErrorMessage(err)) }
-    finally { setLoading(false) }
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
   }, [dateFrom])
 
   const loadMissing = useCallback(async () => {
-    setLoading(true); setError('')
+    setLoading(true)
+    setError('')
     try {
       const res = await dariusApi.getMissingDates(dateFrom, dateTo)
       setMissingDates(safeArray<string>(res?.data))
-    } catch (err) { setError(getErrorMessage(err)) }
-    finally { setLoading(false) }
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
   }, [dateFrom, dateTo])
 
   useEffect(() => {
@@ -72,25 +104,33 @@ export default function DariusReportPage() {
   }, [tab, loadReports, loadMonthly, loadMissing])
 
   const handleGenerate = async () => {
-    setLoading(true); setError('')
+    setLoading(true)
+    setError('')
     try {
       const res = await dariusApi.generate(generateDate)
       setSelected(res.data)
       setAckReference(res.data.ackReference || '')
       loadReports()
-    } catch (err) { setError(getErrorMessage(err)) }
-    finally { setLoading(false) }
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleLoadByDate = async () => {
-    setLoading(true); setError('')
+    setLoading(true)
+    setError('')
     try {
       const res = await dariusApi.getByDate(generateDate)
       setSelected(res.data)
       setAckReference(res.data.ackReference || '')
       setTab('daily')
-    } catch (err) { setError(getErrorMessage(err)) }
-    finally { setLoading(false) }
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleSelectReport = async (report: DariusDailyReport) => {
@@ -100,22 +140,33 @@ export default function DariusReportPage() {
       const res = await dariusApi.getById(report.id)
       setSelected(res.data)
       setAckReference(res.data.ackReference || '')
-    } catch (err) { setError(getErrorMessage(err)) }
-    finally { setDetailLoadingId(null) }
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setDetailLoadingId(null)
+    }
   }
 
   const handleApprove = async (id: string) => {
     try {
       const res = await dariusApi.approve(id)
-      setSelected(res.data); setAckReference(res.data.ackReference || ''); loadReports()
-    } catch (err) { setError(getErrorMessage(err)) }
+      setSelected(res.data)
+      setAckReference(res.data.ackReference || '')
+      loadReports()
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
   }
 
   const handleSubmit = async (id: string) => {
     try {
       const res = await dariusApi.submit(id)
-      setSelected(res.data); setAckReference(res.data.ackReference || ''); loadReports()
-    } catch (err) { setError(getErrorMessage(err)) }
+      setSelected(res.data)
+      setAckReference(res.data.ackReference || '')
+      loadReports()
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
   }
 
   const handleAcknowledge = async (id: string) => {
@@ -131,43 +182,69 @@ export default function DariusReportPage() {
       setSelected(res.data)
       setAckReference(res.data.ackReference || '')
       loadReports()
-    } catch (err) { setError(getErrorMessage(err)) }
-    finally { setAckSaving(false) }
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setAckSaving(false)
+    }
   }
 
   const handleRetry = async () => {
     try {
       await dariusApi.retryFailed()
       loadReports()
-    } catch (err) { setError(getErrorMessage(err)) }
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
   }
 
   const StatusBadge = ({ status }: { status: string }) => {
     const s = STATUS_LABELS[status] ?? STATUS_LABELS.DRAFT!
     const Icon = s!.icon
-    return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${s!.color}`}><Icon size={12} />{s!.label}</span>
+    return (
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${s!.color}`}
+      >
+        <Icon size={12} />
+        {s!.label}
+      </span>
+    )
   }
 
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <FileSpreadsheet />{t('darius.dariusRaiffeisenJelentesek')}
+          <FileSpreadsheet />
+          {t('darius.dariusRaiffeisenJelentesek')}
         </h1>
         <div className="flex gap-2">
-          <button onClick={handleRetry} className="btn-secondary text-xs flex items-center gap-1" title="Sikertelenek újraküldése">
-            <RefreshCw size={14} />{t('darius.retry')}
+          <button
+            onClick={handleRetry}
+            className="btn-secondary text-xs flex items-center gap-1"
+            title="Sikertelenek újraküldése"
+          >
+            <RefreshCw size={14} />
+            {t('darius.retry')}
           </button>
         </div>
       </div>
 
-      {error && <div className="bg-red-50 border border-red-200 rounded p-2 text-red-700 text-sm flex items-center gap-2"><AlertTriangle size={16} />{error}</div>}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded p-2 text-red-700 text-sm flex items-center gap-2">
+          <AlertTriangle size={16} />
+          {error}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 border-b">
-        {(['daily', 'monthly', 'missing'] as Tab[]).map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px ${tab === t ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+        {(['daily', 'monthly', 'missing'] as Tab[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px ${tab === t ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
             {t === 'daily' ? 'Napi' : t === 'monthly' ? 'Havi összesítő' : 'Hiányzó napok'}
           </button>
         ))}
@@ -177,22 +254,48 @@ export default function DariusReportPage() {
       <div className="flex gap-3 items-end">
         <div>
           <label className="text-xs text-gray-500">{t('darius.datumTol')}</label>
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="input-field text-sm" />
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="input-field text-sm"
+          />
         </div>
         <div>
           <label className="text-xs text-gray-500">{t('darius.datumIg')}</label>
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="input-field text-sm" />
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="input-field text-sm"
+          />
         </div>
         <div className="border-l pl-3 flex gap-2 items-end">
           <div>
             <label className="text-xs text-gray-500">{t('darius.generalasDatuma')}</label>
-            <input type="date" value={generateDate} onChange={e => setGenerateDate(e.target.value)} className="input-field text-sm" />
+            <input
+              type="date"
+              value={generateDate}
+              onChange={(e) => setGenerateDate(e.target.value)}
+              className="input-field text-sm"
+            />
           </div>
-          <button type="button" onClick={handleLoadByDate} disabled={loading} className="btn-secondary text-sm flex items-center gap-1">
-            <Calendar size={14} />Napi lekérdezés
+          <button
+            type="button"
+            onClick={handleLoadByDate}
+            disabled={loading}
+            className="btn-secondary text-sm flex items-center gap-1"
+          >
+            <Calendar size={14} />
+            Napi lekérdezés
           </button>
-          <button onClick={handleGenerate} disabled={loading} className="btn-primary text-sm flex items-center gap-1">
-            <FileSpreadsheet size={14} />{t('darius.generalas')}
+          <button
+            onClick={handleGenerate}
+            disabled={loading}
+            className="btn-primary text-sm flex items-center gap-1"
+          >
+            <FileSpreadsheet size={14} />
+            {t('darius.generalas')}
           </button>
         </div>
       </div>
@@ -204,11 +307,26 @@ export default function DariusReportPage() {
         <div className="grid grid-cols-3 gap-3">
           {/* Report list */}
           <div className="col-span-2 space-y-1">
-            {reports.length === 0 && <div className="text-gray-400 text-sm py-4 text-center">{t('darius.nincsJelentesAzIdoszakban')}</div>}
-            {reports.map(r => (
-              <div key={r.id} data-testid={`darius-report-${r.id}`} role="button" tabIndex={0} onClick={() => handleSelectReport(r)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelectReport(r) } }}
-                className={`p-3 rounded border cursor-pointer hover:bg-gray-50 transition ${selected?.id === r.id ? 'border-blue-400 bg-blue-50' : 'border-gray-200'}`}>
+            {reports.length === 0 && (
+              <div className="text-gray-400 text-sm py-4 text-center">
+                {t('darius.nincsJelentesAzIdoszakban')}
+              </div>
+            )}
+            {reports.map((r) => (
+              <div
+                key={r.id}
+                data-testid={`darius-report-${r.id}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleSelectReport(r)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    handleSelectReport(r)
+                  }
+                }}
+                className={`p-3 rounded border cursor-pointer hover:bg-gray-50 transition ${selected?.id === r.id ? 'border-blue-400 bg-blue-50' : 'border-gray-200'}`}
+              >
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <Calendar size={14} className="text-gray-400" />
@@ -220,11 +338,22 @@ export default function DariusReportPage() {
                   </div>
                 </div>
                 <div className="flex gap-4 mt-1 text-xs text-gray-500">
-                  <span>{t('darius.vetel')}{formatNum(r.totalBuyHuf)} {t('components.ft')}</span>
-                  <span>{t('darius.eladas')}{formatNum(r.totalSellHuf)} {t('components.ft')}</span>
-                  <span>{t('darius.dij')}{formatNum(r.totalHandlingFeeHuf)} {t('components.ft')}</span>
+                  <span>
+                    {t('darius.vetel')}
+                    {formatNum(r.totalBuyHuf)} {t('components.ft')}
+                  </span>
+                  <span>
+                    {t('darius.eladas')}
+                    {formatNum(r.totalSellHuf)} {t('components.ft')}
+                  </span>
+                  <span>
+                    {t('darius.dij')}
+                    {formatNum(r.totalHandlingFeeHuf)} {t('components.ft')}
+                  </span>
                 </div>
-                {detailLoadingId === r.id && <div className="mt-1 text-xs text-blue-600">Részletek betöltése...</div>}
+                {detailLoadingId === r.id && (
+                  <div className="mt-1 text-xs text-blue-600">Részletek betöltése...</div>
+                )}
               </div>
             ))}
           </div>
@@ -233,33 +362,77 @@ export default function DariusReportPage() {
           <div className="space-y-2">
             {selected ? (
               <div className="p-3 border rounded space-y-2">
-                <h3 className="font-medium text-sm">{t('darius.reszletek')}{formatDate(selected.reportDate)}</h3>
+                <h3 className="font-medium text-sm">
+                  {t('darius.reszletek')}
+                  {formatDate(selected.reportDate)}
+                </h3>
                 <div className="text-xs space-y-1">
-                  <div>{t('darius.statusz')}<StatusBadge status={selected.status} /></div>
-                  <div>{t('darius.payloadHash')}<code className="text-[10px] bg-gray-100 px-1 rounded">{selected.payloadHash?.slice(0, 16)}...</code></div>
-                  {selected.approvedBy && <div>{t('camera.jovahagyta')} {selected.approvedBy} ({formatDate(selected.approvedAt || '')})</div>}
-                  {selected.submittedBy && <div>{t('darius.bekuldte')} {selected.submittedBy}</div>}
-                  {selected.ackReference && <div>{t('darius.ackRef')} {selected.ackReference}</div>}
-                  {selected.errorMessage && <div className="text-red-600">{t('foertektar.hiba')} {selected.errorMessage}</div>}
-                  {selected.retryCount > 0 && <div>{t('darius.retry')} {selected.retryCount}/{selected.maxRetries}</div>}
+                  <div>
+                    {t('darius.statusz')}
+                    <StatusBadge status={selected.status} />
+                  </div>
+                  <div>
+                    {t('darius.payloadHash')}
+                    <code className="text-[10px] bg-gray-100 px-1 rounded">
+                      {selected.payloadHash?.slice(0, 16)}...
+                    </code>
+                  </div>
+                  {selected.approvedBy && (
+                    <div>
+                      {t('camera.jovahagyta')} {selected.approvedBy} (
+                      {formatDate(selected.approvedAt || '')})
+                    </div>
+                  )}
+                  {selected.submittedBy && (
+                    <div>
+                      {t('darius.bekuldte')} {selected.submittedBy}
+                    </div>
+                  )}
+                  {selected.ackReference && (
+                    <div>
+                      {t('darius.ackRef')} {selected.ackReference}
+                    </div>
+                  )}
+                  {selected.errorMessage && (
+                    <div className="text-red-600">
+                      {t('foertektar.hiba')} {selected.errorMessage}
+                    </div>
+                  )}
+                  {selected.retryCount > 0 && (
+                    <div>
+                      {t('darius.retry')} {selected.retryCount}/{selected.maxRetries}
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}
                 <div className="flex gap-2 pt-2 border-t">
                   {selected.status === 'GENERATED' && !selected.approvedBy && (
-                    <button onClick={() => handleApprove(selected.id)} className="btn-secondary text-xs flex items-center gap-1">
-                      <ThumbsUp size={12} />{t('common.approve')}
+                    <button
+                      onClick={() => handleApprove(selected.id)}
+                      className="btn-secondary text-xs flex items-center gap-1"
+                    >
+                      <ThumbsUp size={12} />
+                      {t('common.approve')}
                     </button>
                   )}
-                  {(selected.status === 'GENERATED' || selected.status === 'FAILED') && selected.approvedBy && (
-                    <button onClick={() => handleSubmit(selected.id)} className="btn-primary text-xs flex items-center gap-1">
-                      <Send size={12} />{t('darius.bekuldes')}
-                    </button>
-                  )}
+                  {(selected.status === 'GENERATED' || selected.status === 'FAILED') &&
+                    selected.approvedBy && (
+                      <button
+                        onClick={() => handleSubmit(selected.id)}
+                        className="btn-primary text-xs flex items-center gap-1"
+                      >
+                        <Send size={12} />
+                        {t('darius.bekuldes')}
+                      </button>
+                    )}
                 </div>
                 {selected.status === 'SUBMITTED' && (
                   <div className="space-y-2 border-t pt-2">
-                    <label className="block text-xs font-medium text-gray-600" htmlFor="darius-ack-reference">
+                    <label
+                      className="block text-xs font-medium text-gray-600"
+                      htmlFor="darius-ack-reference"
+                    >
                       Visszaigazolási referencia
                     </label>
                     <input
@@ -276,7 +449,8 @@ export default function DariusReportPage() {
                       disabled={ackSaving}
                       className="btn-primary flex w-full items-center justify-center gap-1 text-xs"
                     >
-                      <CheckCircle size={12} />{ackSaving ? 'Visszaigazolás mentése...' : 'Visszaigazolás rögzítése'}
+                      <CheckCircle size={12} />
+                      {ackSaving ? 'Visszaigazolás mentése...' : 'Visszaigazolás rögzítése'}
                     </button>
                   </div>
                 )}
@@ -298,7 +472,7 @@ export default function DariusReportPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {selected.lines.map(l => (
+                          {selected.lines.map((l) => (
                             <tr key={l.id} className="border-t">
                               <td className="p-1">{l.branchCode}</td>
                               <td className="p-1 font-medium">{l.currencyCode}</td>
@@ -315,7 +489,9 @@ export default function DariusReportPage() {
                 )}
               </div>
             ) : (
-              <div className="text-gray-400 text-sm text-center py-8">{t('darius.valasszonEgyJelentest')}</div>
+              <div className="text-gray-400 text-sm text-center py-8">
+                {t('darius.valasszonEgyJelentest')}
+              </div>
             )}
           </div>
         </div>
@@ -344,15 +520,21 @@ export default function DariusReportPage() {
           <div className="grid grid-cols-3 gap-3">
             <div className="p-3 border rounded">
               <div className="text-xs text-gray-500">{t('cashdesk.vetelOsszesen')}</div>
-              <div className="font-bold">{formatNum(monthly.totalBuyHuf)} {t('components.ft')}</div>
+              <div className="font-bold">
+                {formatNum(monthly.totalBuyHuf)} {t('components.ft')}
+              </div>
             </div>
             <div className="p-3 border rounded">
               <div className="text-xs text-gray-500">{t('cashdesk.eladasOsszesen')}</div>
-              <div className="font-bold">{formatNum(monthly.totalSellHuf)} {t('components.ft')}</div>
+              <div className="font-bold">
+                {formatNum(monthly.totalSellHuf)} {t('components.ft')}
+              </div>
             </div>
             <div className="p-3 border rounded">
               <div className="text-xs text-gray-500">{t('darius.kezelesiDijOsszesen')}</div>
-              <div className="font-bold">{formatNum(monthly.totalHandlingFeeHuf)} {t('components.ft')}</div>
+              <div className="font-bold">
+                {formatNum(monthly.totalHandlingFeeHuf)} {t('components.ft')}
+              </div>
             </div>
           </div>
         </div>
@@ -361,14 +543,25 @@ export default function DariusReportPage() {
       {tab === 'missing' && !loading && (
         <div>
           {missingDates.length === 0 ? (
-            <div className="text-green-600 text-sm flex items-center gap-2 py-4"><CheckCircle size={16} />{t('darius.nincsHianyzoNapAzIdoszakban')}</div>
+            <div className="text-green-600 text-sm flex items-center gap-2 py-4">
+              <CheckCircle size={16} />
+              {t('darius.nincsHianyzoNapAzIdoszakban')}
+            </div>
           ) : (
             <div className="space-y-1">
-              <div className="text-sm text-red-600 font-medium">{missingDates.length} {t('darius.hianyzoNap')}</div>
+              <div className="text-sm text-red-600 font-medium">
+                {missingDates.length} {t('darius.hianyzoNap')}
+              </div>
               <div className="flex flex-wrap gap-2">
-                {missingDates.map(d => (
-                  <button key={d} onClick={() => { setGenerateDate(d); handleGenerate() }}
-                    className="px-2 py-1 text-xs bg-red-50 border border-red-200 rounded hover:bg-red-100 transition">
+                {missingDates.map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => {
+                      setGenerateDate(d)
+                      handleGenerate()
+                    }}
+                    className="px-2 py-1 text-xs bg-red-50 border border-red-200 rounded hover:bg-red-100 transition"
+                  >
                     {formatDate(d)}
                   </button>
                 ))}

@@ -75,13 +75,23 @@ vi.mock('../../utils/localQueue', () => ({
 vi.mock('../../components/auth/SupervisorPinModal', () => ({ default: () => null }))
 
 vi.mock('../../components/NumberInput', () => ({
-  NumberInput: ({ value, onChange, id, placeholder }: {
+  NumberInput: ({
+    value,
+    onChange,
+    id,
+    placeholder,
+  }: {
     value: string
     onChange: (v: string) => void
     id?: string
     placeholder?: string
   }) => (
-    <input id={id} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
+    <input
+      id={id}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
   ),
 }))
 
@@ -90,8 +100,24 @@ vi.mock('../../utils/electron', () => ({ isElectron: () => true }))
 vi.mock('../../components/ui/toaster', () => ({ toast: mocks.toast }))
 
 const BRANCHES = [
-  { id: 'b-own', code: 'BR076', name: 'Pécsi értéktár', isVault: true, branchTypeCode: 'VAULT', region: 'DD', vaultTerritoryId: 1 },
-  { id: 'b-target', code: 'BR001', name: 'Budapesti értéktár', isVault: true, branchTypeCode: 'VAULT', region: 'DD', vaultTerritoryId: 1 },
+  {
+    id: 'b-own',
+    code: 'BR076',
+    name: 'Pécsi értéktár',
+    isVault: true,
+    branchTypeCode: 'VAULT',
+    region: 'DD',
+    vaultTerritoryId: 1,
+  },
+  {
+    id: 'b-target',
+    code: 'BR001',
+    name: 'Budapesti értéktár',
+    isVault: true,
+    branchTypeCode: 'VAULT',
+    region: 'DD',
+    vaultTerritoryId: 1,
+  },
 ]
 
 const CURRENCIES = [
@@ -112,7 +138,9 @@ async function createEurTransfer() {
   fireEvent.change(screen.getByLabelText('Cél iroda'), { target: { value: 'b-target' } })
   fireEvent.change(screen.getByLabelText('Valuta 1'), { target: { value: '1' } })
   fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '100' } })
-  fireEvent.change(screen.getByPlaceholderText('Szállító neve...'), { target: { value: 'Teszt Szállító Kft' } })
+  fireEvent.change(screen.getByPlaceholderText('Szállító neve...'), {
+    target: { value: 'Teszt Szállító Kft' },
+  })
   fireEvent.change(screen.getByPlaceholderText('Plombaszám...'), { target: { value: 'PL-12345' } })
   fireEvent.click(screen.getByText('Átadás létrehozása'))
   await screen.findByText(/Átadás létrehozva/)
@@ -146,7 +174,14 @@ describe('TransferPage — FK05 FR-5: forintosítás elszámoló árfolyammal', 
 
   it('resolveTransferRate_uses_official_rate: a cache official_rate (J) megy a forintosításba, nem a buy_rate', async () => {
     mocks.getElectronCachedRates.mockResolvedValue([
-      { currency_code: 'EUR', buy_rate: 380, sell_rate: 400, unit: 1, updated_at: '', official_rate: 353.8 },
+      {
+        currency_code: 'EUR',
+        buy_rate: 380,
+        sell_rate: 400,
+        unit: 1,
+        updated_at: '',
+        official_rate: 353.8,
+      },
     ])
 
     await createEurTransfer()
@@ -158,7 +193,14 @@ describe('TransferPage — FK05 FR-5: forintosítás elszámoló árfolyammal', 
 
   it('resolveTransferRate_fallback_to_buy_rate_when_official_null: régi cache-sor (official null) → vételi', async () => {
     mocks.getElectronCachedRates.mockResolvedValue([
-      { currency_code: 'EUR', buy_rate: 380, sell_rate: 400, unit: 1, updated_at: '', official_rate: null },
+      {
+        currency_code: 'EUR',
+        buy_rate: 380,
+        sell_rate: 400,
+        unit: 1,
+        updated_at: '',
+        official_rate: null,
+      },
     ])
 
     await createEurTransfer()

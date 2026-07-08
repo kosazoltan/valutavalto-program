@@ -38,10 +38,12 @@ async function clickVisibleButtons(page, route) {
     const visible = await h.isVisible().catch(() => false);
     if (!visible) continue;
 
-    const disabled = await h.evaluate((el) => {
-      const e = el;
-      return e.hasAttribute('disabled') || e.getAttribute('aria-disabled') === 'true';
-    }).catch(() => true);
+    const disabled = await h
+      .evaluate((el) => {
+        const e = el;
+        return e.hasAttribute('disabled') || e.getAttribute('aria-disabled') === 'true';
+      })
+      .catch(() => true);
     if (disabled) continue;
 
     const label = safeText(await h.innerText().catch(() => '')) || `button#${i}`;
@@ -65,7 +67,10 @@ async function ensureLoggedIn(page) {
     if (enabled) {
       await loginBtn.click().catch(() => {});
     } else {
-      await inputs.nth(2).press('Enter').catch(() => {});
+      await inputs
+        .nth(2)
+        .press('Enter')
+        .catch(() => {});
     }
     await page.waitForTimeout(1600);
     if (!page.url().includes('/login')) return;
@@ -94,9 +99,7 @@ await page.waitForTimeout(700);
 await ensureLoggedIn(page);
 
 const links = await page.$$eval('a[href]', (as) =>
-  as
-    .map((a) => a.getAttribute('href') || '')
-    .filter((href) => href.startsWith('/'))
+  as.map((a) => a.getAttribute('href') || '').filter((href) => href.startsWith('/')),
 );
 const uniqueRoutes = Array.from(new Set(links))
   .filter((r) => !r.startsWith('/login'))

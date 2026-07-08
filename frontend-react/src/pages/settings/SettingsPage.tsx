@@ -1,5 +1,22 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Settings, Building, Users, Printer, Database, Bell, Shield, Palette, Sliders, Loader2, FileText, AlertTriangle, Landmark, KeyRound, Languages, Mail } from 'lucide-react'
+import {
+  Settings,
+  Building,
+  Users,
+  Printer,
+  Database,
+  Bell,
+  Shield,
+  Palette,
+  Sliders,
+  Loader2,
+  FileText,
+  AlertTriangle,
+  Landmark,
+  KeyRound,
+  Languages,
+  Mail,
+} from 'lucide-react'
 import SystemParameterPage from './SystemParameterPage'
 import PermissionPage from './PermissionPage'
 import RolePage from './RolePage'
@@ -25,7 +42,8 @@ import { useTranslation } from 'react-i18next'
  * helyett — igy ha az `OwnCompany` interface-be uj editable mezo kerul, a
  * compiler hibat dob, ha NEM frissitjuk a whitelist-et (drift-prevention).
  */
-type EditableOwnCompanyKeys = keyof Pick<OwnCompany,
+type EditableOwnCompanyKeys = keyof Pick<
+  OwnCompany,
   | 'name'
   | 'taxNumber'
   | 'registrationNumber'
@@ -36,7 +54,7 @@ type EditableOwnCompanyKeys = keyof Pick<OwnCompany,
   | 'bankAccountNumber'
   | 'iban'
   | 'swift'
->;
+>
 
 /**
  * v2.3.34 (B11): Cégadatok tab most az aktív OwnCompany rekordbol toltodik
@@ -71,7 +89,7 @@ export default function SettingsPage() {
   }, [activeTab, loadCompany])
 
   const handleCompanyChange = (field: EditableOwnCompanyKeys, value: string) => {
-    setCompanyData((prev) => prev ? { ...prev, [field]: value } : prev)
+    setCompanyData((prev) => (prev ? { ...prev, [field]: value } : prev))
   }
 
   const handleCompanySave = async () => {
@@ -157,7 +175,9 @@ export default function SettingsPage() {
               )}
               {!companyLoading && !companyData && (
                 <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                  {t('settings.nincsAktivCegadatRekordAFlywayV172MigracioEbcZrtSeedUtanAutomatikusanBetoltodik')}
+                  {t(
+                    'settings.nincsAktivCegadatRekordAFlywayV172MigracioEbcZrtSeedUtanAutomatikusanBetoltodik',
+                  )}
                 </div>
               )}
               {!companyLoading && companyData && (
@@ -241,21 +261,13 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeTab === 'system-parameters' && (
-            <SystemParameterPage />
-          )}
+          {activeTab === 'system-parameters' && <SystemParameterPage />}
 
-          {activeTab === 'permissions' && (
-            <PermissionPage />
-          )}
+          {activeTab === 'permissions' && <PermissionPage />}
 
-          {activeTab === 'roles' && (
-            <RolePage />
-          )}
+          {activeTab === 'roles' && <RolePage />}
 
-          {activeTab === 'users' && (
-            <UserPage />
-          )}
+          {activeTab === 'users' && <UserPage />}
 
           {activeTab === 'printing' && (
             <div className="space-y-4">
@@ -297,29 +309,17 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeTab === 'receipt-texts' && (
-            <ReceiptTextSettingsPage />
-          )}
+          {activeTab === 'receipt-texts' && <ReceiptTextSettingsPage />}
 
-          {activeTab === 'translations' && (
-            <TranslationSettingsPage />
-          )}
+          {activeTab === 'translations' && <TranslationSettingsPage />}
 
-          {activeTab === 'cashier-band' && (
-            <CashierBandSettingsPage />
-          )}
+          {activeTab === 'cashier-band' && <CashierBandSettingsPage />}
 
-          {activeTab === 'value-bands' && (
-            <ValueBandSettingsPage />
-          )}
+          {activeTab === 'value-bands' && <ValueBandSettingsPage />}
 
-          {activeTab === 'income-proof-recipients' && (
-            <IncomeProofRecipientsPanel />
-          )}
+          {activeTab === 'income-proof-recipients' && <IncomeProofRecipientsPanel />}
 
-          {activeTab === 'bank-integration' && (
-            <BankIntegrationStatusPage />
-          )}
+          {activeTab === 'bank-integration' && <BankIntegrationStatusPage />}
 
           {activeTab === 'mfa' && (
             <div className="space-y-4">

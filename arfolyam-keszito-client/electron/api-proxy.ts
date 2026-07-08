@@ -38,18 +38,18 @@ function isPrivateOrLoopbackHost(hostname: string): boolean {
   const a = parts[0] ?? -1
   const b = parts[1] ?? -1
   // 169.254/16 (link-local + cloud-metadata) SZÁNDÉKOSAN KIMARAD (F-005).
-  return a === 10
-    || (a === 172 && b >= 16 && b <= 31)
-    || (a === 192 && b === 168)
-    || a === 127
+  return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || a === 127
 }
 
 function isAllowedUrl(raw: string): boolean {
   try {
     const parsed = new URL(raw)
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false
-    return ALLOWED_HOSTS.some((host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`))
-      || isPrivateOrLoopbackHost(parsed.hostname)
+    return (
+      ALLOWED_HOSTS.some(
+        (host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`),
+      ) || isPrivateOrLoopbackHost(parsed.hostname)
+    )
   } catch {
     return false
   }
@@ -113,7 +113,10 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
 
     copySafeRequestHeaders(request, headers)
     if (hasBody && upperMethod !== 'GET' && upperMethod !== 'HEAD') {
-      request.setHeader('Content-Type', String(headers?.['Content-Type'] ?? headers?.['content-type'] ?? 'application/json'))
+      request.setHeader(
+        'Content-Type',
+        String(headers?.['Content-Type'] ?? headers?.['content-type'] ?? 'application/json'),
+      )
     }
     if (!headers?.Accept && !headers?.accept) {
       request.setHeader('Accept', 'application/json')
@@ -125,7 +128,11 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
     const timeoutHandle = setTimeout(() => {
       if (settled) return
       settled = true
-      try { request.abort() } catch { /* ignore */ }
+      try {
+        request.abort()
+      } catch {
+        /* ignore */
+      }
       reject(new Error(`[api-proxy] Időtúllépés: ${timeout}ms ${method} ${url}`))
     }, timeout)
 
@@ -142,7 +149,11 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
         if (responseBytes > MAX_RESPONSE_BYTES) {
           settled = true
           clearTimeout(timeoutHandle)
-          try { request.abort() } catch { /* ignore */ }
+          try {
+            request.abort()
+          } catch {
+            /* ignore */
+          }
           reject(new Error(`[api-proxy] Túl nagy szerverválasz (>${MAX_RESPONSE_BYTES} byte)`))
           return
         }
@@ -158,11 +169,12 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
         const fullBuffer = Buffer.concat(chunks)
         const headersObject = Object.fromEntries(responseHeaders)
         const contentType = (headersObject['content-type'] ?? '').toLowerCase()
-        const isBinary = contentType !== ''
-          && !contentType.includes('json')
-          && !contentType.includes('text')
-          && !contentType.includes('xml')
-          && !contentType.includes('html')
+        const isBinary =
+          contentType !== '' &&
+          !contentType.includes('json') &&
+          !contentType.includes('text') &&
+          !contentType.includes('xml') &&
+          !contentType.includes('html')
 
         resolve({
           ok: status >= 200 && status < 300,

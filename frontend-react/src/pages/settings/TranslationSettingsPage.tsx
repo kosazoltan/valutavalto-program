@@ -18,9 +18,10 @@ export default function TranslationSettingsPage() {
   const [error, setError] = useState<string | null>(null)
 
   const rows = useMemo(
-    () => Object.entries(translations)
-      .sort(([left], [right]) => left.localeCompare(right, 'hu'))
-      .slice(0, 40),
+    () =>
+      Object.entries(translations)
+        .sort(([left], [right]) => left.localeCompare(right, 'hu'))
+        .slice(0, 40),
     [translations],
   )
 
@@ -134,7 +135,9 @@ export default function TranslationSettingsPage() {
           <h3 className="mb-3 text-sm font-semibold text-gray-800">Lekérdezés</h3>
           <div className="grid gap-2 sm:grid-cols-[120px_minmax(0,1fr)_auto_auto] sm:items-end">
             <div>
-              <label className="form-label" htmlFor="translation-language">Nyelv</label>
+              <label className="form-label" htmlFor="translation-language">
+                Nyelv
+              </label>
               <input
                 id="translation-language"
                 className="form-input w-full"
@@ -143,7 +146,9 @@ export default function TranslationSettingsPage() {
               />
             </div>
             <div>
-              <label className="form-label" htmlFor="translation-module">Modul</label>
+              <label className="form-label" htmlFor="translation-module">
+                Modul
+              </label>
               <input
                 id="translation-module"
                 className="form-input w-full"
@@ -174,7 +179,9 @@ export default function TranslationSettingsPage() {
           <div className="mt-3 grid gap-2 md:hidden">
             {rows.map(([key, value]) => (
               <div key={key} className="rounded border border-gray-200 bg-gray-50 p-3">
-                <div className="break-words font-mono text-xs font-semibold text-gray-800">{key}</div>
+                <div className="break-words font-mono text-xs font-semibold text-gray-800">
+                  {key}
+                </div>
                 <div className="mt-1 break-words text-sm text-gray-700">{value}</div>
               </div>
             ))}
@@ -184,8 +191,12 @@ export default function TranslationSettingsPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Kulcs</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Érték</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    Kulcs
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    Érték
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -210,7 +221,9 @@ export default function TranslationSettingsPage() {
           <h3 className="mb-3 text-sm font-semibold text-gray-800">Egyedi kulcs mentése</h3>
           <div className="space-y-2">
             <div>
-              <label className="form-label" htmlFor="translation-key">Kulcs</label>
+              <label className="form-label" htmlFor="translation-key">
+                Kulcs
+              </label>
               <input
                 id="translation-key"
                 className="form-input w-full"
@@ -219,7 +232,9 @@ export default function TranslationSettingsPage() {
               />
             </div>
             <div>
-              <label className="form-label" htmlFor="translation-value">Fordítás</label>
+              <label className="form-label" htmlFor="translation-value">
+                Fordítás
+              </label>
               <textarea
                 id="translation-value"
                 className="form-input min-h-24 w-full"
@@ -259,11 +274,7 @@ export default function TranslationSettingsPage() {
         </button>
       </section>
 
-      {error && (
-        <div className="form-error break-words">
-          {error}
-        </div>
-      )}
+      {error && <div className="form-error break-words">{error}</div>}
     </div>
   )
 }

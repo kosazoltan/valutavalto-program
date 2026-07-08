@@ -7,9 +7,21 @@
     "role": "KITÖLTENDŐ: pl. ops / tesztelő kolléga"
   },
   "scenarios": [
-    { "id": "VETEL", "name": "Valuta vétel teljes flow bizonylattal", "result": "KITÖLTENDŐ: PASS vagy FAIL" },
-    { "id": "ELADAS", "name": "Valuta eladás teljes flow bizonylattal", "result": "KITÖLTENDŐ: PASS vagy FAIL" },
-    { "id": "SZTORNO", "name": "Sztornó jóváhagyással + készlet-visszafordítás", "result": "KITÖLTENDŐ: PASS vagy FAIL" },
+    {
+      "id": "VETEL",
+      "name": "Valuta vétel teljes flow bizonylattal",
+      "result": "KITÖLTENDŐ: PASS vagy FAIL"
+    },
+    {
+      "id": "ELADAS",
+      "name": "Valuta eladás teljes flow bizonylattal",
+      "result": "KITÖLTENDŐ: PASS vagy FAIL"
+    },
+    {
+      "id": "SZTORNO",
+      "name": "Sztornó jóváhagyással + készlet-visszafordítás",
+      "result": "KITÖLTENDŐ: PASS vagy FAIL"
+    },
     { "id": "NAPZARAS", "name": "Napzárás címletezéssel", "result": "KITÖLTENDŐ: PASS vagy FAIL" },
     { "id": "HAVIZARAS", "name": "Havi zárás", "result": "KITÖLTENDŐ: PASS vagy FAIL" }
   ],

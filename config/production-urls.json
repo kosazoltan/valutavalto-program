@@ -19,10 +19,7 @@
   "fallback_host_primary": "primary.excvaluta.com",
   "fallback_host_scaleway": "scaleway.excvaluta.com",
 
-  "cors_allowed_origins_production": [
-    "https://excvaluta.com",
-    "https://www.excvaluta.com"
-  ],
+  "cors_allowed_origins_production": ["https://excvaluta.com", "https://www.excvaluta.com"],
 
   "update_policy": "Ha uj URL-t vezetunk be (pl. CDN edge location vagy alternativ domain), frissitsd EZT A FAJLT, majd propagald a fenti komponensekbe. Az egyes komponensek lokális @Value / env variable default-jai continue-to-work, de sanity-check-re ellenorizd mindenhol."
 }

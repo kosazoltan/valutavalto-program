@@ -8,11 +8,7 @@ import { FORMULA_STORAGE_KEY } from './mainSheetFormula'
  * mentett képletek némán rossz valutára kerülhettek volna. A legacy kulcsokat a
  * row-cache (a felhasználó által utoljára látott sorrend) alapján migráljuk.
  */
-const cachedRows = [
-  { currency: 'EUR' },
-  { currency: 'USD' },
-  { currency: 'GBP' },
-]
+const cachedRows = [{ currency: 'EUR' }, { currency: 'USD' }, { currency: 'GBP' }]
 
 describe('FK04 — migrateLegacyFormulaKeys', () => {
   it('legacy rowIdx-kulcsot a cache-sorrend szerinti valutakódra fordít', () => {
@@ -58,7 +54,9 @@ describe('FK04 — loadFormulasFromStorage (migrációval)', () => {
     localStorage.setItem(FORMULA_STORAGE_KEY, JSON.stringify({ '1.settlement': 'C*2' }))
     const loaded = loadFormulasFromStorage(cachedRows)
     expect(loaded).toEqual({ 'USD.settlement': 'C*2' })
-    expect(JSON.parse(localStorage.getItem(FORMULA_STORAGE_KEY)!)).toEqual({ 'USD.settlement': 'C*2' })
+    expect(JSON.parse(localStorage.getItem(FORMULA_STORAGE_KEY)!)).toEqual({
+      'USD.settlement': 'C*2',
+    })
   })
 
   it('már migrált (valutakód-kulcsú) map változatlanul jön vissza', () => {

@@ -35,7 +35,13 @@ export default function HandlingFeeConfigPage() {
   // a program ezzel a konfiggal számol), de szerkeszteni csak a vezetői körök tudnak.
   // A kör a szerver-oldali PUT-joggal azonos (HandlingFeeConfigController class-szintű
   // @PreAuthorize: MANAGER/ADMIN/UGYVEZETO/FOERTEKTAR/IRODAVEZETO/BELSO_ELLENOR) — ez UX-gate.
-  const canEdit = useAuthStore(s => s.hasCanonicalRole)(['ugyvezeto', 'foertektar', 'irodavezeto', 'belso_ellenor', 'admin'])
+  const canEdit = useAuthStore((s) => s.hasCanonicalRole)([
+    'ugyvezeto',
+    'foertektar',
+    'irodavezeto',
+    'belso_ellenor',
+    'admin',
+  ])
   const [config, setConfig] = useState<HandlingFeeConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -44,7 +50,8 @@ export default function HandlingFeeConfigPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [activeDiscounts, setActiveDiscounts] = useState<FeeDiscount[]>([])
   const [discountProbeAmount, setDiscountProbeAmount] = useState('500000')
-  const [discountProbeResult, setDiscountProbeResult] = useState<DiscountThresholdResolveResult | null>(null)
+  const [discountProbeResult, setDiscountProbeResult] =
+    useState<DiscountThresholdResolveResult | null>(null)
   const [discountLoading, setDiscountLoading] = useState(false)
   const [feeProbeAmount, setFeeProbeAmount] = useState('500000')
   const [feeProbeTransactionId, setFeeProbeTransactionId] = useState('')
@@ -53,7 +60,9 @@ export default function HandlingFeeConfigPage() {
   const [feeDiscountId, setFeeDiscountId] = useState('')
   const [feeDiscountPercent, setFeeDiscountPercent] = useState('10')
   const [feeDiscountReason, setFeeDiscountReason] = useState('')
-  const [feeDiscountResult, setFeeDiscountResult] = useState<HandlingFeeTransactionResult | null>(null)
+  const [feeDiscountResult, setFeeDiscountResult] = useState<HandlingFeeTransactionResult | null>(
+    null,
+  )
   const [feeDiscountLoading, setFeeDiscountLoading] = useState(false)
 
   const loadConfig = useCallback(async () => {
@@ -74,7 +83,11 @@ export default function HandlingFeeConfigPage() {
         setActiveDiscounts(discountResult.value)
       } else {
         setActiveDiscounts([])
-        logger.error('HandlingFeeConfigPage', 'Automatikus díjküszöbök betöltési hiba', discountResult.reason)
+        logger.error(
+          'HandlingFeeConfigPage',
+          'Automatikus díjküszöbök betöltési hiba',
+          discountResult.reason,
+        )
       }
     } catch (err) {
       logger.error('HandlingFeeConfigPage', 'Konfiguráció betöltési hiba', err)
@@ -84,7 +97,9 @@ export default function HandlingFeeConfigPage() {
     }
   }, [])
 
-  useEffect(() => { void loadConfig() }, [loadConfig])
+  useEffect(() => {
+    void loadConfig()
+  }, [loadConfig])
 
   const handleSave = async () => {
     if (!config) return
@@ -153,7 +168,10 @@ export default function HandlingFeeConfigPage() {
       setError('A kezelési díj próbaösszeg legyen pozitív szám')
       return
     }
-    if (transactionIdText && (!Number.isInteger(transactionId) || transactionId == null || transactionId <= 0)) {
+    if (
+      transactionIdText &&
+      (!Number.isInteger(transactionId) || transactionId == null || transactionId <= 0)
+    ) {
       setFeeProbeResult(null)
       setError('A tranzakció azonosító legyen pozitív egész szám')
       return
@@ -211,26 +229,30 @@ export default function HandlingFeeConfigPage() {
 
   const addBracket = () => {
     if (!config) return
-    const lastOrder = config.brackets.length > 0
-      ? Math.max(...config.brackets.map(b => b.bracketOrder))
-      : 0
-    const lastUpperLimit = config.brackets.length > 0
-      ? (config.brackets[config.brackets.length - 1]?.upperLimit ?? 0)
-      : 0
+    const lastOrder =
+      config.brackets.length > 0 ? Math.max(...config.brackets.map((b) => b.bracketOrder)) : 0
+    const lastUpperLimit =
+      config.brackets.length > 0
+        ? (config.brackets[config.brackets.length - 1]?.upperLimit ?? 0)
+        : 0
     setConfig({
       ...config,
-      brackets: [...config.brackets, {
-        bracketOrder: lastOrder + 1,
-        upperLimit: lastUpperLimit + 50000,
-        feeAmount: 0,
-        active: true,
-      }],
+      brackets: [
+        ...config.brackets,
+        {
+          bracketOrder: lastOrder + 1,
+          upperLimit: lastUpperLimit + 50000,
+          feeAmount: 0,
+          active: true,
+        },
+      ],
     })
   }
 
   const removeBracket = (index: number) => {
     if (!config) return
-    const newBrackets = config.brackets.filter((_, i) => i !== index)
+    const newBrackets = config.brackets
+      .filter((_, i) => i !== index)
       .map((b, i) => ({ ...b, bracketOrder: i + 1 }))
     setConfig({ ...config, brackets: newBrackets })
   }
@@ -244,7 +266,8 @@ export default function HandlingFeeConfigPage() {
 
   if (loading) return <div className="p-6 text-center text-gray-500">Betöltés...</div>
 
-  if (!config) return <div className="p-6 text-center text-red-500">{error || 'Nincs konfiguráció'}</div>
+  if (!config)
+    return <div className="p-6 text-center text-red-500">{error || 'Nincs konfiguráció'}</div>
 
   return (
     <div className="space-y-6 p-4">
@@ -272,19 +295,32 @@ export default function HandlingFeeConfigPage() {
         </div>
       )}
 
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
-      {success && <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">{success}</div>}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+          {success}
+        </div>
+      )}
 
       {/* Fee type selector */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border p-4">
         <h2 className="text-lg font-semibold mb-3">Díjszámítás módja</h2>
         <div className="grid gap-3 sm:grid-cols-3">
-          {([
-            { value: 'NONE', label: 'Nincs kezelési díj' },
-            { value: 'BRACKET', label: 'Sávos díjszámítás' },
-            { value: 'PER_MILLE', label: 'Ezrelékes díjszámítás' },
-          ] as const).map(opt => (
-            <label key={opt.value} className={`flex min-h-11 items-center gap-2 rounded border px-3 py-2 ${canEdit ? 'cursor-pointer' : 'cursor-default'} ${config.feeType === opt.value ? 'border-blue-300 bg-blue-50 text-blue-800' : 'border-gray-200'}`}>
+          {(
+            [
+              { value: 'NONE', label: 'Nincs kezelési díj' },
+              { value: 'BRACKET', label: 'Sávos díjszámítás' },
+              { value: 'PER_MILLE', label: 'Ezrelékes díjszámítás' },
+            ] as const
+          ).map((opt) => (
+            <label
+              key={opt.value}
+              className={`flex min-h-11 items-center gap-2 rounded border px-3 py-2 ${canEdit ? 'cursor-pointer' : 'cursor-default'} ${config.feeType === opt.value ? 'border-blue-300 bg-blue-50 text-blue-800' : 'border-gray-200'}`}
+            >
               <input
                 type="radio"
                 name="feeType"
@@ -294,7 +330,9 @@ export default function HandlingFeeConfigPage() {
                 onChange={() => setConfig({ ...config, feeType: opt.value })}
                 className="accent-blue-600"
               />
-              <span className={config.feeType === opt.value ? 'font-semibold' : ''}>{opt.label}</span>
+              <span className={config.feeType === opt.value ? 'font-semibold' : ''}>
+                {opt.label}
+              </span>
             </label>
           ))}
         </div>
@@ -311,7 +349,9 @@ export default function HandlingFeeConfigPage() {
             </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] lg:min-w-[28rem]">
-            <label className="sr-only" htmlFor="discount-threshold-probe">Próbaösszeg forintban</label>
+            <label className="sr-only" htmlFor="discount-threshold-probe">
+              Próbaösszeg forintban
+            </label>
             <input
               id="discount-threshold-probe"
               type="number"
@@ -343,7 +383,9 @@ export default function HandlingFeeConfigPage() {
             {activeDiscounts.map((discount) => (
               <div key={discount.id} className="rounded border border-gray-200 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-semibold text-gray-900 dark:text-gray-50">{discount.code}</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-50">
+                    {discount.code}
+                  </span>
                   <span className="rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
                     aktív
                   </span>
@@ -352,7 +394,9 @@ export default function HandlingFeeConfigPage() {
                 <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                   <div>
                     <div className="text-xs text-gray-500">Határ</div>
-                    <div className="font-medium">{formatHuf(discount.minTransactionAmount ?? 0)}</div>
+                    <div className="font-medium">
+                      {formatHuf(discount.minTransactionAmount ?? 0)}
+                    </div>
                   </div>
                   <div>
                     <div className="text-xs text-gray-500">Érték</div>
@@ -365,11 +409,17 @@ export default function HandlingFeeConfigPage() {
         )}
 
         {discountProbeResult && (
-          <div className={`mt-4 rounded border px-3 py-3 text-sm ${discountProbeResult.hasDiscount ? 'border-green-200 bg-green-50 text-green-800' : 'border-gray-200 bg-gray-50 text-gray-700'}`}>
+          <div
+            className={`mt-4 rounded border px-3 py-3 text-sm ${discountProbeResult.hasDiscount ? 'border-green-200 bg-green-50 text-green-800' : 'border-gray-200 bg-gray-50 text-gray-700'}`}
+          >
             {discountProbeResult.hasDiscount ? (
               <div>
-                <div className="font-semibold">{discountProbeResult.code} - {discountProbeResult.name}</div>
-                <div className="mt-1">Automatikus hatás: {formatResolveValue(discountProbeResult)}</div>
+                <div className="font-semibold">
+                  {discountProbeResult.code} - {discountProbeResult.name}
+                </div>
+                <div className="mt-1">
+                  Automatikus hatás: {formatResolveValue(discountProbeResult)}
+                </div>
               </div>
             ) : (
               'Nincs automatikus kedvezmény vagy felár erre az összegre.'
@@ -387,7 +437,9 @@ export default function HandlingFeeConfigPage() {
             </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:min-w-[36rem]">
-            <label className="sr-only" htmlFor="handling-fee-probe-amount">Kalkulációs összeg forintban</label>
+            <label className="sr-only" htmlFor="handling-fee-probe-amount">
+              Kalkulációs összeg forintban
+            </label>
             <input
               id="handling-fee-probe-amount"
               type="number"
@@ -399,7 +451,9 @@ export default function HandlingFeeConfigPage() {
               className="min-h-11 w-full rounded border px-3 py-2"
               placeholder="Összeg Ft"
             />
-            <label className="sr-only" htmlFor="handling-fee-probe-transaction">Tranzakció azonosító opcionális</label>
+            <label className="sr-only" htmlFor="handling-fee-probe-transaction">
+              Tranzakció azonosító opcionális
+            </label>
             <input
               id="handling-fee-probe-transaction"
               type="number"
@@ -422,7 +476,10 @@ export default function HandlingFeeConfigPage() {
         </div>
 
         {feeProbeResult && (
-          <div className="grid gap-3 rounded border border-blue-200 bg-blue-50 px-3 py-3 text-sm text-blue-900 sm:grid-cols-3" data-testid="handling-fee-backend-result">
+          <div
+            className="grid gap-3 rounded border border-blue-200 bg-blue-50 px-3 py-3 text-sm text-blue-900 sm:grid-cols-3"
+            data-testid="handling-fee-backend-result"
+          >
             <div>
               <div className="text-xs text-blue-700">Bruttó díj</div>
               <div className="font-semibold">{formatHuf(Number(feeProbeResult.amount ?? 0))}</div>
@@ -444,11 +501,14 @@ export default function HandlingFeeConfigPage() {
           <div>
             <h2 className="text-lg font-semibold">Backend kezelési díj kedvezmény</h2>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-              Meglévő kezelési díj tranzakció kedvezményezése a /handling-fees/{'{id}'}/discount végponton.
+              Meglévő kezelési díj tranzakció kedvezményezése a /handling-fees/{'{id}'}/discount
+              végponton.
             </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,.7fr)] lg:min-w-[36rem]">
-            <label className="sr-only" htmlFor="handling-fee-discount-id">Kezelési díj azonosító</label>
+            <label className="sr-only" htmlFor="handling-fee-discount-id">
+              Kezelési díj azonosító
+            </label>
             <input
               id="handling-fee-discount-id"
               value={feeDiscountId}
@@ -456,7 +516,9 @@ export default function HandlingFeeConfigPage() {
               className="min-h-11 w-full rounded border px-3 py-2"
               placeholder="Kezelési díj UUID"
             />
-            <label className="sr-only" htmlFor="handling-fee-discount-percent">Kedvezmény százalék</label>
+            <label className="sr-only" htmlFor="handling-fee-discount-percent">
+              Kedvezmény százalék
+            </label>
             <input
               id="handling-fee-discount-percent"
               type="number"
@@ -469,7 +531,9 @@ export default function HandlingFeeConfigPage() {
               className="min-h-11 w-full rounded border px-3 py-2"
               placeholder="Kedvezmény %"
             />
-            <label className="sr-only" htmlFor="handling-fee-discount-reason">Kedvezmény indoklás</label>
+            <label className="sr-only" htmlFor="handling-fee-discount-reason">
+              Kedvezmény indoklás
+            </label>
             <input
               id="handling-fee-discount-reason"
               value={feeDiscountReason}
@@ -483,20 +547,28 @@ export default function HandlingFeeConfigPage() {
               disabled={feeDiscountLoading}
               className="flex min-h-11 items-center justify-center gap-2 rounded bg-emerald-700 px-4 py-2 text-white hover:bg-emerald-800 disabled:opacity-50 sm:col-span-2"
             >
-              <BadgePercent size={16} /> {feeDiscountLoading ? 'Alkalmazás...' : 'Kedvezmény alkalmazása'}
+              <BadgePercent size={16} />{' '}
+              {feeDiscountLoading ? 'Alkalmazás...' : 'Kedvezmény alkalmazása'}
             </button>
           </div>
         </div>
 
         {feeDiscountResult && (
-          <div className="grid gap-3 rounded border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900 sm:grid-cols-3" data-testid="handling-fee-discount-result">
+          <div
+            className="grid gap-3 rounded border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900 sm:grid-cols-3"
+            data-testid="handling-fee-discount-result"
+          >
             <div>
               <div className="text-xs text-emerald-700">Bruttó díj</div>
-              <div className="font-semibold">{formatHuf(Number(feeDiscountResult.amount ?? 0))}</div>
+              <div className="font-semibold">
+                {formatHuf(Number(feeDiscountResult.amount ?? 0))}
+              </div>
             </div>
             <div>
               <div className="text-xs text-emerald-700">Nettó díj</div>
-              <div className="font-semibold">{formatHuf(Number(feeDiscountResult.netFee ?? 0))}</div>
+              <div className="font-semibold">
+                {formatHuf(Number(feeDiscountResult.netFee ?? 0))}
+              </div>
             </div>
             <div>
               <div className="text-xs text-emerald-700">Kedvezmény</div>
@@ -519,7 +591,9 @@ export default function HandlingFeeConfigPage() {
                 min="0"
                 value={config.perMilleRate}
                 disabled={!canEdit}
-                onChange={(e) => setConfig({ ...config, perMilleRate: parseFloat(e.target.value) || 0 })}
+                onChange={(e) =>
+                  setConfig({ ...config, perMilleRate: parseFloat(e.target.value) || 0 })
+                }
                 className="w-full border rounded px-3 py-2 disabled:bg-gray-50 disabled:text-gray-600"
               />
               <p className="text-xs text-gray-500 mt-1">Pl. 5 = a HUF összeg 5 ezreléke</p>
@@ -532,7 +606,12 @@ export default function HandlingFeeConfigPage() {
                 min="0"
                 value={config.perMilleMaxAmount ?? ''}
                 disabled={!canEdit}
-                onChange={(e) => setConfig({ ...config, perMilleMaxAmount: e.target.value ? parseFloat(e.target.value) : null })}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    perMilleMaxAmount: e.target.value ? parseFloat(e.target.value) : null,
+                  })
+                }
                 className="w-full border rounded px-3 py-2 disabled:bg-gray-50 disabled:text-gray-600"
                 placeholder="Korlátlan"
               />
@@ -540,7 +619,9 @@ export default function HandlingFeeConfigPage() {
             </div>
           </div>
           <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/30 rounded text-sm">
-            Példa: 500.000 Ft tranzakció × {config.perMilleRate}‰ = {Math.round(500000 * config.perMilleRate / 1000).toLocaleString('hu-HU')} Ft kezelési díj
+            Példa: 500.000 Ft tranzakció × {config.perMilleRate}‰ ={' '}
+            {Math.round((500000 * config.perMilleRate) / 1000).toLocaleString('hu-HU')} Ft kezelési
+            díj
             {config.perMilleMaxAmount && config.perMilleMaxAmount > 0 && (
               <> (max: {config.perMilleMaxAmount.toLocaleString('hu-HU')} Ft)</>
             )}
@@ -575,7 +656,9 @@ export default function HandlingFeeConfigPage() {
           </div>
 
           {config.brackets.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">Nincs még díjsáv. Kattints az "Új sáv" gombra!</p>
+            <p className="text-gray-500 text-center py-4">
+              Nincs még díjsáv. Kattints az "Új sáv" gombra!
+            </p>
           ) : (
             <>
               <div className="hidden overflow-x-auto md:block">
@@ -591,11 +674,17 @@ export default function HandlingFeeConfigPage() {
                   </thead>
                   <tbody>
                     {config.brackets.map((bracket, index) => {
-                      const lowerLimit = index === 0 ? 0 : (config.brackets[index - 1]?.upperLimit ?? 0) + 1
+                      const lowerLimit =
+                        index === 0 ? 0 : (config.brackets[index - 1]?.upperLimit ?? 0) + 1
                       return (
-                        <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <tr
+                          key={index}
+                          className="border-b hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                        >
                           <td className="py-2 px-2 text-gray-500">{bracket.bracketOrder}</td>
-                          <td className="py-2 px-2 text-gray-500">{lowerLimit.toLocaleString('hu-HU')}</td>
+                          <td className="py-2 px-2 text-gray-500">
+                            {lowerLimit.toLocaleString('hu-HU')}
+                          </td>
                           <td className="py-2 px-2">
                             <input
                               type="number"
@@ -603,7 +692,9 @@ export default function HandlingFeeConfigPage() {
                               min={lowerLimit}
                               value={bracket.upperLimit}
                               disabled={!canEdit}
-                              onChange={(e) => updateBracket(index, 'upperLimit', parseInt(e.target.value) || 0)}
+                              onChange={(e) =>
+                                updateBracket(index, 'upperLimit', parseInt(e.target.value) || 0)
+                              }
                               className="w-full border rounded px-2 py-1 disabled:bg-gray-50 disabled:text-gray-600"
                             />
                           </td>
@@ -614,7 +705,9 @@ export default function HandlingFeeConfigPage() {
                               min="0"
                               value={bracket.feeAmount}
                               disabled={!canEdit}
-                              onChange={(e) => updateBracket(index, 'feeAmount', parseInt(e.target.value) || 0)}
+                              onChange={(e) =>
+                                updateBracket(index, 'feeAmount', parseInt(e.target.value) || 0)
+                              }
                               className="w-full border rounded px-2 py-1 disabled:bg-gray-50 disabled:text-gray-600"
                             />
                           </td>
@@ -638,7 +731,8 @@ export default function HandlingFeeConfigPage() {
               </div>
               <div className="grid gap-3 md:hidden">
                 {config.brackets.map((bracket, index) => {
-                  const lowerLimit = index === 0 ? 0 : (config.brackets[index - 1]?.upperLimit ?? 0) + 1
+                  const lowerLimit =
+                    index === 0 ? 0 : (config.brackets[index - 1]?.upperLimit ?? 0) + 1
                   return (
                     <div key={index} className="rounded border border-gray-200 p-3">
                       <div className="mb-3 flex items-center justify-between">
@@ -666,7 +760,9 @@ export default function HandlingFeeConfigPage() {
                           min={lowerLimit}
                           value={bracket.upperLimit}
                           disabled={!canEdit}
-                          onChange={(e) => updateBracket(index, 'upperLimit', parseInt(e.target.value) || 0)}
+                          onChange={(e) =>
+                            updateBracket(index, 'upperLimit', parseInt(e.target.value) || 0)
+                          }
                           className="min-h-11 w-full rounded border px-3 py-2 disabled:bg-gray-50 disabled:text-gray-600"
                         />
                       </label>
@@ -678,7 +774,9 @@ export default function HandlingFeeConfigPage() {
                           min="0"
                           value={bracket.feeAmount}
                           disabled={!canEdit}
-                          onChange={(e) => updateBracket(index, 'feeAmount', parseInt(e.target.value) || 0)}
+                          onChange={(e) =>
+                            updateBracket(index, 'feeAmount', parseInt(e.target.value) || 0)
+                          }
                           className="min-h-11 w-full rounded border px-3 py-2 disabled:bg-gray-50 disabled:text-gray-600"
                         />
                       </label>

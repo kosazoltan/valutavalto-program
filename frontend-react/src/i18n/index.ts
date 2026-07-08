@@ -19,25 +19,23 @@
  * NEM blocking: a v2.3.X-es i18n batch-fix-ek (5 batch / ~50 string) MARADNAK,
  * de az új komponensek mostantól useTranslation()-t kell használjanak.
  */
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
-import hu from './hu.json';
+import i18n from 'i18next'
+import { initReactI18next } from 'react-i18next'
+import hu from './hu.json'
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources: {
-      hu: { translation: hu },
-    },
-    lng: 'hu',
-    fallbackLng: 'hu',
-    interpolation: {
-      escapeValue: false, // React mar XSS-protect-tel rendert
-    },
-    // Production-ban NEM ad warning ha hiányzó key — fallback a key-szöveg
-    // (NEM tör ke a UI-t)
-    returnNull: false,
-    saveMissing: false,
-  });
+i18n.use(initReactI18next).init({
+  resources: {
+    hu: { translation: hu },
+  },
+  lng: 'hu',
+  fallbackLng: 'hu',
+  interpolation: {
+    escapeValue: false, // React mar XSS-protect-tel rendert
+  },
+  // Production-ban NEM ad warning ha hiányzó key — fallback a key-szöveg
+  // (NEM tör ke a UI-t)
+  returnNull: false,
+  saveMissing: false,
+})
 
-export default i18n;
+export default i18n

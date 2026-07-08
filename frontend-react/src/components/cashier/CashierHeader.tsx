@@ -71,18 +71,18 @@ export function CashierHeader(props: CashierHeaderProps = {}) {
           <Shield className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-            {theme.name}
-          </h1>
+          <h1 className="text-lg font-bold text-gray-900 dark:text-white">{theme.name}</h1>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            {t('components.penztar')}{branchCode} | {branchName}
+            {t('components.penztar')}
+            {branchCode} | {branchName}
           </p>
         </div>
       </div>
 
       <div className="text-right">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          {t('components.penztaros')}{workerName} {t('components.id')} {workerId})
+          {t('components.penztaros')}
+          {workerName} {t('components.id')} {workerId})
         </p>
         <p className="text-lg font-mono font-semibold text-gray-900 dark:text-white">
           {dateStr} | {timeStr}

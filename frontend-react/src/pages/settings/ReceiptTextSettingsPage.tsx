@@ -60,7 +60,8 @@ const RECEIPT_FIELDS: ReceiptTextField[] = [
     label: 'ÁFA-mentességi szöveg',
     description: 'Valutaváltás ÁFA-mentességére vonatkozó törvényi hivatkozás',
     multiline: true,
-    placeholder: 'Szj - 67.13.10.0\nAdómentes  a szolgáltatás nyújtása a 2007\nM.Á.A. evi CXVII tv. 86 § e) alapján\nmentes az adó alól',
+    placeholder:
+      'Szj - 67.13.10.0\nAdómentes  a szolgáltatás nyújtása a 2007\nM.Á.A. evi CXVII tv. 86 § e) alapján\nmentes az adó alól',
   },
 ]
 
@@ -97,7 +98,7 @@ export default function ReceiptTextSettingsPage() {
   }, [loadParams])
 
   const handleChange = (key: string, value: string) => {
-    setEditValues(prev => {
+    setEditValues((prev) => {
       const next = new Map(prev)
       next.set(key, value)
       return next
@@ -189,35 +190,34 @@ export default function ReceiptTextSettingsPage() {
       </div>
 
       <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-        Az itt módosított szövegek a következő bizonylat nyomtatásnál lépnek érvénybe.
-        A 300.000 Ft feletti tranzakcióknál megjelenő bankpartner és marketing szövegek,
-        valamint az ÁFA-mentességi és lábléc szövegek szerkeszthetők.
+        Az itt módosított szövegek a következő bizonylat nyomtatásnál lépnek érvénybe. A 300.000 Ft
+        feletti tranzakcióknál megjelenő bankpartner és marketing szövegek, valamint az
+        ÁFA-mentességi és lábléc szövegek szerkeszthetők.
       </div>
 
       <div className="space-y-4">
-        {RECEIPT_FIELDS.map(field => {
+        {RECEIPT_FIELDS.map((field) => {
           const param = params.get(field.key)
           const isChanged = param && editValues.get(field.key) !== param.parameterValue
 
           return (
-            <div key={field.key} className={`p-3 rounded border ${isChanged ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
+            <div
+              key={field.key}
+              className={`p-3 rounded border ${isChanged ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}
+            >
               <div className="flex items-start justify-between mb-1">
                 <label className="form-label font-medium text-gray-800">{field.label}</label>
-                {isChanged && (
-                  <span className="text-xs text-amber-600 font-medium">Módosítva</span>
-                )}
+                {isChanged && <span className="text-xs text-amber-600 font-medium">Módosítva</span>}
               </div>
               <p className="text-xs text-gray-500 mb-2">{field.description}</p>
               {!param ? (
-                <div className="text-sm text-red-600">
-                  Hiányzó rendszerparaméter: {field.key}
-                </div>
+                <div className="text-sm text-red-600">Hiányzó rendszerparaméter: {field.key}</div>
               ) : field.multiline ? (
                 <textarea
                   className="form-input w-full font-mono text-sm"
                   rows={4}
                   value={displayValue(field.key)}
-                  onChange={e => handleChange(field.key, e.target.value)}
+                  onChange={(e) => handleChange(field.key, e.target.value)}
                   placeholder={field.placeholder}
                 />
               ) : (
@@ -225,7 +225,7 @@ export default function ReceiptTextSettingsPage() {
                   type="text"
                   className="form-input w-full"
                   value={displayValue(field.key)}
-                  onChange={e => handleChange(field.key, e.target.value)}
+                  onChange={(e) => handleChange(field.key, e.target.value)}
                   placeholder={field.placeholder}
                 />
               )}

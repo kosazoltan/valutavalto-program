@@ -30,4 +30,4 @@ module.exports = {
     exclude: { path: '(^|/)(dist|build|coverage|\\.next)(/|$)' },
     tsPreCompilationDeps: true,
   },
-};
+}

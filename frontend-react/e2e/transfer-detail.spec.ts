@@ -68,7 +68,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -91,35 +91,67 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/transfers/outgoing') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     if (path.endsWith('/transfers/incoming') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     if (path.endsWith('/transfers/pending') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([pendingTransfer]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([pendingTransfer]),
+      })
     }
 
     if (path.endsWith('/transfers/pending/count') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(1) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(1),
+      })
     }
 
     if (path.endsWith('/transfers/7') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(detailedTransfer) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(detailedTransfer),
+      })
     }
 
     if (path.endsWith('/transfers/number/AT-SEARCH-007') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(numberLookupTransfer) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(numberLookupTransfer),
+      })
     }
 
     if (path.endsWith('/currencies') && method === 'GET') {
@@ -135,8 +167,20 @@ async function mockApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { id: 'branch-own', code: 'SZEGED', name: 'Szeged Értéktár', isVault: true, branchTypeCode: 'VAULT' },
-          { id: 'branch-source', code: 'BR001', name: 'Budapesti értéktár', isVault: true, branchTypeCode: 'VAULT' },
+          {
+            id: 'branch-own',
+            code: 'SZEGED',
+            name: 'Szeged Értéktár',
+            isVault: true,
+            branchTypeCode: 'VAULT',
+          },
+          {
+            id: 'branch-source',
+            code: 'BR001',
+            name: 'Budapesti értéktár',
+            isVault: true,
+            branchTypeCode: 'VAULT',
+          },
         ]),
       })
     }
@@ -155,7 +199,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('átadás átvétel mobil nézetben backend detail endpointból frissíti a modalt', async ({ page }) => {
+test('átadás átvétel mobil nézetben backend detail endpointból frissíti a modalt', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -163,8 +209,9 @@ test('átadás átvétel mobil nézetben backend detail endpointból frissíti a
   await page.goto('/transfers', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('AT-LIST-007')).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/transfers/7'
+  const detailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/transfers/7',
   )
   await page.getByRole('button', { name: 'Átvétel', exact: true }).click()
   await detailRequest
@@ -173,13 +220,15 @@ test('átadás átvétel mobil nézetben backend detail endpointból frissíti a
   await expect(page.getByText('Backend Anna')).toBeVisible()
   await expect(page.getByLabel('Átvett összeg')).toHaveValue('125,5')
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
 
-test('átadólap szám keresés mobil nézetben backend number endpointból nyit bizonylatot', async ({ page }) => {
+test('átadólap szám keresés mobil nézetben backend number endpointból nyit bizonylatot', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -188,8 +237,10 @@ test('átadólap szám keresés mobil nézetben backend number endpointból nyit
   await expect(page.getByText('AT-LIST-007')).toBeVisible()
 
   await page.getByLabel('Átadólap keresése').fill('AT-SEARCH-007')
-  const numberRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/transfers/number/AT-SEARCH-007'
+  const numberRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/transfers/number/AT-SEARCH-007',
   )
   await page.getByRole('button', { name: 'Keresés' }).click()
   await numberRequest
@@ -197,8 +248,8 @@ test('átadólap szám keresés mobil nézetben backend number endpointból nyit
   await expect(page.getByText('AT-NUMBER-008')).toBeVisible()
   await expect(page.getByText('Átvételi bizonylat')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

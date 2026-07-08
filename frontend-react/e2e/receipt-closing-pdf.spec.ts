@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,15 +52,27 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/receipts') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     if (path.endsWith('/receipts/closing/closing-1/pdf') && method === 'GET') {
@@ -94,16 +106,15 @@ test('bizonylatok mobil nézetben a zárási PDF backend endpointot hívja', asy
   await expect(page.getByLabel('Zárás azonosító')).toBeVisible()
 
   await page.getByLabel('Zárás azonosító').fill('closing-1')
-  const pdfRequest = page.waitForRequest(request => {
+  const pdfRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'GET'
-      && url.pathname === '/api/v1/receipts/closing/closing-1/pdf'
+    return request.method() === 'GET' && url.pathname === '/api/v1/receipts/closing/closing-1/pdf'
   })
   await page.getByTestId('receipt-closing-pdf-download').click()
   await pdfRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

@@ -63,8 +63,9 @@ const mockAuthorization = {
 }
 
 function renderComponent(representativeId = 'rep-1') {
-  mocks.useAuthStore.mockImplementation((selector: (state: { worker: typeof mockWorker }) => unknown) =>
-    selector({ worker: mockWorker }),
+  mocks.useAuthStore.mockImplementation(
+    (selector: (state: { worker: typeof mockWorker }) => unknown) =>
+      selector({ worker: mockWorker }),
   )
   return render(<AuthorizationSection representativeId={representativeId} />)
 }

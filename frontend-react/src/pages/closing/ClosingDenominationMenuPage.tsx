@@ -19,7 +19,9 @@ export default function ClosingDenominationMenuPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-bold text-secondary-900">{t('closingDenominationMenu.title')}</h1>
+        <h1 className="text-lg font-bold text-secondary-900">
+          {t('closingDenominationMenu.title')}
+        </h1>
         <p className="text-sm text-secondary-500 mt-1">{t('closingDenominationMenu.subtitle')}</p>
       </div>
 
@@ -58,7 +60,13 @@ export default function ClosingDenominationMenuPage() {
   )
 }
 
-function DenominationMenuCard({ item, onClick }: { item: ClosingDenominationMenuItem; onClick: () => void }) {
+function DenominationMenuCard({
+  item,
+  onClick,
+}: {
+  item: ClosingDenominationMenuItem
+  onClick: () => void
+}) {
   return (
     <button
       onClick={onClick}

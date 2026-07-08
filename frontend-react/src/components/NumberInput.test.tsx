@@ -12,11 +12,7 @@ describe('NumberInput', () => {
 
   it('input elem renderelésének ellenőrzése', () => {
     const { container } = render(
-      <NumberInput
-        value=""
-        onChange={vi.fn()}
-        data-testid="number-input"
-      />
+      <NumberInput value="" onChange={vi.fn()} data-testid="number-input" />,
     )
     const input = container.querySelector('input')
     expect(input).toBeInTheDocument()
@@ -24,13 +20,7 @@ describe('NumberInput', () => {
 
   it('szöveg beírás helyesen frissíti az értéket', async () => {
     const onChange = vi.fn()
-    render(
-      <NumberInput
-        value=""
-        onChange={onChange}
-        placeholder="Test"
-      />
-    )
+    render(<NumberInput value="" onChange={onChange} placeholder="Test" />)
 
     const input = screen.getByPlaceholderText('Test') as HTMLInputElement
     const user = userEvent.setup()
@@ -43,13 +33,7 @@ describe('NumberInput', () => {
 
   it('tizedesjegyek engedélyezése esetén vesszőt elfogad', async () => {
     const onChange = vi.fn()
-    render(
-      <NumberInput
-        value=""
-        onChange={onChange}
-        allowDecimals={true}
-      />
-    )
+    render(<NumberInput value="" onChange={onChange} allowDecimals={true} />)
 
     const input = document.querySelector('input') as HTMLInputElement
     const user = userEvent.setup()
@@ -61,13 +45,7 @@ describe('NumberInput', () => {
 
   it('tizedesjegyek tiltásakor vesszőt nem fogad', async () => {
     const onChange = vi.fn()
-    render(
-      <NumberInput
-        value=""
-        onChange={onChange}
-        allowDecimals={false}
-      />
-    )
+    render(<NumberInput value="" onChange={onChange} allowDecimals={false} />)
 
     const input = document.querySelector('input') as HTMLInputElement
     const user = userEvent.setup()
@@ -79,13 +57,7 @@ describe('NumberInput', () => {
 
   it('negatív számok tiltásakor mínusz jelet nem fogad', async () => {
     const onChange = vi.fn()
-    render(
-      <NumberInput
-        value=""
-        onChange={onChange}
-        allowNegative={false}
-      />
-    )
+    render(<NumberInput value="" onChange={onChange} allowNegative={false} />)
 
     const input = document.querySelector('input') as HTMLInputElement
     const user = userEvent.setup()
@@ -96,13 +68,7 @@ describe('NumberInput', () => {
 
   it('negatív számok engedélyezésekor mínusz jelet fogad', async () => {
     const onChange = vi.fn()
-    render(
-      <NumberInput
-        value=""
-        onChange={onChange}
-        allowNegative={true}
-      />
-    )
+    render(<NumberInput value="" onChange={onChange} allowNegative={true} />)
 
     const input = document.querySelector('input') as HTMLInputElement
     const user = userEvent.setup()
@@ -113,13 +79,7 @@ describe('NumberInput', () => {
 
   it('e, E, + karaktereket nem fogad', async () => {
     const onChange = vi.fn()
-    render(
-      <NumberInput
-        value=""
-        onChange={onChange}
-        allowDecimals={true}
-      />
-    )
+    render(<NumberInput value="" onChange={onChange} allowDecimals={true} />)
 
     const input = document.querySelector('input') as HTMLInputElement
     const user = userEvent.setup()
@@ -131,13 +91,7 @@ describe('NumberInput', () => {
 
   it('üres érték engedélyezett (felhasználó törölhet)', async () => {
     const onChange = vi.fn()
-    render(
-      <NumberInput
-        value="123"
-        onChange={onChange}
-        placeholder="Test"
-      />
-    )
+    render(<NumberInput value="123" onChange={onChange} placeholder="Test" />)
 
     const input = screen.getByPlaceholderText('Test') as HTMLInputElement
     const user = userEvent.setup()
@@ -149,13 +103,7 @@ describe('NumberInput', () => {
 
   it('min érték ellenőrzés', async () => {
     const onChange = vi.fn()
-    render(
-      <NumberInput
-        value=""
-        onChange={onChange}
-        min={10}
-      />
-    )
+    render(<NumberInput value="" onChange={onChange} min={10} />)
 
     const input = document.querySelector('input') as HTMLInputElement
     const user = userEvent.setup()
@@ -167,13 +115,7 @@ describe('NumberInput', () => {
 
   it('max érték ellenőrzés', async () => {
     const onChange = vi.fn()
-    render(
-      <NumberInput
-        value=""
-        onChange={onChange}
-        max={100}
-      />
-    )
+    render(<NumberInput value="" onChange={onChange} max={100} />)
 
     const input = document.querySelector('input') as HTMLInputElement
     const user = userEvent.setup()
@@ -184,12 +126,7 @@ describe('NumberInput', () => {
   })
 
   it('Hungarian comma format megjelenítés', () => {
-    const { container } = render(
-      <NumberInput
-        value={123.45}
-        onChange={vi.fn()}
-      />
-    )
+    const { container } = render(<NumberInput value={123.45} onChange={vi.fn()} />)
 
     const input = container.querySelector('input') as HTMLInputElement
     expect(input.value).toBe('123,45')
@@ -197,13 +134,7 @@ describe('NumberInput', () => {
 
   it('onKeyDown callback meghívódik', async () => {
     const onKeyDown = vi.fn()
-    render(
-      <NumberInput
-        value=""
-        onChange={vi.fn()}
-        onKeyDown={onKeyDown}
-      />
-    )
+    render(<NumberInput value="" onChange={vi.fn()} onKeyDown={onKeyDown} />)
 
     const input = document.querySelector('input') as HTMLInputElement
     const user = userEvent.setup()
@@ -213,25 +144,13 @@ describe('NumberInput', () => {
   })
 
   it('placeholder megjelenítés', () => {
-    render(
-      <NumberInput
-        value=""
-        onChange={vi.fn()}
-        placeholder="Enter amount"
-      />
-    )
+    render(<NumberInput value="" onChange={vi.fn()} placeholder="Enter amount" />)
 
     expect(screen.getByPlaceholderText('Enter amount')).toBeInTheDocument()
   })
 
   it('disabled state működésének ellenőrzése', () => {
-    const { container } = render(
-      <NumberInput
-        value=""
-        onChange={vi.fn()}
-        disabled={true}
-      />
-    )
+    const { container } = render(<NumberInput value="" onChange={vi.fn()} disabled={true} />)
 
     const input = container.querySelector('input') as HTMLInputElement
     expect(input.disabled).toBe(true)
@@ -239,12 +158,7 @@ describe('NumberInput', () => {
 
   it('id és name attribútumok', () => {
     const { container } = render(
-      <NumberInput
-        value=""
-        onChange={vi.fn()}
-        id="test-id"
-        name="test-name"
-      />
+      <NumberInput value="" onChange={vi.fn()} id="test-id" name="test-name" />,
     )
 
     const input = container.querySelector('input') as HTMLInputElement
@@ -253,13 +167,7 @@ describe('NumberInput', () => {
   })
 
   it('titel szöveg megjelenítés', () => {
-    const { container } = render(
-      <NumberInput
-        value=""
-        onChange={vi.fn()}
-        title="Amount in HUF"
-      />
-    )
+    const { container } = render(<NumberInput value="" onChange={vi.fn()} title="Amount in HUF" />)
 
     const input = container.querySelector('input') as HTMLInputElement
     expect(input.title).toBe('Amount in HUF')
@@ -267,13 +175,7 @@ describe('NumberInput', () => {
 
   it('csak egy tizedesjel engedélyezett', async () => {
     const onChange = vi.fn()
-    render(
-      <NumberInput
-        value=""
-        onChange={onChange}
-        allowDecimals={true}
-      />
-    )
+    render(<NumberInput value="" onChange={onChange} allowDecimals={true} />)
 
     const input = document.querySelector('input') as HTMLInputElement
     const user = userEvent.setup()
@@ -284,13 +186,7 @@ describe('NumberInput', () => {
   })
 
   it('autoFocus működésének ellenőrzése', () => {
-    const { container } = render(
-      <NumberInput
-        value=""
-        onChange={vi.fn()}
-        autoFocus={true}
-      />
-    )
+    const { container } = render(<NumberInput value="" onChange={vi.fn()} autoFocus={true} />)
 
     const input = container.querySelector('input') as HTMLInputElement
     // Check that the input exists
@@ -299,11 +195,7 @@ describe('NumberInput', () => {
 
   it('class name prop átadás', () => {
     const { container } = render(
-      <NumberInput
-        value=""
-        onChange={vi.fn()}
-        className="custom-class"
-      />
+      <NumberInput value="" onChange={vi.fn()} className="custom-class" />,
     )
 
     const input = container.querySelector('input') as HTMLInputElement

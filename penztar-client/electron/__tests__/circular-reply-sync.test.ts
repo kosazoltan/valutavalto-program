@@ -70,11 +70,7 @@ vi.mock('../sqlite', () => ({
 }));
 
 import { SyncEngine } from '../sync-engine';
-import {
-  getConfig,
-  getPendingCircularReplies,
-  markCircularReplySynced,
-} from '../sqlite';
+import { getConfig, getPendingCircularReplies, markCircularReplySynced } from '../sqlite';
 
 const mockedGetConfig = vi.mocked(getConfig);
 const mockedGetPendingCircularReplies = vi.mocked(getPendingCircularReplies);

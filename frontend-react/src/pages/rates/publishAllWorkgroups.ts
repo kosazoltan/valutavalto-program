@@ -21,7 +21,11 @@ import {
   type WorkgroupDetailDTO,
 } from '../../services/api/exchange-rates'
 import { parseNum } from './types'
-import { validateWorkgroupProtection, workgroupProtectionLabel, type ProtectionRow } from './workgroupProtection'
+import {
+  validateWorkgroupProtection,
+  workgroupProtectionLabel,
+  type ProtectionRow,
+} from './workgroupProtection'
 import { recomputeWorkgroupSheet, type WgComputeRow, type WgField } from './workgroupSheetCompute'
 import type { WgValues } from './workgroupSheetFormula'
 import {
@@ -66,7 +70,11 @@ async function buildGroupRates(
   overview: RateOverviewItem[],
   sheet0ByCurrency: ReturnType<typeof loadSheet0ByCurrency>,
   otherGroupsByCurrency: ReturnType<typeof loadAllGroupValueSnapshots>,
-): Promise<{ rates: PublishGroupRateRequest['rates']; protectionRows: ProtectionRow[]; error?: string }> {
+): Promise<{
+  rates: PublishGroupRateRequest['rates']
+  protectionRows: ProtectionRow[]
+  error?: string
+}> {
   // FK02-B overlay: SQLite-first (tartós), localStorage fallback — a lap betöltési sorrendjével egyezően.
   const localValues = loadGroupRateValues(group.id)
   const dbValues = await loadGroupRateValuesFromOfflineDb(group.id)
@@ -96,9 +104,10 @@ async function buildGroupRates(
       return o != null ? numOrNull(o) : baseline[f]
     }
     const values: WgComputeRow['values'] = {
-      officialRate: overlay[`${c.currencyId}.officialRate`] != null
-        ? numOrNull(overlay[`${c.currencyId}.officialRate`])
-        : c.officialRate,
+      officialRate:
+        overlay[`${c.currencyId}.officialRate`] != null
+          ? numOrNull(overlay[`${c.currencyId}.officialRate`])
+          : c.officialRate,
       buyRate: field('buyRate'),
       sellRate: field('sellRate'),
       limit1BuyRate: field('limit1BuyRate'),
@@ -121,7 +130,11 @@ async function buildGroupRates(
       otherGroupsByCurrency,
     })
     if (result.diverged) {
-      return { rates: [], protectionRows: [], error: 'képlet-újraszámítás nem konvergált (körhivatkozás-gyanú)' }
+      return {
+        rates: [],
+        protectionRows: [],
+        error: 'képlet-újraszámítás nem konvergált (körhivatkozás-gyanú)',
+      }
     }
     rows = result.rows
   }
@@ -187,7 +200,9 @@ async function buildGroupRates(
   return { rates, protectionRows }
 }
 
-export async function publishAllWorkgroups(opts: PublishAllOptions = {}): Promise<PublishAllResult> {
+export async function publishAllWorkgroups(
+  opts: PublishAllOptions = {},
+): Promise<PublishAllResult> {
   // Adatbetöltés: bootstrap (egy kör), fallback overview+workgroups (a RateCreationPage.loadData mintája).
   let overview: RateOverviewItem[]
   let workgroups: WorkgroupDetailDTO[]
@@ -244,57 +259,69 @@ export async function publishAllWorkgroups(opts: PublishAllOptions = {}): Promis
   }
 
   // NFR-2: csoportonként független publikálás — egy csoport hibája nem állítja le a többit.
-  await Promise.allSettled(activeGroups.map(async (group) => {
-    const outcome: GroupPublishOutcome = {
-      groupId: group.id, code: group.code, name: group.name, status: 'failed',
-    }
-    try {
-      let rates: PublishGroupRateRequest['rates']
-      if (opts.inMemoryGroupRates && opts.inMemoryGroupRates.groupId === group.id) {
-        rates = opts.inMemoryGroupRates.rates
-      } else {
-        const built = await buildGroupRates(group, overview, sheet0ByCurrency, otherGroupsByCurrency)
-        if (built.error) {
-          outcome.message = built.error
-          outcomes.push(outcome)
-          return
-        }
-        if (built.rates.length === 0) {
-          outcome.status = 'skipped'
-          outcome.message = 'nincs érvényes árfolyam a csoportban'
-          outcomes.push(outcome)
-          return
-        }
-        // FK-04/E árfolyamvédelem: a lap-oldali publish-sal AZONOS szabály (a backend
-        // RatePublishService.validateRateProtection a kiküldéskor ugyanígy véd).
-        if (group.protectionEnabled ?? true) {
-          const violations = validateWorkgroupProtection(
-            built.protectionRows, true, workgroupProtectionLabel(group.legacyGroupNumber, group.code),
+  await Promise.allSettled(
+    activeGroups.map(async (group) => {
+      const outcome: GroupPublishOutcome = {
+        groupId: group.id,
+        code: group.code,
+        name: group.name,
+        status: 'failed',
+      }
+      try {
+        let rates: PublishGroupRateRequest['rates']
+        if (opts.inMemoryGroupRates && opts.inMemoryGroupRates.groupId === group.id) {
+          rates = opts.inMemoryGroupRates.rates
+        } else {
+          const built = await buildGroupRates(
+            group,
+            overview,
+            sheet0ByCurrency,
+            otherGroupsByCurrency,
           )
-          if (violations.length > 0) {
-            outcome.message = `árfolyamvédelem: ${violations[0]!.message}`
+          if (built.error) {
+            outcome.message = built.error
             outcomes.push(outcome)
             return
           }
+          if (built.rates.length === 0) {
+            outcome.status = 'skipped'
+            outcome.message = 'nincs érvényes árfolyam a csoportban'
+            outcomes.push(outcome)
+            return
+          }
+          // FK-04/E árfolyamvédelem: a lap-oldali publish-sal AZONOS szabály (a backend
+          // RatePublishService.validateRateProtection a kiküldéskor ugyanígy véd).
+          if (group.protectionEnabled ?? true) {
+            const violations = validateWorkgroupProtection(
+              built.protectionRows,
+              true,
+              workgroupProtectionLabel(group.legacyGroupNumber, group.code),
+            )
+            if (violations.length > 0) {
+              outcome.message = `árfolyamvédelem: ${violations[0]!.message}`
+              outcomes.push(outcome)
+              return
+            }
+          }
+          rates = built.rates
         }
-        rates = built.rates
-      }
 
-      const result = await rateCreationApi.publishGroupRate({ groupId: group.id, rates })
-      outcome.status = 'published'
-      if (result && 'acceptedRates' in result) outcome.acceptedRates = result.acceptedRates
-      // FK02-B: publikálás után a szerver az authority — a csoport overlay-ét töröljük
-      // (localStorage + SQLite), ahogy a munkacsoport-lap publish-a is teszi.
-      persistGroupRateValues(group.id, {})
-      outcomes.push(outcome)
-    } catch (err: unknown) {
-      outcome.message = err instanceof Error ? err.message : 'ismeretlen publikálási hiba'
-      outcomes.push(outcome)
-    } finally {
-      done += 1
-      opts.onProgress?.(done, total)
-    }
-  }))
+        const result = await rateCreationApi.publishGroupRate({ groupId: group.id, rates })
+        outcome.status = 'published'
+        if (result && 'acceptedRates' in result) outcome.acceptedRates = result.acceptedRates
+        // FK02-B: publikálás után a szerver az authority — a csoport overlay-ét töröljük
+        // (localStorage + SQLite), ahogy a munkacsoport-lap publish-a is teszi.
+        persistGroupRateValues(group.id, {})
+        outcomes.push(outcome)
+      } catch (err: unknown) {
+        outcome.message = err instanceof Error ? err.message : 'ismeretlen publikálási hiba'
+        outcomes.push(outcome)
+      } finally {
+        done += 1
+        opts.onProgress?.(done, total)
+      }
+    }),
+  )
 
   return {
     total,
@@ -304,14 +331,20 @@ export async function publishAllWorkgroups(opts: PublishAllOptions = {}): Promis
 }
 
 /** FR-8: emberi összefoglaló a toast-okhoz — "X/Y elküldve" + első hibák. */
-export function summarizePublishAll(result: PublishAllResult): { title: string; detail: string; ok: boolean } {
+export function summarizePublishAll(result: PublishAllResult): {
+  title: string
+  detail: string
+  ok: boolean
+} {
   const failed = result.outcomes.filter((o) => o.status === 'failed')
   const skipped = result.outcomes.filter((o) => o.status === 'skipped')
   const parts: string[] = [`${result.published}/${result.total} munkacsoport elküldve`]
   if (skipped.length > 0) parts.push(`${skipped.length} kihagyva (nincs árfolyam)`)
   if (failed.length > 0) {
     const first = failed.slice(0, 3).map((f) => `${f.name}: ${f.message ?? 'hiba'}`)
-    parts.push(`HIBA: ${first.join('; ')}${failed.length > 3 ? ` (+${failed.length - 3} további)` : ''}`)
+    parts.push(
+      `HIBA: ${first.join('; ')}${failed.length > 3 ? ` (+${failed.length - 3} további)` : ''}`,
+    )
   }
   return {
     title: failed.length === 0 ? 'Szétküldve' : 'Részben sikeres szétküldés',

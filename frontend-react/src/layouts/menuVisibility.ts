@@ -40,7 +40,11 @@ function isSupervisoryMenuBypass(ctx: MenuVisibilityContext): boolean {
  * NEM). Ez szándékos és egyezik az audit előtti viselkedéssel (a `hasSupervisoryAccess` ott is
  * csak a role-szűrőt rövidzárta, a külön mód- és minRole-szűrőt nem).
  */
-export function isMenuItemVisible(item: MenuItem, group: MenuGroup, ctx: MenuVisibilityContext): boolean {
+export function isMenuItemVisible(
+  item: MenuItem,
+  group: MenuGroup,
+  ctx: MenuVisibilityContext,
+): boolean {
   if (item.modes && !item.modes.includes(ctx.appMode)) return false
   if (item.minRole && !ctx.hasRole(item.minRole)) return false
   if (isSupervisoryMenuBypass(ctx)) return true

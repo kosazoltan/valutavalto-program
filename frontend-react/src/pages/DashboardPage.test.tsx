@@ -24,71 +24,129 @@ vi.mock('../services/api/index', () => ({
 
 function setupApiGet() {
   mocks.apiGet.mockImplementation((path: string) => {
-      if (path === '/dashboard/summary') {
-        return Promise.resolve({
-          data: {
-            todayVolume: 12500000,
-            openTransactions: 47,
-            activeBranches: 9,
-            alertCount: 3,
-            currencyVolumes: { EUR: 8000000, USD: 4500000 },
-            recentTransactions: [
-              { id: 1, type: 'BUY', currencyCode: 'EUR', amount: 500, hufAmount: 195750, cashierName: 'Kiss János', createdAt: '2026-03-27T10:45:00' },
-              { id: 2, type: 'SELL', currencyCode: 'USD', amount: 1000, hufAmount: 358200, cashierName: 'Nagy Péter', createdAt: '2026-03-27T10:32:00' },
-              { id: 3, type: 'BUY', currencyCode: 'GBP', amount: 200, hufAmount: 91000, cashierName: 'Szabó Anna', createdAt: '2026-03-27T10:15:00' },
-            ],
-            branchSyncStatuses: [],
-          },
-        })
-      }
-      if (path === '/health') {
-        return Promise.resolve({ data: { status: 'UP', db: 'connected', uptime: '1h 2m 3s', version: '2.0.0' } })
-      }
-      if (path === '/health/detailed') {
-        return Promise.resolve({
-          data: {
-            status: 'UP',
-            database: { connected: true, responseTimeMs: 12, activeConnections: 2 },
-            jvm: { heapUsed: 67108864, heapMax: 536870912, threads: 24 },
-          },
-        })
-      }
-      if (path === '/health/info') {
-        return Promise.resolve({
-          data: {
-            name: 'valuta-backend',
-            version: '2.0.0',
-            environment: 'test',
-            javaVersion: '21',
-          },
-        })
-      }
-      return Promise.resolve({ data: [] })
-    })
+    if (path === '/dashboard/summary') {
+      return Promise.resolve({
+        data: {
+          todayVolume: 12500000,
+          openTransactions: 47,
+          activeBranches: 9,
+          alertCount: 3,
+          currencyVolumes: { EUR: 8000000, USD: 4500000 },
+          recentTransactions: [
+            {
+              id: 1,
+              type: 'BUY',
+              currencyCode: 'EUR',
+              amount: 500,
+              hufAmount: 195750,
+              cashierName: 'Kiss János',
+              createdAt: '2026-03-27T10:45:00',
+            },
+            {
+              id: 2,
+              type: 'SELL',
+              currencyCode: 'USD',
+              amount: 1000,
+              hufAmount: 358200,
+              cashierName: 'Nagy Péter',
+              createdAt: '2026-03-27T10:32:00',
+            },
+            {
+              id: 3,
+              type: 'BUY',
+              currencyCode: 'GBP',
+              amount: 200,
+              hufAmount: 91000,
+              cashierName: 'Szabó Anna',
+              createdAt: '2026-03-27T10:15:00',
+            },
+          ],
+          branchSyncStatuses: [],
+        },
+      })
+    }
+    if (path === '/health') {
+      return Promise.resolve({
+        data: { status: 'UP', db: 'connected', uptime: '1h 2m 3s', version: '2.0.0' },
+      })
+    }
+    if (path === '/health/detailed') {
+      return Promise.resolve({
+        data: {
+          status: 'UP',
+          database: { connected: true, responseTimeMs: 12, activeConnections: 2 },
+          jvm: { heapUsed: 67108864, heapMax: 536870912, threads: 24 },
+        },
+      })
+    }
+    if (path === '/health/info') {
+      return Promise.resolve({
+        data: {
+          name: 'valuta-backend',
+          version: '2.0.0',
+          environment: 'test',
+          javaVersion: '21',
+        },
+      })
+    }
+    return Promise.resolve({ data: [] })
+  })
 }
 
 vi.mock('../services/api/exchange-rates', () => ({
   exchangeRateApi: {
     list: vi.fn().mockResolvedValue([
       {
-        id: 1, currencyId: 4, currencyCode: 'EUR', currencyName: 'Euró',
-        validDate: '2026-03-27', validTime: '08:00', baseBuyRate: 391.50,
-        baseSellRate: 398.50, officialRate: 395.00, active: true, createdAt: '2026-03-27T08:00:00',
+        id: 1,
+        currencyId: 4,
+        currencyCode: 'EUR',
+        currencyName: 'Euró',
+        validDate: '2026-03-27',
+        validTime: '08:00',
+        baseBuyRate: 391.5,
+        baseSellRate: 398.5,
+        officialRate: 395.0,
+        active: true,
+        createdAt: '2026-03-27T08:00:00',
       },
       {
-        id: 2, currencyId: 5, currencyCode: 'USD', currencyName: 'Amerikai dollár',
-        validDate: '2026-03-27', validTime: '08:00', baseBuyRate: 358.20,
-        baseSellRate: 365.80, officialRate: 362.00, active: true, createdAt: '2026-03-27T08:00:00',
+        id: 2,
+        currencyId: 5,
+        currencyCode: 'USD',
+        currencyName: 'Amerikai dollár',
+        validDate: '2026-03-27',
+        validTime: '08:00',
+        baseBuyRate: 358.2,
+        baseSellRate: 365.8,
+        officialRate: 362.0,
+        active: true,
+        createdAt: '2026-03-27T08:00:00',
       },
       {
-        id: 3, currencyId: 6, currencyCode: 'GBP', currencyName: 'Angol font',
-        validDate: '2026-03-27', validTime: '08:00', baseBuyRate: 455.00,
-        baseSellRate: 465.00, officialRate: 460.00, active: true, createdAt: '2026-03-27T08:00:00',
+        id: 3,
+        currencyId: 6,
+        currencyCode: 'GBP',
+        currencyName: 'Angol font',
+        validDate: '2026-03-27',
+        validTime: '08:00',
+        baseBuyRate: 455.0,
+        baseSellRate: 465.0,
+        officialRate: 460.0,
+        active: true,
+        createdAt: '2026-03-27T08:00:00',
       },
       {
-        id: 4, currencyId: 7, currencyCode: 'CHF', currencyName: 'Svájci frank',
-        validDate: '2026-03-27', validTime: '08:00', baseBuyRate: 402.50,
-        baseSellRate: 410.00, officialRate: 406.00, active: true, createdAt: '2026-03-27T08:00:00',
+        id: 4,
+        currencyId: 7,
+        currencyCode: 'CHF',
+        currencyName: 'Svájci frank',
+        validDate: '2026-03-27',
+        validTime: '08:00',
+        baseBuyRate: 402.5,
+        baseSellRate: 410.0,
+        officialRate: 406.0,
+        active: true,
+        createdAt: '2026-03-27T08:00:00',
       },
     ]),
   },

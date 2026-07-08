@@ -42,7 +42,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -65,23 +65,43 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/branches') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(branches) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(branches),
+      })
     }
 
     if (path.endsWith('/currencies') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(currencies) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(currencies),
+      })
     }
 
     if (path.endsWith('/packaging') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([record]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([record]),
+      })
     }
 
     if (path.endsWith('/packaging') && method === 'POST') {
@@ -114,7 +134,7 @@ async function login(page: Page) {
 test('göngyöleg oldal mobilnézetben listáz, rögzít és töröl backend API-val', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
-  page.on('dialog', dialog => void dialog.accept())
+  page.on('dialog', (dialog) => void dialog.accept())
   await login(page)
 
   await page.goto('/packaging', { waitUntil: 'domcontentloaded' })
@@ -125,8 +145,8 @@ test('göngyöleg oldal mobilnézetben listáz, rögzít és töröl backend API
   await page.getByTestId('packaging-bundle-count').fill('3')
   await page.getByTestId('packaging-notes').fill('Új rekord')
 
-  const createRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/packaging')
+  const createRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/packaging'),
   )
   await page.getByTestId('packaging-create').click()
   expect((await createRequest).postDataJSON()).toMatchObject({
@@ -138,14 +158,14 @@ test('göngyöleg oldal mobilnézetben listáz, rögzít és töröl backend API
     notes: 'Új rekord',
   })
 
-  const deleteRequest = page.waitForRequest(request =>
-    request.method() === 'DELETE' && request.url().includes('/packaging/pack-1')
+  const deleteRequest = page.waitForRequest(
+    (request) => request.method() === 'DELETE' && request.url().includes('/packaging/pack-1'),
   )
   await page.getByTitle('Törlés').click()
   await deleteRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

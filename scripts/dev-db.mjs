@@ -6,7 +6,9 @@ function dockerInspect(name) {
     execSync(`docker inspect --format "{{.State.Running}}" ${name}`, { stdio: 'pipe' })
     const out = execSync(`docker inspect --format "{{.State.Running}}" ${name}`).toString().trim()
     return out === 'true'
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 async function main() {
@@ -19,11 +21,11 @@ async function main() {
   if (state === false) {
     console.log(`[dev-db] ${name} exists but stopped - starting...`)
     const r = spawn('docker', ['start', name], { stdio: 'inherit' })
-    r.on('exit', code => process.exit(code ?? 0))
+    r.on('exit', (code) => process.exit(code ?? 0))
     return
   }
   console.log(`[dev-db] ${name} not found - creating via docker-compose...`)
   const r = spawn('docker', ['compose', 'up', '-d', 'postgres'], { stdio: 'inherit' })
-  r.on('exit', code => process.exit(code ?? 0))
+  r.on('exit', (code) => process.exit(code ?? 0))
 }
 main()

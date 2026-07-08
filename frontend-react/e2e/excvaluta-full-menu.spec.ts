@@ -97,9 +97,17 @@ function ensureDir() {
   if (!fs.existsSync(SCREENSHOT_DIR)) fs.mkdirSync(SCREENSHOT_DIR, { recursive: true })
 }
 
-async function login(page: Page, companyCode: string, workerCode: string, password: string): Promise<void> {
+async function login(
+  page: Page,
+  companyCode: string,
+  workerCode: string,
+  password: string,
+): Promise<void> {
   await page.goto(BASE + '/login', { waitUntil: 'networkidle', timeout: 30000 })
-  await page.locator('input:not([type="hidden"])').first().waitFor({ state: 'visible', timeout: 10000 })
+  await page
+    .locator('input:not([type="hidden"])')
+    .first()
+    .waitFor({ state: 'visible', timeout: 10000 })
 
   const inputs = page.locator('input:not([type="hidden"])')
   const count = await inputs.count()
@@ -112,8 +120,12 @@ async function login(page: Page, companyCode: string, workerCode: string, passwo
   const submitBtn = page.locator('button[type="submit"]').first()
   await submitBtn.click()
   await Promise.race([
-    page.waitForURL(u => !u.toString().includes('/login'), { timeout: 15000 }).catch(() => null),
-    page.locator('[role="alert"], .error').first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => null),
+    page.waitForURL((u) => !u.toString().includes('/login'), { timeout: 15000 }).catch(() => null),
+    page
+      .locator('[role="alert"], .error')
+      .first()
+      .waitFor({ state: 'visible', timeout: 15000 })
+      .catch(() => null),
   ])
 
   const afterUrl = page.url()
@@ -122,7 +134,10 @@ async function login(page: Page, companyCode: string, workerCode: string, passwo
   }
 }
 
-async function probePage(page: Page, item: { group: string; label: string; path: string }): Promise<PageProbeResult> {
+async function probePage(
+  page: Page,
+  item: { group: string; label: string; path: string },
+): Promise<PageProbeResult> {
   const consoleErrors: string[] = []
   const networkErrors: string[] = []
 
@@ -142,15 +157,25 @@ async function probePage(page: Page, item: { group: string; label: string; path:
   page.on('response', responseHandler)
 
   const t0 = Date.now()
-  const response = await page.goto(BASE + item.path, { waitUntil: 'networkidle', timeout: 20000 }).catch(e => {
-    consoleErrors.push(`NAVIGATION_ERROR: ${(e as Error).message.slice(0, 150)}`)
-    return null
-  })
+  const response = await page
+    .goto(BASE + item.path, { waitUntil: 'networkidle', timeout: 20000 })
+    .catch((e) => {
+      consoleErrors.push(`NAVIGATION_ERROR: ${(e as Error).message.slice(0, 150)}`)
+      return null
+    })
   await page.waitForTimeout(1500) // CSR hydration + async data load
   const renderedMs = Date.now() - t0
 
-  const bodyLen = (await page.locator('body').innerText().catch(() => '')).length
-  const ssName = `${item.group.toLowerCase()}-${item.path.replace(/\//g, '_')}.png`.replace(/\s+/g, '-')
+  const bodyLen = (
+    await page
+      .locator('body')
+      .innerText()
+      .catch(() => '')
+  ).length
+  const ssName = `${item.group.toLowerCase()}-${item.path.replace(/\//g, '_')}.png`.replace(
+    /\s+/g,
+    '-',
+  )
   const ssPath = path.join(SCREENSHOT_DIR, ssName)
   await page.screenshot({ path: ssPath, fullPage: true }).catch(() => {})
 
@@ -183,19 +208,23 @@ test.describe('T20 — Full menu traversal live e2e', () => {
     const report = {
       timestamp: new Date().toISOString(),
       total: RESULTS.length,
-      ok_200: RESULTS.filter(r => r.status >= 200 && r.status < 300).length,
-      redirect: RESULTS.filter(r => r.status >= 300 && r.status < 400).length,
-      client_error: RESULTS.filter(r => r.status >= 400 && r.status < 500).length,
-      server_error: RESULTS.filter(r => r.status >= 500).length,
-      pages_with_console_errors: RESULTS.filter(r => r.consoleErrors.length > 0).length,
-      pages_with_network_errors: RESULTS.filter(r => r.networkErrors.length > 0).length,
+      ok_200: RESULTS.filter((r) => r.status >= 200 && r.status < 300).length,
+      redirect: RESULTS.filter((r) => r.status >= 300 && r.status < 400).length,
+      client_error: RESULTS.filter((r) => r.status >= 400 && r.status < 500).length,
+      server_error: RESULTS.filter((r) => r.status >= 500).length,
+      pages_with_console_errors: RESULTS.filter((r) => r.consoleErrors.length > 0).length,
+      pages_with_network_errors: RESULTS.filter((r) => r.networkErrors.length > 0).length,
       results: RESULTS,
     }
     const reportPath = path.join(SCREENSHOT_DIR, 'report.json')
     fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf8')
     console.log(`\n=== Full menu traversal report ===`)
-    console.log(`Total: ${report.total}, OK 2xx: ${report.ok_200}, Redirect: ${report.redirect}, 4xx: ${report.client_error}, 5xx: ${report.server_error}`)
-    console.log(`Console errors: ${report.pages_with_console_errors} pages, Network errors: ${report.pages_with_network_errors} pages`)
+    console.log(
+      `Total: ${report.total}, OK 2xx: ${report.ok_200}, Redirect: ${report.redirect}, 4xx: ${report.client_error}, 5xx: ${report.server_error}`,
+    )
+    console.log(
+      `Console errors: ${report.pages_with_console_errors} pages, Network errors: ${report.pages_with_network_errors} pages`,
+    )
     console.log(`Report JSON: ${reportPath}`)
   })
 
@@ -205,7 +234,9 @@ test.describe('T20 — Full menu traversal live e2e', () => {
     const password = process.env.TEST_PASSWORD
 
     if (!companyCode || !workerCode || !password) {
-      console.log('SKIP T20: TEST_COMPANY_CODE / TEST_WORKER_CODE / TEST_PASSWORD env var-ok nincsenek beallitva')
+      console.log(
+        'SKIP T20: TEST_COMPANY_CODE / TEST_WORKER_CODE / TEST_PASSWORD env var-ok nincsenek beallitva',
+      )
       test.skip(true, 'Credentials env var hianyzik')
       return
     }
@@ -219,29 +250,33 @@ test.describe('T20 — Full menu traversal live e2e', () => {
       const result = await probePage(page, item)
       RESULTS.push(result)
 
-      const marker = result.status >= 200 && result.status < 400 && result.consoleErrors.length === 0
-        ? '[OK ]'
-        : result.status >= 400 || result.networkErrors.length > 0
-          ? '[FAIL]'
-          : '[WARN]'
+      const marker =
+        result.status >= 200 && result.status < 400 && result.consoleErrors.length === 0
+          ? '[OK ]'
+          : result.status >= 400 || result.networkErrors.length > 0
+            ? '[FAIL]'
+            : '[WARN]'
 
       console.log(
         `${marker} ${item.group.padEnd(12)} ${item.label.padEnd(35)} ${item.path.padEnd(38)} ` +
-        `HTTP ${result.status} body=${result.bodyLen} t=${result.renderedMs}ms ` +
-        `console=${result.consoleErrors.length} network=${result.networkErrors.length}`
+          `HTTP ${result.status} body=${result.bodyLen} t=${result.renderedMs}ms ` +
+          `console=${result.consoleErrors.length} network=${result.networkErrors.length}`,
       )
 
       if (result.networkErrors.length > 0) {
         console.log(`        Network: ${result.networkErrors.join(' | ')}`)
       }
       if (result.consoleErrors.length > 0 && result.consoleErrors.length <= 3) {
-        result.consoleErrors.forEach(e => console.log(`        Console: ${e}`))
+        result.consoleErrors.forEach((e) => console.log(`        Console: ${e}`))
       }
     }
 
     // 3. Summary assertion: legalabb 80%-nak 2xx/3xx-en kell lenni
-    const successCount = RESULTS.filter(r => r.status >= 200 && r.status < 400).length
+    const successCount = RESULTS.filter((r) => r.status >= 200 && r.status < 400).length
     const ratio = successCount / RESULTS.length
-    expect(ratio, `Csak ${Math.round(ratio*100)}% (${successCount}/${RESULTS.length}) ad 2xx/3xx`).toBeGreaterThanOrEqual(0.80)
+    expect(
+      ratio,
+      `Csak ${Math.round(ratio * 100)}% (${successCount}/${RESULTS.length}) ad 2xx/3xx`,
+    ).toBeGreaterThanOrEqual(0.8)
   })
 })

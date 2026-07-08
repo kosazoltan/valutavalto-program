@@ -13,8 +13,16 @@ export const arfolyamInternetLinkApi = {
     const res = await api.get<ArfolyamInternetLink[]>('/arfolyam-internet-links')
     return res.data
   },
-  create: async (buttonNumber: number, label: string, url: string): Promise<ArfolyamInternetLink> => {
-    const res = await api.post<ArfolyamInternetLink>('/arfolyam-internet-links', { buttonNumber, label, url })
+  create: async (
+    buttonNumber: number,
+    label: string,
+    url: string,
+  ): Promise<ArfolyamInternetLink> => {
+    const res = await api.post<ArfolyamInternetLink>('/arfolyam-internet-links', {
+      buttonNumber,
+      label,
+      url,
+    })
     return res.data
   },
   remove: async (id: string): Promise<void> => {

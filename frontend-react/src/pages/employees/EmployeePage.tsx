@@ -1,6 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { ChangeEvent } from 'react'
-import { UserCheck, Search, RefreshCw, Plus, Edit2, Trash2, AlertTriangle, FolderOpen, Upload } from 'lucide-react'
+import {
+  UserCheck,
+  Search,
+  RefreshCw,
+  Plus,
+  Edit2,
+  Trash2,
+  AlertTriangle,
+  FolderOpen,
+  Upload,
+} from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -40,12 +50,13 @@ interface EmployeeFormState {
   active: boolean
 }
 
-const readFileAsText = (file: File): Promise<string> => new Promise((resolve, reject) => {
-  const reader = new FileReader()
-  reader.onload = () => resolve(String(reader.result ?? ''))
-  reader.onerror = () => reject(reader.error ?? new Error('A fájl nem olvasható.'))
-  reader.readAsText(file)
-})
+const readFileAsText = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result ?? ''))
+    reader.onerror = () => reject(reader.error ?? new Error('A fájl nem olvasható.'))
+    reader.readAsText(file)
+  })
 
 export default function EmployeePage() {
   const { t } = useTranslation()
@@ -65,7 +76,7 @@ export default function EmployeePage() {
       setLoading(true)
       setError(null)
       const response = await api.get<EmployeeItem[]>('/employees')
-      setItems(safeArray<typeof items[0]>(response.data))
+      setItems(safeArray<(typeof items)[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('EmployeePage', 'Betöltési hiba:', err)
@@ -81,7 +92,8 @@ export default function EmployeePage() {
 
   useEffect(() => {
     let active = true
-    api.get<FeorCodeItem[]>('/employees/feor-codes')
+    api
+      .get<FeorCodeItem[]>('/employees/feor-codes')
       .then((response) => {
         if (!active) return
         setFeorCodes(safeArray<FeorCodeItem>(response.data))
@@ -89,15 +101,15 @@ export default function EmployeePage() {
       .catch((err) => {
         logger.error('EmployeePage', 'FEOR referencia lista betöltési hiba:', err)
       })
-    return () => { active = false }
+    return () => {
+      active = false
+    }
   }, [])
 
-  const filtered = items.filter(item => {
+  const filtered = items.filter((item) => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
+    return Object.values(item).some((v) => v != null && String(v).toLowerCase().includes(term))
   })
 
   const handleDelete = async (id: string | number) => {
@@ -114,7 +126,8 @@ export default function EmployeePage() {
     }
   }
 
-  const fullName = (item: EmployeeItem) => `${item.lastName ?? ''} ${item.firstName ?? ''}`.trim() || String(item.id)
+  const fullName = (item: EmployeeItem) =>
+    `${item.lastName ?? ''} ${item.firstName ?? ''}`.trim() || String(item.id)
 
   const openNewForm = () => {
     setError(null)
@@ -209,13 +222,18 @@ export default function EmployeePage() {
       setMessage(null)
       const rawJson = await readFileAsText(file)
       JSON.parse(rawJson)
-      const response = await api.post<{ imported?: number; message?: string }>('/employees/import', rawJson, {
-        headers: { 'Content-Type': 'application/json' },
-      })
+      const response = await api.post<{ imported?: number; message?: string }>(
+        '/employees/import',
+        rawJson,
+        {
+          headers: { 'Content-Type': 'application/json' },
+        },
+      )
       setMessage(response.data?.message ?? `${response.data?.imported ?? 0} dolgozó importálva.`)
       await loadData()
     } catch (err) {
-      const msg = err instanceof SyntaxError ? 'Érvénytelen dolgozói JSON fájl.' : getErrorMessage(err)
+      const msg =
+        err instanceof SyntaxError ? 'Érvénytelen dolgozói JSON fájl.' : getErrorMessage(err)
       setError(msg)
       logger.error('EmployeePage', 'Dolgozói JSON import hiba:', err)
     } finally {
@@ -231,7 +249,9 @@ export default function EmployeePage() {
           {t('employees.alkalmazottak')}
         </h1>
         <div className="flex items-center gap-2">
-          <label className={`form-button flex cursor-pointer items-center gap-1 ${importing ? 'pointer-events-none opacity-60' : ''}`}>
+          <label
+            className={`form-button flex cursor-pointer items-center gap-1 ${importing ? 'pointer-events-none opacity-60' : ''}`}
+          >
             <Upload className="h-4 w-4" />
             Dolgozói JSON import
             <input
@@ -247,67 +267,167 @@ export default function EmployeePage() {
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <button onClick={openNewForm} className="form-button-primary flex items-center gap-1">
-            <Plus className="h-4 w-4" />{t('common.new')}
+            <Plus className="h-4 w-4" />
+            {t('common.new')}
           </button>
         </div>
       </div>
 
       {form && (
         <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
-          <h2 className="text-base font-semibold">{form.id ? 'Alkalmazott szerkesztése' : 'Új alkalmazott'}</h2>
+          <h2 className="text-base font-semibold">
+            {form.id ? 'Alkalmazott szerkesztése' : 'Új alkalmazott'}
+          </h2>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div>
-              <label htmlFor="employee-last-name" className="form-label">Vezetéknév</label>
-              <input id="employee-last-name" value={form.lastName} onChange={(e) => setForm((current) => current ? { ...current, lastName: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="employee-last-name" className="form-label">
+                Vezetéknév
+              </label>
+              <input
+                id="employee-last-name"
+                value={form.lastName}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, lastName: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="employee-first-name" className="form-label">Keresztnév</label>
-              <input id="employee-first-name" value={form.firstName} onChange={(e) => setForm((current) => current ? { ...current, firstName: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="employee-first-name" className="form-label">
+                Keresztnév
+              </label>
+              <input
+                id="employee-first-name"
+                value={form.firstName}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, firstName: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="employee-org-unit" className="form-label">Szervezeti egység</label>
-              <input id="employee-org-unit" value={form.organizationUnit} onChange={(e) => setForm((current) => current ? { ...current, organizationUnit: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="employee-org-unit" className="form-label">
+                Szervezeti egység
+              </label>
+              <input
+                id="employee-org-unit"
+                value={form.organizationUnit}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, organizationUnit: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="employee-job-title" className="form-label">Beosztás</label>
-              <input id="employee-job-title" value={form.jobTitle} onChange={(e) => setForm((current) => current ? { ...current, jobTitle: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="employee-job-title" className="form-label">
+                Beosztás
+              </label>
+              <input
+                id="employee-job-title"
+                value={form.jobTitle}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, jobTitle: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="employee-feor-code" className="form-label">{t('employees.feorKod')}</label>
+              <label htmlFor="employee-feor-code" className="form-label">
+                {t('employees.feorKod')}
+              </label>
               <select
                 id="employee-feor-code"
                 value={form.feorCode}
-                onChange={(e) => setForm((current) => current ? { ...current, feorCode: e.target.value } : current)}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, feorCode: e.target.value } : current,
+                  )
+                }
                 className="form-input w-full"
               >
                 <option value="">{t('employees.nincsMegadva')}</option>
                 {feorCodes.map((item) => (
-                  <option key={item.id} value={item.code}>{item.code} - {item.title}</option>
+                  <option key={item.id} value={item.code}>
+                    {item.code} - {item.title}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label htmlFor="employee-start-date" className="form-label">Beléptetés</label>
-              <input id="employee-start-date" type="date" value={form.employmentStartDate} onChange={(e) => setForm((current) => current ? { ...current, employmentStartDate: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="employee-start-date" className="form-label">
+                Beléptetés
+              </label>
+              <input
+                id="employee-start-date"
+                type="date"
+                value={form.employmentStartDate}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, employmentStartDate: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="employee-email" className="form-label">Email</label>
-              <input id="employee-email" value={form.email} onChange={(e) => setForm((current) => current ? { ...current, email: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="employee-email" className="form-label">
+                Email
+              </label>
+              <input
+                id="employee-email"
+                value={form.email}
+                onChange={(e) =>
+                  setForm((current) => (current ? { ...current, email: e.target.value } : current))
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="employee-phone" className="form-label">Telefon</label>
-              <input id="employee-phone" value={form.phone} onChange={(e) => setForm((current) => current ? { ...current, phone: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="employee-phone" className="form-label">
+                Telefon
+              </label>
+              <input
+                id="employee-phone"
+                value={form.phone}
+                onChange={(e) =>
+                  setForm((current) => (current ? { ...current, phone: e.target.value } : current))
+                }
+                className="form-input w-full"
+              />
             </div>
             <label className="flex items-end gap-2 pb-2 text-sm">
-              <input type="checkbox" checked={form.active} onChange={(e) => setForm((current) => current ? { ...current, active: e.target.checked } : current)} />
+              <input
+                type="checkbox"
+                checked={form.active}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, active: e.target.checked } : current,
+                  )
+                }
+              />
               Aktív
             </label>
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => void saveEmployee()} disabled={saving || !form.lastName.trim() || !form.firstName.trim()} className="form-button-primary">
+            <button
+              type="button"
+              onClick={() => void saveEmployee()}
+              disabled={saving || !form.lastName.trim() || !form.firstName.trim()}
+              className="form-button-primary"
+            >
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
-            <button type="button" onClick={() => setForm(null)} className="form-button">Mégse</button>
+            <button type="button" onClick={() => setForm(null)} className="form-button">
+              Mégse
+            </button>
           </div>
         </div>
       )}
@@ -319,7 +439,7 @@ export default function EmployeePage() {
             type="text"
             placeholder="Keresés..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="form-input w-full pl-10"
           />
         </div>
@@ -329,7 +449,8 @@ export default function EmployeePage() {
         className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700"
         data-testid="employee-feor-summary"
       >
-        {t('employees.feorReferenciaKodok')}: <span className="font-semibold">{feorCodes.length}</span>
+        {t('employees.feorReferenciaKodok')}:{' '}
+        <span className="font-semibold">{feorCodes.length}</span>
       </div>
 
       {error && (
@@ -347,91 +468,164 @@ export default function EmployeePage() {
 
       <div className="grid gap-3 md:hidden">
         {loading ? (
-          <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">Betöltés...</div>
+          <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">
+            Betöltés...
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">{t('common.noData')}</div>
-        ) : filtered.map(item => (
-          <article key={item.id} className="rounded border border-gray-200 bg-white p-3 shadow-sm" data-testid="employee-mobile-card">
-            <div className="mb-3 flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="break-words font-semibold text-gray-900">{fullName(item)}</p>
-                <p className="text-xs text-gray-500">{item.jobTitle ?? '-'}</p>
-                <p className="text-xs text-gray-500">{t('employees.feorPrefix')}: {item.feorCode ?? '-'}</p>
+          <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">
+            {t('common.noData')}
+          </div>
+        ) : (
+          filtered.map((item) => (
+            <article
+              key={item.id}
+              className="rounded border border-gray-200 bg-white p-3 shadow-sm"
+              data-testid="employee-mobile-card"
+            >
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="break-words font-semibold text-gray-900">{fullName(item)}</p>
+                  <p className="text-xs text-gray-500">{item.jobTitle ?? '-'}</p>
+                  <p className="text-xs text-gray-500">
+                    {t('employees.feorPrefix')}: {item.feorCode ?? '-'}
+                  </p>
+                </div>
+                <span className={`badge ${item.active ? 'badge-green' : 'badge-gray'}`}>
+                  {item.active ? 'Aktív' : 'Inaktív'}
+                </span>
               </div>
-              <span className={`badge ${item.active ? 'badge-green' : 'badge-gray'}`}>
-                {item.active ? 'Aktív' : 'Inaktív'}
-              </span>
-            </div>
-            <dl className="grid grid-cols-2 gap-2 text-sm">
-              <div className="rounded border border-gray-100 bg-gray-50 px-2 py-1">
-                <dt className="text-[10px] uppercase text-gray-500">{t('branch.branch')}</dt>
-                <dd className="break-words">{item.organizationUnit ?? '-'}</dd>
+              <dl className="grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded border border-gray-100 bg-gray-50 px-2 py-1">
+                  <dt className="text-[10px] uppercase text-gray-500">{t('branch.branch')}</dt>
+                  <dd className="break-words">{item.organizationUnit ?? '-'}</dd>
+                </div>
+                <div className="rounded border border-gray-100 bg-gray-50 px-2 py-1">
+                  <dt className="text-[10px] uppercase text-gray-500">
+                    {t('employees.beleptetve')}
+                  </dt>
+                  <dd>
+                    {item.employmentStartDate
+                      ? new Date(item.employmentStartDate).toLocaleDateString('hu-HU')
+                      : '-'}
+                  </dd>
+                </div>
+              </dl>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => setSubRecordsFor(item)}
+                  className="form-button justify-center p-2 text-green-600"
+                  title="Al-nyilvántartások"
+                >
+                  <FolderOpen className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => void openEditForm(item)}
+                  disabled={saving}
+                  className="form-button justify-center p-2 text-blue-600"
+                  title="Szerkesztés"
+                >
+                  <Edit2 className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  className="form-button justify-center p-2 text-red-600"
+                  title="Törlés"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
-              <div className="rounded border border-gray-100 bg-gray-50 px-2 py-1">
-                <dt className="text-[10px] uppercase text-gray-500">{t('employees.beleptetve')}</dt>
-                <dd>{item.employmentStartDate ? new Date(item.employmentStartDate).toLocaleDateString('hu-HU') : '-'}</dd>
-              </div>
-            </dl>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <button onClick={() => setSubRecordsFor(item)} className="form-button justify-center p-2 text-green-600" title="Al-nyilvántartások">
-                <FolderOpen className="h-4 w-4" />
-              </button>
-              <button onClick={() => void openEditForm(item)} disabled={saving} className="form-button justify-center p-2 text-blue-600" title="Szerkesztés">
-                <Edit2 className="h-4 w-4" />
-              </button>
-              <button onClick={() => handleDelete(item.id)} className="form-button justify-center p-2 text-red-600" title="Törlés">
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          </article>
-        ))}
+            </article>
+          ))
+        )}
       </div>
 
       <div className="data-grid hidden overflow-x-auto md:block">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.name')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('employees.beosztas')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('employees.feorPrefix')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('branch.branch')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('employees.beleptetve')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.active')}</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.actions')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.name')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('employees.beosztas')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('employees.feorPrefix')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('branch.branch')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('employees.beleptetve')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.active')}
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                {t('common.actions')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{fullName(item)}</td>
-                <td className="px-4 py-3 text-sm">{item.jobTitle ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.feorCode ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.organizationUnit ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.employmentStartDate ? new Date(item.employmentStartDate).toLocaleString('hu-HU') : '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.active ? 'Igen' : 'Nem'}</td>
-                <td className="px-4 py-3 text-right">
-                  <button onClick={() => setSubRecordsFor(item)} className="form-button mr-2 p-1 text-green-600" title="Al-nyilvántartások (üzemorvosi/szabadság/gyerekek)">
-                    <FolderOpen className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => void openEditForm(item)} disabled={saving} className="form-button mr-2 p-1 text-blue-600" title="Szerkesztés">
-                    <Edit2 className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => handleDelete(item.id)} className="form-button p-1 text-red-600" title="Törlés">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
+                  Betöltés...
                 </td>
               </tr>
-            ))}
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('common.noData')}
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm">{fullName(item)}</td>
+                  <td className="px-4 py-3 text-sm">{item.jobTitle ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.feorCode ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.organizationUnit ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.employmentStartDate
+                      ? new Date(item.employmentStartDate).toLocaleString('hu-HU')
+                      : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm">{item.active ? 'Igen' : 'Nem'}</td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => setSubRecordsFor(item)}
+                      className="form-button mr-2 p-1 text-green-600"
+                      title="Al-nyilvántartások (üzemorvosi/szabadság/gyerekek)"
+                    >
+                      <FolderOpen className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => void openEditForm(item)}
+                      disabled={saving}
+                      className="form-button mr-2 p-1 text-blue-600"
+                      title="Szerkesztés"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="form-button p-1 text-red-600"
+                      title="Törlés"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="text-sm text-gray-500">
-        {t('audit.osszesen')}{filtered.length} / {items.length}
+        {t('audit.osszesen')}
+        {filtered.length} / {items.length}
       </div>
 
       {subRecordsFor && (

@@ -26,7 +26,12 @@ function parseArgs(argv) {
     i += 1
     const name = key.slice(2)
     if (name === 'files' || name === 'checks') {
-      args[name] = value ? value.split(',').map(item => item.trim()).filter(Boolean) : []
+      args[name] = value
+        ? value
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean)
+        : []
     } else if (name in args) {
       args[name] = value ?? ''
     }
@@ -38,7 +43,7 @@ function stableStringify(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value)
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`
   const keys = Object.keys(value).sort()
-  return `{${keys.map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`
 }
 
 function sha256(text) {
@@ -55,7 +60,9 @@ function previousHash() {
 
 const args = parseArgs(process.argv.slice(2))
 if (!args.summary) {
-  console.error('Usage: node scripts/agent-decision-log.mjs --summary "..." [--type decision] [--files a,b] [--checks x,y] [--status completed]')
+  console.error(
+    'Usage: node scripts/agent-decision-log.mjs --summary "..." [--type decision] [--files a,b] [--checks x,y] [--status completed]',
+  )
   process.exit(2)
 }
 

@@ -54,7 +54,13 @@ vi.mock('../../services/api/client', () => ({
 
 vi.mock('../../stores/authStore', () => {
   const state = {
-    worker: { id: 9, fullName: 'Fabulya Zsuzsanna', branchCode: 'BR076', companyCode: 'EBC', workerCode: 'FZS' },
+    worker: {
+      id: 9,
+      fullName: 'Fabulya Zsuzsanna',
+      branchCode: 'BR076',
+      companyCode: 'EBC',
+      workerCode: 'FZS',
+    },
     hasCanonicalRole: () => false,
   }
   const useAuthStore = Object.assign(
@@ -89,7 +95,12 @@ vi.mock('../../components/cashier/HotkeyBar', () => ({ HotkeyBar: () => null }))
 // Egyszerűsített autocomplete: a beírt 3 betűs kódra azonnal kiválasztja a hozzá
 // tartozó árfolyamot (a data-rates attribútum jelzi, hogy a rates már betöltődött).
 vi.mock('../../components/cashier/CurrencyAutocomplete', () => ({
-  CurrencyAutocomplete: ({ rates, value, onChange, 'data-testid': testId }: {
+  CurrencyAutocomplete: ({
+    rates,
+    value,
+    onChange,
+    'data-testid': testId,
+  }: {
     rates: Array<{ currencyCode: string }>
     value: string
     onChange: (code: string, rate: unknown) => void
@@ -131,7 +142,9 @@ const EUR_RATE = {
 
 // A globális Window.electronAPI a teljes ElectronAPI felületet várja — a teszthez
 // csak a printReceipt kell, ezért unknown-on át szűkítünk.
-const electronWindow = window as unknown as { electronAPI?: { printReceipt?: (data: string) => Promise<boolean> } }
+const electronWindow = window as unknown as {
+  electronAPI?: { printReceipt?: (data: string) => Promise<boolean> }
+}
 
 /** Egysoros EUR vétel rögzítése a REST úton → a bizonylat-előnézet modal megnyílik. */
 async function submitBuyAndOpenReceiptModal() {
@@ -155,7 +168,12 @@ describe('CashierTransactionPage — sikertelen nyomtatásnál a bizonylat-modal
     vi.clearAllMocks()
     mocks.dailySessionIsOpen.mockResolvedValue(true)
     mocks.exchangeRateList.mockResolvedValue([EUR_RATE])
-    mocks.getCashierRateQuota.mockResolvedValue({ limit: 5, used: 0, remaining: 5, minAmountHuf: 400000 })
+    mocks.getCashierRateQuota.mockResolvedValue({
+      limit: 5,
+      used: 0,
+      remaining: 5,
+      minAmountHuf: 400000,
+    })
     mocks.cashBalanceList.mockResolvedValue([{ currencyCode: 'HUF', currentBalance: 10_000_000 }])
     mocks.apiGet.mockResolvedValue({
       data: {
@@ -189,10 +207,12 @@ describe('CashierTransactionPage — sikertelen nyomtatásnál a bizonylat-modal
     const printButton = await submitBuyAndOpenReceiptModal()
 
     fireEvent.click(printButton)
-    await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith(
-      'Nyomtatás sikertelen',
-      expect.stringContaining('A nyomtató offline'),
-    ))
+    await waitFor(() =>
+      expect(mocks.toast.error).toHaveBeenCalledWith(
+        'Nyomtatás sikertelen',
+        expect.stringContaining('A nyomtató offline'),
+      ),
+    )
 
     // a 2s auto-close CSAK sikeres nyomtatásnál indul — hibánál a modal 2s után is nyitva van
     await new Promise((resolve) => setTimeout(resolve, 2200))
@@ -203,14 +223,15 @@ describe('CashierTransactionPage — sikertelen nyomtatásnál a bizonylat-modal
     // újrapróbálás: most sikeres → success toast + 2s múlva auto-close
     mocks.printReceipt.mockResolvedValueOnce(true)
     fireEvent.click(retryButton)
-    await waitFor(() => expect(mocks.toast.success).toHaveBeenCalledWith(
-      'Nyomtatás elindítva',
-      'Bizonylat: V076100001',
-    ))
-    await waitFor(
-      () => expect(screen.queryByText('Mégse (ESC)')).not.toBeInTheDocument(),
-      { timeout: 3000 },
+    await waitFor(() =>
+      expect(mocks.toast.success).toHaveBeenCalledWith(
+        'Nyomtatás elindítva',
+        'Bizonylat: V076100001',
+      ),
     )
+    await waitFor(() => expect(screen.queryByText('Mégse (ESC)')).not.toBeInTheDocument(), {
+      timeout: 3000,
+    })
   }, 15000)
 
   it('printReceipt kivételt dob → "Nyomtatás váratlan hiba" toast és a modal nyitva marad', async () => {
@@ -218,7 +239,9 @@ describe('CashierTransactionPage — sikertelen nyomtatásnál a bizonylat-modal
     const printButton = await submitBuyAndOpenReceiptModal()
 
     fireEvent.click(printButton)
-    await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith('Nyomtatás váratlan hiba', 'Soros port hiba'))
+    await waitFor(() =>
+      expect(mocks.toast.error).toHaveBeenCalledWith('Nyomtatás váratlan hiba', 'Soros port hiba'),
+    )
 
     await new Promise((resolve) => setTimeout(resolve, 2200))
     expect(screen.getByText('Mégse (ESC)')).toBeInTheDocument()
@@ -230,10 +253,12 @@ describe('CashierTransactionPage — sikertelen nyomtatásnál a bizonylat-modal
     const printButton = await submitBuyAndOpenReceiptModal()
 
     fireEvent.click(printButton)
-    await waitFor(() => expect(mocks.toast.warning).toHaveBeenCalledWith(
-      'Nyomtatás nem elérhető',
-      expect.stringContaining('Electron preload'),
-    ))
+    await waitFor(() =>
+      expect(mocks.toast.warning).toHaveBeenCalledWith(
+        'Nyomtatás nem elérhető',
+        expect.stringContaining('Electron preload'),
+      ),
+    )
 
     await new Promise((resolve) => setTimeout(resolve, 2200))
     expect(screen.getByText('Mégse (ESC)')).toBeInTheDocument()
@@ -249,18 +274,21 @@ describe('CashierTransactionPage — sikertelen nyomtatásnál a bizonylat-modal
     const discountInput = screen.getAllByRole('spinbutton')[1]!
     fireEvent.change(discountInput, { target: { value: '3' } })
 
-    await waitFor(() => expect(mocks.apiGet).toHaveBeenCalledWith(
-      '/discount-approval/required-level',
-      { params: { discountPercent: 3 } },
-    ))
-    expect(await screen.findByTestId('discount-approval-info')).toHaveTextContent('Szükséges szint: SUPERVISOR')
+    await waitFor(() =>
+      expect(mocks.apiGet).toHaveBeenCalledWith('/discount-approval/required-level', {
+        params: { discountPercent: 3 },
+      }),
+    )
+    expect(await screen.findByTestId('discount-approval-info')).toHaveTextContent(
+      'Szükséges szint: SUPERVISOR',
+    )
 
     fireEvent.click(screen.getByText('Alkalmaz'))
-    await waitFor(() => expect(mocks.apiPost).toHaveBeenCalledWith(
-      '/discount-approval/validate',
-      null,
-      { params: { discountPercent: 3 } },
-    ))
+    await waitFor(() =>
+      expect(mocks.apiPost).toHaveBeenCalledWith('/discount-approval/validate', null, {
+        params: { discountPercent: 3 },
+      }),
+    )
   })
 
   it('automatikus kezelési díj után a backend discount-threshold apply eredményét mutatja', async () => {
@@ -289,7 +317,9 @@ describe('CashierTransactionPage — sikertelen nyomtatásnál a bizonylat-modal
     fireEvent.keyDown(document, { key: 'F9', code: 'F9' })
     await screen.findByText('Kezelési díj / Kedvezmény')
 
-    expect(await screen.findByTestId('auto-fee-discount')).toHaveTextContent('Nagy összegű kedvezmény')
+    expect(await screen.findByTestId('auto-fee-discount')).toHaveTextContent(
+      'Nagy összegű kedvezmény',
+    )
     expect(screen.getAllByRole('spinbutton')[0]).toHaveValue(500)
   })
 })

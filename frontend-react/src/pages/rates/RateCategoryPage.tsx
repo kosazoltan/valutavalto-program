@@ -34,7 +34,10 @@ function formatRateCategoryValue(value: RateCategoryItem[keyof RateCategoryItem]
   return String(value).replace('.', ',')
 }
 
-function formatAmountRange(minAmount: RateCategoryItem['minAmount'], maxAmount: RateCategoryItem['maxAmount']): string {
+function formatAmountRange(
+  minAmount: RateCategoryItem['minAmount'],
+  maxAmount: RateCategoryItem['maxAmount'],
+): string {
   const min = formatRateCategoryValue(minAmount)
   const max = formatRateCategoryValue(maxAmount)
   if (min === '-' && max === '-') return '-'
@@ -68,9 +71,9 @@ export default function RateCategoryPage() {
         return
       }
       const response = await api.get<RateCategoryItem[]>('/rate-categories/all', {
-        params: { branchId: user.branchId }
+        params: { branchId: user.branchId },
       })
-      setItems(safeArray<typeof items[0]>(response.data))
+      setItems(safeArray<(typeof items)[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('RateCategoryPage', 'Betöltési hiba:', err)
@@ -87,7 +90,8 @@ export default function RateCategoryPage() {
   const openForm = (item?: RateCategoryItem) => {
     setForm({
       currencyCode: item?.currencyCode ?? '',
-      category: (item?.category === 'SMALL' || item?.category === 'LARGE' ? item.category : 'STANDARD'),
+      category:
+        item?.category === 'SMALL' || item?.category === 'LARGE' ? item.category : 'STANDARD',
       buyRate: item?.buyRate != null ? String(item.buyRate) : '',
       sellRate: item?.sellRate != null ? String(item.sellRate) : '',
       minAmount: item?.minAmount != null ? String(item.minAmount) : '',
@@ -156,12 +160,10 @@ export default function RateCategoryPage() {
     }
   }
 
-  const filtered = items.filter(item => {
+  const filtered = items.filter((item) => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
+    return Object.values(item).some((v) => v != null && String(v).toLowerCase().includes(term))
   })
 
   return (
@@ -175,8 +177,12 @@ export default function RateCategoryPage() {
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button onClick={() => openForm()} className="form-button-primary flex items-center gap-1">
-            <Plus className="h-4 w-4" />{t('common.new')}
+          <button
+            onClick={() => openForm()}
+            className="form-button-primary flex items-center gap-1"
+          >
+            <Plus className="h-4 w-4" />
+            {t('common.new')}
           </button>
         </div>
       </div>
@@ -186,22 +192,36 @@ export default function RateCategoryPage() {
           <h2 className="text-base font-semibold">Árfolyam kategória beállítása</h2>
           <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
             <div>
-              <label htmlFor="rate-category-currency" className="form-label">Valuta</label>
+              <label htmlFor="rate-category-currency" className="form-label">
+                Valuta
+              </label>
               <input
                 id="rate-category-currency"
                 value={form.currencyCode}
-                onChange={(e) => setForm((current) => current ? { ...current, currencyCode: e.target.value } : current)}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, currencyCode: e.target.value } : current,
+                  )
+                }
                 className="form-input w-full uppercase"
                 maxLength={3}
                 placeholder="EUR"
               />
             </div>
             <div>
-              <label htmlFor="rate-category-kind" className="form-label">Kategória</label>
+              <label htmlFor="rate-category-kind" className="form-label">
+                Kategória
+              </label>
               <select
                 id="rate-category-kind"
                 value={form.category}
-                onChange={(e) => setForm((current) => current ? { ...current, category: e.target.value as RateCategoryForm['category'] } : current)}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current
+                      ? { ...current, category: e.target.value as RateCategoryForm['category'] }
+                      : current,
+                  )
+                }
                 className="form-input w-full"
               >
                 <option value="SMALL">SMALL</option>
@@ -210,51 +230,82 @@ export default function RateCategoryPage() {
               </select>
             </div>
             <div>
-              <label htmlFor="rate-category-buy" className="form-label">Vételi árfolyam</label>
+              <label htmlFor="rate-category-buy" className="form-label">
+                Vételi árfolyam
+              </label>
               <input
                 id="rate-category-buy"
                 value={form.buyRate}
-                onChange={(e) => setForm((current) => current ? { ...current, buyRate: e.target.value } : current)}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, buyRate: e.target.value } : current,
+                  )
+                }
                 className="form-input w-full"
                 inputMode="decimal"
               />
             </div>
             <div>
-              <label htmlFor="rate-category-sell" className="form-label">Eladási árfolyam</label>
+              <label htmlFor="rate-category-sell" className="form-label">
+                Eladási árfolyam
+              </label>
               <input
                 id="rate-category-sell"
                 value={form.sellRate}
-                onChange={(e) => setForm((current) => current ? { ...current, sellRate: e.target.value } : current)}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, sellRate: e.target.value } : current,
+                  )
+                }
                 className="form-input w-full"
                 inputMode="decimal"
               />
             </div>
             <div>
-              <label htmlFor="rate-category-min" className="form-label">Minimum összeg</label>
+              <label htmlFor="rate-category-min" className="form-label">
+                Minimum összeg
+              </label>
               <input
                 id="rate-category-min"
                 value={form.minAmount}
-                onChange={(e) => setForm((current) => current ? { ...current, minAmount: e.target.value } : current)}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, minAmount: e.target.value } : current,
+                  )
+                }
                 className="form-input w-full"
                 inputMode="decimal"
               />
             </div>
             <div>
-              <label htmlFor="rate-category-max" className="form-label">Maximum összeg</label>
+              <label htmlFor="rate-category-max" className="form-label">
+                Maximum összeg
+              </label>
               <input
                 id="rate-category-max"
                 value={form.maxAmount}
-                onChange={(e) => setForm((current) => current ? { ...current, maxAmount: e.target.value } : current)}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, maxAmount: e.target.value } : current,
+                  )
+                }
                 className="form-input w-full"
                 inputMode="decimal"
               />
             </div>
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => void saveCategory()} disabled={saving} className="form-button-primary">
+            <button
+              type="button"
+              onClick={() => void saveCategory()}
+              disabled={saving}
+              className="form-button-primary"
+            >
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
-            <button type="button" onClick={() => setForm(null)} className="form-button">Mégse</button>
+            <button type="button" onClick={() => setForm(null)} className="form-button">
+              Mégse
+            </button>
           </div>
         </div>
       )}
@@ -263,7 +314,9 @@ export default function RateCategoryPage() {
         <h2 className="text-base font-semibold">Kategória próba</h2>
         <div className="grid gap-3 md:grid-cols-[160px_180px_auto_1fr] md:items-end">
           <div>
-            <label htmlFor="rate-category-probe-currency" className="form-label">Valuta</label>
+            <label htmlFor="rate-category-probe-currency" className="form-label">
+              Valuta
+            </label>
             <input
               id="rate-category-probe-currency"
               value={probeCurrency}
@@ -274,7 +327,9 @@ export default function RateCategoryPage() {
             />
           </div>
           <div>
-            <label htmlFor="rate-category-probe-amount" className="form-label">Összeg</label>
+            <label htmlFor="rate-category-probe-amount" className="form-label">
+              Összeg
+            </label>
             <input
               id="rate-category-probe-amount"
               value={probeAmount}
@@ -284,19 +339,34 @@ export default function RateCategoryPage() {
               placeholder="1000"
             />
           </div>
-          <button type="button" onClick={() => void probeCategory()} disabled={probeLoading} className="form-button-primary">
+          <button
+            type="button"
+            onClick={() => void probeCategory()}
+            disabled={probeLoading}
+            className="form-button-primary"
+          >
             {probeLoading ? 'Lekérdezés...' : 'Kategória próba'}
           </button>
           <div className="rounded border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-900">
             {probeResult ? (
               <div className="grid gap-1 sm:grid-cols-4">
-                <span><b>{probeResult.currencyCode}</b></span>
-                <span>Kategória: <b>{probeResult.category}</b></span>
-                <span>Vétel: <b>{formatRateCategoryValue(probeResult.buyRate)}</b></span>
-                <span>Eladás: <b>{formatRateCategoryValue(probeResult.sellRate)}</b></span>
+                <span>
+                  <b>{probeResult.currencyCode}</b>
+                </span>
+                <span>
+                  Kategória: <b>{probeResult.category}</b>
+                </span>
+                <span>
+                  Vétel: <b>{formatRateCategoryValue(probeResult.buyRate)}</b>
+                </span>
+                <span>
+                  Eladás: <b>{formatRateCategoryValue(probeResult.sellRate)}</b>
+                </span>
               </div>
             ) : (
-              <span>Adjon meg valutát és összeget az alkalmazandó kategória backend lekérdezéséhez.</span>
+              <span>
+                Adjon meg valutát és összeget az alkalmazandó kategória backend lekérdezéséhez.
+              </span>
             )}
           </div>
         </div>
@@ -309,7 +379,7 @@ export default function RateCategoryPage() {
             type="text"
             placeholder="Keresés..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="form-input w-full pl-10"
           />
         </div>
@@ -330,77 +400,130 @@ export default function RateCategoryPage() {
 
       <div className="grid gap-3 md:hidden">
         {loading ? (
-          <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">Betöltés...</div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">{t('common.noData')}</div>
-        ) : filtered.map(item => (
-          <div key={item.id} className="rounded border border-gray-200 bg-white p-3 shadow-sm" data-testid="rate-category-mobile-card">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <div className="font-mono text-sm font-semibold text-blue-700">{item.currencyCode ?? '-'}</div>
-                <div className="text-xs text-gray-500">{item.category ?? '-'}</div>
-              </div>
-              <button onClick={() => openForm(item)} className="form-button p-1 text-blue-600" title="Szerkesztés">
-                <Edit2 className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-              <div className="rounded border border-gray-100 bg-gray-50 px-2 py-1">
-                <div className="text-[10px] uppercase text-gray-500">Vételi</div>
-                <div className="font-mono font-semibold">{formatRateCategoryValue(item.buyRate)}</div>
-              </div>
-              <div className="rounded border border-gray-100 bg-gray-50 px-2 py-1">
-                <div className="text-[10px] uppercase text-gray-500">Eladási</div>
-                <div className="font-mono font-semibold">{formatRateCategoryValue(item.sellRate)}</div>
-              </div>
-              <div className="col-span-2 rounded border border-gray-100 bg-gray-50 px-2 py-1">
-                <div className="text-[10px] uppercase text-gray-500">Sáv</div>
-                <div>{formatAmountRange(item.minAmount, item.maxAmount)}</div>
-              </div>
-            </div>
+          <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">
+            Betöltés...
           </div>
-        ))}
+        ) : filtered.length === 0 ? (
+          <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">
+            {t('common.noData')}
+          </div>
+        ) : (
+          filtered.map((item) => (
+            <div
+              key={item.id}
+              className="rounded border border-gray-200 bg-white p-3 shadow-sm"
+              data-testid="rate-category-mobile-card"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-mono text-sm font-semibold text-blue-700">
+                    {item.currencyCode ?? '-'}
+                  </div>
+                  <div className="text-xs text-gray-500">{item.category ?? '-'}</div>
+                </div>
+                <button
+                  onClick={() => openForm(item)}
+                  className="form-button p-1 text-blue-600"
+                  title="Szerkesztés"
+                >
+                  <Edit2 className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded border border-gray-100 bg-gray-50 px-2 py-1">
+                  <div className="text-[10px] uppercase text-gray-500">Vételi</div>
+                  <div className="font-mono font-semibold">
+                    {formatRateCategoryValue(item.buyRate)}
+                  </div>
+                </div>
+                <div className="rounded border border-gray-100 bg-gray-50 px-2 py-1">
+                  <div className="text-[10px] uppercase text-gray-500">Eladási</div>
+                  <div className="font-mono font-semibold">
+                    {formatRateCategoryValue(item.sellRate)}
+                  </div>
+                </div>
+                <div className="col-span-2 rounded border border-gray-100 bg-gray-50 px-2 py-1">
+                  <div className="text-[10px] uppercase text-gray-500">Sáv</div>
+                  <div>{formatAmountRange(item.minAmount, item.maxAmount)}</div>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       <div className="data-grid hidden overflow-x-auto md:block">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.currency')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Kategória</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Vételi</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Eladási</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Sáv</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.actions')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.currency')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Kategória
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Vételi
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Eladási
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Sáv
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                {t('common.actions')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm font-mono font-semibold">{item.currencyCode ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.category ?? '-'}</td>
-                <td className="px-4 py-3 text-sm font-mono">{formatRateCategoryValue(item.buyRate)}</td>
-                <td className="px-4 py-3 text-sm font-mono">{formatRateCategoryValue(item.sellRate)}</td>
-                <td className="px-4 py-3 text-sm">
-                  {formatAmountRange(item.minAmount, item.maxAmount)}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <button onClick={() => openForm(item)} className="form-button mr-2 p-1 text-blue-600" title="Szerkesztés">
-                    <Edit2 className="h-4 w-4" />
-                  </button>
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                  Betöltés...
                 </td>
               </tr>
-            ))}
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('common.noData')}
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm font-mono font-semibold">
+                    {item.currencyCode ?? '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm">{item.category ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm font-mono">
+                    {formatRateCategoryValue(item.buyRate)}
+                  </td>
+                  <td className="px-4 py-3 text-sm font-mono">
+                    {formatRateCategoryValue(item.sellRate)}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {formatAmountRange(item.minAmount, item.maxAmount)}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => openForm(item)}
+                      className="form-button mr-2 p-1 text-blue-600"
+                      title="Szerkesztés"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="text-sm text-gray-500">
-        {t('audit.osszesen')}{filtered.length} / {items.length}
+        {t('audit.osszesen')}
+        {filtered.length} / {items.length}
       </div>
     </div>
   )

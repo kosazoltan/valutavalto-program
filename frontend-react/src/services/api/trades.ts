@@ -45,7 +45,12 @@ export const tradeApi = {
     (await api.post<TradeDto>(`/trades/${id}/accept`)).data,
 
   reject: async (id: string, reason?: string): Promise<TradeDto> =>
-    (await api.post<TradeDto>(`/trades/${id}/reject`, reason?.trim() ? { reason: reason.trim() } : undefined)).data,
+    (
+      await api.post<TradeDto>(
+        `/trades/${id}/reject`,
+        reason?.trim() ? { reason: reason.trim() } : undefined,
+      )
+    ).data,
 
   complete: async (id: string): Promise<TradeDto> =>
     (await api.post<TradeDto>(`/trades/${id}/complete`)).data,
@@ -54,11 +59,20 @@ export const tradeApi = {
     (await api.delete<TradeDto>(`/trades/${id}`)).data,
 
   pending: async (branchId?: string): Promise<TradeDto[]> =>
-    (await api.get<TradeDto[]>('/trades/pending', { params: branchId ? { branchId } : undefined })).data,
+    (await api.get<TradeDto[]>('/trades/pending', { params: branchId ? { branchId } : undefined }))
+      .data,
 
-  history: async ({ branchId, from, to, page = 0, size = 20 }: TradeHistoryParams): Promise<PagedResponse<TradeDto>> =>
-    (await api.get<PagedResponse<TradeDto>>('/trades/history', {
-      params: { branchId, from, to, page, size },
-      _preservePaged: true,
-    })).data,
+  history: async ({
+    branchId,
+    from,
+    to,
+    page = 0,
+    size = 20,
+  }: TradeHistoryParams): Promise<PagedResponse<TradeDto>> =>
+    (
+      await api.get<PagedResponse<TradeDto>>('/trades/history', {
+        params: { branchId, from, to, page, size },
+        _preservePaged: true,
+      })
+    ).data,
 }

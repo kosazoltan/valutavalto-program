@@ -68,40 +68,46 @@ function decrypt(encrypted: Buffer, iv: string, tag: string): Buffer {
 }
 
 export function registerScannerHandlers(): void {
-  ipcMain.handle('scan-save-document', async (
-    _event,
-    transactionId: string,
-    documentType: string,
-    imageBase64: string,
-    side?: 'front' | 'back',
-  ): Promise<{ path: string; encrypted: boolean }> => {
-    // Audit P0.9: runtime allowlist a documentType-ra (TS-tipus a runtime-on
-    // semmit nem garantal, az IPC bemenet untrusted).
-    const safeDocumentType: DocumentType = validateDocumentType(documentType);
-    // FS-5: side runtime-validálás (undefined OK a régi hívók miatt).
-    if (side !== undefined && side !== 'front' && side !== 'back') {
-      throw new Error('Invalid side: ' + side);
-    }
-    const buffer = Buffer.from(imageBase64, 'base64');
-    const { encrypted, iv, tag } = encrypt(buffer);
-    const date = new Date().toISOString().slice(0, 10);
-    const safeId = sanitizeId(transactionId);
-    const dir = path.join(SCAN_DIR, date, safeId);
-    fs.mkdirSync(dir, { recursive: true });
-    const filename = `${safeDocumentType}_${side ?? 'front'}_${Date.now()}.enc`;
-    const filepath = path.join(dir, filename);
-    fs.writeFileSync(filepath, encrypted);
-    fs.writeFileSync(
-      `${filepath}.meta`,
-      JSON.stringify({ iv, tag, documentType: safeDocumentType, side: side ?? 'front', timestamp: new Date().toISOString() }),
-    );
-    return { path: filepath, encrypted: true };
-  });
+  ipcMain.handle(
+    'scan-save-document',
+    async (
+      _event,
+      transactionId: string,
+      documentType: string,
+      imageBase64: string,
+      side?: 'front' | 'back',
+    ): Promise<{ path: string; encrypted: boolean }> => {
+      // Audit P0.9: runtime allowlist a documentType-ra (TS-tipus a runtime-on
+      // semmit nem garantal, az IPC bemenet untrusted).
+      const safeDocumentType: DocumentType = validateDocumentType(documentType);
+      // FS-5: side runtime-validálás (undefined OK a régi hívók miatt).
+      if (side !== undefined && side !== 'front' && side !== 'back') {
+        throw new Error('Invalid side: ' + side);
+      }
+      const buffer = Buffer.from(imageBase64, 'base64');
+      const { encrypted, iv, tag } = encrypt(buffer);
+      const date = new Date().toISOString().slice(0, 10);
+      const safeId = sanitizeId(transactionId);
+      const dir = path.join(SCAN_DIR, date, safeId);
+      fs.mkdirSync(dir, { recursive: true });
+      const filename = `${safeDocumentType}_${side ?? 'front'}_${Date.now()}.enc`;
+      const filepath = path.join(dir, filename);
+      fs.writeFileSync(filepath, encrypted);
+      fs.writeFileSync(
+        `${filepath}.meta`,
+        JSON.stringify({
+          iv,
+          tag,
+          documentType: safeDocumentType,
+          side: side ?? 'front',
+          timestamp: new Date().toISOString(),
+        }),
+      );
+      return { path: filepath, encrypted: true };
+    },
+  );
 
-  ipcMain.handle('scan-get-document', async (
-    _event,
-    filepath: string,
-  ): Promise<string> => {
+  ipcMain.handle('scan-get-document', async (_event, filepath: string): Promise<string> => {
     // Audit P0.9 + Sourcery PR #355 follow-up: az `assertInsideBase` resolveol es
     // visszaadja a normalizalt path-et — DRY, NEM duplikalunk path.resolve-ot.
     const resolved = assertInsideBase(filepath, SCAN_DIR, 'scan filepath');
@@ -112,33 +118,36 @@ export function registerScannerHandlers(): void {
     return decrypted.toString('base64');
   });
 
-  ipcMain.handle('scan-list-documents', async (
-    _event,
-    transactionId: string,
-  ): Promise<string[]> => {
-    if (!fs.existsSync(SCAN_DIR)) return [];
-    const results: string[] = [];
-    const safeId = sanitizeId(transactionId);
-    const dateDirs = fs.readdirSync(SCAN_DIR);
-    for (const dateDir of dateDirs) {
-      const candidate = path.join(SCAN_DIR, dateDir, safeId);
-      if (!fs.existsSync(candidate) || !fs.statSync(candidate).isDirectory()) continue;
-      const files = fs.readdirSync(candidate);
-      for (const file of files) {
-        if (file.endsWith('.enc')) {
-          results.push(path.join(candidate, file));
+  ipcMain.handle(
+    'scan-list-documents',
+    async (_event, transactionId: string): Promise<string[]> => {
+      if (!fs.existsSync(SCAN_DIR)) return [];
+      const results: string[] = [];
+      const safeId = sanitizeId(transactionId);
+      const dateDirs = fs.readdirSync(SCAN_DIR);
+      for (const dateDir of dateDirs) {
+        const candidate = path.join(SCAN_DIR, dateDir, safeId);
+        if (!fs.existsSync(candidate) || !fs.statSync(candidate).isDirectory()) continue;
+        const files = fs.readdirSync(candidate);
+        for (const file of files) {
+          if (file.endsWith('.enc')) {
+            results.push(path.join(candidate, file));
+          }
         }
       }
-    }
-    return results;
-  });
+      return results;
+    },
+  );
 }
 
 /** FS-5 sync: titkosított scan-fájl beolvasása és dekriptálása. A path-guard kötelező. */
 export function readDecryptedScan(filepath: string): Buffer {
   const resolved = assertInsideBase(filepath, SCAN_DIR, 'scan filepath');
   const encrypted = fs.readFileSync(resolved);
-  const meta = JSON.parse(fs.readFileSync(`${resolved}.meta`, 'utf8')) as { iv: string; tag: string };
+  const meta = JSON.parse(fs.readFileSync(`${resolved}.meta`, 'utf8')) as {
+    iv: string;
+    tag: string;
+  };
   return decrypt(encrypted, meta.iv, meta.tag);
 }
 
@@ -146,6 +155,10 @@ export function readDecryptedScan(filepath: string): Buffer {
 export function deleteScanFiles(filepath: string): void {
   const resolved = assertInsideBase(filepath, SCAN_DIR, 'scan filepath');
   for (const p of [resolved, `${resolved}.meta`]) {
-    try { fs.unlinkSync(p); } catch { /* orphan-fájl: log a hívóban, dupla-upload nincs */ }
+    try {
+      fs.unlinkSync(p);
+    } catch {
+      /* orphan-fájl: log a hívóban, dupla-upload nincs */
+    }
   }
 }

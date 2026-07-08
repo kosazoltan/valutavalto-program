@@ -67,7 +67,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -90,31 +90,55 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/darius/range') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([reportSummary]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([reportSummary]),
+      })
     }
 
     if (path.endsWith('/darius/darius-1') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(dailyReport) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(dailyReport),
+      })
     }
 
     if (path.endsWith('/darius/darius-1/acknowledge') && method === 'POST') {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ ...dailyReport, status: 'ACKNOWLEDGED', ackReference: url.searchParams.get('ackReference') }),
+        body: JSON.stringify({
+          ...dailyReport,
+          status: 'ACKNOWLEDGED',
+          ackReference: url.searchParams.get('ackReference'),
+        }),
       })
     }
 
     if (path.endsWith('/darius/by-date') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(dailyReport) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(dailyReport),
+      })
     }
 
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
@@ -131,7 +155,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('DARIUS napi lekérdezés mobil nézetben a backend by-date endpointot használja', async ({ page }) => {
+test('DARIUS napi lekérdezés mobil nézetben a backend by-date endpointot használja', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -140,11 +166,13 @@ test('DARIUS napi lekérdezés mobil nézetben a backend by-date endpointot hasz
   await expect(page.getByRole('button', { name: /Napi lekérdezés/i })).toBeVisible()
 
   await page.locator('input[type="date"]').nth(2).fill('2026-06-19')
-  const detailRequest = page.waitForRequest(request => {
+  const detailRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'GET'
-      && url.pathname === '/api/v1/darius/by-date'
-      && url.searchParams.get('date') === '2026-06-19'
+    return (
+      request.method() === 'GET' &&
+      url.pathname === '/api/v1/darius/by-date' &&
+      url.searchParams.get('date') === '2026-06-19'
+    )
   })
   await page.getByRole('button', { name: /Napi lekérdezés/i }).click()
   await detailRequest
@@ -153,19 +181,21 @@ test('DARIUS napi lekérdezés mobil nézetben a backend by-date endpointot hasz
   await expect(page.getByText('BUD01')).toBeVisible()
   await expect(page.getByText(/abcdef1234567890/)).toBeVisible()
 
-  const acknowledgeRequest = page.waitForRequest(request => {
+  const acknowledgeRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'POST'
-      && url.pathname === '/api/v1/darius/darius-1/acknowledge'
-      && url.searchParams.get('ackReference') === 'ACK-2026-0001'
+    return (
+      request.method() === 'POST' &&
+      url.pathname === '/api/v1/darius/darius-1/acknowledge' &&
+      url.searchParams.get('ackReference') === 'ACK-2026-0001'
+    )
   })
   await page.getByLabel('Visszaigazolási referencia').fill('ACK-2026-0001')
   await page.getByRole('button', { name: 'Visszaigazolás rögzítése' }).click()
   await acknowledgeRequest
   await expect(page.getByText('ACK-2026-0001')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
@@ -178,10 +208,9 @@ test('DARIUS listaelem mobil nézetben a backend detail endpointot használja', 
   await page.goto('/darius', { waitUntil: 'domcontentloaded' })
   await expect(page.getByTestId('darius-report-darius-1')).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request => {
+  const detailRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'GET'
-      && url.pathname === '/api/v1/darius/darius-1'
+    return request.method() === 'GET' && url.pathname === '/api/v1/darius/darius-1'
   })
   await page.getByTestId('darius-report-darius-1').click()
   await detailRequest
@@ -190,8 +219,8 @@ test('DARIUS listaelem mobil nézetben a backend detail endpointot használja', 
   await expect(page.getByText('BUD01')).toBeVisible()
   await expect(page.getByText(/abcdef1234567890/)).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

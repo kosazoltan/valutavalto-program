@@ -93,7 +93,11 @@ export default function BackupPage() {
 
   const restoreBackup = async (id: BackupItem['id']) => {
     const backupId = String(id)
-    if (!window.confirm('Biztosan visszaállítja a kiválasztott mentést? A művelet éles adatállapotot módosíthat.')) {
+    if (
+      !window.confirm(
+        'Biztosan visszaállítja a kiválasztott mentést? A művelet éles adatállapotot módosíthat.',
+      )
+    ) {
       return
     }
 
@@ -150,12 +154,10 @@ export default function BackupPage() {
     void loadData()
   }, [loadData])
 
-  const filtered = items.filter(item => {
+  const filtered = items.filter((item) => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
+    return Object.values(item).some((v) => v != null && String(v).toLowerCase().includes(term))
   })
 
   return (
@@ -187,7 +189,7 @@ export default function BackupPage() {
             type="text"
             placeholder="Keresés..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="form-input w-full pl-10"
           />
         </div>
@@ -198,7 +200,8 @@ export default function BackupPage() {
           <div>
             <h2 className="text-sm font-semibold text-blue-950">Konfiguráció export</h2>
             <p className="mt-1 text-sm text-blue-800">
-              Telephelyi rendszerparaméterek, árfolyam-beállítások, kerekítés, nyomtatási sablonok és LED konfiguráció JSON mentése.
+              Telephelyi rendszerparaméterek, árfolyam-beállítások, kerekítés, nyomtatási sablonok
+              és LED konfiguráció JSON mentése.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -235,54 +238,79 @@ export default function BackupPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('backup.tipus')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('backup.letrehozva')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('backup.meret')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('backup.allapot')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('backup.keszitette')}</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.actions')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('backup.tipus')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('backup.letrehozva')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('backup.meret')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('backup.allapot')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('backup.keszitette')}
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                {t('common.actions')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.backupType ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.createdAt ? new Date(item.createdAt).toLocaleString('hu-HU') : '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.sizeBytes ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.createdByName ?? '-'}</td>
-                <td className="px-4 py-3 text-right text-sm">
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={() => void downloadBackup(item.id)}
-                      disabled={busyAction !== null}
-                      className="form-button p-2"
-                      title="Letöltés"
-                    >
-                      <Download className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => void restoreBackup(item.id)}
-                      disabled={busyAction !== null || item.status !== 'COMPLETED'}
-                      className="form-button p-2 text-red-700"
-                      title="Visszaállítás"
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                    </button>
-                  </div>
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                  Betöltés...
                 </td>
               </tr>
-            ))}
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('common.noData')}
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm">{item.backupType ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.createdAt ? new Date(item.createdAt).toLocaleString('hu-HU') : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm">{item.sizeBytes ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.createdByName ?? '-'}</td>
+                  <td className="px-4 py-3 text-right text-sm">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => void downloadBackup(item.id)}
+                        disabled={busyAction !== null}
+                        className="form-button p-2"
+                        title="Letöltés"
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => void restoreBackup(item.id)}
+                        disabled={busyAction !== null || item.status !== 'COMPLETED'}
+                        className="form-button p-2 text-red-700"
+                        title="Visszaállítás"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="text-sm text-gray-500">
-        {t('audit.osszesen')}{filtered.length} / {items.length}
+        {t('audit.osszesen')}
+        {filtered.length} / {items.length}
       </div>
     </div>
   )

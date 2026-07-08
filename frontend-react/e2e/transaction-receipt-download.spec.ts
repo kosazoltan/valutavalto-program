@@ -29,7 +29,7 @@ async function mockTransactionApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockTransactionApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/transactions') && method === 'GET') {
@@ -112,7 +120,11 @@ async function mockTransactionApis(page: Page) {
       })
     }
 
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [], data: [], total: 0 }) })
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ content: [], data: [], total: 0 }),
+    })
   })
 }
 
@@ -126,7 +138,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('tranzakció lista bizonylat PDF és ESC/POS letöltése backend receipt endpointokat hív', async ({ page }) => {
+test('tranzakció lista bizonylat PDF és ESC/POS letöltése backend receipt endpointokat hív', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockTransactionApis(page)
   await login(page)
@@ -134,20 +148,22 @@ test('tranzakció lista bizonylat PDF és ESC/POS letöltése backend receipt en
   await page.goto('/transactions', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('E001000042')).toBeVisible()
 
-  const pdfRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/receipts/transaction/42/pdf')
+  const pdfRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes('/receipts/transaction/42/pdf'),
   )
   await page.getByTestId('receipt-pdf-tx-42').click()
   await pdfRequest
 
-  const escposRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/receipts/transaction/42/escpos')
+  const escposRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes('/receipts/transaction/42/escpos'),
   )
   await page.getByTestId('receipt-escpos-tx-42').click()
   await escposRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

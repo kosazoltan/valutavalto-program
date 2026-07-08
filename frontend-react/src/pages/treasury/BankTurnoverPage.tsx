@@ -72,7 +72,9 @@ export default function BankTurnoverPage() {
       {error && (
         <div className="rounded border border-red-300 bg-red-50 p-4 text-sm text-red-700">
           {error}
-          <button onClick={fetchData} className="ml-3 underline">{t('treasury.ujra')}</button>
+          <button onClick={fetchData} className="ml-3 underline">
+            {t('treasury.ujra')}
+          </button>
         </div>
       )}
 
@@ -94,9 +96,11 @@ export default function BankTurnoverPage() {
                   <td className="px-3 py-1.5 font-mono">{row.currencyCode}</td>
                   <td className="px-3 py-1.5 text-right">{formatNum(row.withdrawnAmount)}</td>
                   <td className="px-3 py-1.5 text-right">{formatNum(row.depositedAmount)}</td>
-                  <td className={`px-3 py-1.5 text-right font-medium ${
-                    row.netFlow > 0 ? 'text-green-600' : row.netFlow < 0 ? 'text-red-600' : ''
-                  }`}>
+                  <td
+                    className={`px-3 py-1.5 text-right font-medium ${
+                      row.netFlow > 0 ? 'text-green-600' : row.netFlow < 0 ? 'text-red-600' : ''
+                    }`}
+                  >
                     {formatNum(row.netFlow)}
                   </td>
                 </tr>
@@ -107,7 +111,9 @@ export default function BankTurnoverPage() {
       )}
 
       {!loading && data.length === 0 && (
-        <p className="py-8 text-center text-gray-400">{t('treasury.nincsBankforgalomAKivalasztottNapra')}</p>
+        <p className="py-8 text-center text-gray-400">
+          {t('treasury.nincsBankforgalomAKivalasztottNapra')}
+        </p>
       )}
 
       {loading && (

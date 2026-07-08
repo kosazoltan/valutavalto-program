@@ -77,9 +77,9 @@ export default function RateHistoryPage() {
       const fromStr = dateFrom || formatLocalDate(defaultFrom)
       const toStr = dateTo || formatLocalDate(today)
       const response = await api.get<RateHistoryItem[]>('/rate-history', {
-        params: { from: fromStr, to: toStr }
+        params: { from: fromStr, to: toStr },
       })
-      setItems(safeArray<typeof items[0]>(response.data))
+      setItems(safeArray<(typeof items)[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('RateHistoryPage', 'Betöltési hiba:', err)
@@ -104,7 +104,7 @@ export default function RateHistoryPage() {
       setAtDateLoading(true)
       setAtDateError(null)
       const response = await api.get<RateHistoryItem>('/rate-history/at-date', {
-        params: { currency, date: atDateValue }
+        params: { currency, date: atDateValue },
       })
       setAtDateResult(response.data)
       setAtDateCurrency(currency)
@@ -159,12 +159,10 @@ export default function RateHistoryPage() {
     }
   }
 
-  const filtered = items.filter(item => {
+  const filtered = items.filter((item) => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
+    return Object.values(item).some((v) => v != null && String(v).toLowerCase().includes(term))
   })
 
   return (
@@ -183,10 +181,20 @@ export default function RateHistoryPage() {
 
       <div className="flex flex-col gap-2 md:flex-row md:items-center">
         <div className="grid grid-cols-2 gap-2 md:flex">
-          <input aria-label="Kezdő dátum" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-            className="form-input min-w-0 px-2 py-1" />
-          <input aria-label="Záró dátum" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-            className="form-input min-w-0 px-2 py-1" />
+          <input
+            aria-label="Kezdő dátum"
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="form-input min-w-0 px-2 py-1"
+          />
+          <input
+            aria-label="Záró dátum"
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="form-input min-w-0 px-2 py-1"
+          />
         </div>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -194,7 +202,7 @@ export default function RateHistoryPage() {
             type="text"
             placeholder="Keresés..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="form-input w-full pl-10"
           />
         </div>
@@ -209,7 +217,7 @@ export default function RateHistoryPage() {
           <input
             aria-label="Adott időpont valuta"
             value={atDateCurrency}
-            onChange={e => setAtDateCurrency(e.target.value.toUpperCase())}
+            onChange={(e) => setAtDateCurrency(e.target.value.toUpperCase())}
             className="form-input min-w-0 px-2 py-1"
             maxLength={3}
           />
@@ -217,7 +225,7 @@ export default function RateHistoryPage() {
             aria-label="Adott időpont"
             type="datetime-local"
             value={atDateValue}
-            onChange={e => setAtDateValue(e.target.value)}
+            onChange={(e) => setAtDateValue(e.target.value)}
             className="form-input min-w-0 px-2 py-1"
           />
           <button
@@ -239,7 +247,9 @@ export default function RateHistoryPage() {
           <div className="mt-3 grid gap-2 rounded-md bg-white p-3 text-sm shadow-sm md:grid-cols-4">
             <div>
               <div className="text-xs uppercase text-gray-500">{t('common.currency')}</div>
-              <div className="font-semibold text-gray-900">{atDateResult.currencyCode ?? atDateCurrency}</div>
+              <div className="font-semibold text-gray-900">
+                {atDateResult.currencyCode ?? atDateCurrency}
+              </div>
             </div>
             <div>
               <div className="text-xs uppercase text-gray-500">{t('rates.veteliArf')}</div>
@@ -251,7 +261,9 @@ export default function RateHistoryPage() {
             </div>
             <div>
               <div className="text-xs uppercase text-gray-500">{t('rates.ervenyes')}</div>
-              <div className="font-semibold text-gray-900">{formatDateTimeDisplay(atDateResult.effectiveFrom ?? atDateResult.validFrom)}</div>
+              <div className="font-semibold text-gray-900">
+                {formatDateTimeDisplay(atDateResult.effectiveFrom ?? atDateResult.validFrom)}
+              </div>
             </div>
           </div>
         )}
@@ -273,7 +285,7 @@ export default function RateHistoryPage() {
           <input
             aria-label="Árfolyam ellenőrzés valuta"
             value={canonicalCurrencyCode}
-            onChange={e => setCanonicalCurrencyCode(e.target.value.toUpperCase())}
+            onChange={(e) => setCanonicalCurrencyCode(e.target.value.toUpperCase())}
             className="form-input min-w-0 px-2 py-1"
             maxLength={3}
           />
@@ -282,7 +294,7 @@ export default function RateHistoryPage() {
             type="number"
             min="1"
             value={canonicalHufAmount}
-            onChange={e => setCanonicalHufAmount(e.target.value)}
+            onChange={(e) => setCanonicalHufAmount(e.target.value)}
             className="form-input min-w-0 px-2 py-1"
           />
           <button
@@ -333,65 +345,99 @@ export default function RateHistoryPage() {
 
       <div className="space-y-2 md:hidden">
         {loading ? (
-          <div className="rounded-md border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">Betöltés...</div>
+          <div className="rounded-md border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">
+            Betöltés...
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-md border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</div>
-        ) : filtered.map(item => (
-          <article key={item.id} className="rounded-md border border-gray-200 bg-white p-3 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-xs uppercase text-gray-500">{t('common.currency')}</div>
-                <div className="text-base font-semibold text-gray-900">{item.currencyCode ?? '-'}</div>
+          <div className="rounded-md border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">
+            {t('common.noData')}
+          </div>
+        ) : (
+          filtered.map((item) => (
+            <article
+              key={item.id}
+              className="rounded-md border border-gray-200 bg-white p-3 shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-xs uppercase text-gray-500">{t('common.currency')}</div>
+                  <div className="text-base font-semibold text-gray-900">
+                    {item.currencyCode ?? '-'}
+                  </div>
+                </div>
+                <div className="text-right text-xs text-gray-500">
+                  {formatDateTimeDisplay(item.effectiveFrom ?? item.validFrom)}
+                </div>
               </div>
-              <div className="text-right text-xs text-gray-500">
-                {formatDateTimeDisplay(item.effectiveFrom ?? item.validFrom)}
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <div className="text-xs uppercase text-gray-500">{t('rates.veteliArf')}</div>
+                  <div className="font-semibold text-gray-900">{item.buyRate ?? '-'}</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase text-gray-500">{t('rates.eladasiArf')}</div>
+                  <div className="font-semibold text-gray-900">{item.sellRate ?? '-'}</div>
+                </div>
               </div>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <div className="text-xs uppercase text-gray-500">{t('rates.veteliArf')}</div>
-                <div className="font-semibold text-gray-900">{item.buyRate ?? '-'}</div>
-              </div>
-              <div>
-                <div className="text-xs uppercase text-gray-500">{t('rates.eladasiArf')}</div>
-                <div className="font-semibold text-gray-900">{item.sellRate ?? '-'}</div>
-              </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          ))
+        )}
       </div>
 
       <div className="data-grid hidden overflow-x-auto md:block">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.currency')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('rates.veteliArf')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('rates.eladasiArf')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('rates.ervenyes')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('rates.modositotta')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.currency')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('rates.veteliArf')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('rates.eladasiArf')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('rates.ervenyes')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('rates.modositotta')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.currencyCode ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.buyRate ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.sellRate ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{formatDateTimeDisplay(item.effectiveFrom ?? item.validFrom)}</td>
-                <td className="px-4 py-3 text-sm">{item.createdByName ?? '-'}</td>
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                  Betöltés...
+                </td>
               </tr>
-            ))}
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('common.noData')}
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm">{item.currencyCode ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.buyRate ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.sellRate ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {formatDateTimeDisplay(item.effectiveFrom ?? item.validFrom)}
+                  </td>
+                  <td className="px-4 py-3 text-sm">{item.createdByName ?? '-'}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="text-sm text-gray-500">
-        {t('audit.osszesen')}{filtered.length} / {items.length}
+        {t('audit.osszesen')}
+        {filtered.length} / {items.length}
       </div>
     </div>
   )

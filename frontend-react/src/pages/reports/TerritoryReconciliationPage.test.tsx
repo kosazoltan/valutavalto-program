@@ -87,7 +87,11 @@ describe('TerritoryReconciliationPage', () => {
     await waitFor(() => {
       expect(mocks.listTerritories).toHaveBeenCalled()
       expect(mocks.getTerritory).toHaveBeenCalledWith(20)
-      expect(mocks.getTerritoryProfit).toHaveBeenCalledWith(20, expect.stringMatching(/^\d{4}-\d{2}-01$/), expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/))
+      expect(mocks.getTerritoryProfit).toHaveBeenCalledWith(
+        20,
+        expect.stringMatching(/^\d{4}-\d{2}-01$/),
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      )
     })
 
     expect(await screen.findByText('Szeged terület (#20)')).toBeInTheDocument()
@@ -110,7 +114,9 @@ describe('TerritoryReconciliationPage', () => {
       expect(mocks.getTerritoryProfit).toHaveBeenCalledWith(20, '2026-06-01', '2026-06-30')
     })
 
-    expect(await screen.findByText('Reconciliation OK: Σ pénztár összhaszon = terület összhaszon')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Reconciliation OK: Σ pénztár összhaszon = terület összhaszon'),
+    ).toBeInTheDocument()
     expect(screen.getAllByText('SZEGED - Szeged Értéktár').length).toBeGreaterThan(0)
   })
 

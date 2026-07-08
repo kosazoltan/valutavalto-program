@@ -23,7 +23,9 @@ vi.mock('react-router-dom', async () => {
 })
 
 vi.mock('../../services/api/transactions', async () => {
-  const actual = await vi.importActual<typeof import('../../services/api/transactions')>('../../services/api/transactions')
+  const actual = await vi.importActual<typeof import('../../services/api/transactions')>(
+    '../../services/api/transactions',
+  )
   return {
     ...actual,
     transactionApi: {
@@ -173,8 +175,12 @@ describe('TransactionListPage', () => {
     vi.clearAllMocks()
     mocks.transactionApiList.mockResolvedValue(mockPagedResponse)
     mocks.transactionApiGetDaily.mockResolvedValue([mockTransactions[0]])
-    mocks.receiptDownloadTransactionPdf.mockResolvedValue(new Blob(['pdf'], { type: 'application/pdf' }))
-    mocks.receiptDownloadTransactionEscPos.mockResolvedValue(new Blob(['escpos'], { type: 'application/octet-stream' }))
+    mocks.receiptDownloadTransactionPdf.mockResolvedValue(
+      new Blob(['pdf'], { type: 'application/pdf' }),
+    )
+    mocks.receiptDownloadTransactionEscPos.mockResolvedValue(
+      new Blob(['escpos'], { type: 'application/octet-stream' }),
+    )
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:receipt')
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
@@ -246,15 +252,13 @@ describe('TransactionListPage', () => {
 
   it('típus szűrés megmutatja csak az ELADÁS tranzakciókat', async () => {
     // Server-side type filter — mock a SELL-only response
-    mocks.transactionApiList
-      .mockResolvedValueOnce(mockPagedResponse)
-      .mockResolvedValueOnce({
-        content: mockTransactions.filter(t => t.transactionType === 'SELL'),
-        totalElements: 2,
-        totalPages: 1,
-        size: 25,
-        number: 0,
-      })
+    mocks.transactionApiList.mockResolvedValueOnce(mockPagedResponse).mockResolvedValueOnce({
+      content: mockTransactions.filter((t) => t.transactionType === 'SELL'),
+      totalElements: 2,
+      totalPages: 1,
+      size: 25,
+      number: 0,
+    })
 
     renderTransactionListPage()
     const user = userEvent.setup()

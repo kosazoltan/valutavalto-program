@@ -10,7 +10,7 @@ import {
   X,
   AlertCircle,
   CheckCircle,
-  Calculator
+  Calculator,
 } from 'lucide-react'
 import {
   transactionApi,
@@ -19,7 +19,7 @@ import {
   cashBalanceApi,
   Currency,
   ExchangeRate,
-  ConversionRequest
+  ConversionRequest,
 } from '../../services/api/index'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal, formatInteger } from '../../utils/numberFormat'
@@ -146,7 +146,7 @@ export default function ConversionPage() {
 
         const [currencyData, rateData] = await Promise.all([
           currencyApi.getActive(),
-          exchangeRateApi.list()
+          exchangeRateApi.list(),
         ])
 
         const filteredCurrencies = currencyData.filter((c: Currency) => c.code !== 'HUF')
@@ -170,7 +170,7 @@ export default function ConversionPage() {
   // Get rate for a currency
   const getRate = (currencyId: number | null): ExchangeRate | undefined => {
     if (!currencyId) return undefined
-    return rates.find(r => r.currencyId === currencyId)
+    return rates.find((r) => r.currencyId === currencyId)
   }
 
   // Calculate conversion when inputs change.
@@ -219,13 +219,13 @@ export default function ConversionPage() {
       setConversionRate(0)
       setReturnedHuf(0)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- getRate/roundHuf are derived from `rates` already in deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- getRate/roundHuf are derived from `rates` already in deps
   }, [fromCurrencyId, toCurrencyId, fromAmount, rates])
 
   // Get currency by id
   const getCurrency = (id: number | null): Currency | undefined => {
     if (!id) return undefined
-    return currencies.find(c => c.id === id)
+    return currencies.find((c) => c.id === id)
   }
 
   // Handle step 1 completion (source currency selected)
@@ -288,16 +288,20 @@ export default function ConversionPage() {
       try {
         const balances = await cashBalanceApi.list()
         const insufficient: string[] = []
-        const toBal = balances.find(b => b.currencyCode === toCurrency.code)
+        const toBal = balances.find((b) => b.currencyCode === toCurrency.code)
         const toAvailable = toBal?.currentBalance ?? 0
         if (toVal > toAvailable) {
-          insufficient.push(`${toCurrency.code}: ${toVal} kifizetés kérne, csak ${toAvailable} érhető el`)
+          insufficient.push(
+            `${toCurrency.code}: ${toVal} kifizetés kérne, csak ${toAvailable} érhető el`,
+          )
         }
         if (returnedHuf > 0) {
-          const hufBal = balances.find(b => b.currencyCode === 'HUF')
+          const hufBal = balances.find((b) => b.currencyCode === 'HUF')
           const hufAvailable = hufBal?.currentBalance ?? 0
           if (returnedHuf > hufAvailable) {
-            insufficient.push(`HUF visszajáró: ${returnedHuf.toLocaleString('hu-HU')} Ft kérne, csak ${hufAvailable.toLocaleString('hu-HU')} Ft érhető el`)
+            insufficient.push(
+              `HUF visszajáró: ${returnedHuf.toLocaleString('hu-HU')} Ft kérne, csak ${hufAvailable.toLocaleString('hu-HU')} Ft érhető el`,
+            )
           }
         }
         if (insufficient.length > 0) {
@@ -307,7 +311,9 @@ export default function ConversionPage() {
       } catch (stockErr) {
         // Copilot #858: a konkrét hibát is megjelenítjük (pl. lejárt munkamenet / hálózat),
         // ne csak generikus üzenetet — így a pénztáros tudja, mi a teendő.
-        setError('A készlet nem ellenőrizhető (' + getErrorMessage(stockErr) + '). Próbálja újra később.')
+        setError(
+          'A készlet nem ellenőrizhető (' + getErrorMessage(stockErr) + '). Próbálja újra később.',
+        )
         return
       }
 
@@ -315,7 +321,9 @@ export default function ConversionPage() {
       const cd = customerDataRef.current
       // 100k+ aggregalt HUF eseten ha nincs customer panel-bol adat, blokkoljuk
       if (amlAmount >= 100_000 && !cd) {
-        setError('100.000 Ft feletti (együttes) konverzióhoz kötelező az ügyfél azonosítása (Pmt. tv. 6.§)')
+        setError(
+          '100.000 Ft feletti (együttes) konverzióhoz kötelező az ügyfél azonosítása (Pmt. tv. 6.§)',
+        )
         return
       }
       const effectiveCustomerName = cd?.name?.trim() || customerName.trim() || null
@@ -338,7 +346,9 @@ export default function ConversionPage() {
           })
           if (checkRes.data?.requiresApproval) {
             approvalSessionIdRef.current = crypto.randomUUID()
-            setAmlApprovalReason(typeof checkRes.data?.reason === 'string' ? checkRes.data.reason : '')
+            setAmlApprovalReason(
+              typeof checkRes.data?.reason === 'string' ? checkRes.data.reason : '',
+            )
             setShowAmlApprover(true)
             return // a modal onApproved-ja beallitja az approverWorkerId-t es ujrahivja a submitet
           }
@@ -396,7 +406,8 @@ export default function ConversionPage() {
           approvalSessionId: approvalSessionIdRef.current,
         })
 
-        const changeMsg = returnedHuf > 0 ? ` Visszajáró: ${returnedHuf.toLocaleString('hu-HU')} Ft.` : ''
+        const changeMsg =
+          returnedHuf > 0 ? ` Visszajáró: ${returnedHuf.toLocaleString('hu-HU')} Ft.` : ''
         if (outcome.allSavedSynced) {
           setSuccess('Konverzió sikeresen rögzítve és szinkronizálva!' + changeMsg)
         } else {
@@ -416,35 +427,38 @@ export default function ConversionPage() {
         })
 
         // V235 + V236 a teljes Pmt. customer-snapshot atadasa a backendnek
-        const request: ConversionRequest = cd ? {
-          ...baseRequest,
-          customerId: cd.id ? String(cd.id) : undefined,
-          customerAddress: cd.address || undefined,
-          customerDocumentNumber: cd.documentNumber || undefined,
-          customerNationality: cd.nationality || undefined,
-          customerBirthPlace: cd.birthPlace || undefined,
-          customerBirthDate: cd.birthDate || undefined,
-          customerMotherName: cd.motherName || undefined,
-          customerDocumentType: cd.documentType || undefined,
-          sourceOfFunds: cd.sourceOfFunds || undefined,
-          customerIsPep: cd.isPep,
-          customerOnOwnBehalf: cd.onOwnBehalf,
-          customerActorName: cd.actorName || undefined,
-          customerPepKind: cd.pepKind ?? undefined,
-          customerActorBirthPlace: cd.actorIdentity?.birthPlace,
-          customerActorBirthDate: cd.actorIdentity?.birthDate,
-          customerActorMotherName: cd.actorIdentity?.motherName,
-          customerActorNationality: cd.actorIdentity?.nationality,
-          customerActorDocumentType: cd.actorIdentity?.documentType,
-          customerActorDocumentNumber: cd.actorIdentity?.documentNumber,
-          customerActorAddress: cd.actorIdentity?.address,
-          // AML felsovezetoi jovahagyas: a jovahagyo workerId a REST conversion request-be.
-          approverWorkerId: approverWorkerIdRef.current ?? undefined,
-          approvalSessionId: approvalSessionIdRef.current ?? undefined,
-        } : baseRequest
+        const request: ConversionRequest = cd
+          ? {
+              ...baseRequest,
+              customerId: cd.id ? String(cd.id) : undefined,
+              customerAddress: cd.address || undefined,
+              customerDocumentNumber: cd.documentNumber || undefined,
+              customerNationality: cd.nationality || undefined,
+              customerBirthPlace: cd.birthPlace || undefined,
+              customerBirthDate: cd.birthDate || undefined,
+              customerMotherName: cd.motherName || undefined,
+              customerDocumentType: cd.documentType || undefined,
+              sourceOfFunds: cd.sourceOfFunds || undefined,
+              customerIsPep: cd.isPep,
+              customerOnOwnBehalf: cd.onOwnBehalf,
+              customerActorName: cd.actorName || undefined,
+              customerPepKind: cd.pepKind ?? undefined,
+              customerActorBirthPlace: cd.actorIdentity?.birthPlace,
+              customerActorBirthDate: cd.actorIdentity?.birthDate,
+              customerActorMotherName: cd.actorIdentity?.motherName,
+              customerActorNationality: cd.actorIdentity?.nationality,
+              customerActorDocumentType: cd.actorIdentity?.documentType,
+              customerActorDocumentNumber: cd.actorIdentity?.documentNumber,
+              customerActorAddress: cd.actorIdentity?.address,
+              // AML felsovezetoi jovahagyas: a jovahagyo workerId a REST conversion request-be.
+              approverWorkerId: approverWorkerIdRef.current ?? undefined,
+              approvalSessionId: approvalSessionIdRef.current ?? undefined,
+            }
+          : baseRequest
 
         const result = await transactionApi.conversion(request)
-        const changeMsg = returnedHuf > 0 ? ` Visszajáró: ${returnedHuf.toLocaleString('hu-HU')} Ft.` : ''
+        const changeMsg =
+          returnedHuf > 0 ? ` Visszajáró: ${returnedHuf.toLocaleString('hu-HU')} Ft.` : ''
         setSuccess(`Konverzió sikeres! Bizonylat: ${result.receiptNumber}.${changeMsg}`)
       }
 
@@ -582,16 +596,20 @@ export default function ConversionPage() {
 
       {/* Step indicator */}
       <div className="flex items-center justify-center gap-4 py-2">
-        <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${
-          step === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-        }`}>
+        <div
+          className={`flex items-center gap-2 px-4 py-2 rounded-full ${
+            step === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+          }`}
+        >
           <span className="font-bold">1</span>
           <span>{t('transactions.forrasValuta')}</span>
         </div>
         <ArrowRightLeft className="text-gray-400" />
-        <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${
-          step === 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-        }`}>
+        <div
+          className={`flex items-center gap-2 px-4 py-2 rounded-full ${
+            step === 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+          }`}
+        >
           <span className="font-bold">2</span>
           <span>{t('transactions.celValuta')}</span>
         </div>
@@ -607,16 +625,21 @@ export default function ConversionPage() {
 
           <div className="space-y-3">
             <div>
-              <label htmlFor="from-currency" className="form-label">{t('transactions.forrasDeviza')}</label>
+              <label htmlFor="from-currency" className="form-label">
+                {t('transactions.forrasDeviza')}
+              </label>
               <select
                 id="from-currency"
                 value={fromCurrencyId ?? ''}
-                onChange={(e) => { lastEditedField.current = 'from'; setFromCurrencyId(e.target.value ? Number(e.target.value) : null) }}
+                onChange={(e) => {
+                  lastEditedField.current = 'from'
+                  setFromCurrencyId(e.target.value ? Number(e.target.value) : null)
+                }}
                 className="form-input w-full"
                 disabled={step === 2}
               >
                 <option value="">{t('cashdesk.valasszValutat')}</option>
-                {currencies.map(c => (
+                {currencies.map((c) => (
                   <option key={c.id} value={c.id} disabled={c.id === toCurrencyId}>
                     {c.code} - {c.name}
                   </option>
@@ -636,11 +659,17 @@ export default function ConversionPage() {
             )}
 
             <div>
-              <label htmlFor="from-amount" className="form-label">{t('transactions.osszeg')}{fromCurrency?.code || 'valuta'})</label>
+              <label htmlFor="from-amount" className="form-label">
+                {t('transactions.osszeg')}
+                {fromCurrency?.code || 'valuta'})
+              </label>
               <NumberInput
                 id="from-amount"
                 value={fromAmount}
-                onChange={(v) => { lastEditedField.current = 'from'; setFromAmount(v) }}
+                onChange={(v) => {
+                  lastEditedField.current = 'from'
+                  setFromAmount(v)
+                }}
                 className="form-input w-full text-xl text-right"
                 placeholder="0,00"
                 allowDecimals={true}
@@ -681,7 +710,9 @@ export default function ConversionPage() {
             {/* Conversion rate */}
             {conversionRate > 0 && fromCurrency && toCurrency && (
               <div className="text-center p-3 bg-white rounded border">
-                <div className="text-sm text-gray-500 mb-1">{t('transactions.konverziosArfolyam')}</div>
+                <div className="text-sm text-gray-500 mb-1">
+                  {t('transactions.konverziosArfolyam')}
+                </div>
                 <div className="text-lg font-bold font-mono">
                   1 {fromCurrency.code} = {formatDecimal(conversionRate, 4, 6)} {toCurrency.code}
                 </div>
@@ -719,7 +750,9 @@ export default function ConversionPage() {
             {step === 2 && (
               <div className="space-y-2 pt-2 border-t">
                 <div>
-                  <label htmlFor="customer-name" className="form-label text-sm">{t('transactions.ugyfelNeveOpcionalis')}</label>
+                  <label htmlFor="customer-name" className="form-label text-sm">
+                    {t('transactions.ugyfelNeveOpcionalis')}
+                  </label>
                   <input
                     id="customer-name"
                     type="text"
@@ -730,7 +763,9 @@ export default function ConversionPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="notes" className="form-label text-sm">{t('common.note')}</label>
+                  <label htmlFor="notes" className="form-label text-sm">
+                    {t('common.note')}
+                  </label>
                   <input
                     id="notes"
                     type="text"
@@ -754,16 +789,21 @@ export default function ConversionPage() {
 
           <div className="space-y-3">
             <div>
-              <label htmlFor="to-currency" className="form-label">{t('transactions.celDeviza')}</label>
+              <label htmlFor="to-currency" className="form-label">
+                {t('transactions.celDeviza')}
+              </label>
               <select
                 id="to-currency"
                 value={toCurrencyId ?? ''}
-                onChange={(e) => { lastEditedField.current = 'from'; setToCurrencyId(e.target.value ? Number(e.target.value) : null) }}
+                onChange={(e) => {
+                  lastEditedField.current = 'from'
+                  setToCurrencyId(e.target.value ? Number(e.target.value) : null)
+                }}
                 className="form-input w-full"
                 disabled={step === 1}
               >
                 <option value="">{t('cashdesk.valasszValutat')}</option>
-                {currencies.map(c => (
+                {currencies.map((c) => (
                   <option key={c.id} value={c.id} disabled={c.id === fromCurrencyId}>
                     {c.code} - {c.name}
                   </option>
@@ -783,7 +823,10 @@ export default function ConversionPage() {
             )}
 
             <div>
-              <label htmlFor="to-amount" className="form-label">{t('transactions.kapottOsszeg')}{toCurrency?.code || 'valuta'})</label>
+              <label htmlFor="to-amount" className="form-label">
+                {t('transactions.kapottOsszeg')}
+                {toCurrency?.code || 'valuta'})
+              </label>
               <NumberInput
                 id="to-amount"
                 value={toAmount}
@@ -794,7 +837,9 @@ export default function ConversionPage() {
                 allowNegative={false}
                 disabled={step === 1 || !toCurrencyId}
               />
-              <p className="text-xs text-gray-500 mt-1">{t('transactions.cimletezeshezModosithatoToAmount', 'Címletezéshez módosítható')}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {t('transactions.cimletezeshezModosithatoToAmount', 'Címletezéshez módosítható')}
+              </p>
             </div>
 
             {/* HIBA 2026-05-26 (#2): ügyfél deviza-státusza (belföldi / külföldi) */}
@@ -840,15 +885,13 @@ export default function ConversionPage() {
                       onLevelChange={setIdentificationLevel}
                       requiresSourceVerification={requiresSourceVerification}
                       hufTotal={amlAmount}
-                      onCustomerReady={(data) => { customerDataRef.current = data }}
+                      onCustomerReady={(data) => {
+                        customerDataRef.current = data
+                      }}
                     />
                   </div>
                 )}
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="form-button w-full"
-                >
+                <button type="button" onClick={() => setStep(1)} className="form-button w-full">
                   {t('transactions.Vissza')}
                 </button>
                 <button
@@ -896,7 +939,7 @@ export default function ConversionPage() {
           branchCode: worker?.branchCode ?? undefined,
           branchName: worker?.branchName ?? undefined,
           totalHuf: amlAmount,
-          lines: ([
+          lines: [
             fromCurrencyId != null && getRate(fromCurrencyId)
               ? {
                   currencyCode: currencies.find((c) => c.id === fromCurrencyId)?.code ?? '?',
@@ -915,7 +958,12 @@ export default function ConversionPage() {
                   hufValue: Math.max(0, hufAmount - returnedHuf),
                 }
               : null,
-          ].filter(Boolean)) as Array<{ currencyCode: string; amount: number; rate: number; hufValue: number }>,
+          ].filter(Boolean) as Array<{
+            currencyCode: string
+            amount: number
+            rate: number
+            hufValue: number
+          }>,
           customer: toApprovalCustomer(customerDataRef.current),
         }}
         onApproved={(workerId, name) => {

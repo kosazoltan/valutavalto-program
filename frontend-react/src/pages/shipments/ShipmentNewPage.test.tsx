@@ -6,7 +6,12 @@ import ShipmentNewPage from './ShipmentNewPage'
 import { useAuthStore } from '../../stores/authStore'
 
 const mocks = vi.hoisted(() => ({
-  branchApi: { listActive: vi.fn(), listMyTerritory: vi.fn(), listCashierShipmentTargets: vi.fn(), listVaultCounterparties: vi.fn() },
+  branchApi: {
+    listActive: vi.fn(),
+    listMyTerritory: vi.fn(),
+    listCashierShipmentTargets: vi.fn(),
+    listVaultCounterparties: vi.fn(),
+  },
   currencyApi: { getActive: vi.fn() },
   exchangeRateApi: { getByCurrencyId: vi.fn() },
   shipmentRequestApi: { create: vi.fn(), submit: vi.fn() },
@@ -21,7 +26,20 @@ describe('ShipmentNewPage', () => {
     vi.clearAllMocks()
     // Teljes auth-state-reset (CASHIER alap; a 2. teszt értéktáros user-re setState-elheti).
     useAuthStore.setState({
-      worker: { id: 7, workerCode: 'KOSA', firstName: 'Zoltán', lastName: 'Kósa', fullName: 'Kósa Zoltán', role: 'CASHIER', branchId: 'BR-A', branchCode: 'EBC', branchName: 'Erzsébet körút', companyId: 'C-1', companyCode: 'EXC', companyName: 'Exc Valuta' },
+      worker: {
+        id: 7,
+        workerCode: 'KOSA',
+        firstName: 'Zoltán',
+        lastName: 'Kósa',
+        fullName: 'Kósa Zoltán',
+        role: 'CASHIER',
+        branchId: 'BR-A',
+        branchCode: 'EBC',
+        branchName: 'Erzsébet körút',
+        companyId: 'C-1',
+        companyCode: 'EXC',
+        companyName: 'Exc Valuta',
+      },
       user: null,
       isAuthenticated: true,
       roles: [],
@@ -44,9 +62,20 @@ describe('ShipmentNewPage', () => {
       peerVaults: [],
       fixedCounterparties: [],
     })
-    mocks.currencyApi.getActive.mockResolvedValue([{ id: 4, code: 'EUR', name: 'Euró', decimals: 2, active: true }])
+    mocks.currencyApi.getActive.mockResolvedValue([
+      { id: 4, code: 'EUR', name: 'Euró', decimals: 2, active: true },
+    ])
     // D követelmény: a valuta-választás után a frontend lekéri az aktuális elszámoló árfolyamot.
-    mocks.exchangeRateApi.getByCurrencyId.mockResolvedValue({ currencyId: 4, currencyCode: 'EUR', officialRate: 400, baseBuyRate: 395, baseSellRate: 405, validDate: '2026-05-28', validTime: '12:00', active: true })
+    mocks.exchangeRateApi.getByCurrencyId.mockResolvedValue({
+      currencyId: 4,
+      currencyCode: 'EUR',
+      officialRate: 400,
+      baseBuyRate: 395,
+      baseSellRate: 405,
+      validDate: '2026-05-28',
+      validTime: '12:00',
+      active: true,
+    })
     const shipmentResponse = {
       id: 'shipment-1',
       requestNumber: 'AT-000001',
@@ -61,12 +90,19 @@ describe('ShipmentNewPage', () => {
       sealNumber: 'ABC/12-3',
     }
     mocks.shipmentRequestApi.create.mockResolvedValue(shipmentResponse)
-    mocks.shipmentRequestApi.submit.mockResolvedValue({ ...shipmentResponse, requestStatus: 'SUBMITTED' })
+    mocks.shipmentRequestApi.submit.mockResolvedValue({
+      ...shipmentResponse,
+      requestStatus: 'SUBMITTED',
+    })
   })
 
   it('creates and submits a shipment request from the real form', async () => {
     const user = userEvent.setup()
-    render(<MemoryRouter><ShipmentNewPage /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <ShipmentNewPage />
+      </MemoryRouter>,
+    )
 
     expect(screen.queryByText(/v2\.5\.0-ban érkezik/i)).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByLabelText(/Átvevő/i)).not.toBeDisabled())
@@ -80,15 +116,17 @@ describe('ShipmentNewPage', () => {
 
     // D követelmény (Codex P1): a payload NEM tartalmazza az appliedRate / hufValue mezőt,
     // a backend a server-oldali aktuális rate-tel autoritatív; a frontend csak display.
-    await waitFor(() => expect(mocks.shipmentRequestApi.create).toHaveBeenCalledWith({
-      fromBranchId: 'BR-A',
-      toBranchId: 'BR-B',
-      deliveryDate: undefined,
-      notes: '',
-      carrierName: "Brink's Hungary Kft.",
-      sealNumber: 'ABC/12-3',
-      items: [{ currencyId: '4', requestedAmount: 1250 }],
-    }))
+    await waitFor(() =>
+      expect(mocks.shipmentRequestApi.create).toHaveBeenCalledWith({
+        fromBranchId: 'BR-A',
+        toBranchId: 'BR-B',
+        deliveryDate: undefined,
+        notes: '',
+        carrierName: "Brink's Hungary Kft.",
+        sealNumber: 'ABC/12-3',
+        items: [{ currencyId: '4', requestedAmount: 1250 }],
+      }),
+    )
     expect(mocks.shipmentRequestApi.submit).toHaveBeenCalledWith('shipment-1')
     await waitFor(() => expect(screen.getByText('Átadó:')).toBeInTheDocument())
     expect(screen.getByText(/BR075 - Szeged Értéktár/)).toBeInTheDocument()
@@ -98,7 +136,11 @@ describe('ShipmentNewPage', () => {
 
   it('FK02: hiányzó szállító/plombaszám esetén blokkolja a beküldést és hibát mutat', async () => {
     const user = userEvent.setup()
-    render(<MemoryRouter><ShipmentNewPage /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <ShipmentNewPage />
+      </MemoryRouter>,
+    )
 
     await waitFor(() => expect(screen.getByLabelText(/Átvevő/i)).not.toBeDisabled())
     await user.selectOptions(screen.getByLabelText(/Átvevő/i), 'BR-B')
@@ -108,27 +150,44 @@ describe('ShipmentNewPage', () => {
     await user.click(screen.getByRole('button', { name: /Igény beküldése/i }))
 
     // A kötelező-validáció blokkol: sem create, sem submit nem hívódik, és megjelenik a hiba.
-    await waitFor(() => expect(screen.getByText(/A szállító nevének megadása kötelező!/i)).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText(/A szállító nevének megadása kötelező!/i)).toBeInTheDocument(),
+    )
     expect(mocks.shipmentRequestApi.create).not.toHaveBeenCalled()
     expect(mocks.shipmentRequestApi.submit).not.toHaveBeenCalled()
   })
 
   it('outbound átadásnál a zárolt Átadó mező a saját értéktár nevét mutatja', async () => {
     useAuthStore.setState({
-      worker: { id: 99, workerCode: 'BALI', firstName: 'Henriett', lastName: 'Bali', fullName: 'Bali Henriett', role: 'CASHIER', branchId: 'BR-VAULT-SZEGED', branchCode: 'BR075', branchName: 'Szeged Értéktár', companyId: 'C-1', companyCode: 'EBC', companyName: 'EBC' },
+      worker: {
+        id: 99,
+        workerCode: 'BALI',
+        firstName: 'Henriett',
+        lastName: 'Bali',
+        fullName: 'Bali Henriett',
+        role: 'CASHIER',
+        branchId: 'BR-VAULT-SZEGED',
+        branchCode: 'BR075',
+        branchName: 'Szeged Értéktár',
+        companyId: 'C-1',
+        companyCode: 'EBC',
+        companyName: 'EBC',
+      },
       isAuthenticated: true,
       roles: ['ertektar'],
       activeRole: 'ertektar',
     })
     mocks.branchApi.listVaultCounterparties.mockResolvedValue({
-      territorialCashiers: [
-        { id: 'BR-TER-1', code: 'BR026', name: 'Szeged Móra', isActive: true },
-      ],
+      territorialCashiers: [{ id: 'BR-TER-1', code: 'BR026', name: 'Szeged Móra', isActive: true }],
       peerVaults: [],
       fixedCounterparties: [],
     })
 
-    render(<MemoryRouter initialEntries={['/shipments/new?direction=outbound']}><ShipmentNewPage /></MemoryRouter>)
+    render(
+      <MemoryRouter initialEntries={['/shipments/new?direction=outbound']}>
+        <ShipmentNewPage />
+      </MemoryRouter>,
+    )
 
     const fromSelect = await screen.findByLabelText(/Átadó/i)
     await waitFor(() => expect(fromSelect).toBeDisabled())
@@ -138,7 +197,20 @@ describe('ShipmentNewPage', () => {
   it('FK-013: értéktáros user esetén 3-csoportos optgroup az Átvevő dropdown-ban', async () => {
     // Értéktáros worker → hasCanonicalRole('ertektar') → listVaultCounterparties
     useAuthStore.setState({
-      worker: { id: 99, workerCode: 'BALI', firstName: 'Henriett', lastName: 'Bali', fullName: 'Bali Henriett', role: 'CASHIER', branchId: 'BR-VAULT-SZEGED', branchCode: 'BR-VAULT-SZEGED', branchName: 'Szeged Értéktár', companyId: 'C-1', companyCode: 'EBC', companyName: 'EBC' },
+      worker: {
+        id: 99,
+        workerCode: 'BALI',
+        firstName: 'Henriett',
+        lastName: 'Bali',
+        fullName: 'Bali Henriett',
+        role: 'CASHIER',
+        branchId: 'BR-VAULT-SZEGED',
+        branchCode: 'BR-VAULT-SZEGED',
+        branchName: 'Szeged Értéktár',
+        companyId: 'C-1',
+        companyCode: 'EBC',
+        companyName: 'EBC',
+      },
       isAuthenticated: true,
       roles: ['ertektar'],
       activeRole: 'ertektar',
@@ -158,7 +230,11 @@ describe('ShipmentNewPage', () => {
       ],
     })
 
-    render(<MemoryRouter><ShipmentNewPage /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <ShipmentNewPage />
+      </MemoryRouter>,
+    )
 
     // Először assertions, hogy az értéktáros user esetén a megfelelő endpoint hívódott.
     await waitFor(() => expect(mocks.branchApi.listVaultCounterparties).toHaveBeenCalled())
@@ -171,14 +247,26 @@ describe('ShipmentNewPage', () => {
       const territorialGroups = screen.getAllByRole('group', { name: /Helyi Pénztárak/i })
       expect(territorialGroups.length).toBeGreaterThanOrEqual(1)
     })
-    expect(screen.getAllByRole('group', { name: /Társ értéktárak/i }).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByRole('group', { name: /Banki és speciális partnerek/i }).length).toBeGreaterThanOrEqual(1)
+    expect(
+      screen.getAllByRole('group', { name: /Társ értéktárak/i }).length,
+    ).toBeGreaterThanOrEqual(1)
+    expect(
+      screen.getAllByRole('group', { name: /Banki és speciális partnerek/i }).length,
+    ).toBeGreaterThanOrEqual(1)
 
     // A 6 partner mind option-ként (mindkét select-ben szerepelnek, getAllByRole)
-    expect(screen.getAllByRole('option', { name: /BR026 - Szeged Móra/ }).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByRole('option', { name: /BR050 - Debrecen Értéktár/ }).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByRole('option', { name: /PRB - POS Raiffeisen Bank/ }).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByRole('option', { name: /MNB - Magyar Nemzeti Bank/ }).length).toBeGreaterThanOrEqual(1)
+    expect(
+      screen.getAllByRole('option', { name: /BR026 - Szeged Móra/ }).length,
+    ).toBeGreaterThanOrEqual(1)
+    expect(
+      screen.getAllByRole('option', { name: /BR050 - Debrecen Értéktár/ }).length,
+    ).toBeGreaterThanOrEqual(1)
+    expect(
+      screen.getAllByRole('option', { name: /PRB - POS Raiffeisen Bank/ }).length,
+    ).toBeGreaterThanOrEqual(1)
+    expect(
+      screen.getAllByRole('option', { name: /MNB - Magyar Nemzeti Bank/ }).length,
+    ).toBeGreaterThanOrEqual(1)
 
     // A régi /branches/my-territory NEM hívódik értéktáros user esetén (már fent asserted)
   })
