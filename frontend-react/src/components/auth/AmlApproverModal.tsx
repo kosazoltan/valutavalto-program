@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../../services/api/client'
 import { logger } from '../../utils/logger'
+import { getErrorMessage } from '../../utils/errorHandling'
 
 /**
  * AML felsővezetői jóváhagyás modal (2026-06-04).
@@ -143,7 +144,7 @@ export default function AmlApproverModal({ open, currentWorkerId, reason, sessio
           ),
         )
       } catch (err) {
-        logger.warn('AmlApproverModal', 'Engedélyező-lista betöltés hiba:', err)
+        logger.warn('AmlApproverModal', 'Engedélyező-lista betöltés hiba:', getErrorMessage(err))
         setError('Az engedélyező-lista nem tölthető be (offline?). Jóváhagyás online kapcsolatot igényel.')
       } finally {
         setLoading(false)
@@ -172,7 +173,7 @@ export default function AmlApproverModal({ open, currentWorkerId, reason, sessio
         setPin('')
       }
     } catch (err) {
-      logger.warn('AmlApproverModal', 'verify-approver hiba:', err)
+      logger.warn('AmlApproverModal', 'verify-approver hiba:', getErrorMessage(err))
       const body = (err as { response?: { data?: { error?: string } } }).response?.data
       setError(body?.error ?? 'Hibás PIN vagy ideiglenes lockout')
       setPin('')
