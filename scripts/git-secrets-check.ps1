@@ -61,8 +61,11 @@ foreach ($File in $StagedFiles) {
                 Write-ColorOutput Red "✗ SECRET DETECTED in $File"
                 Write-ColorOutput Red "  Pattern: $Pattern"
                 
-                # Show matching lines (first 5)
-                $Matches = [regex]::Matches($FileContent, $Pattern)
+                # Show matching lines (first 5).
+                # IgnoreCase: a detektáló -match is case-insensitive default; az inline
+                # (?-i) prefixes minták ezt mintánként felülírják MINDKÉT ágon.
+                $Matches = [regex]::Matches($FileContent, $Pattern,
+                    [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
                 $Count = 0
                 foreach ($Match in $Matches) {
                     if ($Count -ge 5) { break }
