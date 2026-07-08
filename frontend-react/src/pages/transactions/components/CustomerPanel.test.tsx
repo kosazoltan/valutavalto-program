@@ -394,3 +394,42 @@ describe('CustomerPanel — AML degradált mód (local-first 2026-05-14)', () =>
     expect(amlResult.warnings.some((w: string) => w.startsWith('[OFFLINE_DEGRADED]'))).toBe(true)
   })
 })
+
+describe('CustomerPanel — TD9 auto-propagate change-guard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('azonos (trim-ekvivalens) payload nem hív újra onCustomerReady-t; érdemi változás igen', async () => {
+    // FE-FLAKY/TD5 tanulság: delay: null a userEvent.setup-nál
+    const user = userEvent.setup({ delay: null })
+    const onCustomerReady = vi.fn()
+    render(
+      <CustomerPanel
+        identificationLevel="SIMPLIFIED"
+        minimumLevel="SIMPLIFIED"
+        onLevelChange={() => {}}
+        requiresSourceVerification={false}
+        hufTotal={150000}
+        onCustomerReady={onCustomerReady}
+      />,
+    )
+
+    await user.type(screen.getByTestId('customer-name-input'), 'Kiss')
+    const countAfterTyping = onCustomerReady.mock.calls.length
+    expect(countAfterTyping).toBeGreaterThan(0)
+
+    // Trailing space: a customerName state VÁLTOZIK (effekt-dep), de a trim-elt
+    // payload azonos → a guardnak el kell nyelnie a hívást.
+    await user.type(screen.getByTestId('customer-name-input'), ' ')
+    expect(onCustomerReady.mock.calls.length).toBe(countAfterTyping)
+
+    // Érdemi változás → pontosan 1 új hívás, a helyes payloaddal.
+    await user.type(screen.getByTestId('customer-name-input'), 'J')
+    expect(onCustomerReady.mock.calls.length).toBe(countAfterTyping + 1)
+    const last = onCustomerReady.mock.calls.at(-1)![0]
+    expect(last).toMatchObject({ name: 'Kiss J', nationality: 'Magyar' })
+    // data?.id ?? null hívói kontraktus: auto-propagate payloadban nincs id
+    expect(last.id).toBeUndefined()
+  })
+})
