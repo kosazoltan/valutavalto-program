@@ -17,7 +17,10 @@ import { roundHuf } from './rounding'
  * nem ebben a tiszta lokális tükörfüggvényben él: a pénztáros UI a baseFee után a
  * `/discount-threshold/apply` backend szerződésen kéri le az autoritatív küszöbhatást.
  */
-export function computeHandlingFee(hufAmount: number, config: HandlingFeeConfig | null): number | null {
+export function computeHandlingFee(
+  hufAmount: number,
+  config: HandlingFeeConfig | null,
+): number | null {
   if (!config) return null
   if (!Number.isFinite(hufAmount) || hufAmount <= 0) return 0
 
@@ -34,10 +37,10 @@ export function computeHandlingFee(hufAmount: number, config: HandlingFeeConfig 
     }
     case 'BRACKET': {
       const brackets = [...(config.brackets ?? [])]
-        .filter(b => b.active !== false)
+        .filter((b) => b.active !== false)
         .sort((a, b) => a.bracketOrder - b.bracketOrder)
       if (brackets.length === 0) return 0
-      const hit = brackets.find(b => hufAmount <= b.upperLimit)
+      const hit = brackets.find((b) => hufAmount <= b.upperLimit)
       baseFee = (hit ?? brackets[brackets.length - 1]!).feeAmount
       break
     }

@@ -30,7 +30,7 @@ import CurrencyDenominationImagesPanel from './CurrencyDenominationImagesPanel'
 interface CurrencyManagerModalProps {
   isOpen: boolean
   onClose: () => void
-  onCurrencyChanged?: () => void  // ertesites a parent-nek hogy ujra-toltse a listat
+  onCurrencyChanged?: () => void // ertesites a parent-nek hogy ujra-toltse a listat
 }
 
 /**
@@ -40,7 +40,7 @@ interface CurrencyManagerModalProps {
  */
 export function computeNextDisplayOrder(currencies: Array<{ displayOrder?: number }>): number {
   if (currencies.length === 0) return 1
-  return Math.max(...currencies.map(c => c.displayOrder ?? 0)) + 1
+  return Math.max(...currencies.map((c) => c.displayOrder ?? 0)) + 1
 }
 
 function sortCurrencies(currencies: Currency[]): Currency[] {
@@ -50,7 +50,11 @@ function sortCurrencies(currencies: Currency[]): Currency[] {
   })
 }
 
-export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChanged }: CurrencyManagerModalProps) {
+export default function CurrencyManagerModal({
+  isOpen,
+  onClose,
+  onCurrencyChanged,
+}: CurrencyManagerModalProps) {
   const [currencies, setCurrencies] = useState<Currency[]>([])
   const [allCurrencies, setAllCurrencies] = useState<Currency[]>([])
   const [loading, setLoading] = useState(false)
@@ -70,7 +74,10 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
 
   // Aktivál/inaktivál megerősítés — Electron-kompatibilis (NEM window.prompt, ami
   // Electron rendererben nem támogatott és null-t ad → a kérés sosem ment el).
-  const [pendingToggle, setPendingToggle] = useState<{ currency: Currency; active: boolean } | null>(null)
+  const [pendingToggle, setPendingToggle] = useState<{
+    currency: Currency
+    active: boolean
+  } | null>(null)
   const [toggleNote, setToggleNote] = useState('')
   const [togglingActive, setTogglingActive] = useState(false)
 
@@ -220,7 +227,10 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold">Valutakezelő (V238)</h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+          >
             <X size={20} />
           </button>
         </div>
@@ -228,7 +238,7 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
         <div className="p-4 space-y-3 overflow-y-auto">
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
-                <Search size={16} className="absolute left-2.5 top-2.5 text-gray-400" />
+              <Search size={16} className="absolute left-2.5 top-2.5 text-gray-400" />
               <input
                 type="text"
                 placeholder="Keresés kód vagy név alapján..."
@@ -279,15 +289,23 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
           </div>
 
           {selectedCurrencyDetail && (
-            <div className="rounded-md border border-blue-200 bg-blue-50/70 p-3 text-sm" data-testid="currency-manager-detail">
-              <div className="font-semibold">{selectedCurrencyDetail.code} - {selectedCurrencyDetail.name}</div>
+            <div
+              className="rounded-md border border-blue-200 bg-blue-50/70 p-3 text-sm"
+              data-testid="currency-manager-detail"
+            >
+              <div className="font-semibold">
+                {selectedCurrencyDetail.code} - {selectedCurrencyDetail.name}
+              </div>
               <div className="mt-1 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                 <span>Szimbólum: {selectedCurrencyDetail.symbol || '-'}</span>
                 <span>Tizedes: {selectedCurrencyDetail.decimals}</span>
                 <span>Sorrend: {selectedCurrencyDetail.displayOrder ?? '-'}</span>
               </div>
               {selectedCurrencyCodeCheck && (
-                <div className="mt-2 text-xs text-blue-900" data-testid="currency-manager-code-check">
+                <div
+                  className="mt-2 text-xs text-blue-900"
+                  data-testid="currency-manager-code-check"
+                >
                   Kód-ellenőrzés: {selectedCurrencyCodeCheck.code} / #{selectedCurrencyCodeCheck.id}
                 </div>
               )}
@@ -343,7 +361,9 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs block mb-0.5">Megjelenítési sorrend (kisebb = elöl)</label>
+                  <label className="text-xs block mb-0.5">
+                    Megjelenítési sorrend (kisebb = elöl)
+                  </label>
                   <input
                     type="number"
                     value={newDisplayOrder}
@@ -360,11 +380,7 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
                 </div>
               </div>
               <div className="flex gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowAddForm(false)}
-                  className="form-button"
-                >
+                <button type="button" onClick={() => setShowAddForm(false)} className="form-button">
                   Mégse
                 </button>
                 <button
@@ -381,9 +397,13 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
           )}
 
           {pendingToggle && (
-            <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50/70 dark:bg-amber-950/20 p-3 space-y-2" data-testid="currency-toggle-confirm">
+            <div
+              className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50/70 dark:bg-amber-950/20 p-3 space-y-2"
+              data-testid="currency-toggle-confirm"
+            >
               <div className="text-sm font-semibold">
-                {pendingToggle.active ? 'Aktiválás' : 'Inaktiválás'} megerősítése — {pendingToggle.currency.code} ({pendingToggle.currency.name})
+                {pendingToggle.active ? 'Aktiválás' : 'Inaktiválás'} megerősítése —{' '}
+                {pendingToggle.currency.code} ({pendingToggle.currency.name})
               </div>
               <p className="text-xs text-gray-600 dark:text-gray-400">
                 {pendingToggle.active
@@ -391,7 +411,9 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
                   : 'Az adatbázisban MARAD (Pmt./NAV 8-éves megőrzés), csak nem jelenik meg a Főlapon.'}
               </p>
               <div>
-                <label className="text-xs block mb-0.5">Indoklás (opcionális, audit-log-ba kerül)</label>
+                <label className="text-xs block mb-0.5">
+                  Indoklás (opcionális, audit-log-ba kerül)
+                </label>
                 <input
                   type="text"
                   value={toggleNote}
@@ -403,7 +425,15 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
                 />
               </div>
               <div className="flex gap-2 justify-end">
-                <button type="button" onClick={() => { setPendingToggle(null); setToggleNote('') }} disabled={togglingActive} className="form-button disabled:opacity-50">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPendingToggle(null)
+                    setToggleNote('')
+                  }}
+                  disabled={togglingActive}
+                  className="form-button disabled:opacity-50"
+                >
                   Mégse
                 </button>
                 <button
@@ -413,7 +443,11 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
                   className="form-button-primary disabled:opacity-50"
                   data-testid="currency-toggle-confirm-btn"
                 >
-                  {togglingActive ? 'Mentés...' : (pendingToggle.active ? 'Aktiválás' : 'Inaktiválás')}
+                  {togglingActive
+                    ? 'Mentés...'
+                    : pendingToggle.active
+                      ? 'Aktiválás'
+                      : 'Inaktiválás'}
                 </button>
               </div>
             </div>
@@ -501,9 +535,10 @@ export default function CurrencyManagerModal({ isOpen, onClose, onCurrencyChange
           </div>
 
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            <strong>Megjegyzés:</strong> Az inaktiválás NEM TÖRLI az adatbázisból a valutát (Pmt./NAV 8-éves
-            megőrzés). A historikus tranzakciók és árfolyamok érintetlenek maradnak. Bármikor reaktiválható,
-            és minden módosítás a `currency_audit_log` táblába kerül (audit-trail).
+            <strong>Megjegyzés:</strong> Az inaktiválás NEM TÖRLI az adatbázisból a valutát
+            (Pmt./NAV 8-éves megőrzés). A historikus tranzakciók és árfolyamok érintetlenek
+            maradnak. Bármikor reaktiválható, és minden módosítás a `currency_audit_log` táblába
+            kerül (audit-trail).
           </p>
         </div>
       </div>

@@ -1376,13 +1376,7 @@ export class SyncEngine {
 
     for (const storno of pendingStornos) {
       if (companyMismatch(storno.company_code, sessionCompanyCode)) {
-        recordCompanyMismatch(
-          result,
-          'STORNO',
-          storno.id,
-          storno.company_code,
-          sessionCompanyCode,
-        );
+        recordCompanyMismatch(result, 'STORNO', storno.id, storno.company_code, sessionCompanyCode);
         continue;
       }
       try {
@@ -2511,7 +2505,9 @@ export class SyncEngine {
           }
           if (this.isBusinessValidationError(errorMsg)) {
             markCircularReplySynced(reply.id);
-            log.warn(`[SyncEngine] Körlevél-válasz #${reply.id} elvetve (business error): ${errorMsg}`);
+            log.warn(
+              `[SyncEngine] Körlevél-válasz #${reply.id} elvetve (business error): ${errorMsg}`,
+            );
             continue;
           }
           log.warn(`[SyncEngine] Körlevél-válasz #${reply.id} sync hiba:`, errorMsg);
@@ -2574,7 +2570,9 @@ export class SyncEngine {
           markScannedDocumentSynced(doc.id);
           deleteScanFiles(doc.front_path);
           deleteScanFiles(doc.back_path);
-          log.info(`[SyncEngine] Okmány-scan #${doc.id} feltöltve a centerbe, helyi fájlok törölve.`);
+          log.info(
+            `[SyncEngine] Okmány-scan #${doc.id} feltöltve a centerbe, helyi fájlok törölve.`,
+          );
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           if (isAuthStatusError(err)) {

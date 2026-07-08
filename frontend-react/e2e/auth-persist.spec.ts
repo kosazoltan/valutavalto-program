@@ -32,7 +32,7 @@ test('a webes login reload utan is bent tartja a sessiont', async ({ page }) => 
   let workersMeRequests = 0
   let refreshCookieRequests = 0
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -99,9 +99,7 @@ test('a webes login reload utan is bent tartja a sessiont', async ({ page }) => 
   await expect(page.locator('main, h1, h2, [role="heading"]').first()).toBeVisible()
 
   // Audit P1.3: a token NEM kerul localStorage-ba (XSS hardening) — verifikaljuk.
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem('auth_token')))
-    .toBeNull()
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('auth_token'))).toBeNull()
 
   await page.reload()
 

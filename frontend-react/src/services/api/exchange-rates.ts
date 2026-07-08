@@ -288,9 +288,12 @@ function assertValidCurrencyDenominationUpload(req: CurrencyDenominationImageUpl
 
 export const currencyDenominationImageApi = {
   list: async (currencyId?: number): Promise<CurrencyDenominationImageDto[]> => {
-    const response = await api.get<CurrencyDenominationImageDto[]>('/currency-denomination-images', {
-      params: currencyId != null ? { currencyId } : {},
-    })
+    const response = await api.get<CurrencyDenominationImageDto[]>(
+      '/currency-denomination-images',
+      {
+        params: currencyId != null ? { currencyId } : {},
+      },
+    )
     return response.data
   },
   upload: async (

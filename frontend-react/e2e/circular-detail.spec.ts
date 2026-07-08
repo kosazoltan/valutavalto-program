@@ -65,7 +65,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -88,11 +88,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/circulars/types') && method === 'GET') {
@@ -104,27 +112,51 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/circulars/my-unacknowledged') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     if (path.endsWith('/circulars/unacknowledged') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     if (path.endsWith('/circulars/active') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([listCircular]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([listCircular]),
+      })
     }
 
     if (path.endsWith('/circulars/by-category/GENERAL') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     if (path.endsWith('/circulars/by-category/VIP') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([categoryCircular]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([categoryCircular]),
+      })
     }
 
     if (path.endsWith('/circulars/archived/2025') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([archiveYearCircular]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([archiveYearCircular]),
+      })
     }
 
     if (path.endsWith('/circulars/1/acknowledgment-status') && method === 'GET') {
@@ -144,7 +176,11 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/circulars/1') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(detailCircular) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(detailCircular),
+      })
     }
 
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
@@ -161,7 +197,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('körlevél részlet mobil nézetben backend detail és nyugtázási endpointokból nyílik', async ({ page }) => {
+test('körlevél részlet mobil nézetben backend detail és nyugtázási endpointokból nyílik', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -169,14 +207,19 @@ test('körlevél részlet mobil nézetben backend detail és nyugtázási endpoi
   await page.goto('/circulars', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('Lista körlevél')).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/circulars/1'
+  const detailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/circulars/1',
   )
-  const statusRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/circulars/1/acknowledgment-status'
+  const statusRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/circulars/1/acknowledgment-status',
   )
-  const breakdownRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/circulars/1/acknowledgment-breakdown'
+  const breakdownRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/circulars/1/acknowledgment-breakdown',
   )
 
   await page.getByRole('button', { name: 'Megtekint' }).click()
@@ -185,18 +228,24 @@ test('körlevél részlet mobil nézetben backend detail és nyugtázási endpoi
   await breakdownRequest
 
   await expect(page.getByRole('heading', { name: 'Backend részlet körlevél' })).toBeVisible()
-  await expect(page.getByText('Backend részletből érkezett teljes körlevél tartalom.')).toBeVisible()
-  await expect(page.getByTestId('circular-acknowledgment-summary')).toContainText('Összes nyugtázás: 2')
+  await expect(
+    page.getByText('Backend részletből érkezett teljes körlevél tartalom.'),
+  ).toBeVisible()
+  await expect(page.getByTestId('circular-acknowledgment-summary')).toContainText(
+    'Összes nyugtázás: 2',
+  )
   await expect(page.getByTestId('circular-acknowledgment-summary')).toContainText('CASHIER')
   await expect(page.getByTestId('circular-acknowledgment-summary')).toContainText('MANAGER')
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
 
-test('körlevél kategória és éves archívum szűrők mobil nézetben backend endpointokat hívnak', async ({ page }) => {
+test('körlevél kategória és éves archívum szűrők mobil nézetben backend endpointokat hívnak', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -207,8 +256,10 @@ test('körlevél kategória és éves archívum szűrők mobil nézetben backend
   await page.getByRole('button', { name: 'Kategória' }).click()
   await page.getByLabel('Kategória szűrő').selectOption('VIP')
 
-  const categoryRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/circulars/by-category/VIP'
+  const categoryRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/circulars/by-category/VIP',
   )
   await page.getByRole('button', { name: 'Kategória betöltése' }).click()
   await categoryRequest
@@ -217,15 +268,17 @@ test('körlevél kategória és éves archívum szűrők mobil nézetben backend
   await page.getByRole('button', { name: 'Éves archívum' }).click()
   await page.getByLabel('Archív év').fill('2025')
 
-  const archiveRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/circulars/archived/2025'
+  const archiveRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/circulars/archived/2025',
   )
   await page.getByRole('button', { name: 'Év betöltése' }).click()
   await archiveRequest
   await expect(page.getByText('2025 archív mobil körlevél')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

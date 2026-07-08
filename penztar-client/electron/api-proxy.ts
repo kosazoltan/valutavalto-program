@@ -103,10 +103,7 @@ function isPrivateOrLoopbackHost(hostname: string): boolean {
   const a = parts[0] ?? -1;
   const b = parts[1] ?? -1;
   // 169.254/16 (link-local + cloud-metadata 169.254.169.254) SZÁNDÉKOSAN KIMARAD (F-005).
-  return a === 10
-    || (a === 172 && b >= 16 && b <= 31)
-    || (a === 192 && b === 168)
-    || a === 127;
+  return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || a === 127;
 }
 
 function isAllowedUrl(raw: string): boolean {
@@ -116,8 +113,10 @@ function isAllowedUrl(raw: string): boolean {
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
       return false;
     }
-    return ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`))
-      || isPrivateOrLoopbackHost(parsed.hostname);
+    return (
+      ALLOWED_HOSTS.some((h) => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`)) ||
+      isPrivateOrLoopbackHost(parsed.hostname)
+    );
   } catch {
     return false;
   }
@@ -141,12 +140,13 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
     if (safeHeaders.accept) request.setHeader('Accept', safeHeaders.accept);
     if (safeHeaders.authorization) request.setHeader('Authorization', safeHeaders.authorization);
     if (safeHeaders.contentType) request.setHeader('Content-Type', safeHeaders.contentType);
-    if (safeHeaders.idempotencyKey) request.setHeader('Idempotency-Key', safeHeaders.idempotencyKey);
+    if (safeHeaders.idempotencyKey)
+      request.setHeader('Idempotency-Key', safeHeaders.idempotencyKey);
     if (safeHeaders.requestId) request.setHeader('X-Request-Id', safeHeaders.requestId);
-    if (safeHeaders.acceptLanguage) request.setHeader('Accept-Language', safeHeaders.acceptLanguage);
+    if (safeHeaders.acceptLanguage)
+      request.setHeader('Accept-Language', safeHeaders.acceptLanguage);
 
-    if (hasBody && upperMethod !== 'GET' && upperMethod !== 'HEAD'
-        && !safeHeaders.contentType) {
+    if (hasBody && upperMethod !== 'GET' && upperMethod !== 'HEAD' && !safeHeaders.contentType) {
       request.setHeader('Content-Type', 'application/json');
     }
     if (!safeHeaders.accept) {
@@ -159,7 +159,11 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
     const timeoutHandle = setTimeout(() => {
       if (settled) return;
       settled = true;
-      try { request.abort(); } catch { /* ignore */ }
+      try {
+        request.abort();
+      } catch {
+        /* ignore */
+      }
       reject(new Error(`[api-proxy] Timeout: ${timeout}ms exceeded for ${method} ${url}`));
     }, timeout);
 
@@ -176,8 +180,16 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
         if (responseBytes > MAX_RESPONSE_BYTES) {
           settled = true;
           clearTimeout(timeoutHandle);
-          try { request.abort(); } catch { /* ignore */ }
-          reject(new Error(`[api-proxy] Response too large (>${MAX_RESPONSE_BYTES} bytes) for ${method} ${url}`));
+          try {
+            request.abort();
+          } catch {
+            /* ignore */
+          }
+          reject(
+            new Error(
+              `[api-proxy] Response too large (>${MAX_RESPONSE_BYTES} bytes) for ${method} ${url}`,
+            ),
+          );
           return;
         }
         chunks.push(chunk);
@@ -191,7 +203,12 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
         const fullBuffer = Buffer.concat(chunks);
         const responseHeaders = Object.fromEntries(respHeaders);
         const ct = (responseHeaders['content-type'] ?? '').toLowerCase();
-        const isBinary = !ct.includes('json') && !ct.includes('text') && !ct.includes('xml') && !ct.includes('html') && ct !== '';
+        const isBinary =
+          !ct.includes('json') &&
+          !ct.includes('text') &&
+          !ct.includes('xml') &&
+          !ct.includes('html') &&
+          ct !== '';
         resolve({
           ok: status >= 200 && status < 300,
           status,
@@ -301,7 +318,8 @@ export function isRetrySafeRequest(params: ApiProxyRequest): boolean {
   }
   const headers = params.headers ?? {};
   return Object.entries(headers).some(
-    ([key, value]) => key.toLowerCase() === 'idempotency-key' && typeof value === 'string' && value.length > 0,
+    ([key, value]) =>
+      key.toLowerCase() === 'idempotency-key' && typeof value === 'string' && value.length > 0,
   );
 }
 

@@ -45,7 +45,7 @@ exports.default = async function signWithKeyLocker(configuration) {
   if (process.env.CODE_SIGN_ENABLED !== '1') {
     throw new Error(
       `[sign-with-keylocker] CODE_SIGN_ENABLED=${process.env.CODE_SIGN_ENABLED || '(unset)'}. ` +
-      `Production packaging requires CODE_SIGN_ENABLED=1 and DigiCert KeyLocker SM_* env vars.`,
+        `Production packaging requires CODE_SIGN_ENABLED=1 and DigiCert KeyLocker SM_* env vars.`,
     );
   }
 
@@ -57,7 +57,7 @@ exports.default = async function signWithKeyLocker(configuration) {
   if (missingVars.length > 0) {
     throw new Error(
       `[sign-with-keylocker] CODE_SIGN_ENABLED=1 but required env vars missing: ${missingVars.join(', ')}. ` +
-      `Setup: see code-signing-cert-beszerzes-csomag.md section 4 (GitHub Actions secrets).`,
+        `Setup: see code-signing-cert-beszerzes-csomag.md section 4 (GitHub Actions secrets).`,
     );
   }
 
@@ -73,7 +73,9 @@ exports.default = async function signWithKeyLocker(configuration) {
       mode: 0o600,
     });
     clientCertFile = tempCertFile;
-    console.log(`[sign-with-keylocker] Client cert decoded from SM_CLIENT_CERT_FILE_B64 → ${tempCertFile}`);
+    console.log(
+      `[sign-with-keylocker] Client cert decoded from SM_CLIENT_CERT_FILE_B64 → ${tempCertFile}`,
+    );
   }
 
   if (!clientCertFile || !fs.existsSync(clientCertFile)) {
@@ -99,13 +101,23 @@ exports.default = async function signWithKeyLocker(configuration) {
     execFileSync('smctl', ['healthcheck'], { stdio: 'inherit', env: smctlEnv });
   } catch (err) {
     if (tempCertFile) fs.unlinkSync(tempCertFile);
-    throw new Error(`[sign-with-keylocker] smctl healthcheck FAILED. Check SM_* env vars + network. ${err.message}`);
+    throw new Error(
+      `[sign-with-keylocker] smctl healthcheck FAILED. Check SM_* env vars + network. ${err.message}`,
+    );
   }
 
   // Tényleges aláírás — execFileSync (no shell) to prevent command injection via env vars
   const keypairAlias = process.env.SM_KEYPAIR_ALIAS;
   const timestampServer = process.env.SM_TIMESTAMP_SERVER || 'http://timestamp.digicert.com';
-  const signArgs = ['sign', '--keypair-alias', keypairAlias, '--input', filePath, '--tsa-server', timestampServer];
+  const signArgs = [
+    'sign',
+    '--keypair-alias',
+    keypairAlias,
+    '--input',
+    filePath,
+    '--tsa-server',
+    timestampServer,
+  ];
 
   console.log(`[sign-with-keylocker] Running: smctl ${signArgs.join(' ')}`);
   try {
@@ -117,7 +129,11 @@ exports.default = async function signWithKeyLocker(configuration) {
 
   // Cleanup temp cert (CI esetén)
   if (tempCertFile) {
-    try { fs.unlinkSync(tempCertFile); } catch { /* ignore */ }
+    try {
+      fs.unlinkSync(tempCertFile);
+    } catch {
+      /* ignore */
+    }
   }
 
   // 5. Verifikáció — signtool verify
@@ -125,6 +141,8 @@ exports.default = async function signWithKeyLocker(configuration) {
     execFileSync('signtool', ['verify', '/pa', '/v', filePath], { stdio: 'inherit' });
     console.log(`[sign-with-keylocker] ✅ ${filePath} signed and verified successfully.`);
   } catch (err) {
-    throw new Error(`[sign-with-keylocker] signtool verify FAILED for ${filePath}. The file was signed but verification failed: ${err.message}`);
+    throw new Error(
+      `[sign-with-keylocker] signtool verify FAILED for ${filePath}. The file was signed but verification failed: ${err.message}`,
+    );
   }
 };

@@ -1,6 +1,4 @@
-export {
-  fetchViaElectronNet,
-} from '../../arfolyam-keszito-client/electron/api-proxy'
+export { fetchViaElectronNet } from '../../arfolyam-keszito-client/electron/api-proxy'
 
 export type {
   ApiProxyRequest,

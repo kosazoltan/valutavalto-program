@@ -44,9 +44,13 @@ vi.mock('./publishAllWorkgroups', () => ({
   publishAllWorkgroups: vi.fn(),
   summarizePublishAll: vi.fn(() => ''),
 }))
-vi.mock('../../services/api/exchangeRateMaster', () => ({ exchangeRateMasterApi: { list: vi.fn() } }))
+vi.mock('../../services/api/exchangeRateMaster', () => ({
+  exchangeRateMasterApi: { list: vi.fn() },
+}))
 vi.mock('../../services/api/exchange-rates', () => ({ exchangeRateApi: { getAll: vi.fn() } }))
-vi.mock('../../services/api/arfolyamInternetLinks', () => ({ arfolyamInternetLinkApi: { list: vi.fn(() => Promise.resolve([])) } }))
+vi.mock('../../services/api/arfolyamInternetLinks', () => ({
+  arfolyamInternetLinkApi: { list: vi.fn(() => Promise.resolve([])) },
+}))
 
 // A seed rows a localStorage-ban — legalább egy EUR sor, hogy legyen szerkeszthető cella.
 function seedStorage(rows: unknown[], formulas: Record<string, string> = {}) {
@@ -55,9 +59,17 @@ function seedStorage(rows: unknown[], formulas: Record<string, string> = {}) {
 }
 
 const EUR_ROW = {
-  currency: 'EUR', settlement: 400, otp: 0, helper: 0,
-  weakMultiBuy: 395, weakMultiSell: 405, crossRate: 0, wholesale: 0,
-  crossBase: null, crossSettlement: 0, settlementManual: false,
+  currency: 'EUR',
+  settlement: 400,
+  otp: 0,
+  helper: 0,
+  weakMultiBuy: 395,
+  weakMultiSell: 405,
+  crossRate: 0,
+  wholesale: 0,
+  crossBase: null,
+  crossSettlement: 0,
+  settlementManual: false,
 }
 
 async function importPage() {
@@ -70,11 +82,19 @@ async function importPage() {
 async function editCell(cellId: string, value: string) {
   const cell = document.getElementById(cellId) as HTMLInputElement
   // 1. belépés szerkesztésbe (a readOnly feloldásához editing=true kell)
-  await act(async () => { fireEvent.keyDown(cell, { key: 'Enter' }) }) // selectCell után startEdit
-  await act(async () => { fireEvent.keyDown(cell, { key: 'F2' }) })
+  await act(async () => {
+    fireEvent.keyDown(cell, { key: 'Enter' })
+  }) // selectCell után startEdit
+  await act(async () => {
+    fireEvent.keyDown(cell, { key: 'F2' })
+  })
   // 2. érték beírása + commit
-  await act(async () => { fireEvent.change(cell, { target: { value } }) })
-  await act(async () => { fireEvent.keyDown(cell, { key: 'Enter' }) })
+  await act(async () => {
+    fireEvent.change(cell, { target: { value } })
+  })
+  await act(async () => {
+    fireEvent.keyDown(cell, { key: 'Enter' })
+  })
 }
 
 describe('FK07 — Főlap commit-szinkron perzisztencia', () => {
@@ -109,8 +129,9 @@ describe('FK07 — Főlap commit-szinkron perzisztencia', () => {
     await editCell('cell-0-weakMultiBuy', '396')
 
     await waitFor(() => {
-      const eur = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-        .find((r: { currency: string }) => r.currency === 'EUR')
+      const eur = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]').find(
+        (r: { currency: string }) => r.currency === 'EUR',
+      )
       expect(eur.weakMultiBuy).toBe(396)
     })
     // NFR-3: diszjunkt kulcs-tér — semmilyen workgroupSheet.* kulcs nem íródott

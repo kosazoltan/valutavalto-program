@@ -25,15 +25,21 @@ export default function CameraGuard({ children }: { children: ReactNode }) {
         <div className="bg-blue-50 border border-blue-200 rounded p-4 flex gap-3">
           <Info className="h-5 w-5 text-blue-600 shrink-0 mt-1" />
           <div className="text-sm space-y-2">
-            <p className="font-semibold text-blue-900">{t('components.aKameraModulJelenlegNincsEngedelyezve')}</p>
+            <p className="font-semibold text-blue-900">
+              {t('components.aKameraModulJelenlegNincsEngedelyezve')}
+            </p>
             <p className="text-gray-700">
-              {t('components.aBackend')}<code className="bg-blue-100 px-1 rounded">{t('components.cameraEnabledfalse')}</code>
+              {t('components.aBackend')}
+              <code className="bg-blue-100 px-1 rounded">{t('components.cameraEnabledfalse')}</code>
               {t('components.konfiguraciobanVanAhhozHogyALiveStreamVisszajatszasEs')}
               {t('components.exportFunkciokElerhetokLegyenekAzUzemeltetoRendszergazdanak')}
               {t('components.engedelyeznieKellAzIntegraciot')}
             </p>
             <p className="text-gray-600">
-              {t('components.kerdesEseten')}<a href="mailto:info@excvaluta.com" className="text-blue-700 underline">{t('components.infoexcvalutacom')}</a>
+              {t('components.kerdesEseten')}
+              <a href="mailto:info@excvaluta.com" className="text-blue-700 underline">
+                {t('components.infoexcvalutacom')}
+              </a>
             </p>
             <div className="mt-3">
               <Link to="/dashboard" className="form-button-primary inline-block">

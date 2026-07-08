@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/rate-history') && method === 'GET') {
@@ -95,11 +103,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/exchange-rates/buy-rate') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(392.1) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(392.1),
+      })
     }
 
     if (path.endsWith('/exchange-rates/sell-rate') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(399.2) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(399.2),
+      })
     }
 
     if (path.endsWith('/exchange-rates/history') && method === 'GET') {
@@ -137,7 +153,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('árfolyam történet mobil nézetben canonical exchange-rate read endpointokat használ', async ({ page }) => {
+test('árfolyam történet mobil nézetben canonical exchange-rate read endpointokat használ', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -145,21 +163,25 @@ test('árfolyam történet mobil nézetben canonical exchange-rate read endpoint
   await page.goto('/rates/history', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('article').getByText('391.50')).toBeVisible()
 
-  const codeRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/exchange-rates/code/EUR'
+  const codeRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/exchange-rates/code/EUR',
   )
-  const buyRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/exchange-rates/buy-rate'
+  const buyRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/exchange-rates/buy-rate',
   )
-  const sellRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/exchange-rates/sell-rate'
+  const sellRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/exchange-rates/sell-rate',
   )
-  const historyRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/exchange-rates/history'
+  const historyRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/exchange-rates/history',
   )
 
   await page.getByLabel('Árfolyam ellenőrzés valuta').fill('EUR')
@@ -175,8 +197,8 @@ test('árfolyam történet mobil nézetben canonical exchange-rate read endpoint
   await expect(page.getByText('399.2')).toBeVisible()
   await expect(page.getByText('Előzmény találatok: 1')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

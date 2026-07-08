@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
-  loadPenztarSettings, savePenztarSettings, normalize, isValidOctet,
-  isValidServerIp, clampFrequency, DEFAULT_PENZTAR_SETTINGS,
+  loadPenztarSettings,
+  savePenztarSettings,
+  normalize,
+  isValidOctet,
+  isValidServerIp,
+  clampFrequency,
+  DEFAULT_PENZTAR_SETTINGS,
 } from './penztarSettings'
 
 describe('penztarSettings (G20)', () => {
@@ -34,7 +39,12 @@ describe('penztarSettings (G20)', () => {
   })
 
   it('save → load körút (perzisztencia, FR AC)', () => {
-    const s = { ...DEFAULT_PENZTAR_SETTINGS, machineRole: 'ERTEKTARI' as const, displayColor: 'ZOLD' as const, dataSendFrequencyMin: 5 }
+    const s = {
+      ...DEFAULT_PENZTAR_SETTINGS,
+      machineRole: 'ERTEKTARI' as const,
+      displayColor: 'ZOLD' as const,
+      dataSendFrequencyMin: 5,
+    }
     savePenztarSettings(s)
     const loaded = loadPenztarSettings()
     expect(loaded.machineRole).toBe('ERTEKTARI')

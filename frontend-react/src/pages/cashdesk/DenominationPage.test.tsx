@@ -33,13 +33,14 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('../../stores/authStore', () => ({
-  useAuthStore: (selector: (state: unknown) => unknown) => selector({
-    worker: {
-      branchId: 'branch-1',
-      role: 'ADMIN',
-    },
-    activeRole: 'ADMIN',
-  }),
+  useAuthStore: (selector: (state: unknown) => unknown) =>
+    selector({
+      worker: {
+        branchId: 'branch-1',
+        role: 'ADMIN',
+      },
+      activeRole: 'ADMIN',
+    }),
 }))
 
 vi.mock('../../components/ui/toaster', () => ({
@@ -91,22 +92,102 @@ describe('DenominationPage', () => {
       { id: 1, code: 'EUR', name: 'Euró', decimals: 2, active: true },
     ])
     mocks.denominationGetByCurrencyId.mockResolvedValue([
-      { id: 10, currencyId: 1, currencyCode: 'EUR', faceValue: 50, denominationType: 'BANKNOTE', quantity: 0, active: true },
-      { id: 11, currencyId: 1, currencyCode: 'EUR', faceValue: 20, denominationType: 'BANKNOTE', quantity: 0, active: true },
-      { id: 12, currencyId: 1, currencyCode: 'EUR', faceValue: 10, denominationType: 'BANKNOTE', quantity: 0, active: true },
+      {
+        id: 10,
+        currencyId: 1,
+        currencyCode: 'EUR',
+        faceValue: 50,
+        denominationType: 'BANKNOTE',
+        quantity: 0,
+        active: true,
+      },
+      {
+        id: 11,
+        currencyId: 1,
+        currencyCode: 'EUR',
+        faceValue: 20,
+        denominationType: 'BANKNOTE',
+        quantity: 0,
+        active: true,
+      },
+      {
+        id: 12,
+        currencyId: 1,
+        currencyCode: 'EUR',
+        faceValue: 10,
+        denominationType: 'BANKNOTE',
+        quantity: 0,
+        active: true,
+      },
     ])
     mocks.denominationList.mockResolvedValue([
-      { id: 10, currencyId: 1, currencyCode: 'EUR', faceValue: 50, denominationType: 'BANKNOTE', quantity: 0, active: true },
-      { id: 11, currencyId: 1, currencyCode: 'EUR', faceValue: 20, denominationType: 'BANKNOTE', quantity: 0, active: true },
-      { id: 12, currencyId: 1, currencyCode: 'EUR', faceValue: 10, denominationType: 'BANKNOTE', quantity: 0, active: true },
+      {
+        id: 10,
+        currencyId: 1,
+        currencyCode: 'EUR',
+        faceValue: 50,
+        denominationType: 'BANKNOTE',
+        quantity: 0,
+        active: true,
+      },
+      {
+        id: 11,
+        currencyId: 1,
+        currencyCode: 'EUR',
+        faceValue: 20,
+        denominationType: 'BANKNOTE',
+        quantity: 0,
+        active: true,
+      },
+      {
+        id: 12,
+        currencyId: 1,
+        currencyCode: 'EUR',
+        faceValue: 10,
+        denominationType: 'BANKNOTE',
+        quantity: 0,
+        active: true,
+      },
     ])
     mocks.denominationGetByCurrencyCode.mockResolvedValue([
-      { id: 10, currencyId: 1, currencyCode: 'EUR', faceValue: 50, denominationType: 'BANKNOTE', quantity: 0, active: true },
-      { id: 11, currencyId: 1, currencyCode: 'EUR', faceValue: 20, denominationType: 'BANKNOTE', quantity: 0, active: true },
-      { id: 12, currencyId: 1, currencyCode: 'EUR', faceValue: 10, denominationType: 'BANKNOTE', quantity: 0, active: true },
+      {
+        id: 10,
+        currencyId: 1,
+        currencyCode: 'EUR',
+        faceValue: 50,
+        denominationType: 'BANKNOTE',
+        quantity: 0,
+        active: true,
+      },
+      {
+        id: 11,
+        currencyId: 1,
+        currencyCode: 'EUR',
+        faceValue: 20,
+        denominationType: 'BANKNOTE',
+        quantity: 0,
+        active: true,
+      },
+      {
+        id: 12,
+        currencyId: 1,
+        currencyCode: 'EUR',
+        faceValue: 10,
+        denominationType: 'BANKNOTE',
+        quantity: 0,
+        active: true,
+      },
     ])
     mocks.denominationGetLowStockAlerts.mockResolvedValue([
-      { id: 12, currencyId: 1, currencyCode: 'EUR', faceValue: 10, denominationType: 'BANKNOTE', quantity: 1, active: true },
+      {
+        id: 12,
+        currencyId: 1,
+        currencyCode: 'EUR',
+        faceValue: 10,
+        denominationType: 'BANKNOTE',
+        quantity: 1,
+        active: true,
+      },
     ])
     mocks.denominationGetSummary.mockResolvedValue({
       currencyId: 1,
@@ -254,7 +335,9 @@ describe('DenominationPage', () => {
     render(<DenominationPage />)
 
     await screen.findByText('50 EUR')
-    fireEvent.change(screen.getByPlaceholderText('Elvárt egyenleg EUR'), { target: { value: '120' } })
+    fireEvent.change(screen.getByPlaceholderText('Elvárt egyenleg EUR'), {
+      target: { value: '120' },
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Validálás' }))
 
     await waitFor(() => {
@@ -315,8 +398,12 @@ describe('DenominationPage', () => {
 
     await screen.findByText('Stratégia szerkesztése')
 
-    fireEvent.change(screen.getByPlaceholderText('Stratégianév'), { target: { value: 'Mobil stratégia' } })
-    fireEvent.change(screen.getByLabelText('Optimalizációs algoritmus'), { target: { value: 'MIN_TOTAL' } })
+    fireEvent.change(screen.getByPlaceholderText('Stratégianév'), {
+      target: { value: 'Mobil stratégia' },
+    })
+    fireEvent.change(screen.getByLabelText('Optimalizációs algoritmus'), {
+      target: { value: 'MIN_TOTAL' },
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Stratégia mentése' }))
 
     await waitFor(() => {
@@ -332,18 +419,27 @@ describe('DenominationPage', () => {
       })
     })
 
-    fireEvent.change(screen.getByLabelText('Címletezési stratégia kiválasztása'), { target: { value: 'opt-1' } })
-    fireEvent.change(screen.getByPlaceholderText('Stratégianév'), { target: { value: 'Frissített stratégia' } })
+    fireEvent.change(screen.getByLabelText('Címletezési stratégia kiválasztása'), {
+      target: { value: 'opt-1' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('Stratégianév'), {
+      target: { value: 'Frissített stratégia' },
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Stratégia mentése' }))
 
     await waitFor(() => {
-      expect(mocks.updateOptimization).toHaveBeenCalledWith('opt-1', expect.objectContaining({
-        name: 'Frissített stratégia',
-        strategy: 'GREEDY',
-      }))
+      expect(mocks.updateOptimization).toHaveBeenCalledWith(
+        'opt-1',
+        expect.objectContaining({
+          name: 'Frissített stratégia',
+          strategy: 'GREEDY',
+        }),
+      )
     })
 
-    fireEvent.change(screen.getByPlaceholderText('Szabálynév'), { target: { value: 'Mobil szabály' } })
+    fireEvent.change(screen.getByPlaceholderText('Szabálynév'), {
+      target: { value: 'Mobil szabály' },
+    })
     fireEvent.change(screen.getByLabelText('Szabály stratégiája'), { target: { value: 'opt-1' } })
     fireEvent.change(screen.getByPlaceholderText('Min. HUF'), { target: { value: '500000' } })
     fireEvent.change(screen.getByPlaceholderText('Prioritás'), { target: { value: '25' } })

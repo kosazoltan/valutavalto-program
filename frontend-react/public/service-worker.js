@@ -13,16 +13,23 @@
 const CACHE_NAME = 'valuta-v2-pwa'
 const SHELL_URL = '/'
 // Csak ami biztosan létezik a build-ben. /favicon.svg NEM precache-elve, mert nincs ott.
-const STATIC_ASSETS = [
-  SHELL_URL,
-  '/manifest.webmanifest'
-]
+const STATIC_ASSETS = [SHELL_URL, '/manifest.webmanifest']
 
 // Cache-elhető fájltípusok — engedélyezett extension lista
 const CACHEABLE_EXTENSIONS = new Set([
-  '.js', '.css',
-  '.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico',
-  '.woff', '.woff2', '.ttf', '.eot'
+  '.js',
+  '.css',
+  '.svg',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+  '.gif',
+  '.ico',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.eot',
 ])
 
 self.addEventListener('install', (event) => {
@@ -30,17 +37,20 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME).then((cache) =>
       // addAll(SHELL+manifest) — ha bármi nem érhető el, az SW install fail-elne;
       // a STATIC_ASSETS most tisztított, így biztonságos.
-      cache.addAll(STATIC_ASSETS)
-    )
+      cache.addAll(STATIC_ASSETS),
+    ),
   )
   self.skipWaiting()
 })
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)))
-    ).then(() => self.clients.claim())
+    caches
+      .keys()
+      .then((names) =>
+        Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))),
+      )
+      .then(() => self.clients.claim()),
   )
 })
 
@@ -78,13 +88,15 @@ self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() =>
-        caches.match(SHELL_URL).then((cached) =>
-          cached || new Response('Offline', {
-            status: 503,
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-          })
-        )
-      )
+        caches.match(SHELL_URL).then(
+          (cached) =>
+            cached ||
+            new Response('Offline', {
+              status: 503,
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            }),
+        ),
+      ),
     )
     return
   }
@@ -104,18 +116,20 @@ self.addEventListener('fetch', (event) => {
           const responseClone = response.clone()
           // waitUntil — az SW életciklusa biztosítja a cache.put befejezést
           event.waitUntil(
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone))
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone)),
           )
         }
         return response
       })
       .catch(() =>
-        caches.match(event.request).then((cached) =>
-          cached || new Response('Offline', {
-            status: 503,
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-          })
-        )
-      )
+        caches.match(event.request).then(
+          (cached) =>
+            cached ||
+            new Response('Offline', {
+              status: 503,
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            }),
+        ),
+      ),
   )
 })

@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/currency-groups') && method === 'GET') {
@@ -105,7 +113,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('valutacsoport szerkesztése valós renderben lekéri a backend detail endpointot', async ({ page }) => {
+test('valutacsoport szerkesztése valós renderben lekéri a backend detail endpointot', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -113,9 +123,10 @@ test('valutacsoport szerkesztése valós renderben lekéri a backend detail endp
   await page.goto('/currency-groups', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('Lista szerinti valutacsoport')).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/currency-groups/group-1'
+  const detailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/currency-groups/group-1',
   )
   await page.getByTitle('Szerkesztés').click()
   await detailRequest
@@ -125,8 +136,8 @@ test('valutacsoport szerkesztése valós renderben lekéri a backend detail endp
   await expect(page.locator('#currency-group-description')).toHaveValue('Backend részlet leírás')
   await expect(page.locator('#currency-group-currency-ids')).toHaveValue('[1,2,3]')
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

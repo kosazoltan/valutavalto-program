@@ -2,11 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
@@ -22,19 +18,11 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "paths": {
-      "@valuta/shared-api": [
-        "../packages/shared-api/src/index.ts"
-      ],
-      "@valuta/shared-ipc": [
-        "../packages/shared-ipc/src/index.ts"
-      ]
+      "@valuta/shared-api": ["../packages/shared-api/src/index.ts"],
+      "@valuta/shared-ipc": ["../packages/shared-ipc/src/index.ts"]
     }
   },
-  "include": [
-    "electron",
-    "../packages/shared-api/src",
-    "../packages/shared-ipc/src"
-  ],
+  "include": ["electron", "../packages/shared-api/src", "../packages/shared-ipc/src"],
   "files": [
     "electron/__tests__/ipc-money-channels.types.ts",
     "electron/__tests__/ipc-read-channels.types.ts"

@@ -112,10 +112,9 @@ describe('useIdentificationLevel', () => {
     })
 
     it('összeg csökkenésekor a kiválasztott szint megmarad, ha magasabb mint az új minimum', () => {
-      const { result, rerender } = renderHook(
-        ({ amount }) => useIdentificationLevel(amount),
-        { initialProps: { amount: '500000' } },
-      )
+      const { result, rerender } = renderHook(({ amount }) => useIdentificationLevel(amount), {
+        initialProps: { amount: '500000' },
+      })
       expect(result.current.identificationLevel).toBe('FULL')
 
       rerender({ amount: '50000' })
@@ -124,10 +123,9 @@ describe('useIdentificationLevel', () => {
     })
 
     it('összeg növekedésekor az alacsony szint automatikusan felemelkedik', () => {
-      const { result, rerender } = renderHook(
-        ({ amount }) => useIdentificationLevel(amount),
-        { initialProps: { amount: '50000' } },
-      )
+      const { result, rerender } = renderHook(({ amount }) => useIdentificationLevel(amount), {
+        initialProps: { amount: '50000' },
+      })
       expect(result.current.identificationLevel).toBe('SIMPLE')
 
       rerender({ amount: '150000' })

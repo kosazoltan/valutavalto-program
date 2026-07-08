@@ -41,7 +41,9 @@ beforeEach(() => {
   )
   mockIssueViewGrant.mockResolvedValue(undefined)
   mockGetFullImage.mockResolvedValue(FULL_BLOB)
-  mockWorkersGet.mockResolvedValue({ data: [{ id: 42, role: 'SUPERVISOR', fullName: 'Vezető Vera' }] })
+  mockWorkersGet.mockResolvedValue({
+    data: [{ id: 42, role: 'SUPERVISOR', fullName: 'Vezető Vera' }],
+  })
   vi.spyOn(toast, 'error')
 })
 
@@ -51,9 +53,7 @@ afterEach(() => {
 
 describe('DocumentImagePair', () => {
   it('renders front and back thumbnails on mount', async () => {
-    render(
-      <DocumentImagePair documentId="doc-1" hasFront={true} hasBack={true} />,
-    )
+    render(<DocumentImagePair documentId="doc-1" hasFront={true} hasBack={true} />)
 
     await waitFor(() => {
       expect(mockGetThumbnail).toHaveBeenCalledWith('doc-1', 'FRONT')
@@ -68,9 +68,7 @@ describe('DocumentImagePair', () => {
   })
 
   it('opens grant modal on "Nagyítás" and does NOT fetch full-res before PIN success', async () => {
-    render(
-      <DocumentImagePair documentId="doc-1" hasFront={true} hasBack={true} />,
-    )
+    render(<DocumentImagePair documentId="doc-1" hasFront={true} hasBack={true} />)
 
     await waitFor(() => expect(mockGetThumbnail).toHaveBeenCalled())
 
@@ -87,9 +85,7 @@ describe('DocumentImagePair', () => {
   })
 
   it('successful PIN issues view-grant then fetches full image and shows it', async () => {
-    render(
-      <DocumentImagePair documentId="doc-1" hasFront={true} hasBack={true} />,
-    )
+    render(<DocumentImagePair documentId="doc-1" hasFront={true} hasBack={true} />)
 
     await waitFor(() => expect(mockGetThumbnail).toHaveBeenCalled())
 
@@ -99,11 +95,11 @@ describe('DocumentImagePair', () => {
     await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
 
     // Select approver (Vezető Vera, id=42).
-    const approverSelect = await screen.findByLabelText(/engedelyezo/i) as HTMLSelectElement
+    const approverSelect = (await screen.findByLabelText(/engedelyezo/i)) as HTMLSelectElement
     fireEvent.change(approverSelect, { target: { value: '42' } })
 
     // Enter PIN.
-    const pinInput = await screen.findByLabelText(/PIN/i) as HTMLInputElement
+    const pinInput = (await screen.findByLabelText(/PIN/i)) as HTMLInputElement
     fireEvent.change(pinInput, { target: { value: '123456' } })
 
     // Submit.
@@ -131,9 +127,7 @@ describe('DocumentImagePair', () => {
       response: { status: 400, data: { error: 'Hibás PIN' } },
     })
 
-    render(
-      <DocumentImagePair documentId="doc-1" hasFront={true} hasBack={true} />,
-    )
+    render(<DocumentImagePair documentId="doc-1" hasFront={true} hasBack={true} />)
 
     await waitFor(() => expect(mockGetThumbnail).toHaveBeenCalled())
 
@@ -142,10 +136,10 @@ describe('DocumentImagePair', () => {
 
     await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
 
-    const approverSelect = await screen.findByLabelText(/engedelyezo/i) as HTMLSelectElement
+    const approverSelect = (await screen.findByLabelText(/engedelyezo/i)) as HTMLSelectElement
     fireEvent.change(approverSelect, { target: { value: '42' } })
 
-    const pinInput = await screen.findByLabelText(/PIN/i) as HTMLInputElement
+    const pinInput = (await screen.findByLabelText(/PIN/i)) as HTMLInputElement
     fireEvent.change(pinInput, { target: { value: '000000' } })
 
     const submitBtn = screen.getByRole('button', { name: /engedelyezes/i })
@@ -163,9 +157,7 @@ describe('DocumentImagePair', () => {
     // image-download error and close the modal.
     mockGetFullImage.mockRejectedValueOnce(new Error('network down'))
 
-    render(
-      <DocumentImagePair documentId="doc-1" hasFront={true} hasBack={true} />,
-    )
+    render(<DocumentImagePair documentId="doc-1" hasFront={true} hasBack={true} />)
 
     await waitFor(() => expect(mockGetThumbnail).toHaveBeenCalled())
 
@@ -174,10 +166,10 @@ describe('DocumentImagePair', () => {
 
     await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
 
-    const approverSelect = await screen.findByLabelText(/engedelyezo/i) as HTMLSelectElement
+    const approverSelect = (await screen.findByLabelText(/engedelyezo/i)) as HTMLSelectElement
     fireEvent.change(approverSelect, { target: { value: '42' } })
 
-    const pinInput = await screen.findByLabelText(/PIN/i) as HTMLInputElement
+    const pinInput = (await screen.findByLabelText(/PIN/i)) as HTMLInputElement
     fireEvent.change(pinInput, { target: { value: '123456' } })
 
     const submitBtn = screen.getByRole('button', { name: /engedelyezes/i })
@@ -218,9 +210,7 @@ describe('DocumentImagePair', () => {
       ],
     })
 
-    render(
-      <DocumentImagePair documentId="doc-1" hasFront={true} hasBack={false} />,
-    )
+    render(<DocumentImagePair documentId="doc-1" hasFront={true} hasBack={false} />)
 
     await waitFor(() => expect(mockGetThumbnail).toHaveBeenCalled())
 
@@ -230,8 +220,10 @@ describe('DocumentImagePair', () => {
     await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
 
     // The approver select must include the current worker (id=42).
-    const approverSelect = await screen.findByLabelText(/engedelyezo/i) as HTMLSelectElement
-    const optionValues = Array.from(approverSelect.options).map((o) => o.value).filter(Boolean)
+    const approverSelect = (await screen.findByLabelText(/engedelyezo/i)) as HTMLSelectElement
+    const optionValues = Array.from(approverSelect.options)
+      .map((o) => o.value)
+      .filter(Boolean)
     expect(optionValues).toContain('42')
     expect(optionValues).toContain('7')
     expect(optionValues).toHaveLength(2)

@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react'
-import { authorizedRepresentativeApi, RepresentativeRegistrationRequest } from '../../services/api/transactions'
+import {
+  authorizedRepresentativeApi,
+  RepresentativeRegistrationRequest,
+} from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
@@ -26,7 +29,7 @@ export default function RepresentativeCreatePage() {
   })
 
   const update = (field: string, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }))
+    setForm((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,7 +61,11 @@ export default function RepresentativeCreatePage() {
   }
 
   if (!customerId) {
-    return <div className="form-panel text-center py-8 text-gray-500">{t('representatives.ugyfelIdHianyzik')}</div>
+    return (
+      <div className="form-panel text-center py-8 text-gray-500">
+        {t('representatives.ugyfelIdHianyzik')}
+      </div>
+    )
   }
 
   return (
@@ -86,25 +93,50 @@ export default function RepresentativeCreatePage() {
             <div className="space-y-3">
               <div>
                 <label className="form-label required">{t('representatives.teljesNev')}</label>
-                <input type="text" value={form.name} onChange={(e) => update('name', e.target.value)} className="form-input" required />
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => update('name', e.target.value)}
+                  className="form-input"
+                  required
+                />
               </div>
               <div>
                 <label className="form-label">{t('common.address')}</label>
-                <input type="text" value={form.address} onChange={(e) => update('address', e.target.value)} className="form-input" />
+                <input
+                  type="text"
+                  value={form.address}
+                  onChange={(e) => update('address', e.target.value)}
+                  className="form-input"
+                />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="form-label">{t('common.phone')}</label>
-                  <input type="tel" value={form.phone} onChange={(e) => update('phone', e.target.value)} className="form-input font-mono" />
+                  <input
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => update('phone', e.target.value)}
+                    className="form-input font-mono"
+                  />
                 </div>
                 <div>
                   <label className="form-label">{t('customers.eMail')}</label>
-                  <input type="email" value={form.email} onChange={(e) => update('email', e.target.value)} className="form-input" />
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => update('email', e.target.value)}
+                    className="form-input"
+                  />
                 </div>
               </div>
               <div>
                 <label className="form-label">{t('pos.kapcsolatTipusa')}</label>
-                <select value={form.relationshipDid} onChange={(e) => update('relationshipDid', e.target.value)} className="form-input">
+                <select
+                  value={form.relationshipDid}
+                  onChange={(e) => update('relationshipDid', e.target.value)}
+                  className="form-input"
+                >
                   <option value="">—</option>
                   <option value="FAMILY">{t('pep.csaladtag')}</option>
                   <option value="COLLEAGUE">{t('representatives.munkatars')}</option>
@@ -122,7 +154,12 @@ export default function RepresentativeCreatePage() {
             <div className="space-y-3">
               <div>
                 <label className="form-label required">{t('customers.okmanyTipusa')}</label>
-                <select value={form.documentType} onChange={(e) => update('documentType', e.target.value)} className="form-input" required>
+                <select
+                  value={form.documentType}
+                  onChange={(e) => update('documentType', e.target.value)}
+                  className="form-input"
+                  required
+                >
                   <option>{t('customers.szemelyiIgazolvany')}</option>
                   <option>{t('customers.utlevel')}</option>
                   <option>{t('customers.vezetoiEngedely')}</option>
@@ -131,31 +168,61 @@ export default function RepresentativeCreatePage() {
               </div>
               <div>
                 <label className="form-label required">{t('common.documentNumber')}</label>
-                <input type="text" value={form.documentNumber} onChange={(e) => update('documentNumber', e.target.value)} className="form-input font-mono" required />
+                <input
+                  type="text"
+                  value={form.documentNumber}
+                  onChange={(e) => update('documentNumber', e.target.value)}
+                  className="form-input font-mono"
+                  required
+                />
               </div>
               <div>
                 <label className="form-label">{t('representatives.okmanyLejarat')}</label>
-                <input type="date" value={form.documentValidTo} onChange={(e) => update('documentValidTo', e.target.value)} className="form-input" />
+                <input
+                  type="date"
+                  value={form.documentValidTo}
+                  onChange={(e) => update('documentValidTo', e.target.value)}
+                  className="form-input"
+                />
               </div>
             </div>
 
             <h2 className="section-title mt-4">{t('commissions.ervenyesseg')}</h2>
             <div className="space-y-3">
               <div>
-                <label className="form-label required">{t('representatives.meghatalmazasKezdete')}</label>
-                <input type="date" value={form.authorizationStart} onChange={(e) => update('authorizationStart', e.target.value)} className="form-input" required />
+                <label className="form-label required">
+                  {t('representatives.meghatalmazasKezdete')}
+                </label>
+                <input
+                  type="date"
+                  value={form.authorizationStart}
+                  onChange={(e) => update('authorizationStart', e.target.value)}
+                  className="form-input"
+                  required
+                />
               </div>
               <div>
                 <label className="form-label">{t('representatives.meghatalmazasVege')}</label>
-                <input type="date" value={form.authorizationEnd} onChange={(e) => update('authorizationEnd', e.target.value)} className="form-input" />
+                <input
+                  type="date"
+                  value={form.authorizationEnd}
+                  onChange={(e) => update('authorizationEnd', e.target.value)}
+                  className="form-input"
+                />
               </div>
             </div>
           </div>
         </div>
 
         <div className="form-panel flex justify-end gap-2">
-          <Link to={`/customers/${customerId}/representatives`} className="form-button">{t('common.cancel')}</Link>
-          <button type="submit" disabled={saving} className="form-button-primary flex items-center gap-1">
+          <Link to={`/customers/${customerId}/representatives`} className="form-button">
+            {t('common.cancel')}
+          </Link>
+          <button
+            type="submit"
+            disabled={saving}
+            className="form-button-primary flex items-center gap-1"
+          >
             <Save size={16} />
             {saving ? 'Mentés...' : 'Mentés'}
           </button>

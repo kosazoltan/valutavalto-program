@@ -250,7 +250,9 @@ export async function getElectronCachedRates(): Promise<ElectronCachedRate[]> {
   return electronAPI.getCachedRates()
 }
 
-export function buildFallbackCurrenciesFromCachedRates(cachedRates: ElectronCachedRate[]): Currency[] {
+export function buildFallbackCurrenciesFromCachedRates(
+  cachedRates: ElectronCachedRate[],
+): Currency[] {
   return cachedRates
     .filter((rate) => rate.currency_code && rate.currency_code !== 'HUF')
     .map((rate, index) => ({
@@ -453,10 +455,14 @@ export async function saveAndSyncPendingBuySell(
       )
     }
 
-    return finalizeSyncOutcome(savedIds, async () => {
-      const pending = await electronAPI.getPendingTransactions()
-      return pending.map((row) => row.id)
-    }, localReferenceNumbers)
+    return finalizeSyncOutcome(
+      savedIds,
+      async () => {
+        const pending = await electronAPI.getPendingTransactions()
+        return pending.map((row) => row.id)
+      },
+      localReferenceNumbers,
+    )
   })
 }
 
@@ -575,10 +581,14 @@ export async function saveAndSyncPendingTransfer(
       ]
     }
 
-    return finalizeSyncOutcome([savedId], async () => {
-      const pending = await electronAPI.getPendingTransfers()
-      return pending.map((row) => row.id)
-    }, localReferenceNumbers)
+    return finalizeSyncOutcome(
+      [savedId],
+      async () => {
+        const pending = await electronAPI.getPendingTransfers()
+        return pending.map((row) => row.id)
+      },
+      localReferenceNumbers,
+    )
   })
 }
 
@@ -628,13 +638,21 @@ export async function saveAndSyncPendingStorno(
     let localReferenceNumbers: (string | null)[] = [null]
     try {
       const rows = await electronAPI.getPendingStornos()
-      localReferenceNumbers = [rows.find((row) => row.id === savedId)?.local_reference_number ?? null]
-    } catch { /* régi telepítő / IPC-hiba → null fallback */ }
+      localReferenceNumbers = [
+        rows.find((row) => row.id === savedId)?.local_reference_number ?? null,
+      ]
+    } catch {
+      /* régi telepítő / IPC-hiba → null fallback */
+    }
 
-    return finalizeSyncOutcome([savedId], async () => {
-      const pending = await electronAPI.getPendingStornos()
-      return pending.map((row) => row.id)
-    }, localReferenceNumbers)
+    return finalizeSyncOutcome(
+      [savedId],
+      async () => {
+        const pending = await electronAPI.getPendingStornos()
+        return pending.map((row) => row.id)
+      },
+      localReferenceNumbers,
+    )
   })
 }
 

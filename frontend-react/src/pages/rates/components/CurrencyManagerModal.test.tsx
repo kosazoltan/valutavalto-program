@@ -42,7 +42,9 @@ const cur = (code: string, displayOrder: number, active = true): Currency => ({
 
 describe('FK04 (FR-8) — computeNextDisplayOrder', () => {
   it('new_currency_default_order_is_max_plus_one', () => {
-    expect(computeNextDisplayOrder([cur('EUR', 1), cur('NZD', 22), cur('DKK', 101, false)])).toBe(102)
+    expect(computeNextDisplayOrder([cur('EUR', 1), cur('NZD', 22), cur('DKK', 101, false)])).toBe(
+      102,
+    )
   })
 
   it('üres lista → 1 (nem fix 99)', () => {
@@ -137,8 +139,12 @@ describe('FK04 (FR-8) — CurrencyManagerModal', () => {
 
     await waitFor(() => expect(vi.mocked(currencyApi.getById)).toHaveBeenCalledWith(2))
     await waitFor(() => expect(vi.mocked(currencyApi.getByCode)).toHaveBeenCalledWith('EUR'))
-    expect(await screen.findByTestId('currency-manager-detail')).toHaveTextContent('Backend EUR ID detail')
-    expect(screen.getByTestId('currency-manager-code-check')).toHaveTextContent('Kód-ellenőrzés: EUR / #2')
+    expect(await screen.findByTestId('currency-manager-detail')).toHaveTextContent(
+      'Backend EUR ID detail',
+    )
+    expect(screen.getByTestId('currency-manager-code-check')).toHaveTextContent(
+      'Kód-ellenőrzés: EUR / #2',
+    )
   })
 
   it('címletképek panel megjelenik ha ki van jelölve valuta', async () => {

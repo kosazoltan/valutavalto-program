@@ -23,12 +23,19 @@ vi.mock('react-i18next', () => ({
 function setElectronAvailable(available: boolean) {
   if (available) {
     Object.defineProperty(window, 'electronAPI', {
-      value: { scanSaveDocument: mocks.scanSaveDocument, queueScannedDocument: mocks.queueScannedDocument },
+      value: {
+        scanSaveDocument: mocks.scanSaveDocument,
+        queueScannedDocument: mocks.queueScannedDocument,
+      },
       writable: true,
       configurable: true,
     })
   } else {
-    Object.defineProperty(window, 'electronAPI', { value: undefined, writable: true, configurable: true })
+    Object.defineProperty(window, 'electronAPI', {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    })
   }
 }
 
@@ -52,9 +59,19 @@ function mockVideoAndCanvas() {
   vi.spyOn(canvasProto, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D)
   vi.spyOn(canvasProto, 'toDataURL').mockReturnValue(toDataURL())
   // video element
-  Object.defineProperty(HTMLVideoElement.prototype, 'videoWidth', { configurable: true, get: () => 640 })
-  Object.defineProperty(HTMLVideoElement.prototype, 'videoHeight', { configurable: true, get: () => 480 })
-  Object.defineProperty(HTMLVideoElement.prototype, 'srcObject', { configurable: true, set: () => {}, get: () => null })
+  Object.defineProperty(HTMLVideoElement.prototype, 'videoWidth', {
+    configurable: true,
+    get: () => 640,
+  })
+  Object.defineProperty(HTMLVideoElement.prototype, 'videoHeight', {
+    configurable: true,
+    get: () => 480,
+  })
+  Object.defineProperty(HTMLVideoElement.prototype, 'srcObject', {
+    configurable: true,
+    set: () => {},
+    get: () => null,
+  })
   return { drawImage, toDataURL, ctx }
 }
 

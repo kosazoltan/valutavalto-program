@@ -5,14 +5,14 @@
  * Each migration is idempotent and runs only once.
  */
 
-import type { Database } from 'sql.js';
+import type { Database } from 'sql.js'
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 2
 
 export interface Migration {
-  version: number;
-  description: string;
-  up: (db: Database) => void;
+  version: number
+  description: string
+  up: (db: Database) => void
 }
 
 const migrations: Migration[] = [
@@ -26,7 +26,7 @@ const migrations: Migration[] = [
           value TEXT NOT NULL,
           updated_at TEXT DEFAULT (datetime('now'))
         );
-      `);
+      `)
 
       db.run(`
         CREATE TABLE IF NOT EXISTS lf_outbox (
@@ -44,9 +44,9 @@ const migrations: Migration[] = [
           synced_at TEXT,
           next_retry_at TEXT
         );
-      `);
-      db.run('CREATE INDEX IF NOT EXISTS idx_outbox_status ON lf_outbox(status);');
-      db.run('CREATE INDEX IF NOT EXISTS idx_outbox_entity ON lf_outbox(entity_type, entity_id);');
+      `)
+      db.run('CREATE INDEX IF NOT EXISTS idx_outbox_status ON lf_outbox(status);')
+      db.run('CREATE INDEX IF NOT EXISTS idx_outbox_entity ON lf_outbox(entity_type, entity_id);')
 
       db.run(`
         CREATE TABLE IF NOT EXISTS lf_tombstone (
@@ -58,9 +58,11 @@ const migrations: Migration[] = [
           retention_until TEXT NOT NULL,
           UNIQUE(entity_type, entity_id)
         );
-      `);
-      db.run('CREATE INDEX IF NOT EXISTS idx_tombstone_entity ON lf_tombstone(entity_type, entity_id);');
-      db.run('CREATE INDEX IF NOT EXISTS idx_tombstone_retention ON lf_tombstone(retention_until);');
+      `)
+      db.run(
+        'CREATE INDEX IF NOT EXISTS idx_tombstone_entity ON lf_tombstone(entity_type, entity_id);',
+      )
+      db.run('CREATE INDEX IF NOT EXISTS idx_tombstone_retention ON lf_tombstone(retention_until);')
 
       db.run(`
         CREATE TABLE IF NOT EXISTS lf_sync_state (
@@ -72,8 +74,8 @@ const migrations: Migration[] = [
           error_message TEXT,
           consecutive_failures INTEGER NOT NULL DEFAULT 0
         );
-      `);
-      db.run(`INSERT OR IGNORE INTO lf_sync_state(id, status) VALUES (1, 'idle');`);
+      `)
+      db.run(`INSERT OR IGNORE INTO lf_sync_state(id, status) VALUES (1, 'idle');`)
 
       db.run(`
         CREATE TABLE IF NOT EXISTS lf_conflict_log (
@@ -86,7 +88,7 @@ const migrations: Migration[] = [
           resolved_at TEXT NOT NULL DEFAULT (datetime('now')),
           details TEXT
         );
-      `);
+      `)
     },
   },
   {
@@ -104,41 +106,43 @@ const migrations: Migration[] = [
           _deleted INTEGER NOT NULL DEFAULT 0,
           PRIMARY KEY(entity_type, entity_id)
         );
-      `);
-      db.run('CREATE INDEX IF NOT EXISTS idx_cached_type ON lf_cached_entities(entity_type, _deleted);');
+      `)
+      db.run(
+        'CREATE INDEX IF NOT EXISTS idx_cached_type ON lf_cached_entities(entity_type, _deleted);',
+      )
     },
   },
-];
+]
 
 export function getSchemaVersion(db: Database): number {
-  const result = db.exec('PRAGMA user_version;');
+  const result = db.exec('PRAGMA user_version;')
   if (result.length > 0 && result[0].values.length > 0) {
-    return Number(result[0].values[0][0]) || 0;
+    return Number(result[0].values[0][0]) || 0
   }
-  return 0;
+  return 0
 }
 
 export function runMigrations(db: Database): { applied: number[]; currentVersion: number } {
-  const currentVersion = getSchemaVersion(db);
-  const applied: number[] = [];
+  const currentVersion = getSchemaVersion(db)
+  const applied: number[] = []
 
   for (const migration of migrations) {
     if (migration.version > currentVersion) {
-      db.run('BEGIN TRANSACTION;');
+      db.run('BEGIN TRANSACTION;')
       try {
-        migration.up(db);
-        db.run(`PRAGMA user_version = ${migration.version};`);
-        db.run('COMMIT;');
-        applied.push(migration.version);
+        migration.up(db)
+        db.run(`PRAGMA user_version = ${migration.version};`)
+        db.run('COMMIT;')
+        applied.push(migration.version)
       } catch (err) {
-        db.run('ROLLBACK;');
+        db.run('ROLLBACK;')
         throw new Error(
           `Schema migration V${migration.version} (${migration.description}) failed: ${err instanceof Error ? err.message : String(err)}`,
           { cause: err },
-        );
+        )
       }
     }
   }
 
-  return { applied, currentVersion: getSchemaVersion(db) };
+  return { applied, currentVersion: getSchemaVersion(db) }
 }

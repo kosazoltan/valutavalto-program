@@ -22,7 +22,7 @@ import { describe, expect, it } from 'vitest'
 const API_BASE = 'https://excvaluta.com/api/v1'
 const COMPANY_CODE = 'EBC'
 const TEST_BRANCH_CODE = 'BR039' // Szeged Tisza — ismert branch
-const TEST_WORKER_CODE = 'KOSA'  // Ismert worker
+const TEST_WORKER_CODE = 'KOSA' // Ismert worker
 
 // ---------------------------------------------------------------------------
 // 1. Bootstrap status
@@ -32,7 +32,7 @@ describe('Production API — Bootstrap status', () => {
     const res = await fetch(`${API_BASE}/auth/bootstrap-status`)
     expect(res.status).toBe(200)
 
-    const body = await res.json() as { completed?: boolean }
+    const body = (await res.json()) as { completed?: boolean }
     expect(body).toHaveProperty('completed')
     expect(typeof body.completed).toBe('boolean')
     // Production-on a bootstrap lezárt:
@@ -48,7 +48,7 @@ describe('Production API — Branch listing', () => {
     const res = await fetch(`${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`)
     expect(res.status).toBe(200)
 
-    const branches = await res.json() as Array<{
+    const branches = (await res.json()) as Array<{
       code: string
       name: string
       city: string
@@ -67,7 +67,7 @@ describe('Production API — Branch listing', () => {
 
   it('A BR039 (Szeged Tisza) iroda létezik a listában', async () => {
     const res = await fetch(`${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`)
-    const branches = await res.json() as Array<{ code: string; name: string }>
+    const branches = (await res.json()) as Array<{ code: string; name: string }>
     const br039 = branches.find((b) => b.code === TEST_BRANCH_CODE)
     expect(br039).toBeDefined()
   })
@@ -91,7 +91,7 @@ describe('Production API — Worker listing', () => {
     )
     expect(res.status).toBe(200)
 
-    const workers = await res.json() as Array<{
+    const workers = (await res.json()) as Array<{
       code: string
       name: string
       region?: string
@@ -110,7 +110,7 @@ describe('Production API — Worker listing', () => {
     const res = await fetch(
       `${API_BASE}/public/workers?companyCode=${COMPANY_CODE}&branchCode=${TEST_BRANCH_CODE}`,
     )
-    const workers = await res.json() as Array<{ code: string; name: string }>
+    const workers = (await res.json()) as Array<{ code: string; name: string }>
     const kosa = workers.find((w) => w.code === TEST_WORKER_CODE)
     expect(kosa).toBeDefined()
     expect(kosa!.name).toBeTruthy()
@@ -163,7 +163,7 @@ describe('Production API — Worker first-time setup validation', () => {
     })
     expect(isRateLimitedOrExpected(res.status, 400)).toBe(true)
     if (res.status === 429) return // rate-limit → endpoint él, teszt elfogadva
-    const body = await res.json() as Record<string, unknown>
+    const body = (await res.json()) as Record<string, unknown>
     // Spring Boot 4 RFC-7807: { title, status, detail, message } — bármelyik tartalmazhatja a hibát
     const errorText = String(body.message ?? body.detail ?? '')
     expect(errorText).toBeTruthy()
@@ -181,7 +181,7 @@ describe('Production API — Worker first-time setup validation', () => {
     })
     expect(isRateLimitedOrExpected(res.status, 400)).toBe(true)
     if (res.status === 429) return
-    const body = await res.json() as { message?: string }
+    const body = (await res.json()) as { message?: string }
     expect(body.message).toContain('Ismeretlen cegkod')
   })
 
@@ -207,14 +207,12 @@ describe('Production API — SetupWizard teljes flow szimuláció', () => {
     // 1. Bootstrap check
     const bootstrapRes = await fetch(`${API_BASE}/auth/bootstrap-status`)
     expect(bootstrapRes.status).toBe(200)
-    const bootstrap = await bootstrapRes.json() as { completed: boolean }
+    const bootstrap = (await bootstrapRes.json()) as { completed: boolean }
 
     // 2. Branch-ek lekérése
-    const branchesRes = await fetch(
-      `${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`,
-    )
+    const branchesRes = await fetch(`${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`)
     expect(branchesRes.status).toBe(200)
-    const branches = await branchesRes.json() as Array<{ code: string; name: string }>
+    const branches = (await branchesRes.json()) as Array<{ code: string; name: string }>
     expect(branches.length).toBeGreaterThan(0)
 
     // 3. Worker-ek lekérése a kiválasztott branch-höz
@@ -225,7 +223,7 @@ describe('Production API — SetupWizard teljes flow szimuláció', () => {
       `${API_BASE}/public/workers?companyCode=${COMPANY_CODE}&branchCode=${selectedBranch!.code}`,
     )
     expect(workersRes.status).toBe(200)
-    const workers = await workersRes.json() as Array<{ code: string; name: string }>
+    const workers = (await workersRes.json()) as Array<{ code: string; name: string }>
     expect(workers.length).toBeGreaterThan(0)
 
     // 4. Dolgozó kiválasztás
@@ -253,7 +251,7 @@ describe('Production API — SetupWizard teljes flow szimuláció', () => {
       return
     }
 
-    const setupBody = await setupRes.json() as { success?: boolean; message?: string }
+    const setupBody = (await setupRes.json()) as { success?: boolean; message?: string }
     // Ha 400: van message mező
     if (setupRes.status === 400) {
       expect(setupBody.message).toBeTruthy()

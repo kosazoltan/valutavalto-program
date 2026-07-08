@@ -58,9 +58,7 @@ describe('OwnCompanyPage admin backend details', () => {
       activeBranchCount: 7,
       totalWorkerCount: 42,
       dailyTurnoverHuf: 1250000,
-      branches: [
-        { id: 'branch-1', code: 'SZEGED', name: 'Szeged', city: 'Szeged', active: true },
-      ],
+      branches: [{ id: 'branch-1', code: 'SZEGED', name: 'Szeged', city: 'Szeged', active: true }],
     })
     mocks.ownCompanyUpdate.mockResolvedValue({})
     mocks.adminCompanyUpdateCompany.mockResolvedValue(undefined)
@@ -89,9 +87,12 @@ describe('OwnCompanyPage admin backend details', () => {
     await user.click(screen.getByRole('button', { name: /Mentés/i }))
 
     await waitFor(() => {
-      expect(mocks.ownCompanyUpdate).toHaveBeenCalledWith('company-1', expect.objectContaining({
-        name: 'Exclusive Best Change Kft.',
-      }))
+      expect(mocks.ownCompanyUpdate).toHaveBeenCalledWith(
+        'company-1',
+        expect.objectContaining({
+          name: 'Exclusive Best Change Kft.',
+        }),
+      )
       expect(mocks.adminCompanyUpdateCompany).toHaveBeenCalledWith('company-1', {
         name: 'Exclusive Best Change Kft.',
         taxNumber: '12345678-2-06',

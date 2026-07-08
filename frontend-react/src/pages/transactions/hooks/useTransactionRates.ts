@@ -18,7 +18,9 @@ export interface CurrencyRate {
 
 function resolveUnit(rate: ExchangeRate): number {
   const candidate = (rate as ExchangeRate & { unit?: number }).unit
-  return typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0 ? candidate : 1
+  return typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0
+    ? candidate
+    : 1
 }
 
 export function useTransactionRates() {

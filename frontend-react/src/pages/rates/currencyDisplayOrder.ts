@@ -14,9 +14,9 @@
  * eltérhet, de a nem-kanonikus valuták (BGN, DKK, HRK, NOK, SEK) mind inaktívak, az
  * overview pedig csak aktívakat ad — gyakorlati eltérés nincs (verifikáció-jegyzet).
  */
-export function sortByDisplayOrder<T extends { currencyCode: string; displayOrder?: number | null }>(
-  rows: T[],
-): T[] {
+export function sortByDisplayOrder<
+  T extends { currencyCode: string; displayOrder?: number | null },
+>(rows: T[]): T[] {
   return [...rows].sort((a, b) => {
     const ia = a.displayOrder ?? Number.MAX_SAFE_INTEGER
     const ib = b.displayOrder ?? Number.MAX_SAFE_INTEGER

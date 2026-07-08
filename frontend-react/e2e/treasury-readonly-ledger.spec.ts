@@ -37,7 +37,7 @@ async function mockApis(page: Page) {
     roles: ['foertektar'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -60,11 +60,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/features') && method === 'GET') {
@@ -88,7 +96,15 @@ async function mockApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { id: 21, transferNumber: 'ATT-2026-0001', currencyCode: 'EUR', amount: 1000, status: 'REQUESTED', requiresSupervisor: true, createdAt: '2026-06-19T08:00:00' },
+          {
+            id: 21,
+            transferNumber: 'ATT-2026-0001',
+            currencyCode: 'EUR',
+            amount: 1000,
+            status: 'REQUESTED',
+            requiresSupervisor: true,
+            createdAt: '2026-06-19T08:00:00',
+          },
         ]),
       })
     }
@@ -143,13 +159,31 @@ async function mockApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { id: 21, transferNumber: 'ATT-2026-0001', currencyCode: 'EUR', amount: 1000, status: 'REQUESTED', requiresSupervisor: true, createdAt: '2026-06-19T08:00:00' },
-          { id: 22, transferNumber: 'ATT-2026-0002', currencyCode: 'USD', amount: 500, status: 'IN_PROGRESS', requiresSupervisor: true, createdAt: '2026-06-19T09:00:00' },
+          {
+            id: 21,
+            transferNumber: 'ATT-2026-0001',
+            currencyCode: 'EUR',
+            amount: 1000,
+            status: 'REQUESTED',
+            requiresSupervisor: true,
+            createdAt: '2026-06-19T08:00:00',
+          },
+          {
+            id: 22,
+            transferNumber: 'ATT-2026-0002',
+            currencyCode: 'USD',
+            amount: 500,
+            status: 'IN_PROGRESS',
+            requiresSupervisor: true,
+            createdAt: '2026-06-19T09:00:00',
+          },
         ]),
       })
     }
 
-    const transferDecision = path.match(/\/ertektar\/transfers\/(\d+)\/(supervisor-approve|complete|reject)$/)
+    const transferDecision = path.match(
+      /\/ertektar\/transfers\/(\d+)\/(supervisor-approve|complete|reject)$/,
+    )
     if (transferDecision && method === 'POST') {
       transferDecisions.push(`${transferDecision[1]}:${transferDecision[2]}`)
       return route.fulfill({
@@ -157,11 +191,12 @@ async function mockApis(page: Page) {
         contentType: 'application/json',
         body: JSON.stringify({
           id: Number(transferDecision[1]),
-          status: transferDecision[2] === 'reject'
-            ? 'REJECTED'
-            : transferDecision[2] === 'complete'
-              ? 'COMPLETED'
-              : 'IN_PROGRESS',
+          status:
+            transferDecision[2] === 'reject'
+              ? 'REJECTED'
+              : transferDecision[2] === 'complete'
+                ? 'COMPLETED'
+                : 'IN_PROGRESS',
         }),
       })
     }
@@ -171,9 +206,20 @@ async function mockApis(page: Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(type === 'B'
-          ? [{ id: 31, receiptNumber: 'BIZ-2026-0001', receiptType: 'B', status: 'DRAFT', createdAt: '2026-06-19T08:00:00', lines: [{ currencyCode: 'EUR', amount: 100 }] }]
-          : []),
+        body: JSON.stringify(
+          type === 'B'
+            ? [
+                {
+                  id: 31,
+                  receiptNumber: 'BIZ-2026-0001',
+                  receiptType: 'B',
+                  status: 'DRAFT',
+                  createdAt: '2026-06-19T08:00:00',
+                  lines: [{ currencyCode: 'EUR', amount: 100 }],
+                },
+              ]
+            : [],
+        ),
       })
     }
 
@@ -198,7 +244,14 @@ async function mockApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { id: 31, receiptNumber: 'BIZ-2026-0001', receiptType: 'B', status: 'DRAFT', createdAt: '2026-06-19T08:00:00', lines: [{ currencyCode: 'EUR', amount: 100 }] },
+          {
+            id: 31,
+            receiptNumber: 'BIZ-2026-0001',
+            receiptType: 'B',
+            status: 'DRAFT',
+            createdAt: '2026-06-19T08:00:00',
+            lines: [{ currencyCode: 'EUR', amount: 100 }],
+          },
         ]),
       })
     }
@@ -221,7 +274,18 @@ async function mockApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { id: 41, entityType: 'VAULT', entityId: 'BUD01', currencyCode: 'CHF', oldQuantity: 10, newQuantity: 12, difference: 2, reason: 'Leltár eltérés', status: 'PENDING', createdAt: '2026-06-19T08:00:00' },
+          {
+            id: 41,
+            entityType: 'VAULT',
+            entityId: 'BUD01',
+            currencyCode: 'CHF',
+            oldQuantity: 10,
+            newQuantity: 12,
+            difference: 2,
+            reason: 'Leltár eltérés',
+            status: 'PENDING',
+            createdAt: '2026-06-19T08:00:00',
+          },
         ]),
       })
     }
@@ -231,7 +295,18 @@ async function mockApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { id: 41, entityType: 'VAULT', entityId: 'BUD01', currencyCode: 'CHF', oldQuantity: 10, newQuantity: 12, difference: 2, reason: 'Leltár eltérés', status: 'PENDING', createdAt: '2026-06-19T08:00:00' },
+          {
+            id: 41,
+            entityType: 'VAULT',
+            entityId: 'BUD01',
+            currencyCode: 'CHF',
+            oldQuantity: 10,
+            newQuantity: 12,
+            difference: 2,
+            reason: 'Leltár eltérés',
+            status: 'PENDING',
+            createdAt: '2026-06-19T08:00:00',
+          },
         ]),
       })
     }
@@ -270,7 +345,11 @@ async function mockApis(page: Page) {
     }
 
     if (method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
@@ -298,7 +377,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('értéktári dashboard mobil nézetben lekéri és megjeleníti a read-only ledger listákat', async ({ page }) => {
+test('értéktári dashboard mobil nézetben lekéri és megjeleníti a read-only ledger listákat', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -310,10 +391,12 @@ test('értéktári dashboard mobil nézetben lekéri és megjeleníti a read-onl
     '/api/v1/ertektar/receipts/by-type',
     '/api/v1/ertektar/corrections',
     '/api/v1/ertektar/corrections/pending',
-  ].map(expectedPath => page.waitForRequest(request => {
-    const url = new URL(request.url())
-    return request.method() === 'GET' && url.pathname === expectedPath
-  }))
+  ].map((expectedPath) =>
+    page.waitForRequest((request) => {
+      const url = new URL(request.url())
+      return request.method() === 'GET' && url.pathname === expectedPath
+    }),
+  )
 
   await page.goto('/treasury', { waitUntil: 'domcontentloaded' })
   await Promise.all(requests)
@@ -324,7 +407,9 @@ test('értéktári dashboard mobil nézetben lekéri és megjeleníti a read-onl
   await expect(ledger.getByText('ATT-2026-0002')).toBeVisible()
   await expect(ledger.getByText('BIZ-2026-0001')).toBeVisible()
   await expect(ledger.getByText('VAULT BUD01')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Áttétel #21 supervisor jóváhagyás' })).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Áttétel #21 supervisor jóváhagyás' }),
+  ).toBeVisible()
   await expect(page.getByRole('button', { name: 'Áttétel #22 végrehajtás' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Anyagbizonylat #31 véglegesítés' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Áttétel kérése' })).toBeVisible()
@@ -335,16 +420,18 @@ test('értéktári dashboard mobil nézetben lekéri és megjeleníti a read-onl
   await expect(page.getByRole('button', { name: 'Készletkorrekció #41 jóváhagyás' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Készletkorrekció #41 elutasítás' })).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
 
-test('értéktári készletkorrekció gombok POST approve/reject backend szerződést hívnak', async ({ page }) => {
+test('értéktári készletkorrekció gombok POST approve/reject backend szerződést hívnak', async ({
+  page,
+}) => {
   const apiCalls = await mockApis(page)
   await login(page)
-  page.on('dialog', dialog => dialog.accept())
+  page.on('dialog', (dialog) => dialog.accept())
 
   await page.goto('/treasury', { waitUntil: 'domcontentloaded' })
 
@@ -353,24 +440,26 @@ test('értéktári készletkorrekció gombok POST approve/reject backend szerző
   await expect(page.getByRole('button', { name: 'Készletkorrekció #41 jóváhagyás' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Készletkorrekció #41 elutasítás' })).toBeVisible()
 
-  const approveRequest = page.waitForRequest(request =>
-    request.method() === 'POST'
-    && new URL(request.url()).pathname === '/api/v1/ertektar/corrections/41/approve'
+  const approveRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/ertektar/corrections/41/approve',
   )
   await page.getByRole('button', { name: 'Készletkorrekció #41 jóváhagyás' }).click()
   await approveRequest
 
-  const rejectRequest = page.waitForRequest(request =>
-    request.method() === 'POST'
-    && new URL(request.url()).pathname === '/api/v1/ertektar/corrections/41/reject'
+  const rejectRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/ertektar/corrections/41/reject',
   )
   await page.getByRole('button', { name: 'Készletkorrekció #41 elutasítás' }).click()
   await rejectRequest
 
   expect(apiCalls.correctionDecisions).toEqual(['41:approve', '41:reject'])
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
@@ -378,7 +467,7 @@ test('értéktári készletkorrekció gombok POST approve/reject backend szerző
 test('értéktári készletkorrekció űrlap POST create backend szerződést hív', async ({ page }) => {
   const apiCalls = await mockApis(page)
   await login(page)
-  page.on('dialog', dialog => dialog.accept())
+  page.on('dialog', (dialog) => dialog.accept())
 
   await page.goto('/treasury', { waitUntil: 'domcontentloaded' })
 
@@ -388,9 +477,10 @@ test('értéktári készletkorrekció űrlap POST create backend szerződést h�
   await ledger.getByLabel('Új mennyiség').fill('125.5')
   await ledger.getByLabel('Indok').fill('Leltár eltérés')
 
-  const createRequest = page.waitForRequest(request =>
-    request.method() === 'POST'
-    && new URL(request.url()).pathname === '/api/v1/ertektar/corrections'
+  const createRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/ertektar/corrections',
   )
   await page.getByRole('button', { name: 'Korrekció kérése' }).click()
   await createRequest
@@ -405,16 +495,18 @@ test('értéktári készletkorrekció űrlap POST create backend szerződést h�
     },
   ])
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
 
-test('értéktári begyűjtés és szétosztás űrlap POST create backend szerződést hív', async ({ page }) => {
+test('értéktári begyűjtés és szétosztás űrlap POST create backend szerződést hív', async ({
+  page,
+}) => {
   const apiCalls = await mockApis(page)
   await login(page)
-  page.on('dialog', dialog => dialog.accept())
+  page.on('dialog', (dialog) => dialog.accept())
 
   await page.goto('/treasury', { waitUntil: 'domcontentloaded' })
 
@@ -424,9 +516,10 @@ test('értéktári begyűjtés és szétosztás űrlap POST create backend szerz
   await statusControl.getByLabel('Begyűjtés összeg').fill('1200')
   await statusControl.getByLabel('Begyűjtés megjegyzés').fill('Napi begyűjtés')
 
-  const collectionRequest = page.waitForRequest(request =>
-    request.method() === 'POST'
-    && new URL(request.url()).pathname === '/api/v1/ertektar/collections'
+  const collectionRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/ertektar/collections',
   )
   await page.getByRole('button', { name: 'Begyűjtés kérése' }).click()
   await collectionRequest
@@ -436,9 +529,10 @@ test('értéktári begyűjtés és szétosztás űrlap POST create backend szerz
   await statusControl.getByLabel('Szétosztás összeg').fill('500')
   await statusControl.getByLabel('Szétosztás megjegyzés').fill('Napi szétosztás')
 
-  const distributionRequest = page.waitForRequest(request =>
-    request.method() === 'POST'
-    && new URL(request.url()).pathname === '/api/v1/ertektar/distribution'
+  const distributionRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/ertektar/distribution',
   )
   await page.getByRole('button', { name: 'Szétosztás kérése' }).click()
   await distributionRequest
@@ -458,16 +552,18 @@ test('értéktári begyűjtés és szétosztás űrlap POST create backend szerz
     },
   ])
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
 
-test('értéktári áttétel és anyagbizonylat űrlap POST create backend szerződést hív', async ({ page }) => {
+test('értéktári áttétel és anyagbizonylat űrlap POST create backend szerződést hív', async ({
+  page,
+}) => {
   const apiCalls = await mockApis(page)
   await login(page)
-  page.on('dialog', dialog => dialog.accept())
+  page.on('dialog', (dialog) => dialog.accept())
 
   await page.goto('/treasury', { waitUntil: 'domcontentloaded' })
 
@@ -477,9 +573,10 @@ test('értéktári áttétel és anyagbizonylat űrlap POST create backend szerz
   await page.getByLabel('Áttétel összeg').fill('1000')
   await page.getByLabel('Áttétel megjegyzés').fill('Napi áttétel')
 
-  const transferRequest = page.waitForRequest(request =>
-    request.method() === 'POST'
-    && new URL(request.url()).pathname === '/api/v1/ertektar/transfers'
+  const transferRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/ertektar/transfers',
   )
   await page.getByRole('button', { name: 'Áttétel kérése' }).click()
   await transferRequest
@@ -491,9 +588,10 @@ test('értéktári áttétel és anyagbizonylat űrlap POST create backend szerz
   await page.getByLabel('Partner').fill('Minta Bank')
   await page.getByLabel('Bizonylat megjegyzés').fill('Banki kiadás')
 
-  const receiptRequest = page.waitForRequest(request =>
-    request.method() === 'POST'
-    && new URL(request.url()).pathname === '/api/v1/ertektar/receipts'
+  const receiptRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/ertektar/receipts',
   )
   await page.getByRole('button', { name: 'Anyagbizonylat kérése' }).click()
   await receiptRequest
@@ -517,48 +615,55 @@ test('értéktári áttétel és anyagbizonylat űrlap POST create backend szerz
     },
   ])
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
 
-test('értéktári áttétel gombok POST supervisor/complete/reject backend szerződést hívnak', async ({ page }) => {
+test('értéktári áttétel gombok POST supervisor/complete/reject backend szerződést hívnak', async ({
+  page,
+}) => {
   const apiCalls = await mockApis(page)
   await login(page)
-  page.on('dialog', dialog => dialog.accept())
+  page.on('dialog', (dialog) => dialog.accept())
 
   await page.goto('/treasury', { waitUntil: 'domcontentloaded' })
 
-  await expect(page.getByRole('button', { name: 'Áttétel #21 supervisor jóváhagyás' })).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Áttétel #21 supervisor jóváhagyás' }),
+  ).toBeVisible()
   await expect(page.getByRole('button', { name: 'Áttétel #22 végrehajtás' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Áttétel #21 elutasítás' })).toBeVisible()
 
-  const approveRequest = page.waitForRequest(request =>
-    request.method() === 'POST'
-    && new URL(request.url()).pathname === '/api/v1/ertektar/transfers/21/supervisor-approve'
+  const approveRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/ertektar/transfers/21/supervisor-approve',
   )
   await page.getByRole('button', { name: 'Áttétel #21 supervisor jóváhagyás' }).click()
   await approveRequest
 
-  const completeRequest = page.waitForRequest(request =>
-    request.method() === 'POST'
-    && new URL(request.url()).pathname === '/api/v1/ertektar/transfers/22/complete'
+  const completeRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/ertektar/transfers/22/complete',
   )
   await page.getByRole('button', { name: 'Áttétel #22 végrehajtás' }).click()
   await completeRequest
 
-  const rejectRequest = page.waitForRequest(request =>
-    request.method() === 'POST'
-    && new URL(request.url()).pathname === '/api/v1/ertektar/transfers/21/reject'
+  const rejectRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/ertektar/transfers/21/reject',
   )
   await page.getByRole('button', { name: 'Áttétel #21 elutasítás' }).click()
   await rejectRequest
 
   expect(apiCalls.transferDecisions).toEqual(['21:supervisor-approve', '22:complete', '21:reject'])
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
@@ -566,23 +671,24 @@ test('értéktári áttétel gombok POST supervisor/complete/reject backend szer
 test('értéktári anyagbizonylat gomb POST finalize backend szerződést hív', async ({ page }) => {
   const apiCalls = await mockApis(page)
   await login(page)
-  page.on('dialog', dialog => dialog.accept())
+  page.on('dialog', (dialog) => dialog.accept())
 
   await page.goto('/treasury', { waitUntil: 'domcontentloaded' })
 
   await expect(page.getByRole('button', { name: 'Anyagbizonylat #31 véglegesítés' })).toBeVisible()
 
-  const finalizeRequest = page.waitForRequest(request =>
-    request.method() === 'POST'
-    && new URL(request.url()).pathname === '/api/v1/ertektar/receipts/31/finalize'
+  const finalizeRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/ertektar/receipts/31/finalize',
   )
   await page.getByRole('button', { name: 'Anyagbizonylat #31 véglegesítés' }).click()
   await finalizeRequest
 
   expect(apiCalls.receiptDecisions).toEqual(['31:finalize'])
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

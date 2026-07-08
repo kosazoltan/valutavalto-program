@@ -1,6 +1,6 @@
 /**
  * Post-build fix: patch the bundled main.js to destructure require("electron").
- * 
+ *
  * In Electron 41 (Node.js 24), the internal `require('electron')` module
  * returns an object that works with destructuring but NOT as a plain
  * namespace assignment. The Rolldown bundler generates:
@@ -8,11 +8,11 @@
  * which should be:
  *   let electron = require("electron"); // namespace
  * then destructure app, BrowserWindow etc. from it.
- * 
+ *
  * But the Electron internal module uses getters/proxies that only work
  * with property access from the original object. The Rolldown `let electron`
  * doesn't preserve this properly.
- * 
+ *
  * Fix: Replace the namespace require with explicit destructuring that
  * creates a proper namespace object.
  */

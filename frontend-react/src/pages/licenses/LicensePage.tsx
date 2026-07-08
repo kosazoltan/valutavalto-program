@@ -36,7 +36,10 @@ interface LicenseStatusResponse {
 function parseFeatures(s: string | undefined): string[] {
   if (!s) return []
   // Comma, semicolon vagy pipe separator fallback
-  return s.split(/[,;|]/).map(x => x.trim()).filter(Boolean)
+  return s
+    .split(/[,;|]/)
+    .map((x) => x.trim())
+    .filter(Boolean)
 }
 
 export default function LicensePage() {
@@ -85,7 +88,9 @@ export default function LicensePage() {
     }
   }, [])
 
-  useEffect(() => { void loadData() }, [loadData])
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   const active = license?.isActive ?? false
   const features = parseFeatures(license?.features ?? status?.features)
@@ -102,7 +107,9 @@ export default function LicensePage() {
       setActivating(true)
       setError(null)
       setMessage(null)
-      const response = await api.post<LicenseResponse>('/license/activate', { licenseKey: trimmedKey })
+      const response = await api.post<LicenseResponse>('/license/activate', {
+        licenseKey: trimmedKey,
+      })
       setLicense(response.data ?? null)
       setLicenseKey('')
       setMessage('Licenc aktiválva.')
@@ -169,7 +176,9 @@ export default function LicensePage() {
         <h2 className="text-base font-semibold">Licenc aktiválás</h2>
         <div className="grid gap-3 md:grid-cols-[1fr_auto]">
           <div>
-            <label htmlFor="license-key" className="form-label">Licenckulcs</label>
+            <label htmlFor="license-key" className="form-label">
+              Licenckulcs
+            </label>
             <input
               id="license-key"
               type="text"
@@ -196,31 +205,67 @@ export default function LicensePage() {
       {loading ? (
         <div className="text-center text-sm text-gray-500 py-8">Betöltés...</div>
       ) : !license ? (
-        <div className="text-center text-sm text-gray-500 py-8">{t('licenses.nincsAktivLicenc')}</div>
+        <div className="text-center text-sm text-gray-500 py-8">
+          {t('licenses.nincsAktivLicenc')}
+        </div>
       ) : (
         <div className="bg-white rounded shadow p-4 space-y-3">
           <div className="flex items-center gap-2">
             {active ? (
-              <><CheckCircle className="h-5 w-5 text-green-600" /> <span className="font-semibold text-green-700">{t('competitors.aktiv')}</span></>
+              <>
+                <CheckCircle className="h-5 w-5 text-green-600" />{' '}
+                <span className="font-semibold text-green-700">{t('competitors.aktiv')}</span>
+              </>
             ) : (
-              <><XCircle className="h-5 w-5 text-red-600" /> <span className="font-semibold text-red-700">{t('licenses.inaktiv')}</span></>
+              <>
+                <XCircle className="h-5 w-5 text-red-600" />{' '}
+                <span className="font-semibold text-red-700">{t('licenses.inaktiv')}</span>
+              </>
             )}
-            {license.status && <span className="text-sm text-gray-500 ml-2">({license.status})</span>}
+            {license.status && (
+              <span className="text-sm text-gray-500 ml-2">({license.status})</span>
+            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div><span className="text-gray-500">{t('licenses.kulcs')}</span> <span className="font-mono">{license.licenseKey ?? '-'}</span></div>
-            <div><span className="text-gray-500">{t('licenses.ervenyes')}</span> {license.validFrom ? new Date(license.validFrom).toLocaleDateString('hu-HU') : '-'}</div>
-            <div><span className="text-gray-500">{t('licenses.lejar')}</span> {license.validTo ? new Date(license.validTo).toLocaleDateString('hu-HU') : '-'}</div>
-            {license.remainingDays != null && <div><span className="text-gray-500">{t('licenses.hatralevoNapok')}</span> <b>{license.remainingDays}</b></div>}
-            {license.maxBranches != null && <div><span className="text-gray-500">{t('licenses.maxPenztariEgyseg')}</span> {license.maxBranches}</div>}
-            {license.maxWorkers != null && <div><span className="text-gray-500">{t('licenses.maxDolgozo')}</span> {license.maxWorkers}</div>}
+            <div>
+              <span className="text-gray-500">{t('licenses.kulcs')}</span>{' '}
+              <span className="font-mono">{license.licenseKey ?? '-'}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">{t('licenses.ervenyes')}</span>{' '}
+              {license.validFrom ? new Date(license.validFrom).toLocaleDateString('hu-HU') : '-'}
+            </div>
+            <div>
+              <span className="text-gray-500">{t('licenses.lejar')}</span>{' '}
+              {license.validTo ? new Date(license.validTo).toLocaleDateString('hu-HU') : '-'}
+            </div>
+            {license.remainingDays != null && (
+              <div>
+                <span className="text-gray-500">{t('licenses.hatralevoNapok')}</span>{' '}
+                <b>{license.remainingDays}</b>
+              </div>
+            )}
+            {license.maxBranches != null && (
+              <div>
+                <span className="text-gray-500">{t('licenses.maxPenztariEgyseg')}</span>{' '}
+                {license.maxBranches}
+              </div>
+            )}
+            {license.maxWorkers != null && (
+              <div>
+                <span className="text-gray-500">{t('licenses.maxDolgozo')}</span>{' '}
+                {license.maxWorkers}
+              </div>
+            )}
           </div>
           {features.length > 0 && (
             <div>
               <div className="text-gray-500 text-sm mb-1">{t('licenses.featureEk')}</div>
               <div className="flex flex-wrap gap-1">
                 {features.map((f) => (
-                  <span key={f} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{f}</span>
+                  <span key={f} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                    {f}
+                  </span>
                 ))}
               </div>
             </div>

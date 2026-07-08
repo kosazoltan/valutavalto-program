@@ -97,15 +97,33 @@ export default function RecurringCustomerReportPage() {
 
       <div className="bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="rc-from">{t('reports.recurringCustomer.from')}</label>
-          <input id="rc-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="form-input w-full text-sm" />
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="rc-from">
+            {t('reports.recurringCustomer.from')}
+          </label>
+          <input
+            id="rc-from"
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="form-input w-full text-sm"
+          />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="rc-to">{t('reports.recurringCustomer.to')}</label>
-          <input id="rc-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="form-input w-full text-sm" />
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="rc-to">
+            {t('reports.recurringCustomer.to')}
+          </label>
+          <input
+            id="rc-to"
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="form-input w-full text-sm"
+          />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="rc-min">{t('reports.recurringCustomer.minTransactions')}</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="rc-min">
+            {t('reports.recurringCustomer.minTransactions')}
+          </label>
           <input
             id="rc-min"
             type="number"
@@ -123,29 +141,41 @@ export default function RecurringCustomerReportPage() {
             className="form-button-primary flex items-center gap-2"
           >
             <Search className="h-4 w-4" />
-            {loading ? t('reports.recurringCustomer.loading') : t('reports.recurringCustomer.submit')}
+            {loading
+              ? t('reports.recurringCustomer.loading')
+              : t('reports.recurringCustomer.submit')}
           </button>
         </div>
       </div>
 
       {loading && (
-        <div className="text-center text-sm text-gray-500 py-8">{t('reports.recurringCustomer.loading')}</div>
+        <div className="text-center text-sm text-gray-500 py-8">
+          {t('reports.recurringCustomer.loading')}
+        </div>
       )}
 
       {!loading && rows.length > 0 && (
         <>
           <div className="bg-white rounded shadow p-4 grid grid-cols-3 gap-3 text-sm">
             <div>
-              <div className="text-gray-500 text-xs">{t('reports.recurringCustomer.summary.customers')}</div>
+              <div className="text-gray-500 text-xs">
+                {t('reports.recurringCustomer.summary.customers')}
+              </div>
               <div className="font-semibold">{rows.length}</div>
             </div>
             <div>
-              <div className="text-gray-500 text-xs">{t('reports.recurringCustomer.summary.totalTransactions')}</div>
+              <div className="text-gray-500 text-xs">
+                {t('reports.recurringCustomer.summary.totalTransactions')}
+              </div>
               <div className="font-semibold">{totals.totalTransactions}</div>
             </div>
             <div>
-              <div className="text-gray-500 text-xs">{t('reports.recurringCustomer.summary.totalHuf')}</div>
-              <div className="font-mono font-semibold text-green-700">{formatHuf(totals.totalHuf)}</div>
+              <div className="text-gray-500 text-xs">
+                {t('reports.recurringCustomer.summary.totalHuf')}
+              </div>
+              <div className="font-mono font-semibold text-green-700">
+                {formatHuf(totals.totalHuf)}
+              </div>
             </div>
           </div>
 
@@ -153,11 +183,21 @@ export default function RecurringCustomerReportPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.recurringCustomer.table.customerId')}</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.recurringCustomer.table.customerName')}</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.recurringCustomer.table.transactionCount')}</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('reports.recurringCustomer.table.totalHuf')}</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('reports.recurringCustomer.table.period')}</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    {t('reports.recurringCustomer.table.customerId')}
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    {t('reports.recurringCustomer.table.customerName')}
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                    {t('reports.recurringCustomer.table.transactionCount')}
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                    {t('reports.recurringCustomer.table.totalHuf')}
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    {t('reports.recurringCustomer.table.period')}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -165,9 +205,15 @@ export default function RecurringCustomerReportPage() {
                   <tr key={r.customerId} className="hover:bg-gray-50">
                     <td className="px-3 py-2 text-sm font-mono">{r.customerId}</td>
                     <td className="px-3 py-2 text-sm">{r.customerName}</td>
-                    <td className="px-3 py-2 text-right text-sm font-mono font-semibold">{toNum(r.transactionCount)}</td>
-                    <td className="px-3 py-2 text-right text-sm font-mono">{formatHuf(toNum(r.totalHufAmount))}</td>
-                    <td className="px-3 py-2 text-xs font-mono text-gray-500">{r.periodStart} – {r.periodEnd}</td>
+                    <td className="px-3 py-2 text-right text-sm font-mono font-semibold">
+                      {toNum(r.transactionCount)}
+                    </td>
+                    <td className="px-3 py-2 text-right text-sm font-mono">
+                      {formatHuf(toNum(r.totalHufAmount))}
+                    </td>
+                    <td className="px-3 py-2 text-xs font-mono text-gray-500">
+                      {r.periodStart} – {r.periodEnd}
+                    </td>
                   </tr>
                 ))}
               </tbody>

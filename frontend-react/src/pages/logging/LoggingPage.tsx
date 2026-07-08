@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { FileText, Download, Search } from 'lucide-react'
 import { loggingApi, AuditLog } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
 export default function LoggingPage() {
@@ -21,7 +21,12 @@ export default function LoggingPage() {
       setLoading(true)
       let result
       if (logType === 'system') {
-        result = await loggingApi.getSystemLogs(fromDate || undefined, toDate || undefined, page, 50)
+        result = await loggingApi.getSystemLogs(
+          fromDate || undefined,
+          toDate || undefined,
+          page,
+          50,
+        )
       } else if (logType === 'pos') {
         result = await loggingApi.getPosLogs(fromDate || undefined, toDate || undefined, page, 50)
       } else {
@@ -54,10 +59,11 @@ export default function LoggingPage() {
     }
   }
 
-  const filteredLogs = logs.filter(log =>
-    log.action?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.entityType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.userName?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredLogs = logs.filter(
+    (log) =>
+      log.action?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.entityType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.userName?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
@@ -77,7 +83,11 @@ export default function LoggingPage() {
         <div className="grid grid-cols-4 gap-4">
           <div>
             <label className="form-label">{t('logging.logTipus')}</label>
-            <select className="form-input" value={logType} onChange={(e) => setLogType(e.target.value as typeof logType)}>
+            <select
+              className="form-input"
+              value={logType}
+              onChange={(e) => setLogType(e.target.value as typeof logType)}
+            >
               <option value="system">{t('logging.rendszerLogok')}</option>
               <option value="pos">{t('logging.posLogok')}</option>
               <option value="nav">{t('logging.navLogok')}</option>
@@ -85,17 +95,36 @@ export default function LoggingPage() {
           </div>
           <div>
             <label className="form-label">{t('common.startDate')}</label>
-            <input type="date" className="form-input" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+            <input
+              type="date"
+              className="form-input"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+            />
           </div>
           <div>
             <label className="form-label">{t('common.endDate')}</label>
-            <input type="date" className="form-input" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            <input
+              type="date"
+              className="form-input"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+            />
           </div>
           <div>
             <label className="form-label">{t('common.search')}</label>
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-              <input type="text" className="form-input pl-8" placeholder="Keresés..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <Search
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={16}
+              />
+              <input
+                type="text"
+                className="form-input pl-8"
+                placeholder="Keresés..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
         </div>
@@ -103,7 +132,8 @@ export default function LoggingPage() {
 
       <div className="form-panel">
         <div className="mb-2 text-sm text-gray-600">
-          {t('audit.osszesen')}{totalElements} {t('common.log')}
+          {t('audit.osszesen')}
+          {totalElements} {t('common.log')}
         </div>
         <table className="data-grid w-full">
           <thead>
@@ -119,9 +149,17 @@ export default function LoggingPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="text-center py-4">Betöltés...</td></tr>
+              <tr>
+                <td colSpan={7} className="text-center py-4">
+                  Betöltés...
+                </td>
+              </tr>
             ) : filteredLogs.length === 0 ? (
-              <tr><td colSpan={7} className="text-center text-gray-500 py-4">{t('common.noResult')}</td></tr>
+              <tr>
+                <td colSpan={7} className="text-center text-gray-500 py-4">
+                  {t('common.noResult')}
+                </td>
+              </tr>
             ) : (
               filteredLogs.map((log) => (
                 <tr key={log.id}>
@@ -139,15 +177,18 @@ export default function LoggingPage() {
         </table>
         <div className="flex justify-between items-center mt-4">
           <button
-            onClick={() => setPage(p => Math.max(0, p - 1))}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={page === 0}
             className="form-button"
           >
             {t('audit.elozo')}
           </button>
-          <span className="text-sm text-gray-600">{t('audit.oldal')}{page + 1}</span>
+          <span className="text-sm text-gray-600">
+            {t('audit.oldal')}
+            {page + 1}
+          </span>
           <button
-            onClick={() => setPage(p => p + 1)}
+            onClick={() => setPage((p) => p + 1)}
             disabled={(page + 1) * 50 >= totalElements}
             className="form-button"
           >
@@ -158,4 +199,3 @@ export default function LoggingPage() {
     </div>
   )
 }
-

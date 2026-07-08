@@ -84,7 +84,9 @@ describe('publishAllWorkgroups — FK05 egységes szétküldés', () => {
     })
 
     expect(mocks.publishGroupRate).toHaveBeenCalledTimes(2)
-    const groupIds = mocks.publishGroupRate.mock.calls.map((c) => (c[0] as { groupId: string }).groupId).sort()
+    const groupIds = mocks.publishGroupRate.mock.calls
+      .map((c) => (c[0] as { groupId: string }).groupId)
+      .sort()
     expect(groupIds).toEqual(['g1', 'g2'])
     expect(result.total).toBe(2)
     expect(result.published).toBe(2)
@@ -97,27 +99,31 @@ describe('publishAllWorkgroups — FK05 egységes szétküldés', () => {
 
     expect(mocks.publishGroupRate.mock.calls[0]![0]).toEqual({
       groupId: 'g1',
-      rates: [{
-        currencyId: 1,
-        buyRate: 390,
-        sellRate: 400,
-        officialRate: 395,
-        limit1Amount: 50000,
-        limit1BuyRate: 391,
-        limit1SellRate: 399,
-        limit2Amount: 300000,
-        limit2BuyRate: 392,
-        limit2SellRate: 398,
-        limit3Amount: 1000000,
-        limit3BuyRate: 393,
-        limit3SellRate: 397,
-      }],
+      rates: [
+        {
+          currencyId: 1,
+          buyRate: 390,
+          sellRate: 400,
+          officialRate: 395,
+          limit1Amount: 50000,
+          limit1BuyRate: 391,
+          limit1SellRate: 399,
+          limit2Amount: 300000,
+          limit2BuyRate: 392,
+          limit2SellRate: 398,
+          limit3Amount: 1000000,
+          limit3BuyRate: 393,
+          limit3SellRate: 397,
+        },
+      ],
     })
   })
 
   it('NFR-2: egy csoport hibája NEM állítja le a többit — a hiba az eredményben jelenik meg', async () => {
     mocks.publishGroupRate.mockImplementation(({ groupId }: { groupId: string }) =>
-      groupId === 'g1' ? Promise.reject(new Error('szerver-hiba')) : Promise.resolve({ acceptedRates: 1 }),
+      groupId === 'g1'
+        ? Promise.reject(new Error('szerver-hiba'))
+        : Promise.resolve({ acceptedRates: 1 }),
     )
 
     const result = await publishAllWorkgroups({
@@ -190,12 +196,23 @@ describe('publishAllWorkgroups — FK05 egységes szétküldés', () => {
   })
 
   it('inMemoryGroupRates: az épp nyitott csoport a képernyő-állapotból megy, a többi a tárolt útról', async () => {
-    const inMemory = [{
-      currencyId: 1, buyRate: 391.5, sellRate: 401.5, officialRate: 396,
-      limit1Amount: null, limit1BuyRate: null, limit1SellRate: null,
-      limit2Amount: null, limit2BuyRate: null, limit2SellRate: null,
-      limit3Amount: null, limit3BuyRate: null, limit3SellRate: null,
-    }]
+    const inMemory = [
+      {
+        currencyId: 1,
+        buyRate: 391.5,
+        sellRate: 401.5,
+        officialRate: 396,
+        limit1Amount: null,
+        limit1BuyRate: null,
+        limit1SellRate: null,
+        limit2Amount: null,
+        limit2BuyRate: null,
+        limit2SellRate: null,
+        limit3Amount: null,
+        limit3BuyRate: null,
+        limit3SellRate: null,
+      },
+    ]
 
     await publishAllWorkgroups({
       inMemoryGroupRates: { groupId: 'g1', rates: inMemory },
@@ -205,10 +222,12 @@ describe('publishAllWorkgroups — FK05 egységes szétküldés', () => {
       },
     })
 
-    const byGroup = new Map(mocks.publishGroupRate.mock.calls.map((c) => {
-      const req = c[0] as { groupId: string; rates: Array<{ buyRate: number }> }
-      return [req.groupId, req.rates[0]!.buyRate]
-    }))
+    const byGroup = new Map(
+      mocks.publishGroupRate.mock.calls.map((c) => {
+        const req = c[0] as { groupId: string; rates: Array<{ buyRate: number }> }
+        return [req.groupId, req.rates[0]!.buyRate]
+      }),
+    )
     expect(byGroup.get('g1')).toBe(391.5)
     expect(byGroup.get('g2')).toBe(390)
   })
@@ -238,18 +257,32 @@ describe('publishAllWorkgroups — FK05 egységes szétküldés', () => {
       JSON.stringify({ '1.buyRate': '#01L' }),
     )
 
-    const inMemory = [{
-      currencyId: 1, buyRate: 391.5, sellRate: 401.5, officialRate: 396,
-      limit1Amount: null, limit1BuyRate: null, limit1SellRate: null,
-      limit2Amount: null, limit2BuyRate: null, limit2SellRate: null,
-      limit3Amount: null, limit3BuyRate: null, limit3SellRate: null,
-    }]
+    const inMemory = [
+      {
+        currencyId: 1,
+        buyRate: 391.5,
+        sellRate: 401.5,
+        officialRate: 396,
+        limit1Amount: null,
+        limit1BuyRate: null,
+        limit1SellRate: null,
+        limit2Amount: null,
+        limit2BuyRate: null,
+        limit2SellRate: null,
+        limit3Amount: null,
+        limit3BuyRate: null,
+        limit3SellRate: null,
+      },
+    ]
 
     await publishAllWorkgroups({
       inMemoryGroupRates: { groupId: 'g1', rates: inMemory },
       preloaded: {
         overview: [item()],
-        workgroups: [group({ id: 'g1' }), group({ id: 'g2', code: 'WG2', name: '2. csoport', legacyGroupNumber: 2 })],
+        workgroups: [
+          group({ id: 'g1' }),
+          group({ id: 'g2', code: 'WG2', name: '2. csoport', legacyGroupNumber: 2 }),
+        ],
       },
     })
 

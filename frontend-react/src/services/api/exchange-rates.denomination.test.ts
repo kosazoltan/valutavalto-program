@@ -42,7 +42,9 @@ describe('currencyDenominationImageApi', () => {
   it('list_by_currency_calls_get_with_currencyId_param', async () => {
     mockApi.get.mockResolvedValue({ data: [dto] })
     const result = await currencyDenominationImageApi.list(7)
-    expect(mockApi.get).toHaveBeenCalledWith('/currency-denomination-images', { params: { currencyId: 7 } })
+    expect(mockApi.get).toHaveBeenCalledWith('/currency-denomination-images', {
+      params: { currencyId: 7 },
+    })
     expect(result).toEqual([dto])
   })
 
@@ -84,7 +86,9 @@ describe('currencyDenominationImageApi', () => {
   it('getThumbnail_returns_blob_via_responseType_blob', async () => {
     const blob = new Blob(['thumb'], { type: 'image/jpeg' })
     mockApi.get.mockResolvedValue({ data: blob })
-    const result = await currencyDenominationImageApi.getThumbnail('11111111-2222-3333-4444-555555555555')
+    const result = await currencyDenominationImageApi.getThumbnail(
+      '11111111-2222-3333-4444-555555555555',
+    )
     expect(mockApi.get).toHaveBeenCalledWith(
       '/currency-denomination-images/11111111-2222-3333-4444-555555555555/thumbnail',
       { responseType: 'blob' },
@@ -94,7 +98,10 @@ describe('currencyDenominationImageApi', () => {
 
   it('setActive_puts_id_active_with_boolean_body', async () => {
     mockApi.put.mockResolvedValue({ data: { ...dto, active: false } })
-    const result = await currencyDenominationImageApi.setActive('11111111-2222-3333-4444-555555555555', false)
+    const result = await currencyDenominationImageApi.setActive(
+      '11111111-2222-3333-4444-555555555555',
+      false,
+    )
     expect(mockApi.put).toHaveBeenCalledWith(
       '/currency-denomination-images/11111111-2222-3333-4444-555555555555/active',
       { active: false },

@@ -59,11 +59,20 @@ function mockApi() {
   mockGet.mockImplementation((url: string) => {
     if (url === '/western-union/daily-limit') {
       return Promise.resolve({
-        data: { businessDate: '2026-06-11', currencyCode: 'USD', dailyLimit: 10000, usedAmount: 0, remainingAmount: 10000, usagePercent: 0 },
+        data: {
+          businessDate: '2026-06-11',
+          currencyCode: 'USD',
+          dailyLimit: 10000,
+          usedAmount: 0,
+          remainingAmount: 10000,
+          usagePercent: 0,
+        },
       })
     }
     if (url === '/branches') {
-      return Promise.resolve({ data: [{ id: 'b1', code: 'BR105', name: 'Békéscsaba', isActive: true }] })
+      return Promise.resolve({
+        data: [{ id: 'b1', code: 'BR105', name: 'Békéscsaba', isActive: true }],
+      })
     }
     if (url === '/currencies') {
       return Promise.resolve({ data: [{ id: 1, code: 'EUR', name: 'Euró', isActive: true }] })
@@ -88,7 +97,14 @@ describe('BankOrderPage — E-B8 sürgősségi deep-link', () => {
     mockPost.mockReset()
     mockApi()
     mockPost.mockResolvedValue({
-      data: { businessDate: '2026-06-11', currencyCode: 'USD', dailyLimit: 10000, usedAmount: 250, remainingAmount: 9750, usagePercent: 2.5 },
+      data: {
+        businessDate: '2026-06-11',
+        currencyCode: 'USD',
+        dailyLimit: 10000,
+        usedAmount: 250,
+        remainingAmount: 9750,
+        usagePercent: 2.5,
+      },
     })
     vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
@@ -133,20 +149,22 @@ describe('BankOrderPage — E-B8 sürgősségi deep-link', () => {
   it('részletek megnyitásakor a banki rendelés detail endpointot használja', async () => {
     const user = userEvent.setup()
     mockList.mockResolvedValue({
-      content: [{
-        id: 'order-1',
-        branchId: 'branch-1',
-        branchCode: 'BUD01',
-        branchName: 'Budapest 01',
-        currencyId: 2,
-        currencyCode: 'EUR',
-        amount: '1000',
-        status: 'APPROVED',
-        urgency: 'NORMAL',
-        requestedByWorkerId: 77,
-        requestedByWorkerName: 'Lista kérő',
-        requestedAt: '2026-06-19T08:00:00.000Z',
-      }],
+      content: [
+        {
+          id: 'order-1',
+          branchId: 'branch-1',
+          branchCode: 'BUD01',
+          branchName: 'Budapest 01',
+          currencyId: 2,
+          currencyCode: 'EUR',
+          amount: '1000',
+          status: 'APPROVED',
+          urgency: 'NORMAL',
+          requestedByWorkerId: 77,
+          requestedByWorkerName: 'Lista kérő',
+          requestedAt: '2026-06-19T08:00:00.000Z',
+        },
+      ],
       totalElements: 1,
       totalPages: 1,
       number: 0,
@@ -159,7 +177,9 @@ describe('BankOrderPage — E-B8 sürgősségi deep-link', () => {
     await user.click(screen.getByRole('button', { name: /Részletek/i }))
 
     await waitFor(() => expect(mockBankOrderGet).toHaveBeenCalledWith('order-1'))
-    expect(await screen.findByText('Backend részletes banki rendelés megjegyzés')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Backend részletes banki rendelés megjegyzés'),
+    ).toBeInTheDocument()
     expect(screen.getByText('BANK-DETAIL-001')).toBeInTheDocument()
   })
 })

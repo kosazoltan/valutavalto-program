@@ -85,10 +85,24 @@ export function raiffeisenBandViolations(
     if (!Number.isFinite(r.base) || r.base <= 0) continue
     const band = raiffeisenBand(r.base, percent)
     if (Number.isFinite(r.buy) && r.buy > 0 && (r.buy < band.min || r.buy > band.max)) {
-      violations.push({ currency: r.currency, kind: 'buy', rate: r.buy, base: r.base, min: band.min, max: band.max })
+      violations.push({
+        currency: r.currency,
+        kind: 'buy',
+        rate: r.buy,
+        base: r.base,
+        min: band.min,
+        max: band.max,
+      })
     }
     if (Number.isFinite(r.sell) && r.sell > 0 && (r.sell < band.min || r.sell > band.max)) {
-      violations.push({ currency: r.currency, kind: 'sell', rate: r.sell, base: r.base, min: band.min, max: band.max })
+      violations.push({
+        currency: r.currency,
+        kind: 'sell',
+        rate: r.sell,
+        base: r.base,
+        min: band.min,
+        max: band.max,
+      })
     }
   }
   return violations

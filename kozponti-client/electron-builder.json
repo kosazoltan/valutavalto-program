@@ -6,11 +6,7 @@
     "output": "release"
   },
   "asar": true,
-  "files": [
-    "dist/**/*",
-    "dist-electron/**/*",
-    "package.json"
-  ],
+  "files": ["dist/**/*", "dist-electron/**/*", "package.json"],
   "win": {
     "icon": "../penztar-client/build/icons/app-icon-bestchange.ico",
     "target": [

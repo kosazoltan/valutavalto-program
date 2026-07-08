@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
-  computeEuaRate, euaDeviationExceeds, raiffeisenBand, raiffeisenBandViolations,
-  computeRsRate, computeCrossRate,
+  computeEuaRate,
+  euaDeviationExceeds,
+  raiffeisenBand,
+  raiffeisenBandViolations,
+  computeRsRate,
+  computeCrossRate,
 } from './rfmRules'
 
 describe('rfmRules (G22 — RFM számítási mag)', () => {
@@ -48,7 +52,9 @@ describe('rfmRules (G22 — RFM számítási mag)', () => {
   describe('Raiffeisen sáv-validáció (FR-RFM-12)', () => {
     it('a sávon belüli vétel/eladás → nincs sértés', () => {
       // bázis 400, ±10% → [360, 440]; vétel 395, eladás 405 mindkettő belül
-      expect(raiffeisenBandViolations([{ currency: 'EUR', base: 400, buy: 395, sell: 405 }])).toEqual([])
+      expect(
+        raiffeisenBandViolations([{ currency: 'EUR', base: 400, buy: 395, sell: 405 }]),
+      ).toEqual([])
     })
     it('a sávon kívüli vétel → buy-sértés a határokkal', () => {
       // vétel 350 < min(360) → sértés
@@ -68,10 +74,14 @@ describe('rfmRules (G22 — RFM számítási mag)', () => {
       expect(v.map((x) => x.kind).sort()).toEqual(['buy', 'sell'])
     })
     it('bázis ≤ 0 → kihagyva (nincs viszonyítási alap)', () => {
-      expect(raiffeisenBandViolations([{ currency: 'AUD', base: 0, buy: 200, sell: 210 }])).toEqual([])
+      expect(raiffeisenBandViolations([{ currency: 'AUD', base: 0, buy: 200, sell: 210 }])).toEqual(
+        [],
+      )
     })
     it('0 vétel/eladás (kitöltetlen) → nem jelez sértést', () => {
-      expect(raiffeisenBandViolations([{ currency: 'EUR', base: 400, buy: 0, sell: 0 }])).toEqual([])
+      expect(raiffeisenBandViolations([{ currency: 'EUR', base: 400, buy: 0, sell: 0 }])).toEqual(
+        [],
+      )
     })
   })
 

@@ -53,19 +53,26 @@ describe('publicApi backend contract', () => {
       },
     })
 
-    const result = await publicApi.identifyGoogleSetup({
-      idToken: 'id-token',
-      companyCode: 'EBC',
-      appMode: 'ertektar',
-      bindGoogleSubject: true,
-    }, { idempotencyKey: 'idem-1' })
+    const result = await publicApi.identifyGoogleSetup(
+      {
+        idToken: 'id-token',
+        companyCode: 'EBC',
+        appMode: 'ertektar',
+        bindGoogleSubject: true,
+      },
+      { idempotencyKey: 'idem-1' },
+    )
 
-    expect(mockApi.post).toHaveBeenCalledWith('/public/setup/google-identify', {
-      idToken: 'id-token',
-      companyCode: 'EBC',
-      appMode: 'ertektar',
-      bindGoogleSubject: true,
-    }, { headers: { 'Idempotency-Key': 'idem-1' } })
+    expect(mockApi.post).toHaveBeenCalledWith(
+      '/public/setup/google-identify',
+      {
+        idToken: 'id-token',
+        companyCode: 'EBC',
+        appMode: 'ertektar',
+        bindGoogleSubject: true,
+      },
+      { headers: { 'Idempotency-Key': 'idem-1' } },
+    )
     expect(result.worker?.code).toBe('ADMIN')
   })
 
@@ -83,6 +90,8 @@ describe('publicApi backend contract', () => {
 
     await publicApi.getGoogleConfigStatus('https://excvaluta.com/api/v1')
 
-    expect(mockApi.get).toHaveBeenCalledWith('https://excvaluta.com/api/v1/public/auth/google-config-status')
+    expect(mockApi.get).toHaveBeenCalledWith(
+      'https://excvaluta.com/api/v1/public/auth/google-config-status',
+    )
   })
 })

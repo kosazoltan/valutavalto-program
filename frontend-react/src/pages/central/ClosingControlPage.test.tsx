@@ -44,7 +44,11 @@ describe('ClosingControlPage – FK-014 banki partner kiszűrés (FR-1)', () => 
       row('UPT', 'Úton lévő pénztár'),
     ])
 
-    render(<MemoryRouter><ClosingControlPage /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <ClosingControlPage />
+      </MemoryRouter>,
+    )
 
     // Valódi irodák megjelennek
     await waitFor(() => expect(screen.getByText('BR010')).toBeInTheDocument())
@@ -57,9 +61,7 @@ describe('ClosingControlPage – FK-014 banki partner kiszűrés (FR-1)', () => 
   })
 
   it('részletezéskor a backend branch detail reprezentációját jeleníti meg', async () => {
-    mockList.mockResolvedValue([
-      row('BR010', 'Lista Szekszárd'),
-    ])
+    mockList.mockResolvedValue([row('BR010', 'Lista Szekszárd')])
     mockGetBranch.mockResolvedValue({
       ...row('BR010', 'Backend Szekszárd'),
       branchCity: 'Szekszárd',
@@ -70,13 +72,20 @@ describe('ClosingControlPage – FK-014 banki partner kiszűrés (FR-1)', () => 
       notes: 'Backend detail megjegyzés',
     })
 
-    render(<MemoryRouter><ClosingControlPage /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <ClosingControlPage />
+      </MemoryRouter>,
+    )
 
     await screen.findByText('BR010')
     fireEvent.click(screen.getByRole('button', { name: /Részletek lekérése/i }))
 
     await waitFor(() => {
-      expect(mockGetBranch).toHaveBeenCalledWith('id-BR010', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/))
+      expect(mockGetBranch).toHaveBeenCalledWith(
+        'id-BR010',
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      )
       expect(screen.getByText('Backend Szekszárd, Szekszárd')).toBeInTheDocument()
       expect(screen.getByText('Napi zárás: rendben')).toBeInTheDocument()
       expect(screen.getByText('Esti zárás: hiányzik')).toBeInTheDocument()

@@ -21,9 +21,15 @@ describe('MainLayout daily session gate', () => {
 describe('MainLayout logout', () => {
   it('calls backend logout before local logout and login navigation', async () => {
     const calls: string[] = []
-    const remoteLogout = vi.fn(async () => { calls.push('remote') })
-    const localLogout = vi.fn(() => { calls.push('local') })
-    const navigateToLogin = vi.fn(() => { calls.push('navigate') })
+    const remoteLogout = vi.fn(async () => {
+      calls.push('remote')
+    })
+    const localLogout = vi.fn(() => {
+      calls.push('local')
+    })
+    const navigateToLogin = vi.fn(() => {
+      calls.push('navigate')
+    })
     const warn = vi.fn()
 
     await performBackendAwareLogout(remoteLogout, localLogout, navigateToLogin, warn)
@@ -37,7 +43,9 @@ describe('MainLayout logout', () => {
 
   it('continues local logout and login navigation when backend logout fails', async () => {
     const error = new Error('network')
-    const remoteLogout = vi.fn(async () => { throw error })
+    const remoteLogout = vi.fn(async () => {
+      throw error
+    })
     const localLogout = vi.fn()
     const navigateToLogin = vi.fn()
     const warn = vi.fn()

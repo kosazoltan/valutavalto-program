@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from 'react'
 import { logger } from '../../../utils/logger'
 import { useVoiceMode, VoiceMode } from '../hooks/useVoiceMode'
 import { openRealtimeSession, RealtimeSession } from '../realtime/realtimeClient'
@@ -88,11 +96,15 @@ export function VoiceAssistantProvider({ children }: { children: React.ReactNode
           (event) => {
             logger.debug('VoiceAssistant', 'event: ' + JSON.stringify(event).slice(0, 200))
           },
-          { signal: myAbort.signal }
+          { signal: myAbort.signal },
         )
         // Generation check (Copilot #660): kozben jott egy stop / uj start
         if (myGen !== generationRef.current) {
-          try { session.close() } catch { /* ignore */ }
+          try {
+            session.close()
+          } catch {
+            /* ignore */
+          }
           return
         }
         sessionRef.current = session
@@ -114,7 +126,7 @@ export function VoiceAssistantProvider({ children }: { children: React.ReactNode
         }
       }
     },
-    [reset, setMode, stop]
+    [reset, setMode, stop],
   )
 
   // Unmount cleanup (Copilot #660): provider unmount-kor zarjuk a session-t
@@ -126,14 +138,10 @@ export function VoiceAssistantProvider({ children }: { children: React.ReactNode
 
   const value = useMemo<VoiceAssistantContextValue>(
     () => ({ mode, isActive, isConnecting, error, start, stop }),
-    [mode, isActive, isConnecting, error, start, stop]
+    [mode, isActive, isConnecting, error, start, stop],
   )
 
-  return (
-    <VoiceAssistantContext.Provider value={value}>
-      {children}
-    </VoiceAssistantContext.Provider>
-  )
+  return <VoiceAssistantContext.Provider value={value}>{children}</VoiceAssistantContext.Provider>
 }
 
 export function useVoiceAssistant(): VoiceAssistantContextValue {

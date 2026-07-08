@@ -55,7 +55,10 @@ describe('NavIntegrationPage receipt number backend contract', () => {
       expect(mocks.receiveReceiptNumber).toHaveBeenCalledWith('COM3')
     })
     expect(await screen.findAllByText(/REC-20260618/)).toHaveLength(2)
-    expect(mocks.toastSuccess).toHaveBeenCalledWith('Nyugtaszám fogadva', 'Bizonylatszám: REC-20260618')
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      'Nyugtaszám fogadva',
+      'Bizonylatszám: REC-20260618',
+    )
   })
 
   it('a QR kód küldése gomb a POST /nav-integration/send-qr-code wrapperre köt', async () => {

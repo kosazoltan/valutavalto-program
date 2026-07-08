@@ -16,10 +16,14 @@ import { useTranslation } from 'react-i18next'
 type GridField = WgField
 const EDITABLE_FIELDS: GridField[] = [
   'officialRate',
-  'buyRate', 'sellRate',
-  'limit1BuyRate', 'limit1SellRate',
-  'limit2BuyRate', 'limit2SellRate',
-  'limit3BuyRate', 'limit3SellRate',
+  'buyRate',
+  'sellRate',
+  'limit1BuyRate',
+  'limit1SellRate',
+  'limit2BuyRate',
+  'limit2SellRate',
+  'limit3BuyRate',
+  'limit3SellRate',
 ]
 
 // FK02-B / FR-6..10: a kedvezménysáv-oszlopok indexei az EDITABLE_FIELDS-ben (N–S, azaz limit1–3
@@ -34,7 +38,9 @@ const BAND_COL_INDICES = [3, 4, 5, 6, 7, 8] as const
  */
 function rawFieldValue(r: EditableRate, field: GridField): string {
   return field === 'officialRate'
-    ? (r.officialRate != null ? String(r.officialRate) : '')
+    ? r.officialRate != null
+      ? String(r.officialRate)
+      : ''
     : r[field]
 }
 
@@ -119,11 +125,12 @@ export default function RateGrid({
   const { t } = useTranslation()
   // FK03-fix (FR-1, FR-2): editOnFocus=false — kattintás/nyilas navigáció csak KIJELÖL,
   // szerkesztő módba dupla kattintás / Enter / gépelés visz (Főlap-referencia viselkedés).
-  const { containerRef, activeCell, editing, setEditing, isEscapingRef, getCellProps } = useGridNavigation({
-    rows: rates.length,
-    cols: EDITABLE_FIELDS.length,
-    editOnFocus: false,
-  })
+  const { containerRef, activeCell, editing, setEditing, isEscapingRef, getCellProps } =
+    useGridNavigation({
+      rows: rates.length,
+      cols: EDITABLE_FIELDS.length,
+      editOnFocus: false,
+    })
 
   // FK-04/C szerkesztő-buffer: a fókuszált cella nyers szövege (képlet vagy szám). A többi
   // cella a `rates[field]` SZÁMÍTOTT értékét mutatja; a fókuszált cella SZERKESZTŐ MÓDBAN
@@ -149,10 +156,13 @@ export default function RateGrid({
     }
   }, [selStart, selEnd])
 
-  const isCellSelected = useCallback((row: number, col: number) => {
-    const b = selBounds()
-    return !!b && row >= b.r0 && row <= b.r1 && col >= b.c0 && col <= b.c1
-  }, [selBounds])
+  const isCellSelected = useCallback(
+    (row: number, col: number) => {
+      const b = selBounds()
+      return !!b && row >= b.r0 && row <= b.r1 && col >= b.c0 && col <= b.c1
+    },
+    [selBounds],
+  )
 
   const clearSelection = useCallback(() => {
     setSelStart(null)
@@ -171,7 +181,9 @@ export default function RateGrid({
 
   // Escape → kijelölés + toolbar elrejtése.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') clearSelection() }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') clearSelection()
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [clearSelection])
@@ -219,37 +231,53 @@ export default function RateGrid({
     return () => window.removeEventListener('keydown', onCopy)
   }, [selBounds, copySelectedRange, containerRef])
 
-  const showToolbarIfMulti = useCallback((start: GridCoord, end: GridCoord, clientX: number, clientY: number) => {
-    const multi = start.row !== end.row || start.col !== end.col
-    if (multi && canEdit) setToolbarPos({ top: clientY + 10, left: clientX + 10 })
-    else { setSelStart(null); setSelEnd(null); setToolbarPos(null) }
-  }, [canEdit])
+  const showToolbarIfMulti = useCallback(
+    (start: GridCoord, end: GridCoord, clientX: number, clientY: number) => {
+      const multi = start.row !== end.row || start.col !== end.col
+      if (multi && canEdit) setToolbarPos({ top: clientY + 10, left: clientX + 10 })
+      else {
+        setSelStart(null)
+        setSelEnd(null)
+        setToolbarPos(null)
+      }
+    },
+    [canEdit],
+  )
 
-  const onCellMouseDown = useCallback((e: React.MouseEvent, row: number, col: number) => {
-    if (e.shiftKey && selStart) {
+  const onCellMouseDown = useCallback(
+    (e: React.MouseEvent, row: number, col: number) => {
+      if (e.shiftKey && selStart) {
+        const end = { row, col }
+        setSelEnd(end)
+        showToolbarIfMulti(selStart, end, e.clientX, e.clientY)
+        return
+      }
+      setSelStart({ row, col })
+      setSelEnd({ row, col })
+      setIsDragging(true)
+      setToolbarPos(null)
+    },
+    [selStart, showToolbarIfMulti],
+  )
+
+  const onCellMouseEnter = useCallback(
+    (row: number, col: number) => {
+      if (isDragging) setSelEnd({ row, col })
+    },
+    [isDragging],
+  )
+
+  const onCellMouseUp = useCallback(
+    (e: React.MouseEvent, row: number, col: number) => {
+      if (!isDragging) return
+      setIsDragging(false)
+      const start = selStart ?? { row, col }
       const end = { row, col }
       setSelEnd(end)
-      showToolbarIfMulti(selStart, end, e.clientX, e.clientY)
-      return
-    }
-    setSelStart({ row, col })
-    setSelEnd({ row, col })
-    setIsDragging(true)
-    setToolbarPos(null)
-  }, [selStart, showToolbarIfMulti])
-
-  const onCellMouseEnter = useCallback((row: number, col: number) => {
-    if (isDragging) setSelEnd({ row, col })
-  }, [isDragging])
-
-  const onCellMouseUp = useCallback((e: React.MouseEvent, row: number, col: number) => {
-    if (!isDragging) return
-    setIsDragging(false)
-    const start = selStart ?? { row, col }
-    const end = { row, col }
-    setSelEnd(end)
-    showToolbarIfMulti(start, end, e.clientX, e.clientY)
-  }, [isDragging, selStart, showToolbarIfMulti])
+      showToolbarIfMulti(start, end, e.clientX, e.clientY)
+    },
+    [isDragging, selStart, showToolbarIfMulti],
+  )
 
   // --- Toolbar műveletek (kizárólag a kijelölt tartományra hatnak) ---
 
@@ -258,7 +286,8 @@ export default function RateGrid({
     if (!b || !onBulkApply) return
     const cells: Array<{ row: number; field: WgField; raw: string }> = []
     for (let row = b.r0; row <= b.r1; row++) {
-      for (let col = b.c0; col <= b.c1; col++) cells.push({ row, field: EDITABLE_FIELDS[col]!, raw: '' })
+      for (let col = b.c0; col <= b.c1; col++)
+        cells.push({ row, field: EDITABLE_FIELDS[col]!, raw: '' })
     }
     onBulkApply(cells)
     clearSelection()
@@ -278,9 +307,10 @@ export default function RateGrid({
         // FK02-D (FR-1..4): relatív valutakód-csere — a `!<oszlop><KÓD>` hivatkozás kódja a
         // célsor valutájára cserélődik, ha megegyezik a forrássor valutájával (TBD-4).
         const tgt = rates[row]
-        const raw = (tgt && typeof srcRaw === 'string')
-          ? replaceFormulaCurrency(srcRaw, src.currencyCode, tgt.currencyCode)
-          : srcRaw
+        const raw =
+          tgt && typeof srcRaw === 'string'
+            ? replaceFormulaCurrency(srcRaw, src.currencyCode, tgt.currencyCode)
+            : srcRaw
         cells.push({ row, field, raw })
       }
     }
@@ -326,7 +356,7 @@ export default function RateGrid({
     if (!r || !field) return
     const key = `${r.currencyId}.${field}`
     setBuffer(formulas[key] ?? rawFieldValue(r, field))
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- csak a cella-fókusz váltáskor seed-elünk
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- csak a cella-fókusz váltáskor seed-elünk
   }, [activeCell])
 
   // FK02-B / FR-2..5: ha a parent revert-et kér (megerősítő modal "Mégse"), a fókuszált cella
@@ -339,16 +369,23 @@ export default function RateGrid({
     if (!r || !field) return
     const key = `${r.currencyId}.${field}`
     setBuffer(formulas[key] ?? rawFieldValue(r, field))
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- kizárólag a revert-jelzésre futunk
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- kizárólag a revert-jelzésre futunk
   }, [revertSignal])
 
   // FK02-B (Copilot): a `select-none` CSAK több-cellás tartomány-drag alatt aktív — egy cellán belüli
   // egér-drag (input-szöveg kijelölése) így nem tiltott. Egycellás (selStart==selEnd) drag esetén nincs.
-  const isRangeDrag = isDragging && !!selStart && !!selEnd && (selStart.row !== selEnd.row || selStart.col !== selEnd.col)
+  const isRangeDrag =
+    isDragging &&
+    !!selStart &&
+    !!selEnd &&
+    (selStart.row !== selEnd.row || selStart.col !== selEnd.col)
 
   // 2026-04-29 v2.3.13 (Árfolyamkészítés zoom-fit): 17 valuta sor scrollozás nélkül.
   return (
-    <div ref={containerRef} className="relative flex-1 bg-white rounded shadow-sm border overflow-hidden flex flex-col min-w-0">
+    <div
+      ref={containerRef}
+      className="relative flex-1 bg-white rounded shadow-sm border overflow-hidden flex flex-col min-w-0"
+    >
       {/* FK02-E (FR-14): a szétküldés (szinkron) idejére zároló overlay — blokkolja a szerkesztést
           és egyértelmű visszajelzést ad. A szinkron befejeztével (FR-13) azonnal eltűnik. */}
       {syncing && (
@@ -363,7 +400,9 @@ export default function RateGrid({
         <table className={`w-full text-xs border-collapse ${isRangeDrag ? 'select-none' : ''}`}>
           <thead className="sticky top-0 z-20">
             <tr className="bg-green-800 text-white text-[10px] leading-none">
-              <th colSpan={2} className="px-1 py-0 text-left border-r border-green-600">{t('rates.elszArf')}</th>
+              <th colSpan={2} className="px-1 py-0 text-left border-r border-green-600">
+                {t('rates.elszArf')}
+              </th>
               <th className="px-1 py-0 border-r border-green-600">{t('common.currency')}</th>
               {/* eslint-disable-next-line i18next/no-literal-string */}
               <th colSpan={2} className="px-1 py-0 border-r border-green-600 text-center">
@@ -375,22 +414,44 @@ export default function RateGrid({
               <th colSpan={2} className="px-1 py-0 border-r border-green-600 text-center">
                 {fmtAmount(selectedWg?.limit2Boundary)} - {fmtAmount(selectedWg?.limit3Boundary)}
               </th>
-              <th colSpan={2} className="px-1 py-0 text-center border-r border-green-600">{t('rates.sajatHat')}</th>
+              <th colSpan={2} className="px-1 py-0 text-center border-r border-green-600">
+                {t('rates.sajatHat')}
+              </th>
               <th className="px-1 py-0 text-center w-28">{t('rates.ellenorzes')}</th>
             </tr>
             <tr className="bg-green-700 text-white text-[10px] leading-none">
               {/* FK-04/C: oszlop-betűk (J–S) a fejlécben — a képletírás ezekre hivatkozik (pl. "L", "#02M", "!FEUR"). */}
-              <th className="px-1 py-0 text-left w-16 border-r border-green-500"><span className="text-yellow-300 font-bold">J</span> MNB</th>
+              <th className="px-1 py-0 text-left w-16 border-r border-green-500">
+                <span className="text-yellow-300 font-bold">J</span> MNB
+              </th>
               <th className="px-1 py-0 w-4 border-r border-green-500"></th>
-              <th className="px-1 py-0 w-12 border-r border-green-500 font-bold"><span className="text-yellow-300">K</span> {t('common.code')}</th>
-              <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">L</span> {t('rates.vet')}</th>
-              <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">M</span> {t('rates.elad')}</th>
-              <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">N</span> {t('rates.v')}</th>
-              <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">O</span> E-</th>
-              <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">P</span> {t('rates.v')}</th>
-              <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">Q</span> E-</th>
-              <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500"><span className="text-yellow-300 font-bold">R</span> {t('rates.vmax')}</th>
-              <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500"><span className="text-yellow-300 font-bold">S</span> {t('rates.emin')}</th>
+              <th className="px-1 py-0 w-12 border-r border-green-500 font-bold">
+                <span className="text-yellow-300">K</span> {t('common.code')}
+              </th>
+              <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500">
+                <span className="text-yellow-300 font-bold">L</span> {t('rates.vet')}
+              </th>
+              <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500">
+                <span className="text-yellow-300 font-bold">M</span> {t('rates.elad')}
+              </th>
+              <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500">
+                <span className="text-yellow-300 font-bold">N</span> {t('rates.v')}
+              </th>
+              <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500">
+                <span className="text-yellow-300 font-bold">O</span> E-
+              </th>
+              <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500">
+                <span className="text-yellow-300 font-bold">P</span> {t('rates.v')}
+              </th>
+              <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500">
+                <span className="text-yellow-300 font-bold">Q</span> E-
+              </th>
+              <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500">
+                <span className="text-yellow-300 font-bold">R</span> {t('rates.vmax')}
+              </th>
+              <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500">
+                <span className="text-yellow-300 font-bold">S</span> {t('rates.emin')}
+              </th>
               <th className="px-1 py-0 text-yellow-200">{t('common.error')}</th>
             </tr>
           </thead>
@@ -405,7 +466,9 @@ export default function RateGrid({
                 ? 'bg-yellow-50'
                 : !r.hasRate
                   ? 'bg-gray-50'
-                  : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  : idx % 2 === 0
+                    ? 'bg-white'
+                    : 'bg-gray-50'
 
               // FK03-fix: a sor-szintű cella-render — a J (officialRate, colIdx=0) a többi
               // oszloppal AZONOS útvonalon megy (kijelölés/szerkesztés/Escape/commit),
@@ -414,7 +477,11 @@ export default function RateGrid({
                 const isJ = field === 'officialRate'
                 const isBuy = field.includes('Buy') || field === 'buyRate'
                 const colorClass = isJ ? 'text-blue-800' : isBuy ? 'text-green-700' : 'text-red-700'
-                const focusBg = isJ ? 'focus:bg-blue-50' : isBuy ? 'focus:bg-green-50' : 'focus:bg-red-50'
+                const focusBg = isJ
+                  ? 'focus:bg-blue-50'
+                  : isBuy
+                    ? 'focus:bg-green-50'
+                    : 'focus:bg-red-50'
                 const isActive = activeCell?.row === idx && activeCell?.col === colIdx
                 // FK03-fix (FR-3, FR-9): kijelölt állapotban a FORMÁZOTT érték látszik;
                 // a buffert (képlet/nyers) csak SZERKESZTŐ módban mutatjuk.
@@ -430,7 +497,9 @@ export default function RateGrid({
                 const display = isEditingCell
                   ? buffer
                   : isJ
-                    ? (r.officialRate != null ? formatDecimal(r.officialRate, jDd, jDd) : '')
+                    ? r.officialRate != null
+                      ? formatDecimal(r.officialRate, jDd, jDd)
+                      : ''
                     : formatCellDisplay(rawFieldValue(r, field), r.currencyCode)
                 const formulaBg = hasFormula && !isEditingCell ? 'bg-indigo-50' : ''
                 const errorRing = cellError ? 'ring-2 ring-red-400 ring-inset' : ''
@@ -439,25 +508,29 @@ export default function RateGrid({
                   else updateRate(idx, field, raw) // visszafelé-kompatibilis fallback
                 }
                 const title = isJ
-                  ? (hasFormula
+                  ? hasFormula
                     ? `Elszámoló (J) képlet: ${formulas[key]}${cellError ? ` — HIBA: ${cellError}` : ''}`
-                    : 'Elszámoló árfolyam (J) — felülírható; üres = a 0-s lap A oszlopa')
-                  : (hasFormula ? `Képlet: ${formulas[key]}${cellError ? ` — HIBA: ${cellError}` : ''}` : cellError)
+                    : 'Elszámoló árfolyam (J) — felülírható; üres = a 0-s lap A oszlopa'
+                  : hasFormula
+                    ? `Képlet: ${formulas[key]}${cellError ? ` — HIBA: ${cellError}` : ''}`
+                    : cellError
                 return (
                   <td
                     key={field}
                     className={`px-0 py-0 border-r relative ${selected ? 'bg-blue-200/70 ring-1 ring-blue-400 ring-inset' : ''}`}
-                    onMouseDown={e => onCellMouseDown(e, idx, colIdx)}
+                    onMouseDown={(e) => onCellMouseDown(e, idx, colIdx)}
                     onMouseEnter={() => onCellMouseEnter(idx, colIdx)}
-                    onMouseUp={e => onCellMouseUp(e, idx, colIdx)}
+                    onMouseUp={(e) => onCellMouseUp(e, idx, colIdx)}
                   >
                     <input
                       type="text"
                       value={display}
                       {...getCellProps(idx, colIdx)}
                       // FK03-fix (FR-3, FR-7): dupla kattintás → szerkesztő mód (a képlet látszik).
-                      onDoubleClick={() => { if (isActive) setEditing(true) }}
-                      onChange={e => {
+                      onDoubleClick={() => {
+                        if (isActive) setEditing(true)
+                      }}
+                      onChange={(e) => {
                         // Megj.: szándékosan NEM kapuzzuk `editing`-re — gépelésnél a hook
                         // keydown-kezelője állítja a szerkesztő módot, de az onChange még az
                         // újrarender ELŐTT fut (az első karakter különben elveszne).
@@ -487,17 +560,27 @@ export default function RateGrid({
                       className={`w-full px-0.5 py-0.5 text-right font-mono text-[13px] ${colorClass} font-bold border-0 bg-transparent ${focusBg} focus:outline-none ${activeBorder} ${formulaBg} ${errorRing}`}
                     />
                     {hasFormula && !isEditingCell && (
-                      <span className={`absolute ${isJ ? 'left-0' : 'left-0.5'} top-0 text-[7px] text-indigo-500 font-bold pointer-events-none`} title={`Képlet: ${formulas[key]}`}>ƒ</span>
+                      <span
+                        className={`absolute ${isJ ? 'left-0' : 'left-0.5'} top-0 text-[7px] text-indigo-500 font-bold pointer-events-none`}
+                        title={`Képlet: ${formulas[key]}`}
+                      >
+                        ƒ
+                      </span>
                     )}
                   </td>
                 )
               }
 
               return (
-                <tr key={r.currencyId} className={`${rowBg} border-b border-gray-100 hover:bg-blue-50/30`}>
+                <tr
+                  key={r.currencyId}
+                  className={`${rowBg} border-b border-gray-100 hover:bg-blue-50/30`}
+                >
                   {renderCell('officialRate', 0)}
                   <td className="px-0 py-0 text-center border-r w-4">
-                    {r.modified && <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-400" />}
+                    {r.modified && (
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-400" />
+                    )}
                     {isInvalid && <AlertTriangle size={9} className="text-red-500 inline" />}
                   </td>
                   <td className="px-1 py-0 text-center font-bold text-blue-700 border-r text-[12.5px]">
@@ -541,7 +624,7 @@ export default function RateGrid({
           className="fixed z-50 flex gap-1 bg-white border border-gray-300 rounded-md shadow-lg p-1"
           style={{ top: toolbarPos.top, left: toolbarPos.left }}
           // a toolbaron belüli mousedown ne indítson új cella-kijelölést
-          onMouseDown={e => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           <button
             type="button"

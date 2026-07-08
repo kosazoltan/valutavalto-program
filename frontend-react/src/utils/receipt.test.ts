@@ -62,9 +62,7 @@ describe('generateReceiptNumber', () => {
   })
 
   it('unknown type throws', () => {
-    expect(() =>
-      generateReceiptNumber('UNKNOWN' as TransactionType, '001', 1)
-    ).toThrow()
+    expect(() => generateReceiptNumber('UNKNOWN' as TransactionType, '001', 1)).toThrow()
   })
 
   it('branchCode with numeric part gets padded', () => {

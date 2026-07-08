@@ -1,5 +1,18 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Mail, Search, RefreshCw, Plus, Edit2, Trash2, AlertTriangle, Send, Reply, Forward, Eye, Download } from 'lucide-react'
+import {
+  Mail,
+  Search,
+  RefreshCw,
+  Plus,
+  Edit2,
+  Trash2,
+  AlertTriangle,
+  Send,
+  Reply,
+  Forward,
+  Eye,
+  Download,
+} from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -68,7 +81,9 @@ function fmtDate(value?: number | string): string {
 }
 
 function accountLabel(account: EmailAccountItem): string {
-  return account.displayName ? `${account.displayName} <${account.gmailAddress ?? '-'}>` : account.gmailAddress ?? account.id
+  return account.displayName
+    ? `${account.displayName} <${account.gmailAddress ?? '-'}>`
+    : (account.gmailAddress ?? account.id)
 }
 
 export default function EmailPage() {
@@ -97,7 +112,9 @@ export default function EmailPage() {
       setLoading(true)
       setError(null)
       const [accountResult, unreadResult] = await Promise.allSettled([
-        api.get<{ accounts?: EmailAccountItem[]; configurable?: EmailAccountItem[] }>('/email/accounts'),
+        api.get<{ accounts?: EmailAccountItem[]; configurable?: EmailAccountItem[] }>(
+          '/email/accounts',
+        ),
         api.get<{ unreadCount?: number }>('/email/unread-count'),
       ])
 
@@ -129,29 +146,32 @@ export default function EmailPage() {
     }
   }, [])
 
-  const loadMessages = useCallback(async (accountId = selectedAccountId) => {
-    if (!accountId) {
-      setMessages([])
-      setSelectedMessage(null)
-      return
-    }
-    try {
-      setMessageLoading(true)
-      setError(null)
-      const response = await api.get<{ messages?: EmailSummary[] }>('/email/messages', {
-        params: { accountId, folder, maxResults: 50 },
-      })
-      setMessages(safeArray<EmailSummary>(response.data?.messages))
-      setSelectedMessage(null)
-    } catch (err) {
-      const msg = getErrorMessage(err)
-      logger.error('EmailPage', 'Levél lista betöltési hiba:', err)
-      setError(msg)
-      setMessages([])
-    } finally {
-      setMessageLoading(false)
-    }
-  }, [folder, selectedAccountId])
+  const loadMessages = useCallback(
+    async (accountId = selectedAccountId) => {
+      if (!accountId) {
+        setMessages([])
+        setSelectedMessage(null)
+        return
+      }
+      try {
+        setMessageLoading(true)
+        setError(null)
+        const response = await api.get<{ messages?: EmailSummary[] }>('/email/messages', {
+          params: { accountId, folder, maxResults: 50 },
+        })
+        setMessages(safeArray<EmailSummary>(response.data?.messages))
+        setSelectedMessage(null)
+      } catch (err) {
+        const msg = getErrorMessage(err)
+        logger.error('EmailPage', 'Levél lista betöltési hiba:', err)
+        setError(msg)
+        setMessages([])
+      } finally {
+        setMessageLoading(false)
+      }
+    },
+    [folder, selectedAccountId],
+  )
 
   useEffect(() => {
     void loadData()
@@ -257,7 +277,11 @@ export default function EmailPage() {
       setMessageLoading(true)
       setError(null)
       const response = await api.get<EmailSummary[]>('/email/search', {
-        params: { accountId: selectedAccountId || undefined, query: mailSearch.trim(), maxResults: 50 },
+        params: {
+          accountId: selectedAccountId || undefined,
+          query: mailSearch.trim(),
+          maxResults: 50,
+        },
       })
       setMessages(safeArray<EmailSummary>(response.data))
       setSelectedMessage(null)
@@ -280,7 +304,9 @@ export default function EmailPage() {
       await api.post(`/email/messages/${id}/read`, undefined, {
         params: { accountId: selectedAccountId || undefined },
       })
-      setMessages((current) => current.map((item) => item.id === id ? { ...item, isRead: true } : item))
+      setMessages((current) =>
+        current.map((item) => (item.id === id ? { ...item, isRead: true } : item)),
+      )
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('EmailPage', 'Levél részlet hiba:', err)
@@ -309,9 +335,17 @@ export default function EmailPage() {
     setMessage(null)
     setError(null)
     if (mode === 'reply' && selectedMessage) {
-      setCompose({ to: selectedMessage.from ?? '', subject: `Re: ${selectedMessage.subject ?? ''}`, body: '' })
+      setCompose({
+        to: selectedMessage.from ?? '',
+        subject: `Re: ${selectedMessage.subject ?? ''}`,
+        body: '',
+      })
     } else if (mode === 'forward' && selectedMessage) {
-      setCompose({ to: '', subject: `Fw: ${selectedMessage.subject ?? ''}`, body: selectedMessage.body ?? selectedMessage.htmlBody ?? '' })
+      setCompose({
+        to: '',
+        subject: `Fw: ${selectedMessage.subject ?? ''}`,
+        body: selectedMessage.body ?? selectedMessage.htmlBody ?? '',
+      })
     } else {
       setCompose({ to: '', subject: '', body: '' })
     }
@@ -327,23 +361,35 @@ export default function EmailPage() {
       setSaving(true)
       setError(null)
       if (composeMode === 'reply' && selectedMessage) {
-        await api.post(`/email/messages/${selectedMessage.id}/reply`, { body: compose.body }, {
-          params: { accountId: selectedAccountId || undefined },
-        })
+        await api.post(
+          `/email/messages/${selectedMessage.id}/reply`,
+          { body: compose.body },
+          {
+            params: { accountId: selectedAccountId || undefined },
+          },
+        )
         setMessage('Válasz elküldve.')
       } else if (composeMode === 'forward' && selectedMessage) {
-        await api.post(`/email/messages/${selectedMessage.id}/forward`, { to: compose.to }, {
-          params: { accountId: selectedAccountId || undefined },
-        })
+        await api.post(
+          `/email/messages/${selectedMessage.id}/forward`,
+          { to: compose.to },
+          {
+            params: { accountId: selectedAccountId || undefined },
+          },
+        )
         setMessage('Továbbítás elküldve.')
       } else {
-        await api.post('/email/messages', {
-          to: compose.to,
-          subject: compose.subject,
-          body: compose.body,
-        }, {
-          params: { accountId: selectedAccountId || undefined },
-        })
+        await api.post(
+          '/email/messages',
+          {
+            to: compose.to,
+            subject: compose.subject,
+            body: compose.body,
+          },
+          {
+            params: { accountId: selectedAccountId || undefined },
+          },
+        )
         setMessage('Levél elküldve.')
       }
       setComposeMode(null)
@@ -360,10 +406,13 @@ export default function EmailPage() {
     if (!selectedMessage) return
     try {
       setError(null)
-      const response = await api.get<Blob>(`/email/attachments/${selectedMessage.id}/${attachmentId}`, {
-        params: { accountId: selectedAccountId || undefined },
-        responseType: 'blob',
-      })
+      const response = await api.get<Blob>(
+        `/email/attachments/${selectedMessage.id}/${attachmentId}`,
+        {
+          params: { accountId: selectedAccountId || undefined },
+          responseType: 'blob',
+        },
+      )
       const url = URL.createObjectURL(response.data)
       window.open(url, '_blank', 'noopener,noreferrer')
       window.setTimeout(() => URL.revokeObjectURL(url), 30_000)
@@ -388,8 +437,12 @@ export default function EmailPage() {
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button onClick={() => openAccountForm()} className="form-button-primary flex items-center gap-1">
-            <Plus className="h-4 w-4" />{t('common.new')}
+          <button
+            onClick={() => openAccountForm()}
+            className="form-button-primary flex items-center gap-1"
+          >
+            <Plus className="h-4 w-4" />
+            {t('common.new')}
           </button>
         </div>
       </div>
@@ -409,19 +462,56 @@ export default function EmailPage() {
 
       {accountForm && (
         <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
-          <h2 className="text-base font-semibold">{accountForm.id ? 'E-mail fiók szerkesztése' : 'Új e-mail fiók'}</h2>
+          <h2 className="text-base font-semibold">
+            {accountForm.id ? 'E-mail fiók szerkesztése' : 'Új e-mail fiók'}
+          </h2>
           <div className="grid gap-3 lg:grid-cols-5">
             <div>
-              <label htmlFor="email-account-address" className="form-label">Gmail cím</label>
-              <input id="email-account-address" className="form-input w-full" value={accountForm.gmailAddress} onChange={(e) => setAccountForm((current) => current ? { ...current, gmailAddress: e.target.value } : current)} />
+              <label htmlFor="email-account-address" className="form-label">
+                Gmail cím
+              </label>
+              <input
+                id="email-account-address"
+                className="form-input w-full"
+                value={accountForm.gmailAddress}
+                onChange={(e) =>
+                  setAccountForm((current) =>
+                    current ? { ...current, gmailAddress: e.target.value } : current,
+                  )
+                }
+              />
             </div>
             <div>
-              <label htmlFor="email-account-display" className="form-label">Megjelenített név</label>
-              <input id="email-account-display" className="form-input w-full" value={accountForm.displayName} onChange={(e) => setAccountForm((current) => current ? { ...current, displayName: e.target.value } : current)} />
+              <label htmlFor="email-account-display" className="form-label">
+                Megjelenített név
+              </label>
+              <input
+                id="email-account-display"
+                className="form-input w-full"
+                value={accountForm.displayName}
+                onChange={(e) =>
+                  setAccountForm((current) =>
+                    current ? { ...current, displayName: e.target.value } : current,
+                  )
+                }
+              />
             </div>
             <div>
-              <label htmlFor="email-account-scope-type" className="form-label">Scope</label>
-              <select id="email-account-scope-type" className="form-input w-full" value={accountForm.scopeType} onChange={(e) => setAccountForm((current) => current ? { ...current, scopeType: e.target.value as EmailAccountForm['scopeType'] } : current)}>
+              <label htmlFor="email-account-scope-type" className="form-label">
+                Scope
+              </label>
+              <select
+                id="email-account-scope-type"
+                className="form-input w-full"
+                value={accountForm.scopeType}
+                onChange={(e) =>
+                  setAccountForm((current) =>
+                    current
+                      ? { ...current, scopeType: e.target.value as EmailAccountForm['scopeType'] }
+                      : current,
+                  )
+                }
+              >
                 <option value="workerId">Dolgozó ID</option>
                 <option value="branchId">Fiók UUID</option>
                 <option value="ownCompanyId">Saját cég UUID</option>
@@ -429,17 +519,45 @@ export default function EmailPage() {
               </select>
             </div>
             <div>
-              <label htmlFor="email-account-scope-value" className="form-label">Scope azonosító</label>
-              <input id="email-account-scope-value" className="form-input w-full" value={accountForm.scopeValue} onChange={(e) => setAccountForm((current) => current ? { ...current, scopeValue: e.target.value } : current)} />
+              <label htmlFor="email-account-scope-value" className="form-label">
+                Scope azonosító
+              </label>
+              <input
+                id="email-account-scope-value"
+                className="form-input w-full"
+                value={accountForm.scopeValue}
+                onChange={(e) =>
+                  setAccountForm((current) =>
+                    current ? { ...current, scopeValue: e.target.value } : current,
+                  )
+                }
+              />
             </div>
             <label className="flex items-end gap-2 pb-2 text-sm">
-              <input type="checkbox" checked={accountForm.isActive} onChange={(e) => setAccountForm((current) => current ? { ...current, isActive: e.target.checked } : current)} />
+              <input
+                type="checkbox"
+                checked={accountForm.isActive}
+                onChange={(e) =>
+                  setAccountForm((current) =>
+                    current ? { ...current, isActive: e.target.checked } : current,
+                  )
+                }
+              />
               Aktív
             </label>
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => void saveAccount()} disabled={saving} className="form-button-primary">{saving ? 'Mentés...' : 'Mentés'}</button>
-            <button type="button" onClick={() => setAccountForm(null)} className="form-button">Mégse</button>
+            <button
+              type="button"
+              onClick={() => void saveAccount()}
+              disabled={saving}
+              className="form-button-primary"
+            >
+              {saving ? 'Mentés...' : 'Mentés'}
+            </button>
+            <button type="button" onClick={() => setAccountForm(null)} className="form-button">
+              Mégse
+            </button>
           </div>
         </div>
       )}
@@ -461,39 +579,78 @@ export default function EmailPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Gmail cím</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Név</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.active')}</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.actions')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Gmail cím
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Név
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      {t('common.active')}
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                      {t('common.actions')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
                   {loading ? (
-                    <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-                  ) : filteredAccounts.length === 0 ? (
-                    <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-                  ) : filteredAccounts.map((item) => (
-                    <tr key={item.id} className={selectedAccountId === item.id ? 'bg-blue-50' : 'hover:bg-gray-50'}>
-                      <td className="px-4 py-3 text-sm">
-                        <button type="button" className="text-left text-blue-700 hover:underline" onClick={() => setSelectedAccountId(item.id)}>
-                          {item.gmailAddress ?? '-'}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 text-sm">{item.displayName ?? '-'}</td>
-                      <td className="px-4 py-3 text-sm">{item.isActive ? 'Igen' : 'Nem'}</td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <button onClick={() => openAccountForm(item)} className="form-button mr-2 p-1 text-blue-600" title="Szerkesztés">
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => void startOAuth(item.id)} className="form-button mr-2 p-1" title="OAuth kapcsolás">
-                          <Mail className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => void deleteAccount(item.id)} className="form-button p-1 text-red-600" title="Törlés">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
+                        Betöltés...
                       </td>
                     </tr>
-                  ))}
+                  ) : filteredAccounts.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
+                        {t('common.noData')}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAccounts.map((item) => (
+                      <tr
+                        key={item.id}
+                        className={
+                          selectedAccountId === item.id ? 'bg-blue-50' : 'hover:bg-gray-50'
+                        }
+                      >
+                        <td className="px-4 py-3 text-sm">
+                          <button
+                            type="button"
+                            className="text-left text-blue-700 hover:underline"
+                            onClick={() => setSelectedAccountId(item.id)}
+                          >
+                            {item.gmailAddress ?? '-'}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-sm">{item.displayName ?? '-'}</td>
+                        <td className="px-4 py-3 text-sm">{item.isActive ? 'Igen' : 'Nem'}</td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => openAccountForm(item)}
+                            className="form-button mr-2 p-1 text-blue-600"
+                            title="Szerkesztés"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => void startOAuth(item.id)}
+                            className="form-button mr-2 p-1"
+                            title="OAuth kapcsolás"
+                          >
+                            <Mail className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => void deleteAccount(item.id)}
+                            className="form-button p-1 text-red-600"
+                            title="Törlés"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -508,17 +665,36 @@ export default function EmailPage() {
         <section className="space-y-3">
           <div className="rounded border border-gray-200 bg-white p-3 space-y-3">
             <div className="grid gap-2 md:grid-cols-[180px_1fr_auto_auto]">
-              <select value={folder} onChange={(e) => setFolder(e.target.value)} className="form-input w-full">
+              <select
+                value={folder}
+                onChange={(e) => setFolder(e.target.value)}
+                className="form-input w-full"
+              >
                 <option value="INBOX">INBOX</option>
                 <option value="SENT">SENT</option>
                 <option value="TRASH">TRASH</option>
               </select>
-              <input value={mailSearch} onChange={(e) => setMailSearch(e.target.value)} className="form-input w-full" placeholder="Levél keresés..." />
-              <button type="button" onClick={() => void searchMessages()} className="form-button flex items-center gap-1">
-                <Search className="h-4 w-4" />Keresés
+              <input
+                value={mailSearch}
+                onChange={(e) => setMailSearch(e.target.value)}
+                className="form-input w-full"
+                placeholder="Levél keresés..."
+              />
+              <button
+                type="button"
+                onClick={() => void searchMessages()}
+                className="form-button flex items-center gap-1"
+              >
+                <Search className="h-4 w-4" />
+                Keresés
               </button>
-              <button type="button" onClick={() => openCompose('new')} className="form-button-primary flex items-center gap-1">
-                <Send className="h-4 w-4" />Új levél
+              <button
+                type="button"
+                onClick={() => openCompose('new')}
+                className="form-button-primary flex items-center gap-1"
+              >
+                <Send className="h-4 w-4" />
+                Új levél
               </button>
             </div>
 
@@ -526,28 +702,63 @@ export default function EmailPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Tárgy</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Feladó</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Érkezett</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.actions')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Tárgy
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Feladó
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Érkezett
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                      {t('common.actions')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
                   {messageLoading ? (
-                    <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-                  ) : messages.length === 0 ? (
-                    <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-                  ) : messages.map((item) => (
-                    <tr key={item.id} className={item.isRead ? 'hover:bg-gray-50' : 'bg-yellow-50 hover:bg-yellow-100'}>
-                      <td className="px-4 py-3 text-sm">{item.subject ?? '-'}</td>
-                      <td className="px-4 py-3 text-sm">{item.sender ?? item.from ?? '-'}</td>
-                      <td className="px-4 py-3 text-sm">{fmtDate(item.receivedAt)}</td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <button onClick={() => void openMessage(item.id)} className="form-button mr-2 p-1" title="Megnyitás"><Eye className="h-4 w-4" /></button>
-                        <button onClick={() => void deleteMessage(item.id)} className="form-button p-1 text-red-600" title="Törlés"><Trash2 className="h-4 w-4" /></button>
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
+                        Betöltés...
                       </td>
                     </tr>
-                  ))}
+                  ) : messages.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
+                        {t('common.noData')}
+                      </td>
+                    </tr>
+                  ) : (
+                    messages.map((item) => (
+                      <tr
+                        key={item.id}
+                        className={
+                          item.isRead ? 'hover:bg-gray-50' : 'bg-yellow-50 hover:bg-yellow-100'
+                        }
+                      >
+                        <td className="px-4 py-3 text-sm">{item.subject ?? '-'}</td>
+                        <td className="px-4 py-3 text-sm">{item.sender ?? item.from ?? '-'}</td>
+                        <td className="px-4 py-3 text-sm">{fmtDate(item.receivedAt)}</td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => void openMessage(item.id)}
+                            className="form-button mr-2 p-1"
+                            title="Megnyitás"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => void deleteMessage(item.id)}
+                            className="form-button p-1 text-red-600"
+                            title="Törlés"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -561,12 +772,27 @@ export default function EmailPage() {
                   <div className="text-sm text-gray-500">{selectedMessage.from ?? '-'}</div>
                 </div>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => openCompose('reply')} className="form-button flex items-center gap-1"><Reply className="h-4 w-4" />Válasz</button>
-                  <button type="button" onClick={() => openCompose('forward')} className="form-button flex items-center gap-1"><Forward className="h-4 w-4" />Továbbítás</button>
+                  <button
+                    type="button"
+                    onClick={() => openCompose('reply')}
+                    className="form-button flex items-center gap-1"
+                  >
+                    <Reply className="h-4 w-4" />
+                    Válasz
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openCompose('forward')}
+                    className="form-button flex items-center gap-1"
+                  >
+                    <Forward className="h-4 w-4" />
+                    Továbbítás
+                  </button>
                 </div>
               </div>
               <div className="text-sm">
-                <span className="text-gray-500">Címzettek:</span> {(selectedMessage.to ?? []).join(', ') || '-'}
+                <span className="text-gray-500">Címzettek:</span>{' '}
+                {(selectedMessage.to ?? []).join(', ') || '-'}
               </div>
               <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm whitespace-pre-wrap">
                 {selectedMessage.body ?? selectedMessage.htmlBody ?? ''}
@@ -575,8 +801,14 @@ export default function EmailPage() {
                 <div className="space-y-2">
                   <h3 className="text-sm font-semibold">Csatolmányok</h3>
                   {selectedMessage.attachments?.map((attachment) => (
-                    <button key={attachment.attachmentId} type="button" onClick={() => void downloadAttachment(attachment.attachmentId)} className="form-button mr-2 flex items-center gap-1">
-                      <Download className="h-4 w-4" />{attachment.filename ?? attachment.attachmentId}
+                    <button
+                      key={attachment.attachmentId}
+                      type="button"
+                      onClick={() => void downloadAttachment(attachment.attachmentId)}
+                      className="form-button mr-2 flex items-center gap-1"
+                    >
+                      <Download className="h-4 w-4" />
+                      {attachment.filename ?? attachment.attachmentId}
                     </button>
                   ))}
                 </div>
@@ -586,26 +818,64 @@ export default function EmailPage() {
 
           {composeMode && (
             <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
-              <h2 className="text-base font-semibold">{composeMode === 'reply' ? 'Válasz' : composeMode === 'forward' ? 'Továbbítás' : 'Új levél'}</h2>
+              <h2 className="text-base font-semibold">
+                {composeMode === 'reply'
+                  ? 'Válasz'
+                  : composeMode === 'forward'
+                    ? 'Továbbítás'
+                    : 'Új levél'}
+              </h2>
               {composeMode !== 'reply' && (
                 <div>
-                  <label htmlFor="email-compose-to" className="form-label">Címzett</label>
-                  <input id="email-compose-to" value={compose.to} onChange={(e) => setCompose((current) => ({ ...current, to: e.target.value }))} className="form-input w-full" />
+                  <label htmlFor="email-compose-to" className="form-label">
+                    Címzett
+                  </label>
+                  <input
+                    id="email-compose-to"
+                    value={compose.to}
+                    onChange={(e) => setCompose((current) => ({ ...current, to: e.target.value }))}
+                    className="form-input w-full"
+                  />
                 </div>
               )}
               {composeMode === 'new' && (
                 <div>
-                  <label htmlFor="email-compose-subject" className="form-label">Tárgy</label>
-                  <input id="email-compose-subject" value={compose.subject} onChange={(e) => setCompose((current) => ({ ...current, subject: e.target.value }))} className="form-input w-full" />
+                  <label htmlFor="email-compose-subject" className="form-label">
+                    Tárgy
+                  </label>
+                  <input
+                    id="email-compose-subject"
+                    value={compose.subject}
+                    onChange={(e) =>
+                      setCompose((current) => ({ ...current, subject: e.target.value }))
+                    }
+                    className="form-input w-full"
+                  />
                 </div>
               )}
               <div>
-                <label htmlFor="email-compose-body" className="form-label">Szöveg</label>
-                <textarea id="email-compose-body" value={compose.body} onChange={(e) => setCompose((current) => ({ ...current, body: e.target.value }))} className="form-input h-32 w-full" />
+                <label htmlFor="email-compose-body" className="form-label">
+                  Szöveg
+                </label>
+                <textarea
+                  id="email-compose-body"
+                  value={compose.body}
+                  onChange={(e) => setCompose((current) => ({ ...current, body: e.target.value }))}
+                  className="form-input h-32 w-full"
+                />
               </div>
               <div className="flex gap-2">
-                <button type="button" onClick={() => void sendCompose()} disabled={saving} className="form-button-primary">{saving ? 'Küldés...' : 'Küldés'}</button>
-                <button type="button" onClick={() => setComposeMode(null)} className="form-button">Mégse</button>
+                <button
+                  type="button"
+                  onClick={() => void sendCompose()}
+                  disabled={saving}
+                  className="form-button-primary"
+                >
+                  {saving ? 'Küldés...' : 'Küldés'}
+                </button>
+                <button type="button" onClick={() => setComposeMode(null)} className="form-button">
+                  Mégse
+                </button>
               </div>
             </div>
           )}
@@ -613,7 +883,8 @@ export default function EmailPage() {
       </div>
 
       <div className="text-sm text-gray-500">
-        {t('audit.osszesen')}{filteredAccounts.length} / {accounts.length}
+        {t('audit.osszesen')}
+        {filteredAccounts.length} / {accounts.length}
       </div>
     </div>
   )

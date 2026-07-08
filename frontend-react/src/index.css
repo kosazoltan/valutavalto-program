@@ -1,5 +1,5 @@
 /* Design tokens — globális CSS custom properties (P2-3, 2026-05-06) */
-@import "tailwindcss";
+@import 'tailwindcss';
 @import './styles/design-tokens.css';
 @config "../tailwind.config.js";
 
@@ -202,11 +202,21 @@
   }
 
   /* Currency display */
-  .currency-huf { @apply text-currency-huf font-semibold; }
-  .currency-eur { @apply text-currency-eur font-semibold; }
-  .currency-usd { @apply text-currency-usd font-semibold; }
-  .currency-gbp { @apply text-currency-gbp font-semibold; }
-  .currency-chf { @apply text-currency-chf font-semibold; }
+  .currency-huf {
+    @apply text-currency-huf font-semibold;
+  }
+  .currency-eur {
+    @apply text-currency-eur font-semibold;
+  }
+  .currency-usd {
+    @apply text-currency-usd font-semibold;
+  }
+  .currency-gbp {
+    @apply text-currency-gbp font-semibold;
+  }
+  .currency-chf {
+    @apply text-currency-chf font-semibold;
+  }
 
   /* Amount display */
   .amount {

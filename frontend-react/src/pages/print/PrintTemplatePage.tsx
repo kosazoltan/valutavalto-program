@@ -114,13 +114,17 @@ export default function PrintTemplatePage() {
       } else {
         const response = await api.post<PrintTemplateItem>('/print-templates', payload)
         const created = response.data
-        setForm(created?.id ? {
-          id: created.id,
-          name: created.name ?? payload.name,
-          templateType: created.templateType ?? payload.templateType,
-          content: created.content ?? payload.content,
-          isDefault: created.isDefault ?? payload.isDefault,
-        } : form)
+        setForm(
+          created?.id
+            ? {
+                id: created.id,
+                name: created.name ?? payload.name,
+                templateType: created.templateType ?? payload.templateType,
+                content: created.content ?? payload.content,
+                isDefault: created.isDefault ?? payload.isDefault,
+              }
+            : form,
+        )
         setMessage('Sablon létrehozva.')
       }
       await loadData()
@@ -159,12 +163,10 @@ export default function PrintTemplatePage() {
     }
   }
 
-  const filtered = items.filter(item => {
+  const filtered = items.filter((item) => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
+    return Object.values(item).some((v) => v != null && String(v).toLowerCase().includes(term))
   })
 
   return (
@@ -179,7 +181,8 @@ export default function PrintTemplatePage() {
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <button onClick={openNewForm} className="form-button-primary flex items-center gap-1">
-            <Plus className="h-4 w-4" />{t('common.new')}
+            <Plus className="h-4 w-4" />
+            {t('common.new')}
           </button>
         </div>
       </div>
@@ -191,7 +194,7 @@ export default function PrintTemplatePage() {
             type="text"
             placeholder="Keresés..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="form-input w-full pl-10"
           />
         </div>
@@ -199,7 +202,7 @@ export default function PrintTemplatePage() {
           type="text"
           placeholder="Típus szűrő, pl. RECEIPT"
           value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value.toUpperCase())}
+          onChange={(e) => setTypeFilter(e.target.value.toUpperCase())}
           className="form-input w-full"
         />
       </div>
@@ -220,32 +223,47 @@ export default function PrintTemplatePage() {
       {form && (
         <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold">{form.id ? 'Sablon szerkesztése' : 'Új sablon'}</h2>
+            <h2 className="text-base font-semibold">
+              {form.id ? 'Sablon szerkesztése' : 'Új sablon'}
+            </h2>
             <button
               type="button"
               className="form-button p-2"
               title="Bezárás"
-              onClick={() => { setForm(null); setPreview(null) }}
+              onClick={() => {
+                setForm(null)
+                setPreview(null)
+              }}
             >
               <X className="h-4 w-4" />
             </button>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             <div>
-              <label htmlFor="print-template-name" className="form-label">Név</label>
+              <label htmlFor="print-template-name" className="form-label">
+                Név
+              </label>
               <input
                 id="print-template-name"
                 value={form.name}
-                onChange={e => setForm(current => current ? { ...current, name: e.target.value } : current)}
+                onChange={(e) =>
+                  setForm((current) => (current ? { ...current, name: e.target.value } : current))
+                }
                 className="form-input w-full"
               />
             </div>
             <div>
-              <label htmlFor="print-template-type" className="form-label">Típus</label>
+              <label htmlFor="print-template-type" className="form-label">
+                Típus
+              </label>
               <input
                 id="print-template-type"
                 value={form.templateType}
-                onChange={e => setForm(current => current ? { ...current, templateType: e.target.value.toUpperCase() } : current)}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, templateType: e.target.value.toUpperCase() } : current,
+                  )
+                }
                 className="form-input w-full font-mono"
               />
             </div>
@@ -253,30 +271,52 @@ export default function PrintTemplatePage() {
               <input
                 type="checkbox"
                 checked={form.isDefault}
-                onChange={e => setForm(current => current ? { ...current, isDefault: e.target.checked } : current)}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, isDefault: e.target.checked } : current,
+                  )
+                }
               />
               Alapértelmezett
             </label>
           </div>
           <div>
-            <label htmlFor="print-template-content" className="form-label">Tartalom</label>
+            <label htmlFor="print-template-content" className="form-label">
+              Tartalom
+            </label>
             <textarea
               id="print-template-content"
               value={form.content}
-              onChange={e => setForm(current => current ? { ...current, content: e.target.value } : current)}
+              onChange={(e) =>
+                setForm((current) => (current ? { ...current, content: e.target.value } : current))
+              }
               className="form-input h-40 w-full font-mono text-sm"
             />
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => void saveForm()} disabled={saving} className="form-button-primary flex items-center gap-1">
-              <Save className="h-4 w-4" />{saving ? 'Mentés...' : 'Mentés'}
+            <button
+              type="button"
+              onClick={() => void saveForm()}
+              disabled={saving}
+              className="form-button-primary flex items-center gap-1"
+            >
+              <Save className="h-4 w-4" />
+              {saving ? 'Mentés...' : 'Mentés'}
             </button>
-            <button type="button" onClick={() => void previewForm()} disabled={previewing || !form.id} className="form-button flex items-center gap-1">
-              <Eye className="h-4 w-4" />{previewing ? 'Előnézet...' : 'Előnézet'}
+            <button
+              type="button"
+              onClick={() => void previewForm()}
+              disabled={previewing || !form.id}
+              className="form-button flex items-center gap-1"
+            >
+              <Eye className="h-4 w-4" />
+              {previewing ? 'Előnézet...' : 'Előnézet'}
             </button>
           </div>
           {preview != null && (
-            <pre className="max-h-64 overflow-auto rounded border border-gray-200 bg-gray-50 p-3 text-sm whitespace-pre-wrap">{preview}</pre>
+            <pre className="max-h-64 overflow-auto rounded border border-gray-200 bg-gray-50 p-3 text-sm whitespace-pre-wrap">
+              {preview}
+            </pre>
           )}
         </div>
       )}
@@ -285,35 +325,58 @@ export default function PrintTemplatePage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('competitors.nev')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('backup.tipus')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('print.alapertelmezett')}</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('competitors.muveletek')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('competitors.nev')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('backup.tipus')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('print.alapertelmezett')}
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                {t('competitors.muveletek')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.name ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.templateType ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.isDefault ? 'Igen' : 'Nem'}</td>
-                <td className="px-4 py-3 text-right">
-                  <button onClick={() => void openEditForm(item)} className="form-button mr-2 p-1 text-blue-600" title="Szerkesztés">
-                    <Edit2 className="h-4 w-4" />
-                  </button>
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
+                  Betöltés...
                 </td>
               </tr>
-            ))}
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('common.noData')}
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm">{item.name ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.templateType ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.isDefault ? 'Igen' : 'Nem'}</td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => void openEditForm(item)}
+                      className="form-button mr-2 p-1 text-blue-600"
+                      title="Szerkesztés"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="text-sm text-gray-500">
-        {t('audit.osszesen')}{filtered.length} / {items.length}
+        {t('audit.osszesen')}
+        {filtered.length} / {items.length}
       </div>
     </div>
   )

@@ -29,10 +29,10 @@ const APP_MODE_ROLE_PREFERENCES: Record<SetupAppMode, string[]> = {
 
 export function normalizeSetupAppMode(appMode: string | null | undefined): SetupAppMode | null {
   const normalized = appMode?.trim().toLowerCase();
-  return normalized === 'penztar'
-    || normalized === 'ertektar'
-    || normalized === 'ertekszallito'
-    || normalized === 'full'
+  return normalized === 'penztar' ||
+    normalized === 'ertektar' ||
+    normalized === 'ertekszallito' ||
+    normalized === 'full'
     ? normalized
     : null;
 }
@@ -51,6 +51,9 @@ export function collectRoleCodes(login: RoleSelectionSource): Set<string> {
     ...(login.roles ?? []),
     ...(login.availableRoles ?? []).flatMap((role) => [role.roleCode, role.code]),
   ];
-  return new Set(values.filter((roleCode): roleCode is string =>
-    typeof roleCode === 'string' && roleCode.trim().length > 0));
+  return new Set(
+    values.filter(
+      (roleCode): roleCode is string => typeof roleCode === 'string' && roleCode.trim().length > 0,
+    ),
+  );
 }

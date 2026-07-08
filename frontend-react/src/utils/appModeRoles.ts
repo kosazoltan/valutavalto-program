@@ -3,10 +3,17 @@ import type { AppMode } from '../types/appMode'
 export type LoginAppMode = AppMode
 
 const SERVER_ALLOWED_CANONICAL_ROLES = [
-  'ugyvezeto', 'foertektar', 'irodavezeto', 'belso_ellenor',
-  'teruleti_vezeto', 'biztonsagi_vezeto',
-  'berszamfejto', 'penzugyi_vezeto', 'irodai_dolgozo',
-  'csoportvezeto', 'arfolyam_nezo',
+  'ugyvezeto',
+  'foertektar',
+  'irodavezeto',
+  'belso_ellenor',
+  'teruleti_vezeto',
+  'biztonsagi_vezeto',
+  'berszamfejto',
+  'penzugyi_vezeto',
+  'irodai_dolgozo',
+  'csoportvezeto',
+  'arfolyam_nezo',
 ]
 const SERVER_ALLOWED_LEGACY_ROLES = ['SUPERVISOR', 'MANAGER', 'ADMIN']
 const RATE_MAKER_ALLOWED_CANONICAL_ROLES = ['foertektar', 'ugyvezeto']
@@ -27,15 +34,19 @@ function isLocalRole(roleCode: string): boolean {
 function isServerRole(roleCode: string): boolean {
   const trimmed = roleCode.trim()
   if (!trimmed) return false
-  return SERVER_ALLOWED_CANONICAL_ROLES.includes(trimmed.toLowerCase())
-    || SERVER_ALLOWED_LEGACY_ROLES.includes(trimmed.toUpperCase())
+  return (
+    SERVER_ALLOWED_CANONICAL_ROLES.includes(trimmed.toLowerCase()) ||
+    SERVER_ALLOWED_LEGACY_ROLES.includes(trimmed.toUpperCase())
+  )
 }
 
 function isRateMakerRole(roleCode: string): boolean {
   const trimmed = roleCode.trim()
   if (!trimmed) return false
-  return RATE_MAKER_ALLOWED_CANONICAL_ROLES.includes(trimmed.toLowerCase())
-    || RATE_MAKER_ALLOWED_LEGACY_ROLES.includes(trimmed.toUpperCase())
+  return (
+    RATE_MAKER_ALLOWED_CANONICAL_ROLES.includes(trimmed.toLowerCase()) ||
+    RATE_MAKER_ALLOWED_LEGACY_ROLES.includes(trimmed.toUpperCase())
+  )
 }
 
 export function canonicalizeRoleForAppMode(roleCode: string | null | undefined): string {
@@ -123,7 +134,9 @@ export function preferredRoleForAppMode(
   const canonicalMatch = list.find((r) => canonicalizeRoleForAppMode(r) === appMode)
   if (canonicalMatch) return canonicalMatch
   if (isLocalAppMode(appMode)) {
-    const localSelectable = list.find((r) => isLocalRole(r) && isRoleSelectableForAppMode(r, appMode))
+    const localSelectable = list.find(
+      (r) => isLocalRole(r) && isRoleSelectableForAppMode(r, appMode),
+    )
     if (localSelectable) return localSelectable
   }
   const selectable = list.find((r) => isRoleSelectableForAppMode(r, appMode))

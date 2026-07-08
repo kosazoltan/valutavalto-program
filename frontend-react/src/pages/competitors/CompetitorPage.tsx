@@ -1,5 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
-import { BarChart3, Search, RefreshCw, Plus, Edit2, Trash2, AlertTriangle, Trophy } from 'lucide-react'
+import {
+  BarChart3,
+  Search,
+  RefreshCw,
+  Plus,
+  Edit2,
+  Trash2,
+  AlertTriangle,
+  Trophy,
+} from 'lucide-react'
 import { api, competitorApi } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -88,7 +97,9 @@ export default function CompetitorPage() {
   const [competitions, setCompetitions] = useState<CompetitionItem[]>([])
   const [competitionLoading, setCompetitionLoading] = useState(true)
   const [competitionFormOpen, setCompetitionFormOpen] = useState(false)
-  const [competitionForm, setCompetitionForm] = useState<CompetitionForm>(() => emptyCompetitionForm())
+  const [competitionForm, setCompetitionForm] = useState<CompetitionForm>(() =>
+    emptyCompetitionForm(),
+  )
   const [selectedCompetitionId, setSelectedCompetitionId] = useState<string | null>(null)
   const [leaderboard, setLeaderboard] = useState<CompetitionEntry[]>([])
   const [competitionSaving, setCompetitionSaving] = useState(false)
@@ -98,7 +109,7 @@ export default function CompetitorPage() {
       setLoading(true)
       setError(null)
       const data = await competitorApi.list()
-      setItems(safeArray<typeof items[0]>(data))
+      setItems(safeArray<(typeof items)[0]>(data))
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('CompetitorPage', 'Betöltési hiba:', err)
@@ -115,11 +126,14 @@ export default function CompetitorPage() {
       const response = await api.get<CompetitionItem[]>('/competitions')
       const list = safeArray<CompetitionItem>(response.data)
       setCompetitions(list)
-      const selectedStillExists = selectedCompetitionId && list.some((item) => item.id === selectedCompetitionId)
-      const nextSelectedId = selectedStillExists ? selectedCompetitionId : list[0]?.id ?? null
+      const selectedStillExists =
+        selectedCompetitionId && list.some((item) => item.id === selectedCompetitionId)
+      const nextSelectedId = selectedStillExists ? selectedCompetitionId : (list[0]?.id ?? null)
       setSelectedCompetitionId(nextSelectedId)
       if (nextSelectedId) {
-        const leaderboardResponse = await api.get<CompetitionEntry[]>(`/competitions/${nextSelectedId}/leaderboard`)
+        const leaderboardResponse = await api.get<CompetitionEntry[]>(
+          `/competitions/${nextSelectedId}/leaderboard`,
+        )
         setLeaderboard(safeArray<CompetitionEntry>(leaderboardResponse.data))
       } else {
         setLeaderboard([])
@@ -143,12 +157,10 @@ export default function CompetitorPage() {
     void loadCompetitions()
   }, [loadCompetitions])
 
-  const filtered = items.filter(item => {
+  const filtered = items.filter((item) => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
+    return Object.values(item).some((v) => v != null && String(v).toLowerCase().includes(term))
   })
 
   const handleDelete = async (id: string | number) => {
@@ -280,7 +292,9 @@ export default function CompetitorPage() {
   const loadLeaderboard = async (competitionId: string) => {
     try {
       setSelectedCompetitionId(competitionId)
-      const response = await api.get<CompetitionEntry[]>(`/competitions/${competitionId}/leaderboard`)
+      const response = await api.get<CompetitionEntry[]>(
+        `/competitions/${competitionId}/leaderboard`,
+      )
       setLeaderboard(safeArray<CompetitionEntry>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
@@ -292,7 +306,9 @@ export default function CompetitorPage() {
 
   const calculateCompetition = async (competitionId: string) => {
     try {
-      const response = await api.post<CompetitionEntry[]>(`/competitions/${competitionId}/calculate`)
+      const response = await api.post<CompetitionEntry[]>(
+        `/competitions/${competitionId}/calculate`,
+      )
       setSelectedCompetitionId(competitionId)
       setLeaderboard(safeArray<CompetitionEntry>(response.data))
       toast.success('Verseny pontszámok újraszámolva')
@@ -317,7 +333,8 @@ export default function CompetitorPage() {
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
             <button onClick={openNew} className="form-button-primary flex items-center gap-1">
-              <Plus className="h-4 w-4" />{t('common.new')}
+              <Plus className="h-4 w-4" />
+              {t('common.new')}
             </button>
           </div>
         )}
@@ -348,14 +365,19 @@ export default function CompetitorPage() {
               <p className="text-sm text-gray-500">Versenyidőszakok, pontszámítás és ranglista</p>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => void loadCompetitions()} className="form-button p-2" title="Frissítés">
+              <button
+                onClick={() => void loadCompetitions()}
+                className="form-button p-2"
+                title="Frissítés"
+              >
                 <RefreshCw className={`h-4 w-4 ${competitionLoading ? 'animate-spin' : ''}`} />
               </button>
               <button
                 onClick={() => setCompetitionFormOpen((open) => !open)}
                 className="form-button-primary flex items-center gap-1"
               >
-                <Plus className="h-4 w-4" />Új verseny
+                <Plus className="h-4 w-4" />
+                Új verseny
               </button>
             </div>
           </div>
@@ -369,7 +391,12 @@ export default function CompetitorPage() {
                   type="text"
                   className="form-input"
                   value={competitionForm.competitionName}
-                  onChange={(e) => setCompetitionForm((current) => ({ ...current, competitionName: e.target.value }))}
+                  onChange={(e) =>
+                    setCompetitionForm((current) => ({
+                      ...current,
+                      competitionName: e.target.value,
+                    }))
+                  }
                 />
               </label>
               <label className="block">
@@ -379,7 +406,9 @@ export default function CompetitorPage() {
                   type="date"
                   className="form-input"
                   value={competitionForm.startDate}
-                  onChange={(e) => setCompetitionForm((current) => ({ ...current, startDate: e.target.value }))}
+                  onChange={(e) =>
+                    setCompetitionForm((current) => ({ ...current, startDate: e.target.value }))
+                  }
                 />
               </label>
               <label className="block">
@@ -389,7 +418,9 @@ export default function CompetitorPage() {
                   type="date"
                   className="form-input"
                   value={competitionForm.endDate}
-                  onChange={(e) => setCompetitionForm((current) => ({ ...current, endDate: e.target.value }))}
+                  onChange={(e) =>
+                    setCompetitionForm((current) => ({ ...current, endDate: e.target.value }))
+                  }
                 />
               </label>
               <label className="block">
@@ -399,7 +430,9 @@ export default function CompetitorPage() {
                   type="text"
                   className="form-input"
                   value={competitionForm.rules}
-                  onChange={(e) => setCompetitionForm((current) => ({ ...current, rules: e.target.value }))}
+                  onChange={(e) =>
+                    setCompetitionForm((current) => ({ ...current, rules: e.target.value }))
+                  }
                 />
               </label>
               <button
@@ -418,37 +451,74 @@ export default function CompetitorPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Név</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Időszak</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Státusz</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Művelet</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Név
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Időszak
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Státusz
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                      Művelet
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
                   {competitionLoading ? (
-                    <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-                  ) : competitions.length === 0 ? (
-                    <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-                  ) : competitions.map((competition) => (
-                    <tr key={competition.id} className={competition.id === selectedCompetitionId ? 'bg-blue-50' : 'hover:bg-gray-50'}>
-                      <td className="px-4 py-3 text-sm">
-                        <div className="font-semibold text-gray-900">{competition.competitionName}</div>
-                        {competition.rules && <div className="text-xs text-gray-500">{competition.rules}</div>}
-                      </td>
-                      <td className="px-4 py-3 text-sm font-mono text-xs">{competition.startDate} - {competition.endDate}</td>
-                      <td className="px-4 py-3 text-sm">{competition.status ?? '-'}</td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button onClick={() => void loadLeaderboard(competition.id)} className="form-button text-xs">
-                            Ranglista
-                          </button>
-                          <button onClick={() => void calculateCompetition(competition.id)} className="form-button-primary text-xs">
-                            Számítás
-                          </button>
-                        </div>
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
+                        Betöltés...
                       </td>
                     </tr>
-                  ))}
+                  ) : competitions.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
+                        {t('common.noData')}
+                      </td>
+                    </tr>
+                  ) : (
+                    competitions.map((competition) => (
+                      <tr
+                        key={competition.id}
+                        className={
+                          competition.id === selectedCompetitionId
+                            ? 'bg-blue-50'
+                            : 'hover:bg-gray-50'
+                        }
+                      >
+                        <td className="px-4 py-3 text-sm">
+                          <div className="font-semibold text-gray-900">
+                            {competition.competitionName}
+                          </div>
+                          {competition.rules && (
+                            <div className="text-xs text-gray-500">{competition.rules}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-mono text-xs">
+                          {competition.startDate} - {competition.endDate}
+                        </td>
+                        <td className="px-4 py-3 text-sm">{competition.status ?? '-'}</td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => void loadLeaderboard(competition.id)}
+                              className="form-button text-xs"
+                            >
+                              Ranglista
+                            </button>
+                            <button
+                              onClick={() => void calculateCompetition(competition.id)}
+                              className="form-button-primary text-xs"
+                            >
+                              Számítás
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </section>
@@ -460,23 +530,41 @@ export default function CompetitorPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">#</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Dolgozó</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Forgalom</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Pont</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                      #
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                      Dolgozó
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      Forgalom
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      Pont
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
                   {leaderboard.length === 0 ? (
-                    <tr><td colSpan={4} className="px-3 py-8 text-center text-sm text-gray-500">Nincs ranglista adat</td></tr>
-                  ) : leaderboard.map((entry) => (
-                    <tr key={entry.id}>
-                      <td className="px-3 py-2 text-sm font-semibold">{entry.rank ?? '-'}</td>
-                      <td className="px-3 py-2 text-sm">{entry.workerName ?? entry.workerId}</td>
-                      <td className="px-3 py-2 text-right text-sm font-mono">{formatNumber(entry.totalVolume)}</td>
-                      <td className="px-3 py-2 text-right text-sm font-mono font-semibold">{formatNumber(entry.score)}</td>
+                    <tr>
+                      <td colSpan={4} className="px-3 py-8 text-center text-sm text-gray-500">
+                        Nincs ranglista adat
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    leaderboard.map((entry) => (
+                      <tr key={entry.id}>
+                        <td className="px-3 py-2 text-sm font-semibold">{entry.rank ?? '-'}</td>
+                        <td className="px-3 py-2 text-sm">{entry.workerName ?? entry.workerId}</td>
+                        <td className="px-3 py-2 text-right text-sm font-mono">
+                          {formatNumber(entry.totalVolume)}
+                        </td>
+                        <td className="px-3 py-2 text-right text-sm font-mono font-semibold">
+                          {formatNumber(entry.score)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </section>
@@ -486,119 +574,159 @@ export default function CompetitorPage() {
 
       {activeView === 'competitors' && (
         <>
+          {formOpen && (
+            <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end">
+              <label className="block">
+                <span className="form-label">{t('competitors.nev')}</span>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={form.name}
+                  onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
+                />
+              </label>
+              <label className="block">
+                <span className="form-label">Weboldal</span>
+                <input
+                  type="url"
+                  className="form-input"
+                  value={form.website}
+                  onChange={(e) => setForm((current) => ({ ...current, website: e.target.value }))}
+                />
+              </label>
+              <label className="block">
+                <span className="form-label">Telephely ID</span>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={form.branchId}
+                  onChange={(e) => setForm((current) => ({ ...current, branchId: e.target.value }))}
+                />
+              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.isActive}
+                    onChange={(e) =>
+                      setForm((current) => ({ ...current, isActive: e.target.checked }))
+                    }
+                  />
+                  Aktív
+                </label>
+                <button
+                  type="button"
+                  onClick={() => void saveCompetitor()}
+                  disabled={saving}
+                  className="form-button-primary"
+                >
+                  {editing ? t('common.save') : t('common.new')}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  disabled={saving}
+                  className="form-button"
+                >
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </div>
+          )}
 
-      {formOpen && (
-        <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end">
-          <label className="block">
-            <span className="form-label">{t('competitors.nev')}</span>
-            <input
-              type="text"
-              className="form-input"
-              value={form.name}
-              onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
-            />
-          </label>
-          <label className="block">
-            <span className="form-label">Weboldal</span>
-            <input
-              type="url"
-              className="form-input"
-              value={form.website}
-              onChange={(e) => setForm((current) => ({ ...current, website: e.target.value }))}
-            />
-          </label>
-          <label className="block">
-            <span className="form-label">Telephely ID</span>
-            <input
-              type="text"
-              className="form-input"
-              value={form.branchId}
-              onChange={(e) => setForm((current) => ({ ...current, branchId: e.target.value }))}
-            />
-          </label>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="inline-flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
-                type="checkbox"
-                checked={form.isActive}
-                onChange={(e) => setForm((current) => ({ ...current, isActive: e.target.checked }))}
+                type="text"
+                placeholder="Keresés..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="form-input w-full pl-10"
               />
-              Aktív
-            </label>
-            <button type="button" onClick={() => void saveCompetitor()} disabled={saving} className="form-button-primary">
-              {editing ? t('common.save') : t('common.new')}
-            </button>
-            <button type="button" onClick={cancelEdit} disabled={saving} className="form-button">
-              {t('common.cancel')}
-            </button>
+            </div>
           </div>
-        </div>
-      )}
 
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Keresés..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="form-input w-full pl-10"
-          />
-        </div>
-      </div>
+          {error && (
+            <div className="form-error flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              {error}
+            </div>
+          )}
 
-      {error && (
-        <div className="form-error flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4" />
-          {error}
-        </div>
-      )}
+          <div className="data-grid overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                    {t('competitors.nev')}
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                    Weboldal
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                    Telephely ID
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                    {t('competitors.aktiv')}
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                    {t('competitors.muveletek')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                      Betöltés...
+                    </td>
+                  </tr>
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                      {t('common.noData')}
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm">{item.name ?? '-'}</td>
+                      <td className="px-4 py-3 text-sm">{item.website ?? '-'}</td>
+                      <td className="px-4 py-3 text-sm font-mono text-xs">
+                        {item.branchId ?? '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm">{item.isActive ? 'Igen' : 'Nem'}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => void openEdit(item)}
+                          className="form-button mr-2 p-1 text-blue-600"
+                          title="Szerkesztés"
+                          disabled={editingLoadingId === item.id}
+                        >
+                          <Edit2
+                            className={`h-4 w-4 ${editingLoadingId === item.id ? 'animate-pulse' : ''}`}
+                          />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="form-button p-1 text-red-600"
+                          title="Törlés"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-      <div className="data-grid overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('competitors.nev')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Weboldal</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Telephely ID</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('competitors.aktiv')}</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('competitors.muveletek')}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
-            {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.name ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.website ?? '-'}</td>
-                <td className="px-4 py-3 text-sm font-mono text-xs">{item.branchId ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.isActive ? 'Igen' : 'Nem'}</td>
-                <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => void openEdit(item)}
-                    className="form-button mr-2 p-1 text-blue-600"
-                    title="Szerkesztés"
-                    disabled={editingLoadingId === item.id}
-                  >
-                    <Edit2 className={`h-4 w-4 ${editingLoadingId === item.id ? 'animate-pulse' : ''}`} />
-                  </button>
-                  <button onClick={() => handleDelete(item.id)} className="form-button p-1 text-red-600" title="Törlés">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="text-sm text-gray-500">
-        {t('audit.osszesen')}{filtered.length} / {items.length}
-      </div>
+          <div className="text-sm text-gray-500">
+            {t('audit.osszesen')}
+            {filtered.length} / {items.length}
+          </div>
         </>
       )}
     </div>

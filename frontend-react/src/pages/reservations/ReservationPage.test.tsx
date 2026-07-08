@@ -88,7 +88,7 @@ describe('ReservationPage — backend kontraktus', () => {
     render(
       <MemoryRouter>
         <ReservationPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
     await waitFor(() => {
       expect(mocks.reservationList).toHaveBeenCalledWith({ branchId: 'b-uuid' })
@@ -105,7 +105,7 @@ describe('ReservationPage — backend kontraktus', () => {
     render(
       <MemoryRouter>
         <ReservationPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
     await waitFor(() => expect(mocks.reservationList).toHaveBeenCalled())
     const getUrls = mocks.get.mock.calls.map((c) => String(c[0]))
@@ -120,13 +120,15 @@ describe('ReservationPage — backend kontraktus', () => {
     render(
       <MemoryRouter>
         <ReservationPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
 
     expect(await screen.findByText('B000042')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Részletek' }))
 
     await waitFor(() => expect(mocks.reservationGetById).toHaveBeenCalledWith('42'))
-    expect(screen.getByTestId('reservation-detail-panel')).toHaveTextContent('Backend részlet megjegyzés')
+    expect(screen.getByTestId('reservation-detail-panel')).toHaveTextContent(
+      'Backend részlet megjegyzés',
+    )
   })
 })

@@ -52,7 +52,7 @@ exports.default = async function signWithAzureKeyVault(configuration) {
   if (process.env.CODE_SIGN_ENABLED !== '1') {
     throw new Error(
       `[sign-with-azure-keyvault] CODE_SIGN_ENABLED=${process.env.CODE_SIGN_ENABLED || '(unset)'}. ` +
-      `Production packaging requires CODE_SIGN_ENABLED=1 and Azure Key Vault AZURE_* env vars.`,
+        `Production packaging requires CODE_SIGN_ENABLED=1 and Azure Key Vault AZURE_* env vars.`,
     );
   }
 
@@ -70,7 +70,7 @@ exports.default = async function signWithAzureKeyVault(configuration) {
   if (missingVars.length > 0) {
     throw new Error(
       `[sign-with-azure-keyvault] CODE_SIGN_ENABLED=1 but required env vars missing: ${missingVars.join(', ')}. ` +
-      `Setup: see vault/operations/code-signing-setup-path.md section "Azure Key Vault Premium HSM setup".`,
+        `Setup: see vault/operations/code-signing-setup-path.md section "Azure Key Vault Premium HSM setup".`,
     );
   }
 
@@ -80,7 +80,7 @@ exports.default = async function signWithAzureKeyVault(configuration) {
   } catch (err) {
     throw new Error(
       `[sign-with-azure-keyvault] 'azuresigntool' nem található PATH-on. Telepítés: ` +
-      `\`dotnet tool install --global AzureSignTool\`. Error: ${err.message}`,
+        `\`dotnet tool install --global AzureSignTool\`. Error: ${err.message}`,
     );
   }
 
@@ -99,31 +99,41 @@ exports.default = async function signWithAzureKeyVault(configuration) {
   //    Kód-aláírás Authenticode formátumban — az -tr (RFC 3161) JOBB mint a régi -t (Authenticode-only).
   const signArgs = [
     'sign',
-    '-kvu', process.env.AZURE_KEY_VAULT_URI,
-    '-kvc', process.env.AZURE_KEY_VAULT_CERT_NAME,
-    '-kvi', process.env.AZURE_CLIENT_ID,
-    '-kvs', process.env.AZURE_CLIENT_SECRET,
-    '-kvt', process.env.AZURE_TENANT_ID,
-    '-tr', process.env.AZURE_TIMESTAMP_URL || 'http://timestamp.digicert.com',
-    '-td', 'sha256',
-    '-fd', 'sha256',
+    '-kvu',
+    process.env.AZURE_KEY_VAULT_URI,
+    '-kvc',
+    process.env.AZURE_KEY_VAULT_CERT_NAME,
+    '-kvi',
+    process.env.AZURE_CLIENT_ID,
+    '-kvs',
+    process.env.AZURE_CLIENT_SECRET,
+    '-kvt',
+    process.env.AZURE_TENANT_ID,
+    '-tr',
+    process.env.AZURE_TIMESTAMP_URL || 'http://timestamp.digicert.com',
+    '-td',
+    'sha256',
+    '-fd',
+    'sha256',
     '-v',
     filePath,
   ];
 
   // 5. Sign végrehajtás (env-ben NEM mutatjuk a secret-eket — execFileSync NEM print-eli)
-  console.log(`[sign-with-azure-keyvault] Running: azuresigntool sign -kvu ${process.env.AZURE_KEY_VAULT_URI} -kvc ${process.env.AZURE_KEY_VAULT_CERT_NAME} -tr ${process.env.AZURE_TIMESTAMP_URL || 'http://timestamp.digicert.com'} ... ${filePath}`);
+  console.log(
+    `[sign-with-azure-keyvault] Running: azuresigntool sign -kvu ${process.env.AZURE_KEY_VAULT_URI} -kvc ${process.env.AZURE_KEY_VAULT_CERT_NAME} -tr ${process.env.AZURE_TIMESTAMP_URL || 'http://timestamp.digicert.com'} ... ${filePath}`,
+  );
   try {
     execFileSync('azuresigntool', signArgs, { stdio: 'inherit' });
     console.log(`[sign-with-azure-keyvault] Signing COMPLETE for ${filePath}`);
   } catch (err) {
     throw new Error(
       `[sign-with-azure-keyvault] azuresigntool sign FAILED for ${filePath}. ` +
-      `Ellenőrizd:\n` +
-      `  - AZURE_CLIENT_ID Service Principal-nak van Key Vault hozzáférése (Sign + Get)\n` +
-      `  - Cert még nem járt le (Sectigo OV CS = max 460 nap policy 2026 Feb óta)\n` +
-      `  - Network: a runner el tudja érni az Azure Key Vault URI-t\n` +
-      `Error: ${err.message}`,
+        `Ellenőrizd:\n` +
+        `  - AZURE_CLIENT_ID Service Principal-nak van Key Vault hozzáférése (Sign + Get)\n` +
+        `  - Cert még nem járt le (Sectigo OV CS = max 460 nap policy 2026 Feb óta)\n` +
+        `  - Network: a runner el tudja érni az Azure Key Vault URI-t\n` +
+        `Error: ${err.message}`,
     );
   }
 };

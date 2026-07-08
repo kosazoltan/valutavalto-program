@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/exchange-rate-display') && method === 'GET') {
@@ -105,7 +113,11 @@ async function mockApis(page: Page) {
       })
     }
 
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [], data: [] }) })
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ content: [], data: [] }),
+    })
   })
 }
 
@@ -119,7 +131,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('/exchange-rate-display a backend current-rates objektumot előnézetként rendereli és string currencyIds-t ment', async ({ page }) => {
+test('/exchange-rate-display a backend current-rates objektumot előnézetként rendereli és string currencyIds-t ment', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1366, height: 768 })
   await mockApis(page)
   await login(page)
@@ -138,16 +152,17 @@ test('/exchange-rate-display a backend current-rates objektumot előnézetként 
   await expect(currencyInput).toHaveValue('1,2')
   await currencyInput.fill('1,3')
 
-  const updateRequest = page.waitForRequest(request =>
-    request.method() === 'POST'
-    && request.url().includes('/exchange-rate-display/display-1/update')
-    && request.postDataJSON()?.currencyIds === '[1,3]'
+  const updateRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      request.url().includes('/exchange-rate-display/display-1/update') &&
+      request.postDataJSON()?.currencyIds === '[1,3]',
   )
   await page.getByRole('button', { name: 'Mentés' }).click()
   await updateRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

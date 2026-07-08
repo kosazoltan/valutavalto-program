@@ -33,3 +33,23 @@ frontend_deployment/
 vault/
 EXCMD/
 security-reports/
+
+# --- Generalt teszt-artefaktumok (a teszt-futas irja, nem kezi forras) ---
+e2e-relay-results/
+test-results/
+
+# --- Archiv / generalt tudasbazis-dumpok (kezi YAML, reszben nem-Prettier-parse-olhato) ---
+docs/knowledge/memory/
+docs/knowledge/legacy-reverse-engineering/generated/
+
+# --- CI workflow YAML (magas blast-radius, nem teszt-validalt; kezi karbantartas) ---
+.github/
+
+# --- Agent / eszkoz-metaadat es generalt jelentesek (nem karbantartott forras) ---
+.agent/
+.antigravity/
+.claude/
+.mcp.json
+.agentic-qa-kit.json
+e2e-relay-final-report.json
+legacy-transfer/manifest.json

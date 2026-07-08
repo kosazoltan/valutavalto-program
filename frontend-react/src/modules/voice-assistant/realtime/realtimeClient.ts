@@ -48,11 +48,15 @@ const DEFAULT_SDP_TIMEOUT_MS = 15_000
  * függő, akciókra ösztönző üzenetet adunk.
  */
 const VOICE_ERROR_MESSAGES: Record<string, string> = {
-  VOICE_ASSISTANT_DISABLED: 'A hangsegéd jelenleg nincs bekapcsolva. Szólj a rendszergazdának (VOICE_OPENAI_ENABLED=true).',
-  VOICE_ASSISTANT_MISCONFIGURED: 'A hangsegéd backend hibás konfigurációval rendelkezik (hiányzó OPENAI_API_KEY).',
+  VOICE_ASSISTANT_DISABLED:
+    'A hangsegéd jelenleg nincs bekapcsolva. Szólj a rendszergazdának (VOICE_OPENAI_ENABLED=true).',
+  VOICE_ASSISTANT_MISCONFIGURED:
+    'A hangsegéd backend hibás konfigurációval rendelkezik (hiányzó OPENAI_API_KEY).',
   VOICE_ASSISTANT_RATE_LIMIT: 'Túl sok hangsegéd-kérés rövid idő alatt. Próbáld újra később.',
-  VOICE_ASSISTANT_UPSTREAM_ERROR: 'Az OpenAI Realtime API jelenleg nem elérhető. Próbáld újra perceken belül.',
-  VOICE_ASSISTANT_UNAUTHORIZED: 'A hangsegéd backend API-kulcsa érvénytelen. Szólj a rendszergazdának.',
+  VOICE_ASSISTANT_UPSTREAM_ERROR:
+    'Az OpenAI Realtime API jelenleg nem elérhető. Próbáld újra perceken belül.',
+  VOICE_ASSISTANT_UNAUTHORIZED:
+    'A hangsegéd backend API-kulcsa érvénytelen. Szólj a rendszergazdának.',
   VOICE_ASSISTANT_API_ERROR: 'Az OpenAI nem adott vissza érvényes hangsegéd-választ. Próbáld újra.',
 }
 
@@ -68,23 +72,26 @@ export class VoiceTokenError extends Error {
 }
 
 export async function requestEphemeralToken(
-  mode: 'install' | 'test' | 'support' | 'unified'
+  mode: 'install' | 'test' | 'support' | 'unified',
 ): Promise<EphemeralTokenResponse> {
   try {
-    const { data } = await api.post<EphemeralTokenResponse>(
-      '/voice/token',
-      { mode }
-    )
+    const { data } = await api.post<EphemeralTokenResponse>('/voice/token', { mode })
     return data
   } catch (err) {
     // Axios error: probald a backend ErrorResponse.error / .message-bol kinyerni
     // a felhasznalo-barat magyar uzenetet.
-    const anyErr = err as { response?: { status?: number; data?: { error?: string; message?: string } }; message?: string }
+    const anyErr = err as {
+      response?: { status?: number; data?: { error?: string; message?: string } }
+      message?: string
+    }
     const status = anyErr?.response?.status ?? null
     const code = anyErr?.response?.data?.error ?? ''
-    const friendly = (code && VOICE_ERROR_MESSAGES[code])
-      || anyErr?.response?.data?.message
-      || (status ? `A hangsegéd backend hibát adott (HTTP ${status}).` : (anyErr?.message ?? 'Ismeretlen hangsegéd-hiba.'))
+    const friendly =
+      (code && VOICE_ERROR_MESSAGES[code]) ||
+      anyErr?.response?.data?.message ||
+      (status
+        ? `A hangsegéd backend hibát adott (HTTP ${status}).`
+        : (anyErr?.message ?? 'Ismeretlen hangsegéd-hiba.'))
     throw new VoiceTokenError(code || 'UNKNOWN', friendly, status)
   }
 }
@@ -99,23 +106,29 @@ export interface OpenSessionOptions {
 function cleanupPartial(
   micStream: MediaStream | null,
   pc: RTCPeerConnection | null,
-  remoteAudio: HTMLAudioElement | null
+  remoteAudio: HTMLAudioElement | null,
 ): void {
   try {
     micStream?.getTracks().forEach((t) => t.stop())
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   try {
     pc?.close()
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   try {
     remoteAudio?.remove()
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 export async function openRealtimeSession(
   mode: 'install' | 'test' | 'support' | 'unified',
   onEvent: (event: unknown) => void,
-  options: OpenSessionOptions = {}
+  options: OpenSessionOptions = {},
 ): Promise<RealtimeSession> {
   const { signal, sdpTimeoutMs = DEFAULT_SDP_TIMEOUT_MS } = options
 
@@ -201,7 +214,11 @@ export async function openRealtimeSession(
       micStream: finalMic,
       remoteAudio: finalAudio,
       close: () => {
-        try { dc.close() } catch { /* ignore */ }
+        try {
+          dc.close()
+        } catch {
+          /* ignore */
+        }
         finalMic.getTracks().forEach((t) => t.stop())
         finalPc.close()
         finalAudio.remove()

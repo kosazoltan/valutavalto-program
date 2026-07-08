@@ -30,10 +30,23 @@ interface AuthState {
   roles: string[]
   roleSelectionRequired: boolean
   centralModules: string[] | null
-  login: (worker: Worker, token: string, tokenType: string, expiresAt: string,
-          activeRole?: string | null, permissions?: string[], roles?: string[],
-          roleSelectionRequired?: boolean, centralModules?: string[] | null) => void
-  selectRole: (token: string, activeRole: string, permissions: string[], centralModules?: string[] | null) => void
+  login: (
+    worker: Worker,
+    token: string,
+    tokenType: string,
+    expiresAt: string,
+    activeRole?: string | null,
+    permissions?: string[],
+    roles?: string[],
+    roleSelectionRequired?: boolean,
+    centralModules?: string[] | null,
+  ) => void
+  selectRole: (
+    token: string,
+    activeRole: string,
+    permissions: string[],
+    centralModules?: string[] | null,
+  ) => void
   logout: () => void
   hasRole: (role: string) => boolean
   hasCanonicalRole: (canonicalRoles: string | string[]) => boolean
@@ -57,9 +70,17 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   roleSelectionRequired: false,
   centralModules: null,
 
-  login: (worker: Worker, token: string, tokenType: string, expiresAt: string,
-          activeRole?: string | null, permissions?: string[], roles?: string[],
-          roleSelectionRequired?: boolean, centralModules?: string[] | null) => {
+  login: (
+    worker: Worker,
+    token: string,
+    tokenType: string,
+    expiresAt: string,
+    activeRole?: string | null,
+    permissions?: string[],
+    roles?: string[],
+    roleSelectionRequired?: boolean,
+    centralModules?: string[] | null,
+  ) => {
     set({
       worker,
       // 2026-05-01 fix: a `user` field legacy compat — eddig SOSE volt set,
@@ -81,7 +102,12 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     void persistToken(token)
   },
 
-  selectRole: (token: string, activeRole: string, permissions: string[], centralModules?: string[] | null) => {
+  selectRole: (
+    token: string,
+    activeRole: string,
+    permissions: string[],
+    centralModules?: string[] | null,
+  ) => {
     set({
       token,
       activeRole,
@@ -150,8 +176,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     if (effectiveRole?.trim().toUpperCase() === 'ADMIN') return true
 
     const list = new Set(
-      (Array.isArray(canonicalRoles) ? canonicalRoles : [canonicalRoles])
-        .map((role) => canonicalizeRoleForAppMode(role)),
+      (Array.isArray(canonicalRoles) ? canonicalRoles : [canonicalRoles]).map((role) =>
+        canonicalizeRoleForAppMode(role),
+      ),
     )
     const matchesRequestedRole = (role: string | null | undefined): boolean => {
       const canonical = canonicalizeRoleForAppMode(role)

@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { FileCheck2, Search, RefreshCw, AlertTriangle, Printer, Eye, PackageCheck, Truck, CheckCircle2, Plus } from 'lucide-react'
+import {
+  FileCheck2,
+  Search,
+  RefreshCw,
+  AlertTriangle,
+  Printer,
+  Eye,
+  PackageCheck,
+  Truck,
+  CheckCircle2,
+  Plus,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { transferDocumentApi, type TransferDocument } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
@@ -46,7 +57,11 @@ export default function TransferDocumentPage() {
     try {
       setLoading(true)
       setError(null)
-      setItems(safeArray<TransferDocument>(await transferDocumentApi.list({ status: statusFilter || undefined })))
+      setItems(
+        safeArray<TransferDocument>(
+          await transferDocumentApi.list({ status: statusFilter || undefined }),
+        ),
+      )
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('TransferDocumentPage', 'Betöltési hiba:', err)
@@ -60,13 +75,15 @@ export default function TransferDocumentPage() {
     void loadData()
   }, [loadData])
 
-  const filtered = useMemo(() => items.filter(item => {
-    if (!searchTerm) return true
-    const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
-  }), [items, searchTerm])
+  const filtered = useMemo(
+    () =>
+      items.filter((item) => {
+        if (!searchTerm) return true
+        const term = searchTerm.toLowerCase()
+        return Object.values(item).some((v) => v != null && String(v).toLowerCase().includes(term))
+      }),
+    [items, searchTerm],
+  )
 
   const openDetails = async (id: string | number) => {
     try {
@@ -83,7 +100,9 @@ export default function TransferDocumentPage() {
   }
 
   const replaceItem = (updated: TransferDocument) => {
-    setItems((current) => current.map((item) => String(item.id) === String(updated.id) ? updated : item))
+    setItems((current) =>
+      current.map((item) => (String(item.id) === String(updated.id) ? updated : item)),
+    )
     setSelectedItem(updated)
   }
 
@@ -186,7 +205,11 @@ export default function TransferDocumentPage() {
           <button onClick={() => window.print()} className="form-button" title={t('common.print')}>
             <Printer className="h-4 w-4" /> {t('common.print')}
           </button>
-          <button onClick={() => void loadData()} className="form-button p-2" title={t('common.refresh')}>
+          <button
+            onClick={() => void loadData()}
+            className="form-button p-2"
+            title={t('common.refresh')}
+          >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -199,11 +222,15 @@ export default function TransferDocumentPage() {
             type="text"
             placeholder={t('common.searchPlaceholder')}
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="form-input w-full pl-10"
           />
         </div>
-        <select className="form-input" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+        <select
+          className="form-input"
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+        >
           <option value="">{t('common.all')}</option>
           <option value="PENDING">PENDING</option>
           <option value="PICKED_UP">PICKED_UP</option>
@@ -225,21 +252,79 @@ export default function TransferDocumentPage() {
           {t('transferReceipts.newDocument')}
         </h2>
         <div className="grid gap-3 md:grid-cols-4">
-          <input className="form-input" data-testid="td-currency" value={form.currencyCode} onChange={(event) => setForm({ ...form, currencyCode: event.target.value })} placeholder={t('transferReceipts.currencyCode')} />
-          <input className="form-input" data-testid="td-quantity" type="number" min="1" value={form.quantity} onChange={(event) => setForm({ ...form, quantity: event.target.value })} placeholder={t('transferReceipts.quantity')} />
-          <input className="form-input" data-testid="td-source-type" value={form.sourceType} onChange={(event) => setForm({ ...form, sourceType: event.target.value })} placeholder={t('transferReceipts.sourceType')} />
-          <input className="form-input" data-testid="td-source-id" value={form.sourceId} onChange={(event) => setForm({ ...form, sourceId: event.target.value })} placeholder={t('transferReceipts.sourceId')} />
-          <input className="form-input" data-testid="td-destination-type" value={form.destinationType} onChange={(event) => setForm({ ...form, destinationType: event.target.value })} placeholder={t('transferReceipts.destinationType')} />
-          <input className="form-input" data-testid="td-destination-id" value={form.destinationId} onChange={(event) => setForm({ ...form, destinationId: event.target.value })} placeholder={t('transferReceipts.destinationId')} />
-          <input className="form-input" data-testid="td-courier-pin" value={form.courierPin} onChange={(event) => setForm({ ...form, courierPin: event.target.value })} placeholder={t('transferReceipts.courierPin')} />
-          <input className="form-input" data-testid="td-notes" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder={t('common.note')} />
+          <input
+            className="form-input"
+            data-testid="td-currency"
+            value={form.currencyCode}
+            onChange={(event) => setForm({ ...form, currencyCode: event.target.value })}
+            placeholder={t('transferReceipts.currencyCode')}
+          />
+          <input
+            className="form-input"
+            data-testid="td-quantity"
+            type="number"
+            min="1"
+            value={form.quantity}
+            onChange={(event) => setForm({ ...form, quantity: event.target.value })}
+            placeholder={t('transferReceipts.quantity')}
+          />
+          <input
+            className="form-input"
+            data-testid="td-source-type"
+            value={form.sourceType}
+            onChange={(event) => setForm({ ...form, sourceType: event.target.value })}
+            placeholder={t('transferReceipts.sourceType')}
+          />
+          <input
+            className="form-input"
+            data-testid="td-source-id"
+            value={form.sourceId}
+            onChange={(event) => setForm({ ...form, sourceId: event.target.value })}
+            placeholder={t('transferReceipts.sourceId')}
+          />
+          <input
+            className="form-input"
+            data-testid="td-destination-type"
+            value={form.destinationType}
+            onChange={(event) => setForm({ ...form, destinationType: event.target.value })}
+            placeholder={t('transferReceipts.destinationType')}
+          />
+          <input
+            className="form-input"
+            data-testid="td-destination-id"
+            value={form.destinationId}
+            onChange={(event) => setForm({ ...form, destinationId: event.target.value })}
+            placeholder={t('transferReceipts.destinationId')}
+          />
+          <input
+            className="form-input"
+            data-testid="td-courier-pin"
+            value={form.courierPin}
+            onChange={(event) => setForm({ ...form, courierPin: event.target.value })}
+            placeholder={t('transferReceipts.courierPin')}
+          />
+          <input
+            className="form-input"
+            data-testid="td-notes"
+            value={form.notes}
+            onChange={(event) => setForm({ ...form, notes: event.target.value })}
+            placeholder={t('common.note')}
+          />
         </div>
         <button
           className="form-button-primary mt-3"
           data-testid="td-create"
           type="button"
           onClick={() => void createDocument()}
-          disabled={saving || !form.currencyCode || !form.quantity || !form.sourceType || !form.sourceId || !form.destinationType || !form.destinationId}
+          disabled={
+            saving ||
+            !form.currencyCode ||
+            !form.quantity ||
+            !form.sourceType ||
+            !form.sourceId ||
+            !form.destinationType ||
+            !form.destinationId
+          }
         >
           <Plus size={16} />
           {t('common.create')}
@@ -247,15 +332,22 @@ export default function TransferDocumentPage() {
       </div>
 
       {selectedItem && (
-        <div className="rounded border border-blue-200 bg-blue-50 p-3" data-testid="td-detail-panel">
+        <div
+          className="rounded border border-blue-200 bg-blue-50 p-3"
+          data-testid="td-detail-panel"
+        >
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
-              <h2 className="font-semibold text-blue-950">{selectedItem.documentNumber ?? selectedItem.id}</h2>
+              <h2 className="font-semibold text-blue-950">
+                {selectedItem.documentNumber ?? selectedItem.id}
+              </h2>
               <p className="text-sm text-blue-900">
-                {selectedItem.sourceType}:{selectedItem.sourceId} → {selectedItem.destinationType}:{selectedItem.destinationId}
+                {selectedItem.sourceType}:{selectedItem.sourceId} → {selectedItem.destinationType}:
+                {selectedItem.destinationId}
               </p>
               <p className="mt-1 text-sm text-blue-900">
-                {selectedItem.quantity ?? '-'} {selectedItem.currencyCode ?? ''} · {selectedItem.status ?? '-'}
+                {selectedItem.quantity ?? '-'} {selectedItem.currencyCode ?? ''} ·{' '}
+                {selectedItem.status ?? '-'}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -268,27 +360,44 @@ export default function TransferDocumentPage() {
                     onChange={(event) => setCourierPin(event.target.value)}
                     placeholder={t('transferReceipts.courierPin')}
                   />
-                  <button className="form-button" data-testid="td-pickup" onClick={() => void pickup(selectedItem)} disabled={saving}>
+                  <button
+                    className="form-button"
+                    data-testid="td-pickup"
+                    onClick={() => void pickup(selectedItem)}
+                    disabled={saving}
+                  >
                     <PackageCheck size={16} />
                     {t('transferReceipts.pickup')}
                   </button>
                 </>
               )}
               {selectedItem.status === 'PICKED_UP' && (
-                <button className="form-button" data-testid="td-deliver" onClick={() => void deliver(selectedItem)} disabled={saving}>
+                <button
+                  className="form-button"
+                  data-testid="td-deliver"
+                  onClick={() => void deliver(selectedItem)}
+                  disabled={saving}
+                >
                   <Truck size={16} />
                   {t('transferReceipts.deliver')}
                 </button>
               )}
               {selectedItem.status === 'DELIVERED' && (
-                <button className="form-button" data-testid="td-confirm" onClick={() => void confirmReceipt(selectedItem)} disabled={saving}>
+                <button
+                  className="form-button"
+                  data-testid="td-confirm"
+                  onClick={() => void confirmReceipt(selectedItem)}
+                  disabled={saving}
+                >
                   <CheckCircle2 size={16} />
                   {t('transferReceipts.confirm')}
                 </button>
               )}
             </div>
           </div>
-          {selectedItem.notes && <div className="mt-3 rounded bg-white px-3 py-2 text-sm">{selectedItem.notes}</div>}
+          {selectedItem.notes && (
+            <div className="mt-3 rounded bg-white px-3 py-2 text-sm">{selectedItem.notes}</div>
+          )}
         </div>
       )}
 
@@ -296,35 +405,73 @@ export default function TransferDocumentPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('transferReceipts.documentNumber')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('transferReceipts.fromBranch')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('transferReceipts.toBranch')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('transferReceipts.amount')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('transferReceipts.status')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('transferReceipts.date')}</th>
-              <th className="no-print px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.actions')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('transferReceipts.documentNumber')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('transferReceipts.fromBranch')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('transferReceipts.toBranch')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('transferReceipts.amount')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('transferReceipts.status')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('transferReceipts.date')}
+              </th>
+              <th className="no-print px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.actions')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.loading')}</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.documentNumber ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{formatLocation(item.sourceType, item.sourceId)}</td>
-                <td className="px-4 py-3 text-sm">{formatLocation(item.destinationType, item.destinationId)}</td>
-                <td className="px-4 py-3 text-sm text-right font-mono">{formatAmount(item.quantity)} {item.currencyCode ?? ''}</td>
-                <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.createdAt ? new Date(item.createdAt).toLocaleString('hu-HU') : '-'}</td>
-                <td className="no-print px-4 py-3 text-sm">
-                  <button className="toolbar-button" data-testid={`td-detail-${item.id}`} title={t('common.details')} onClick={() => void openDetails(item.id)} disabled={saving}>
-                    <Eye size={14} />
-                  </button>
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('common.loading')}
                 </td>
               </tr>
-            ))}
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('common.noData')}
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm">{item.documentNumber ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {formatLocation(item.sourceType, item.sourceId)}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {formatLocation(item.destinationType, item.destinationId)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right font-mono">
+                    {formatAmount(item.quantity)} {item.currencyCode ?? ''}
+                  </td>
+                  <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.createdAt ? new Date(item.createdAt).toLocaleString('hu-HU') : '-'}
+                  </td>
+                  <td className="no-print px-4 py-3 text-sm">
+                    <button
+                      className="toolbar-button"
+                      data-testid={`td-detail-${item.id}`}
+                      title={t('common.details')}
+                      onClick={() => void openDetails(item.id)}
+                      disabled={saving}
+                    >
+                      <Eye size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

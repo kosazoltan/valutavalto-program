@@ -1,6 +1,17 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, Search, Plus, Edit, Eye, AlertCircle, Loader2, Star, Trophy, UserCheck } from 'lucide-react'
+import {
+  Users,
+  Search,
+  Plus,
+  Edit,
+  Eye,
+  AlertCircle,
+  Loader2,
+  Star,
+  Trophy,
+  UserCheck,
+} from 'lucide-react'
 import { customerApi, Customer, CustomerRanking } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
@@ -18,7 +29,11 @@ export default function CustomerListPage() {
   const [customerCodeSearch, setCustomerCodeSearch] = useState('')
   const [pendingOnly, setPendingOnly] = useState(false)
   const [customers, setCustomers] = useState<Customer[]>([])
-  const [highlights, setHighlights] = useState<CustomerHighlights>({ vip: [], frequent: [], top: [] })
+  const [highlights, setHighlights] = useState<CustomerHighlights>({
+    vip: [],
+    frequent: [],
+    top: [],
+  })
   const [highlightsLoading, setHighlightsLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -43,7 +58,12 @@ export default function CustomerListPage() {
   }, [pendingOnly, search])
 
   useEffect(() => {
-    const timer = setTimeout(() => { void loadCustomers() }, search ? 400 : 0)
+    const timer = setTimeout(
+      () => {
+        void loadCustomers()
+      },
+      search ? 400 : 0,
+    )
     return () => clearTimeout(timer)
   }, [loadCustomers, search])
 
@@ -150,7 +170,11 @@ export default function CustomerListPage() {
               className="form-input flex-1"
               placeholder="Keresés név vagy okmányszám alapján..."
             />
-            <button onClick={() => void loadCustomers()} className="form-button" aria-label={t('common.search')}>
+            <button
+              onClick={() => void loadCustomers()}
+              className="form-button"
+              aria-label={t('common.search')}
+            >
               <Search size={16} />
             </button>
             <button
@@ -170,7 +194,11 @@ export default function CustomerListPage() {
               className="form-input flex-1"
               placeholder={t('customers.customerCodeSearchPlaceholder')}
             />
-            <button onClick={() => void handleCustomerCodeSearch()} className="form-button" aria-label={t('customers.customerCodeSearch')}>
+            <button
+              onClick={() => void handleCustomerCodeSearch()}
+              className="form-button"
+              aria-label={t('customers.customerCodeSearch')}
+            >
               <Search size={16} />
             </button>
           </div>
@@ -186,7 +214,10 @@ export default function CustomerListPage() {
           {pendingOnly && (
             <button
               type="button"
-              onClick={() => { setPendingOnly(false); void loadCustomers() }}
+              onClick={() => {
+                setPendingOnly(false)
+                void loadCustomers()
+              }}
               className="form-button"
             >
               Összes aktív
@@ -213,7 +244,10 @@ export default function CustomerListPage() {
             <Users size={16} />
             {t('customers.frequentCustomers')}
           </div>
-          <div className="mt-2 text-2xl font-bold text-gray-900" data-testid="customer-frequent-count">
+          <div
+            className="mt-2 text-2xl font-bold text-gray-900"
+            data-testid="customer-frequent-count"
+          >
             {highlightsLoading ? '-' : highlights.frequent.length}
           </div>
           <div className="text-xs text-gray-600 truncate">
@@ -275,9 +309,15 @@ export default function CustomerListPage() {
                 <tr key={c.id}>
                   <td className="font-semibold">
                     {c.name}
-                    {c.isVip && <span className="ml-1 text-xs bg-yellow-100 text-yellow-700 px-1 rounded">VIP</span>}
+                    {c.isVip && (
+                      <span className="ml-1 text-xs bg-yellow-100 text-yellow-700 px-1 rounded">
+                        VIP
+                      </span>
+                    )}
                     {c.reviewStatus === 'PENDING_REVIEW' && (
-                      <span className="ml-1 text-xs bg-amber-100 text-amber-800 px-1 rounded">Átnézésre vár</span>
+                      <span className="ml-1 text-xs bg-amber-100 text-amber-800 px-1 rounded">
+                        Átnézésre vár
+                      </span>
                     )}
                   </td>
                   <td className="font-mono text-sm">{c.customerCode || '-'}</td>
@@ -287,18 +327,28 @@ export default function CustomerListPage() {
                   <td className="font-mono text-sm">{c.documentNumber || '-'}</td>
                   <td className="font-mono text-sm">{c.phone || '-'}</td>
                   <td>
-                    <span className={`px-2 py-1 text-xs rounded ${
-                      c.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                    }`}>
+                    <span
+                      className={`px-2 py-1 text-xs rounded ${
+                        c.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
                       {c.active ? 'Aktív' : 'Inaktív'}
                     </span>
                   </td>
                   <td>
                     <div className="flex gap-1">
-                      <Link to={`/customers/${c.id}`} className="toolbar-button" title="Megtekintés">
+                      <Link
+                        to={`/customers/${c.id}`}
+                        className="toolbar-button"
+                        title="Megtekintés"
+                      >
                         <Eye size={14} />
                       </Link>
-                      <Link to={`/customers/${c.id}`} className="toolbar-button" title="Szerkesztés">
+                      <Link
+                        to={`/customers/${c.id}`}
+                        className="toolbar-button"
+                        title="Szerkesztés"
+                      >
                         <Edit size={14} />
                       </Link>
                       {c.active && (
@@ -330,9 +380,10 @@ export default function CustomerListPage() {
 
       {/* Footer */}
       <div className="form-panel">
-        <span className="text-sm">{customers.length} {t('customers.ugyfel')}</span>
+        <span className="text-sm">
+          {customers.length} {t('customers.ugyfel')}
+        </span>
       </div>
     </div>
   )
 }
-

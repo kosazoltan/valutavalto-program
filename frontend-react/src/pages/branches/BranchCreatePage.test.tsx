@@ -22,13 +22,19 @@ vi.mock('../../services/api/index', () => ({
 }))
 
 function renderPage() {
-  return render(<MemoryRouter><BranchCreatePage /></MemoryRouter>)
+  return render(
+    <MemoryRouter>
+      <BranchCreatePage />
+    </MemoryRouter>,
+  )
 }
 
 async function fillRequired() {
   await waitFor(() => expect(screen.getByText('3. Területi besorolás')).toBeInTheDocument())
   fireEvent.change(screen.getByPlaceholderText('pl. BR099'), { target: { value: 'BR099' } })
-  fireEvent.change(screen.getByPlaceholderText(/Tisza Lajos krt/), { target: { value: '6720 Szeged, Fő tér 1.' } })
+  fireEvent.change(screen.getByPlaceholderText(/Tisza Lajos krt/), {
+    target: { value: '6720 Szeged, Fő tér 1.' },
+  })
   fireEvent.change(screen.getByRole('combobox'), { target: { value: 'SZEGED' } })
 }
 
@@ -112,6 +118,11 @@ describe('BranchCreatePage — FK-021 Új iroda felrögzítése', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /Western Union/ }))
     fireEvent.click(screen.getByRole('button', { name: /Pénztár felrögzítése/ }))
     await waitFor(() => expect(mockCreate).toHaveBeenCalled())
-    expect(mockCreate.mock.calls[0]?.[0]).toMatchObject({ hasAfa: true, hasWu: true, hasMg: false, hasPos: false })
+    expect(mockCreate.mock.calls[0]?.[0]).toMatchObject({
+      hasAfa: true,
+      hasWu: true,
+      hasMg: false,
+      hasPos: false,
+    })
   })
 })

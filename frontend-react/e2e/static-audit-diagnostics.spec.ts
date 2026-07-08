@@ -29,7 +29,7 @@ async function mockDiagnosticsApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/static-audit', async route => {
+  await page.route('**/api/static-audit', async (route) => {
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -40,7 +40,7 @@ async function mockDiagnosticsApis(page: Page) {
     })
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -71,7 +71,11 @@ async function mockDiagnosticsApis(page: Page) {
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/diagnostics/audit/recent') && method === 'GET') {
@@ -177,7 +181,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('static audit admin panel mobil viewporton /api/static-audit endpointot hív', async ({ page }) => {
+test('static audit admin panel mobil viewporton /api/static-audit endpointot hív', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockDiagnosticsApis(page)
   await login(page)
@@ -190,8 +196,9 @@ test('static audit admin panel mobil viewporton /api/static-audit endpointot hí
   await expect(page.getByRole('heading', { name: 'Static audit' })).toBeVisible()
 
   await page.getByPlaceholder('Static audit admin token').fill('token-1')
-  const staticAuditRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/static-audit'
+  const staticAuditRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && new URL(request.url()).pathname === '/api/static-audit',
   )
   await page.getByRole('button', { name: 'Static audit futtatasa' }).click()
   await staticAuditRequest
@@ -202,16 +209,17 @@ test('static audit admin panel mobil viewporton /api/static-audit endpointot hí
 
   await page.getByPlaceholder('entityType').fill('Worker')
   await page.getByPlaceholder('entityId').fill('worker-1')
-  const entityChainRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/diagnostics/audit/entity/Worker/worker-1'
+  const entityChainRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/diagnostics/audit/entity/Worker/worker-1',
   )
   await page.getByRole('button', { name: 'Audit-lanc' }).click()
   await entityChainRequest
   await expect(page.getByTestId('entity-chain-results')).toContainText('ENTITY_UPDATED')
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

@@ -97,7 +97,11 @@ export default function SynchronizationPage() {
   })
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(false)
   const [selectedEntities, setSelectedEntities] = useState<string[]>([
-    'TRANSACTIONS', 'CUSTOMERS', 'RATES', 'DENOMINATIONS', 'BALANCES',
+    'TRANSACTIONS',
+    'CUSTOMERS',
+    'RATES',
+    'DENOMINATIONS',
+    'BALANCES',
   ])
 
   const ENTITY_TYPES = [
@@ -115,15 +119,17 @@ export default function SynchronizationPage() {
   const loadStatus = useCallback(async () => {
     try {
       setError(null)
-      const shouldSync = await synchronizationApi.shouldSync().catch(() => ({ shouldSync: false, pendingCount: 0 }))
-      setStatus(prev => ({
+      const shouldSync = await synchronizationApi
+        .shouldSync()
+        .catch(() => ({ shouldSync: false, pendingCount: 0 }))
+      setStatus((prev) => ({
         ...prev,
         pendingUpload: shouldSync.pendingCount || 0,
         isOnline: true,
       }))
     } catch (err) {
       logger.error('SynchronizationPage', 'Státusz betöltési hiba:', err)
-      setStatus(prev => ({ ...prev, isOnline: false }))
+      setStatus((prev) => ({ ...prev, isOnline: false }))
     }
   }, [])
 
@@ -148,10 +154,13 @@ export default function SynchronizationPage() {
       setBranchSyncError(null)
       const [statusResult, historyResult, ftpHistoryResult] = await Promise.all([
         api.get<BranchSyncStatus>(`/sync/status/${selectedBranchId}`),
-        api.get<{ content?: BranchSyncLog[] } | BranchSyncLog[]>(`/sync/history/${selectedBranchId}`, {
-          params: { page: 0, size: 5 },
-          _preservePaged: true,
-        } as Record<string, unknown>),
+        api.get<{ content?: BranchSyncLog[] } | BranchSyncLog[]>(
+          `/sync/history/${selectedBranchId}`,
+          {
+            params: { page: 0, size: 5 },
+            _preservePaged: true,
+          } as Record<string, unknown>,
+        ),
         api.get<FtpSyncLog[]>(`/ftp-sync/history/${selectedBranchId}`),
       ])
       setBranchSyncStatus(statusResult.data ?? null)
@@ -175,11 +184,24 @@ export default function SynchronizationPage() {
   const autoSyncRef = useRef<ReturnType<typeof setInterval> | null>(null)
   useEffect(() => {
     if (autoSyncEnabled && branchId && workerId && status.isOnline) {
-      autoSyncRef.current = setInterval(() => {
-        void synchronizationApi.synchronize(branchId, workerId).then(() => void loadStatus()).catch(() => { /* silent */ })
-      }, 5 * 60 * 1000)
+      autoSyncRef.current = setInterval(
+        () => {
+          void synchronizationApi
+            .synchronize(branchId, workerId)
+            .then(() => void loadStatus())
+            .catch(() => {
+              /* silent */
+            })
+        },
+        5 * 60 * 1000,
+      )
     }
-    return () => { if (autoSyncRef.current) { clearInterval(autoSyncRef.current); autoSyncRef.current = null } }
+    return () => {
+      if (autoSyncRef.current) {
+        clearInterval(autoSyncRef.current)
+        autoSyncRef.current = null
+      }
+    }
   }, [autoSyncEnabled, branchId, workerId, status.isOnline, loadStatus])
 
   const handleSync = async (direction: 'FULL' | 'UPLOAD' | 'DOWNLOAD') => {
@@ -216,11 +238,16 @@ export default function SynchronizationPage() {
     try {
       setDataCollecting(true)
       setDataCollectionError(null)
-      const response = await api.post<DataCollectionStatus>('/data-collection/collect', {
-        branchId: dataCollectionBranchId.trim(),
-        date: todayIso(),
-      }, { validateStatus: () => true })
-      if (response.status >= 400 && response.status !== 503) throw new Error(`HTTP ${response.status}`)
+      const response = await api.post<DataCollectionStatus>(
+        '/data-collection/collect',
+        {
+          branchId: dataCollectionBranchId.trim(),
+          date: todayIso(),
+        },
+        { validateStatus: () => true },
+      )
+      if (response.status >= 400 && response.status !== 503)
+        throw new Error(`HTTP ${response.status}`)
       setDataCollectionRows([response.data])
       toast.success('Adatgyűjtés elindítva', response.data.status)
       await loadBranchSyncDetails()
@@ -237,10 +264,15 @@ export default function SynchronizationPage() {
     try {
       setDataCollecting(true)
       setDataCollectionError(null)
-      const response = await api.post<DataCollectionStatus[]>('/data-collection/collect-all', {
-        date: todayIso(),
-      }, { validateStatus: () => true })
-      if (response.status >= 400 && response.status !== 503) throw new Error(`HTTP ${response.status}`)
+      const response = await api.post<DataCollectionStatus[]>(
+        '/data-collection/collect-all',
+        {
+          date: todayIso(),
+        },
+        { validateStatus: () => true },
+      )
+      if (response.status >= 400 && response.status !== 503)
+        throw new Error(`HTTP ${response.status}`)
       setDataCollectionRows(response.data ?? [])
       toast.success('Adatgyűjtés lefutott', `${response.data?.length ?? 0} iroda`)
       await loadBranchSyncDetails()
@@ -258,7 +290,10 @@ export default function SynchronizationPage() {
       setDataCollecting(true)
       setDataCollectionError(null)
       const response = await api.post<{ retriedCount: number }>('/data-collection/retry')
-      toast.success('Újrapróbálás kész', `${response.data.retriedCount} sikertelen gyűjtés újrapróbálva`)
+      toast.success(
+        'Újrapróbálás kész',
+        `${response.data.retriedCount} sikertelen gyűjtés újrapróbálva`,
+      )
       await loadDataCollectionStatus()
       await loadBranchSyncDetails()
     } catch (err) {
@@ -280,12 +315,26 @@ export default function SynchronizationPage() {
       setFtpActionLoading(kind)
       setDataCollectionError(null)
       const requestConfig = { validateStatus: () => true }
-      const response = kind === 'rates'
-        ? await api.post<{ success?: boolean; message?: string; fileName?: string }>(`/ftp-sync/rates/${selectedBranchId}`, null, requestConfig)
-        : kind === 'daily-report'
-          ? await api.post<{ success?: boolean; message?: string; fileName?: string }>(`/ftp-sync/daily-report/${selectedBranchId}`, null, requestConfig)
-          : await api.post<{ success?: boolean; message?: string; fileName?: string }>(`/ftp-sync/transactions/${selectedBranchId}`, null, requestConfig)
-      if (response.status >= 400 && response.status !== 503) throw new Error(`HTTP ${response.status}`)
+      const response =
+        kind === 'rates'
+          ? await api.post<{ success?: boolean; message?: string; fileName?: string }>(
+              `/ftp-sync/rates/${selectedBranchId}`,
+              null,
+              requestConfig,
+            )
+          : kind === 'daily-report'
+            ? await api.post<{ success?: boolean; message?: string; fileName?: string }>(
+                `/ftp-sync/daily-report/${selectedBranchId}`,
+                null,
+                requestConfig,
+              )
+            : await api.post<{ success?: boolean; message?: string; fileName?: string }>(
+                `/ftp-sync/transactions/${selectedBranchId}`,
+                null,
+                requestConfig,
+              )
+      if (response.status >= 400 && response.status !== 503)
+        throw new Error(`HTTP ${response.status}`)
       const label = response.data?.fileName || response.data?.message || kind
       toast.success('FTP szinkron elindítva', label)
       await loadBranchSyncDetails()
@@ -308,14 +357,24 @@ export default function SynchronizationPage() {
       setBranchSyncActionLoading(kind)
       setBranchSyncError(null)
       const requestConfig = { validateStatus: () => true }
-      const response = kind === 'rates'
-        ? await api.post<BranchSyncLog>(`/sync/rates/${selectedBranchId}`, null, requestConfig)
-        : kind === 'transactions'
-          ? await api.post<BranchSyncLog>(`/sync/transactions/${selectedBranchId}`, null, requestConfig)
-          : kind === 'inventory'
-            ? await api.post<BranchSyncLog>(`/sync/inventory/${selectedBranchId}`, null, requestConfig)
-            : await api.post<BranchSyncLog>(`/sync/full/${selectedBranchId}`, null, requestConfig)
-      if (response.status >= 400 && response.status !== 503) throw new Error(`HTTP ${response.status}`)
+      const response =
+        kind === 'rates'
+          ? await api.post<BranchSyncLog>(`/sync/rates/${selectedBranchId}`, null, requestConfig)
+          : kind === 'transactions'
+            ? await api.post<BranchSyncLog>(
+                `/sync/transactions/${selectedBranchId}`,
+                null,
+                requestConfig,
+              )
+            : kind === 'inventory'
+              ? await api.post<BranchSyncLog>(
+                  `/sync/inventory/${selectedBranchId}`,
+                  null,
+                  requestConfig,
+                )
+              : await api.post<BranchSyncLog>(`/sync/full/${selectedBranchId}`, null, requestConfig)
+      if (response.status >= 400 && response.status !== 503)
+        throw new Error(`HTTP ${response.status}`)
       const label = response.data?.status || kind
       toast.success('Branch szinkron lefutott', label)
       await loadBranchSyncDetails()
@@ -329,24 +388,37 @@ export default function SynchronizationPage() {
   }
 
   const toggleEntity = (entity: string) => {
-    setSelectedEntities(prev =>
-      prev.includes(entity) ? prev.filter(e => e !== entity) : [...prev, entity]
+    setSelectedEntities((prev) =>
+      prev.includes(entity) ? prev.filter((e) => e !== entity) : [...prev, entity],
     )
   }
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><RefreshCw />{t('sync.szinkronizacio')}</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <RefreshCw />
+          {t('sync.szinkronizacio')}
+        </h1>
         <div className="flex items-center gap-2">
           <span className={`badge ${status.isOnline ? 'badge-green' : 'badge-red'}`}>
-            {status.isOnline ? <><Server size={10} className="inline" /> {t('common.online')}</> : <><XCircle size={10} className="inline" /> {t('foertektar.offline')}</>}
+            {status.isOnline ? (
+              <>
+                <Server size={10} className="inline" /> {t('common.online')}
+              </>
+            ) : (
+              <>
+                <XCircle size={10} className="inline" /> {t('foertektar.offline')}
+              </>
+            )}
           </span>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
       )}
 
       {/* Status cards */}
@@ -363,7 +435,9 @@ export default function SynchronizationPage() {
         </div>
         <div className="form-panel text-center">
           <Clock size={20} className="mx-auto text-gray-500 mb-1" />
-          <div className="text-sm font-medium">{status.lastSync ? new Date(status.lastSync).toLocaleString('hu-HU') : 'Nincs adat'}</div>
+          <div className="text-sm font-medium">
+            {status.lastSync ? new Date(status.lastSync).toLocaleString('hu-HU') : 'Nincs adat'}
+          </div>
           <div className="text-sm text-gray-500">{t('sync.utolsoSzinkron')}</div>
         </div>
       </div>
@@ -375,9 +449,17 @@ export default function SynchronizationPage() {
         <div>
           <label className="form-label">{t('sync.entitasokKivalasztasa')}</label>
           <div className="flex flex-wrap gap-2">
-            {ENTITY_TYPES.map(et => (
-              <label key={et.value} className={`px-3 py-1 rounded-full text-sm cursor-pointer border ${selectedEntities.includes(et.value) ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
-                <input type="checkbox" className="hidden" checked={selectedEntities.includes(et.value)} onChange={() => toggleEntity(et.value)} />
+            {ENTITY_TYPES.map((et) => (
+              <label
+                key={et.value}
+                className={`px-3 py-1 rounded-full text-sm cursor-pointer border ${selectedEntities.includes(et.value) ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-500'}`}
+              >
+                <input
+                  type="checkbox"
+                  className="hidden"
+                  checked={selectedEntities.includes(et.value)}
+                  onChange={() => toggleEntity(et.value)}
+                />
                 {et.label}
               </label>
             ))}
@@ -385,20 +467,39 @@ export default function SynchronizationPage() {
         </div>
 
         <div className="flex gap-2">
-          <button onClick={() => void handleSync('FULL')} disabled={syncing || !status.isOnline} className="form-button-primary">
-            <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} /> {syncing ? 'Szinkronizálás...' : 'Teljes szinkron'}
+          <button
+            onClick={() => void handleSync('FULL')}
+            disabled={syncing || !status.isOnline}
+            className="form-button-primary"
+          >
+            <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />{' '}
+            {syncing ? 'Szinkronizálás...' : 'Teljes szinkron'}
           </button>
-          <button onClick={() => void handleSync('UPLOAD')} disabled={syncing || !status.isOnline} className="form-button">
-            <Upload size={16} />{t('sync.csakFeltoltes')}
+          <button
+            onClick={() => void handleSync('UPLOAD')}
+            disabled={syncing || !status.isOnline}
+            className="form-button"
+          >
+            <Upload size={16} />
+            {t('sync.csakFeltoltes')}
           </button>
-          <button onClick={() => void handleSync('DOWNLOAD')} disabled={syncing || !status.isOnline} className="form-button">
-            <Download size={16} />{t('sync.csakLetoltes')}
+          <button
+            onClick={() => void handleSync('DOWNLOAD')}
+            disabled={syncing || !status.isOnline}
+            className="form-button"
+          >
+            <Download size={16} />
+            {t('sync.csakLetoltes')}
           </button>
         </div>
 
         <div className="flex items-center gap-2">
           <label className="flex items-center gap-1 text-sm">
-            <input type="checkbox" checked={autoSyncEnabled} onChange={e => setAutoSyncEnabled(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={autoSyncEnabled}
+              onChange={(e) => setAutoSyncEnabled(e.target.checked)}
+            />
             {t('sync.automatikusSzinkron5Percenkent')}
           </label>
         </div>
@@ -436,16 +537,36 @@ export default function SynchronizationPage() {
                 data-testid="sync-branch-id"
               />
             </label>
-            <button type="button" onClick={() => void loadBranchSyncDetails()} disabled={branchSyncLoading || !dataCollectionBranchId.trim()} className="form-button">
+            <button
+              type="button"
+              onClick={() => void loadBranchSyncDetails()}
+              disabled={branchSyncLoading || !dataCollectionBranchId.trim()}
+              className="form-button"
+            >
               Sync státusz
             </button>
-            <button type="button" onClick={() => void handleCollectBranch()} disabled={dataCollecting} className="form-button">
+            <button
+              type="button"
+              onClick={() => void handleCollectBranch()}
+              disabled={dataCollecting}
+              className="form-button"
+            >
               Iroda gyűjtése
             </button>
-            <button type="button" onClick={() => void handleCollectAll()} disabled={dataCollecting} className="form-button-primary">
+            <button
+              type="button"
+              onClick={() => void handleCollectAll()}
+              disabled={dataCollecting}
+              className="form-button-primary"
+            >
               Összes iroda gyűjtése
             </button>
-            <button type="button" onClick={() => void handleRetryFailed()} disabled={dataCollecting} className="form-button">
+            <button
+              type="button"
+              onClick={() => void handleRetryFailed()}
+              disabled={dataCollecting}
+              className="form-button"
+            >
               Sikertelenek újra
             </button>
           </div>
@@ -481,7 +602,10 @@ export default function SynchronizationPage() {
               </button>
             </div>
           </div>
-          <div className="rounded border border-gray-200 bg-gray-50 p-3" data-testid="branch-sync-panel">
+          <div
+            className="rounded border border-gray-200 bg-gray-50 p-3"
+            data-testid="branch-sync-panel"
+          >
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-semibold">Branch szinkron állapot</h3>
               {branchSyncLoading && <span className="text-xs text-gray-500">Betöltés...</span>}
@@ -499,11 +623,19 @@ export default function SynchronizationPage() {
                 </div>
                 <div className="rounded bg-white px-2 py-1">
                   <div className="text-[10px] uppercase text-gray-500">Utolsó sikeres sync</div>
-                  <div>{formatSyncDate(branchSyncStatus.lastSuccessfulSyncAt ?? branchSyncStatus.lastSyncAt)}</div>
+                  <div>
+                    {formatSyncDate(
+                      branchSyncStatus.lastSuccessfulSyncAt ?? branchSyncStatus.lastSyncAt,
+                    )}
+                  </div>
                 </div>
                 <div className="rounded bg-white px-2 py-1">
                   <div className="text-[10px] uppercase text-gray-500">Függő rekord</div>
-                  <div className="font-mono">{branchSyncStatus.pendingCount ?? ((branchSyncStatus.pendingUpload ?? 0) + (branchSyncStatus.pendingDownload ?? 0))}</div>
+                  <div className="font-mono">
+                    {branchSyncStatus.pendingCount ??
+                      (branchSyncStatus.pendingUpload ?? 0) +
+                        (branchSyncStatus.pendingDownload ?? 0)}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -512,20 +644,32 @@ export default function SynchronizationPage() {
             <div className="mt-3 space-y-2">
               {branchSyncHistory.length === 0 ? (
                 <p className="text-sm text-gray-500">Nincs sync történet.</p>
-              ) : branchSyncHistory.map((row, index) => (
-                <div key={row.id ?? `${row.startedAt}-${index}`} className="rounded bg-white px-2 py-1 text-sm" data-testid="branch-sync-history-row">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-semibold">{row.syncType ?? row.direction ?? 'SYNC'}</span>
-                    <span className={`badge ${row.status === 'COMPLETED' ? 'badge-green' : row.status === 'FAILED' ? 'badge-red' : 'badge-blue'}`}>
-                      {row.status ?? '-'}
-                    </span>
+              ) : (
+                branchSyncHistory.map((row, index) => (
+                  <div
+                    key={row.id ?? `${row.startedAt}-${index}`}
+                    className="rounded bg-white px-2 py-1 text-sm"
+                    data-testid="branch-sync-history-row"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-semibold">
+                        {row.syncType ?? row.direction ?? 'SYNC'}
+                      </span>
+                      <span
+                        className={`badge ${row.status === 'COMPLETED' ? 'badge-green' : row.status === 'FAILED' ? 'badge-red' : 'badge-blue'}`}
+                      >
+                        {row.status ?? '-'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {formatSyncDate(row.startedAt)} · {row.recordsSynced ?? 0} rekord
+                    </div>
+                    {row.errorMessage && (
+                      <div className="text-xs text-red-700">{row.errorMessage}</div>
+                    )}
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {formatSyncDate(row.startedAt)} · {row.recordsSynced ?? 0} rekord
-                  </div>
-                  {row.errorMessage && <div className="text-xs text-red-700">{row.errorMessage}</div>}
-                </div>
-              ))}
+                ))
+              )}
             </div>
             <div className="mt-3 border-t border-gray-200 pt-3" data-testid="branch-sync-actions">
               <h4 className="mb-2 text-sm font-semibold">Branch sync műveletek</h4>
@@ -572,20 +716,31 @@ export default function SynchronizationPage() {
               <h4 className="mb-2 text-sm font-semibold">FTP szinkron történet</h4>
               {ftpSyncHistory.length === 0 ? (
                 <p className="text-sm text-gray-500">Nincs FTP sync történet.</p>
-              ) : ftpSyncHistory.map((row, index) => (
-                <div key={row.id ?? `${row.fileName}-${index}`} className="rounded bg-white px-2 py-1 text-sm" data-testid="ftp-sync-history-row">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-semibold">{row.direction ?? 'FTP'}</span>
-                    <span className={`badge ${row.status === 'COMPLETED' || row.status === 'SUCCESS' ? 'badge-green' : row.status === 'FAILED' ? 'badge-red' : 'badge-blue'}`}>
-                      {row.status ?? '-'}
-                    </span>
+              ) : (
+                ftpSyncHistory.map((row, index) => (
+                  <div
+                    key={row.id ?? `${row.fileName}-${index}`}
+                    className="rounded bg-white px-2 py-1 text-sm"
+                    data-testid="ftp-sync-history-row"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-semibold">{row.direction ?? 'FTP'}</span>
+                      <span
+                        className={`badge ${row.status === 'COMPLETED' || row.status === 'SUCCESS' ? 'badge-green' : row.status === 'FAILED' ? 'badge-red' : 'badge-blue'}`}
+                      >
+                        {row.status ?? '-'}
+                      </span>
+                    </div>
+                    <div className="break-words text-xs text-gray-500">
+                      {row.fileName ?? '-'} · {formatSyncDate(row.startedAt)} ·{' '}
+                      {formatBytes(row.fileSizeBytes)}
+                    </div>
+                    {row.errorMessage && (
+                      <div className="text-xs text-red-700">{row.errorMessage}</div>
+                    )}
                   </div>
-                  <div className="break-words text-xs text-gray-500">
-                    {row.fileName ?? '-'} · {formatSyncDate(row.startedAt)} · {formatBytes(row.fileSizeBytes)}
-                  </div>
-                  {row.errorMessage && <div className="text-xs text-red-700">{row.errorMessage}</div>}
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
           <div className="overflow-x-auto rounded border border-gray-200">
@@ -603,28 +758,35 @@ export default function SynchronizationPage() {
               <tbody>
                 {dataCollectionRows.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-3 text-center text-gray-500">Nincs adatgyűjtési státusz.</td>
-                  </tr>
-                ) : dataCollectionRows.map((row, index) => (
-                  <tr key={row.id ?? `${row.branchId}-${row.collectionDate}-${index}`}>
-                    <td className="font-mono text-xs">{row.branchId ?? '-'}</td>
-                    <td>{row.collectionDate ?? '-'}</td>
-                    <td>
-                      <span className={`badge ${row.status === 'COMPLETED' ? 'badge-green' : row.status === 'FAILED' ? 'badge-red' : 'badge-blue'}`}>
-                        {row.status}
-                      </span>
+                    <td colSpan={6} className="py-3 text-center text-gray-500">
+                      Nincs adatgyűjtési státusz.
                     </td>
-                    <td>{row.collectionType ?? '-'}</td>
-                    <td className="text-right">{row.transactionCount ?? 0}</td>
-                    <td className="max-w-[220px] truncate" title={row.errorMessage ?? ''}>{row.errorMessage ?? '-'}</td>
                   </tr>
-                ))}
+                ) : (
+                  dataCollectionRows.map((row, index) => (
+                    <tr key={row.id ?? `${row.branchId}-${row.collectionDate}-${index}`}>
+                      <td className="font-mono text-xs">{row.branchId ?? '-'}</td>
+                      <td>{row.collectionDate ?? '-'}</td>
+                      <td>
+                        <span
+                          className={`badge ${row.status === 'COMPLETED' ? 'badge-green' : row.status === 'FAILED' ? 'badge-red' : 'badge-blue'}`}
+                        >
+                          {row.status}
+                        </span>
+                      </td>
+                      <td>{row.collectionType ?? '-'}</td>
+                      <td className="text-right">{row.transactionCount ?? 0}</td>
+                      <td className="max-w-[220px] truncate" title={row.errorMessage ?? ''}>
+                        {row.errorMessage ?? '-'}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </div>
       )}
-
     </div>
   )
 }

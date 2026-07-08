@@ -1,7 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AlertCircle, ArrowLeft, Building2, Save } from 'lucide-react'
-import { api, branchApi, dictionaryApi, type BranchInfo, type BranchUpdateRequest, type DictionaryEntry } from '../../services/api/index'
+import {
+  api,
+  branchApi,
+  dictionaryApi,
+  type BranchInfo,
+  type BranchUpdateRequest,
+  type DictionaryEntry,
+} from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { Check, Section } from './branchFormShared'
@@ -107,12 +114,18 @@ export default function BranchEditPage() {
       // @PreAuthorize("hasRole('ADMIN')")), ezért foertektar/ugyvezeto felhasználónak 403-at ad.
       // Ez a hívás best-effort (csak admin metaadatot tölt), ezért a globális 403-toast itt
       // félrevezető — `_skipGlobal403Toast: true`-val elnyomjuk; a Promise.all tovább tölt.
-      api.get<BranchAdminDetails>(`/admin/branches/${id}`, { _skipGlobal403Toast: true }).catch((err: unknown) => {
-        // FK-038 (Copilot review): best-effort admin-metaadat. Foertektar/ugyvezeto 403-at kap
-        // (VÁRT állapot, ADMIN-only végpont) — ezért warn, nem error, hogy ne legyen zajos a Sentry/console.
-        logger.warn('BranchEditPage', 'Admin branch részlet nem tölthető (best-effort, pl. 403 ADMIN-only):', err)
-        return null
-      }),
+      api
+        .get<BranchAdminDetails>(`/admin/branches/${id}`, { _skipGlobal403Toast: true })
+        .catch((err: unknown) => {
+          // FK-038 (Copilot review): best-effort admin-metaadat. Foertektar/ugyvezeto 403-at kap
+          // (VÁRT állapot, ADMIN-only végpont) — ezért warn, nem error, hogy ne legyen zajos a Sentry/console.
+          logger.warn(
+            'BranchEditPage',
+            'Admin branch részlet nem tölthető (best-effort, pl. 403 ADMIN-only):',
+            err,
+          )
+          return null
+        }),
     ])
       .then(([loaded, regionList, pathResponse, childrenResponse, adminResponse]) => {
         if (!active) return
@@ -128,8 +141,12 @@ export default function BranchEditPage() {
         logger.error('BranchEditPage', 'Iroda-betöltési hiba:', err)
         setError(getErrorMessage(err))
       })
-      .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
   }, [id])
 
   const patch = (values: Partial<FormState>) =>
@@ -190,9 +207,11 @@ export default function BranchEditPage() {
     const originalIsActive = branch.isActive ?? true
     const newIsActive = !form.tartosanZarva
     if (originalIsActive !== newIsActive) {
-      setConfirmMessage(newIsActive
-        ? 'Biztosan aktívra állítja ezt az irodát?'
-        : 'Biztosan inaktívra állítja ezt az irodát?')
+      setConfirmMessage(
+        newIsActive
+          ? 'Biztosan aktívra állítja ezt az irodát?'
+          : 'Biztosan inaktívra állítja ezt az irodát?',
+      )
       return
     }
     void submitUpdate(form)
@@ -215,7 +234,11 @@ export default function BranchEditPage() {
           <Building2 />
           Iroda szerkesztése{branch ? ` — ${branch.code}` : ''}
         </h1>
-        <button type="button" onClick={() => navigate('/admin/branches')} className="form-button-secondary flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => navigate('/admin/branches')}
+          className="form-button-secondary flex items-center gap-2"
+        >
           <ArrowLeft size={16} /> Vissza a listára
         </button>
       </div>
@@ -237,29 +260,41 @@ export default function BranchEditPage() {
             <div className="md:col-span-2 space-y-3">
               <div>
                 <div className="text-xs font-semibold uppercase text-gray-500">Útvonal</div>
-                <div className="mt-1 flex flex-wrap items-center gap-1 text-sm text-gray-700" data-testid="branch-path">
-                  {branchPath.length > 0
-                    ? branchPath.map((item, index) => (
-                        <span key={item.id} className="inline-flex items-center gap-1">
-                          <span className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-medium">
-                            {item.code} - {item.name}
-                          </span>
-                          {index < branchPath.length - 1 && <span className="text-gray-400">/</span>}
+                <div
+                  className="mt-1 flex flex-wrap items-center gap-1 text-sm text-gray-700"
+                  data-testid="branch-path"
+                >
+                  {branchPath.length > 0 ? (
+                    branchPath.map((item, index) => (
+                      <span key={item.id} className="inline-flex items-center gap-1">
+                        <span className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-medium">
+                          {item.code} - {item.name}
                         </span>
-                      ))
-                    : <span className="text-gray-500">Nincs szervezeti útvonal adat.</span>}
+                        {index < branchPath.length - 1 && <span className="text-gray-400">/</span>}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-500">Nincs szervezeti útvonal adat.</span>
+                  )}
                 </div>
               </div>
               <div>
-                <div className="text-xs font-semibold uppercase text-gray-500">Közvetlen alirodák</div>
+                <div className="text-xs font-semibold uppercase text-gray-500">
+                  Közvetlen alirodák
+                </div>
                 <div className="mt-1 flex flex-wrap gap-2" data-testid="branch-children">
-                  {childBranches.length > 0
-                    ? childBranches.map((item) => (
-                        <span key={item.id} className="rounded border border-blue-100 bg-blue-50 px-2 py-1 text-sm font-medium text-blue-800">
-                          {item.code} - {item.name}
-                        </span>
-                      ))
-                    : <span className="text-sm text-gray-500">Nincs közvetlen aliroda.</span>}
+                  {childBranches.length > 0 ? (
+                    childBranches.map((item) => (
+                      <span
+                        key={item.id}
+                        className="rounded border border-blue-100 bg-blue-50 px-2 py-1 text-sm font-medium text-blue-800"
+                      >
+                        {item.code} - {item.name}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-gray-500">Nincs közvetlen aliroda.</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -270,7 +305,9 @@ export default function BranchEditPage() {
               <>
                 <div>
                   <div className="text-xs font-semibold uppercase text-gray-500">Cég</div>
-                  <div className="mt-1 text-sm font-medium text-gray-800">{adminDetails.companyName ?? '-'}</div>
+                  <div className="mt-1 text-sm font-medium text-gray-800">
+                    {adminDetails.companyName ?? '-'}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs font-semibold uppercase text-gray-500">Státusz</div>
@@ -281,20 +318,34 @@ export default function BranchEditPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold uppercase text-gray-500">Aktív munkatársak</div>
-                  <div className="mt-1 text-sm font-medium text-gray-800">{adminDetails.workerCount ?? 0} fő</div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">
+                    Aktív munkatársak
+                  </div>
+                  <div className="mt-1 text-sm font-medium text-gray-800">
+                    {adminDetails.workerCount ?? 0} fő
+                  </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold uppercase text-gray-500">Teljes készlet HUF</div>
-                  <div className="mt-1 text-sm font-medium text-gray-800">{formatHuf(adminDetails.totalInventoryHuf ?? 0)}</div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">
+                    Teljes készlet HUF
+                  </div>
+                  <div className="mt-1 text-sm font-medium text-gray-800">
+                    {formatHuf(adminDetails.totalInventoryHuf ?? 0)}
+                  </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold uppercase text-gray-500">Utolsó szinkron</div>
-                  <div className="mt-1 text-sm font-medium text-gray-800">{formatDateTime(adminDetails.lastSyncAt)}</div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">
+                    Utolsó szinkron
+                  </div>
+                  <div className="mt-1 text-sm font-medium text-gray-800">
+                    {formatDateTime(adminDetails.lastSyncAt)}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs font-semibold uppercase text-gray-500">Nyitvatartás</div>
-                  <div className="mt-1 text-sm font-medium text-gray-800">{adminDetails.openingHours ?? '-'}</div>
+                  <div className="mt-1 text-sm font-medium text-gray-800">
+                    {adminDetails.openingHours ?? '-'}
+                  </div>
                 </div>
               </>
             ) : (
@@ -309,32 +360,61 @@ export default function BranchEditPage() {
             <label className="block">
               <span className="form-label">Pénztár száma / azonosítója</span>
               {/* FR-3: a kód nem szerkeszthető — read-only mező, nem része a payloadnak. */}
-              <input type="text" className="form-input bg-gray-100 text-gray-500" value={branch.code} readOnly disabled />
+              <input
+                type="text"
+                className="form-input bg-gray-100 text-gray-500"
+                value={branch.code}
+                readOnly
+                disabled
+              />
               <span className="text-xs text-gray-500">A pénztár kódja nem módosítható.</span>
             </label>
             <label className="block">
-              <span className="form-label">Megjelenítendő név <span className="text-red-600">*</span></span>
-              <input type="text" className="form-input" maxLength={255}
-                value={form.name} disabled={disabled}
-                onChange={(e) => patch({ name: e.target.value })} />
+              <span className="form-label">
+                Megjelenítendő név <span className="text-red-600">*</span>
+              </span>
+              <input
+                type="text"
+                className="form-input"
+                maxLength={255}
+                value={form.name}
+                disabled={disabled}
+                onChange={(e) => patch({ name: e.target.value })}
+              />
             </label>
             <label className="block">
               <span className="form-label">Rövid név</span>
-              <input type="text" className="form-input" placeholder="pl. Belváros" maxLength={100}
-                value={form.shortName} disabled={disabled}
-                onChange={(e) => patch({ shortName: e.target.value })} />
+              <input
+                type="text"
+                className="form-input"
+                placeholder="pl. Belváros"
+                maxLength={100}
+                value={form.shortName}
+                disabled={disabled}
+                onChange={(e) => patch({ shortName: e.target.value })}
+              />
             </label>
             <div className="block">
               <span className="form-label">Iroda típusa</span>
               <div className="flex gap-4 mt-1">
                 <label className="inline-flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="isVault" checked={!form.isVault} disabled={disabled}
-                    onChange={() => patch({ isVault: false })} />
+                  <input
+                    type="radio"
+                    name="isVault"
+                    checked={!form.isVault}
+                    disabled={disabled}
+                    onChange={() => patch({ isVault: false })}
+                  />
                   <span className="text-sm">Pénztár</span>
                 </label>
                 <label className="inline-flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="isVault" checked={form.isVault} disabled={disabled}
-                    onChange={() => patch({ isVault: true })} />
+                  <input
+                    type="radio"
+                    name="isVault"
+                    checked={form.isVault}
+                    disabled={disabled}
+                    onChange={() => patch({ isVault: true })}
+                  />
                   <span className="text-sm">Értéktár</span>
                 </label>
               </div>
@@ -344,80 +424,161 @@ export default function BranchEditPage() {
           {/* 2. Elérhetőség */}
           <Section title="2. Elérhetőség">
             <label className="block md:col-span-2">
-              <span className="form-label">Pénztár pontos címe <span className="text-red-600">*</span></span>
-              <input type="text" className="form-input" placeholder='pl. "6720 Szeged, Tisza Lajos krt. 1."' maxLength={500}
-                value={form.address} disabled={disabled}
-                onChange={(e) => patch({ address: e.target.value })} />
+              <span className="form-label">
+                Pénztár pontos címe <span className="text-red-600">*</span>
+              </span>
+              <input
+                type="text"
+                className="form-input"
+                placeholder='pl. "6720 Szeged, Tisza Lajos krt. 1."'
+                maxLength={500}
+                value={form.address}
+                disabled={disabled}
+                onChange={(e) => patch({ address: e.target.value })}
+              />
             </label>
             <label className="block">
               <span className="form-label">Irányítószám</span>
-              <input type="text" className="form-input" placeholder="pl. 6720" maxLength={4} inputMode="numeric"
-                value={form.zipCode} disabled={disabled}
-                onChange={(e) => patch({ zipCode: e.target.value.replace(/\D/g, '').slice(0, 4) })} />
+              <input
+                type="text"
+                className="form-input"
+                placeholder="pl. 6720"
+                maxLength={4}
+                inputMode="numeric"
+                value={form.zipCode}
+                disabled={disabled}
+                onChange={(e) => patch({ zipCode: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+              />
             </label>
             <label className="block">
               <span className="form-label">Város</span>
-              <input type="text" className="form-input" placeholder="pl. Szeged" maxLength={100}
-                value={form.city} disabled={disabled}
-                onChange={(e) => patch({ city: e.target.value })} />
+              <input
+                type="text"
+                className="form-input"
+                placeholder="pl. Szeged"
+                maxLength={100}
+                value={form.city}
+                disabled={disabled}
+                onChange={(e) => patch({ city: e.target.value })}
+              />
             </label>
             <label className="block">
               <span className="form-label">Telefon</span>
-              <input type="text" className="form-input" placeholder="pl. 06701234567" maxLength={50}
-                value={form.phone} disabled={disabled}
-                onChange={(e) => patch({ phone: e.target.value })} />
+              <input
+                type="text"
+                className="form-input"
+                placeholder="pl. 06701234567"
+                maxLength={50}
+                value={form.phone}
+                disabled={disabled}
+                onChange={(e) => patch({ phone: e.target.value })}
+              />
             </label>
             <label className="block">
               <span className="form-label">Email</span>
-              <input type="email" className="form-input" placeholder="pl. szeged@ebc.hu" maxLength={255}
-                value={form.email} disabled={disabled}
-                onChange={(e) => patch({ email: e.target.value })} />
+              <input
+                type="email"
+                className="form-input"
+                placeholder="pl. szeged@ebc.hu"
+                maxLength={255}
+                value={form.email}
+                disabled={disabled}
+                onChange={(e) => patch({ email: e.target.value })}
+              />
             </label>
           </Section>
 
           {/* 3. Területi besorolás */}
           <Section title="3. Területi besorolás">
             <label className="block">
-              <span className="form-label">Terület / Régió hozzárendelése <span className="text-red-600">*</span></span>
-              <select className="form-input" value={form.regionCode} disabled={disabled}
+              <span className="form-label">
+                Terület / Régió hozzárendelése <span className="text-red-600">*</span>
+              </span>
+              <select
+                className="form-input"
+                value={form.regionCode}
+                disabled={disabled}
                 onChange={(e) => patch({ regionCode: e.target.value })}
-                aria-label="Terület / Régió hozzárendelése">
+                aria-label="Terület / Régió hozzárendelése"
+              >
                 <option value="">— válasszon területet —</option>
                 {regions.map((r) => (
-                  <option key={r.id} value={r.code}>{r.nameHu || r.name}</option>
+                  <option key={r.id} value={r.code}>
+                    {r.nameHu || r.name}
+                  </option>
                 ))}
               </select>
-              <span className="text-xs text-gray-500">A pénztárt ez a terület (értéktárhoz) köti.</span>
+              <span className="text-xs text-gray-500">
+                A pénztárt ez a terület (értéktárhoz) köti.
+              </span>
             </label>
             <label className="block">
               <span className="form-label">Bankkód</span>
-              <input type="text" className="form-input" placeholder="pl. 210" maxLength={20}
-                value={form.bankCode} disabled={disabled}
-                onChange={(e) => patch({ bankCode: e.target.value })} />
+              <input
+                type="text"
+                className="form-input"
+                placeholder="pl. 210"
+                maxLength={20}
+                value={form.bankCode}
+                disabled={disabled}
+                onChange={(e) => patch({ bankCode: e.target.value })}
+              />
               <span className="text-xs text-gray-500">Banki hivatkozási szám.</span>
             </label>
           </Section>
 
           {/* 4. Szolgáltatások */}
           <Section title="4. Szolgáltatások">
-            <Check label="ÁFA-visszatérítés" checked={form.hasAfa} onChange={(v) => patch({ hasAfa: v })} />
-            <Check label="Western Union (WU)" checked={form.hasWu} onChange={(v) => patch({ hasWu: v })} />
-            <Check label="MoneyGram (MG)" checked={form.hasMg} onChange={(v) => patch({ hasMg: v })} />
-            <Check label="Bankkártya elfogadás (POS)" checked={form.hasPos} onChange={(v) => patch({ hasPos: v })} />
+            <Check
+              label="ÁFA-visszatérítés"
+              checked={form.hasAfa}
+              onChange={(v) => patch({ hasAfa: v })}
+            />
+            <Check
+              label="Western Union (WU)"
+              checked={form.hasWu}
+              onChange={(v) => patch({ hasWu: v })}
+            />
+            <Check
+              label="MoneyGram (MG)"
+              checked={form.hasMg}
+              onChange={(v) => patch({ hasMg: v })}
+            />
+            <Check
+              label="Bankkártya elfogadás (POS)"
+              checked={form.hasPos}
+              onChange={(v) => patch({ hasPos: v })}
+            />
           </Section>
 
           {/* 5. Nyitvatartás */}
           <Section title="5. Nyitvatartás">
-            <Check label="Szombaton zárva" checked={form.closedSaturday} onChange={(v) => patch({ closedSaturday: v })} />
-            <Check label="Vasárnap zárva" checked={form.closedSunday} onChange={(v) => patch({ closedSunday: v })} />
-            <Check label="Tartósan zárva" checked={form.tartosanZarva}
+            <Check
+              label="Szombaton zárva"
+              checked={form.closedSaturday}
+              onChange={(v) => patch({ closedSaturday: v })}
+            />
+            <Check
+              label="Vasárnap zárva"
+              checked={form.closedSunday}
+              onChange={(v) => patch({ closedSunday: v })}
+            />
+            <Check
+              label="Tartósan zárva"
+              checked={form.tartosanZarva}
               hint="Bejelölve: az iroda INAKTÍV státuszra vált (megerősítő kérdéssel)."
-              onChange={(v) => patch({ tartosanZarva: v })} />
+              onChange={(v) => patch({ tartosanZarva: v })}
+            />
           </Section>
 
           <div className="flex justify-end">
-            <button type="submit" className="form-button-primary flex items-center gap-2" disabled={disabled}>
-              <Save size={16} />{saving ? 'Mentés…' : 'Mentés'}
+            <button
+              type="submit"
+              className="form-button-primary flex items-center gap-2"
+              disabled={disabled}
+            >
+              <Save size={16} />
+              {saving ? 'Mentés…' : 'Mentés'}
             </button>
           </div>
         </form>
@@ -425,19 +586,25 @@ export default function BranchEditPage() {
 
       {/* FR-4/FR-5: státuszváltás megerősítő kérdés — Igen = mentés, Nem = vissza a formhoz. */}
       {confirmMessage && form && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-modal="true">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          role="dialog"
+          aria-modal="true"
+        >
           <div className="bg-white rounded-lg p-6 w-full max-w-md space-y-4">
             <p className="text-gray-800">{confirmMessage}</p>
             <div className="flex justify-end gap-2">
-              <button type="button" className="form-button"
-                onClick={() => setConfirmMessage(null)}>
+              <button type="button" className="form-button" onClick={() => setConfirmMessage(null)}>
                 Nem
               </button>
-              <button type="button" className="form-button-primary"
+              <button
+                type="button"
+                className="form-button-primary"
                 onClick={() => {
                   setConfirmMessage(null)
                   void submitUpdate(form)
-                }}>
+                }}
+              >
                 Igen
               </button>
             </div>

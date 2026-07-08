@@ -1,35 +1,35 @@
-contract: "TreasuryDashboard -> POST /api/v1/ertektar/corrections/{id}/approve|reject"
-date: "2026-06-20"
-status: "IMPLEMENTED_FROM_EXISTING_BACKEND_CONTRACT"
+contract: 'TreasuryDashboard -> POST /api/v1/ertektar/corrections/{id}/approve|reject'
+date: '2026-06-20'
+status: 'IMPLEMENTED_FROM_EXISTING_BACKEND_CONTRACT'
 
 preconditions:
-  - "The correction row is loaded from the backend via ertektarApi.getCorrections/getPendingCorrections."
-  - "The correction id is a backend-provided numeric id."
-  - "The user confirms the state-changing action before the POST request is sent."
-  - "Backend authorization remains authoritative: approve is SUPERVISOR/ADMIN gated by ErtektarController, reject follows the controller role gate."
+  - 'The correction row is loaded from the backend via ertektarApi.getCorrections/getPendingCorrections.'
+  - 'The correction id is a backend-provided numeric id.'
+  - 'The user confirms the state-changing action before the POST request is sent.'
+  - 'Backend authorization remains authoritative: approve is SUPERVISOR/ADMIN gated by ErtektarController, reject follows the controller role gate.'
 
 postconditions:
-  - "On approve success, the frontend does not mutate stock locally; it reloads dashboard data from backend sources."
-  - "On reject success, the frontend does not mutate stock locally; it reloads dashboard data from backend sources."
-  - "On failure, the existing dashboard error panel shows a factual error message."
+  - 'On approve success, the frontend does not mutate stock locally; it reloads dashboard data from backend sources.'
+  - 'On reject success, the frontend does not mutate stock locally; it reloads dashboard data from backend sources.'
+  - 'On failure, the existing dashboard error panel shows a factual error message.'
 
 invariants:
-  - "The frontend never computes or applies stock balance changes for corrections."
-  - "The correction amount, currency and target entity are displayed from backend data only."
-  - "Existing read/list behavior for transfers, receipts and corrections remains available."
+  - 'The frontend never computes or applies stock balance changes for corrections.'
+  - 'The correction amount, currency and target entity are displayed from backend data only.'
+  - 'Existing read/list behavior for transfers, receipts and corrections remains available.'
 
 error_contracts:
-  - "User cancels confirmation -> no POST request."
-  - "Backend rejects authorization or validation -> no local success state is fabricated; error state is set."
-  - "Missing correction id -> no action button is rendered for that row."
+  - 'User cancels confirmation -> no POST request.'
+  - 'Backend rejects authorization or validation -> no local success state is fabricated; error state is set.'
+  - 'Missing correction id -> no action button is rendered for that row.'
 
 behavioral:
-  - "Approve button calls ertektarApi.approveCorrection(id)."
-  - "Reject button calls ertektarApi.rejectCorrection(id)."
-  - "Buttons are disabled while the same correction action is in flight."
+  - 'Approve button calls ertektarApi.approveCorrection(id).'
+  - 'Reject button calls ertektarApi.rejectCorrection(id).'
+  - 'Buttons are disabled while the same correction action is in flight.'
 
 derived_tests:
-  - "TreasuryDashboard calls approveCorrection for a pending correction after confirmation."
-  - "TreasuryDashboard calls rejectCorrection for a pending correction after confirmation."
-  - "TreasuryDashboard does not call approve/reject when confirmation is cancelled."
-  - "Playwright verifies the visible desktop and mobile render path without horizontal overflow."
+  - 'TreasuryDashboard calls approveCorrection for a pending correction after confirmation.'
+  - 'TreasuryDashboard calls rejectCorrection for a pending correction after confirmation.'
+  - 'TreasuryDashboard does not call approve/reject when confirmation is cancelled.'
+  - 'Playwright verifies the visible desktop and mobile render path without horizontal overflow.'

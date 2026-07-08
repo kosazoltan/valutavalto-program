@@ -51,9 +51,17 @@ export default function TradePage() {
   const [error, setError] = useState<string | null>(null)
 
   const pendingCount = pending.length
-  const acceptedCount = useMemo(() => pending.filter((trade) => trade.status === 'ACCEPTED').length, [pending])
+  const acceptedCount = useMemo(
+    () => pending.filter((trade) => trade.status === 'ACCEPTED').length,
+    [pending],
+  )
   const sourceBranchLabel = worker?.branchName || currentBranchId
-  const canCreateTrade = !submitting && !targetLoading && !targetError && targetBranches.length > 0 && Boolean(toBranchId)
+  const canCreateTrade =
+    !submitting &&
+    !targetLoading &&
+    !targetError &&
+    targetBranches.length > 0 &&
+    Boolean(toBranchId)
 
   const loadTrades = useCallback(async () => {
     if (!currentBranchId) {
@@ -111,7 +119,14 @@ export default function TradePage() {
   const proposeTrade = async () => {
     const parsedAmount = Number(amount)
     const parsedRate = Number(rate)
-    if (!currentBranchId || !toBranchId.trim() || targetError || !currencyCode.trim() || parsedAmount <= 0 || parsedRate <= 0) {
+    if (
+      !currentBranchId ||
+      !toBranchId.trim() ||
+      targetError ||
+      !currencyCode.trim() ||
+      parsedAmount <= 0 ||
+      parsedRate <= 0
+    ) {
       setError('Forrás iroda, cél iroda, valuta, pozitív összeg és pozitív árfolyam kötelező.')
       return
     }
@@ -191,19 +206,35 @@ export default function TradePage() {
         <div className="mt-3 flex flex-wrap gap-2">
           {trade.status === 'PROPOSED' && (
             <>
-              <button className="form-button h-8 text-xs" onClick={() => void runAction(() => tradeApi.accept(trade.id))} disabled={submitting}>
+              <button
+                className="form-button h-8 text-xs"
+                onClick={() => void runAction(() => tradeApi.accept(trade.id))}
+                disabled={submitting}
+              >
                 <Check size={14} /> Elfogadás
               </button>
-              <button className="form-button h-8 text-xs" onClick={() => void runAction(() => tradeApi.reject(trade.id, rejectReason))} disabled={submitting}>
+              <button
+                className="form-button h-8 text-xs"
+                onClick={() => void runAction(() => tradeApi.reject(trade.id, rejectReason))}
+                disabled={submitting}
+              >
                 <CircleX size={14} /> Elutasítás
               </button>
-              <button className="form-button h-8 text-xs" onClick={() => void runAction(() => tradeApi.cancel(trade.id))} disabled={submitting}>
+              <button
+                className="form-button h-8 text-xs"
+                onClick={() => void runAction(() => tradeApi.cancel(trade.id))}
+                disabled={submitting}
+              >
                 <Trash2 size={14} /> Törlés
               </button>
             </>
           )}
           {trade.status === 'ACCEPTED' && (
-            <button className="form-button-primary h-8 text-xs" onClick={() => void runAction(() => tradeApi.complete(trade.id))} disabled={submitting}>
+            <button
+              className="form-button-primary h-8 text-xs"
+              onClick={() => void runAction(() => tradeApi.complete(trade.id))}
+              disabled={submitting}
+            >
               <Check size={14} /> Teljesítés
             </button>
           )}
@@ -229,7 +260,9 @@ export default function TradePage() {
         </div>
         <div className="flex gap-2">
           <span className="badge badge-blue">{pendingCount} nyitott</span>
-          {acceptedCount > 0 && <span className="badge badge-green">{acceptedCount} teljesíthető</span>}
+          {acceptedCount > 0 && (
+            <span className="badge badge-green">{acceptedCount} teljesíthető</span>
+          )}
           <button className="form-button h-8 text-xs" onClick={() => void loadTrades()}>
             <RefreshCw size={14} />
           </button>
@@ -249,7 +282,9 @@ export default function TradePage() {
               onChange={(event) => setRejectReason(event.target.value)}
             />
             {pending.length === 0 ? (
-              <p className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">Nincs nyitott trade.</p>
+              <p className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">
+                Nincs nyitott trade.
+              </p>
             ) : (
               pending.map((trade) => renderTradeCard(trade, true))
             )}
@@ -264,7 +299,9 @@ export default function TradePage() {
               <input className="form-input w-full" value={sourceBranchLabel} disabled />
             </div>
             <div>
-              <label className="form-label" htmlFor="trade-to-branch">Cél iroda</label>
+              <label className="form-label" htmlFor="trade-to-branch">
+                Cél iroda
+              </label>
               <select
                 id="trade-to-branch"
                 className="form-input w-full"
@@ -272,37 +309,82 @@ export default function TradePage() {
                 onChange={(event) => setToBranchId(event.target.value)}
                 disabled={targetLoading || Boolean(targetError) || targetBranches.length === 0}
               >
-                <option value="">{targetLoading ? 'Irodák betöltése...' : 'Válassz cél irodát'}</option>
+                <option value="">
+                  {targetLoading ? 'Irodák betöltése...' : 'Válassz cél irodát'}
+                </option>
                 {targetBranches.map((branch) => (
                   <option key={branch.id} value={branch.id}>
                     {branch.code ? `${branch.code} - ${branch.name}` : branch.name}
                   </option>
                 ))}
               </select>
-              {targetError && <p className="mt-1 text-xs text-red-600">Cél irodák betöltése sikertelen: {targetError}</p>}
+              {targetError && (
+                <p className="mt-1 text-xs text-red-600">
+                  Cél irodák betöltése sikertelen: {targetError}
+                </p>
+              )}
               {!targetLoading && !targetError && targetBranches.length === 0 && (
                 <p className="mt-1 text-xs text-amber-700">Nincs választható cél iroda.</p>
               )}
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div>
-                <label className="form-label" htmlFor="trade-currency">Valuta</label>
-                <input id="trade-currency" className="form-input w-full uppercase" value={currencyCode} onChange={(event) => setCurrencyCode(event.target.value)} maxLength={3} />
+                <label className="form-label" htmlFor="trade-currency">
+                  Valuta
+                </label>
+                <input
+                  id="trade-currency"
+                  className="form-input w-full uppercase"
+                  value={currencyCode}
+                  onChange={(event) => setCurrencyCode(event.target.value)}
+                  maxLength={3}
+                />
               </div>
               <div>
-                <label className="form-label" htmlFor="trade-amount">Összeg</label>
-                <input id="trade-amount" className="form-input w-full" type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} />
+                <label className="form-label" htmlFor="trade-amount">
+                  Összeg
+                </label>
+                <input
+                  id="trade-amount"
+                  className="form-input w-full"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                />
               </div>
               <div>
-                <label className="form-label" htmlFor="trade-rate">Árfolyam</label>
-                <input id="trade-rate" className="form-input w-full" type="number" min="0.0001" step="0.0001" value={rate} onChange={(event) => setRate(event.target.value)} />
+                <label className="form-label" htmlFor="trade-rate">
+                  Árfolyam
+                </label>
+                <input
+                  id="trade-rate"
+                  className="form-input w-full"
+                  type="number"
+                  min="0.0001"
+                  step="0.0001"
+                  value={rate}
+                  onChange={(event) => setRate(event.target.value)}
+                />
               </div>
             </div>
             <div>
-              <label className="form-label" htmlFor="trade-notes">Megjegyzés</label>
-              <textarea id="trade-notes" className="form-input min-h-20 w-full" value={notes} onChange={(event) => setNotes(event.target.value)} />
+              <label className="form-label" htmlFor="trade-notes">
+                Megjegyzés
+              </label>
+              <textarea
+                id="trade-notes"
+                className="form-input min-h-20 w-full"
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+              />
             </div>
-            <button className="form-button-primary inline-flex min-h-10 w-full items-center justify-center gap-2" onClick={() => void proposeTrade()} disabled={!canCreateTrade}>
+            <button
+              className="form-button-primary inline-flex min-h-10 w-full items-center justify-center gap-2"
+              onClick={() => void proposeTrade()}
+              disabled={!canCreateTrade}
+            >
               {submitting ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
               Ajánlat létrehozása
             </button>
@@ -317,8 +399,20 @@ export default function TradePage() {
             <p className="text-xs text-gray-500">{historyTotal} találat</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <input aria-label="Történet dátumtól" className="form-input h-8 text-xs" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
-            <input aria-label="Történet dátumig" className="form-input h-8 text-xs" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+            <input
+              aria-label="Történet dátumtól"
+              className="form-input h-8 text-xs"
+              type="date"
+              value={from}
+              onChange={(event) => setFrom(event.target.value)}
+            />
+            <input
+              aria-label="Történet dátumig"
+              className="form-input h-8 text-xs"
+              type="date"
+              value={to}
+              onChange={(event) => setTo(event.target.value)}
+            />
             <button className="form-button h-8 text-xs" onClick={() => void loadTrades()}>
               <Send size={14} /> Lekérés
             </button>
@@ -326,7 +420,9 @@ export default function TradePage() {
         </div>
         <div className="grid gap-2 md:grid-cols-2">
           {history.length === 0 ? (
-            <p className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">Nincs történeti trade.</p>
+            <p className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">
+              Nincs történeti trade.
+            </p>
           ) : (
             history.map((trade) => renderTradeCard(trade))
           )}

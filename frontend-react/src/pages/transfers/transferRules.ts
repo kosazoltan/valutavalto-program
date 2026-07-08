@@ -18,7 +18,10 @@ export interface TransferTypeOption {
  * típusa (pénztár vs. értéktár) szerint. Pénztárnál CSAK forint / valuta / kezelési költség —
  * értéktári feltöltés/leszedés NEM. A címke az iránynak megfelelő szót használja.
  */
-export function getAvailableTransferTypes(isVaultUser: boolean, direction: 'out' | 'in'): TransferTypeOption[] {
+export function getAvailableTransferTypes(
+  isVaultUser: boolean,
+  direction: 'out' | 'in',
+): TransferTypeOption[] {
   const word = direction === 'out' ? 'átadás' : 'átvétel'
   const base: TransferTypeOption[] = [
     { value: 'CASH', label: `Forint (HUF) ${word}` },
@@ -52,8 +55,8 @@ export function getAvailableTransferTypes(isVaultUser: boolean, direction: 'out'
  */
 export function getAllowedTransferTypeValues(isVaultUser: boolean): TransferType[] {
   const union = [
-    ...getAvailableTransferTypes(isVaultUser, 'out').map(o => o.value),
-    ...getAvailableTransferTypes(isVaultUser, 'in').map(o => o.value),
+    ...getAvailableTransferTypes(isVaultUser, 'out').map((o) => o.value),
+    ...getAvailableTransferTypes(isVaultUser, 'in').map((o) => o.value),
   ]
   return [...new Set(union)]
 }
@@ -90,11 +93,13 @@ export interface TransferTargetBranch {
 
 export function isTHBranch(b: TransferTargetBranch): boolean {
   const code = (b.code ?? '').toUpperCase()
-  return b.branchTypeCode === 'TH'
-    || code === 'TH'
-    || /^TH[\d\-_ ]/.test(code)   // kód-prefix: "TH01", "TH-1", "TH_3" ... (Codex P1 #727)
-    || /\bTH\b/i.test(b.code)
-    || /\bTH\b/i.test(b.name)
+  return (
+    b.branchTypeCode === 'TH' ||
+    code === 'TH' ||
+    /^TH[\d\-_ ]/.test(code) || // kód-prefix: "TH01", "TH-1", "TH_3" ... (Codex P1 #727)
+    /\bTH\b/i.test(b.code) ||
+    /\bTH\b/i.test(b.name)
+  )
 }
 
 /**
@@ -104,16 +109,18 @@ export function isTHBranch(b: TransferTargetBranch): boolean {
  */
 export function isMainCashierBranch(b: TransferTargetBranch): boolean {
   const n = (b.name ?? '').trim().toLowerCase()
-  return /^egyes\s+sz[aá]m[uú]\s+(f[őo])?p[eé]nzt[aá]r/.test(n)        // "Egyes számú (fő)pénztár"
-    || /^1\.?\s*sz[aá]m[uú]\s+(f[őo])?p[eé]nzt[aá]r/.test(n)          // "1. számú (fő)pénztár"
-    || /^1\.?\s*sz\.?\s*(f[őo])?p[eé]nzt[aá]r/.test(n)                // "1.sz Főpénztár" / "1. sz. pénztár"
+  return (
+    /^egyes\s+sz[aá]m[uú]\s+(f[őo])?p[eé]nzt[aá]r/.test(n) || // "Egyes számú (fő)pénztár"
+    /^1\.?\s*sz[aá]m[uú]\s+(f[őo])?p[eé]nzt[aá]r/.test(n) || // "1. számú (fő)pénztár"
+    /^1\.?\s*sz\.?\s*(f[őo])?p[eé]nzt[aá]r/.test(n)
+  ) // "1.sz Főpénztár" / "1. sz. pénztár"
 }
 
 export function filterTransferTargetBranches<T extends TransferTargetBranch>(
   branches: T[],
   ownBranch?: T | null,
 ): T[] {
-  const filtered = branches.filter(b => {
+  const filtered = branches.filter((b) => {
     if (isTHBranch(b)) return true
     if (isMainCashierBranch(b)) return true
     if (b.isVault === true && ownBranch) {
@@ -155,7 +162,10 @@ export function buildTransferLines(rows: CurrencyLineInput[]): BuiltTransferLine
     if (r.currencyId == null) {
       // Teljesen üres sor → kihagyjuk; de ha összeg van valuta nélkül → hiba (részben kitöltött, Codex #726).
       if (amountFilled) {
-        return { lines: [], error: 'Válasszon valutát minden kitöltött sorhoz (vagy törölje az üres sort)!' }
+        return {
+          lines: [],
+          error: 'Válasszon valutát minden kitöltött sorhoz (vagy törölje az üres sort)!',
+        }
       }
       continue
     }
@@ -181,9 +191,12 @@ export function buildTransferLines(rows: CurrencyLineInput[]): BuiltTransferLine
  *  - valuta / ERB / TRB → HUF NÉLKÜL (csak deviza),
  *  - egyéb (értéktár) → minden valuta.
  */
-export function filterCurrenciesForType<T extends { code: string }>(currencies: T[], type: TransferType): T[] {
-  if (isCurrencyOnlyTransferType(type)) return currencies.filter(c => c.code !== 'HUF')
-  if (isHufOnlyTransferType(type)) return currencies.filter(c => c.code === 'HUF')
+export function filterCurrenciesForType<T extends { code: string }>(
+  currencies: T[],
+  type: TransferType,
+): T[] {
+  if (isCurrencyOnlyTransferType(type)) return currencies.filter((c) => c.code !== 'HUF')
+  if (isHufOnlyTransferType(type)) return currencies.filter((c) => c.code === 'HUF')
   return currencies
 }
 
@@ -199,7 +212,8 @@ export function validateCarrierSeal(carrierName: string, sealNumber: string): st
   if (carrier.length > 128) return 'A szállító neve legfeljebb 128 karakter lehet!'
   if (!seal) return 'A plombaszám megadása kötelező!'
   if (seal.length > 64) return 'A plombaszám legfeljebb 64 karakter lehet!'
-  if (!/^[A-Za-z0-9\-/]+$/.test(seal)) return 'A plombaszám csak betűt, számot, kötőjelet és perjelet tartalmazhat!'
+  if (!/^[A-Za-z0-9\-/]+$/.test(seal))
+    return 'A plombaszám csak betűt, számot, kötőjelet és perjelet tartalmazhat!'
   return null
 }
 
@@ -232,11 +246,17 @@ export function buildDenominationPayload(
 ): DenominationBuildResult {
   if (!enabled) return {}
   const parsed = lines
-    .map(l => ({
+    .map((l) => ({
       quantity: parseInt(l.quantity, 10),
       faceValue: parseFloat(String(l.faceValue).replace(',', '.').replace(/\s/g, '')),
     }))
-    .filter(l => Number.isFinite(l.quantity) && l.quantity > 0 && Number.isFinite(l.faceValue) && l.faceValue > 0)
+    .filter(
+      (l) =>
+        Number.isFinite(l.quantity) &&
+        l.quantity > 0 &&
+        Number.isFinite(l.faceValue) &&
+        l.faceValue > 0,
+    )
   if (parsed.length === 0) return {}
   const sum = parsed.reduce((s, l) => s + l.quantity * l.faceValue, 0)
   if (Math.abs(sum - totalAmount) > 0.0001) {

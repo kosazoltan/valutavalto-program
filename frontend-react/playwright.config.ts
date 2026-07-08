@@ -20,9 +20,7 @@ export default defineConfig({
   ],
   fullyParallel: true,
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI
-    ? [['list'], ['html', { open: 'never' }]]
-    : 'list',
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: e2eBaseURL,
     trace: 'on-first-retry',

@@ -8,8 +8,24 @@
  */
 
 const ACCENT_MAP: Record<string, string> = {
-  á: 'a', é: 'e', í: 'i', ó: 'o', ö: 'o', ő: 'o', ú: 'u', ü: 'u', ű: 'u',
-  Á: 'A', É: 'E', Í: 'I', Ó: 'O', Ö: 'O', Ő: 'O', Ú: 'U', Ü: 'U', Ű: 'U',
+  á: 'a',
+  é: 'e',
+  í: 'i',
+  ó: 'o',
+  ö: 'o',
+  ő: 'o',
+  ú: 'u',
+  ü: 'u',
+  ű: 'u',
+  Á: 'A',
+  É: 'E',
+  Í: 'I',
+  Ó: 'O',
+  Ö: 'O',
+  Ő: 'O',
+  Ú: 'U',
+  Ü: 'U',
+  Ű: 'U',
 }
 
 /**
@@ -49,11 +65,7 @@ export function normalizeForFilename(input: string, fallback = 'issue'): string 
  * Teljes filename osszealitasa: `<dateIso>-<normalized>.md`.
  * A dateIso `YYYY-MM-DD` (NEM teljes ISO timestamp — kettospont tilos Windows-on).
  */
-export function buildExportFilename(
-  dateIso: string,
-  title: string,
-  extension = 'md'
-): string {
+export function buildExportFilename(dateIso: string, title: string, extension = 'md'): string {
   const datePart = (dateIso || new Date().toISOString()).slice(0, 10)
   const titlePart = normalizeForFilename(title, 'hibajelzes')
   const ext = extension.replace(/^\.+/, '')

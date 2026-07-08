@@ -150,7 +150,11 @@ describe('DocumentStoragePage backend contract', () => {
       })
     })
 
-    await user.click(within(screen.getByTestId('scanned-documents-panel')).getByRole('button', { name: /Törlés/i }))
+    await user.click(
+      within(screen.getByTestId('scanned-documents-panel')).getByRole('button', {
+        name: /Törlés/i,
+      }),
+    )
     await waitFor(() => {
       expect(mockDeleteScannedDocument).toHaveBeenCalledWith('scanned-1')
     })

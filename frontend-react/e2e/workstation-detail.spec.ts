@@ -31,7 +31,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -54,11 +54,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith(`/workstations/${workstationId}`) && method === 'GET') {
@@ -134,7 +142,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('munkaállomások oldal mobil nézetben active listát és backend detailt használ', async ({ page }) => {
+test('munkaállomások oldal mobil nézetben active listát és backend detailt használ', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -143,9 +153,10 @@ test('munkaállomások oldal mobil nézetben active listát és backend detailt 
   await expect(page.getByRole('cell', { name: 'WST-1', exact: true })).toBeVisible()
   await expect(page.getByText('Aktív munkaállomás')).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === `/api/v1/workstations/${workstationId}`
+  const detailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === `/api/v1/workstations/${workstationId}`,
   )
   await page.getByRole('button', { name: /Szerk/i }).click()
   await detailRequest
@@ -153,8 +164,8 @@ test('munkaállomások oldal mobil nézetben active listát és backend detailt 
   await expect(page.locator('input').nth(2)).toHaveValue('Backend detail workstation')
   await expect(page.locator('input').nth(3)).toHaveValue('BACKEND-PC')
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

@@ -7,10 +7,15 @@ import {
   type FormulaContext,
 } from './mainSheetFormula'
 
-function ctx(self: Record<string, number>, byCurrency: Record<string, Record<string, number>> = {}): FormulaContext {
+function ctx(
+  self: Record<string, number>,
+  byCurrency: Record<string, Record<string, number>> = {},
+): FormulaContext {
   return {
     self: self as FormulaContext['self'],
-    byCurrency: new Map(Object.entries(byCurrency).map(([k, v]) => [k, v as FormulaContext['self']])),
+    byCurrency: new Map(
+      Object.entries(byCurrency).map(([k, v]) => [k, v as FormulaContext['self']]),
+    ),
   }
 }
 
@@ -116,10 +121,7 @@ describe('evaluateFormula — szintaxis-hibák (nem dob)', () => {
 describe('extractDependencies', () => {
   it('saját sor + kereszt-ref', () => {
     const deps = extractDependencies('C*0,97+!FEUR')
-    expect(deps).toEqual([
-      { col: 'C' },
-      { currency: 'EUR', col: 'F' },
-    ])
+    expect(deps).toEqual([{ col: 'C' }, { currency: 'EUR', col: 'F' }])
   })
   it('érvénytelen képlet → []', () => {
     expect(extractDependencies('@@@')).toEqual([])

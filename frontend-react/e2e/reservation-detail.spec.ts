@@ -51,7 +51,7 @@ async function mockReservationApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -74,11 +74,19 @@ async function mockReservationApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/reservations/reserved-stock') && method === 'GET') {
@@ -127,16 +135,19 @@ test('foglaló részlet mobil viewporton backend getById hívásból jelenik meg
   await page.goto('/reservations', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('B000042')).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/reservations/42'
+  const detailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/reservations/42',
   )
   await page.getByRole('button', { name: 'Részletek' }).click()
   await detailRequest
 
-  await expect(page.getByTestId('reservation-detail-panel')).toContainText('Backend részlet megjegyzés')
+  await expect(page.getByTestId('reservation-detail-panel')).toContainText(
+    'Backend részlet megjegyzés',
+  )
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

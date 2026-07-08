@@ -49,7 +49,9 @@ describe('VatRefundPage backend contract', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.getVatRefunds.mockResolvedValue([baseRecord])
-    mocks.getDailyVatRefunds.mockResolvedValue([{ ...baseRecord, id: 2, serialNumber: 'VAT-DAILY' }])
+    mocks.getDailyVatRefunds.mockResolvedValue([
+      { ...baseRecord, id: 2, serialNumber: 'VAT-DAILY' },
+    ])
     mocks.getVatRefund.mockResolvedValue({ ...baseRecord, customerName: 'Részlet Ügyfél' })
   })
 
@@ -60,7 +62,9 @@ describe('VatRefundPage backend contract', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mai nap' }))
 
     await waitFor(() => {
-      expect(mocks.getDailyVatRefunds).toHaveBeenCalledWith(expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/))
+      expect(mocks.getDailyVatRefunds).toHaveBeenCalledWith(
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      )
     })
     expect((await screen.findAllByText('VAT-DAILY')).length).toBeGreaterThan(0)
   })

@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/aml/summary') && method === 'GET') {
@@ -78,8 +86,17 @@ async function mockApis(page: Page) {
       })
     }
 
-    if ((path.endsWith('/aml/pending') || path.endsWith('/aml/overdue') || path.endsWith('/aml/rolling-window-audit')) && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+    if (
+      (path.endsWith('/aml/pending') ||
+        path.endsWith('/aml/overdue') ||
+        path.endsWith('/aml/rolling-window-audit')) &&
+      method === 'GET'
+    ) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
@@ -106,8 +123,8 @@ test('/pep a valós AML compliance UI-t rendereli mobil viewporton', async ({ pa
   await expect(page.getByText('Kézi AML tranzakció-ellenőrzés')).toBeVisible()
   await expect(page.getByText(/nincs külön \/pep backend CRUD API/i)).toHaveCount(0)
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

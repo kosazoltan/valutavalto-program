@@ -96,45 +96,45 @@ export interface SyncStatusResponse {
  * compat miatt — az új helyek a `savePendingTransactionV2`-t használják.
  */
 export interface PendingTransactionInputV2 {
-  type: 'SELL' | 'BUY';
-  currencyCode: string;
-  foreignAmount: number;
-  hufAmount: number;
-  roundedHufAmount: number;
-  rate: number;
-  handlingFee: number | null;
-  discountPercent: number | null;
-  customerIdentifier: string | null;
-  customerName: string | null;
-  customerDocumentNumber: string | null;
-  customerAddress: string | null;
-  denominations: string | null;
-  foreignStatus: 'DOMESTIC' | 'FOREIGN' | null;
+  type: 'SELL' | 'BUY'
+  currencyCode: string
+  foreignAmount: number
+  hufAmount: number
+  roundedHufAmount: number
+  rate: number
+  handlingFee: number | null
+  discountPercent: number | null
+  customerIdentifier: string | null
+  customerName: string | null
+  customerDocumentNumber: string | null
+  customerAddress: string | null
+  denominations: string | null
+  foreignStatus: 'DOMESTIC' | 'FOREIGN' | null
   // V229 100k+ snapshot
-  customerBirthPlace: string | null;
-  customerBirthDate: string | null;
-  customerMotherName: string | null;
-  customerNationality: string | null;
-  customerDocumentType: string | null;
+  customerBirthPlace: string | null
+  customerBirthDate: string | null
+  customerMotherName: string | null
+  customerNationality: string | null
+  customerDocumentType: string | null
   // V229 300k+ JOGCÍM
-  sourceOfFunds: string | null;
-  customerIsPep: boolean | null;
+  sourceOfFunds: string | null
+  customerIsPep: boolean | null
   // AML vezetoi jovahagyas (2026-06-04): jovahagyo supervisor/manager/admin workerId.
-  approverWorkerId: number | null;
+  approverWorkerId: number | null
   // AML jovahagyas-session azonosito (Codex P1: receipt-scoping).
-  approvalSessionId: string | null;
-  customerOnOwnBehalf: boolean | null;
-  customerActorName: string | null;
+  approvalSessionId: string | null
+  customerOnOwnBehalf: boolean | null
+  customerActorName: string | null
   // V235 NEW (HIBA #15): PEP minőség
-  customerPepKind: string | null;
+  customerPepKind: string | null
   // V235 NEW (HIBA #17): actor teljes azonosítása
-  customerActorBirthPlace: string | null;
-  customerActorBirthDate: string | null;
-  customerActorMotherName: string | null;
-  customerActorNationality: string | null;
-  customerActorDocumentType: string | null;
-  customerActorDocumentNumber: string | null;
-  customerActorAddress: string | null;
+  customerActorBirthPlace: string | null
+  customerActorBirthDate: string | null
+  customerActorMotherName: string | null
+  customerActorNationality: string | null
+  customerActorDocumentType: string | null
+  customerActorDocumentNumber: string | null
+  customerActorAddress: string | null
   /**
    * Multi-line aggregate (2026-06-04): ha kitoltott, ez a pending sor EGY tobb-soros
    * vetel/eladas nyugtat kepvisel — a backend `lines[]` aggregalt utvonalra kerul (egy
@@ -142,19 +142,19 @@ export interface PendingTransactionInputV2 {
    * ([{ currencyCode, banknoteCount, customExchangeRate, discountType, foreignStatus }]).
    * NULL/undefined → egysoros tranzakcio (valtozatlan viselkedes).
    */
-  lines?: string | null;
+  lines?: string | null
   // FK-KEZDIJ offline (2026-06-12, penztar-batch B.1/b): a Felezes/Elenegedes/Ugyfelkartya
   // override a pending sorban is — a sync-engine a REST-tel azonos mezokkel kuldi fel.
-  handlingFeeOverrideType?: string | null;
-  handlingFeeOverrideReason?: string | null;
-  customerCardNumber?: string | null;
+  handlingFeeOverrideType?: string | null
+  handlingFeeOverrideReason?: string | null
+  customerCardNumber?: string | null
   // V325 (Batch3-C): jogi szemely + tenyleges tulajdonosok (JSON-string, max 4).
-  isLegalEntityCustomer?: boolean | null;
-  legalEntityName?: string | null;
-  legalEntitySeat?: string | null;
-  legalEntityTaxNumber?: string | null;
-  legalDeedNumber?: string | null;
-  beneficialOwnersJson?: string | null;
+  isLegalEntityCustomer?: boolean | null
+  legalEntityName?: string | null
+  legalEntitySeat?: string | null
+  legalEntityTaxNumber?: string | null
+  legalDeedNumber?: string | null
+  beneficialOwnersJson?: string | null
 }
 
 /**
@@ -164,41 +164,41 @@ export interface PendingTransactionInputV2 {
  * miatt — új helyek a `savePendingConversionV2`-t használják.
  */
 export interface PendingConversionInputV2 {
-  fromCurrencyId: number | null;
-  fromCurrencyCode: string;
-  toCurrencyId: number | null;
-  toCurrencyCode: string;
-  fromAmount: number;
-  calculatedHufAmount: number;
-  calculatedToAmount: number;
-  conversionRate: number;
-  handlingFee: number | null;
-  customerId: string | null;
-  customerName: string | null;
-  customerDocumentNumber: string | null;
-  customerAddress: string | null;
-  customerNationality: string | null;
-  customerBirthPlace: string | null;
-  customerBirthDate: string | null;
-  customerMotherName: string | null;
-  customerDocumentType: string | null;
-  sourceOfFunds: string | null;
-  customerIsPep: boolean | null;
-  approverWorkerId: number | null;
-  approvalSessionId: string | null;
-  customerOnOwnBehalf: boolean | null;
-  customerActorName: string | null;
-  customerPepKind: string | null;
-  customerActorBirthPlace: string | null;
-  customerActorBirthDate: string | null;
-  customerActorMotherName: string | null;
-  customerActorNationality: string | null;
-  customerActorDocumentType: string | null;
-  customerActorDocumentNumber: string | null;
-  customerActorAddress: string | null;
+  fromCurrencyId: number | null
+  fromCurrencyCode: string
+  toCurrencyId: number | null
+  toCurrencyCode: string
+  fromAmount: number
+  calculatedHufAmount: number
+  calculatedToAmount: number
+  conversionRate: number
+  handlingFee: number | null
+  customerId: string | null
+  customerName: string | null
+  customerDocumentNumber: string | null
+  customerAddress: string | null
+  customerNationality: string | null
+  customerBirthPlace: string | null
+  customerBirthDate: string | null
+  customerMotherName: string | null
+  customerDocumentType: string | null
+  sourceOfFunds: string | null
+  customerIsPep: boolean | null
+  approverWorkerId: number | null
+  approvalSessionId: string | null
+  customerOnOwnBehalf: boolean | null
+  customerActorName: string | null
+  customerPepKind: string | null
+  customerActorBirthPlace: string | null
+  customerActorBirthDate: string | null
+  customerActorMotherName: string | null
+  customerActorNationality: string | null
+  customerActorDocumentType: string | null
+  customerActorDocumentNumber: string | null
+  customerActorAddress: string | null
   // HIBA 2026-05-26 (#2): ugyfel deviza-statusza (DOMESTIC/FOREIGN)
-  foreignStatus: string | null;
-  note: string | null;
+  foreignStatus: string | null
+  note: string | null
 }
 
 // A pozicionális wire-formátum version-skew miatt VÁLTOZATLAN (régi telepített
@@ -222,50 +222,50 @@ export type SavePendingTransferArgs = [
 
 // ---- Pénzmozgás IPC X4/B (2026-07-05): további pénzmozgás/leltár írások ----
 export interface PendingStornoInput {
-  transactionId: number;
-  originalReceiptNumber: string;
-  originalTransactionType: string;
-  currencyCode: string;
-  foreignAmount: number | null;
-  hufAmount: number;
-  exchangeRate: number | null;
-  reason: string;
-  approvalId?: string | null;
-  customExchangeRate?: number | null;
-  paymentMethod?: string | null;
-  customerName?: string | null;
-  customerDocumentNumber?: string | null;
+  transactionId: number
+  originalReceiptNumber: string
+  originalTransactionType: string
+  currencyCode: string
+  foreignAmount: number | null
+  hufAmount: number
+  exchangeRate: number | null
+  reason: string
+  approvalId?: string | null
+  customExchangeRate?: number | null
+  paymentMethod?: string | null
+  customerName?: string | null
+  customerDocumentNumber?: string | null
 }
 
 export interface PendingTransferStornoInput {
-  transferId: number;
-  transferNumber?: string | null;
-  reason: string;
+  transferId: number
+  transferNumber?: string | null
+  reason: string
 }
 
 // FS-C (Center FS-1): körlevél-válasz offline outbox.
 export interface PendingCircularReplyInput {
-  circularId: number;
-  replyText: string;
+  circularId: number
+  replyText: string
 }
 
 // FS-5: okmány-képpár feltöltési outbox (scan a pénztáron → center, törlés nyugtázás után).
 export interface QueueScannedDocumentInput {
-  customerId: number;            // SZERVER-oldali customer id
-  documentType: 'szemelyi' | 'utlevel' | 'jogositvany' | 'egyeb';
-  frontPath: string;             // scan-save-document visszaadott path
-  backPath: string;
-  notes?: string | null;
+  customerId: number // SZERVER-oldali customer id
+  documentType: 'szemelyi' | 'utlevel' | 'jogositvany' | 'egyeb'
+  frontPath: string // scan-save-document visszaadott path
+  backPath: string
+  notes?: string | null
 }
 
 export interface PendingHandoverOperationInput {
-  operationType: 'GENERATE' | 'PRINT' | 'COMPLETE';
-  sheetId?: string | null;
-  fromCashDeskId?: string | null;
-  toCashDeskId?: string | null;
-  transferDate?: string | null;
-  amounts?: unknown;
-  note?: string | null;
+  operationType: 'GENERATE' | 'PRINT' | 'COMPLETE'
+  sheetId?: string | null
+  fromCashDeskId?: string | null
+  toCashDeskId?: string | null
+  transferDate?: string | null
+  amounts?: unknown
+  note?: string | null
 }
 
 // Pozicionális wire (Sprint 7.1) — a tuple címkézett, a formátum változatlan.

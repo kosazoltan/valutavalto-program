@@ -146,7 +146,11 @@ describe('RateHistoryPage backend kapcsolatok', () => {
       expect(mocks.getByCurrencyCode).toHaveBeenCalledWith('EUR')
       expect(mocks.getBuyRateForAmount).toHaveBeenCalledWith(1, 100000)
       expect(mocks.getSellRateForAmount).toHaveBeenCalledWith(1, 100000)
-      expect(mocks.getHistoryByCode).toHaveBeenCalledWith('EUR', expect.any(String), expect.any(String))
+      expect(mocks.getHistoryByCode).toHaveBeenCalledWith(
+        'EUR',
+        expect.any(String),
+        expect.any(String),
+      )
     })
     expect(screen.getByText('392.1')).toBeInTheDocument()
     expect(screen.getByText('399.2')).toBeInTheDocument()

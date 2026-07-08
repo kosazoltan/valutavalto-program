@@ -10,7 +10,10 @@ interface IncomeSourceDocCaptureProps {
   onClear(): void
 }
 
-export default function IncomeSourceDocCapture({ onCaptured, onClear }: IncomeSourceDocCaptureProps) {
+export default function IncomeSourceDocCapture({
+  onCaptured,
+  onClear,
+}: IncomeSourceDocCaptureProps) {
   const { t } = useTranslation()
   const [capturedBase64, setCapturedBase64] = useState<string | null>(null)
   const [hasCamera, setHasCamera] = useState(true)
@@ -109,7 +112,9 @@ export default function IncomeSourceDocCapture({ onCaptured, onClear }: IncomeSo
           <button type="button" onClick={capture} className="form-button-primary">
             <Camera size={16} />
             {t('incomeProof.capture')}
-            {capturedBase64 && <Check size={14} className="ml-2 text-green-600" aria-hidden="true" />}
+            {capturedBase64 && (
+              <Check size={14} className="ml-2 text-green-600" aria-hidden="true" />
+            )}
           </button>
           {capturedBase64 && (
             <button type="button" onClick={clear} className="form-button">

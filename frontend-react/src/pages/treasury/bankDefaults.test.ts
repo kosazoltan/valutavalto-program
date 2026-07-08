@@ -16,7 +16,9 @@ describe('resolveDefaultBankName (FK-005/C1 — értéktár → bank = Raiffeise
   })
 
   it('kanonikus nevet ad, ha a törzsben nincs Raiffeisen', () => {
-    expect(resolveDefaultBankName([{ name: 'OTP Bank' }, { name: 'Erste Bank' }])).toBe('Raiffeisen Bank')
+    expect(resolveDefaultBankName([{ name: 'OTP Bank' }, { name: 'Erste Bank' }])).toBe(
+      'Raiffeisen Bank',
+    )
   })
 
   it('NEM aktiválódik véletlen substring-re (csak prefix-egyezés)', () => {
@@ -29,6 +31,8 @@ describe('resolveDefaultBankName (FK-005/C1 — értéktár → bank = Raiffeise
   })
 
   it('defenzív: name nélküli/üres elemeket átugorja', () => {
-    expect(resolveDefaultBankName([{}, { name: null }, { name: 'Raiffeisen Bank' }])).toBe('Raiffeisen Bank')
+    expect(resolveDefaultBankName([{}, { name: null }, { name: 'Raiffeisen Bank' }])).toBe(
+      'Raiffeisen Bank',
+    )
   })
 })

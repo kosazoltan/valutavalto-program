@@ -24,8 +24,9 @@ describe('getCompanyType — tenant azonosítás a bizonylat-fejléchez', () => 
   it('EBC tenant (code="EBC", name="Exclusive Best Change Zrt.") → BEST_CHANGE', () => {
     // Regresszió: a korábbi `companyCode.includes("BEST")` tévesen EXPRESSZ-re esett,
     // mert az EBC cégkód nem tartalmazza a "BEST"-et — tenant-keveredés a bizonylaton.
-    expect(getCompanyType(worker({ companyCode: 'EBC', companyName: 'Exclusive Best Change Zrt.' })))
-      .toBe('BEST_CHANGE')
+    expect(
+      getCompanyType(worker({ companyCode: 'EBC', companyName: 'Exclusive Best Change Zrt.' })),
+    ).toBe('BEST_CHANGE')
   })
 
   it('EBC tenant csak a kód alapján (üres companyName) → BEST_CHANGE', () => {
@@ -33,12 +34,17 @@ describe('getCompanyType — tenant azonosítás a bizonylat-fejléchez', () => 
   })
 
   it('Best Change a névben (eltérő kód) → BEST_CHANGE', () => {
-    expect(getCompanyType(worker({ companyCode: 'BC', companyName: 'BEST CHANGE' }))).toBe('BEST_CHANGE')
+    expect(getCompanyType(worker({ companyCode: 'BC', companyName: 'BEST CHANGE' }))).toBe(
+      'BEST_CHANGE',
+    )
   })
 
   it('Expressz Ékszerház (nincs BEST/EBC jel) → EXPRESSZ', () => {
-    expect(getCompanyType(worker({ companyCode: 'EXP', companyName: 'Expressz Ékszerház és Minibank Kft.' })))
-      .toBe('EXPRESSZ')
+    expect(
+      getCompanyType(
+        worker({ companyCode: 'EXP', companyName: 'Expressz Ékszerház és Minibank Kft.' }),
+      ),
+    ).toBe('EXPRESSZ')
   })
 
   it('null worker → EXPRESSZ (alapértelmezett, nincs pozitív BEST/EBC jel)', () => {

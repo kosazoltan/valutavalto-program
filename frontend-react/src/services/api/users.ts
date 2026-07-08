@@ -82,7 +82,7 @@ export const userApi = {
   },
   updatePassword: async (oldPassword: string, newPassword: string): Promise<void> => {
     await api.put('/users/me/password', { oldPassword, newPassword })
-  }
+  },
 }
 
 // ================== PERMISSION API ==================
@@ -138,7 +138,7 @@ export const permissionApi = {
   },
   delete: async (id: string): Promise<void> => {
     await api.delete(`/permissions/${id}`)
-  }
+  },
 }
 
 // ================== ROLE API ==================
@@ -199,5 +199,5 @@ export const roleApi = {
   },
   delete: async (id: string): Promise<void> => {
     await api.delete(`/roles/${id}`)
-  }
+  },
 }

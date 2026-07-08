@@ -25,15 +25,46 @@ vi.mock('../../components/ui/toaster', () => ({
 }))
 
 const mockBanknotesIN = [
-  { id: 1, transactionId: 10, currencyCode: 'EUR', faceValue: 50, quantity: 3, direction: 'IN' as const, totalValue: 150 },
-  { id: 2, transactionId: 10, currencyCode: 'EUR', faceValue: 20, quantity: 2, direction: 'IN' as const, totalValue: 40 },
+  {
+    id: 1,
+    transactionId: 10,
+    currencyCode: 'EUR',
+    faceValue: 50,
+    quantity: 3,
+    direction: 'IN' as const,
+    totalValue: 150,
+  },
+  {
+    id: 2,
+    transactionId: 10,
+    currencyCode: 'EUR',
+    faceValue: 20,
+    quantity: 2,
+    direction: 'IN' as const,
+    totalValue: 40,
+  },
 ]
 
 const mockBanknotesOUT = [
-  { id: 3, transactionId: 10, currencyCode: 'HUF', faceValue: 5000, quantity: 10, direction: 'OUT' as const, totalValue: 50000 },
+  {
+    id: 3,
+    transactionId: 10,
+    currencyCode: 'HUF',
+    faceValue: 5000,
+    quantity: 10,
+    direction: 'OUT' as const,
+    totalValue: 50000,
+  },
 ]
 
-function renderComponent(props?: Partial<{ transactionId: number; currencyCode: string; direction: 'IN' | 'OUT'; readOnly: boolean }>) {
+function renderComponent(
+  props?: Partial<{
+    transactionId: number
+    currencyCode: string
+    direction: 'IN' | 'OUT'
+    readOnly: boolean
+  }>,
+) {
   return render(
     <BanknoteBreakdown
       transactionId={props?.transactionId ?? 10}
@@ -172,7 +203,15 @@ describe('BanknoteBreakdown', () => {
 
   it('sikeres hozzáadás meghívja az API-t és frissíti a listát', async () => {
     mocks.getByTransaction.mockResolvedValue([])
-    const newBanknote = { id: 99, transactionId: 10, currencyCode: 'EUR', faceValue: 50, quantity: 2, direction: 'IN' as const, totalValue: 100 }
+    const newBanknote = {
+      id: 99,
+      transactionId: 10,
+      currencyCode: 'EUR',
+      faceValue: 50,
+      quantity: 2,
+      direction: 'IN' as const,
+      totalValue: 100,
+    }
     mocks.create.mockResolvedValue(newBanknote)
 
     renderComponent({ currencyCode: 'EUR', direction: 'IN' })

@@ -17,8 +17,4 @@ export type {
   ErrorCodeCatalog,
 } from './log-schema'
 
-export {
-  redact,
-  __REDACT_PATTERNS_FOR_TESTING,
-  __REDACT_FIELDS_FOR_TESTING,
-} from './redactor'
+export { redact, __REDACT_PATTERNS_FOR_TESTING, __REDACT_FIELDS_FOR_TESTING } from './redactor'

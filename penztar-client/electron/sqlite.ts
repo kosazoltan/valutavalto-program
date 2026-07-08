@@ -58,7 +58,11 @@ export function runInTransaction<T>(database: Database, fn: () => T): T {
     database.run('COMMIT');
     return result;
   } catch (e) {
-    try { database.run('ROLLBACK'); } catch { /* rollback best-effort */ }
+    try {
+      database.run('ROLLBACK');
+    } catch {
+      /* rollback best-effort */
+    }
     throw e;
   } finally {
     inTransaction = false;
@@ -142,7 +146,9 @@ function getDbPath(): string {
       fs.mkdirSync(valutaDir, { recursive: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      throw new Error(`Nem sikerült létrehozni a valuta mappát: ${valutaDir}. ${message}`, { cause: err });
+      throw new Error(`Nem sikerült létrehozni a valuta mappát: ${valutaDir}. ${message}`, {
+        cause: err,
+      });
     }
   }
   return path.join(valutaDir, 'local.db');
@@ -166,7 +172,9 @@ function resolveWasmPath(): string {
   }
 
   const mode = app.isPackaged ? 'packaged' : 'dev';
-  throw new Error(`sql-wasm.wasm nem tal\u00E1lhat\u00F3 (${mode} m\u00F3d). resourcesPath=${process.resourcesPath}, pr\u00F3b\u00E1lt \u00FAtvonalak: ${candidates.join(' | ')}`);
+  throw new Error(
+    `sql-wasm.wasm nem tal\u00E1lhat\u00F3 (${mode} m\u00F3d). resourcesPath=${process.resourcesPath}, pr\u00F3b\u00E1lt \u00FAtvonalak: ${candidates.join(' | ')}`,
+  );
 }
 
 export async function initDatabase(): Promise<void> {
@@ -191,9 +199,7 @@ export async function initDatabase(): Promise<void> {
     // --- PRAGMA user_version schema versioning (local-first mandate) ---
     const versionResult = db.exec('PRAGMA user_version');
     const firstRow = versionResult[0];
-    const currentVersion = firstRow?.values?.[0]?.[0] != null
-      ? Number(firstRow.values[0]![0])
-      : 0;
+    const currentVersion = firstRow?.values?.[0]?.[0] != null ? Number(firstRow.values[0]![0]) : 0;
 
     // --- Local-first tombstone tracking ---
     db.run(`
@@ -270,9 +276,16 @@ export async function initDatabase(): Promise<void> {
 
     // Migrate: add limit columns if they don't exist (for existing installations)
     const limitColumns = [
-      'official_rate', 'limit1_amount', 'limit1_buy_rate', 'limit1_sell_rate',
-      'limit2_amount', 'limit2_buy_rate', 'limit2_sell_rate',
-      'limit3_amount', 'limit3_buy_rate', 'limit3_sell_rate',
+      'official_rate',
+      'limit1_amount',
+      'limit1_buy_rate',
+      'limit1_sell_rate',
+      'limit2_amount',
+      'limit2_buy_rate',
+      'limit2_sell_rate',
+      'limit3_amount',
+      'limit3_buy_rate',
+      'limit3_sell_rate',
     ];
     for (const col of limitColumns) {
       try {
@@ -315,7 +328,9 @@ export async function initDatabase(): Promise<void> {
     const pepMigrationColumns = ['source_of_funds', 'customer_is_pep'];
     for (const col of pepMigrationColumns) {
       try {
-        db.run(`ALTER TABLE pending_transactions ADD COLUMN ${col} ${col === 'customer_is_pep' ? 'INTEGER' : 'TEXT'};`);
+        db.run(
+          `ALTER TABLE pending_transactions ADD COLUMN ${col} ${col === 'customer_is_pep' ? 'INTEGER' : 'TEXT'};`,
+        );
       } catch {
         // Column already exists — expected on fresh installs
       }
@@ -372,12 +387,12 @@ export async function initDatabase(): Promise<void> {
     // V325 (Batch3-C, 2026-06-12): jogi szemely ugyfel + tenyleges tulajdonosok az
     // offline outboxban — a legacy BLOKNYOM jogi aganak adatai a sync-ig itt elnek.
     const legalEntityColumns: Array<{ name: string; type: string }> = [
-      { name: 'is_legal_entity_customer', type: 'INTEGER' },   // 0/1 (NULL = nem jogi szemely)
+      { name: 'is_legal_entity_customer', type: 'INTEGER' }, // 0/1 (NULL = nem jogi szemely)
       { name: 'legal_entity_name', type: 'TEXT' },
       { name: 'legal_entity_seat', type: 'TEXT' },
       { name: 'legal_entity_tax_number', type: 'TEXT' },
       { name: 'legal_deed_number', type: 'TEXT' },
-      { name: 'beneficial_owners_json', type: 'TEXT' },        // max 4 tulajdonos JSON-kent
+      { name: 'beneficial_owners_json', type: 'TEXT' }, // max 4 tulajdonos JSON-kent
     ];
     for (const col of legalEntityColumns) {
       try {
@@ -395,15 +410,15 @@ export async function initDatabase(): Promise<void> {
     const customerSnapshotColumns: Array<{ name: string; type: string }> = [
       // 100k+ alapmezők (V229 backend, most kliens-oldalon is)
       { name: 'customer_birth_place', type: 'TEXT' },
-      { name: 'customer_birth_date', type: 'TEXT' },          // YYYY-MM-DD
+      { name: 'customer_birth_date', type: 'TEXT' }, // YYYY-MM-DD
       { name: 'customer_mother_name', type: 'TEXT' },
       { name: 'customer_nationality', type: 'TEXT' },
-      { name: 'customer_document_type', type: 'TEXT' },        // ID_CARD / PASSPORT / ...
+      { name: 'customer_document_type', type: 'TEXT' }, // ID_CARD / PASSPORT / ...
       // 300k+ JOGCÍM nyilatkozat
-      { name: 'customer_on_own_behalf', type: 'INTEGER' },     // 0/1 (NULL = nem kérdezett)
+      { name: 'customer_on_own_behalf', type: 'INTEGER' }, // 0/1 (NULL = nem kérdezett)
       { name: 'customer_actor_name', type: 'TEXT' },
       // PEP minőség (V235 NEW, HIBA #15)
-      { name: 'customer_pep_kind', type: 'TEXT' },             // CSALADTAG / KOZELI_MUNKATARS / ...
+      { name: 'customer_pep_kind', type: 'TEXT' }, // CSALADTAG / KOZELI_MUNKATARS / ...
       // Actor (képviselt fél) teljes azonosítása (V235 NEW, HIBA #17)
       { name: 'customer_actor_birth_place', type: 'TEXT' },
       { name: 'customer_actor_birth_date', type: 'TEXT' },
@@ -682,7 +697,7 @@ export async function initDatabase(): Promise<void> {
       );
     `);
 
-        // Értéktár offline mód — pending_distributions
+    // Értéktár offline mód — pending_distributions
     db.run(`
       CREATE TABLE IF NOT EXISTS pending_distributions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -785,7 +800,9 @@ export async function initDatabase(): Promise<void> {
         retry_count INTEGER DEFAULT 0
       );
     `);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_pending_stocktake_synced ON pending_stocktake_items(synced);`);
+    db.run(
+      `CREATE INDEX IF NOT EXISTS idx_pending_stocktake_synced ON pending_stocktake_items(synced);`,
+    );
 
     ensureOutboxCompanyColumns(db, getConfig('bootstrap_company_code'));
 
@@ -809,10 +826,7 @@ export async function initDatabase(): Promise<void> {
       }
     }
 
-    const pendingDistributionColumns = [
-      'local_reference_number TEXT',
-      'idempotency_key TEXT',
-    ];
+    const pendingDistributionColumns = ['local_reference_number TEXT', 'idempotency_key TEXT'];
     for (const colDef of pendingDistributionColumns) {
       try {
         db.run(`ALTER TABLE pending_distributions ADD COLUMN ${colDef}`);
@@ -821,10 +835,7 @@ export async function initDatabase(): Promise<void> {
       }
     }
 
-    const pendingCollectionColumns = [
-      'local_reference_number TEXT',
-      'idempotency_key TEXT',
-    ];
+    const pendingCollectionColumns = ['local_reference_number TEXT', 'idempotency_key TEXT'];
     for (const colDef of pendingCollectionColumns) {
       try {
         db.run(`ALTER TABLE pending_collections ADD COLUMN ${colDef}`);
@@ -879,7 +890,8 @@ export async function initDatabase(): Promise<void> {
       try {
         return resolveWasmPath();
       } catch (resolveErr) {
-        const resolveMessage = resolveErr instanceof Error ? resolveErr.message : String(resolveErr);
+        const resolveMessage =
+          resolveErr instanceof Error ? resolveErr.message : String(resolveErr);
         return `resolve error: ${resolveMessage}`;
       }
     })();
@@ -960,7 +972,7 @@ export function generateStrictReceiptNumber(prefix: string, branchCode: string):
     [normBranch, prefix],
   );
   const stmt = db.prepare(
-    'SELECT last_seq FROM local_receipt_sequence WHERE branch_code = ? AND prefix = ?'
+    'SELECT last_seq FROM local_receipt_sequence WHERE branch_code = ? AND prefix = ?',
   );
   stmt.bind([normBranch, prefix]);
   stmt.step();
@@ -970,7 +982,6 @@ export function generateStrictReceiptNumber(prefix: string, branchCode: string):
   // NGM 23/2014: NINCS kulon save itt - a savePendingTransaction/Conversion atomi save-el egyszerre
   return `${prefix}${normBranch}${String(seq).padStart(6, '0')}`;
 }
-
 
 function toJsonOrNull(value: unknown): string | null {
   if (value === null || value === undefined) {
@@ -1113,7 +1124,7 @@ export function cleanupLocalAuditEvents(retentionDays: number = 31): void {
   if (!db) return;
   db.run(
     `DELETE FROM local_audit_events
-     WHERE datetime(created_at) < datetime('now', ?)` ,
+     WHERE datetime(created_at) < datetime('now', ?)`,
     [`-${retentionDays} days`],
   );
 }
@@ -1135,7 +1146,17 @@ export function cleanupSyncedPendingRecords(retentionDays: number = 180): {
   collections: number;
   handoverOperations: number;
 } {
-  if (!db) return { transactions: 0, conversions: 0, bankTransactions: 0, stornos: 0, transfers: 0, distributions: 0, collections: 0, handoverOperations: 0 };
+  if (!db)
+    return {
+      transactions: 0,
+      conversions: 0,
+      bankTransactions: 0,
+      stornos: 0,
+      transfers: 0,
+      distributions: 0,
+      collections: 0,
+      handoverOperations: 0,
+    };
 
   const tables = [
     { name: 'pending_transactions', key: 'transactions' },
@@ -1159,9 +1180,7 @@ export function cleanupSyncedPendingRecords(retentionDays: number = 180): {
         [`-${retentionDays} days`],
       );
       // sql.js doesn't have changes() easily, count separately
-      const countStmt = db.prepare(
-        `SELECT COUNT(*) as cnt FROM ${t.name} WHERE synced = 1`,
-      );
+      const countStmt = db.prepare(`SELECT COUNT(*) as cnt FROM ${t.name} WHERE synced = 1`);
       countStmt.step();
       countStmt.free();
       result[t.key] = 0; // We don't know exact deleted count with sql.js
@@ -1414,7 +1433,9 @@ export function savePendingTransaction(
   // NGM-kompatibilis helyi bizonylatszam: V (vetel) / E (eladas) prefix + branchCode3 + seq6
   const branchCodeForReceipt = getConfig('branch_code');
   if (!branchCodeForReceipt) {
-    throw new Error('SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.');
+    throw new Error(
+      'SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.',
+    );
   }
   const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
   const roundFinOrNull = (v: number | null, decimals: number): number | null =>
@@ -1471,7 +1492,7 @@ export function savePendingTransaction(
         normalizedCustomerAddress,
         denominations,
         normalizedSourceOfFunds,
-        customerIsPep === null ? null : (customerIsPep ? 1 : 0),
+        customerIsPep === null ? null : customerIsPep ? 1 : 0,
         approverWorkerId ?? null,
         approvalSessionId ?? null,
         foreignStatus,
@@ -1538,14 +1559,16 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
   const idempotencyKey = crypto.randomUUID();
   const branchCodeForReceipt = getConfig('branch_code');
   if (!branchCodeForReceipt) {
-    throw new Error('SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.');
+    throw new Error(
+      'SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.',
+    );
   }
   const trimOrNull = (v: string | null | undefined): string | null => {
     const t = v?.trim();
     return t && t.length > 0 ? t : null;
   };
   const boolToInt = (v: boolean | null | undefined): number | null =>
-    v === null || v === undefined ? null : (v ? 1 : 0);
+    v === null || v === undefined ? null : v ? 1 : 0;
   // PP-09: tárolás előtt kerekítés a megadott tizedesjegyre, floating-point noise levágása.
   // Pl. 0.30000000000000004 → roundFin(v,2) → 0.3; 1250.0000000002 → roundFin(v,0) → 1250.
   // Cél: determinisztikus DB-tartalom, nem a teljes IEEE 754 pontosság megőrzése.
@@ -1577,10 +1600,7 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
 
   // NGM 23/2014 atomicitás: sorszám-inkrement + sor INSERT egy tranzakcióban.
   const { ref: localReferenceNumber, id: insertedId } = withTransaction(() => {
-    const ref = generateStrictReceiptNumber(
-      input.type === 'BUY' ? 'V' : 'E',
-      branchCodeForReceipt,
-    );
+    const ref = generateStrictReceiptNumber(input.type === 'BUY' ? 'V' : 'E', branchCodeForReceipt);
     db!.run(
       `INSERT INTO pending_transactions (
         type, currency_code, foreign_amount, huf_amount, rounded_huf_amount, rate,
@@ -1687,15 +1707,18 @@ export function savePendingTransactionV2(input: PendingTransactionInputV2): numb
       customerPepKind: normalized.customerPepKind,
       customerOnOwnBehalf: input.customerOnOwnBehalf,
       customerActorName: normalized.customerActorName,
-      actorIdentity: input.customerOnOwnBehalf === false ? {
-        birthPlace: normalized.customerActorBirthPlace,
-        birthDate: normalized.customerActorBirthDate,
-        motherName: normalized.customerActorMotherName,
-        nationality: normalized.customerActorNationality,
-        documentType: normalized.customerActorDocumentType,
-        documentNumber: normalized.customerActorDocumentNumber,
-        address: normalized.customerActorAddress,
-      } : null,
+      actorIdentity:
+        input.customerOnOwnBehalf === false
+          ? {
+              birthPlace: normalized.customerActorBirthPlace,
+              birthDate: normalized.customerActorBirthDate,
+              motherName: normalized.customerActorMotherName,
+              nationality: normalized.customerActorNationality,
+              documentType: normalized.customerActorDocumentType,
+              documentNumber: normalized.customerActorDocumentNumber,
+              address: normalized.customerActorAddress,
+            }
+          : null,
     },
     identificationSnapshot: {
       customerIdentifier: normalized.customerIdentifier,
@@ -1716,7 +1739,9 @@ export function getPendingTransactions(): PendingTransactionRow[] {
   if (!db) return [];
 
   const results: PendingTransactionRow[] = [];
-  const stmt = db.prepare('SELECT * FROM pending_transactions WHERE synced = 0 ORDER BY created_at ASC');
+  const stmt = db.prepare(
+    'SELECT * FROM pending_transactions WHERE synced = 0 ORDER BY created_at ASC',
+  );
   while (stmt.step()) {
     const row = stmt.getAsObject() as unknown as PendingTransactionRow;
     results.push(row);
@@ -1793,7 +1818,9 @@ export function savePendingConversion(
   // NGM-kompatibilis: K (konverzio) prefix
   const branchCodeForReceipt = getConfig('branch_code');
   if (!branchCodeForReceipt) {
-    throw new Error('SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.');
+    throw new Error(
+      'SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.',
+    );
   }
   const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
   const roundFinOrNull = (v: number | null, decimals: number): number | null =>
@@ -1896,14 +1923,16 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
   const idempotencyKey = crypto.randomUUID();
   const branchCodeForReceipt = getConfig('branch_code');
   if (!branchCodeForReceipt) {
-    throw new Error('SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.');
+    throw new Error(
+      'SetupWizard nem futott le: branch_code SQLite config hianyzik. Ujra-telepites szukseges.',
+    );
   }
   const trimOrNull = (v: string | null | undefined): string | null => {
     const t = v?.trim();
     return t && t.length > 0 ? t : null;
   };
   const boolToInt = (v: boolean | null | undefined): number | null =>
-    v === null || v === undefined ? null : (v ? 1 : 0);
+    v === null || v === undefined ? null : v ? 1 : 0;
   const roundFin = (v: number, decimals: number): number => Number(v.toFixed(decimals));
   const roundFinOrNull = (v: number | null, decimals: number): number | null =>
     v === null ? null : roundFin(v, decimals);
@@ -1928,24 +1957,43 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
         note, local_reference_number, idempotency_key, company_code
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        input.fromCurrencyId, input.fromCurrencyCode, input.toCurrencyId, input.toCurrencyCode,
-        roundFin(input.fromAmount, 8), roundFin(input.calculatedHufAmount, 2), roundFin(input.calculatedToAmount, 8), roundFin(input.conversionRate, 10),
+        input.fromCurrencyId,
+        input.fromCurrencyCode,
+        input.toCurrencyId,
+        input.toCurrencyCode,
+        roundFin(input.fromAmount, 8),
+        roundFin(input.calculatedHufAmount, 2),
+        roundFin(input.calculatedToAmount, 8),
+        roundFin(input.conversionRate, 10),
         roundFinOrNull(input.handlingFee, 0),
-        trimOrNull(input.customerId), trimOrNull(input.customerName), trimOrNull(input.customerDocumentNumber),
-        trimOrNull(input.customerAddress), trimOrNull(input.customerNationality),
-        trimOrNull(input.customerBirthPlace), trimOrNull(input.customerBirthDate),
-        trimOrNull(input.customerMotherName), trimOrNull(input.customerDocumentType),
-        trimOrNull(input.sourceOfFunds), boolToInt(input.customerIsPep),
+        trimOrNull(input.customerId),
+        trimOrNull(input.customerName),
+        trimOrNull(input.customerDocumentNumber),
+        trimOrNull(input.customerAddress),
+        trimOrNull(input.customerNationality),
+        trimOrNull(input.customerBirthPlace),
+        trimOrNull(input.customerBirthDate),
+        trimOrNull(input.customerMotherName),
+        trimOrNull(input.customerDocumentType),
+        trimOrNull(input.sourceOfFunds),
+        boolToInt(input.customerIsPep),
         input.approverWorkerId ?? null,
         input.approvalSessionId ?? null,
-        boolToInt(input.customerOnOwnBehalf), trimOrNull(input.customerActorName),
+        boolToInt(input.customerOnOwnBehalf),
+        trimOrNull(input.customerActorName),
         trimOrNull(input.customerPepKind),
-        trimOrNull(input.customerActorBirthPlace), trimOrNull(input.customerActorBirthDate),
-        trimOrNull(input.customerActorMotherName), trimOrNull(input.customerActorNationality),
+        trimOrNull(input.customerActorBirthPlace),
+        trimOrNull(input.customerActorBirthDate),
+        trimOrNull(input.customerActorMotherName),
+        trimOrNull(input.customerActorNationality),
         trimOrNull(input.customerActorDocumentType),
-        trimOrNull(input.customerActorDocumentNumber), trimOrNull(input.customerActorAddress),
+        trimOrNull(input.customerActorDocumentNumber),
+        trimOrNull(input.customerActorAddress),
         trimOrNull(input.foreignStatus),
-        trimOrNull(input.note), ref, idempotencyKey, getActiveCompanyCode(),
+        trimOrNull(input.note),
+        ref,
+        idempotencyKey,
+        getActiveCompanyCode(),
       ],
     );
     return { ref, id: lastInsertRowId(db!) };
@@ -1982,16 +2030,20 @@ export function savePendingConversionV2(input: PendingConversionInputV2): number
       customerIsPep: input.customerIsPep,
       customerPepKind: trimOrNull(input.customerPepKind),
       customerOnOwnBehalf: input.customerOnOwnBehalf,
-      customerActorName: input.customerOnOwnBehalf === false ? trimOrNull(input.customerActorName) : null,
-      actorIdentity: input.customerOnOwnBehalf === false ? {
-        birthPlace: trimOrNull(input.customerActorBirthPlace),
-        birthDate: trimOrNull(input.customerActorBirthDate),
-        motherName: trimOrNull(input.customerActorMotherName),
-        nationality: trimOrNull(input.customerActorNationality),
-        documentType: trimOrNull(input.customerActorDocumentType),
-        documentNumber: trimOrNull(input.customerActorDocumentNumber),
-        address: trimOrNull(input.customerActorAddress),
-      } : null,
+      customerActorName:
+        input.customerOnOwnBehalf === false ? trimOrNull(input.customerActorName) : null,
+      actorIdentity:
+        input.customerOnOwnBehalf === false
+          ? {
+              birthPlace: trimOrNull(input.customerActorBirthPlace),
+              birthDate: trimOrNull(input.customerActorBirthDate),
+              motherName: trimOrNull(input.customerActorMotherName),
+              nationality: trimOrNull(input.customerActorNationality),
+              documentType: trimOrNull(input.customerActorDocumentType),
+              documentNumber: trimOrNull(input.customerActorDocumentNumber),
+              address: trimOrNull(input.customerActorAddress),
+            }
+          : null,
     },
     identificationSnapshot: {
       customerId: trimOrNull(input.customerId),
@@ -2014,7 +2066,9 @@ export function getPendingConversions(): PendingConversionRow[] {
   if (!db) return [];
 
   const results: PendingConversionRow[] = [];
-  const stmt = db.prepare('SELECT * FROM pending_conversions WHERE synced = 0 ORDER BY created_at ASC');
+  const stmt = db.prepare(
+    'SELECT * FROM pending_conversions WHERE synced = 0 ORDER BY created_at ASC',
+  );
   while (stmt.step()) {
     const row = stmt.getAsObject() as unknown as PendingConversionRow;
     results.push(row);
@@ -2137,7 +2191,9 @@ export function savePendingDistribution(
 export function getPendingDistributions(): PendingDistributionRow[] {
   if (!db) return [];
   const results: PendingDistributionRow[] = [];
-  const stmt = db.prepare('SELECT * FROM pending_distributions WHERE synced = 0 ORDER BY created_at ASC');
+  const stmt = db.prepare(
+    'SELECT * FROM pending_distributions WHERE synced = 0 ORDER BY created_at ASC',
+  );
   while (stmt.step()) {
     results.push(stmt.getAsObject() as unknown as PendingDistributionRow);
   }
@@ -2284,7 +2340,9 @@ export function savePendingTransfer(
 export function getPendingTransfers(): PendingTransferRow[] {
   if (!db) return [];
   const results: PendingTransferRow[] = [];
-  const stmt = db.prepare('SELECT * FROM pending_transfers WHERE synced = 0 ORDER BY created_at ASC');
+  const stmt = db.prepare(
+    'SELECT * FROM pending_transfers WHERE synced = 0 ORDER BY created_at ASC',
+  );
   while (stmt.step()) {
     results.push(stmt.getAsObject() as unknown as PendingTransferRow);
   }
@@ -2333,7 +2391,15 @@ export function savePendingCollection(
       idempotency_key,
       company_code
     ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [sourceBranchCode, currencyCode, amount, note, localReferenceNumber, idempotencyKey, getActiveCompanyCode()],
+    [
+      sourceBranchCode,
+      currencyCode,
+      amount,
+      note,
+      localReferenceNumber,
+      idempotencyKey,
+      getActiveCompanyCode(),
+    ],
   );
   const insertedId = lastInsertRowId(db);
   saveDatabase();
@@ -2438,7 +2504,9 @@ export function savePendingBankTransaction(
 export function getPendingBankTransactions(): PendingBankTransactionRow[] {
   if (!db) return [];
   const results: PendingBankTransactionRow[] = [];
-  const stmt = db.prepare('SELECT * FROM pending_bank_transactions WHERE synced = 0 ORDER BY created_at ASC');
+  const stmt = db.prepare(
+    'SELECT * FROM pending_bank_transactions WHERE synced = 0 ORDER BY created_at ASC',
+  );
   while (stmt.step()) {
     results.push(stmt.getAsObject() as unknown as PendingBankTransactionRow);
   }
@@ -2612,7 +2680,9 @@ export function savePendingTransferStorno(params: PendingTransferStornoInput): n
 export function getPendingTransferStornos(): PendingTransferStornoRow[] {
   if (!db) return [];
   const results: PendingTransferStornoRow[] = [];
-  const stmt = db.prepare('SELECT * FROM pending_transfer_stornos WHERE synced = 0 ORDER BY created_at ASC');
+  const stmt = db.prepare(
+    'SELECT * FROM pending_transfer_stornos WHERE synced = 0 ORDER BY created_at ASC',
+  );
   while (stmt.step()) {
     results.push(stmt.getAsObject() as unknown as PendingTransferStornoRow);
   }
@@ -2656,7 +2726,9 @@ export function savePendingCircularReply(params: PendingCircularReplyInput): num
 export function getPendingCircularReplies(): PendingCircularReplyRow[] {
   if (!db) return [];
   const results: PendingCircularReplyRow[] = [];
-  const stmt = db.prepare('SELECT * FROM pending_circular_replies WHERE synced = 0 ORDER BY created_at ASC');
+  const stmt = db.prepare(
+    'SELECT * FROM pending_circular_replies WHERE synced = 0 ORDER BY created_at ASC',
+  );
   while (stmt.step()) {
     results.push(stmt.getAsObject() as unknown as PendingCircularReplyRow);
   }
@@ -2821,7 +2893,7 @@ export function getReassertableTransactions(sinceIso: string): PendingTransactio
   if (!db) return [];
   const results: PendingTransactionRow[] = [];
   const stmt = db.prepare(
-    "SELECT * FROM pending_transactions WHERE synced = 1 AND idempotency_key IS NOT NULL AND created_at >= ? ORDER BY created_at ASC, id ASC",
+    'SELECT * FROM pending_transactions WHERE synced = 1 AND idempotency_key IS NOT NULL AND created_at >= ? ORDER BY created_at ASC, id ASC',
   );
   stmt.bind([sinceIso]);
   while (stmt.step()) results.push(stmt.getAsObject() as unknown as PendingTransactionRow);
@@ -2833,7 +2905,7 @@ export function getReassertableConversions(sinceIso: string): PendingConversionR
   if (!db) return [];
   const results: PendingConversionRow[] = [];
   const stmt = db.prepare(
-    "SELECT * FROM pending_conversions WHERE synced = 1 AND idempotency_key IS NOT NULL AND created_at >= ? ORDER BY created_at ASC, id ASC",
+    'SELECT * FROM pending_conversions WHERE synced = 1 AND idempotency_key IS NOT NULL AND created_at >= ? ORDER BY created_at ASC, id ASC',
   );
   stmt.bind([sinceIso]);
   while (stmt.step()) results.push(stmt.getAsObject() as unknown as PendingConversionRow);
@@ -2845,7 +2917,7 @@ export function getReassertableStornos(sinceIso: string): PendingStornoRow[] {
   if (!db) return [];
   const results: PendingStornoRow[] = [];
   const stmt = db.prepare(
-    "SELECT * FROM pending_stornos WHERE synced = 1 AND idempotency_key IS NOT NULL AND created_at >= ? ORDER BY created_at ASC, id ASC",
+    'SELECT * FROM pending_stornos WHERE synced = 1 AND idempotency_key IS NOT NULL AND created_at >= ? ORDER BY created_at ASC, id ASC',
   );
   stmt.bind([sinceIso]);
   while (stmt.step()) results.push(stmt.getAsObject() as unknown as PendingStornoRow);
@@ -2857,7 +2929,7 @@ export function getReassertableBankTransactions(sinceIso: string): PendingBankTr
   if (!db) return [];
   const results: PendingBankTransactionRow[] = [];
   const stmt = db.prepare(
-    "SELECT * FROM pending_bank_transactions WHERE synced = 1 AND idempotency_key IS NOT NULL AND created_at >= ? ORDER BY created_at ASC, id ASC",
+    'SELECT * FROM pending_bank_transactions WHERE synced = 1 AND idempotency_key IS NOT NULL AND created_at >= ? ORDER BY created_at ASC, id ASC',
   );
   stmt.bind([sinceIso]);
   while (stmt.step()) results.push(stmt.getAsObject() as unknown as PendingBankTransactionRow);
@@ -2925,7 +2997,9 @@ export function savePendingHandoverOperation(params: PendingHandoverOperationInp
 export function getPendingHandoverOperations(): PendingHandoverOperationRow[] {
   if (!db) return [];
   const results: PendingHandoverOperationRow[] = [];
-  const stmt = db.prepare('SELECT * FROM pending_handover_operations WHERE synced = 0 ORDER BY created_at ASC');
+  const stmt = db.prepare(
+    'SELECT * FROM pending_handover_operations WHERE synced = 0 ORDER BY created_at ASC',
+  );
   while (stmt.step()) {
     results.push(stmt.getAsObject() as unknown as PendingHandoverOperationRow);
   }
@@ -2942,7 +3016,9 @@ export function markHandoverOperationSynced(id: number): void {
 export function getPendingCollections(): PendingCollectionRow[] {
   if (!db) return [];
   const results: PendingCollectionRow[] = [];
-  const stmt = db.prepare('SELECT * FROM pending_collections WHERE synced = 0 ORDER BY created_at ASC');
+  const stmt = db.prepare(
+    'SELECT * FROM pending_collections WHERE synced = 0 ORDER BY created_at ASC',
+  );
   while (stmt.step()) {
     results.push(stmt.getAsObject() as unknown as PendingCollectionRow);
   }
@@ -3053,7 +3129,16 @@ export function saveCachedBranchStatus(
        daily_turnover = excluded.daily_turnover,
        cash_balances = excluded.cash_balances,
        cached_at = excluded.cached_at`,
-    [branchCode, branchName, companyId, lastSyncAt, onlineStatus, totalHufValue, dailyTurnover, cashBalances],
+    [
+      branchCode,
+      branchName,
+      companyId,
+      lastSyncAt,
+      onlineStatus,
+      totalHufValue,
+      dailyTurnover,
+      cashBalances,
+    ],
   );
   saveDatabase();
 }
@@ -3195,7 +3280,18 @@ export function saveCachedWorker(
        company_code = excluded.company_code,
        active = excluded.active,
        cached_at = excluded.cached_at`,
-    [id, workerCode, fullName, role, branchId, branchCode, branchName, companyId, companyCode, active ? 1 : 0],
+    [
+      id,
+      workerCode,
+      fullName,
+      role,
+      branchId,
+      branchCode,
+      branchName,
+      companyId,
+      companyCode,
+      active ? 1 : 0,
+    ],
   );
   saveDatabase();
 }
@@ -3253,7 +3349,11 @@ export function getCachedRates(): CachedRateRow[] {
 
 // --- Local-first: Tombstone API ---
 
-export function markTombstone(entityType: string, entityId: string, retentionDays: number = 30): void {
+export function markTombstone(
+  entityType: string,
+  entityId: string,
+  retentionDays: number = 30,
+): void {
   if (!db) return;
   const retentionUntil = new Date();
   retentionUntil.setDate(retentionUntil.getDate() + retentionDays);
@@ -3274,12 +3374,24 @@ export function isTombstoned(entityType: string, entityId: string): boolean {
   return exists;
 }
 
-export function getUnsyncedTombstones(): Array<{ entity_type: string; entity_id: string; deleted_at: string }> {
+export function getUnsyncedTombstones(): Array<{
+  entity_type: string;
+  entity_id: string;
+  deleted_at: string;
+}> {
   if (!db) return [];
   const results: Array<{ entity_type: string; entity_id: string; deleted_at: string }> = [];
-  const stmt = db.prepare('SELECT entity_type, entity_id, deleted_at FROM lf_tombstone WHERE synced = 0');
+  const stmt = db.prepare(
+    'SELECT entity_type, entity_id, deleted_at FROM lf_tombstone WHERE synced = 0',
+  );
   while (stmt.step()) {
-    results.push(stmt.getAsObject() as unknown as { entity_type: string; entity_id: string; deleted_at: string });
+    results.push(
+      stmt.getAsObject() as unknown as {
+        entity_type: string;
+        entity_id: string;
+        deleted_at: string;
+      },
+    );
   }
   stmt.free();
   return results;
@@ -3287,13 +3399,18 @@ export function getUnsyncedTombstones(): Array<{ entity_type: string; entity_id:
 
 export function markTombstoneSynced(entityType: string, entityId: string): void {
   if (!db) return;
-  db.run('UPDATE lf_tombstone SET synced = 1 WHERE entity_type = ? AND entity_id = ?', [entityType, entityId]);
+  db.run('UPDATE lf_tombstone SET synced = 1 WHERE entity_type = ? AND entity_id = ?', [
+    entityType,
+    entityId,
+  ]);
   saveDatabase();
 }
 
 export function cleanupExpiredTombstones(): void {
   if (!db) return;
-  db.run(`DELETE FROM lf_tombstone WHERE synced = 1 AND datetime(retention_until) < datetime('now')`);
+  db.run(
+    `DELETE FROM lf_tombstone WHERE synced = 1 AND datetime(retention_until) < datetime('now')`,
+  );
   saveDatabase();
 }
 
@@ -3309,11 +3426,26 @@ export interface LfSyncState {
 }
 
 export function getLfSyncState(): LfSyncState {
-  if (!db) return { status: 'idle', lastPullAt: null, lastPushAt: null, lastPullCheckpoint: null, errorMessage: null, consecutiveFailures: 0 };
+  if (!db)
+    return {
+      status: 'idle',
+      lastPullAt: null,
+      lastPushAt: null,
+      lastPullCheckpoint: null,
+      errorMessage: null,
+      consecutiveFailures: 0,
+    };
   const stmt = db.prepare('SELECT * FROM lf_sync_state WHERE id = 1');
   if (!stmt.step()) {
     stmt.free();
-    return { status: 'idle', lastPullAt: null, lastPushAt: null, lastPullCheckpoint: null, errorMessage: null, consecutiveFailures: 0 };
+    return {
+      status: 'idle',
+      lastPullAt: null,
+      lastPushAt: null,
+      lastPullCheckpoint: null,
+      errorMessage: null,
+      consecutiveFailures: 0,
+    };
   }
   const row = stmt.getAsObject() as Record<string, unknown>;
   stmt.free();
@@ -3348,7 +3480,9 @@ export function updateLfPullCheckpoint(checkpoint: string): void {
 
 export function updateLfPushTimestamp(): void {
   if (!db) return;
-  db.run(`UPDATE lf_sync_state SET last_push_at = datetime('now'), updated_at = datetime('now') WHERE id = 1`);
+  db.run(
+    `UPDATE lf_sync_state SET last_push_at = datetime('now'), updated_at = datetime('now') WHERE id = 1`,
+  );
 }
 
 // --- Local-first: Conflict Log API ---

@@ -56,9 +56,15 @@ export const machineConfigApi = {
    * Konfigurációs rekord mentése a backendbe (upsert).
    * Offline/hiba esetén silently fails (localStorage-ban megmarad az érték).
    */
-  put: async (workstationCode: string, req: MachineConfigPutRequest): Promise<MachineConfigPutResponse | null> => {
+  put: async (
+    workstationCode: string,
+    req: MachineConfigPutRequest,
+  ): Promise<MachineConfigPutResponse | null> => {
     try {
-      const resp = await api.put<MachineConfigPutResponse>(`/machine-config/${workstationCode}`, req)
+      const resp = await api.put<MachineConfigPutResponse>(
+        `/machine-config/${workstationCode}`,
+        req,
+      )
       return resp.data
     } catch {
       return null
@@ -79,8 +85,14 @@ export const machineConfigApi = {
  * visszafelé kompatibilitásból — ipcRenderer.invoke-ra épülő promis-t használunk.
  */
 export async function resolveWorkstationCode(): Promise<string> {
-  if (typeof window !== 'undefined' && (window as unknown as { electronAPI?: { getConfig?: (k: string) => Promise<string | null> } }).electronAPI?.getConfig) {
-    const electronAPI = (window as unknown as { electronAPI: { getConfig: (k: string) => Promise<string | null> } }).electronAPI
+  if (
+    typeof window !== 'undefined' &&
+    (window as unknown as { electronAPI?: { getConfig?: (k: string) => Promise<string | null> } })
+      .electronAPI?.getConfig
+  ) {
+    const electronAPI = (
+      window as unknown as { electronAPI: { getConfig: (k: string) => Promise<string | null> } }
+    ).electronAPI
     try {
       const code = await electronAPI.getConfig('branch_code')
       if (code && code.trim()) return code.trim()
@@ -90,5 +102,5 @@ export async function resolveWorkstationCode(): Promise<string> {
   }
   // Web/dev fallback
   const stored = localStorage.getItem('penztar-branch-code')
-  return (stored && stored.trim()) ? stored.trim() : 'UNKNOWN'
+  return stored && stored.trim() ? stored.trim() : 'UNKNOWN'
 }

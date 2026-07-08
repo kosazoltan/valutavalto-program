@@ -94,13 +94,21 @@ describe('useUndoStack', () => {
     })
     // Should be able to undo 3 times (maxSize=3), 4th should be null
     let val: number | null = null
-    act(() => { val = result.current.undo() })
+    act(() => {
+      val = result.current.undo()
+    })
     expect(val).toBe(3)
-    act(() => { val = result.current.undo() })
+    act(() => {
+      val = result.current.undo()
+    })
     expect(val).toBe(2)
-    act(() => { val = result.current.undo() })
+    act(() => {
+      val = result.current.undo()
+    })
     expect(val).toBe(1)
-    act(() => { val = result.current.undo() })
+    act(() => {
+      val = result.current.undo()
+    })
     expect(val).toBeNull()
   })
 
@@ -112,13 +120,21 @@ describe('useUndoStack', () => {
       result.current.push({ prev: 'c', next: 'd' })
     })
     let val: string | null = null
-    act(() => { val = result.current.undo() }) // d -> c
+    act(() => {
+      val = result.current.undo()
+    }) // d -> c
     expect(val).toBe('c')
-    act(() => { val = result.current.undo() }) // c -> b
+    act(() => {
+      val = result.current.undo()
+    }) // c -> b
     expect(val).toBe('b')
-    act(() => { val = result.current.redo() }) // b -> c
+    act(() => {
+      val = result.current.redo()
+    }) // b -> c
     expect(val).toBe('c')
-    act(() => { val = result.current.redo() }) // c -> d
+    act(() => {
+      val = result.current.redo()
+    }) // c -> d
     expect(val).toBe('d')
     expect(result.current.canRedo).toBe(false)
   })
@@ -126,11 +142,17 @@ describe('useUndoStack', () => {
   it('version increments on each operation', () => {
     const { result } = renderHook(() => useUndoStack<number>())
     expect(result.current.version).toBe(0)
-    act(() => { result.current.push({ prev: 1, next: 2 }) })
+    act(() => {
+      result.current.push({ prev: 1, next: 2 })
+    })
     expect(result.current.version).toBe(1)
-    act(() => { result.current.undo() })
+    act(() => {
+      result.current.undo()
+    })
     expect(result.current.version).toBe(2)
-    act(() => { result.current.redo() })
+    act(() => {
+      result.current.redo()
+    })
     expect(result.current.version).toBe(3)
   })
 })

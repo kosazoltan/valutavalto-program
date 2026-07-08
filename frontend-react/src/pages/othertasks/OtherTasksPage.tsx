@@ -43,9 +43,14 @@ function OtherTaskCard({ item, onClick }: { item: OtherTaskMenuItem; onClick: ()
         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1
         transition-all duration-150 group"
     >
-      <div className="w-10 h-10 bg-secondary-100 rounded-lg flex items-center justify-center shrink-0
-        group-hover:bg-primary-100 transition-colors">
-        <Icon size={20} className="text-secondary-600 group-hover:text-primary-600 transition-colors" />
+      <div
+        className="w-10 h-10 bg-secondary-100 rounded-lg flex items-center justify-center shrink-0
+        group-hover:bg-primary-100 transition-colors"
+      >
+        <Icon
+          size={20}
+          className="text-secondary-600 group-hover:text-primary-600 transition-colors"
+        />
       </div>
       <div className="flex-1 min-w-0">
         <span className="text-sm font-semibold text-secondary-900 group-hover:text-primary-700">

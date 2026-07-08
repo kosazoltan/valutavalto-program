@@ -27,8 +27,16 @@ describe('FK-003 closingControlView', () => {
   })
 
   it('isClosingDone fallback: 3 boolean → done csak ha mind a 3 igaz', () => {
-    expect(isClosingDone(row({ dailyClosingDone: true, eveningClosingDone: true, navClosingDone: true }))).toBe(true)
-    expect(isClosingDone(row({ dailyClosingDone: true, eveningClosingDone: true, navClosingDone: false }))).toBe(false)
+    expect(
+      isClosingDone(
+        row({ dailyClosingDone: true, eveningClosingDone: true, navClosingDone: true }),
+      ),
+    ).toBe(true)
+    expect(
+      isClosingDone(
+        row({ dailyClosingDone: true, eveningClosingDone: true, navClosingDone: false }),
+      ),
+    ).toBe(false)
   })
 
   it('computeClosingSummary: total = done + notArrived (FK-003 1. pont)', () => {
@@ -54,8 +62,18 @@ describe('FK-003 closingControlView', () => {
   })
 
   it('matchesClosingFilter: állapot + keresés', () => {
-    const done = row({ branchCode: 'BR009', branchName: 'Dombóvár Tesco', completedCount: 3, requiredCount: 3 })
-    const missing = row({ branchCode: 'BR010', branchName: 'Szekszárd Értéktár', completedCount: 0, requiredCount: 3 })
+    const done = row({
+      branchCode: 'BR009',
+      branchName: 'Dombóvár Tesco',
+      completedCount: 3,
+      requiredCount: 3,
+    })
+    const missing = row({
+      branchCode: 'BR010',
+      branchName: 'Szekszárd Értéktár',
+      completedCount: 0,
+      requiredCount: 3,
+    })
 
     expect(matchesClosingFilter(done, 'all', '')).toBe(true)
     expect(matchesClosingFilter(done, 'done', '')).toBe(true)

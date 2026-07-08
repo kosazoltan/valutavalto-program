@@ -23,7 +23,7 @@ export const FORMULA_STORAGE_KEY = 'arfolyamkeszito.mainSheet.formulas.v2'
 
 /** A képletben hivatkozható érték-oszlopok (D=ISO-címke, G/H=kereszt-auto, I=nagybani — kizárva). */
 export const FORMULA_COL_LETTERS = ['A', 'B', 'C', 'E', 'F'] as const
-export type ColLetter = typeof FORMULA_COL_LETTERS[number]
+export type ColLetter = (typeof FORMULA_COL_LETTERS)[number]
 
 export type ColValues = Partial<Record<ColLetter, number>>
 
@@ -84,14 +84,25 @@ function tokenize(input: string): Token[] {
   const isDigit = (c: string | undefined): boolean => c !== undefined && c >= '0' && c <= '9'
   while (i < s.length) {
     const ch = s[i]!
-    if (ch === ' ' || ch === '\t') { i++; continue }
+    if (ch === ' ' || ch === '\t') {
+      i++
+      continue
+    }
     if (ch === '+' || ch === '-' || ch === '*' || ch === '/') {
       tokens.push({ kind: 'op', op: ch })
       i++
       continue
     }
-    if (ch === '(') { tokens.push({ kind: 'lparen' }); i++; continue }
-    if (ch === ')') { tokens.push({ kind: 'rparen' }); i++; continue }
+    if (ch === '(') {
+      tokens.push({ kind: 'lparen' })
+      i++
+      continue
+    }
+    if (ch === ')') {
+      tokens.push({ kind: 'rparen' })
+      i++
+      continue
+    }
     // szám (vessző VAGY pont tizedessel)
     if (isDigit(ch)) {
       let j = i + 1
@@ -142,16 +153,21 @@ function tokenize(input: string): Token[] {
 
 class ParseError extends Error {}
 
-function resolveRef(token: { kind: 'self'; col: ColLetter } | { kind: 'cross'; currency: string; col: ColLetter }, ctx: FormulaContext): number {
+function resolveRef(
+  token: { kind: 'self'; col: ColLetter } | { kind: 'cross'; currency: string; col: ColLetter },
+  ctx: FormulaContext,
+): number {
   if (token.kind === 'self') {
     const v = ctx.self[token.col]
-    if (v === undefined || v === null) throw new ParseError(`Nincs érték a(z) ${token.col} oszlopban`)
+    if (v === undefined || v === null)
+      throw new ParseError(`Nincs érték a(z) ${token.col} oszlopban`)
     return v
   }
   const row = ctx.byCurrency.get(token.currency)
   if (!row) throw new ParseError(`Ismeretlen valuta: ${token.currency}`)
   const v = row[token.col]
-  if (v === undefined || v === null) throw new ParseError(`Nincs érték: !${token.col}${token.currency}`)
+  if (v === undefined || v === null)
+    throw new ParseError(`Nincs érték: !${token.col}${token.currency}`)
   return v
 }
 
@@ -190,10 +206,22 @@ function evalTokens(tokens: Token[], ctx: FormulaContext): number {
   function parseFactor(): number {
     const t = peek()
     if (!t) throw new ParseError('Váratlan képlet-vég')
-    if (t.kind === 'op' && t.op === '-') { next(); return -parseFactor() }
-    if (t.kind === 'op' && t.op === '+') { next(); return parseFactor() }
-    if (t.kind === 'num') { next(); return t.value }
-    if (t.kind === 'self' || t.kind === 'cross') { next(); return resolveRef(t, ctx) }
+    if (t.kind === 'op' && t.op === '-') {
+      next()
+      return -parseFactor()
+    }
+    if (t.kind === 'op' && t.op === '+') {
+      next()
+      return parseFactor()
+    }
+    if (t.kind === 'num') {
+      next()
+      return t.value
+    }
+    if (t.kind === 'self' || t.kind === 'cross') {
+      next()
+      return resolveRef(t, ctx)
+    }
     if (t.kind === 'lparen') {
       next()
       const v = parseExpr()

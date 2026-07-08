@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Shield, Search, ChevronLeft, ChevronRight, X, Download } from 'lucide-react'
 import { auditLogApi } from '../../services/api/index'
 import type { AuditLog } from '../../services/api/index'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
 /**
@@ -60,7 +60,16 @@ export default function AuditLogPage() {
       if (branchFilter) {
         result = await auditLogApi.getByBranch(branchFilter, from, to, page, 50)
       } else {
-        result = await auditLogApi.search(from, to, workerFilter, undefined, actionFilter, searchTerm, page, 50)
+        result = await auditLogApi.search(
+          from,
+          to,
+          workerFilter,
+          undefined,
+          actionFilter,
+          searchTerm,
+          page,
+          50,
+        )
       }
 
       setLogs(Array.isArray(result?.content) ? result.content : [])
@@ -84,7 +93,8 @@ export default function AuditLogPage() {
 
     let active = true
     setTrailLoading(true)
-    auditLogApi.getTrail(selectedLog.entityType, selectedLog.entityId)
+    auditLogApi
+      .getTrail(selectedLog.entityType, selectedLog.entityId)
       .then((rows) => {
         if (active) setTrailLogs(Array.isArray(rows) ? rows : [])
       })
@@ -98,7 +108,9 @@ export default function AuditLogPage() {
         if (active) setTrailLoading(false)
       })
 
-    return () => { active = false }
+    return () => {
+      active = false
+    }
   }, [selectedLog])
 
   const filteredLogs = logs
@@ -138,13 +150,18 @@ export default function AuditLogPage() {
   const renderDiff = (oldVal: string | undefined, newVal: string | undefined) => {
     const parseJson = (val: string | undefined) => {
       if (!val) return null
-      try { return JSON.parse(val) } catch { return val }
+      try {
+        return JSON.parse(val)
+      } catch {
+        return val
+      }
     }
 
     const oldObj = parseJson(oldVal)
     const newObj = parseJson(newVal)
 
-    if (!oldObj && !newObj) return <p className="text-gray-500 text-sm">{t('audit.nincsReszletesAdat')}</p>
+    if (!oldObj && !newObj)
+      return <p className="text-gray-500 text-sm">{t('audit.nincsReszletesAdat')}</p>
 
     return (
       <div className="grid grid-cols-2 gap-4">
@@ -174,7 +191,8 @@ export default function AuditLogPage() {
         </h1>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-500">
-            {t('audit.osszesen')}{totalElements} {t('common.bejegyzes')}
+            {t('audit.osszesen')}
+            {totalElements} {t('common.bejegyzes')}
           </span>
           <button
             type="button"
@@ -197,7 +215,10 @@ export default function AuditLogPage() {
               type="date"
               className="form-input"
               value={fromDate}
-              onChange={(e) => { setFromDate(e.target.value); setPage(0) }}
+              onChange={(e) => {
+                setFromDate(e.target.value)
+                setPage(0)
+              }}
             />
           </div>
           <div>
@@ -206,7 +227,10 @@ export default function AuditLogPage() {
               type="date"
               className="form-input"
               value={toDate}
-              onChange={(e) => { setToDate(e.target.value); setPage(0) }}
+              onChange={(e) => {
+                setToDate(e.target.value)
+                setPage(0)
+              }}
             />
           </div>
           <div>
@@ -214,10 +238,15 @@ export default function AuditLogPage() {
             <select
               className="form-input"
               value={actionFilter}
-              onChange={(e) => { setActionFilter(e.target.value); setPage(0) }}
+              onChange={(e) => {
+                setActionFilter(e.target.value)
+                setPage(0)
+              }}
             >
-              {ACTION_TYPES.map(at => (
-                <option key={at.value} value={at.value}>{at.label}</option>
+              {ACTION_TYPES.map((at) => (
+                <option key={at.value} value={at.value}>
+                  {at.label}
+                </option>
               ))}
             </select>
           </div>
@@ -228,7 +257,10 @@ export default function AuditLogPage() {
               className="form-input"
               placeholder="Worker ID..."
               value={workerFilter}
-              onChange={(e) => { setWorkerFilter(e.target.value); setPage(0) }}
+              onChange={(e) => {
+                setWorkerFilter(e.target.value)
+                setPage(0)
+              }}
             />
           </div>
           <div>
@@ -238,12 +270,18 @@ export default function AuditLogPage() {
               className="form-input"
               placeholder="Branch ID..."
               value={branchFilter}
-              onChange={(e) => { setBranchFilter(e.target.value); setPage(0) }}
+              onChange={(e) => {
+                setBranchFilter(e.target.value)
+                setPage(0)
+              }}
             />
           </div>
         </div>
         <div className="relative max-w-md">
-          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+          <Search
+            className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+            size={16}
+          />
           <input
             type="text"
             className="form-input pl-8"
@@ -270,21 +308,33 @@ export default function AuditLogPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="text-center py-8">Betöltés...</td></tr>
+              <tr>
+                <td colSpan={7} className="text-center py-8">
+                  Betöltés...
+                </td>
+              </tr>
             ) : filteredLogs.length === 0 ? (
-              <tr><td colSpan={7} className="text-center text-gray-500 py-8">{t('common.noResult')}</td></tr>
+              <tr>
+                <td colSpan={7} className="text-center text-gray-500 py-8">
+                  {t('common.noResult')}
+                </td>
+              </tr>
             ) : (
               filteredLogs.map((log) => (
                 <tr key={log.id} className="hover:bg-gray-50 cursor-pointer">
                   <td className="text-sm">{new Date(log.createdAt).toLocaleString('hu-HU')}</td>
                   <td>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${getActionColor(log.action)}`}>
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${getActionColor(log.action)}`}
+                    >
                       {log.action}
                     </span>
                   </td>
                   <td>
                     <div className="text-sm">{log.entityType}</div>
-                    <div className="text-xs text-gray-400 font-mono">{log.entityId?.slice(0, 8)}...</div>
+                    <div className="text-xs text-gray-400 font-mono">
+                      {log.entityId?.slice(0, 8)}...
+                    </div>
                   </td>
                   <td className="text-sm">{log.userName || '—'}</td>
                   <td className="text-sm">{log.branchName || '—'}</td>
@@ -306,34 +356,44 @@ export default function AuditLogPage() {
         {/* Pagination */}
         <div className="flex justify-between items-center mt-4">
           <button
-            onClick={() => setPage(p => Math.max(0, p - 1))}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={page === 0}
             className="form-button flex items-center gap-1"
           >
-            <ChevronLeft size={16} />{t('audit.elozo')}
+            <ChevronLeft size={16} />
+            {t('audit.elozo')}
           </button>
           <span className="text-sm text-gray-600">
-            {t('audit.oldal')}{page + 1} / {Math.max(1, Math.ceil(totalElements / 50))}
+            {t('audit.oldal')}
+            {page + 1} / {Math.max(1, Math.ceil(totalElements / 50))}
           </span>
           <button
-            onClick={() => setPage(p => p + 1)}
+            onClick={() => setPage((p) => p + 1)}
             disabled={(page + 1) * 50 >= totalElements}
             className="form-button flex items-center gap-1"
           >
-            {t('audit.kovetkezo')}<ChevronRight size={16} />
+            {t('audit.kovetkezo')}
+            <ChevronRight size={16} />
           </button>
         </div>
       </div>
 
       {/* Részletek Modal */}
       {selectedLog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setSelectedLog(null)}>
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setSelectedLog(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-lg font-bold text-gray-800">
-                {t('audit.auditLogReszletek')}
-              </h3>
-              <button onClick={() => setSelectedLog(null)} className="text-gray-400 hover:text-gray-600">
+              <h3 className="text-lg font-bold text-gray-800">{t('audit.auditLogReszletek')}</h3>
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -341,13 +401,17 @@ export default function AuditLogPage() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-500">{t('audit.akcio2')}</span>
-                  <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${getActionColor(selectedLog.action)}`}>
+                  <span
+                    className={`ml-2 px-2 py-1 rounded text-xs font-medium ${getActionColor(selectedLog.action)}`}
+                  >
                     {selectedLog.action}
                   </span>
                 </div>
                 <div>
                   <span className="text-gray-500">{t('audit.idopont2')}</span>
-                  <span className="ml-2">{new Date(selectedLog.createdAt).toLocaleString('hu-HU')}</span>
+                  <span className="ml-2">
+                    {new Date(selectedLog.createdAt).toLocaleString('hu-HU')}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-500">{t('audit.entitasTipus')}</span>
@@ -379,7 +443,9 @@ export default function AuditLogPage() {
 
               {/* Régi ↔ Új érték diff */}
               <div className="border-t pt-4">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('audit.valtozasok')}</h4>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                  {t('audit.valtozasok')}
+                </h4>
                 {selectedLog.changes ? (
                   <pre className="bg-gray-50 p-3 rounded text-xs overflow-auto max-h-40">
                     {selectedLog.changes}
@@ -399,7 +465,9 @@ export default function AuditLogPage() {
                     {trailLogs.map((entry) => (
                       <div key={entry.id} className="rounded border border-gray-200 p-2 text-sm">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${getActionColor(entry.action)}`}>
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-medium ${getActionColor(entry.action)}`}
+                          >
                             {entry.action}
                           </span>
                           <span className="text-xs text-gray-500">

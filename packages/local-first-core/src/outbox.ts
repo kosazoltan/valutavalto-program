@@ -6,23 +6,23 @@
  * and pushes them to the server. Failed entries use exponential backoff.
  */
 
-import type { Database } from 'sql.js';
-import crypto from 'node:crypto';
+import type { Database } from 'sql.js'
+import crypto from 'node:crypto'
 
 export interface OutboxEntry {
-  id: number;
-  mutation_id: string;
-  entity_type: string;
-  entity_id: string | null;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'CUSTOM';
-  payload: string;
-  status: 'pending' | 'syncing' | 'synced' | 'failed' | 'abandoned';
-  retry_count: number;
-  max_retries: number;
-  error_message: string | null;
-  created_at: string;
-  synced_at: string | null;
-  next_retry_at: string | null;
+  id: number
+  mutation_id: string
+  entity_type: string
+  entity_id: string | null
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'CUSTOM'
+  payload: string
+  status: 'pending' | 'syncing' | 'synced' | 'failed' | 'abandoned'
+  retry_count: number
+  max_retries: number
+  error_message: string | null
+  created_at: string
+  synced_at: string | null
+  next_retry_at: string | null
 }
 
 export function enqueue(
@@ -33,13 +33,13 @@ export function enqueue(
   entityId?: string,
   mutationId?: string,
 ): string {
-  const mid = mutationId ?? crypto.randomUUID();
+  const mid = mutationId ?? crypto.randomUUID()
   db.run(
     `INSERT INTO lf_outbox (mutation_id, entity_type, entity_id, action, payload)
      VALUES (?, ?, ?, ?, ?)`,
     [mid, entityType, entityId ?? null, action, JSON.stringify(payload)],
-  );
-  return mid;
+  )
+  return mid
 }
 
 export function getPending(db: Database, limit = 50): OutboxEntry[] {
@@ -49,26 +49,26 @@ export function getPending(db: Database, limit = 50): OutboxEntry[] {
        AND (next_retry_at IS NULL OR next_retry_at <= datetime('now'))
      ORDER BY created_at ASC
      LIMIT ?`,
-  );
-  stmt.bind([limit]);
+  )
+  stmt.bind([limit])
 
-  const results: OutboxEntry[] = [];
+  const results: OutboxEntry[] = []
   while (stmt.step()) {
-    results.push(stmt.getAsObject() as unknown as OutboxEntry);
+    results.push(stmt.getAsObject() as unknown as OutboxEntry)
   }
-  stmt.free();
-  return results;
+  stmt.free()
+  return results
 }
 
 export function markSyncing(db: Database, mutationId: string): void {
-  db.run(`UPDATE lf_outbox SET status = 'syncing' WHERE mutation_id = ?`, [mutationId]);
+  db.run(`UPDATE lf_outbox SET status = 'syncing' WHERE mutation_id = ?`, [mutationId])
 }
 
 export function markSynced(db: Database, mutationId: string): void {
   db.run(
     `UPDATE lf_outbox SET status = 'synced', synced_at = datetime('now') WHERE mutation_id = ?`,
     [mutationId],
-  );
+  )
 }
 
 export function markFailed(db: Database, mutationId: string, errorMessage: string): void {
@@ -80,7 +80,7 @@ export function markFailed(db: Database, mutationId: string, errorMessage: strin
          next_retry_at = datetime('now', '+' || CAST(MIN(POWER(2, retry_count + 1), 3600) AS INTEGER) || ' seconds')
      WHERE mutation_id = ?`,
     [errorMessage, mutationId],
-  );
+  )
 }
 
 export function cleanupSynced(db: Database, retentionDays = 30): number {
@@ -89,19 +89,17 @@ export function cleanupSynced(db: Database, retentionDays = 30): number {
      WHERE status = 'synced'
        AND synced_at < datetime('now', '-' || ? || ' days')`,
     [retentionDays],
-  );
-  return db.getRowsModified();
+  )
+  return db.getRowsModified()
 }
 
 export function getStats(db: Database): Record<string, number> {
-  const stmt = db.prepare(
-    `SELECT status, COUNT(*) as count FROM lf_outbox GROUP BY status`,
-  );
-  const stats: Record<string, number> = {};
+  const stmt = db.prepare(`SELECT status, COUNT(*) as count FROM lf_outbox GROUP BY status`)
+  const stats: Record<string, number> = {}
   while (stmt.step()) {
-    const row = stmt.getAsObject() as { status: string; count: number };
-    stats[row.status] = row.count;
+    const row = stmt.getAsObject() as { status: string; count: number }
+    stats[row.status] = row.count
   }
-  stmt.free();
-  return stats;
+  stmt.free()
+  return stats
 }

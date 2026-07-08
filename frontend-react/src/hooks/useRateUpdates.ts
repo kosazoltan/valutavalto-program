@@ -77,19 +77,16 @@ export function useRateUpdates(): void {
       reconnectDelay: 5000,
       connectHeaders: token ? { Authorization: `Bearer ${token}` } : undefined,
       onConnect: () => {
-        stompClient.subscribe(
-          `/topic/rate-updates/branch/${branchCode}`,
-          (message) => {
-            try {
-              const payload = JSON.parse(message.body) as RateUpdatePayload
-              if (payload.rates?.length) {
-                applyPublishedRates(payload.rates)
-              }
-            } catch {
-              // Ignore malformed realtime payload and keep the client running.
+        stompClient.subscribe(`/topic/rate-updates/branch/${branchCode}`, (message) => {
+          try {
+            const payload = JSON.parse(message.body) as RateUpdatePayload
+            if (payload.rates?.length) {
+              applyPublishedRates(payload.rates)
             }
-          },
-        )
+          } catch {
+            // Ignore malformed realtime payload and keep the client running.
+          }
+        })
       },
       onStompError: (_frame) => {
         // Connection retry is handled by reconnectDelay.

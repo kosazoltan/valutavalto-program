@@ -107,13 +107,18 @@ describe('CameraPlaybackPage backend kapcsolatok', () => {
       expect(mockBranchApi.listActive).toHaveBeenCalled()
     })
 
-    await user.selectOptions(screen.getByTestId('camera-playback-branch'), '11111111-1111-1111-1111-111111111111')
+    await user.selectOptions(
+      screen.getByTestId('camera-playback-branch'),
+      '11111111-1111-1111-1111-111111111111',
+    )
     await user.type(screen.getByLabelText('common.startDate'), '2026-06-18')
     await user.type(screen.getByLabelText('camera.zaroDatum'), '2026-06-18')
     await user.click(screen.getByRole('button', { name: /common.search/i }))
 
     await waitFor(() => {
-      const call = mockApi.get.mock.calls.find(([url]) => String(url).startsWith('/camera/recordings?'))
+      const call = mockApi.get.mock.calls.find(([url]) =>
+        String(url).startsWith('/camera/recordings?'),
+      )
       expect(call?.[0]).toContain('branchId=11111111-1111-1111-1111-111111111111')
     })
 
@@ -148,6 +153,8 @@ describe('CameraPlaybackPage backend kapcsolatok', () => {
     await waitFor(() => {
       expect(mockApi.get).toHaveBeenCalledWith('/camera/recordings/by-transaction/123')
     })
-    expect(await screen.findByTestId('camera-linked-recording-link-transaction-1')).toBeInTheDocument()
+    expect(
+      await screen.findByTestId('camera-linked-recording-link-transaction-1'),
+    ).toBeInTheDocument()
   })
 })

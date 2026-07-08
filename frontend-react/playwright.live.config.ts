@@ -12,10 +12,7 @@ export default defineConfig({
   testMatch: ['**/excvaluta-live.spec.ts', '**/excvaluta-full-menu.spec.ts'],
   fullyParallel: false,
   retries: 1,
-  reporter: [
-    ['list'],
-    ['html', { open: 'never', outputFolder: 'playwright-report-live' }],
-  ],
+  reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report-live' }]],
   use: {
     baseURL: 'https://excvaluta.com',
     trace: 'retain-on-failure',

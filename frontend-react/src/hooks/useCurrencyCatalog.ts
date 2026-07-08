@@ -57,7 +57,7 @@ export function getCrossBase(code: string): 'EUR' | 'USD' | null {
  */
 export function selectCatalogCurrencies(all: Currency[]): Currency[] {
   return all
-    .filter(c => c.code !== 'HUF' && (c.active || c.code === 'EUA'))
+    .filter((c) => c.code !== 'HUF' && (c.active || c.code === 'EUA'))
     .sort((a, b) => {
       const ia = a.displayOrder ?? Number.MAX_SAFE_INTEGER
       const ib = b.displayOrder ?? Number.MAX_SAFE_INTEGER
@@ -90,8 +90,9 @@ export function useCurrencyCatalog(): CurrencyCatalog {
     // felül az újat: a cleanup a saját futása flagjét állítja, last-requested-wins.
     let cancelled = false
     setLoading(true)
-    currencyApi.getAll()
-      .then(data => {
+    currencyApi
+      .getAll()
+      .then((data) => {
         if (cancelled) return
         setAll(data)
         setCurrencies(selectCatalogCurrencies(data))
@@ -107,10 +108,12 @@ export function useCurrencyCatalog(): CurrencyCatalog {
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [reloadCounter])
 
-  const reload = useCallback(() => setReloadCounter(n => n + 1), [])
+  const reload = useCallback(() => setReloadCounter((n) => n + 1), [])
 
   return { currencies, all, loading, error, reload }
 }

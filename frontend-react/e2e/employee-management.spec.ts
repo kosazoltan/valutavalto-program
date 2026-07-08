@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path === '/api/v1/employees' && method === 'GET') {
@@ -87,14 +95,23 @@ async function mockApis(page: Page) {
     }
 
     if (path === '/api/v1/employees/42' && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 42, workerId: 77 }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: 42, workerId: 77 }),
+      })
     }
 
     if (path === '/api/v1/workers/77' && method === 'GET') {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ id: 77, workerCode: 'BORSI', fullName: 'Borsi Teszt', companyCode: 'EBC' }),
+        body: JSON.stringify({
+          id: 77,
+          workerCode: 'BORSI',
+          fullName: 'Borsi Teszt',
+          companyCode: 'EBC',
+        }),
       })
     }
 
@@ -117,7 +134,9 @@ async function mockApis(page: Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ id: 1, status: 'Érvényes', examDate: '2026-06-18', result: 'Alkalmas' }]),
+        body: JSON.stringify([
+          { id: 1, status: 'Érvényes', examDate: '2026-06-18', result: 'Alkalmas' },
+        ]),
       })
     }
 
@@ -141,7 +160,9 @@ async function mockApis(page: Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ content: [{ id: 'att-1', loginAt: '2026-06-18T08:00:00', logoutAt: null }] }),
+        body: JSON.stringify({
+          content: [{ id: 'att-1', loginAt: '2026-06-18T08:00:00', logoutAt: null }],
+        }),
       })
     }
 
@@ -154,7 +175,11 @@ async function mockApis(page: Page) {
     }
 
     if (path === '/api/v1/workers/42/roles/foertektar' && method === 'POST') {
-      return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({}) })
+      return route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({}),
+      })
     }
 
     if (path === '/api/v1/workers/42/roles/penztaros' && method === 'DELETE') {
@@ -170,10 +195,18 @@ async function mockApis(page: Page) {
     }
 
     if (path.startsWith('/api/v1/worker-management/42/') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'ok' }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: 'ok' }),
+      })
     }
 
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [], data: [] }) })
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ content: [], data: [] }),
+    })
   })
 }
 
@@ -192,8 +225,10 @@ test('dolgozókezelő modal valós Chromium nézetben backend műveleteket indí
   await mockApis(page)
   await login(page)
 
-  const feorRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/employees/feor-codes'
+  const feorRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/employees/feor-codes',
   )
   await page.goto('/employees', { waitUntil: 'domcontentloaded' })
   await feorRequest
@@ -207,27 +242,30 @@ test('dolgozókezelő modal valós Chromium nézetben backend műveleteket indí
   await expect(page.getByTestId('worker-role-list')).toContainText('penztaros')
 
   await page.getByTestId('worker-break-reason').fill('Ebédszünet')
-  const startBreak = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/worker-management/42/break-start')
+  const startBreak = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes('/worker-management/42/break-start'),
   )
   await page.getByTestId('worker-break-start').click()
   await startBreak
 
-  const endBreak = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/worker-management/42/break-end')
+  const endBreak = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes('/worker-management/42/break-end'),
   )
   await page.getByTestId('worker-break-end').click()
   await endBreak
 
   await page.getByTestId('worker-new-password').fill('Teszt1234')
-  const resetPassword = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/worker-management/42/reset-password')
+  const resetPassword = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes('/worker-management/42/reset-password'),
   )
   await page.getByTestId('worker-reset-password').click()
   await resetPassword
 
-  const setupToken = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/auth/worker-setup-token')
+  const setupToken = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/auth/worker-setup-token'),
   )
   await page.getByTestId('worker-setup-token-issue').click()
   const setupTokenRequest = await setupToken
@@ -235,26 +273,28 @@ test('dolgozókezelő modal valós Chromium nézetben backend műveleteket indí
   await expect(page.getByTestId('worker-setup-token-result')).toContainText('setup-token-123')
 
   await page.getByTestId('worker-role-code').fill('foertektar')
-  const addRole = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/workers/42/roles/foertektar')
+  const addRole = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes('/workers/42/roles/foertektar'),
   )
   await page.getByTestId('worker-role-add').click()
   await addRole
 
-  const removeRole = page.waitForRequest(request =>
-    request.method() === 'DELETE' && request.url().includes('/workers/42/roles/penztaros')
+  const removeRole = page.waitForRequest(
+    (request) =>
+      request.method() === 'DELETE' && request.url().includes('/workers/42/roles/penztaros'),
   )
   await page.getByTestId('worker-role-remove-penztaros').click()
   await removeRole
 
-  const unlockLogin = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/workers/42/unlock-login')
+  const unlockLogin = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/workers/42/unlock-login'),
   )
   await page.getByTestId('worker-unlock-login').click()
   await unlockLogin
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

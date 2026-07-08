@@ -69,15 +69,17 @@ describe('isFirstRun', () => {
   });
 
   it('ujrainditja a wizardot a diagnosztikakban latott stale offline setup allapotnal', () => {
-    writeEnv([
-      'VITE_API_URL="https://excvaluta.com/api/v1"',
-      'JWT_SECRET="' + validSecret('a') + '"',
-      'PENZTAR_BOOTSTRAP_WORKER_CODE=""',
-      'PENZTAR_BOOTSTRAP_PASSWORD=""',
-      'SETUP_COMPLETED=1',
-      'SETUP_OFFLINE_MODE=1',
-      '',
-    ].join('\n'));
+    writeEnv(
+      [
+        'VITE_API_URL="https://excvaluta.com/api/v1"',
+        'JWT_SECRET="' + validSecret('a') + '"',
+        'PENZTAR_BOOTSTRAP_WORKER_CODE=""',
+        'PENZTAR_BOOTSTRAP_PASSWORD=""',
+        'SETUP_COMPLETED=1',
+        'SETUP_OFFLINE_MODE=1',
+        '',
+      ].join('\n'),
+    );
 
     expect(isFirstRun()).toMatchObject({
       isFirstRun: true,
@@ -86,13 +88,15 @@ describe('isFirstRun', () => {
   });
 
   it('ujrainditja a wizardot, ha a regi .env csak csupasz https:// URL-t tartalmaz', () => {
-    writeEnv([
-      'VITE_API_URL="https://"',
-      'JWT_SECRET="' + validSecret('b') + '"',
-      'SETUP_COMPLETED=1',
-      'SETUP_OFFLINE_MODE=0',
-      '',
-    ].join('\n'));
+    writeEnv(
+      [
+        'VITE_API_URL="https://"',
+        'JWT_SECRET="' + validSecret('b') + '"',
+        'SETUP_COMPLETED=1',
+        'SETUP_OFFLINE_MODE=0',
+        '',
+      ].join('\n'),
+    );
 
     expect(isFirstRun()).toMatchObject({
       isFirstRun: true,
@@ -101,13 +105,15 @@ describe('isFirstRun', () => {
   });
 
   it('nem futtatja ujra a wizardot egy ervenyes online setup utan', () => {
-    writeEnv([
-      'VITE_API_URL="https://excvaluta.com/api/v1"',
-      'JWT_SECRET="' + validSecret('c') + '"',
-      'SETUP_COMPLETED=1',
-      'SETUP_OFFLINE_MODE=0',
-      '',
-    ].join('\n'));
+    writeEnv(
+      [
+        'VITE_API_URL="https://excvaluta.com/api/v1"',
+        'JWT_SECRET="' + validSecret('c') + '"',
+        'SETUP_COMPLETED=1',
+        'SETUP_OFFLINE_MODE=0',
+        '',
+      ].join('\n'),
+    );
 
     expect(isFirstRun()).toMatchObject({
       isFirstRun: false,
@@ -182,8 +188,12 @@ describe('persistBootstrapPasswordConfig', () => {
   beforeEach(() => {
     mockState.safeStorageEncryptionAvailable = true;
     vi.clearAllMocks();
-    vi.mocked(safeStorage.isEncryptionAvailable).mockImplementation(() => mockState.safeStorageEncryptionAvailable);
-    vi.mocked(safeStorage.encryptString).mockImplementation((value: string) => Buffer.from(`encrypted:${value}`));
+    vi.mocked(safeStorage.isEncryptionAvailable).mockImplementation(
+      () => mockState.safeStorageEncryptionAvailable,
+    );
+    vi.mocked(safeStorage.encryptString).mockImplementation((value: string) =>
+      Buffer.from(`encrypted:${value}`),
+    );
   });
 
   it('encrypted configba menti a bootstrap jelszot es torli a plaintext fallbackot', () => {
@@ -248,7 +258,9 @@ describe('selectBootstrapLoginRoleCode', () => {
   });
 
   it('ertekszallito modban a canonical role-t preferalja a legacy courier fallback elott', () => {
-    expect(selectBootstrapLoginRoleCode('ertekszallito', ['COURIER', 'ertekszallito'])).toBe('ertekszallito');
+    expect(selectBootstrapLoginRoleCode('ertekszallito', ['COURIER', 'ertekszallito'])).toBe(
+      'ertekszallito',
+    );
   });
 
   it('lokalis appban server role-lal is tud setup device regisztraciot folytatni', () => {
@@ -264,36 +276,44 @@ describe('selectBootstrapLoginRoleCode', () => {
 
 describe('shouldUseWorkerFirstTimeSetup', () => {
   it('kivalasztott worker eseten mindig worker first-time setupot hasznal online modban', () => {
-    expect(shouldUseWorkerFirstTimeSetup({
-      offlineMode: false,
-      selectedWorkerCode: 'BORSI',
-      bootstrapUsername: 'BORSI',
-      bootstrapCompleted: false,
-    })).toBe(true);
+    expect(
+      shouldUseWorkerFirstTimeSetup({
+        offlineMode: false,
+        selectedWorkerCode: 'BORSI',
+        bootstrapUsername: 'BORSI',
+        bootstrapCompleted: false,
+      }),
+    ).toBe(true);
   });
 
   it('lezart bootstrap es manualisan beirt worker kod eseten nem esik vissza legacy admin bootstrapra', () => {
-    expect(shouldUseWorkerFirstTimeSetup({
-      offlineMode: false,
-      bootstrapUsername: 'BORSI',
-      bootstrapCompleted: true,
-    })).toBe(true);
+    expect(
+      shouldUseWorkerFirstTimeSetup({
+        offlineMode: false,
+        bootstrapUsername: 'BORSI',
+        bootstrapCompleted: true,
+      }),
+    ).toBe(true);
   });
 
   it('nyitott bootstrap es manualis kod eseten megtartja a legacy admin bootstrap utat', () => {
-    expect(shouldUseWorkerFirstTimeSetup({
-      offlineMode: false,
-      bootstrapUsername: 'ADMIN',
-      bootstrapCompleted: false,
-    })).toBe(false);
+    expect(
+      shouldUseWorkerFirstTimeSetup({
+        offlineMode: false,
+        bootstrapUsername: 'ADMIN',
+        bootstrapCompleted: false,
+      }),
+    ).toBe(false);
   });
 
   it('offline modban nem indit backend worker setupot', () => {
-    expect(shouldUseWorkerFirstTimeSetup({
-      offlineMode: true,
-      selectedWorkerCode: 'BORSI',
-      bootstrapCompleted: true,
-    })).toBe(false);
+    expect(
+      shouldUseWorkerFirstTimeSetup({
+        offlineMode: true,
+        selectedWorkerCode: 'BORSI',
+        bootstrapCompleted: true,
+      }),
+    ).toBe(false);
   });
 });
 

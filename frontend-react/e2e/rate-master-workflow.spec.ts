@@ -30,7 +30,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -53,28 +53,42 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/exchange-rate-master/status/DRAFT') && method === 'GET') {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(draftCreated ? [{
-          id: 'draft-1',
-          companyId: 'company-1',
-          currencyId: 1,
-          currencyCode: 'EUR',
-          baseBuyRate: 390.5,
-          baseSellRate: 399.5,
-          officialRate: 394,
-          status: 'DRAFT',
-          createdAt: '2026-06-18T08:00:00',
-        }] : []),
+        body: JSON.stringify(
+          draftCreated
+            ? [
+                {
+                  id: 'draft-1',
+                  companyId: 'company-1',
+                  currencyId: 1,
+                  currencyCode: 'EUR',
+                  baseBuyRate: 390.5,
+                  baseSellRate: 399.5,
+                  officialRate: 394,
+                  status: 'DRAFT',
+                  createdAt: '2026-06-18T08:00:00',
+                },
+              ]
+            : [],
+        ),
       })
     }
 
@@ -101,17 +115,19 @@ async function mockApis(page: Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{
-          id: 'rate-1',
-          companyId: 'company-1',
-          currencyId: 1,
-          currencyCode: 'EUR',
-          baseBuyRate: 390,
-          baseSellRate: 399,
-          officialRate: 394,
-          status: 'PUBLISHED',
-          createdAt: '2026-06-18T08:00:00',
-        }]),
+        body: JSON.stringify([
+          {
+            id: 'rate-1',
+            companyId: 'company-1',
+            currencyId: 1,
+            currencyCode: 'EUR',
+            baseBuyRate: 390,
+            baseSellRate: 399,
+            officialRate: 394,
+            status: 'PUBLISHED',
+            createdAt: '2026-06-18T08:00:00',
+          },
+        ]),
       })
     }
 
@@ -119,14 +135,16 @@ async function mockApis(page: Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{
-          id: 'dist-1',
-          masterRateId: 'rate-1',
-          branchId: 'branch-1',
-          branchCode: 'BUD01',
-          branchName: 'Budapest 01',
-          status: 'DISTRIBUTED',
-        }]),
+        body: JSON.stringify([
+          {
+            id: 'dist-1',
+            masterRateId: 'rate-1',
+            branchId: 'branch-1',
+            branchCode: 'BUD01',
+            branchName: 'Budapest 01',
+            status: 'DISTRIBUTED',
+          },
+        ]),
       })
     }
 
@@ -134,22 +152,31 @@ async function mockApis(page: Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{
-          distributionId: 'dist-1',
-          masterRateId: 'rate-1',
-          currencyCode: 'EUR',
-          versionNumber: 3,
-          baseBuyRate: 390,
-          baseSellRate: 399,
-          officialRate: 394,
-          validFrom: '2026-07-04T09:00:00',
-          printProofToken: 'proof-token',
-        }]),
+        body: JSON.stringify([
+          {
+            distributionId: 'dist-1',
+            masterRateId: 'rate-1',
+            currencyCode: 'EUR',
+            versionNumber: 3,
+            baseBuyRate: 390,
+            baseSellRate: 399,
+            officialRate: 394,
+            validFrom: '2026-07-04T09:00:00',
+            printProofToken: 'proof-token',
+          },
+        ]),
       })
     }
 
-    if (path.endsWith('/exchange-rate-master/distribution/dist-1/acknowledge') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
+    if (
+      path.endsWith('/exchange-rate-master/distribution/dist-1/acknowledge') &&
+      method === 'POST'
+    ) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({}),
+      })
     }
 
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
@@ -166,7 +193,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('rate master workflow vázlat-létrehozás backend szerződésre köt mobil viewporton', async ({ page }) => {
+test('rate master workflow vázlat-létrehozás backend szerződésre köt mobil viewporton', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -177,8 +206,9 @@ test('rate master workflow vázlat-létrehozás backend szerződésre köt mobil
   await page.getByLabel('Eladási árfolyam').fill('399,5')
   await page.getByLabel('MNB árfolyam').fill('394')
 
-  const createRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().endsWith('/api/v1/exchange-rate-master')
+  const createRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().endsWith('/api/v1/exchange-rate-master'),
   )
   await page.getByRole('button', { name: 'Vázlat létrehozása' }).click()
   const request = await createRequest
@@ -190,13 +220,15 @@ test('rate master workflow vázlat-létrehozás backend szerződésre köt mobil
   })
   await expect(page.getByText('EUR')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
 
-test('rate master workflow elosztás-visszaigazolás backend szerződésre köt mobil viewporton', async ({ page }) => {
+test('rate master workflow elosztás-visszaigazolás backend szerződésre köt mobil viewporton', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -207,14 +239,16 @@ test('rate master workflow elosztás-visszaigazolás backend szerződésre köt 
   await page.getByRole('button', { name: 'Elosztás' }).click()
   await expect(page.getByText('BUD01')).toBeVisible()
 
-  const ackRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/exchange-rate-master/distribution/dist-1/acknowledge')
+  const ackRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      request.url().includes('/exchange-rate-master/distribution/dist-1/acknowledge'),
   )
   await page.getByTestId('exchange-rate-distribution-ack-dist-1').click()
   await ackRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

@@ -29,12 +29,12 @@ interface SerialPortInfo {
 }
 
 interface SerialPrinterConfig {
-  port: string;           // pl. 'COM1'
-  baudRate: number;       // alapért. 9600
-  dataBits: 7 | 8;       // alapért. 8
+  port: string; // pl. 'COM1'
+  baudRate: number; // alapért. 9600
+  dataBits: 7 | 8; // alapért. 8
   parity: 'none' | 'even' | 'odd'; // alapért. 'even' (SP500 gyári)
-  stopBits: 1 | 2;       // alapért. 1
-  encoding: string;       // alapért. 'cp852' (magyar ékezetek)
+  stopBits: 1 | 2; // alapért. 1
+  encoding: string; // alapért. 'cp852' (magyar ékezetek)
 }
 
 const DEFAULT_CONFIG: SerialPrinterConfig = {
@@ -47,43 +47,43 @@ const DEFAULT_CONFIG: SerialPrinterConfig = {
 };
 
 // --- ESC/POS parancsok (byte-szintű, Star SP500 kompatibilis) ---
-const ESC = 0x1B;
-const GS = 0x1D;
-const LF = 0x0A;
+const ESC = 0x1b;
+const GS = 0x1d;
+const LF = 0x0a;
 
 const COMMANDS = {
   /** Nyomtató inicializálás (reset) */
-  INIT: Buffer.from([ESC, 0x40]),             // ESC @
+  INIT: Buffer.from([ESC, 0x40]), // ESC @
 
   /** Szöveg igazítás */
-  ALIGN_LEFT: Buffer.from([ESC, 0x61, 0x00]),   // ESC a 0
+  ALIGN_LEFT: Buffer.from([ESC, 0x61, 0x00]), // ESC a 0
   ALIGN_CENTER: Buffer.from([ESC, 0x61, 0x01]), // ESC a 1
-  ALIGN_RIGHT: Buffer.from([ESC, 0x61, 0x02]),  // ESC a 2
+  ALIGN_RIGHT: Buffer.from([ESC, 0x61, 0x02]), // ESC a 2
 
   /** Betű stílusok */
-  BOLD_ON: Buffer.from([ESC, 0x45, 0x01]),    // ESC E 1
-  BOLD_OFF: Buffer.from([ESC, 0x45, 0x00]),   // ESC E 0
-  UNDERLINE_ON: Buffer.from([ESC, 0x2D, 0x01]),  // ESC - 1
-  UNDERLINE_OFF: Buffer.from([ESC, 0x2D, 0x00]), // ESC - 0
+  BOLD_ON: Buffer.from([ESC, 0x45, 0x01]), // ESC E 1
+  BOLD_OFF: Buffer.from([ESC, 0x45, 0x00]), // ESC E 0
+  UNDERLINE_ON: Buffer.from([ESC, 0x2d, 0x01]), // ESC - 1
+  UNDERLINE_OFF: Buffer.from([ESC, 0x2d, 0x00]), // ESC - 0
 
   /** Karakter méret (GS !) */
-  NORMAL_SIZE: Buffer.from([GS, 0x21, 0x00]),       // 1x1
-  DOUBLE_WIDTH: Buffer.from([GS, 0x21, 0x10]),      // 2x széles
-  DOUBLE_HEIGHT: Buffer.from([GS, 0x21, 0x01]),     // 2x magas
-  DOUBLE_BOTH: Buffer.from([GS, 0x21, 0x11]),       // 2x2
+  NORMAL_SIZE: Buffer.from([GS, 0x21, 0x00]), // 1x1
+  DOUBLE_WIDTH: Buffer.from([GS, 0x21, 0x10]), // 2x széles
+  DOUBLE_HEIGHT: Buffer.from([GS, 0x21, 0x01]), // 2x magas
+  DOUBLE_BOTH: Buffer.from([GS, 0x21, 0x11]), // 2x2
 
   /** Papír vágás (ha van cutter — SP500-nál opcionális) */
-  CUT_PARTIAL: Buffer.from([GS, 0x56, 0x01]),  // GS V 1
-  CUT_FULL: Buffer.from([GS, 0x56, 0x00]),     // GS V 0
+  CUT_PARTIAL: Buffer.from([GS, 0x56, 0x01]), // GS V 1
+  CUT_FULL: Buffer.from([GS, 0x56, 0x00]), // GS V 0
 
   /** Sorok előtolás */
-  feedLines: (n: number): Buffer => Buffer.from([ESC, 0x64, n]),  // ESC d n
+  feedLines: (n: number): Buffer => Buffer.from([ESC, 0x64, n]), // ESC d n
 
   /** Pénzfiók nyitás (DK port — pin 2) */
   OPEN_DRAWER: Buffer.from([ESC, 0x70, 0x00, 0x19, 0x78]), // ESC p 0 25 120
 
   /** Kódlap beállítás: CP852 (közép-európai / magyar) */
-  SET_CODEPAGE_852: Buffer.from([ESC, 0x74, 0x12]),  // ESC t 18 (0x12 = CP852 index Star-nál)
+  SET_CODEPAGE_852: Buffer.from([ESC, 0x74, 0x12]), // ESC t 18 (0x12 = CP852 index Star-nál)
 
   /** Soremelés */
   LF: Buffer.from([LF]),
@@ -91,15 +91,24 @@ const COMMANDS = {
 
 // --- CP852 karakter konverzió (magyar ékezetes betűk) ---
 const CP852_MAP: Record<string, number> = {
-  'á': 0xA0, 'Á': 0xB5,
-  'é': 0x82, 'É': 0x90,
-  'í': 0xA1, 'Í': 0xD6,
-  'ó': 0xA2, 'Ó': 0xE0,
-  'ö': 0x94, 'Ö': 0x99,
-  'ő': 0x8B, 'Ő': 0x8A,
-  'ú': 0xA3, 'Ú': 0xE9,
-  'ü': 0x81, 'Ü': 0x9A,
-  'ű': 0xFB, 'Ű': 0xEB,
+  á: 0xa0,
+  Á: 0xb5,
+  é: 0x82,
+  É: 0x90,
+  í: 0xa1,
+  Í: 0xd6,
+  ó: 0xa2,
+  Ó: 0xe0,
+  ö: 0x94,
+  Ö: 0x99,
+  ő: 0x8b,
+  Ő: 0x8a,
+  ú: 0xa3,
+  Ú: 0xe9,
+  ü: 0x81,
+  Ü: 0x9a,
+  ű: 0xfb,
+  Ű: 0xeb,
 };
 
 /**
@@ -112,15 +121,15 @@ function toCP852(text: string): Buffer {
     const code = ch.charCodeAt(0);
     if (CP852_MAP[ch] !== undefined) {
       bytes.push(CP852_MAP[ch]!);
-    } else if (code >= 0x20 && code <= 0x7E) {
+    } else if (code >= 0x20 && code <= 0x7e) {
       // Standard ASCII
       bytes.push(code);
-    } else if (code === 0x0A) {
+    } else if (code === 0x0a) {
       // LF
-      bytes.push(0x0A);
+      bytes.push(0x0a);
     } else {
       // Nem konvertálható → ?
-      bytes.push(0x3F);
+      bytes.push(0x3f);
     }
   }
   return Buffer.from(bytes);
@@ -232,13 +241,8 @@ export async function printToSerial(
  * Pénzfiók nyitása a soros porton keresztül.
  * A Star SP500 DK portján lévő fióknak küld impulzust.
  */
-export async function openCashDrawer(
-  config: Partial<SerialPrinterConfig> = {},
-): Promise<boolean> {
-  const data = Buffer.concat([
-    COMMANDS.INIT,
-    COMMANDS.OPEN_DRAWER,
-  ]);
+export async function openCashDrawer(config: Partial<SerialPrinterConfig> = {}): Promise<boolean> {
+  const data = Buffer.concat([COMMANDS.INIT, COMMANDS.OPEN_DRAWER]);
   return printToSerial(data, config);
 }
 
@@ -247,7 +251,16 @@ export async function openCashDrawer(
 // ============================================================================
 
 // Import a printer.ts-ből (Copilot PR #1102: egyetlen import, type-modifierrel)
-import { isHighValueReceipt, foreignStatusText, pepStatusText, buildSourceDeclarationLines, isRussianEurPurchase, buildRussianDeclarationLines, buildLegalEntityLines, type PrintReceiptData } from './printer';
+import {
+  isHighValueReceipt,
+  foreignStatusText,
+  pepStatusText,
+  buildSourceDeclarationLines,
+  isRussianEurPurchase,
+  buildRussianDeclarationLines,
+  buildLegalEntityLines,
+  type PrintReceiptData,
+} from './printer';
 
 const JOB_TYPE_LABELS: Record<string, string> = {
   sell: 'ELADÁSI BIZONYLAT',
@@ -271,7 +284,10 @@ function getJobTypeLabel(data: PrintReceiptData): string {
   return JOB_TYPE_LABELS[data.type] ?? data.type;
 }
 
-const COMPANIES: Record<string, { name: string; fullName: string; taxNumber: string; address: string; phone: string }> = {
+const COMPANIES: Record<
+  string,
+  { name: string; fullName: string; taxNumber: string; address: string; phone: string }
+> = {
   BEST_CHANGE: {
     name: 'BEST CHANGE',
     fullName: 'EXCLUSIVE BEST CHANGE ZRT.',
@@ -306,7 +322,9 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
   const company = COMPANIES[data.companyType] ?? COMPANIES['BEST_CHANGE']!;
   const parts: Buffer[] = [];
 
-  const push = (...bufs: Buffer[]) => { for (const b of bufs) parts.push(b); };
+  const push = (...bufs: Buffer[]) => {
+    for (const b of bufs) parts.push(b);
+  };
   const text = (s: string) => push(toCP852(s), COMMANDS.LF);
   const blank = () => push(COMMANDS.LF);
 
@@ -328,7 +346,8 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
   // sor (TBD-3), hardcode-olt székhely/telefon transfer bizonylatra nem kerülhet.
   const headerAddress = data.type === 'transfer' ? (data.vaultAddress ?? '') : company.address;
   if (headerAddress) text(headerAddress);
-  const phone = data.type === 'transfer' ? (data.vaultPhone ?? '') : (data.companyPhone || company.phone);
+  const phone =
+    data.type === 'transfer' ? (data.vaultPhone ?? '') : data.companyPhone || company.phone;
   if (phone) text(`Tel: ${phone}`);
   text(`Adószám: ${data.companyTaxNumber || company.taxNumber}`);
   blank();
@@ -367,11 +386,17 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
       // Multi-line aggregate: minden valuta-sor listázva EGY bizonylatszám alatt.
       // C.2: vegyes B/K nyugtán a sor deviza-státusza a valutakód mellett.
       for (const ln of txLines) {
-        const statusSuffix = data.foreignStatus == null && ln.foreignStatus != null
-          ? ` (${foreignStatusText(ln.foreignStatus)})`
-          : '';
+        const statusSuffix =
+          data.foreignStatus == null && ln.foreignStatus != null
+            ? ` (${foreignStatusText(ln.foreignStatus)})`
+            : '';
         text(`${ln.currencyCode}${statusSuffix}:`);
-        text(twoColumn(`  ${fmtAmount(ln.foreignAmount)} x ${fmtRate(ln.rate)}`, `${fmtAmount(ln.hufAmount)} Ft`));
+        text(
+          twoColumn(
+            `  ${fmtAmount(ln.foreignAmount)} x ${fmtRate(ln.rate)}`,
+            `${fmtAmount(ln.hufAmount)} Ft`,
+          ),
+        );
       }
     } else {
       text(twoColumn('Valutanem:', data.currencyCode ?? '—'));
@@ -382,7 +407,11 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     push(line(), COMMANDS.LF);
     push(COMMANDS.BOLD_ON);
     text(twoColumn('HUF összeg:', `${fmtAmount(data.hufAmount)} Ft`));
-    if (data.roundedHufAmount !== undefined && data.roundingDiff !== undefined && data.roundingDiff !== 0) {
+    if (
+      data.roundedHufAmount !== undefined &&
+      data.roundingDiff !== undefined &&
+      data.roundingDiff !== 0
+    ) {
       text(twoColumn('Kerekítés:', `${fmtAmount(data.roundingDiff)} Ft`));
       push(COMMANDS.DOUBLE_HEIGHT);
       text(twoColumn('FIZETENDŐ:', `${fmtAmount(data.roundedHufAmount)} Ft`));
@@ -395,7 +424,9 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     push(COMMANDS.BOLD_OFF);
   } else if (data.type === 'conversion') {
     blank();
-    push(COMMANDS.BOLD_ON); text('Konverzió:'); push(COMMANDS.BOLD_OFF);
+    push(COMMANDS.BOLD_ON);
+    text('Konverzió:');
+    push(COMMANDS.BOLD_OFF);
     blank();
     text(twoColumn('Forrás:', `${fmtAmount(data.sourceAmount)} ${data.sourceCurrencyCode ?? '—'}`));
     text(twoColumn('Cél:', `${fmtAmount(data.targetAmount)} ${data.targetCurrencyCode ?? '—'}`));
@@ -404,7 +435,9 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     if (data.note) text(twoColumn('Megjegyzés:', data.note));
   } else if (data.type === 'transfer') {
     blank();
-    push(COMMANDS.BOLD_ON); text('Átadás-átvétel:'); push(COMMANDS.BOLD_OFF);
+    push(COMMANDS.BOLD_ON);
+    text('Átadás-átvétel:');
+    push(COMMANDS.BOLD_OFF);
     blank();
     // FR-2: kérő iroda + cél iroda (kötelező → mindig, „—" fallback) + valuta/összeg + forintosított érték.
     text(twoColumn('Kérő iroda:', data.branchCode || '—'));
@@ -444,22 +477,34 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
       push(COMMANDS.BOLD_OFF);
       for (const denomination of data.denominations) {
         const lineTotal = denomination.quantity * denomination.faceValue;
-        text(twoColumn(`${denomination.quantity} x ${fmtAmount(denomination.faceValue)}`, fmtAmount(lineTotal)));
+        text(
+          twoColumn(
+            `${denomination.quantity} x ${fmtAmount(denomination.faceValue)}`,
+            fmtAmount(lineTotal),
+          ),
+        );
       }
     }
     if (data.transferNote) text(twoColumn('Megjegyzés:', data.transferNote));
   } else if (data.type === 'storno') {
     blank();
-    push(COMMANDS.BOLD_ON); text('STORNÓ:'); push(COMMANDS.BOLD_OFF);
+    push(COMMANDS.BOLD_ON);
+    text('STORNÓ:');
+    push(COMMANDS.BOLD_OFF);
     blank();
     text(twoColumn('Eredeti biz.:', data.originalReceiptNumber ?? '—'));
     text(twoColumn('Valutanem:', data.currencyCode ?? '—'));
     text(twoColumn('Összeg:', `${fmtAmount(data.foreignAmount)} ${data.currencyCode ?? ''}`));
     text(twoColumn('HUF összeg:', `${fmtAmount(data.hufAmount)} Ft`));
-    if (data.stornoReason) { blank(); text(`Indok: ${data.stornoReason}`); }
+    if (data.stornoReason) {
+      blank();
+      text(`Indok: ${data.stornoReason}`);
+    }
   } else if (data.type === 'cancelled_transaction') {
     blank();
-    push(COMMANDS.BOLD_ON); text('MEGSZAKÍTOTT TRANZAKCIÓ:'); push(COMMANDS.BOLD_OFF);
+    push(COMMANDS.BOLD_ON);
+    text('MEGSZAKÍTOTT TRANZAKCIÓ:');
+    push(COMMANDS.BOLD_OFF);
     blank();
     text('Pénzmozgás nem történt.');
     blank();
@@ -467,7 +512,12 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     if (txLines && txLines.length > 0) {
       for (const ln of txLines) {
         text(`${ln.currencyCode}:`);
-        text(twoColumn(`  ${fmtAmount(ln.foreignAmount)} x ${fmtRate(ln.rate)}`, `${fmtAmount(ln.hufAmount)} Ft`));
+        text(
+          twoColumn(
+            `  ${fmtAmount(ln.foreignAmount)} x ${fmtRate(ln.rate)}`,
+            `${fmtAmount(ln.hufAmount)} Ft`,
+          ),
+        );
       }
     } else {
       text(twoColumn('Valutanem:', data.currencyCode ?? '—'));
@@ -488,18 +538,25 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
     if (data.originalReceiptNumber) text(twoColumn('Alapbizonylat:', data.originalReceiptNumber));
   } else if (data.type === 'cash_status') {
     blank();
-    push(COMMANDS.BOLD_ON); text('PÉNZTÁR ÁLLÁS'); push(COMMANDS.BOLD_OFF);
-    if (data.hufAmount !== undefined) text(twoColumn('HUF egyenleg:', `${fmtAmount(data.hufAmount)} Ft`));
+    push(COMMANDS.BOLD_ON);
+    text('PÉNZTÁR ÁLLÁS');
+    push(COMMANDS.BOLD_OFF);
+    if (data.hufAmount !== undefined)
+      text(twoColumn('HUF egyenleg:', `${fmtAmount(data.hufAmount)} Ft`));
     if (data.note) text(twoColumn('Megjegyzés:', data.note));
   } else if (data.type === 'vault_closing') {
     blank();
-    push(COMMANDS.BOLD_ON); text('ÉRTÉKTÁRI ZÁRÁS'); push(COMMANDS.BOLD_OFF);
+    push(COMMANDS.BOLD_ON);
+    text('ÉRTÉKTÁRI ZÁRÁS');
+    push(COMMANDS.BOLD_OFF);
     if (data.hufAmount !== undefined) text(twoColumn('Összeg:', `${fmtAmount(data.hufAmount)} Ft`));
     if (data.sealNumber) text(twoColumn('Plombaszám:', data.sealNumber));
     if (data.note) text(twoColumn('Megjegyzés:', data.note));
   } else if (data.type === 'kktg_transfer') {
     blank();
-    push(COMMANDS.BOLD_ON); text('KKTG ÁTADÁS-ÁTVÉTEL'); push(COMMANDS.BOLD_OFF);
+    push(COMMANDS.BOLD_ON);
+    text('KKTG ÁTADÁS-ÁTVÉTEL');
+    push(COMMANDS.BOLD_OFF);
     if (data.hufAmount !== undefined) text(twoColumn('Összeg:', `${fmtAmount(data.hufAmount)} Ft`));
     if (data.sealNumber) text(twoColumn('Plombaszám:', data.sealNumber));
     if (data.transferTarget) text(twoColumn('Cél iroda:', data.transferTarget));
@@ -510,7 +567,9 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
   if (data.customerName) {
     blank();
     push(line(), COMMANDS.LF);
-    push(COMMANDS.BOLD_ON); text('ÜGYFÉL ADATOK:'); push(COMMANDS.BOLD_OFF);
+    push(COMMANDS.BOLD_ON);
+    text('ÜGYFÉL ADATOK:');
+    push(COMMANDS.BOLD_OFF);
     text(twoColumn('Név:', data.customerName));
     if (data.customerBirthPlace) text(twoColumn('Szül.hely:', data.customerBirthPlace));
     if (data.customerBirthDate) text(twoColumn('Szül.idő:', data.customerBirthDate));
@@ -579,9 +638,9 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
   // --- Aláírás sorok (FR-6: átvételi bizonylaton a nyilatkozat ALATT — Átadó/Átvevő) ---
   blank();
   text('...............    ...............');
-  text(data.type === 'transfer'
-    ? '  Átadó                Átvevő'
-    : '  Pénztáros            Ügyfél');
+  text(
+    data.type === 'transfer' ? '  Átadó                Átvevő' : '  Pénztáros            Ügyfél',
+  );
 
   // --- Lábléc ---
   blank();
@@ -602,7 +661,9 @@ export function buildReceiptForSerial(data: PrintReceiptData): Buffer {
 }
 
 function buildClosingBlock(data: PrintReceiptData, parts: Buffer[]): void {
-  const push = (...bufs: Buffer[]) => { for (const b of bufs) parts.push(b); };
+  const push = (...bufs: Buffer[]) => {
+    for (const b of bufs) parts.push(b);
+  };
   const text = (s: string) => push(toCP852(s), COMMANDS.LF);
   const blank = () => push(COMMANDS.LF);
 
@@ -614,7 +675,9 @@ function buildClosingBlock(data: PrintReceiptData, parts: Buffer[]): void {
   }
 
   blank();
-  push(COMMANDS.BOLD_ON); text('FORGALMI ÖSSZESÍTŐ:'); push(COMMANDS.BOLD_OFF);
+  push(COMMANDS.BOLD_ON);
+  text('FORGALMI ÖSSZESÍTŐ:');
+  push(COMMANDS.BOLD_OFF);
   blank();
   text(twoColumn('Összes tranzakció:', String(summary.totalTransactions)));
   text(twoColumn('  - Eladás:', String(summary.sellCount)));
@@ -629,9 +692,13 @@ function buildClosingBlock(data: PrintReceiptData, parts: Buffer[]): void {
 
   if (summary.discrepancies.length > 0) {
     blank();
-    push(COMMANDS.BOLD_ON); text('ELTÉRÉSEK:'); push(COMMANDS.BOLD_OFF);
+    push(COMMANDS.BOLD_ON);
+    text('ELTÉRÉSEK:');
+    push(COMMANDS.BOLD_OFF);
     for (const d of summary.discrepancies) {
-      text(`  ${d.currencyCode}: várt ${fmtAmount(d.expected)} -> tény ${fmtAmount(d.actual)} (${fmtAmount(d.difference)})`);
+      text(
+        `  ${d.currencyCode}: várt ${fmtAmount(d.expected)} -> tény ${fmtAmount(d.actual)} (${fmtAmount(d.difference)})`,
+      );
     }
   }
 }
@@ -648,6 +715,8 @@ export async function printReceiptToSerial(
   config: Partial<SerialPrinterConfig> = {},
 ): Promise<boolean> {
   const buf = buildReceiptForSerial(data);
-  log.info(`[SERIAL-PRINTER] Bizonylat küldés: ${data.type} ${data.receiptNumber} (${buf.length} byte → ${config.port ?? DEFAULT_CONFIG.port})`);
+  log.info(
+    `[SERIAL-PRINTER] Bizonylat küldés: ${data.type} ${data.receiptNumber} (${buf.length} byte → ${config.port ?? DEFAULT_CONFIG.port})`,
+  );
   return printToSerial(buf, config);
 }

@@ -82,17 +82,34 @@ export default function DailyJournalPage() {
 
       <div className="bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
         <div className="md:col-span-1">
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="dj-branch">{t('reports.dailyJournal.branch')}</label>
-          <select id="dj-branch" value={branchId} onChange={(e) => setBranchId(e.target.value)} className="form-input w-full text-sm">
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="dj-branch">
+            {t('reports.dailyJournal.branch')}
+          </label>
+          <select
+            id="dj-branch"
+            value={branchId}
+            onChange={(e) => setBranchId(e.target.value)}
+            className="form-input w-full text-sm"
+          >
             <option value="">{t('reports.dailyJournal.branchPlaceholder')}</option>
             {branches.map((b) => (
-              <option key={b.id} value={b.id}>{b.code} - {b.name}</option>
+              <option key={b.id} value={b.id}>
+                {b.code} - {b.name}
+              </option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="dj-date">{t('reports.dailyJournal.date')}</label>
-          <input id="dj-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="form-input w-full text-sm" />
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="dj-date">
+            {t('reports.dailyJournal.date')}
+          </label>
+          <input
+            id="dj-date"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="form-input w-full text-sm"
+          />
         </div>
         <div>
           <button
@@ -107,9 +124,7 @@ export default function DailyJournalPage() {
         </div>
       </div>
 
-      <div className="text-center text-sm text-gray-500 py-6">
-        {t('reports.dailyJournal.hint')}
-      </div>
+      <div className="text-center text-sm text-gray-500 py-6">{t('reports.dailyJournal.hint')}</div>
     </div>
   )
 }

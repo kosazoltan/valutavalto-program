@@ -78,7 +78,9 @@ describe('UserPage', () => {
       defaultBranchName: 'Szeged',
       createdAt: '2026-06-19T00:00:00',
     })
-    mocks.roleList.mockResolvedValue([{ id: 'role-admin', code: 'ADMIN', name: 'ADMIN', isActive: true }])
+    mocks.roleList.mockResolvedValue([
+      { id: 'role-admin', code: 'ADMIN', name: 'ADMIN', isActive: true },
+    ])
     mocks.mfaDisable.mockResolvedValue({ workerId: 42, message: 'MFA letiltva' })
   })
 

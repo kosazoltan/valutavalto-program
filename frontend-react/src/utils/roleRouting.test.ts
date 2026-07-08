@@ -4,7 +4,7 @@ import { isRoleSelectableForAppMode } from './appModeRoles'
 
 /**
  * Role-alapú routing tesztek.
- * 
+ *
  * A role-alapu default route es szerver whitelist logika edge case-ei.
  */
 

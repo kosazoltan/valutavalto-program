@@ -3,7 +3,7 @@ import { Monitor, Plus, Edit, Trash2, Search, X, Save } from 'lucide-react'
 import { workstationApi, Workstation, WorkstationCreateRequest } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
 export default function WorkstationPage() {
@@ -19,7 +19,7 @@ export default function WorkstationPage() {
     code: '',
     name: '',
     workstationType: 'CASHIER',
-    isActive: true
+    isActive: true,
   })
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export default function WorkstationPage() {
       }
     }
 
-    load().catch(err => {
+    load().catch((err) => {
       if (mounted) {
         logger.error('WorkstationPage', 'Failed to load workstations:', err)
       }
@@ -48,20 +48,18 @@ export default function WorkstationPage() {
   const filteredWorkstations = useMemo(() => {
     if (!searchTerm) return workstations
     const term = searchTerm.toLowerCase()
-    return workstations.filter(w =>
-      w.code.toLowerCase().includes(term) ||
-      w.name.toLowerCase().includes(term) ||
-      w.machineName?.toLowerCase().includes(term)
+    return workstations.filter(
+      (w) =>
+        w.code.toLowerCase().includes(term) ||
+        w.name.toLowerCase().includes(term) ||
+        w.machineName?.toLowerCase().includes(term),
     )
   }, [workstations, searchTerm])
 
   const loadData = async (): Promise<void> => {
     try {
       setLoading(true)
-      const [data, active] = await Promise.all([
-        workstationApi.list(),
-        workstationApi.getActive(),
-      ])
+      const [data, active] = await Promise.all([workstationApi.list(), workstationApi.getActive()])
       setWorkstations(data)
       setActiveWorkstations(active)
     } catch (err) {
@@ -79,7 +77,7 @@ export default function WorkstationPage() {
       code: '',
       name: '',
       workstationType: 'CASHIER',
-      isActive: true
+      isActive: true,
     })
     setShowForm(true)
   }
@@ -98,12 +96,15 @@ export default function WorkstationPage() {
         macAddress: detailed.macAddress,
         workstationType: detailed.workstationType,
         softwareVersion: detailed.softwareVersion,
-        isActive: detailed.isActive
+        isActive: detailed.isActive,
       })
       setShowForm(true)
     } catch (err) {
       const errorMessage = getErrorMessage(err)
-      toast.error('Részlet betöltési hiba', `Hiba történt a munkaállomás betöltése során: ${errorMessage}`)
+      toast.error(
+        'Részlet betöltési hiba',
+        `Hiba történt a munkaállomás betöltése során: ${errorMessage}`,
+      )
       logger.error('WorkstationPage', 'Failed to load workstation details:', err)
     } finally {
       setDetailLoadingId(null)
@@ -164,17 +165,24 @@ export default function WorkstationPage() {
           </div>
           <div className="rounded border border-emerald-200 bg-emerald-50 p-3">
             <div className="text-xs text-emerald-700">Aktív munkaállomás</div>
-            <div className="text-2xl font-semibold text-emerald-800">{activeWorkstations.length}</div>
+            <div className="text-2xl font-semibold text-emerald-800">
+              {activeWorkstations.length}
+            </div>
           </div>
           <div className="rounded border border-blue-200 bg-blue-50 p-3">
             <div className="text-xs text-blue-700">Online jelzés</div>
-            <div className="text-2xl font-semibold text-blue-800">{workstations.filter(w => w.isOnline).length}</div>
+            <div className="text-2xl font-semibold text-blue-800">
+              {workstations.filter((w) => w.isOnline).length}
+            </div>
           </div>
         </div>
         <div>
           <label className="form-label">{t('common.search')}</label>
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            <Search
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={16}
+            />
             <input
               type="text"
               className="form-input pl-8"
@@ -193,22 +201,42 @@ export default function WorkstationPage() {
               <h2 className="text-lg font-bold">
                 {editingWorkstation ? 'Munkaállomás szerkesztése' : 'Új munkaállomás'}
               </h2>
-              <button onClick={() => { setShowForm(false); setEditingWorkstation(null) }} className="text-gray-500">
+              <button
+                onClick={() => {
+                  setShowForm(false)
+                  setEditingWorkstation(null)
+                }}
+                className="text-gray-500"
+              >
                 <X size={20} />
               </button>
             </div>
             <div className="space-y-4">
               <div>
                 <label className="form-label">{t('common.codeRequired')}</label>
-                <input type="text" className="form-input" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} />
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                />
               </div>
               <div>
                 <label className="form-label">{t('common.nameRequired')}</label>
-                <input type="text" className="form-input" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
               </div>
               <div>
                 <label className="form-label">{t('circulars.tipus')}</label>
-                <select className="form-input" value={formData.workstationType} onChange={(e) => setFormData({ ...formData, workstationType: e.target.value })}>
+                <select
+                  className="form-input"
+                  value={formData.workstationType}
+                  onChange={(e) => setFormData({ ...formData, workstationType: e.target.value })}
+                >
                   <option value="CASHIER">{t('branch.branch')}</option>
                   <option value="ADMIN">{t('workstations.admin')}</option>
                   <option value="POS">POS</option>
@@ -216,27 +244,61 @@ export default function WorkstationPage() {
               </div>
               <div>
                 <label className="form-label">{t('workstations.gepnev')}</label>
-                <input type="text" className="form-input" value={formData.machineName || ''} onChange={(e) => setFormData({ ...formData, machineName: e.target.value })} />
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formData.machineName || ''}
+                  onChange={(e) => setFormData({ ...formData, machineName: e.target.value })}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">{t('common.ipAddress')}</label>
-                  <input type="text" className="form-input" value={formData.ipAddress || ''} onChange={(e) => setFormData({ ...formData, ipAddress: e.target.value })} />
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={formData.ipAddress || ''}
+                    onChange={(e) => setFormData({ ...formData, ipAddress: e.target.value })}
+                  />
                 </div>
                 <div>
                   <label className="form-label">{t('workstations.macCim')}</label>
-                  <input type="text" className="form-input" value={formData.macAddress || ''} onChange={(e) => setFormData({ ...formData, macAddress: e.target.value })} />
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={formData.macAddress || ''}
+                    onChange={(e) => setFormData({ ...formData, macAddress: e.target.value })}
+                  />
                 </div>
               </div>
               <div>
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" className="rounded" checked={formData.isActive ?? true} onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })} />
+                  <input
+                    type="checkbox"
+                    className="rounded"
+                    checked={formData.isActive ?? true}
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                  />
                   <span>{t('common.active')}</span>
                 </label>
               </div>
               <div className="flex justify-end gap-2 pt-4 border-t">
-                <button onClick={() => { setShowForm(false); setEditingWorkstation(null) }} className="form-button">{t('common.cancel')}</button>
-                <button onClick={handleSave} className="form-button-primary flex items-center gap-2"><Save size={16} />{t('common.save')}</button>
+                <button
+                  onClick={() => {
+                    setShowForm(false)
+                    setEditingWorkstation(null)
+                  }}
+                  className="form-button"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="form-button-primary flex items-center gap-2"
+                >
+                  <Save size={16} />
+                  {t('common.save')}
+                </button>
               </div>
             </div>
           </div>
@@ -259,7 +321,11 @@ export default function WorkstationPage() {
           </thead>
           <tbody>
             {filteredWorkstations.length === 0 ? (
-              <tr><td colSpan={8} className="text-center text-gray-500 py-4">{t('common.noResult')}</td></tr>
+              <tr>
+                <td colSpan={8} className="text-center text-gray-500 py-4">
+                  {t('common.noResult')}
+                </td>
+              </tr>
             ) : (
               filteredWorkstations.map((w) => (
                 <tr key={w.id}>
@@ -286,9 +352,19 @@ export default function WorkstationPage() {
                         disabled={detailLoadingId === w.id}
                         className="form-button text-xs disabled:opacity-50"
                       >
-                        <Edit size={12} className={detailLoadingId === w.id ? 'animate-pulse' : ''} />{t('common.edit')}
+                        <Edit
+                          size={12}
+                          className={detailLoadingId === w.id ? 'animate-pulse' : ''}
+                        />
+                        {t('common.edit')}
                       </button>
-                      <button onClick={() => handleDelete(w.id)} className="form-button text-xs text-red-600"><Trash2 size={12} />{t('common.delete')}</button>
+                      <button
+                        onClick={() => handleDelete(w.id)}
+                        className="form-button text-xs text-red-600"
+                      >
+                        <Trash2 size={12} />
+                        {t('common.delete')}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -300,4 +376,3 @@ export default function WorkstationPage() {
     </div>
   )
 }
-

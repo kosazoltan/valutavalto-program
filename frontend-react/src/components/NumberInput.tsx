@@ -45,7 +45,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       disabled,
       'data-testid': dataTestId,
     },
-    ref
+    ref,
   ) => {
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
       const inputValue = e.target.value
@@ -69,17 +69,16 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 
       // Negatív számok kezelése
       if (!allowNegative) {
-              cleaned = cleaned.replace(/-/g, '')
-            }
-      else if (cleaned.includes('-')) {
-                const minusIndex = cleaned.indexOf('-')
-                if (minusIndex !== 0) {
-                  cleaned = cleaned.replace(/-/g, '')
-                  if (allowNegative && !cleaned.startsWith('-')) {
-                    cleaned = '-' + cleaned
-                  }
-                }
-              }
+        cleaned = cleaned.replace(/-/g, '')
+      } else if (cleaned.includes('-')) {
+        const minusIndex = cleaned.indexOf('-')
+        if (minusIndex !== 0) {
+          cleaned = cleaned.replace(/-/g, '')
+          if (allowNegative && !cleaned.startsWith('-')) {
+            cleaned = '-' + cleaned
+          }
+        }
+      }
 
       // Tizedesjegyek kezelése
       if (!allowDecimals) {
@@ -90,12 +89,12 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
         // Magyar formátum: vessző, angol: pont
         const hasComma = cleaned.includes(',')
         const hasDot = cleaned.includes('.')
-        
+
         if (hasComma && hasDot) {
           // Ha mindkettő van, a vesszőt használjuk (magyar formátum)
           cleaned = cleaned.replace(/\./g, '')
         }
-        
+
         // Tizedesvessző/vessző csak szám után lehet
         const parts = cleaned.split(/[,.]/)
         if (parts.length > 2) {
@@ -144,9 +143,8 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
     }
 
     // Az érték megjelenítésekor tizedesvesszőt vesszőre cseréljük magyar formátumhoz
-    let displayValue = typeof value === 'number'
-      ? value.toString().replace('.', ',')
-      : value.toString()
+    let displayValue =
+      typeof value === 'number' ? value.toString().replace('.', ',') : value.toString()
 
     // Ezres elválasztó megjelenítés (magyar: pont)
     if (thousandSeparator && displayValue) {
@@ -176,8 +174,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
         data-testid={dataTestId}
       />
     )
-  }
+  },
 )
 
 NumberInput.displayName = 'NumberInput'
-

@@ -31,7 +31,10 @@ test.describe('1. Public API endpoints reachable', () => {
     expect(res.status(), `bootstrap-status HTTP status`).toBe(200)
     const body = await res.json()
     expect(body, 'bootstrap-status body').toBeTruthy()
-    expect(body.completed, `bootstrap-status.completed must be true (kapott: ${JSON.stringify(body)})`).toBe(true)
+    expect(
+      body.completed,
+      `bootstrap-status.completed must be true (kapott: ${JSON.stringify(body)})`,
+    ).toBe(true)
     await ctx.dispose()
   })
 
@@ -78,10 +81,17 @@ test.describe('2. Login UI loads', () => {
     // 3 form mezo (cegkod, penztaros kod, jelszo) — a LoginPage hasznalja oket
     const inputs = page.locator('input:not([type="hidden"])')
     const inputCount = await inputs.count()
-    expect(inputCount, `expected >= 3 form inputs (cégkód, pénztáros, jelszó), got ${inputCount}`).toBeGreaterThanOrEqual(3)
+    expect(
+      inputCount,
+      `expected >= 3 form inputs (cégkód, pénztáros, jelszó), got ${inputCount}`,
+    ).toBeGreaterThanOrEqual(3)
 
     // Jelszo mezo legyen
-    const passwordVisible = await page.locator('input[type="password"]').first().isVisible({ timeout: 5_000 }).catch(() => false)
+    const passwordVisible = await page
+      .locator('input[type="password"]')
+      .first()
+      .isVisible({ timeout: 5_000 })
+      .catch(() => false)
     expect(passwordVisible, 'password input not visible').toBe(true)
   })
 })
@@ -114,9 +124,20 @@ test.describe('3. Login validation works', () => {
     // Vagy hibauzenet, vagy login oldalon maradunk
     const url = page.url()
     const stillOnLogin = url.includes('/login') || url === `${PROD_BASE}/` || url === PROD_BASE
-    const hasErrorElement = await page.locator('[role="alert"], .error, [class*="error"], [class*="alert"]').first().isVisible({ timeout: 3_000 }).catch(() => false)
+    const hasErrorElement = await page
+      .locator('[role="alert"], .error, [class*="error"], [class*="alert"]')
+      .first()
+      .isVisible({ timeout: 3_000 })
+      .catch(() => false)
     // A LoginPage szovege: "Hibás pénztáros kód vagy jelszó"
-    const hasErrorText = (await page.locator('body').innerText().catch(() => '')).toLowerCase().includes('hibás')
+    const hasErrorText = (
+      await page
+        .locator('body')
+        .innerText()
+        .catch(() => '')
+    )
+      .toLowerCase()
+      .includes('hibás')
 
     expect(
       stillOnLogin || hasErrorElement || hasErrorText,
@@ -144,7 +165,10 @@ test.describe('4. Static assets load', () => {
     })
 
     expect(bodyHasStyle.sheetsCount, 'no stylesheets loaded → CSS missing').toBeGreaterThan(0)
-    expect(bodyHasStyle.fontFamily.length, 'computed font-family must not be empty').toBeGreaterThan(0)
+    expect(
+      bodyHasStyle.fontFamily.length,
+      'computed font-family must not be empty',
+    ).toBeGreaterThan(0)
 
     // Tailwind / Inter font check (nem szigoru — fallback OK)
     const fontFamily = bodyHasStyle.fontFamily.toLowerCase()
@@ -171,7 +195,10 @@ test.describe('5. API health: exchange-rates endpoint require auth (verify 401, 
     const res = await ctx.get(`${API_BASE}/exchange-rates`, { timeout: 10_000 })
     // Várjuk: 401 (Unauthorized) vagy 403 (Forbidden) — NEM 404 (Not Found) és NEM 5xx
     const status = res.status()
-    expect(status, `exchange-rates status (várt 401/403, NEM 404): ${status}`).toBeGreaterThanOrEqual(401)
+    expect(
+      status,
+      `exchange-rates status (várt 401/403, NEM 404): ${status}`,
+    ).toBeGreaterThanOrEqual(401)
     expect(status, `exchange-rates 5xx ?: ${status}`).toBeLessThan(500)
     await ctx.dispose()
   })
@@ -200,6 +227,8 @@ test.describe('6. Response time SLA', () => {
     console.log(`>> bootstrap-status latency samples (ms): ${samples.join(', ')}`)
     console.log(`>> avg=${avg.toFixed(0)}ms  p95=${p95}ms`)
 
-    expect(p95, `p95 latency too high: ${p95}ms (samples: ${samples.join(',')})`).toBeLessThan(2_000)
+    expect(p95, `p95 latency too high: ${p95}ms (samples: ${samples.join(',')})`).toBeLessThan(
+      2_000,
+    )
   })
 })

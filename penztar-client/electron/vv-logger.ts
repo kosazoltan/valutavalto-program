@@ -49,10 +49,7 @@ let droppedSinceLastForward = 0;
  * @param baseUrl - production: 'https://excvaluta.com' (default)
  * @param context - 'CASHIER' (penztar-client), 'TREASURY_HQ' (kozponti), 'RFM' (arfolyam)
  */
-export function configureVvLogger(opts: {
-  baseUrl?: string;
-  clientContext?: ClientContext;
-}): void {
+export function configureVvLogger(opts: { baseUrl?: string; clientContext?: ClientContext }): void {
   if (opts.baseUrl) backendBaseUrl = opts.baseUrl.replace(/\/+$/, '');
   if (opts.clientContext) clientContext = opts.clientContext;
 }
@@ -127,9 +124,13 @@ function forwardToBackend(payload: VvLogPayload): void {
   lastForwardMs = now;
 
   // Hozzaadjuk a drop_count-ot az attrs-hoz hogy a backend lassa a missing signalt
-  const enrichedPayload: VvLogPayload = droppedSinceLastForward > 0
-    ? { ...payload, attrs: { ...payload.attrs, 'vv.dropped_since_last': droppedSinceLastForward } }
-    : payload;
+  const enrichedPayload: VvLogPayload =
+    droppedSinceLastForward > 0
+      ? {
+          ...payload,
+          attrs: { ...payload.attrs, 'vv.dropped_since_last': droppedSinceLastForward },
+        }
+      : payload;
   droppedSinceLastForward = 0;
 
   try {
@@ -137,10 +138,16 @@ function forwardToBackend(payload: VvLogPayload): void {
     req.setHeader('Content-Type', 'application/json');
     req.setHeader('Authorization', `Bearer ${authBearerToken}`);
     req.setHeader('User-Agent', `ValutaElectronVVLogger/${app.getVersion()}`);
-    req.on('error', () => { /* csendben */ });
+    req.on('error', () => {
+      /* csendben */
+    });
     req.on('response', (res) => {
-      res.on('data', () => { /* drain */ });
-      res.on('end', () => { /* finished */ });
+      res.on('data', () => {
+        /* drain */
+      });
+      res.on('end', () => {
+        /* finished */
+      });
     });
     req.write(JSON.stringify(enrichedPayload));
     req.end();

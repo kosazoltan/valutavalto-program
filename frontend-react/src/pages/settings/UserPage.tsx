@@ -1,8 +1,16 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Users, Plus, Edit, Trash2, Search, X, Save, Key, ShieldOff } from 'lucide-react'
-import { userApi, UserDetail, UserCreateRequest, UserUpdateRequest, roleApi, Role, mfaAdminApi } from '../../services/api/index'
+import {
+  userApi,
+  UserDetail,
+  UserCreateRequest,
+  UserUpdateRequest,
+  roleApi,
+  Role,
+  mfaAdminApi,
+} from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
 export default function UserPage() {
@@ -25,16 +33,17 @@ export default function UserPage() {
     password: '',
     fullName: '',
     roleId: '',
-    branchId: ''
+    branchId: '',
   })
 
   const filteredUsers = useMemo(() => {
     if (!searchTerm) return users
     const term = searchTerm.toLowerCase()
-    return users.filter(u =>
-      u.username.toLowerCase().includes(term) ||
-      u.name?.toLowerCase().includes(term) ||
-      u.email?.toLowerCase().includes(term)
+    return users.filter(
+      (u) =>
+        u.username.toLowerCase().includes(term) ||
+        u.name?.toLowerCase().includes(term) ||
+        u.email?.toLowerCase().includes(term),
     )
   }, [users, searchTerm])
 
@@ -46,12 +55,9 @@ export default function UserPage() {
     try {
       setLoading(true)
       setError(null)
-      const [usersData, rolesData] = await Promise.all([
-        userApi.list(),
-        roleApi.list()
-      ])
+      const [usersData, rolesData] = await Promise.all([userApi.list(), roleApi.list()])
       setUsers(usersData)
-      setRoles(rolesData.filter(r => r.isActive))
+      setRoles(rolesData.filter((r) => r.isActive))
     } catch (err) {
       logger.error('UserPage', 'Felhasználók betöltési hiba:', err)
       setError('Hiba a felhasználók betöltésekor')
@@ -68,7 +74,7 @@ export default function UserPage() {
       password: '',
       fullName: '',
       roleId: '',
-      branchId: ''
+      branchId: '',
     })
     setShowForm(true)
   }
@@ -84,8 +90,9 @@ export default function UserPage() {
         email: detail.email || '',
         password: '',
         fullName: detail.name || '',
-        roleId: roles.find(r => r.name === detail.roles?.[0] || r.code === detail.roles?.[0])?.id || '',
-        branchId: detail.defaultBranchId || ''
+        roleId:
+          roles.find((r) => r.name === detail.roles?.[0] || r.code === detail.roles?.[0])?.id || '',
+        branchId: detail.defaultBranchId || '',
       })
       setShowForm(true)
     } catch (err) {
@@ -143,7 +150,7 @@ export default function UserPage() {
           email: formData.email.trim(),
           fullName: formData.fullName?.trim() || undefined,
           roleId: formData.roleId || undefined,
-          branchId: formData.branchId || undefined
+          branchId: formData.branchId || undefined,
         }
         await userApi.update(editingUser.id, updateData)
         toast.success('Felhasználó sikeresen frissítve!')
@@ -154,7 +161,7 @@ export default function UserPage() {
           password: formData.password,
           fullName: formData.fullName?.trim() || undefined,
           roleId: formData.roleId || undefined,
-          branchId: formData.branchId || undefined
+          branchId: formData.branchId || undefined,
         }
         await userApi.create(createData)
         toast.success('Felhasználó sikeresen létrehozva!')
@@ -163,16 +170,22 @@ export default function UserPage() {
       setShowForm(false)
       setEditingUser(null)
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error && 'response' in error && 
-                          typeof error.response === 'object' && error.response !== null &&
-                          'data' in error.response && 
-                          typeof error.response.data === 'object' && error.response.data !== null
-                          ? ('message' in error.response.data && typeof error.response.data.message === 'string' 
-                             ? error.response.data.message 
-                             : 'error' in error.response.data && typeof error.response.data.error === 'string'
-                             ? error.response.data.error
-                             : 'Hiba történt a mentés során')
-                          : error instanceof Error ? error.message : 'Hiba történt a mentés során'
+      const errorMessage =
+        error instanceof Error &&
+        'response' in error &&
+        typeof error.response === 'object' &&
+        error.response !== null &&
+        'data' in error.response &&
+        typeof error.response.data === 'object' &&
+        error.response.data !== null
+          ? 'message' in error.response.data && typeof error.response.data.message === 'string'
+            ? error.response.data.message
+            : 'error' in error.response.data && typeof error.response.data.error === 'string'
+              ? error.response.data.error
+              : 'Hiba történt a mentés során'
+          : error instanceof Error
+            ? error.message
+            : 'Hiba történt a mentés során'
       toast.error('Hiba', errorMessage)
     }
   }
@@ -276,10 +289,7 @@ export default function UserPage() {
           <Users />
           {t('settings.users')}
         </h1>
-        <button
-          onClick={handleCreate}
-          className="form-button-primary flex items-center gap-2"
-        >
+        <button onClick={handleCreate} className="form-button-primary flex items-center gap-2">
           <Plus size={16} />
           {t('settings.ujFelhasznalo')}
         </button>
@@ -297,7 +307,10 @@ export default function UserPage() {
         <div>
           <label className="form-label">{t('common.search')}</label>
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            <Search
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={16}
+            />
             <input
               type="text"
               className="form-input pl-8"
@@ -384,8 +397,10 @@ export default function UserPage() {
                   onChange={(e) => setFormData({ ...formData, roleId: e.target.value })}
                 >
                   <option value="">{t('settings.nincsSzerepkor')}</option>
-                  {roles.map(role => (
-                    <option key={role.id} value={role.id}>{role.name}</option>
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -419,7 +434,8 @@ export default function UserPage() {
           <div className="bg-white rounded-lg p-4 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">
-                {t('settings.jelszoMegvaltoztatasa')}{selectedUser.username}
+                {t('settings.jelszoMegvaltoztatasa')}
+                {selectedUser.username}
               </h2>
               <button
                 onClick={() => {
@@ -501,7 +517,9 @@ export default function UserPage() {
                     {user.roles && user.roles.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {user.roles.map((role) => (
-                          <span key={role} className="badge badge-blue text-xs">{role}</span>
+                          <span key={role} className="badge badge-blue text-xs">
+                            {role}
+                          </span>
                         ))}
                       </div>
                     ) : (
@@ -576,4 +594,3 @@ export default function UserPage() {
     </div>
   )
 }
-

@@ -6,31 +6,20 @@
     "output": "release"
   },
   "asar": true,
-  "asarUnpack": [
-    "**/*.node",
-    "node_modules/serialport/**/*",
-    "node_modules/@serialport/**/*"
-  ],
-  "files": [
-    "dist/**/*",
-    "dist-electron/**/*"
-  ],
+  "asarUnpack": ["**/*.node", "node_modules/serialport/**/*", "node_modules/@serialport/**/*"],
+  "files": ["dist/**/*", "dist-electron/**/*"],
   "win": {
     "icon": "build/icons/app-icon-bestchange.png",
     "target": [
       {
         "target": "nsis",
-        "arch": [
-          "x64"
-        ]
+        "arch": ["x64"]
       }
     ],
     "artifactName": "Penztar-Setup-${version}.exe",
     "signtoolOptions": {
       "sign": "scripts/sign-with-azure-keyvault.js",
-      "signingHashAlgorithms": [
-        "sha256"
-      ],
+      "signingHashAlgorithms": ["sha256"],
       "rfc3161TimeStampServer": "http://timestamp.digicert.com"
     },
     "verifyUpdateCodeSignature": false

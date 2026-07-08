@@ -23,8 +23,6 @@ vi.mock('electron', () => ({
 // BEGIN/COMMIT/ROLLBACK + re-entry guard logika változik, az atomicitás-tesztek elkapják.
 import { runInTransaction } from '../sqlite';
 
-
-
 /**
  * Since sqlite.ts has module-level state (let db), we need a strategy
  * to test its exported functions. We'll use a direct sql.js approach:
@@ -105,10 +103,7 @@ function runSchema(database: Database): void {
 }
 
 // Find the sql-wasm.wasm file
-const wasmPath = path.join(
-  process.cwd(),
-  'node_modules/sql.js/dist/sql-wasm.wasm',
-);
+const wasmPath = path.join(process.cwd(), 'node_modules/sql.js/dist/sql-wasm.wasm');
 
 describe('sqlite — config get/set (direct DB)', () => {
   beforeEach(async () => {
@@ -166,10 +161,7 @@ describe('sqlite — config get/set (direct DB)', () => {
   });
 
   it('should delete a config value', () => {
-    db.run(
-      `INSERT INTO config (key, value) VALUES (?, ?)`,
-      ['to_delete', 'value'],
-    );
+    db.run(`INSERT INTO config (key, value) VALUES (?, ?)`, ['to_delete', 'value']);
     db.run('DELETE FROM config WHERE key = ?', ['to_delete']);
 
     const stmt = db.prepare('SELECT value FROM config WHERE key = ?');
@@ -204,9 +196,7 @@ describe('sqlite — DB schema initialization', () => {
   });
 
   it('should create config table', () => {
-    const stmt = db.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='config'",
-    );
+    const stmt = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='config'");
     expect(stmt.step()).toBe(true);
     stmt.free();
   });
@@ -327,7 +317,9 @@ describe('sqlite — pending transactions logic', () => {
             VALUES (51, 'AT-000024', 'Már szinkronizált', 1)`);
 
     const sel = () => {
-      const stmt = db.prepare('SELECT * FROM pending_transfer_stornos WHERE synced = 0 ORDER BY created_at ASC');
+      const stmt = db.prepare(
+        'SELECT * FROM pending_transfer_stornos WHERE synced = 0 ORDER BY created_at ASC',
+      );
       const rows = [];
       while (stmt.step()) rows.push(stmt.getAsObject());
       stmt.free();
@@ -339,7 +331,9 @@ describe('sqlite — pending transactions logic', () => {
     expect(pending[0]!['transfer_id']).toBe(50);
     expect(pending[0]!['reason']).toBe('Téves rögzítés');
 
-    db.run('UPDATE pending_transfer_stornos SET synced = 1 WHERE id = ?', [pending[0]!['id'] as number]);
+    db.run('UPDATE pending_transfer_stornos SET synced = 1 WHERE id = ?', [
+      pending[0]!['id'] as number,
+    ]);
     expect(sel()).toHaveLength(0);
   });
 
@@ -453,10 +447,9 @@ describe('sqlite — local audit events', () => {
     );
 
     // Cleanup events older than 31 days
-    db.run(
-      `DELETE FROM local_audit_events WHERE datetime(created_at) < datetime('now', ?)`,
-      ['-31 days'],
-    );
+    db.run(`DELETE FROM local_audit_events WHERE datetime(created_at) < datetime('now', ?)`, [
+      '-31 days',
+    ]);
 
     const stmt = db.prepare('SELECT COUNT(*) as cnt FROM local_audit_events');
     stmt.step();
@@ -548,7 +541,9 @@ describe('sqlite — strict receipt sequence atomicity (withTransaction)', () =>
     expect(ref).toBe('V039000001');
     expect(readSeq(db, '039', 'V')).toBe(1);
 
-    const stmt = db.prepare('SELECT local_reference_number FROM pending_transactions WHERE local_reference_number = ?');
+    const stmt = db.prepare(
+      'SELECT local_reference_number FROM pending_transactions WHERE local_reference_number = ?',
+    );
     stmt.bind([ref]);
     expect(stmt.step()).toBe(true);
     stmt.free();
@@ -602,7 +597,9 @@ describe('sqlite — strict receipt sequence atomicity (withTransaction)', () =>
     expect(readSeq(db, '039', 'V')).toBe(2);
 
     // Csak 2 sor van (a hibás kör nem szúrt be), és a sorszámozás hézagmentes: 1, 2.
-    const stmt = db.prepare('SELECT local_reference_number FROM pending_transactions ORDER BY id ASC');
+    const stmt = db.prepare(
+      'SELECT local_reference_number FROM pending_transactions ORDER BY id ASC',
+    );
     const refs: string[] = [];
     while (stmt.step()) {
       refs.push(stmt.getAsObject()['local_reference_number'] as string);

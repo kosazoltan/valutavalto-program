@@ -17,14 +17,14 @@ try {
     // should be found after removing the npm package from cache.
     // However, require.resolve will still find node_modules first.
     // Instead, use Module._resolveFilename override or process.electronBinding.
-    
+
     // Direct approach: construct the electron module from bindings
     const binding = process._linkedBinding('electron_common_features');
     if (binding) {
       // Access the internal module loader
       const Module = require('module');
       const originalResolve = Module._resolveFilename;
-      Module._resolveFilename = function(request, parent, isMain, options) {
+      Module._resolveFilename = function (request, parent, isMain, options) {
         if (request === 'electron') {
           // Return the internal electron module path
           return 'electron';

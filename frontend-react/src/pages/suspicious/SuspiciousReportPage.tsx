@@ -82,7 +82,7 @@ export default function SuspiciousReportPage() {
     void load()
   }, [])
 
-  const patch = (values: Partial<FormState>) => setForm(current => ({ ...current, ...values }))
+  const patch = (values: Partial<FormState>) => setForm((current) => ({ ...current, ...values }))
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -132,14 +132,26 @@ export default function SuspiciousReportPage() {
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <FileWarning />
           Gyanús ügyletek
-          <span className="text-sm font-normal text-gray-500">({reports.length} nyitott AML bejelentés)</span>
+          <span className="text-sm font-normal text-gray-500">
+            ({reports.length} nyitott AML bejelentés)
+          </span>
         </h1>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => void load()} className="form-button flex items-center gap-1" disabled={loading || saving}>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="form-button flex items-center gap-1"
+            disabled={loading || saving}
+          >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             Frissítés
           </button>
-          <button type="button" onClick={() => setShowForm(value => !value)} className="form-button-primary flex items-center gap-1" disabled={saving}>
+          <button
+            type="button"
+            onClick={() => setShowForm((value) => !value)}
+            className="form-button-primary flex items-center gap-1"
+            disabled={saving}
+          >
             <Plus size={16} />
             Új bejelentés
           </button>
@@ -161,7 +173,11 @@ export default function SuspiciousReportPage() {
           <div className="grid grid-cols-3 gap-3">
             <label className="block">
               <span className="form-label">Típus</span>
-              <select className="form-input" value={form.reportType} onChange={(e) => patch({ reportType: e.target.value as FormState['reportType'] })}>
+              <select
+                className="form-input"
+                value={form.reportType}
+                onChange={(e) => patch({ reportType: e.target.value as FormState['reportType'] })}
+              >
                 <option value="SUSPICIOUS">Gyanús</option>
                 <option value="THRESHOLD">Küszöb</option>
                 <option value="ENHANCED">Megerősített</option>
@@ -170,7 +186,11 @@ export default function SuspiciousReportPage() {
             </label>
             <label className="block">
               <span className="form-label">Kockázat</span>
-              <select className="form-input" value={form.riskLevel} onChange={(e) => patch({ riskLevel: e.target.value as FormState['riskLevel'] })}>
+              <select
+                className="form-input"
+                value={form.riskLevel}
+                onChange={(e) => patch({ riskLevel: e.target.value as FormState['riskLevel'] })}
+              >
                 <option value="LOW">Alacsony</option>
                 <option value="MEDIUM">Közepes</option>
                 <option value="HIGH">Magas</option>
@@ -179,39 +199,79 @@ export default function SuspiciousReportPage() {
             </label>
             <label className="block">
               <span className="form-label required">HUF összeg</span>
-              <input className="form-input text-right" inputMode="decimal" value={form.amountHuf} onChange={(e) => patch({ amountHuf: e.target.value })} required />
+              <input
+                className="form-input text-right"
+                inputMode="decimal"
+                value={form.amountHuf}
+                onChange={(e) => patch({ amountHuf: e.target.value })}
+                required
+              />
             </label>
             <label className="block">
               <span className="form-label">Ügyfél ID</span>
-              <input className="form-input" value={form.customerId} onChange={(e) => patch({ customerId: e.target.value })} />
+              <input
+                className="form-input"
+                value={form.customerId}
+                onChange={(e) => patch({ customerId: e.target.value })}
+              />
             </label>
             <label className="block">
               <span className="form-label">Ügyfél neve</span>
-              <input className="form-input" value={form.customerName} onChange={(e) => patch({ customerName: e.target.value })} />
+              <input
+                className="form-input"
+                value={form.customerName}
+                onChange={(e) => patch({ customerName: e.target.value })}
+              />
             </label>
             <label className="block">
               <span className="form-label">Tranzakció ID</span>
-              <input className="form-input text-right" inputMode="numeric" value={form.transactionId} onChange={(e) => patch({ transactionId: e.target.value })} />
+              <input
+                className="form-input text-right"
+                inputMode="numeric"
+                value={form.transactionId}
+                onChange={(e) => patch({ transactionId: e.target.value })}
+              />
             </label>
             <label className="block">
               <span className="form-label">Valuta</span>
-              <input className="form-input font-mono uppercase" value={form.currencyCode} onChange={(e) => patch({ currencyCode: e.target.value.toUpperCase() })} />
+              <input
+                className="form-input font-mono uppercase"
+                value={form.currencyCode}
+                onChange={(e) => patch({ currencyCode: e.target.value.toUpperCase() })}
+              />
             </label>
             <label className="block">
               <span className="form-label">Eredeti összeg</span>
-              <input className="form-input text-right" inputMode="decimal" value={form.originalAmount} onChange={(e) => patch({ originalAmount: e.target.value })} />
+              <input
+                className="form-input text-right"
+                inputMode="decimal"
+                value={form.originalAmount}
+                onChange={(e) => patch({ originalAmount: e.target.value })}
+              />
             </label>
             <label className="block">
               <span className="form-label">Okmányszám</span>
-              <input className="form-input font-mono" value={form.documentNumber} onChange={(e) => patch({ documentNumber: e.target.value })} />
+              <input
+                className="form-input font-mono"
+                value={form.documentNumber}
+                onChange={(e) => patch({ documentNumber: e.target.value })}
+              />
             </label>
             <label className="block col-span-3">
               <span className="form-label">Megjegyzés</span>
-              <textarea className="form-input min-h-24" value={form.workerNotes} onChange={(e) => patch({ workerNotes: e.target.value })} />
+              <textarea
+                className="form-input min-h-24"
+                value={form.workerNotes}
+                onChange={(e) => patch({ workerNotes: e.target.value })}
+              />
             </label>
           </div>
           <div className="flex justify-end">
-            <button type="submit" className="form-button-primary flex items-center gap-1" disabled={saving}>
+            <button
+              type="submit"
+              className="form-button-primary flex items-center gap-1"
+              disabled={saving}
+            >
               <Save size={16} />
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
@@ -242,24 +302,34 @@ export default function SuspiciousReportPage() {
               </tr>
             ) : reports.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-500">Nincs nyitott AML bejelentés.</td>
-              </tr>
-            ) : reports.map((report) => (
-              <tr key={report.id} className={report.overdue ? 'bg-red-50' : ''}>
-                <td>
-                  <div className="font-semibold">{report.customerName || report.customerId || '-'}</div>
-                  {report.documentNumber && <div className="text-xs text-gray-500 font-mono">{report.documentNumber}</div>}
+                <td colSpan={7} className="text-center py-8 text-gray-500">
+                  Nincs nyitott AML bejelentés.
                 </td>
-                <td className="font-mono text-sm">{report.reportType}</td>
-                <td className="font-mono text-sm">{report.riskLevel}</td>
-                <td className="text-right font-mono">{formatMoney(report.amountHuf)}</td>
-                <td>
-                  <span className={`badge ${report.overdue ? 'badge-red' : 'badge-yellow'}`}>{report.status}</span>
-                </td>
-                <td className="text-sm">{formatDateTime(report.deadlineAt)}</td>
-                <td className="text-sm">{formatDateTime(report.createdAt)}</td>
               </tr>
-            ))}
+            ) : (
+              reports.map((report) => (
+                <tr key={report.id} className={report.overdue ? 'bg-red-50' : ''}>
+                  <td>
+                    <div className="font-semibold">
+                      {report.customerName || report.customerId || '-'}
+                    </div>
+                    {report.documentNumber && (
+                      <div className="text-xs text-gray-500 font-mono">{report.documentNumber}</div>
+                    )}
+                  </td>
+                  <td className="font-mono text-sm">{report.reportType}</td>
+                  <td className="font-mono text-sm">{report.riskLevel}</td>
+                  <td className="text-right font-mono">{formatMoney(report.amountHuf)}</td>
+                  <td>
+                    <span className={`badge ${report.overdue ? 'badge-red' : 'badge-yellow'}`}>
+                      {report.status}
+                    </span>
+                  </td>
+                  <td className="text-sm">{formatDateTime(report.deadlineAt)}</td>
+                  <td className="text-sm">{formatDateTime(report.createdAt)}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

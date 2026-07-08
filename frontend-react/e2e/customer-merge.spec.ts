@@ -29,7 +29,7 @@ async function mockCustomerApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockCustomerApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path === '/api/v1/customers/42' && method === 'GET') {
@@ -153,7 +161,11 @@ async function mockCustomerApis(page: Page) {
     }
 
     const body = bodyByPath[path] ?? { content: [], data: [], total: 0 }
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(body),
+    })
   })
 }
 
@@ -172,11 +184,15 @@ test('ügyfél-összevonási panel renderel és a backend szerződést hívja', 
   await mockCustomerApis(page)
   await login(page)
 
-  const statsRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/42/stats'
+  const statsRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/customers/42/stats',
   )
-  const historyRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/customers/42/history'
+  const historyRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/customers/42/history',
   )
   await page.goto('/customers/42', { waitUntil: 'domcontentloaded' })
   await Promise.all([statsRequest, historyRequest])
@@ -184,12 +200,14 @@ test('ügyfél-összevonási panel renderel és a backend szerződést hívja', 
   await expect(page.getByTestId('customer-history-stats')).toContainText('850 000 Ft')
   await expect(page.getByTestId('customer-history-stats')).toContainText('USD')
 
-  const filteredHistoryRequest = page.waitForRequest(request => {
+  const filteredHistoryRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'GET'
-      && url.pathname === '/api/v1/customers/42/history'
-      && url.searchParams.get('from') === '2026-06-10'
-      && url.searchParams.get('to') === '2026-06-19'
+    return (
+      request.method() === 'GET' &&
+      url.pathname === '/api/v1/customers/42/history' &&
+      url.searchParams.get('from') === '2026-06-10' &&
+      url.searchParams.get('to') === '2026-06-19'
+    )
   })
   await page.getByTestId('customer-history-from').fill('2026-06-10')
   await page.getByTestId('customer-history-to').fill('2026-06-19')
@@ -202,7 +220,7 @@ test('ügyfél-összevonási panel renderel és a backend szerződést hívja', 
   await expect(page.getByText('Ügyfél duplikátum összevonás')).toBeVisible()
   await expect(page.getByTestId('duplicate-customer-id-input')).toBeVisible()
 
-  page.once('dialog', async dialog => {
+  page.once('dialog', async (dialog) => {
     expect(dialog.message()).toContain('duplikált ügyfél inaktív lesz')
     await dialog.accept()
   })
@@ -211,8 +229,8 @@ test('ügyfél-összevonási panel renderel és a backend szerződést hívja', 
   await page.getByRole('button', { name: /Ügyfelek összevonása/i }).click()
   await expect(page.getByText('8', { exact: true })).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

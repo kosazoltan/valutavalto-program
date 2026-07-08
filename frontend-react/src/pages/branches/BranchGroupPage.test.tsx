@@ -32,7 +32,8 @@ vi.mock('../../services/api/index', () => ({
 }))
 
 vi.mock('../../stores/authStore', () => ({
-  useAuthStore: (selector: (state: { worker: { id: number } }) => unknown) => selector({ worker: { id: 77 } }),
+  useAuthStore: (selector: (state: { worker: { id: number } }) => unknown) =>
+    selector({ worker: { id: 77 } }),
 }))
 
 vi.mock('../../components/ui/toaster', () => ({

@@ -1,7 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Settings, Plus, Edit, Trash2, Search, X, Save, KeyRound } from 'lucide-react'
-import { systemParameterApi, SystemParameter, SystemParameterCreateRequest } from '../../services/api/index'
-import { logger } from '../../utils/logger';
+import {
+  systemParameterApi,
+  SystemParameter,
+  SystemParameterCreateRequest,
+} from '../../services/api/index'
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
 export default function SystemParameterPage() {
@@ -26,20 +30,21 @@ export default function SystemParameterPage() {
     parameterType: 'STRING',
     category: '',
     description: '',
-    isActive: true
+    isActive: true,
   })
 
-  const categories = Array.from(new Set(allParameters.map(p => p.category))).sort()
+  const categories = Array.from(new Set(allParameters.map((p) => p.category))).sort()
   const parameterTypes = ['STRING', 'NUMBER', 'BOOLEAN', 'DATE', 'JSON']
 
   const filteredParameters = useMemo(() => {
     let filtered = parameters
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
-      filtered = filtered.filter(p =>
-        p.parameterKey.toLowerCase().includes(term) ||
-        p.parameterValue.toLowerCase().includes(term) ||
-        p.description?.toLowerCase().includes(term)
+      filtered = filtered.filter(
+        (p) =>
+          p.parameterKey.toLowerCase().includes(term) ||
+          p.parameterValue.toLowerCase().includes(term) ||
+          p.description?.toLowerCase().includes(term),
       )
     }
     return filtered
@@ -123,7 +128,7 @@ export default function SystemParameterPage() {
       parameterType: 'STRING',
       category: '',
       description: '',
-      isActive: true
+      isActive: true,
     })
     setShowForm(true)
   }
@@ -136,7 +141,7 @@ export default function SystemParameterPage() {
       parameterType: parameter.parameterType,
       category: parameter.category,
       description: parameter.description || '',
-      isActive: parameter.isActive
+      isActive: parameter.isActive,
     })
     setShowForm(true)
   }
@@ -224,9 +229,14 @@ export default function SystemParameterPage() {
       <div className="form-panel">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="system-parameter-search" className="form-label">{t('common.search')}</label>
+            <label htmlFor="system-parameter-search" className="form-label">
+              {t('common.search')}
+            </label>
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+              <Search
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={16}
+              />
               <input
                 id="system-parameter-search"
                 type="text"
@@ -238,7 +248,9 @@ export default function SystemParameterPage() {
             </div>
           </div>
           <div>
-            <label htmlFor="system-parameter-category" className="form-label">{t('common.category')}</label>
+            <label htmlFor="system-parameter-category" className="form-label">
+              {t('common.category')}
+            </label>
             <select
               id="system-parameter-category"
               className="form-input"
@@ -246,8 +258,10 @@ export default function SystemParameterPage() {
               onChange={(e) => void handleCategoryChange(e.target.value)}
             >
               <option value="">{t('settings.osszesKategoria')}</option>
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
               ))}
             </select>
           </div>
@@ -267,10 +281,15 @@ export default function SystemParameterPage() {
             </div>
           </div>
           <div>
-            <label htmlFor="system-parameter-key-lookup" className="form-label">{t('settings.kulcsEllenorzes')}</label>
+            <label htmlFor="system-parameter-key-lookup" className="form-label">
+              {t('settings.kulcsEllenorzes')}
+            </label>
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
-                <KeyRound className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                <KeyRound
+                  className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  size={16}
+                />
                 <input
                   id="system-parameter-key-lookup"
                   type="text"
@@ -362,8 +381,10 @@ export default function SystemParameterPage() {
                     value={formData.parameterType}
                     onChange={(e) => setFormData({ ...formData, parameterType: e.target.value })}
                   >
-                    {parameterTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
+                    {parameterTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
                     ))}
                   </select>
                 </div>

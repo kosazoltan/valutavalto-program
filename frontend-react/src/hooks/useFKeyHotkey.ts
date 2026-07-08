@@ -6,8 +6,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
  * Ha pl. 'a' / 'ctrl+s' / 'esc' kell, akkor a useHotkeys-t hasznald direkt.
  */
 export type FunctionKey =
-  | 'f1' | 'f2' | 'f3' | 'f4' | 'f5' | 'f6'
-  | 'f7' | 'f8' | 'f9' | 'f10' | 'f11' | 'f12'
+  'f1' | 'f2' | 'f3' | 'f4' | 'f5' | 'f6' | 'f7' | 'f8' | 'f9' | 'f10' | 'f11' | 'f12'
 
 /**
  * v2.3.45 (Sourcery #308 P3): F-key hotkey helper.

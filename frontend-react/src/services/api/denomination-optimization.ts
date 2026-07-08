@@ -1,13 +1,7 @@
 import { api } from './client'
 
 export type OptimizationStrategy =
-  | 'GREEDY'
-  | 'DYNAMIC'
-  | 'MIN_COINS'
-  | 'MIN_BANKNOTES'
-  | 'MIN_TOTAL'
-  | 'CUSTOM'
-  | 'BRANCH_SPECIFIC'
+  'GREEDY' | 'DYNAMIC' | 'MIN_COINS' | 'MIN_BANKNOTES' | 'MIN_TOTAL' | 'CUSTOM' | 'BRANCH_SPECIFIC'
 
 export type DenominationRuleType =
   | 'FIXED'
@@ -81,14 +75,17 @@ export const denominationOptimizationApi = {
   listOptimizations: async (): Promise<DenominationOptimization[]> =>
     (await api.get<DenominationOptimization[]>('/admin/denomination/optimizations')).data,
 
-  createOptimization: async (request: DenominationOptimizationSaveRequest): Promise<DenominationOptimization> =>
+  createOptimization: async (
+    request: DenominationOptimizationSaveRequest,
+  ): Promise<DenominationOptimization> =>
     (await api.post<DenominationOptimization>('/admin/denomination/optimizations', request)).data,
 
   updateOptimization: async (
     id: string,
     request: DenominationOptimizationSaveRequest,
   ): Promise<DenominationOptimization> =>
-    (await api.put<DenominationOptimization>(`/admin/denomination/optimizations/${id}`, request)).data,
+    (await api.put<DenominationOptimization>(`/admin/denomination/optimizations/${id}`, request))
+      .data,
 
   listRules: async (): Promise<DenominationRule[]> =>
     (await api.get<DenominationRule[]>('/admin/denomination/rules')).data,
@@ -105,5 +102,9 @@ export const denominationOptimizationApi = {
     currencyId: number
     hufAmount: number
   }): Promise<DenominationRuleSelectionPreview> =>
-    (await api.get<DenominationRuleSelectionPreview>('/admin/denomination/selection-preview', { params })).data,
+    (
+      await api.get<DenominationRuleSelectionPreview>('/admin/denomination/selection-preview', {
+        params,
+      })
+    ).data,
 }

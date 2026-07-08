@@ -28,7 +28,10 @@ function loadLocalEnv(file) {
     const repoScopedOverride = key.startsWith('OBSIDIAN_')
     if (process.env[key] && !repoScopedOverride) continue
     let value = line.slice(eq + 1).trim()
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
       value = value.slice(1, -1)
     }
     process.env[key] = value
@@ -36,7 +39,12 @@ function loadLocalEnv(file) {
 }
 
 function obsidianTokenFromEnv() {
-  return process.env.OBSIDIAN_API_KEY || process.env.OBSIDIAN_SYNC_TOKEN || process.env.OBSIDIAN_KEY || ''
+  return (
+    process.env.OBSIDIAN_API_KEY ||
+    process.env.OBSIDIAN_SYNC_TOKEN ||
+    process.env.OBSIDIAN_KEY ||
+    ''
+  )
 }
 
 function obsidianBasesFromEnv() {
@@ -61,20 +69,20 @@ function requestLocalObsidian(urlString, options = {}) {
       {
         method: options.method || 'GET',
         headers,
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
       },
-      res => {
+      (res) => {
         const chunks = []
-        res.on('data', chunk => chunks.push(chunk))
+        res.on('data', (chunk) => chunks.push(chunk))
         res.on('end', () => {
           const text = Buffer.concat(chunks).toString('utf8')
           resolve({
             ok: res.statusCode >= 200 && res.statusCode < 300,
             status: res.statusCode,
-            text: async () => text
+            text: async () => text,
           })
         })
-      }
+      },
     )
     req.on('error', reject)
     if (body) req.write(body)
@@ -104,9 +112,14 @@ function listFiles(dir, exts) {
       const full = path.join(current, entry.name)
       if (entry.isDirectory()) {
         const relPath = rel(full)
-        if (relPath.includes('node_modules') || relPath.includes('/target') || relPath.includes('/dist')) continue
+        if (
+          relPath.includes('node_modules') ||
+          relPath.includes('/target') ||
+          relPath.includes('/dist')
+        )
+          continue
         stack.push(full)
-      } else if (exts.some(ext => entry.name.toLowerCase().endsWith(ext))) {
+      } else if (exts.some((ext) => entry.name.toLowerCase().endsWith(ext))) {
         out.push(full)
       }
     }
@@ -137,12 +150,40 @@ function sha(text) {
 }
 
 function tokenize(text) {
-  return Array.from(new Set((text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/[a-z0-9_]{3,}/g) || [])
-    .filter(t => !['the','and','for','with','hogy','mint','vagy','this','that','true','false','null'].includes(t))))
+  return Array.from(
+    new Set(
+      (
+        text
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .match(/[a-z0-9_]{3,}/g) || []
+      ).filter(
+        (t) =>
+          ![
+            'the',
+            'and',
+            'for',
+            'with',
+            'hogy',
+            'mint',
+            'vagy',
+            'this',
+            'that',
+            'true',
+            'false',
+            'null',
+          ].includes(t),
+      ),
+    ),
+  )
 }
 
 function summarize(text, max = 420) {
-  const clean = text.replace(/```[\s\S]*?```/g, ' ').replace(/\s+/g, ' ').trim()
+  const clean = text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
   return clean.slice(0, max).trimEnd()
 }
 
@@ -154,13 +195,21 @@ function classify(file, fm, title, text) {
   if (r.includes('/agent-archive/')) return 'operational-archive'
   if (r.includes('/references/')) return 'long-term-reference'
   if (r.includes('/sessions/')) return 'medium-term-episodic'
-  if (lower.includes('legacy-reverse-engineering') || lower.includes('legacy-analysis') || lower.includes('legacy_parity') || lower.includes('anti_legacy')) return 'long-term-legacy'
-  if (lower.includes('receipt') || lower.includes('bizonylat') || lower.includes('materialreceipt')) return 'operational-receipt'
+  if (
+    lower.includes('legacy-reverse-engineering') ||
+    lower.includes('legacy-analysis') ||
+    lower.includes('legacy_parity') ||
+    lower.includes('anti_legacy')
+  )
+    return 'long-term-legacy'
+  if (lower.includes('receipt') || lower.includes('bizonylat') || lower.includes('materialreceipt'))
+    return 'operational-receipt'
   if (r.includes('docs/knowledge/memory/')) return 'long-term-historical'
   if (r.includes('docs/operations/')) return 'operational-runbook'
   if (r.includes('docs/user-manual/')) return 'long-term-user-doc'
   if (r.includes('LESSONS_LEARNED')) return 'operational-lessons'
-  if (r.includes('CLAUDE.md') || r.includes('AGENTS.md') || r.includes('AI_CONSTITUTION.md')) return 'short-term-core'
+  if (r.includes('CLAUDE.md') || r.includes('AGENTS.md') || r.includes('AI_CONSTITUTION.md'))
+    return 'short-term-core'
   return fm.type || 'semantic-reference'
 }
 
@@ -176,7 +225,8 @@ function collectSources() {
     path.join(root, 'AGENTS.md'),
     path.join(root, 'AI_CONSTITUTION.md'),
     path.join(root, 'docs', 'LESSONS_LEARNED.md'),
-  ]) if (exists(file)) candidates.push(file)
+  ])
+    if (exists(file)) candidates.push(file)
 
   for (const dir of [
     path.join(root, 'docs', 'knowledge', 'memory'),
@@ -194,21 +244,24 @@ function collectSources() {
     candidates.push(...listFiles(dir, ['.md', '.qmd', '.yaml', '.yml', '.csv', '.json', '.jsonl']))
   }
   for (const dir of [path.join(root, 'backend', 'src'), path.join(root, 'frontend-react', 'src')]) {
-    candidates.push(...listFiles(dir, ['.java', '.ts', '.tsx'])
-      .filter(file => {
+    candidates.push(
+      ...listFiles(dir, ['.java', '.ts', '.tsx']).filter((file) => {
         const lower = file.toLowerCase()
-        return lower.includes('receipt')
-          || lower.includes('bizonylat')
-          || lower.includes('materialreceipt')
-          || lower.includes('legacy')
-      }))
+        return (
+          lower.includes('receipt') ||
+          lower.includes('bizonylat') ||
+          lower.includes('materialreceipt') ||
+          lower.includes('legacy')
+        )
+      }),
+    )
   }
 
   return Array.from(new Set(candidates)).filter(exists).sort()
 }
 
 function buildEntries() {
-  return collectSources().map(file => {
+  return collectSources().map((file) => {
     const text = readText(file)
     const fm = frontmatter(text)
     const title = fm.title || heading(text) || path.basename(file)
@@ -236,10 +289,14 @@ function yamlEscape(value) {
 
 function writeYaml(entries) {
   const groups = {
-    short_term: entries.filter(e => e.type.startsWith('short-term') || e.type.includes('preferences')).slice(0, 40),
-    medium_term: entries.filter(e => e.type.includes('episodic')).slice(-80),
-    operational: entries.filter(e => e.type.includes('operational')).slice(0, 80),
-    long_term: entries.filter(e => e.type.includes('long-term') || e.type.includes('semantic')).slice(0, 140),
+    short_term: entries
+      .filter((e) => e.type.startsWith('short-term') || e.type.includes('preferences'))
+      .slice(0, 40),
+    medium_term: entries.filter((e) => e.type.includes('episodic')).slice(-80),
+    operational: entries.filter((e) => e.type.includes('operational')).slice(0, 80),
+    long_term: entries
+      .filter((e) => e.type.includes('long-term') || e.type.includes('semantic'))
+      .slice(0, 140),
   }
   const lines = []
   lines.push(`generated_at: ${now}`)
@@ -263,10 +320,20 @@ function writeYaml(entries) {
 
 function writeQmd(entries) {
   const sections = [
-    ['Rovid Tavu Memoria', entries.filter(e => e.type.startsWith('short-term') || e.type.includes('preferences')).slice(0, 25)],
-    ['Kozep Tavu Memoria', entries.filter(e => e.type.includes('episodic')).slice(-35)],
-    ['Operativ Memoria', entries.filter(e => e.type.includes('operational')).slice(0, 35)],
-    ['Hosszu Tavu Memoria', entries.filter(e => e.type.includes('long-term') || e.type.includes('semantic')).slice(0, 50)],
+    [
+      'Rovid Tavu Memoria',
+      entries
+        .filter((e) => e.type.startsWith('short-term') || e.type.includes('preferences'))
+        .slice(0, 25),
+    ],
+    ['Kozep Tavu Memoria', entries.filter((e) => e.type.includes('episodic')).slice(-35)],
+    ['Operativ Memoria', entries.filter((e) => e.type.includes('operational')).slice(0, 35)],
+    [
+      'Hosszu Tavu Memoria',
+      entries
+        .filter((e) => e.type.includes('long-term') || e.type.includes('semantic'))
+        .slice(0, 50),
+    ],
   ]
   const lines = [
     '---',
@@ -293,7 +360,12 @@ function writeQmd(entries) {
 }
 
 function writeCognee(entries) {
-  const lines = ['ingest_profile: repo-multilayer-memory', `generated_at: ${now}`, 'kind: knowledge_bundle', 'nodes:']
+  const lines = [
+    'ingest_profile: repo-multilayer-memory',
+    `generated_at: ${now}`,
+    'kind: knowledge_bundle',
+    'nodes:',
+  ]
   for (const e of entries.slice(0, 220)) {
     lines.push(`  - id: ${e.id}`)
     lines.push(`    type: ${yamlEscape(e.type)}`)
@@ -303,26 +375,37 @@ function writeCognee(entries) {
     lines.push(`    tags: [${e.keywords.slice(0, 10).map(yamlEscape).join(', ')}]`)
   }
   lines.push('edges:')
-  for (const e of entries.filter(x => x.type.includes('episodic')).slice(-80)) {
+  for (const e of entries.filter((x) => x.type.includes('episodic')).slice(-80)) {
     lines.push(`  - from: ${e.id}`)
     lines.push('    to: repo_project_state')
     lines.push('    relation: informs')
   }
-  fs.writeFileSync(path.join(memoryRoot, 'cognee', 'knowledge-bundle.yaml'), lines.join('\n') + '\n', 'utf8')
+  fs.writeFileSync(
+    path.join(memoryRoot, 'cognee', 'knowledge-bundle.yaml'),
+    lines.join('\n') + '\n',
+    'utf8',
+  )
 }
 
 function writeVector(entries) {
-  const out = entries.map(e => JSON.stringify({
-    id: e.id,
-    path: e.path,
-    title: e.title,
-    type: e.type,
-    sha256: e.sha256,
-    embedding_model: 'local-keyword-hash-v1',
-    vector: e.keywords.slice(0, 64).map(t => Number.parseInt(sha(t).slice(0, 8), 16) / 0xffffffff),
-    keywords: e.keywords,
-    text: `${e.title}\n${e.summary}`,
-  })).join('\n') + '\n'
+  const out =
+    entries
+      .map((e) =>
+        JSON.stringify({
+          id: e.id,
+          path: e.path,
+          title: e.title,
+          type: e.type,
+          sha256: e.sha256,
+          embedding_model: 'local-keyword-hash-v1',
+          vector: e.keywords
+            .slice(0, 64)
+            .map((t) => Number.parseInt(sha(t).slice(0, 8), 16) / 0xffffffff),
+          keywords: e.keywords,
+          text: `${e.title}\n${e.summary}`,
+        }),
+      )
+      .join('\n') + '\n'
   fs.writeFileSync(path.join(memoryRoot, 'vector', 'vector-index.jsonl'), out, 'utf8')
 }
 
@@ -344,7 +427,11 @@ function writeObsidian(entries) {
     '## Sources',
   ]
   for (const e of entries.slice(0, 180)) lines.push(`- [[${e.title}]] — \`${e.path}\` (${e.type})`)
-  fs.writeFileSync(path.join(memoryRoot, 'obsidian', 'repo-memory-mirror.md'), lines.join('\n') + '\n', 'utf8')
+  fs.writeFileSync(
+    path.join(memoryRoot, 'obsidian', 'repo-memory-mirror.md'),
+    lines.join('\n') + '\n',
+    'utf8',
+  )
 }
 
 function copyObsidianMirrorToVault(obsMirror) {
@@ -369,8 +456,10 @@ function detectOpenObsidianVaults() {
     const parsed = JSON.parse(fs.readFileSync(obsidianConfig, 'utf8'))
     const vaults = parsed?.vaults && typeof parsed.vaults === 'object' ? parsed.vaults : {}
     return Object.values(vaults)
-      .filter(vault => vault?.open === true && typeof vault.path === 'string' && exists(vault.path))
-      .map(vault => vault.path)
+      .filter(
+        (vault) => vault?.open === true && typeof vault.path === 'string' && exists(vault.path),
+      )
+      .map((vault) => vault.path)
   } catch {
     return []
   }
@@ -408,7 +497,11 @@ async function syncCogneeBundle(cogneeBundle) {
 
     const form = new FormData()
     const bytes = fs.readFileSync(cogneeBundle)
-    form.append('data', new Blob([bytes], { type: 'application/x-yaml' }), path.basename(cogneeBundle))
+    form.append(
+      'data',
+      new Blob([bytes], { type: 'application/x-yaml' }),
+      path.basename(cogneeBundle),
+    )
     form.append('datasetName', 'valutavalto-repo-memory')
     form.append('node_set', 'repo-memory')
     const add = await fetch(`${base}/api/v1/add`, {
@@ -417,7 +510,13 @@ async function syncCogneeBundle(cogneeBundle) {
       body: form,
     })
     if (!add.ok) {
-      return { reachable: true, uploaded: false, status: add.status, body: await add.text(), bundle: rel(cogneeBundle) }
+      return {
+        reachable: true,
+        uploaded: false,
+        status: add.status,
+        body: await add.text(),
+        bundle: rel(cogneeBundle),
+      }
     }
 
     const cognify = await fetch(`${base}/api/v1/cognify`, {
@@ -442,16 +541,21 @@ async function syncCogneeBundle(cogneeBundle) {
 async function status() {
   const report = { generated_at: now, checks: [] }
   report.checks.push({ name: 'memoryRoot', ok: exists(memoryRoot), path: rel(memoryRoot) })
-  for (const layer of layers) report.checks.push({ name: layer, ok: exists(path.join(memoryRoot, layer)) })
+  for (const layer of layers)
+    report.checks.push({ name: layer, ok: exists(path.join(memoryRoot, layer)) })
   try {
     const res = await fetch('http://localhost:8098/health')
     report.checks.push({ name: 'cognee', ok: res.ok, status: res.status, detail: await res.text() })
-  } catch (err) { report.checks.push({ name: 'cognee', ok: false, error: err.message }) }
+  } catch (err) {
+    report.checks.push({ name: 'cognee', ok: false, error: err.message })
+  }
   for (const base of obsidianBasesFromEnv()) {
     const url = `${base}/`
     try {
       const obsidianToken = obsidianTokenFromEnv()
-      const res = await requestLocalObsidian(url, { headers: obsidianToken ? { Authorization: `Bearer ${obsidianToken}` } : {} })
+      const res = await requestLocalObsidian(url, {
+        headers: obsidianToken ? { Authorization: `Bearer ${obsidianToken}` } : {},
+      })
       const ok = res.ok || res.status === 401
       report.checks.push({ name: `obsidian:${url}`, ok, status: res.status })
       if (ok) break
@@ -459,7 +563,11 @@ async function status() {
       report.checks.push({ name: `obsidian:${url}`, ok: false, error: err.message })
     }
   }
-  fs.writeFileSync(path.join(memoryRoot, 'reports', 'status.json'), JSON.stringify(report, null, 2) + '\n', 'utf8')
+  fs.writeFileSync(
+    path.join(memoryRoot, 'reports', 'status.json'),
+    JSON.stringify(report, null, 2) + '\n',
+    'utf8',
+  )
   console.log(JSON.stringify(report, null, 2))
 }
 
@@ -471,7 +579,11 @@ function build() {
   writeCognee(entries)
   writeVector(entries)
   writeObsidian(entries)
-  fs.writeFileSync(path.join(memoryRoot, 'reports', 'manifest.json'), JSON.stringify({ generated_at: now, source_count: entries.length, layers }, null, 2) + '\n', 'utf8')
+  fs.writeFileSync(
+    path.join(memoryRoot, 'reports', 'manifest.json'),
+    JSON.stringify({ generated_at: now, source_count: entries.length, layers }, null, 2) + '\n',
+    'utf8',
+  )
   console.log(`repo-memory build complete: ${entries.length} sources`)
 }
 
@@ -490,18 +602,39 @@ async function sync() {
     let synced = false
     for (const base of obsidianBasesFromEnv()) {
       try {
-        const res = await requestLocalObsidian(`${base}/vault/Repo%20Memory/repo-memory-mirror.md`, {
-          method: 'PUT',
-          headers: { Authorization: `Bearer ${obsKey}`, 'Content-Type': 'text/markdown; charset=utf-8' },
-          body: fs.readFileSync(obsMirror),
-        })
-        if (res.ok) { result.obsidian = { synced: true, status: res.status, url: base }; synced = true; break }
+        const res = await requestLocalObsidian(
+          `${base}/vault/Repo%20Memory/repo-memory-mirror.md`,
+          {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bearer ${obsKey}`,
+              'Content-Type': 'text/markdown; charset=utf-8',
+            },
+            body: fs.readFileSync(obsMirror),
+          },
+        )
+        if (res.ok) {
+          result.obsidian = { synced: true, status: res.status, url: base }
+          synced = true
+          break
+        }
         result.obsidian = { synced: false, status: res.status, url: base, body: await res.text() }
-      } catch (err) { result.obsidian = { synced: false, url: base, error: err.message } }
+      } catch (err) {
+        result.obsidian = { synced: false, url: base, error: err.message }
+      }
     }
-    if (!synced && !result.obsidian) result.obsidian = { synced: false, reason: 'Obsidian REST not reachable', mirror: rel(obsMirror) }
+    if (!synced && !result.obsidian)
+      result.obsidian = {
+        synced: false,
+        reason: 'Obsidian REST not reachable',
+        mirror: rel(obsMirror),
+      }
   }
-  fs.writeFileSync(path.join(memoryRoot, 'reports', 'sync.json'), JSON.stringify(result, null, 2) + '\n', 'utf8')
+  fs.writeFileSync(
+    path.join(memoryRoot, 'reports', 'sync.json'),
+    JSON.stringify(result, null, 2) + '\n',
+    'utf8',
+  )
   console.log(JSON.stringify(result, null, 2))
 }
 

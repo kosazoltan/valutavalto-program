@@ -31,7 +31,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -54,11 +54,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path === `/api/v1/branch-groups/${branchGroupId}` && method === 'GET') {
@@ -75,7 +83,10 @@ async function mockApis(page: Page) {
       })
     }
 
-    if ((path.endsWith('/branch-groups') || path.endsWith('/branch-groups/roots')) && method === 'GET') {
+    if (
+      (path.endsWith('/branch-groups') || path.endsWith('/branch-groups/roots')) &&
+      method === 'GET'
+    ) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -105,7 +116,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('fiókcsoport oldal mobil nézetben backend detail endpointot használ szerkesztéskor', async ({ page }) => {
+test('fiókcsoport oldal mobil nézetben backend detail endpointot használ szerkesztéskor', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -113,9 +126,10 @@ test('fiókcsoport oldal mobil nézetben backend detail endpointot használ szer
   await page.goto('/branch-groups', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('Lista körzet')).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === `/api/v1/branch-groups/${branchGroupId}`
+  const detailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === `/api/v1/branch-groups/${branchGroupId}`,
   )
   await page.getByRole('button', { name: 'Szerkesztés: Lista körzet' }).click()
   await detailRequest
@@ -123,8 +137,8 @@ test('fiókcsoport oldal mobil nézetben backend detail endpointot használ szer
   await expect(page.getByRole('heading', { name: 'Csoport szerkesztése' })).toBeVisible()
   await expect(page.locator('input').nth(1)).toHaveValue('Backend detail körzet')
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

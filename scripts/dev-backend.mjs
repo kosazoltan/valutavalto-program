@@ -23,4 +23,4 @@ const child = spawn(mvnw, args, {
   stdio: 'inherit',
   shell: isWin,
 })
-child.on('exit', code => process.exit(code ?? 0))
+child.on('exit', (code) => process.exit(code ?? 0))

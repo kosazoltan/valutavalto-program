@@ -44,7 +44,12 @@ export default function WorkgroupManager() {
   // Modálok
   const [editorOpen, setEditorOpen] = useState(false)
   const [editorMode, setEditorMode] = useState<'create' | 'rename'>('create')
-  const [draft, setDraft] = useState<RateWorkgroupSaveDTO>({ name: '', code: '', active: true, tileColor: DEFAULT_TILE.key })
+  const [draft, setDraft] = useState<RateWorkgroupSaveDTO>({
+    name: '',
+    code: '',
+    active: true,
+    tileColor: DEFAULT_TILE.key,
+  })
   const [confirm, setConfirm] = useState<ConfirmState | null>(null)
 
   const fetchWorkgroups = useCallback(async () => {
@@ -52,7 +57,9 @@ export default function WorkgroupManager() {
       setLoading(true)
       const list = await rateWorkgroupApi.list()
       // FK02-D (FR-14): a csempék mindig sorszám szerint növekvő sorrendben.
-      setWorkgroups(sortWorkgroupsBySequence(safeArray<RateWorkgroupDTO>(list).filter(w => w.active)))
+      setWorkgroups(
+        sortWorkgroupsBySequence(safeArray<RateWorkgroupDTO>(list).filter((w) => w.active)),
+      )
     } catch (err) {
       logger.error('WorkgroupManager', 'Lekérés sikertelen:', err)
       setError('A munkacsoportok betöltése sikertelen.')
@@ -61,24 +68,39 @@ export default function WorkgroupManager() {
     }
   }, [])
 
-  useEffect(() => { void fetchWorkgroups() }, [fetchWorkgroups])
+  useEffect(() => {
+    void fetchWorkgroups()
+  }, [fetchWorkgroups])
 
   const openCreate = () => {
     setEditorMode('create')
     // FK02-E (FR-1, FR-2): a kódot ÉS (üres esetén) a sorszámot a szerver osztja ki a teljes
     // cég-scope alapján (inaktív csoportok sorszámát is figyelembe véve) → nincs ütközési hiba.
-    setDraft({ name: '', code: '', legacyGroupNumber: undefined, active: true,
-      tileColor: DEFAULT_TILE.key, limit1Boundary: null, limit2Boundary: null, limit3Boundary: null })
+    setDraft({
+      name: '',
+      code: '',
+      legacyGroupNumber: undefined,
+      active: true,
+      tileColor: DEFAULT_TILE.key,
+      limit1Boundary: null,
+      limit2Boundary: null,
+      limit3Boundary: null,
+    })
     setEditorOpen(true)
   }
 
   const openRename = (wg: RateWorkgroupDTO) => {
     setEditorMode('rename')
-    setDraft({ name: wg.name, code: wg.code, legacyGroupNumber: wg.legacyGroupNumber, active: wg.active,
+    setDraft({
+      name: wg.name,
+      code: wg.code,
+      legacyGroupNumber: wg.legacyGroupNumber,
+      active: wg.active,
       tileColor: wg.tileColor ?? DEFAULT_TILE.key,
       limit1Boundary: wg.limit1Boundary ?? null,
       limit2Boundary: wg.limit2Boundary ?? null,
-      limit3Boundary: wg.limit3Boundary ?? null })
+      limit3Boundary: wg.limit3Boundary ?? null,
+    })
     setEditorOpen(true)
   }
 
@@ -113,7 +135,9 @@ export default function WorkgroupManager() {
   const toggleProtection = async (wg: RateWorkgroupDTO, next: boolean) => {
     const prev = wg.protectionEnabled ?? true
     // Optimistic: cseréljük a workgroups listában
-    setWorkgroups(list => list.map(w => w.id === wg.id ? { ...w, protectionEnabled: next } : w))
+    setWorkgroups((list) =>
+      list.map((w) => (w.id === wg.id ? { ...w, protectionEnabled: next } : w)),
+    )
     try {
       await rateWorkgroupApi.update(wg.id, {
         name: wg.name,
@@ -126,7 +150,9 @@ export default function WorkgroupManager() {
     } catch (err) {
       logger.error('WorkgroupManager', 'Árfolyamvédelem-toggle sikertelen:', err)
       setError('A védelem mentése sikertelen — visszaállítva.')
-      setWorkgroups(list => list.map(w => w.id === wg.id ? { ...w, protectionEnabled: prev } : w))
+      setWorkgroups((list) =>
+        list.map((w) => (w.id === wg.id ? { ...w, protectionEnabled: prev } : w)),
+      )
     }
   }
 
@@ -160,7 +186,10 @@ export default function WorkgroupManager() {
             <Users className="h-5 w-5" />
             Munkacsoportok
           </h2>
-          <button className="form-button inline-flex items-center gap-1 px-3 py-1.5 text-sm" onClick={openCreate}>
+          <button
+            className="form-button inline-flex items-center gap-1 px-3 py-1.5 text-sm"
+            onClick={openCreate}
+          >
             <Plus className="h-4 w-4" /> Új munkacsoport
           </button>
         </div>
@@ -170,10 +199,12 @@ export default function WorkgroupManager() {
         {loading ? (
           <p>Betöltés…</p>
         ) : workgroups.length === 0 ? (
-          <p className="text-gray-500">Még nincs munkacsoport. Hozzon létre egyet az „Új munkacsoport” gombbal.</p>
+          <p className="text-gray-500">
+            Még nincs munkacsoport. Hozzon létre egyet az „Új munkacsoport” gombbal.
+          </p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {workgroups.map(wg => {
+            {workgroups.map((wg) => {
               const protectionOn = wg.protectionEnabled ?? true
               return (
                 <button
@@ -182,25 +213,32 @@ export default function WorkgroupManager() {
                   className={`text-left rounded-lg border-2 p-3 hover:shadow-md transition-shadow ${tileClasses(wg.tileColor)}`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="text-2xl font-bold leading-none">{wg.legacyGroupNumber ?? '—'}</div>
+                    <div className="text-2xl font-bold leading-none">
+                      {wg.legacyGroupNumber ?? '—'}
+                    </div>
                     {/* FK-04 A.3 / E: jobb felső árfolyamvédelem checkbox.
                         stopPropagation, hogy a csempe-kattintás (megnyit) ne triggerelődjön. */}
                     <label
                       className="inline-flex items-center gap-1 text-[10px] font-medium cursor-pointer select-none"
                       title="Árfolyamvédelem: ha be van kapcsolva, a csoport-lap mentése blokkolja a hibás (vételi > J vagy eladási < J) értékeket."
-                      onClick={e => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <input
                         type="checkbox"
                         checked={protectionOn}
-                        onChange={e => { e.stopPropagation(); void toggleProtection(wg, e.target.checked) }}
+                        onChange={(e) => {
+                          e.stopPropagation()
+                          void toggleProtection(wg, e.target.checked)
+                        }}
                         className="h-3.5 w-3.5"
                         aria-label={`Árfolyamvédelem a(z) ${wg.name} csoporton`}
                       />
                       VÉDELEM
                     </label>
                   </div>
-                  <div className="mt-2 text-sm font-medium truncate" title={wg.name}>{wg.name}</div>
+                  <div className="mt-2 text-sm font-medium truncate" title={wg.name}>
+                    {wg.name}
+                  </div>
                   <div className="text-xs opacity-70">{wg.code}</div>
                 </button>
               )
@@ -214,7 +252,10 @@ export default function WorkgroupManager() {
             draft={draft}
             setDraft={setDraft}
             onSave={saveEditor}
-            onCancel={() => { setEditorOpen(false); setError(null) }}
+            onCancel={() => {
+              setEditorOpen(false)
+              setError(null)
+            }}
           />
         )}
         {confirm && <ConfirmDialog state={confirm} onCancel={() => setConfirm(null)} />}
@@ -227,20 +268,31 @@ export default function WorkgroupManager() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
-          <button className="form-button-secondary inline-flex items-center gap-1 px-3 py-1.5 text-sm" onClick={() => setSelected(null)}>
+          <button
+            className="form-button-secondary inline-flex items-center gap-1 px-3 py-1.5 text-sm"
+            onClick={() => setSelected(null)}
+          >
             <ArrowLeft className="h-4 w-4" /> Vissza
           </button>
-          <span className={`inline-flex items-center rounded px-2 py-1 text-sm font-bold border ${tileClasses(selected.tileColor)}`}>
+          <span
+            className={`inline-flex items-center rounded px-2 py-1 text-sm font-bold border ${tileClasses(selected.tileColor)}`}
+          >
             {selected.legacyGroupNumber ?? '—'}
           </span>
           <h2 className="text-lg font-semibold">{selected.name}</h2>
           <span className="text-sm text-gray-500">({selected.code})</span>
         </div>
         <div className="flex items-center gap-2">
-          <button className="form-button-secondary inline-flex items-center gap-1 px-3 py-1.5 text-sm" onClick={() => openRename(selected)}>
+          <button
+            className="form-button-secondary inline-flex items-center gap-1 px-3 py-1.5 text-sm"
+            onClick={() => openRename(selected)}
+          >
             <Pencil className="h-4 w-4" /> Átnevezés / szín
           </button>
-          <button className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-sm text-red-700 hover:bg-red-100" onClick={() => requestDelete(selected)}>
+          <button
+            className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-sm text-red-700 hover:bg-red-100"
+            onClick={() => requestDelete(selected)}
+          >
             <Trash2 className="h-4 w-4" /> Törlés
           </button>
         </div>
@@ -258,7 +310,10 @@ export default function WorkgroupManager() {
           draft={draft}
           setDraft={setDraft}
           onSave={saveEditor}
-          onCancel={() => { setEditorOpen(false); setError(null) }}
+          onCancel={() => {
+            setEditorOpen(false)
+            setError(null)
+          }}
         />
       )}
       {confirm && <ConfirmDialog state={confirm} onCancel={() => setConfirm(null)} />}
@@ -267,7 +322,11 @@ export default function WorkgroupManager() {
 }
 
 // ============ Pénztár-hozzárendelés (felvétel / törlés / áthelyezés) ============
-function BranchAssignment({ workgroup, onError, confirm }: {
+function BranchAssignment({
+  workgroup,
+  onError,
+  confirm,
+}: {
   workgroup: RateWorkgroupDTO
   onError: (msg: string | null) => void
   confirm: (c: ConfirmState) => void
@@ -288,33 +347,43 @@ function BranchAssignment({ workgroup, onError, confirm }: {
     }
   }, [workgroup.id, onError])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    void load()
+  }, [load])
 
-  const assigned = branches.filter(b => b.assignedToCurrentWorkgroup)
+  const assigned = branches.filter((b) => b.assignedToCurrentWorkgroup)
 
   // A teljes-halmaz-csere (updateWorkgroupBranches) stale-state ellen: a megerősítéskor FRISSEN
   // lekért hozzárendelésből számoljuk a célhalmazt, nem a dialógus megnyitásakori closure-ből.
   const persistMutation = async (mutate: (assignedIds: string[]) => string[]) => {
     const fresh = await rateCreationApi.getBranches(workgroup.id)
-    const assignedIds = safeArray<BranchListItem>(fresh).filter(b => b.assignedToCurrentWorkgroup).map(b => b.id)
+    const assignedIds = safeArray<BranchListItem>(fresh)
+      .filter((b) => b.assignedToCurrentWorkgroup)
+      .map((b) => b.id)
     await rateCreationApi.updateWorkgroupBranches(workgroup.id, mutate(assignedIds))
     await load()
   }
 
-  const addBranch = (b: BranchListItem) => confirm({
-    title: 'Pénztár felvétele',
-    message: `Felveszi a(z) "${b.name}" pénztárt ebbe a munkacsoportba? Ha máshol szerepel, onnan átkerül ide.`,
-    confirmLabel: 'Felvétel',
-    onConfirm: async () => { await persistMutation(ids => Array.from(new Set([...ids, b.id]))); },
-  })
+  const addBranch = (b: BranchListItem) =>
+    confirm({
+      title: 'Pénztár felvétele',
+      message: `Felveszi a(z) "${b.name}" pénztárt ebbe a munkacsoportba? Ha máshol szerepel, onnan átkerül ide.`,
+      confirmLabel: 'Felvétel',
+      onConfirm: async () => {
+        await persistMutation((ids) => Array.from(new Set([...ids, b.id])))
+      },
+    })
 
-  const removeBranch = (b: BranchListItem) => confirm({
-    title: 'Pénztár eltávolítása',
-    message: `Eltávolítja a(z) "${b.name}" pénztárt ebből a munkacsoportból?`,
-    confirmLabel: 'Eltávolítás',
-    danger: true,
-    onConfirm: async () => { await persistMutation(ids => ids.filter(x => x !== b.id)); },
-  })
+  const removeBranch = (b: BranchListItem) =>
+    confirm({
+      title: 'Pénztár eltávolítása',
+      message: `Eltávolítja a(z) "${b.name}" pénztárt ebből a munkacsoportból?`,
+      confirmLabel: 'Eltávolítás',
+      danger: true,
+      onConfirm: async () => {
+        await persistMutation((ids) => ids.filter((x) => x !== b.id))
+      },
+    })
 
   if (loading) return <p className="text-sm text-gray-500">Pénztárak betöltése…</p>
 
@@ -322,15 +391,28 @@ function BranchAssignment({ workgroup, onError, confirm }: {
     <div className="rounded-lg border bg-card p-3">
       <h3 className="text-sm font-semibold mb-2">Pénztárak ({assigned.length})</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
-        {branches.map(b => (
-          <div key={b.id} className={`flex items-center justify-between rounded border px-2 py-1 text-sm ${b.assignedToCurrentWorkgroup ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
-            <span className="truncate" title={`${b.name} (${b.city})`}>{b.name}</span>
+        {branches.map((b) => (
+          <div
+            key={b.id}
+            className={`flex items-center justify-between rounded border px-2 py-1 text-sm ${b.assignedToCurrentWorkgroup ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}
+          >
+            <span className="truncate" title={`${b.name} (${b.city})`}>
+              {b.name}
+            </span>
             {b.assignedToCurrentWorkgroup ? (
-              <button className="text-red-600 hover:text-red-800 shrink-0" title="Eltávolítás" onClick={() => removeBranch(b)}>
+              <button
+                className="text-red-600 hover:text-red-800 shrink-0"
+                title="Eltávolítás"
+                onClick={() => removeBranch(b)}
+              >
                 <X className="h-4 w-4" />
               </button>
             ) : (
-              <button className="text-green-600 hover:text-green-800 shrink-0" title="Felvétel" onClick={() => addBranch(b)}>
+              <button
+                className="text-green-600 hover:text-green-800 shrink-0"
+                title="Felvétel"
+                onClick={() => addBranch(b)}
+              >
                 <Plus className="h-4 w-4" />
               </button>
             )}
@@ -346,19 +428,24 @@ function DefaultRateTable() {
   const [currencies, setCurrencies] = useState<Currency[]>([])
 
   useEffect(() => {
-    currencyApi.list()
-      .then(list => setCurrencies(safeArray<Currency>(list)))
-      .catch(err => logger.warn('WorkgroupManager', 'Valutalista betöltése sikertelen', err))
+    currencyApi
+      .list()
+      .then((list) => setCurrencies(safeArray<Currency>(list)))
+      .catch((err) => logger.warn('WorkgroupManager', 'Valutalista betöltése sikertelen', err))
   }, [])
 
   return (
     <div className="rounded-lg border bg-card p-3 overflow-x-auto">
-      <h3 className="text-sm font-semibold mb-2">Árfolyamlap-struktúra ({currencies.length} valuta)</h3>
-      <p className="text-xs text-gray-500 mb-2">A részletes képletezés és árfolyamvédelem külön fejlesztési kérés tárgya lesz.</p>
+      <h3 className="text-sm font-semibold mb-2">
+        Árfolyamlap-struktúra ({currencies.length} valuta)
+      </h3>
+      <p className="text-xs text-gray-500 mb-2">
+        A részletes képletezés és árfolyamvédelem külön fejlesztési kérés tárgya lesz.
+      </p>
       <table className="w-full text-xs border-collapse">
         <thead>
           <tr className="bg-gray-100">
-            {SHEET_COLUMNS.map(c => (
+            {SHEET_COLUMNS.map((c) => (
               <th key={c.col} className="border px-2 py-1 text-left whitespace-nowrap">
                 <span className="font-mono text-gray-400">{c.col}</span> {c.label}
               </th>
@@ -366,11 +453,15 @@ function DefaultRateTable() {
           </tr>
         </thead>
         <tbody>
-          {currencies.map(cur => (
+          {currencies.map((cur) => (
             <tr key={cur.id}>
-              {SHEET_COLUMNS.map(c => (
+              {SHEET_COLUMNS.map((c) => (
                 <td key={c.col} className="border px-2 py-1 whitespace-nowrap">
-                  {c.col === 'K' ? <span className="font-mono font-semibold">{cur.code}</span> : <span className="text-gray-300">—</span>}
+                  {c.col === 'K' ? (
+                    <span className="font-mono font-semibold">{cur.code}</span>
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
                 </td>
               ))}
             </tr>
@@ -380,4 +471,3 @@ function DefaultRateTable() {
     </div>
   )
 }
-

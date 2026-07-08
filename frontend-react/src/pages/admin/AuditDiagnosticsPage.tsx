@@ -57,12 +57,9 @@ export default function AuditDiagnosticsPage() {
       setCatalog(codes)
       setHealth(healthStatus)
     } catch (err) {
-      vvLogger.error(
-        'VV-TECH-002',
-        'admin.diagnostics.load_failed',
-        err,
-        { page: 'AuditDiagnosticsPage' },
-      )
+      vvLogger.error('VV-TECH-002', 'admin.diagnostics.load_failed', err, {
+        page: 'AuditDiagnosticsPage',
+      })
       setError(err instanceof Error ? err.message : 'Ismeretlen hiba a betoltesnel')
     } finally {
       setLoading(false)
@@ -121,7 +118,9 @@ export default function AuditDiagnosticsPage() {
     } catch (err) {
       vvLogger.error('VV-TECH-002', 'admin.diagnostics.static_audit_failed', err)
       setStaticAuditChecks(null)
-      setStaticAuditError(err instanceof Error ? err.message : 'Ismeretlen hiba a static audit futtatasnal')
+      setStaticAuditError(
+        err instanceof Error ? err.message : 'Ismeretlen hiba a static audit futtatasnal',
+      )
     } finally {
       setStaticAuditLoading(false)
     }
@@ -152,13 +151,17 @@ export default function AuditDiagnosticsPage() {
       </header>
 
       <section className="grid gap-3 sm:grid-cols-3" data-testid="diagnostics-health-panel">
-        <div className={`rounded border p-4 ${health?.ok ? 'border-green-200 bg-green-50 text-green-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+        <div
+          className={`rounded border p-4 ${health?.ok ? 'border-green-200 bg-green-50 text-green-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}
+        >
           <div className="text-sm font-semibold">Diagnostics ingest</div>
           <div className="mt-2 text-2xl font-bold">{health?.ok ? 'OK' : 'Nincs adat'}</div>
         </div>
         <div className="rounded border border-gray-200 bg-white p-4">
           <div className="text-sm font-semibold text-gray-700">DB-ben rögzített klienshibák</div>
-          <div className="mt-2 text-2xl font-bold text-gray-900">{health?.totalReportedErrors ?? 0}</div>
+          <div className="mt-2 text-2xl font-bold text-gray-900">
+            {health?.totalReportedErrors ?? 0}
+          </div>
         </div>
         <div className="rounded border border-gray-200 bg-white p-4">
           <div className="text-sm font-semibold text-gray-700">Katalógus</div>
@@ -205,7 +208,10 @@ export default function AuditDiagnosticsPage() {
         )}
 
         {staticAuditChecks && (
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3" data-testid="static-audit-results">
+          <div
+            className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3"
+            data-testid="static-audit-results"
+          >
             {staticAuditChecks.map((check) => (
               <div
                 key={check.name}
@@ -232,7 +238,9 @@ export default function AuditDiagnosticsPage() {
       <section className="bg-white shadow rounded p-4">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold">Hibas audit-esemenyek</h2>
-          <span className="text-sm text-gray-600">{errorEntries.length} ERROR / WARN / FATAL sor</span>
+          <span className="text-sm text-gray-600">
+            {errorEntries.length} ERROR / WARN / FATAL sor
+          </span>
         </div>
         {errorEntries.length === 0 ? (
           <p className="mt-3 rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
@@ -250,7 +258,9 @@ export default function AuditDiagnosticsPage() {
                     {e.action ?? 'AUDIT'}
                   </span>
                 </div>
-                <div className="mt-1 break-all font-mono text-xs text-amber-800">{e.traceId ?? e.id}</div>
+                <div className="mt-1 break-all font-mono text-xs text-amber-800">
+                  {e.traceId ?? e.id}
+                </div>
               </div>
             ))}
           </div>
@@ -317,7 +327,9 @@ export default function AuditDiagnosticsPage() {
                 <li key={e.id} className="border-b py-1">
                   <span className="font-mono text-xs text-gray-500">{e.ts}</span>{' '}
                   <span className="font-semibold">{e.eventType ?? e.action}</span>{' '}
-                  <span className="text-gray-600">{e.entityType}#{e.entityId}</span>
+                  <span className="text-gray-600">
+                    {e.entityType}#{e.entityId}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -359,7 +371,9 @@ export default function AuditDiagnosticsPage() {
                 <li key={e.id} className="border-b py-1">
                   <span className="font-mono text-xs text-gray-500">{e.ts}</span>{' '}
                   <span className="font-semibold">{e.eventType ?? e.action}</span>{' '}
-                  <span className="text-gray-600">{e.entityType}#{e.entityId}</span>
+                  <span className="text-gray-600">
+                    {e.entityType}#{e.entityId}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -390,7 +404,9 @@ export default function AuditDiagnosticsPage() {
                   <td className="px-3 py-2">{e.eventType ?? e.action}</td>
                   <td className="px-3 py-2 text-xs">
                     {e.entityType}
-                    {e.entityId && <span className="text-gray-500">#{e.entityId.substring(0, 8)}</span>}
+                    {e.entityId && (
+                      <span className="text-gray-500">#{e.entityId.substring(0, 8)}</span>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-xs">{e.userName}</td>
                   <td className="px-3 py-2 text-right font-mono">
@@ -450,7 +466,9 @@ export default function AuditDiagnosticsPage() {
         </section>
       )}
 
-      {selectedEntry && <AuditEntryModal entry={selectedEntry} onClose={() => setSelectedEntry(null)} />}
+      {selectedEntry && (
+        <AuditEntryModal entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
+      )}
     </div>
   )
 }
@@ -458,13 +476,7 @@ export default function AuditDiagnosticsPage() {
 /**
  * Copilot PR #681 P2 a11y: role=dialog + aria-modal + Escape-to-close + focus.
  */
-function AuditEntryModal({
-  entry,
-  onClose,
-}: {
-  entry: AuditLogEntry
-  onClose: () => void
-}) {
+function AuditEntryModal({ entry, onClose }: { entry: AuditLogEntry; onClose: () => void }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {

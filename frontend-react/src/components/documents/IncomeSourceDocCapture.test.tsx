@@ -17,7 +17,10 @@ vi.mock('react-i18next', () => ({
 
 function setElectronSpies() {
   Object.defineProperty(window, 'electronAPI', {
-    value: { scanSaveDocument: mocks.scanSaveDocument, queueScannedDocument: mocks.queueScannedDocument },
+    value: {
+      scanSaveDocument: mocks.scanSaveDocument,
+      queueScannedDocument: mocks.queueScannedDocument,
+    },
     writable: true,
     configurable: true,
   })
@@ -37,11 +40,23 @@ function mockGetUserMedia() {
 function mockVideoAndCanvas(dataUrl = 'data:image/jpeg;base64,am92ZWRlbGVtLWZvcnJhcy1rZXA=') {
   const drawImage = vi.fn()
   const ctx = { drawImage }
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D)
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+    ctx as unknown as CanvasRenderingContext2D,
+  )
   vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue(dataUrl)
-  Object.defineProperty(HTMLVideoElement.prototype, 'videoWidth', { configurable: true, get: () => 640 })
-  Object.defineProperty(HTMLVideoElement.prototype, 'videoHeight', { configurable: true, get: () => 480 })
-  Object.defineProperty(HTMLVideoElement.prototype, 'srcObject', { configurable: true, set: () => {}, get: () => null })
+  Object.defineProperty(HTMLVideoElement.prototype, 'videoWidth', {
+    configurable: true,
+    get: () => 640,
+  })
+  Object.defineProperty(HTMLVideoElement.prototype, 'videoHeight', {
+    configurable: true,
+    get: () => 480,
+  })
+  Object.defineProperty(HTMLVideoElement.prototype, 'srcObject', {
+    configurable: true,
+    set: () => {},
+    get: () => null,
+  })
   return { drawImage, ctx }
 }
 

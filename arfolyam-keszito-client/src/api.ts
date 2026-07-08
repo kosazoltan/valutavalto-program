@@ -1,4 +1,8 @@
-import type { LocalRateMakerBootstrap, LocalRatePackage, LocalRatePublishResponse } from './types.js'
+import type {
+  LocalRateMakerBootstrap,
+  LocalRatePackage,
+  LocalRatePublishResponse,
+} from './types.js'
 
 export interface RateMakerApiConfig {
   serverBaseUrl: string
@@ -35,11 +39,12 @@ async function request<T>(
   })
 
   const text = await response.text()
-  const data = text ? JSON.parse(text) as unknown : null
+  const data = text ? (JSON.parse(text) as unknown) : null
   if (!response.ok) {
-    const message = data && typeof data === 'object' && 'message' in data
-      ? String((data as { message?: unknown }).message)
-      : `HTTP ${response.status}`
+    const message =
+      data && typeof data === 'object' && 'message' in data
+        ? String((data as { message?: unknown }).message)
+        : `HTTP ${response.status}`
     throw new Error(message)
   }
   return data as T

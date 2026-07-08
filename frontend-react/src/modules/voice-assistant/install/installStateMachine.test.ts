@@ -166,7 +166,7 @@ describe('InstallStateMachine', () => {
       sm.next(i, true)
     }
     expect(onCompleted).toHaveBeenCalledWith(
-      expect.arrayContaining(['mikrofon engedelyezve', 'nev: Heni'])
+      expect.arrayContaining(['mikrofon engedelyezve', 'nev: Heni']),
     )
   })
 })

@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test'
+import { defineConfig } from '@playwright/test';
 
 /**
  * Playwright config for REAL Electron app E2E tests
@@ -16,4 +16,4 @@ export default defineConfig({
   use: {
     trace: 'on-first-retry',
   },
-})
+});

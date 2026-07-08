@@ -18,24 +18,48 @@ vi.mock('react-router-dom', async () => {
 
 const mockCustomers = [
   {
-    id: 1, name: 'Kiss János', birthDate: '1985-03-15', nationality: 'Magyar',
-    documentType: 'Személyi ig.', documentNumber: '123456AB', phone: '+36301234567',
-    active: true, isVip: false,
+    id: 1,
+    name: 'Kiss János',
+    birthDate: '1985-03-15',
+    nationality: 'Magyar',
+    documentType: 'Személyi ig.',
+    documentNumber: '123456AB',
+    phone: '+36301234567',
+    active: true,
+    isVip: false,
   },
   {
-    id: 2, name: 'Nagy Péter', birthDate: '1990-07-22', nationality: 'Magyar',
-    documentType: 'Útlevél', documentNumber: 'AB1234567', phone: '+36309876543',
-    active: true, isVip: false,
+    id: 2,
+    name: 'Nagy Péter',
+    birthDate: '1990-07-22',
+    nationality: 'Magyar',
+    documentType: 'Útlevél',
+    documentNumber: 'AB1234567',
+    phone: '+36309876543',
+    active: true,
+    isVip: false,
   },
   {
-    id: 3, name: 'Szabó Anna', birthDate: '1978-11-30', nationality: 'Szlovák',
-    documentType: 'Személyi ig.', documentNumber: 'SK987654', phone: null,
-    active: true, isVip: false,
+    id: 3,
+    name: 'Szabó Anna',
+    birthDate: '1978-11-30',
+    nationality: 'Szlovák',
+    documentType: 'Személyi ig.',
+    documentNumber: 'SK987654',
+    phone: null,
+    active: true,
+    isVip: false,
   },
   {
-    id: 4, name: 'Kovács István', birthDate: '1965-01-10', nationality: 'Magyar',
-    documentType: 'Útlevél', documentNumber: 'HU5556677', phone: '+36201112233',
-    active: true, isVip: false,
+    id: 4,
+    name: 'Kovács István',
+    birthDate: '1965-01-10',
+    nationality: 'Magyar',
+    documentType: 'Útlevél',
+    documentNumber: 'HU5556677',
+    phone: '+36201112233',
+    active: true,
+    isVip: false,
   },
 ]
 
@@ -82,8 +106,7 @@ describe('CustomerListPage', () => {
       return Promise.resolve(
         mockCustomers.filter(
           (c) =>
-            c.name.toLowerCase().includes(lower) ||
-            c.documentNumber.toLowerCase().includes(lower),
+            c.name.toLowerCase().includes(lower) || c.documentNumber.toLowerCase().includes(lower),
         ),
       )
     })
@@ -91,10 +114,22 @@ describe('CustomerListPage', () => {
     mockGetByCode.mockResolvedValue({ ...mockCustomers[0], customerCode: 'U000001' })
     mockGetVip.mockResolvedValue([{ ...mockCustomers[2], name: 'VIP Lista Ügyfél', isVip: true }])
     mockGetFrequent.mockResolvedValue([
-      { customerId: 2, customerName: 'Gyakori Lista Ügyfél', transactionCount: 9, totalVolumeHuf: 2500000, rank: 1 },
+      {
+        customerId: 2,
+        customerName: 'Gyakori Lista Ügyfél',
+        transactionCount: 9,
+        totalVolumeHuf: 2500000,
+        rank: 1,
+      },
     ])
     mockGetTop.mockResolvedValue([
-      { customerId: 4, customerName: 'Top Lista Ügyfél', transactionCount: 7, totalVolumeHuf: 3100000, rank: 1 },
+      {
+        customerId: 4,
+        customerName: 'Top Lista Ügyfél',
+        transactionCount: 7,
+        totalVolumeHuf: 3100000,
+        rank: 1,
+      },
     ])
     mockGetPendingReview.mockResolvedValue([
       { ...mockCustomers[0], id: 9, name: 'Átnézendő Ügyfél', reviewStatus: 'PENDING_REVIEW' },
@@ -324,7 +359,9 @@ describe('CustomerListPage', () => {
     await waitFor(() => expect(screen.getByText('Kiss János')).toBeInTheDocument())
 
     const user = userEvent.setup()
-    const searchInput = screen.getByPlaceholderText(/Keresés név vagy okmányszám alapján/) as HTMLInputElement
+    const searchInput = screen.getByPlaceholderText(
+      /Keresés név vagy okmányszám alapján/,
+    ) as HTMLInputElement
     await user.type(searchInput, 'Kiss')
 
     await waitFor(() => {

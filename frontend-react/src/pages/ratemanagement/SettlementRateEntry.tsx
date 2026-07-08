@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, Send, AlertTriangle, ChevronDown, ChevronRight, Users, Undo2, Redo2 } from 'lucide-react'
+import {
+  RefreshCw,
+  Send,
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
+  Users,
+  Undo2,
+  Redo2,
+} from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
@@ -89,7 +98,9 @@ export default function SettlementRateEntry() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [validationErrors, setValidationErrors] = useState<{ row: number; code: string; message: string }[]>([])
+  const [validationErrors, setValidationErrors] = useState<
+    { row: number; code: string; message: string }[]
+  >([])
   const [success, setSuccess] = useState<string | null>(null)
   const [expandedLimits, setExpandedLimits] = useState<Set<number>>(new Set())
 
@@ -136,7 +147,9 @@ export default function SettlementRateEntry() {
         const workgroupsData = safeArray<WorkgroupInfo>(wgRes?.data)
         const sorted = currenciesData
           .filter((c: CurrencyInfo) => c.code !== 'HUF')
-          .sort((a: CurrencyInfo, b: CurrencyInfo) => (a.displayOrder ?? 100) - (b.displayOrder ?? 100))
+          .sort(
+            (a: CurrencyInfo, b: CurrencyInfo) => (a.displayOrder ?? 100) - (b.displayOrder ?? 100),
+          )
         setCurrencies(sorted)
         setWorkgroups(workgroupsData)
         if (workgroupsData[0]) {
@@ -196,10 +209,13 @@ export default function SettlementRateEntry() {
     void fetchRates()
   }, [fetchRates])
 
-  type EditableField = Exclude<keyof ExchangeRateData, 'id' | 'currencyId' | 'currencyCode' | 'currencyName'>
+  type EditableField = Exclude<
+    keyof ExchangeRateData,
+    'id' | 'currencyId' | 'currencyCode' | 'currencyName'
+  >
 
   const updateRate = (index: number, field: EditableField, value: string) => {
-    setRates(prev => {
+    setRates((prev) => {
       const next = prev.map((r, i) => {
         if (i !== index) return r
         const copy = { ...r }
@@ -212,7 +228,7 @@ export default function SettlementRateEntry() {
   }
 
   const toggleLimits = (currencyId: number) => {
-    setExpandedLimits(prev => {
+    setExpandedLimits((prev) => {
       const next = new Set(prev)
       if (next.has(currencyId)) {
         next.delete(currencyId)
@@ -237,7 +253,7 @@ export default function SettlementRateEntry() {
     setSuccess(null)
 
     // Validalas: legalabb 1 valutahoz kell arfolyam
-    const validRates = rates.filter(r => r.baseBuyRate.trim() && r.baseSellRate.trim())
+    const validRates = rates.filter((r) => r.baseBuyRate.trim() && r.baseSellRate.trim())
     if (validRates.length === 0) {
       setError('Legalabb egy valutahoz rogzitsen veteli es eladasi arfolyamot!')
       return
@@ -252,7 +268,11 @@ export default function SettlementRateEntry() {
 
       // Csak az egyiket toltotte ki
       if (hasBuy !== hasSell) {
-        errors.push({ row: i, code: r.currencyCode ?? '', message: 'Veteli es eladasi arfolyam egyutt szukseges' })
+        errors.push({
+          row: i,
+          code: r.currencyCode ?? '',
+          message: 'Veteli es eladasi arfolyam egyutt szukseges',
+        })
         continue
       }
       if (!hasBuy && !hasSell) continue
@@ -261,13 +281,25 @@ export default function SettlementRateEntry() {
       const sell = parseFloat(r.baseSellRate)
 
       if (isNaN(buy)) {
-        errors.push({ row: i, code: r.currencyCode ?? '', message: 'Ervenytelen veteli arfolyam ertek' })
+        errors.push({
+          row: i,
+          code: r.currencyCode ?? '',
+          message: 'Ervenytelen veteli arfolyam ertek',
+        })
       }
       if (isNaN(sell)) {
-        errors.push({ row: i, code: r.currencyCode ?? '', message: 'Ervenytelen eladasi arfolyam ertek' })
+        errors.push({
+          row: i,
+          code: r.currencyCode ?? '',
+          message: 'Ervenytelen eladasi arfolyam ertek',
+        })
       }
       if (!isNaN(buy) && !isNaN(sell) && sell <= buy) {
-        errors.push({ row: i, code: r.currencyCode ?? '', message: `Eladasi (${sell}) nagyobb kell legyen a veteliinel (${buy})` })
+        errors.push({
+          row: i,
+          code: r.currencyCode ?? '',
+          message: `Eladasi (${sell}) nagyobb kell legyen a veteliinel (${buy})`,
+        })
       }
 
       // Limit validacio: ha limit osszeg van, limit arfolyam is kell
@@ -276,7 +308,11 @@ export default function SettlementRateEntry() {
         const lBuy = r[`limit${lvl}BuyRate` as EditableField]?.trim()
         const lSell = r[`limit${lvl}SellRate` as EditableField]?.trim()
         if (amt && (!lBuy || !lSell)) {
-          errors.push({ row: i, code: r.currencyCode ?? '', message: `Limit ${lvl}: osszeghez arfolyam is szukseges` })
+          errors.push({
+            row: i,
+            code: r.currencyCode ?? '',
+            message: `Limit ${lvl}: osszeghez arfolyam is szukseges`,
+          })
         }
       }
     }
@@ -291,7 +327,7 @@ export default function SettlementRateEntry() {
     try {
       const payload = {
         groupId: selectedWorkgroup,
-        rates: validRates.map(r => ({
+        rates: validRates.map((r) => ({
           currencyId: r.currencyId,
           buyRate: toNum(r.baseBuyRate),
           sellRate: toNum(r.baseSellRate),
@@ -341,10 +377,12 @@ export default function SettlementRateEntry() {
           <select
             className="border rounded px-3 py-1.5 text-sm bg-background"
             value={selectedWorkgroup ?? ''}
-            onChange={e => setSelectedWorkgroup(e.target.value || null)}
+            onChange={(e) => setSelectedWorkgroup(e.target.value || null)}
           >
-            {workgroups.map(wg => (
-              <option key={wg.id} value={wg.id}>{wg.name} ({wg.code})</option>
+            {workgroups.map((wg) => (
+              <option key={wg.id} value={wg.id}>
+                {wg.name} ({wg.code})
+              </option>
             ))}
           </select>
         </div>
@@ -353,12 +391,17 @@ export default function SettlementRateEntry() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {t('ratemanagement.rogzitseAzArfolyamokatAzOsszesAktivValutahozAPublikalasGombbalAzArfolyamokAzonnalEloveValnak')}
+          {t(
+            'ratemanagement.rogzitseAzArfolyamokatAzOsszesAktivValutahozAPublikalasGombbalAzArfolyamokAzonnalEloveValnak',
+          )}
         </p>
         <div className="flex gap-2">
           <button
             className="inline-flex items-center justify-center rounded-md border px-2 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
-            onClick={() => { const s = undo(); if (s) setRates(s) }}
+            onClick={() => {
+              const s = undo()
+              if (s) setRates(s)
+            }}
             disabled={!canUndo}
             title="Visszavonás (Ctrl+Z)"
           >
@@ -366,7 +409,10 @@ export default function SettlementRateEntry() {
           </button>
           <button
             className="inline-flex items-center justify-center rounded-md border px-2 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
-            onClick={() => { const s = redo(); if (s) setRates(s) }}
+            onClick={() => {
+              const s = redo()
+              if (s) setRates(s)
+            }}
             disabled={!canRedo}
             title="Újra (Ctrl+Shift+Z)"
           >
@@ -404,7 +450,10 @@ export default function SettlementRateEntry() {
       )}
       {validationErrors.length > 0 && (
         <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm">
-          <div className="font-medium text-destructive mb-2">{t('ratemanagement.validaciosHibak')}{validationErrors.length}):</div>
+          <div className="font-medium text-destructive mb-2">
+            {t('ratemanagement.validaciosHibak')}
+            {validationErrors.length}):
+          </div>
           <ul className="list-disc list-inside space-y-1 text-destructive/90">
             {validationErrors.map((ve, i) => (
               <li key={i}>
@@ -439,19 +488,26 @@ export default function SettlementRateEntry() {
                 const buy = parseFloat(rate.baseBuyRate)
                 const sell = parseFloat(rate.baseSellRate)
                 const spread = !isNaN(buy) && !isNaN(sell) ? (sell - buy).toFixed(2) : '-'
-                const isValid = !rate.baseBuyRate || !rate.baseSellRate || (!isNaN(buy) && !isNaN(sell) && sell > buy)
-                const rowErrors = validationErrors.filter(ve => ve.row === idx)
+                const isValid =
+                  !rate.baseBuyRate ||
+                  !rate.baseSellRate ||
+                  (!isNaN(buy) && !isNaN(sell) && sell > buy)
+                const rowErrors = validationErrors.filter((ve) => ve.row === idx)
                 const hasRowError = rowErrors.length > 0
                 const isExpanded = expandedLimits.has(rate.currencyId)
 
                 return (
                   <React.Fragment key={rate.currencyId}>
-                    <tr className={`border-b hover:bg-muted/30 ${!isValid || hasRowError ? 'bg-destructive/5' : ''}`}>
+                    <tr
+                      className={`border-b hover:bg-muted/30 ${!isValid || hasRowError ? 'bg-destructive/5' : ''}`}
+                    >
                       {/* Currency */}
                       <td className="p-3">
                         <div className="flex flex-col">
                           <span className="font-mono font-bold text-base">{rate.currencyCode}</span>
-                          <span className="text-xs text-muted-foreground truncate max-w-[100px]">{rate.currencyName}</span>
+                          <span className="text-xs text-muted-foreground truncate max-w-[100px]">
+                            {rate.currencyName}
+                          </span>
                         </div>
                       </td>
 
@@ -463,7 +519,7 @@ export default function SettlementRateEntry() {
                           {...getCellProps(idx, 0)}
                           className={`w-full h-9 rounded-md border px-2 py-1 text-sm font-mono text-center bg-blue-50 dark:bg-blue-950/30 ${activeCell?.row === idx && activeCell?.col === 0 ? 'ring-2 ring-blue-500' : ''}`}
                           value={rate.officialRate}
-                          onChange={e => updateRate(idx, 'officialRate', e.target.value)}
+                          onChange={(e) => updateRate(idx, 'officialRate', e.target.value)}
                           placeholder="MNB"
                         />
                       </td>
@@ -478,7 +534,7 @@ export default function SettlementRateEntry() {
                             !isValid ? 'border-destructive' : 'focus:ring-2 focus:ring-primary'
                           } ${activeCell?.row === idx && activeCell?.col === 1 ? 'ring-2 ring-blue-500' : ''}`}
                           value={rate.baseBuyRate}
-                          onChange={e => updateRate(idx, 'baseBuyRate', e.target.value)}
+                          onChange={(e) => updateRate(idx, 'baseBuyRate', e.target.value)}
                           placeholder="Vétel"
                         />
                       </td>
@@ -493,15 +549,13 @@ export default function SettlementRateEntry() {
                             !isValid ? 'border-destructive' : 'focus:ring-2 focus:ring-primary'
                           } ${activeCell?.row === idx && activeCell?.col === 2 ? 'ring-2 ring-blue-500' : ''}`}
                           value={rate.baseSellRate}
-                          onChange={e => updateRate(idx, 'baseSellRate', e.target.value)}
+                          onChange={(e) => updateRate(idx, 'baseSellRate', e.target.value)}
                           placeholder="Eladás"
                         />
                       </td>
 
                       {/* Spread (read-only) */}
-                      <td className="p-3 text-center font-mono text-muted-foreground">
-                        {spread}
-                      </td>
+                      <td className="p-3 text-center font-mono text-muted-foreground">{spread}</td>
 
                       {/* Limit toggle */}
                       <td className="p-2 text-center">
@@ -528,37 +582,49 @@ export default function SettlementRateEntry() {
                           <div className="grid grid-cols-3 gap-4">
                             {/* Limit 1 */}
                             <div className="space-y-2 rounded-md border p-3">
-                              <h4 className="text-xs font-semibold text-muted-foreground uppercase">{t('ratemanagement.limit1')}</h4>
+                              <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+                                {t('ratemanagement.limit1')}
+                              </h4>
                               <div>
-                                <label className="text-xs text-muted-foreground">{t('ratemanagement.osszegFt')}</label>
+                                <label className="text-xs text-muted-foreground">
+                                  {t('ratemanagement.osszegFt')}
+                                </label>
                                 <input
                                   type="text"
                                   inputMode="decimal"
                                   className="w-full h-8 rounded-md border px-2 py-1 text-xs font-mono"
                                   value={rate.limit1Amount}
-                                  onChange={e => updateRate(idx, 'limit1Amount', e.target.value)}
+                                  onChange={(e) => updateRate(idx, 'limit1Amount', e.target.value)}
                                   placeholder="pl. 100000"
                                 />
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                  <label className="text-xs text-muted-foreground">{t('cashier.buy')}</label>
+                                  <label className="text-xs text-muted-foreground">
+                                    {t('cashier.buy')}
+                                  </label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
                                     className="w-full h-8 rounded-md border px-2 py-1 text-xs font-mono"
                                     value={rate.limit1BuyRate}
-                                    onChange={e => updateRate(idx, 'limit1BuyRate', e.target.value)}
+                                    onChange={(e) =>
+                                      updateRate(idx, 'limit1BuyRate', e.target.value)
+                                    }
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-muted-foreground">{t('cashier.sell')}</label>
+                                  <label className="text-xs text-muted-foreground">
+                                    {t('cashier.sell')}
+                                  </label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
                                     className="w-full h-8 rounded-md border px-2 py-1 text-xs font-mono"
                                     value={rate.limit1SellRate}
-                                    onChange={e => updateRate(idx, 'limit1SellRate', e.target.value)}
+                                    onChange={(e) =>
+                                      updateRate(idx, 'limit1SellRate', e.target.value)
+                                    }
                                   />
                                 </div>
                               </div>
@@ -566,37 +632,49 @@ export default function SettlementRateEntry() {
 
                             {/* Limit 2 */}
                             <div className="space-y-2 rounded-md border p-3">
-                              <h4 className="text-xs font-semibold text-muted-foreground uppercase">{t('ratemanagement.limit2')}</h4>
+                              <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+                                {t('ratemanagement.limit2')}
+                              </h4>
                               <div>
-                                <label className="text-xs text-muted-foreground">{t('ratemanagement.osszegFt')}</label>
+                                <label className="text-xs text-muted-foreground">
+                                  {t('ratemanagement.osszegFt')}
+                                </label>
                                 <input
                                   type="text"
                                   inputMode="decimal"
                                   className="w-full h-8 rounded-md border px-2 py-1 text-xs font-mono"
                                   value={rate.limit2Amount}
-                                  onChange={e => updateRate(idx, 'limit2Amount', e.target.value)}
+                                  onChange={(e) => updateRate(idx, 'limit2Amount', e.target.value)}
                                   placeholder="pl. 500000"
                                 />
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                  <label className="text-xs text-muted-foreground">{t('cashier.buy')}</label>
+                                  <label className="text-xs text-muted-foreground">
+                                    {t('cashier.buy')}
+                                  </label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
                                     className="w-full h-8 rounded-md border px-2 py-1 text-xs font-mono"
                                     value={rate.limit2BuyRate}
-                                    onChange={e => updateRate(idx, 'limit2BuyRate', e.target.value)}
+                                    onChange={(e) =>
+                                      updateRate(idx, 'limit2BuyRate', e.target.value)
+                                    }
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-muted-foreground">{t('cashier.sell')}</label>
+                                  <label className="text-xs text-muted-foreground">
+                                    {t('cashier.sell')}
+                                  </label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
                                     className="w-full h-8 rounded-md border px-2 py-1 text-xs font-mono"
                                     value={rate.limit2SellRate}
-                                    onChange={e => updateRate(idx, 'limit2SellRate', e.target.value)}
+                                    onChange={(e) =>
+                                      updateRate(idx, 'limit2SellRate', e.target.value)
+                                    }
                                   />
                                 </div>
                               </div>
@@ -604,37 +682,49 @@ export default function SettlementRateEntry() {
 
                             {/* Limit 3 */}
                             <div className="space-y-2 rounded-md border p-3">
-                              <h4 className="text-xs font-semibold text-muted-foreground uppercase">{t('ratemanagement.limit3')}</h4>
+                              <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+                                {t('ratemanagement.limit3')}
+                              </h4>
                               <div>
-                                <label className="text-xs text-muted-foreground">{t('ratemanagement.osszegFt')}</label>
+                                <label className="text-xs text-muted-foreground">
+                                  {t('ratemanagement.osszegFt')}
+                                </label>
                                 <input
                                   type="text"
                                   inputMode="decimal"
                                   className="w-full h-8 rounded-md border px-2 py-1 text-xs font-mono"
                                   value={rate.limit3Amount}
-                                  onChange={e => updateRate(idx, 'limit3Amount', e.target.value)}
+                                  onChange={(e) => updateRate(idx, 'limit3Amount', e.target.value)}
                                   placeholder="pl. 1000000"
                                 />
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                  <label className="text-xs text-muted-foreground">{t('cashier.buy')}</label>
+                                  <label className="text-xs text-muted-foreground">
+                                    {t('cashier.buy')}
+                                  </label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
                                     className="w-full h-8 rounded-md border px-2 py-1 text-xs font-mono"
                                     value={rate.limit3BuyRate}
-                                    onChange={e => updateRate(idx, 'limit3BuyRate', e.target.value)}
+                                    onChange={(e) =>
+                                      updateRate(idx, 'limit3BuyRate', e.target.value)
+                                    }
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-muted-foreground">{t('cashier.sell')}</label>
+                                  <label className="text-xs text-muted-foreground">
+                                    {t('cashier.sell')}
+                                  </label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
                                     className="w-full h-8 rounded-md border px-2 py-1 text-xs font-mono"
                                     value={rate.limit3SellRate}
-                                    onChange={e => updateRate(idx, 'limit3SellRate', e.target.value)}
+                                    onChange={(e) =>
+                                      updateRate(idx, 'limit3SellRate', e.target.value)
+                                    }
                                   />
                                 </div>
                               </div>
@@ -654,7 +744,8 @@ export default function SettlementRateEntry() {
       {/* Bottom actions */}
       <div className="flex justify-between items-center">
         <span className="text-xs text-muted-foreground">
-          {rates.filter(r => r.baseBuyRate.trim() && r.baseSellRate.trim()).length} / {rates.length} {t('ratemanagement.valutaKitoltve')}
+          {rates.filter((r) => r.baseBuyRate.trim() && r.baseSellRate.trim()).length} /{' '}
+          {rates.length} {t('ratemanagement.valutaKitoltve')}
         </span>
         <button
           className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"

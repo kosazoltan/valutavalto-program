@@ -20,8 +20,10 @@ const FIXTURE_TRANSACTIONS = [
 ]
 
 test.describe('Receipt visual regression (P2-4 skeleton)', () => {
-  test.skip(!process.env.PLAYWRIGHT_VISUAL_REGRESSION,
-    'Set PLAYWRIGHT_VISUAL_REGRESSION=1 to run visual snapshot tests')
+  test.skip(
+    !process.env.PLAYWRIGHT_VISUAL_REGRESSION,
+    'Set PLAYWRIGHT_VISUAL_REGRESSION=1 to run visual snapshot tests',
+  )
 
   for (const fixture of FIXTURE_TRANSACTIONS) {
     test(`receipt ${fixture.type} ${fixture.currency} ${fixture.amount}`, async ({ page }) => {

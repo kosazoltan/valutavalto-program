@@ -29,7 +29,7 @@ async function mockContributionApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockContributionApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/contributions') && method === 'GET') {
@@ -148,21 +156,27 @@ test('járulék részlet mobil viewporton backend getById hívásból jelenik me
   await page.goto('/contributions', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('Teszt Elek')).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/contributions/contribution-1'
+  const detailRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/contributions/contribution-1',
   )
   await page.getByRole('button', { name: 'Részletek' }).click()
   await detailRequest
 
-  await expect(page.getByTestId('contribution-detail-panel')).toContainText('Backend részletszámítás')
+  await expect(page.getByTestId('contribution-detail-panel')).toContainText(
+    'Backend részletszámítás',
+  )
 
-  const calculateRequest = page.waitForRequest(request => {
+  const calculateRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'POST'
-      && url.pathname === '/api/v1/contributions/calculate'
-      && url.searchParams.get('branchId') === 'branch-1'
-      && url.searchParams.get('periodStart') === '2026-06-01'
-      && url.searchParams.get('periodEnd') === '2026-06-30'
+    return (
+      request.method() === 'POST' &&
+      url.pathname === '/api/v1/contributions/calculate' &&
+      url.searchParams.get('branchId') === 'branch-1' &&
+      url.searchParams.get('periodStart') === '2026-06-01' &&
+      url.searchParams.get('periodEnd') === '2026-06-30'
+    )
   })
   const dates = page.locator('input[type="date"]')
   await dates.nth(0).fill('2026-06-01')
@@ -171,8 +185,8 @@ test('járulék részlet mobil viewporton backend getById hívásból jelenik me
   await calculateRequest
   await expect(page.getByText('Számolt Sára')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

@@ -51,7 +51,8 @@ vi.mock('../../utils/electron', () => ({
 }))
 
 vi.mock('../../utils/localQueue', async () => {
-  const actual = await vi.importActual<typeof import('../../utils/localQueue')>('../../utils/localQueue')
+  const actual =
+    await vi.importActual<typeof import('../../utils/localQueue')>('../../utils/localQueue')
   return {
     ...actual,
     getPendingReceiptDrafts: mocks.getPendingReceiptDrafts,
@@ -103,7 +104,9 @@ describe('ReceiptPage backend detail contract', () => {
     mocks.receiptList.mockResolvedValue([receiptFromList])
     mocks.receiptGetById.mockResolvedValue(receiptDetail)
     mocks.receiptPrint.mockResolvedValue(undefined)
-    mocks.receiptDownloadClosingPdf.mockResolvedValue(new Blob(['closing'], { type: 'application/pdf' }))
+    mocks.receiptDownloadClosingPdf.mockResolvedValue(
+      new Blob(['closing'], { type: 'application/pdf' }),
+    )
     mocks.getPendingReceiptDrafts.mockResolvedValue([])
     mocks.getReprintableReceiptDrafts.mockResolvedValue([])
   })

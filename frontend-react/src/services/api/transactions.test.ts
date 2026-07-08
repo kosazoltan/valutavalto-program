@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { authorizedRepresentativeApi, closingWizardApi, customerApi, dailySessionApi, sessionOpenApi, stornoApi, transactionApi, transferApi } from './transactions'
+import {
+  authorizedRepresentativeApi,
+  closingWizardApi,
+  customerApi,
+  dailySessionApi,
+  sessionOpenApi,
+  stornoApi,
+  transactionApi,
+  transferApi,
+} from './transactions'
 import { api } from './client'
 
 vi.mock('./client', () => {
@@ -52,11 +61,20 @@ describe('transactionApi', () => {
 
   describe('list', () => {
     it('calls GET /transactions and returns paged data', async () => {
-      const paged = { content: [mockTransaction], totalElements: 1, totalPages: 1, size: 20, number: 0 }
+      const paged = {
+        content: [mockTransaction],
+        totalElements: 1,
+        totalPages: 1,
+        size: 20,
+        number: 0,
+      }
       mockApi.get.mockResolvedValue({ data: paged })
 
       const result = await transactionApi.list()
-      expect(mockApi.get).toHaveBeenCalledWith('/transactions', { params: undefined, _preservePaged: true })
+      expect(mockApi.get).toHaveBeenCalledWith('/transactions', {
+        params: undefined,
+        _preservePaged: true,
+      })
       expect(result.content).toHaveLength(1)
       expect(result.totalElements).toBe(1)
     })
@@ -135,7 +153,6 @@ describe('transactionApi', () => {
       expect(mockApi.post).toHaveBeenCalledWith('/transactions/conversion', request)
     })
   })
-
 })
 
 describe('stornoApi', () => {
@@ -179,7 +196,6 @@ describe('stornoApi', () => {
 
     expect(mockApi.post).toHaveBeenCalledWith('/stornos/execute', request)
   })
-
 })
 
 describe('customerApi', () => {
@@ -270,7 +286,10 @@ describe('customerApi', () => {
 
     await customerApi.merge(42, 99)
 
-    expect(mockApi.post).toHaveBeenCalledWith('/customers/merge', { primaryId: 42, duplicateId: 99 })
+    expect(mockApi.post).toHaveBeenCalledWith('/customers/merge', {
+      primaryId: 42,
+      duplicateId: 99,
+    })
   })
 })
 
@@ -292,9 +311,10 @@ describe('authorizedRepresentativeApi', () => {
 
     await authorizedRepresentativeApi.list('123')
 
-    expect(mockApi.get).toHaveBeenCalledWith('/authorized-representatives', { params: { customerId: '123' } })
+    expect(mockApi.get).toHaveBeenCalledWith('/authorized-representatives', {
+      params: { customerId: '123' },
+    })
   })
-
 })
 
 describe('transferApi storno contract', () => {
@@ -374,7 +394,9 @@ describe('closingWizardApi report contract', () => {
 
     const result = await closingWizardApi.calculateDifferences('wizard-1', { HUF: 120000 })
 
-    expect(mockApi.post).toHaveBeenCalledWith('/closing-wizard/wizard-1/differences', { HUF: 120000 })
+    expect(mockApi.post).toHaveBeenCalledWith('/closing-wizard/wizard-1/differences', {
+      HUF: 120000,
+    })
     expect(result[0]?.status).toBe('DISCREPANCY')
   })
 
@@ -459,7 +481,9 @@ describe('sessionOpenApi backend contract', () => {
 
     const result = await sessionOpenApi.validateOpen('11111111-1111-1111-1111-111111111111')
 
-    expect(mockApi.get).toHaveBeenCalledWith('/sessions/validate-open/11111111-1111-1111-1111-111111111111')
+    expect(mockApi.get).toHaveBeenCalledWith(
+      '/sessions/validate-open/11111111-1111-1111-1111-111111111111',
+    )
     expect(result).toEqual(['Van nyitott zárási eltérés.'])
   })
 })
@@ -499,7 +523,9 @@ describe('receiptApi cancelled transaction receipt', () => {
 
     const result = await receiptApi.downloadTransactionPdf(42)
 
-    expect(mockApi.get).toHaveBeenCalledWith('/receipts/transaction/42/pdf', { responseType: 'blob' })
+    expect(mockApi.get).toHaveBeenCalledWith('/receipts/transaction/42/pdf', {
+      responseType: 'blob',
+    })
     expect(result).toBe(blob)
   })
 
@@ -509,7 +535,9 @@ describe('receiptApi cancelled transaction receipt', () => {
 
     const result = await receiptApi.downloadTransactionEscPos(42)
 
-    expect(mockApi.get).toHaveBeenCalledWith('/receipts/transaction/42/escpos', { responseType: 'blob' })
+    expect(mockApi.get).toHaveBeenCalledWith('/receipts/transaction/42/escpos', {
+      responseType: 'blob',
+    })
     expect(result).toBe(blob)
   })
 
@@ -519,7 +547,9 @@ describe('receiptApi cancelled transaction receipt', () => {
 
     const result = await receiptApi.downloadClosingPdf('closing-1')
 
-    expect(mockApi.get).toHaveBeenCalledWith('/receipts/closing/closing-1/pdf', { responseType: 'blob' })
+    expect(mockApi.get).toHaveBeenCalledWith('/receipts/closing/closing-1/pdf', {
+      responseType: 'blob',
+    })
     expect(result).toBe(blob)
   })
 })
@@ -597,7 +627,9 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
   })
 
   it('update: a PUT /shipments/{id} endpointot hivja DRAFT szerkeszteshez', async () => {
-    mockApi.put.mockResolvedValue({ data: { id: 'shipment-1', status: 'DRAFT', notes: 'uj megjegyzes' } })
+    mockApi.put.mockResolvedValue({
+      data: { id: 'shipment-1', status: 'DRAFT', notes: 'uj megjegyzes' },
+    })
     const result = await shipmentRequestApi.update('shipment-1', {
       fromBranchId: 'BR-A',
       toBranchId: 'BR-B',
@@ -620,14 +652,14 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
 
   it('findByStatus: a /shipments endpoint-ot hivja status param-mal', async () => {
     mockApi.get.mockResolvedValue({
-      data: { content: [], totalElements: 0 }
+      data: { content: [], totalElements: 0 },
     })
     await shipmentRequestApi.findByStatus('KERTE')
     expect(mockApi.get).toHaveBeenCalledWith(
       '/shipments',
       expect.objectContaining({
-        params: expect.objectContaining({ status: 'KERTE', page: 0, size: 100 })
-      })
+        params: expect.objectContaining({ status: 'KERTE', page: 0, size: 100 }),
+      }),
     )
   })
 
@@ -658,9 +690,12 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
     expect(result).toHaveLength(2)
     expect(result.map((s: { id: string }) => s.id)).toEqual(['1', '2'])
     // a branchId paraméter delegálva a backend natív szűrőjének
-    expect(mockApi.get).toHaveBeenCalledWith('/shipments', expect.objectContaining({
-      params: expect.objectContaining({ branchId: 'BR-A' }),
-    }))
+    expect(mockApi.get).toHaveBeenCalledWith(
+      '/shipments',
+      expect.objectContaining({
+        params: expect.objectContaining({ branchId: 'BR-A' }),
+      }),
+    )
   })
 
   it('approve: a /shipments/{id}/approve endpoint-ot hivja', async () => {
@@ -669,7 +704,7 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
     expect(mockApi.post).toHaveBeenCalledWith(
       '/shipments/shipment-1/approve',
       null,
-      expect.objectContaining({ params: expect.objectContaining({ workerId: 'worker-1' }) })
+      expect.objectContaining({ params: expect.objectContaining({ workerId: 'worker-1' }) }),
     )
   })
 
@@ -680,8 +715,8 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
       '/shipments/shipment-1/reject',
       null,
       expect.objectContaining({
-        params: expect.objectContaining({ workerId: 'worker-1', reason: 'teszt ok' })
-      })
+        params: expect.objectContaining({ workerId: 'worker-1', reason: 'teszt ok' }),
+      }),
     )
   })
 

@@ -1,8 +1,8 @@
-import js from '@eslint/js';
-import tseslint from 'typescript-eslint';
-import reactHooks from 'eslint-plugin-react-hooks';
-import i18next from 'eslint-plugin-i18next';
-import globals from 'globals';
+import js from '@eslint/js'
+import tseslint from 'typescript-eslint'
+import reactHooks from 'eslint-plugin-react-hooks'
+import i18next from 'eslint-plugin-i18next'
+import globals from 'globals'
 
 export default tseslint.config(
   {
@@ -42,25 +42,51 @@ export default tseslint.config(
       // Copilot P3 PR #374 fix: az `alt`, `placeholder`, `aria-label` user-facing
       // accessibility text-ek -> a kovetkezo i18n migration sprint-ben lokalizalandok,
       // ezert NEM exclude-oljuk most (flag-eljuk warningkent, baseline-be szamolva).
-      'i18next/no-literal-string': ['warn', {
-        // mode 'jsx-text-only': csak JSX text content (NEM minden string literal,
-        // NEM JSX attribute strings) — pontosan ami kell az UI lokalizaciohoz.
-        mode: 'jsx-text-only',
-        // jsx-attributes.exclude: ezeket az attributumokat NEM flag-eljuk
-        // (technikai ertekek vagy nem-szoveg payload). Az `alt`, `placeholder`,
-        // `aria-label` SZANDEKOSAN nincs benne — azok lokalizalando user-facing text.
-        'jsx-attributes': {
-          exclude: [
-            // default plugin excludes (stay)
-            'className', 'styleName', 'style', 'type', 'key', 'id', 'width', 'height',
-            // additionalisak - test selectorok, technikai ARIA, URL-ek, SVG attr
-            'data-testid', 'data-cy', 'data-test',
-            'aria-controls', 'aria-describedby', 'aria-labelledby',
-            'class', 'name', 'role', 'href', 'src', 'rel', 'target', 'method',
-            'ref', 'lang', 'xmlns', 'viewBox', 'fill', 'stroke',
-          ],
+      'i18next/no-literal-string': [
+        'warn',
+        {
+          // mode 'jsx-text-only': csak JSX text content (NEM minden string literal,
+          // NEM JSX attribute strings) — pontosan ami kell az UI lokalizaciohoz.
+          mode: 'jsx-text-only',
+          // jsx-attributes.exclude: ezeket az attributumokat NEM flag-eljuk
+          // (technikai ertekek vagy nem-szoveg payload). Az `alt`, `placeholder`,
+          // `aria-label` SZANDEKOSAN nincs benne — azok lokalizalando user-facing text.
+          'jsx-attributes': {
+            exclude: [
+              // default plugin excludes (stay)
+              'className',
+              'styleName',
+              'style',
+              'type',
+              'key',
+              'id',
+              'width',
+              'height',
+              // additionalisak - test selectorok, technikai ARIA, URL-ek, SVG attr
+              'data-testid',
+              'data-cy',
+              'data-test',
+              'aria-controls',
+              'aria-describedby',
+              'aria-labelledby',
+              'class',
+              'name',
+              'role',
+              'href',
+              'src',
+              'rel',
+              'target',
+              'method',
+              'ref',
+              'lang',
+              'xmlns',
+              'viewBox',
+              'fill',
+              'stroke',
+            ],
+          },
         },
-      }],
+      ],
       // Audit-iter3 P1 (eslint-plugin-react-hooks v7 upgrade, 2026-04-27):
       // a v7 7 uj szabalyt vezetett be a `recommended`-be. Ezeket OPT-IN modon
       // kezeljuk - a `recommended` csak v5-tel ekvivalens magot tartja
@@ -74,7 +100,10 @@ export default tseslint.config(
       'react-hooks/purity': 'off',
       'react-hooks/component-hook-factories': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       'no-console': 'off',
     },
   },
@@ -96,12 +125,9 @@ export default tseslint.config(
     // a jelenlegi ESLint flat-config + eslint-plugin-i18next verzioval NEM aktivalodik
     // (a direktiva "Unused"-kent flag-elodik, mig a warning-ok megis kiirodnak).
     // Ezert config-szintu override + in-file JSDoc dokumentacio a kompromisszum.
-    files: [
-      'src/components/ReceiptPrint.tsx',
-      'src/components/electron/ReceiptPreviewModal.tsx',
-    ],
+    files: ['src/components/ReceiptPrint.tsx', 'src/components/electron/ReceiptPreviewModal.tsx'],
     rules: {
       'i18next/no-literal-string': 'off',
     },
-  }
-);
+  },
+)

@@ -65,7 +65,9 @@ describe('DariusReportPage backend contract', () => {
     mocks.generate.mockResolvedValue({ data: dailyReport })
     mocks.approve.mockResolvedValue({ data: dailyReport })
     mocks.submit.mockResolvedValue({ data: dailyReport })
-    mocks.acknowledge.mockResolvedValue({ data: { ...dailyReport, status: 'ACKNOWLEDGED', ackReference: 'ACK-2026-0001' } })
+    mocks.acknowledge.mockResolvedValue({
+      data: { ...dailyReport, status: 'ACKNOWLEDGED', ackReference: 'ACK-2026-0001' },
+    })
     mocks.retryFailed.mockResolvedValue({ data: [] })
     mocks.getById.mockResolvedValue({ data: dailyReport })
     mocks.getByDate.mockResolvedValue({ data: dailyReport })
@@ -92,11 +94,13 @@ describe('DariusReportPage backend contract', () => {
   it('listaelem kiválasztásakor a backend detail endpointból tölti be a sorokat', async () => {
     const user = userEvent.setup()
     mocks.getRange.mockResolvedValue({
-      data: [{
-        ...dailyReport,
-        payloadHash: undefined,
-        lines: undefined,
-      }],
+      data: [
+        {
+          ...dailyReport,
+          payloadHash: undefined,
+          lines: undefined,
+        },
+      ],
     })
     render(<DariusReportPage />)
 

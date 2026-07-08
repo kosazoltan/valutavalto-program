@@ -60,7 +60,9 @@ function joinValuesForBody(value: unknown, depth = 0): string {
 
 function flattenFaq(parsed: ParsedYaml): SearchableDoc[] {
   // Codex PR #665 P1: a YAML schema `faq:` (singular) — nem `faqs`/`entries`
-  const entries = (parsed.faq ?? parsed.faqs ?? parsed.entries ?? []) as Array<Record<string, unknown>>
+  const entries = (parsed.faq ?? parsed.faqs ?? parsed.entries ?? []) as Array<
+    Record<string, unknown>
+  >
   if (!Array.isArray(entries)) return []
   return entries.map((entry, idx) => {
     const id = String(entry.id ?? `faq-${idx}`)
@@ -155,9 +157,7 @@ export function lookupModuleById(moduleId: string): unknown | null {
   const kb = loadKnowledgeBase()
   // Normalizálás: ha a caller mar átadta a 'module:' prefixet, NE duplázzuk.
   const canonicalId = moduleId.startsWith('module:') ? moduleId : `module:${moduleId}`
-  const hit = kb.docs.find(
-    (d) => d.sourceType === 'module' && d.id === canonicalId
-  )
+  const hit = kb.docs.find((d) => d.sourceType === 'module' && d.id === canonicalId)
   return hit?.payload ?? null
 }
 

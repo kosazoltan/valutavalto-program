@@ -1,9 +1,14 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Users, Search, Calendar, Download, CheckCircle, Eye, X } from 'lucide-react'
-import { commissionCalculationApi, workerCommissionApi, type CommissionCalculation, type WorkerCommission } from '../../services/api/index'
+import {
+  commissionCalculationApi,
+  workerCommissionApi,
+  type CommissionCalculation,
+  type WorkerCommission,
+} from '../../services/api/index'
 import { formatInteger, formatDecimal } from '../../utils/numberFormat'
 import { toast } from '../../components/ui/toaster'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -27,9 +32,9 @@ export default function WorkerCommissionPage() {
   const filteredCommissions = useMemo(() => {
     if (!searchTerm) return commissions
     const term = searchTerm.toLowerCase()
-    return commissions.filter(c =>
-      c.workerName?.toLowerCase().includes(term) ||
-      c.branchName?.toLowerCase().includes(term)
+    return commissions.filter(
+      (c) =>
+        c.workerName?.toLowerCase().includes(term) || c.branchName?.toLowerCase().includes(term),
     )
   }, [commissions, searchTerm])
 
@@ -135,7 +140,9 @@ export default function WorkerCommissionPage() {
       setCalculationLoading(scope)
       setError(null)
       if (scope === 'all') {
-        setMonthlyReport(await commissionCalculationApi.calculateAll(reportMonth, branchId || undefined))
+        setMonthlyReport(
+          await commissionCalculationApi.calculateAll(reportMonth, branchId || undefined),
+        )
       } else {
         setMonthlyReport([await commissionCalculationApi.calculate(reportMonth)])
       }
@@ -152,7 +159,7 @@ export default function WorkerCommissionPage() {
       setApprovingCalculationId(id)
       setError(null)
       const approved = await commissionCalculationApi.approve(id)
-      setMonthlyReport((current) => current.map((row) => row.id === id ? approved : row))
+      setMonthlyReport((current) => current.map((row) => (row.id === id ? approved : row)))
     } catch (err) {
       logger.error('WorkerCommissionPage', 'Havi jutalék jóváhagyási hiba:', err)
       setError('Hiba történt a havi jutalék jóváhagyása során')
@@ -194,10 +201,15 @@ export default function WorkerCommissionPage() {
       )}
 
       {selectedCommission && (
-        <section className="rounded border border-blue-200 bg-blue-50 p-3" data-testid="worker-commission-detail">
+        <section
+          className="rounded border border-blue-200 bg-blue-50 p-3"
+          data-testid="worker-commission-detail"
+        >
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="truncate text-base font-bold text-blue-950">{selectedCommission.workerName}</h2>
+              <h2 className="truncate text-base font-bold text-blue-950">
+                {selectedCommission.workerName}
+              </h2>
               <p className="text-sm text-blue-900">{selectedCommission.branchName || '-'}</p>
             </div>
             <button
@@ -211,12 +223,34 @@ export default function WorkerCommissionPage() {
             </button>
           </div>
           <dl className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
-            <DetailItem label={t('common.period')} value={`${selectedCommission.periodStart} - ${selectedCommission.periodEnd}`} />
-            <DetailItem label={t('archiving.tranzakciok')} value={String(selectedCommission.transactionCount || 0)} />
-            <DetailItem label={t('commissions.jutalek')} value={selectedCommission.commissionRate ? `${formatDecimal(selectedCommission.commissionRate * 100, 2, 2)}%` : '-'} />
-            <DetailItem label={t('commissions.jutalekOsszeg')} value={`${selectedCommission.commissionAmount ? formatInteger(selectedCommission.commissionAmount) : '0'} ${selectedCommission.currencyCode || ''}`.trim()} />
-            <DetailItem label={t('common.amount')} value={`${selectedCommission.totalTransactionAmount ? formatInteger(selectedCommission.totalTransactionAmount) : '0'} ${selectedCommission.currencyCode || ''}`.trim()} />
-            <DetailItem label={t('common.status')} value={selectedCommission.statusName || selectedCommission.statusDid || '-'} />
+            <DetailItem
+              label={t('common.period')}
+              value={`${selectedCommission.periodStart} - ${selectedCommission.periodEnd}`}
+            />
+            <DetailItem
+              label={t('archiving.tranzakciok')}
+              value={String(selectedCommission.transactionCount || 0)}
+            />
+            <DetailItem
+              label={t('commissions.jutalek')}
+              value={
+                selectedCommission.commissionRate
+                  ? `${formatDecimal(selectedCommission.commissionRate * 100, 2, 2)}%`
+                  : '-'
+              }
+            />
+            <DetailItem
+              label={t('commissions.jutalekOsszeg')}
+              value={`${selectedCommission.commissionAmount ? formatInteger(selectedCommission.commissionAmount) : '0'} ${selectedCommission.currencyCode || ''}`.trim()}
+            />
+            <DetailItem
+              label={t('common.amount')}
+              value={`${selectedCommission.totalTransactionAmount ? formatInteger(selectedCommission.totalTransactionAmount) : '0'} ${selectedCommission.currencyCode || ''}`.trim()}
+            />
+            <DetailItem
+              label={t('common.status')}
+              value={selectedCommission.statusName || selectedCommission.statusDid || '-'}
+            />
             <DetailItem label="Számítás dátuma" value={selectedCommission.calculationDate || '-'} />
             <DetailItem label="Jóváhagyó" value={selectedCommission.approvedByName || '-'} />
           </dl>
@@ -263,10 +297,7 @@ export default function WorkerCommissionPage() {
               <Download size={16} />
               {t('commissions.export')}
             </button>
-            <button
-              onClick={handleCalculatePeriod}
-              className="form-button flex items-center gap-2"
-            >
+            <button onClick={handleCalculatePeriod} className="form-button flex items-center gap-2">
               <CheckCircle size={16} />
               Időszaki számítás
             </button>
@@ -274,7 +305,10 @@ export default function WorkerCommissionPage() {
           <div>
             <label className="form-label">{t('common.search')}</label>
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+              <Search
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={16}
+              />
               <input
                 type="text"
                 className="form-input pl-8"
@@ -291,7 +325,9 @@ export default function WorkerCommissionPage() {
         <div className="mb-3 flex flex-col gap-3 border-b border-gray-200 pb-3 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
             <h2 className="text-base font-bold text-gray-800">Havi jutalékszámítás riport</h2>
-            <p className="text-sm text-gray-500">Backend számítási riport a kiválasztott hónapra.</p>
+            <p className="text-sm text-gray-500">
+              Backend számítási riport a kiválasztott hónapra.
+            </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div>
@@ -336,13 +372,18 @@ export default function WorkerCommissionPage() {
         {monthlyReport.length > 0 && (
           <div className="mb-4 space-y-3 md:hidden">
             {monthlyReport.map((row) => (
-              <article key={row.id} className="rounded border border-gray-200 bg-white p-3 shadow-sm">
+              <article
+                key={row.id}
+                className="rounded border border-gray-200 bg-white p-3 shadow-sm"
+              >
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase text-gray-500">Dolgozó ID</p>
                     <p className="text-lg font-bold text-gray-900">{row.workerId}</p>
                   </div>
-                  <span className={`badge ${row.status === 'APPROVED' ? 'badge-green' : 'badge-yellow'}`}>
+                  <span
+                    className={`badge ${row.status === 'APPROVED' ? 'badge-green' : 'badge-yellow'}`}
+                  >
                     {row.status}
                   </span>
                 </div>
@@ -357,23 +398,33 @@ export default function WorkerCommissionPage() {
                   </div>
                   <div>
                     <dt className="text-gray-500">Forgalom HUF</dt>
-                    <dd className="font-mono text-gray-900">{formatInteger(row.totalVolumeHuf ?? 0)}</dd>
+                    <dd className="font-mono text-gray-900">
+                      {formatInteger(row.totalVolumeHuf ?? 0)}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-gray-500">Jutalék %</dt>
-                    <dd className="font-mono text-gray-900">{formatDecimal((row.commissionRate ?? 0) * 100, 2, 2)}%</dd>
+                    <dd className="font-mono text-gray-900">
+                      {formatDecimal((row.commissionRate ?? 0) * 100, 2, 2)}%
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-gray-500">Jutalék</dt>
-                    <dd className="font-mono text-gray-900">{formatInteger(row.commissionAmount ?? 0)}</dd>
+                    <dd className="font-mono text-gray-900">
+                      {formatInteger(row.commissionAmount ?? 0)}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-gray-500">Bónusz</dt>
-                    <dd className="font-mono text-gray-900">{formatInteger(row.bonusAmount ?? 0)}</dd>
+                    <dd className="font-mono text-gray-900">
+                      {formatInteger(row.bonusAmount ?? 0)}
+                    </dd>
                   </div>
                   <div className="col-span-2 border-t border-gray-100 pt-2">
                     <dt className="text-gray-500">Nettó</dt>
-                    <dd className="font-mono text-lg font-bold text-gray-900">{formatInteger(row.netCommission ?? 0)}</dd>
+                    <dd className="font-mono text-lg font-bold text-gray-900">
+                      {formatInteger(row.netCommission ?? 0)}
+                    </dd>
                   </div>
                 </dl>
                 {row.status === 'CALCULATED' && (
@@ -384,7 +435,9 @@ export default function WorkerCommissionPage() {
                     className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded bg-emerald-600 px-3 text-sm font-semibold text-white disabled:opacity-60"
                   >
                     <CheckCircle size={16} />
-                    {approvingCalculationId === row.id ? `${t('common.approve')}...` : t('common.approve')}
+                    {approvingCalculationId === row.id
+                      ? `${t('common.approve')}...`
+                      : t('common.approve')}
                   </button>
                 )}
               </article>
@@ -416,12 +469,16 @@ export default function WorkerCommissionPage() {
                     <td>{row.period}</td>
                     <td>{row.totalTransactions ?? 0}</td>
                     <td className="font-mono">{formatInteger(row.totalVolumeHuf ?? 0)}</td>
-                    <td className="font-mono">{formatDecimal((row.commissionRate ?? 0) * 100, 2, 2)}%</td>
+                    <td className="font-mono">
+                      {formatDecimal((row.commissionRate ?? 0) * 100, 2, 2)}%
+                    </td>
                     <td className="font-mono">{formatInteger(row.commissionAmount ?? 0)}</td>
                     <td className="font-mono">{formatInteger(row.bonusAmount ?? 0)}</td>
                     <td className="font-bold font-mono">{formatInteger(row.netCommission ?? 0)}</td>
                     <td>
-                      <span className={`badge ${row.status === 'APPROVED' ? 'badge-green' : 'badge-yellow'}`}>
+                      <span
+                        className={`badge ${row.status === 'APPROVED' ? 'badge-green' : 'badge-yellow'}`}
+                      >
                         {row.status}
                       </span>
                     </td>
@@ -434,7 +491,9 @@ export default function WorkerCommissionPage() {
                           className="inline-flex min-h-9 items-center justify-center gap-1 rounded bg-emerald-600 px-3 text-xs font-semibold text-white disabled:opacity-60"
                         >
                           <CheckCircle size={14} />
-                          {approvingCalculationId === row.id ? `${t('common.approve')}...` : t('common.approve')}
+                          {approvingCalculationId === row.id
+                            ? `${t('common.approve')}...`
+                            : t('common.approve')}
                         </button>
                       ) : (
                         <span className="text-xs text-gray-400">-</span>
@@ -460,14 +519,18 @@ export default function WorkerCommissionPage() {
                     <p className="truncate text-lg font-bold text-gray-900">{c.workerName}</p>
                     <p className="truncate text-sm text-gray-500">{c.branchName || '-'}</p>
                   </div>
-                  <span className={`badge ${c.statusName === 'Jóváhagyva' ? 'badge-green' : 'badge-yellow'}`}>
+                  <span
+                    className={`badge ${c.statusName === 'Jóváhagyva' ? 'badge-green' : 'badge-yellow'}`}
+                  >
                     {c.statusName}
                   </span>
                 </div>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                   <div className="col-span-2">
                     <dt className="text-gray-500">{t('common.period')}</dt>
-                    <dd className="font-medium text-gray-900">{c.periodStart} - {c.periodEnd}</dd>
+                    <dd className="font-medium text-gray-900">
+                      {c.periodStart} - {c.periodEnd}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-gray-500">{t('archiving.tranzakciok')}</dt>
@@ -475,15 +538,23 @@ export default function WorkerCommissionPage() {
                   </div>
                   <div>
                     <dt className="text-gray-500">{t('commissions.jutalek')}</dt>
-                    <dd className="font-mono text-gray-900">{c.commissionRate ? `${formatDecimal(c.commissionRate * 100, 2, 2)}%` : '-'}</dd>
+                    <dd className="font-mono text-gray-900">
+                      {c.commissionRate ? `${formatDecimal(c.commissionRate * 100, 2, 2)}%` : '-'}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-gray-500">{t('common.amount')}</dt>
-                    <dd className="font-mono text-gray-900">{c.totalTransactionAmount ? formatInteger(c.totalTransactionAmount) : '0'} {c.currencyCode}</dd>
+                    <dd className="font-mono text-gray-900">
+                      {c.totalTransactionAmount ? formatInteger(c.totalTransactionAmount) : '0'}{' '}
+                      {c.currencyCode}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-gray-500">{t('commissions.jutalekOsszeg')}</dt>
-                    <dd className="font-mono font-bold text-gray-900">{c.commissionAmount ? formatInteger(c.commissionAmount) : '0'} {c.currencyCode}</dd>
+                    <dd className="font-mono font-bold text-gray-900">
+                      {c.commissionAmount ? formatInteger(c.commissionAmount) : '0'}{' '}
+                      {c.currencyCode}
+                    </dd>
                   </div>
                 </dl>
                 <button
@@ -501,57 +572,74 @@ export default function WorkerCommissionPage() {
         </div>
 
         <div className="hidden overflow-x-auto md:block">
-        <table className="data-grid w-full min-w-[880px]">
-          <thead>
-            <tr>
-              <th>{t('commissions.dolgozo')}</th>
-              <th>{t('commissions.fok')}</th>
-              <th>{t('common.period')}</th>
-              <th>{t('archiving.tranzakciok')}</th>
-              <th>{t('common.amount')}</th>
-              <th>{t('commissions.jutalek')}</th>
-              <th>{t('commissions.jutalekOsszeg')}</th>
-              <th>{t('common.status')}</th>
-              <th>{t('common.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredCommissions.length === 0 ? (
+          <table className="data-grid w-full min-w-[880px]">
+            <thead>
               <tr>
-                <td colSpan={9} className="text-center text-gray-500 py-4">{t('common.noResult')}</td>
+                <th>{t('commissions.dolgozo')}</th>
+                <th>{t('commissions.fok')}</th>
+                <th>{t('common.period')}</th>
+                <th>{t('archiving.tranzakciok')}</th>
+                <th>{t('common.amount')}</th>
+                <th>{t('commissions.jutalek')}</th>
+                <th>{t('commissions.jutalekOsszeg')}</th>
+                <th>{t('common.status')}</th>
+                <th>{t('common.actions')}</th>
               </tr>
-            ) : (
-              filteredCommissions.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.workerName}</td>
-                  <td>{c.branchName || '-'}</td>
-                  <td>{c.periodStart} - {c.periodEnd}</td>
-                  <td>{c.transactionCount || 0}</td>
-                  <td className="font-mono">{c.totalTransactionAmount ? formatInteger(c.totalTransactionAmount) : '0'} {c.currencyCode}</td>
-                  <td className="font-mono">{c.commissionRate ? `${formatDecimal(c.commissionRate * 100, 2, 2)}%` : '-'}</td>
-                  <td className="font-bold font-mono">{c.commissionAmount ? formatInteger(c.commissionAmount) : '0'} {c.currencyCode}</td>
-                  <td>
-                    <span className={`badge ${c.statusName === 'Jóváhagyva' ? 'badge-green' : 'badge-yellow'}`}>
-                      {c.statusName}
-                    </span>
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      onClick={() => void handleLoadCommissionDetail(c.id)}
-                      disabled={detailLoadingId === c.id}
-                      className="toolbar-button"
-                      aria-label={`Jutalék részletek: ${c.workerName}`}
-                      title="Részletek"
-                    >
-                      <Eye size={14} className={detailLoadingId === c.id ? 'animate-pulse' : ''} />
-                    </button>
+            </thead>
+            <tbody>
+              {filteredCommissions.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="text-center text-gray-500 py-4">
+                    {t('common.noResult')}
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filteredCommissions.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.workerName}</td>
+                    <td>{c.branchName || '-'}</td>
+                    <td>
+                      {c.periodStart} - {c.periodEnd}
+                    </td>
+                    <td>{c.transactionCount || 0}</td>
+                    <td className="font-mono">
+                      {c.totalTransactionAmount ? formatInteger(c.totalTransactionAmount) : '0'}{' '}
+                      {c.currencyCode}
+                    </td>
+                    <td className="font-mono">
+                      {c.commissionRate ? `${formatDecimal(c.commissionRate * 100, 2, 2)}%` : '-'}
+                    </td>
+                    <td className="font-bold font-mono">
+                      {c.commissionAmount ? formatInteger(c.commissionAmount) : '0'}{' '}
+                      {c.currencyCode}
+                    </td>
+                    <td>
+                      <span
+                        className={`badge ${c.statusName === 'Jóváhagyva' ? 'badge-green' : 'badge-yellow'}`}
+                      >
+                        {c.statusName}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={() => void handleLoadCommissionDetail(c.id)}
+                        disabled={detailLoadingId === c.id}
+                        className="toolbar-button"
+                        aria-label={`Jutalék részletek: ${c.workerName}`}
+                        title="Részletek"
+                      >
+                        <Eye
+                          size={14}
+                          className={detailLoadingId === c.id ? 'animate-pulse' : ''}
+                        />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -566,4 +654,3 @@ function DetailItem({ label, value }: { label: string; value: string }) {
     </div>
   )
 }
-

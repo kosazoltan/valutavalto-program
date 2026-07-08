@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Package, Plus, RefreshCw, Trash2, AlertCircle } from 'lucide-react'
-import { branchApi, currencyApi, packagingApi, type BranchInfo, type Currency, type PackagingRecord } from '../../services/api/index'
+import {
+  branchApi,
+  currencyApi,
+  packagingApi,
+  type BranchInfo,
+  type Currency,
+  type PackagingRecord,
+} from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
@@ -77,7 +84,9 @@ export default function PackagingPage() {
     try {
       setLoading(true)
       setError(null)
-      setRecords(safeArray<PackagingRecord>(await packagingApi.list(selectedBranchId, fromDate, toDate)))
+      setRecords(
+        safeArray<PackagingRecord>(await packagingApi.list(selectedBranchId, fromDate, toDate)),
+      )
     } catch (err) {
       const message = getErrorMessage(err)
       logger.error('PackagingPage', 'Göngyöleg lista betöltési hiba:', err)
@@ -153,7 +162,12 @@ export default function PackagingPage() {
           <Package />
           {t('packaging.title')}
         </h1>
-        <button type="button" className="form-button" onClick={() => void loadRecords()} disabled={loading}>
+        <button
+          type="button"
+          className="form-button"
+          onClick={() => void loadRecords()}
+          disabled={loading}
+        >
           <RefreshCw size={16} />
           {t('common.refresh')}
         </button>
@@ -188,11 +202,21 @@ export default function PackagingPage() {
           </label>
           <label className="form-label">
             {t('packaging.dateFrom')}
-            <input className="form-input mt-1" type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
+            <input
+              className="form-input mt-1"
+              type="date"
+              value={fromDate}
+              onChange={(event) => setFromDate(event.target.value)}
+            />
           </label>
           <label className="form-label">
             {t('packaging.dateTo')}
-            <input className="form-input mt-1" type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
+            <input
+              className="form-input mt-1"
+              type="date"
+              value={toDate}
+              onChange={(event) => setToDate(event.target.value)}
+            />
           </label>
           <div className="text-sm text-gray-600 md:self-end">
             {selectedBranch ? selectedBranch.name : t('packaging.noSelectedBranch')}
@@ -280,7 +304,14 @@ export default function PackagingPage() {
             className="form-button-primary"
             data-testid="packaging-create"
             onClick={() => void handleCreate()}
-            disabled={saving || !selectedBranchId || !form.currencyCode || !form.packagingDate || !form.denomination || !form.bundleCount}
+            disabled={
+              saving ||
+              !selectedBranchId ||
+              !form.currencyCode ||
+              !form.packagingDate ||
+              !form.denomination ||
+              !form.bundleCount
+            }
           >
             <Plus size={16} />
             {t('packaging.create')}
@@ -314,7 +345,9 @@ export default function PackagingPage() {
                     <td className="font-semibold">{record.currencyCode}</td>
                     <td className="text-right">{record.denomination.toLocaleString('hu-HU')}</td>
                     <td className="text-right">{record.bundleCount.toLocaleString('hu-HU')}</td>
-                    <td className="text-right">{(record.bundleSize ?? 100).toLocaleString('hu-HU')}</td>
+                    <td className="text-right">
+                      {(record.bundleSize ?? 100).toLocaleString('hu-HU')}
+                    </td>
                     <td>{record.notes || '-'}</td>
                     <td className="no-print">
                       <button

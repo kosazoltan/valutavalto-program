@@ -16,13 +16,33 @@ import { getErrorMessage } from '../../utils/errorHandling'
 
 // FK-003/004 spec: 27 valuta teljes neve. HUF mindig utolsó (a backend így is rendezi).
 const CURRENCY_NAMES: Record<string, string> = {
-  AUD: 'AUSZTRÁL DOLLÁR', BAM: 'BOSNYÁK MÁRKA', BGN: 'BOLGÁR LEVA', BRL: 'BRAZIL REÁL',
-  CAD: 'KANADAI DOLLÁR', CHF: 'SVÁJCI FRANK', CNY: 'KÍNAI YUAN', CZK: 'CSEH KORONA',
-  DKK: 'DÁN KORONA', EUR: 'EURÓ', GBP: 'ANGOL FONT', HRK: 'HORVÁT KUNA',
-  ILS: 'IZRAELI SHEKEL', JPY: 'JAPÁN YEN', MXN: 'MEXIKÓI PESO', NOK: 'NORVÉG KORONA',
-  NZD: 'ÚJ-ZÉLANDI DOLLÁR', PLN: 'LENGYEL ZLOTYI', RON: 'ROMÁN LEJ', RSD: 'SZERB DINÁR',
-  RUB: 'OROSZ RUBEL', SEK: 'SVÉD KORONA', THB: 'THAI BAHT', TRY: 'TÖRÖK LÍRA',
-  UAH: 'UKRÁN HRIVNYA', USD: 'AMERIKAI DOLLÁR', HUF: 'MAGYAR FORINT',
+  AUD: 'AUSZTRÁL DOLLÁR',
+  BAM: 'BOSNYÁK MÁRKA',
+  BGN: 'BOLGÁR LEVA',
+  BRL: 'BRAZIL REÁL',
+  CAD: 'KANADAI DOLLÁR',
+  CHF: 'SVÁJCI FRANK',
+  CNY: 'KÍNAI YUAN',
+  CZK: 'CSEH KORONA',
+  DKK: 'DÁN KORONA',
+  EUR: 'EURÓ',
+  GBP: 'ANGOL FONT',
+  HRK: 'HORVÁT KUNA',
+  ILS: 'IZRAELI SHEKEL',
+  JPY: 'JAPÁN YEN',
+  MXN: 'MEXIKÓI PESO',
+  NOK: 'NORVÉG KORONA',
+  NZD: 'ÚJ-ZÉLANDI DOLLÁR',
+  PLN: 'LENGYEL ZLOTYI',
+  RON: 'ROMÁN LEJ',
+  RSD: 'SZERB DINÁR',
+  RUB: 'OROSZ RUBEL',
+  SEK: 'SVÉD KORONA',
+  THB: 'THAI BAHT',
+  TRY: 'TÖRÖK LÍRA',
+  UAH: 'UKRÁN HRIVNYA',
+  USD: 'AMERIKAI DOLLÁR',
+  HUF: 'MAGYAR FORINT',
 }
 
 interface CurrencyStockDetail {
@@ -34,7 +54,9 @@ interface CurrencyStockDetail {
   dailySell?: number | string
   dailySellHuf?: number | string
 }
-interface BranchStockTotals { currencies?: CurrencyStockDetail[] }
+interface BranchStockTotals {
+  currencies?: CurrencyStockDetail[]
+}
 interface BranchSnapshot {
   branchId?: string
   branchName?: string
@@ -75,7 +97,9 @@ function fmtInt(v: number | string | undefined): string {
 function fmtHuf(v: number | string | undefined): string {
   return num(v).toLocaleString('hu-HU') + ' Ft'
 }
-function byCodeMap(currencies: CurrencyStockDetail[] | undefined): Record<string, CurrencyStockDetail> {
+function byCodeMap(
+  currencies: CurrencyStockDetail[] | undefined,
+): Record<string, CurrencyStockDetail> {
   const m: Record<string, CurrencyStockDetail> = {}
   for (const c of currencies ?? []) if (c.currencyCode) m[c.currencyCode] = c
   return m
@@ -87,11 +111,14 @@ function currencyOrder(columns: SnapshotColumn[]): string[] {
   const order: string[] = []
   for (const col of columns) {
     for (const code of Object.keys(col.byCode)) {
-      if (!seen.has(code)) { seen.add(code); order.push(code) }
+      if (!seen.has(code)) {
+        seen.add(code)
+        order.push(code)
+      }
     }
   }
   // HUF mindig az utolsó (spec), a többi a beérkezés sorrendjében
-  const withoutHuf = order.filter(c => c !== 'HUF')
+  const withoutHuf = order.filter((c) => c !== 'HUF')
   return order.includes('HUF') ? [...withoutHuf, 'HUF'] : withoutHuf
 }
 
@@ -116,16 +143,22 @@ export default function StockSnapshotPage() {
 
   const loadData = useCallback(async () => {
     try {
-      setLoading(true); setError(null)
+      setLoading(true)
+      setError(null)
       const response = await api.get<StockSnapshot>('/stock-snapshot')
       setSnapshot(response.data ?? null)
     } catch (err) {
       logger.error('StockSnapshotPage', 'Betöltési hiba:', err)
-      setError(getErrorMessage(err)); setSnapshot(null)
-    } finally { setLoading(false) }
+      setError(getErrorMessage(err))
+      setSnapshot(null)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
-  useEffect(() => { void loadData() }, [loadData])
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   async function downloadExcel() {
     try {
@@ -143,10 +176,14 @@ export default function StockSnapshotPage() {
       // látja, így a fájlnév időbélyege ezzel konzisztens (Sourcery bug_risk #855 — dokumentált döntés).
       const now = new Date()
       const pad = (n: number) => String(n).padStart(2, '0')
-      const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_`
-        + `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
-      a.href = url; a.download = `Keszlet_pillanatkep_${ts}.xlsx`
-      document.body.appendChild(a); a.click(); a.remove()
+      const ts =
+        `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_` +
+        `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+      a.href = url
+      a.download = `Keszlet_pillanatkep_${ts}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
       URL.revokeObjectURL(url)
     } catch (err) {
       logger.error('StockSnapshotPage', 'Excel letöltés hiba:', err)
@@ -173,7 +210,11 @@ export default function StockSnapshotPage() {
         label: r.regionName ?? r.regionCode ?? '?',
         byCode: byCodeMap(r.totals?.currencies),
       }))
-      cols.push({ key: '__company', label: t('stockSnapshot.companyTotal'), byCode: byCodeMap(snapshot.companyTotals?.currencies) })
+      cols.push({
+        key: '__company',
+        label: t('stockSnapshot.companyTotal'),
+        byCode: byCodeMap(snapshot.companyTotals?.currencies),
+      })
       return cols
     }
     const region = regions[activeTab]
@@ -184,7 +225,11 @@ export default function StockSnapshotPage() {
       lastUpdated: b.lastUpdated,
       byCode: byCodeMap(b.currencies),
     }))
-    cols.push({ key: '__regiontotal', label: t('stockSnapshot.regionTotalCol'), byCode: byCodeMap(region.totals?.currencies) })
+    cols.push({
+      key: '__regiontotal',
+      label: t('stockSnapshot.regionTotalCol'),
+      byCode: byCodeMap(region.totals?.currencies),
+    })
     return cols
   }, [snapshot, regions, activeTab, isSummary, t])
 
@@ -199,19 +244,31 @@ export default function StockSnapshotPage() {
       <table className="text-sm border-collapse">
         <thead>
           <tr className="bg-gray-100">
-            <th className={`${stickyCol} px-2 py-1 text-left bg-gray-100`}>{t('stockSnapshot.currencyHeader')}</th>
-            <th className={`${stickyColName} px-2 py-1 text-left bg-gray-100 min-w-[140px]`}>{t('stockSnapshot.currencyName')}</th>
-            {columns.map(col => (
-              <th key={col.key} colSpan={2} className="px-2 py-1 text-center border-l whitespace-nowrap">
+            <th className={`${stickyCol} px-2 py-1 text-left bg-gray-100`}>
+              {t('stockSnapshot.currencyHeader')}
+            </th>
+            <th className={`${stickyColName} px-2 py-1 text-left bg-gray-100 min-w-[140px]`}>
+              {t('stockSnapshot.currencyName')}
+            </th>
+            {columns.map((col) => (
+              <th
+                key={col.key}
+                colSpan={2}
+                className="px-2 py-1 text-center border-l whitespace-nowrap"
+              >
                 <div className="font-semibold">{col.label}</div>
-                {!isSummary && <div className="text-[10px] font-normal"><SyncTime iso={col.lastUpdated} /></div>}
+                {!isSummary && (
+                  <div className="text-[10px] font-normal">
+                    <SyncTime iso={col.lastUpdated} />
+                  </div>
+                )}
               </th>
             ))}
           </tr>
           <tr className="bg-gray-50 text-[11px] text-gray-500">
             <th className={`${stickyCol} bg-gray-50`}></th>
             <th className={`${stickyColName} bg-gray-50`}></th>
-            {columns.map(col => (
+            {columns.map((col) => (
               <Fragment key={col.key}>
                 <th className="px-2 py-1 text-right border-l">{t('stockSnapshot.stockHeader')}</th>
                 <th className="px-2 py-1 text-right">{t('stockSnapshot.hufValue')}</th>
@@ -220,10 +277,12 @@ export default function StockSnapshotPage() {
           </tr>
         </thead>
         <tbody>
-          {codes.map(code => (
+          {codes.map((code) => (
             <tr key={code} className="border-t hover:bg-blue-50">
               <td className={`${stickyCol} px-2 py-1 font-mono font-semibold`}>{code}</td>
-              <td className={`${stickyColName} px-2 py-1 whitespace-nowrap`}>{CURRENCY_NAMES[code] ?? ''}</td>
+              <td className={`${stickyColName} px-2 py-1 whitespace-nowrap`}>
+                {CURRENCY_NAMES[code] ?? ''}
+              </td>
               {columns.map((col, ci) => {
                 const c = col.byCode[code]
                 totalsHuf[ci] = (totalsHuf[ci] ?? 0) + num(c?.stockHuf)
@@ -256,16 +315,26 @@ export default function StockSnapshotPage() {
       <table className="text-sm border-collapse">
         <thead>
           <tr className="bg-gray-100">
-            <th className={`${stickyCol} px-2 py-1 text-left bg-gray-100`}>{t('stockSnapshot.currencyHeader')}</th>
-            <th className={`${stickyColName} px-2 py-1 text-left bg-gray-100 min-w-[140px]`}>{t('stockSnapshot.currencyName')}</th>
-            {columns.map(col => (
-              <th key={col.key} colSpan={4} className="px-2 py-1 text-center border-l whitespace-nowrap font-semibold">{col.label}</th>
+            <th className={`${stickyCol} px-2 py-1 text-left bg-gray-100`}>
+              {t('stockSnapshot.currencyHeader')}
+            </th>
+            <th className={`${stickyColName} px-2 py-1 text-left bg-gray-100 min-w-[140px]`}>
+              {t('stockSnapshot.currencyName')}
+            </th>
+            {columns.map((col) => (
+              <th
+                key={col.key}
+                colSpan={4}
+                className="px-2 py-1 text-center border-l whitespace-nowrap font-semibold"
+              >
+                {col.label}
+              </th>
             ))}
           </tr>
           <tr className="bg-gray-50 text-[11px] text-gray-500">
             <th className={`${stickyCol} bg-gray-50`}></th>
             <th className={`${stickyColName} bg-gray-50`}></th>
-            {columns.map(col => (
+            {columns.map((col) => (
               <Fragment key={col.key}>
                 <th className="px-2 py-1 text-right border-l">{t('stockSnapshot.buy')}</th>
                 <th className="px-2 py-1 text-right">{t('stockSnapshot.buyHuf')}</th>
@@ -276,17 +345,23 @@ export default function StockSnapshotPage() {
           </tr>
         </thead>
         <tbody>
-          {codes.map(code => (
+          {codes.map((code) => (
             <tr key={code} className="border-t hover:bg-blue-50">
               <td className={`${stickyCol} px-2 py-1 font-mono font-semibold`}>{code}</td>
-              <td className={`${stickyColName} px-2 py-1 whitespace-nowrap`}>{CURRENCY_NAMES[code] ?? ''}</td>
-              {columns.map(col => {
+              <td className={`${stickyColName} px-2 py-1 whitespace-nowrap`}>
+                {CURRENCY_NAMES[code] ?? ''}
+              </td>
+              {columns.map((col) => {
                 const c = col.byCode[code]
                 return (
                   <Fragment key={col.key}>
-                    <td className="px-2 py-1 text-right font-mono border-l">{fmtInt(c?.dailyBuy)}</td>
+                    <td className="px-2 py-1 text-right font-mono border-l">
+                      {fmtInt(c?.dailyBuy)}
+                    </td>
                     <td className="px-2 py-1 text-right font-mono">{fmtInt(c?.dailyBuyHuf)}</td>
-                    <td className="px-2 py-1 text-right font-mono border-l">{fmtInt(c?.dailySell)}</td>
+                    <td className="px-2 py-1 text-right font-mono border-l">
+                      {fmtInt(c?.dailySell)}
+                    </td>
                     <td className="px-2 py-1 text-right font-mono">{fmtInt(c?.dailySellHuf)}</td>
                   </Fragment>
                 )
@@ -307,12 +382,21 @@ export default function StockSnapshotPage() {
         </h1>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-gray-500">{snapshot?.companyName ?? '-'}</span>
-          <span className="text-gray-500">{snapshot?.snapshotTime ? new Date(snapshot.snapshotTime).toLocaleString('hu-HU') : '-'}</span>
+          <span className="text-gray-500">
+            {snapshot?.snapshotTime ? new Date(snapshot.snapshotTime).toLocaleString('hu-HU') : '-'}
+          </span>
           <span className="font-mono font-semibold">{fmtHuf(companyTotal)}</span>
-          <button onClick={() => void loadData()} className="form-button p-2" title={t('common.refresh')}>
+          <button
+            onClick={() => void loadData()}
+            className="form-button p-2"
+            title={t('common.refresh')}
+          >
             <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
           </button>
-          <button onClick={() => void downloadExcel()} className="form-button-primary flex items-center gap-2">
+          <button
+            onClick={() => void downloadExcel()}
+            className="form-button-primary flex items-center gap-2"
+          >
             <Download className="h-4 w-4" /> {t('common.exportExcel')}
           </button>
         </div>
@@ -320,7 +404,8 @@ export default function StockSnapshotPage() {
 
       {error && (
         <div className="form-error flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4" />{error}
+          <AlertTriangle className="h-4 w-4" />
+          {error}
         </div>
       )}
 
@@ -351,13 +436,17 @@ export default function StockSnapshotPage() {
 
           {/* KÉSZLET szekció */}
           <div className="bg-white rounded shadow">
-            <div className="bg-blue-50 px-4 py-1.5 font-semibold text-blue-800 border-b">{t('stockSnapshot.stockSection')}</div>
+            <div className="bg-blue-50 px-4 py-1.5 font-semibold text-blue-800 border-b">
+              {t('stockSnapshot.stockSection')}
+            </div>
             <div className="overflow-x-auto">{renderStockTable()}</div>
           </div>
 
           {/* NAPI FORGALOM szekció */}
           <div className="bg-white rounded shadow">
-            <div className="bg-amber-50 px-4 py-1.5 font-semibold text-amber-800 border-b">{t('stockSnapshot.turnoverSection')}</div>
+            <div className="bg-amber-50 px-4 py-1.5 font-semibold text-amber-800 border-b">
+              {t('stockSnapshot.turnoverSection')}
+            </div>
             <div className="overflow-x-auto">{renderTurnoverTable()}</div>
           </div>
         </>

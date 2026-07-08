@@ -30,7 +30,10 @@ describe('paginált végpontok _preservePaged regressziója', () => {
     mockApi.get.mockResolvedValue({ data: paged })
 
     const result = await bankOrdersApi.list('PENDING', 0, 50)
-    expect(mockApi.get).toHaveBeenCalledWith('/bank-orders', expect.objectContaining({ _preservePaged: true }))
+    expect(mockApi.get).toHaveBeenCalledWith(
+      '/bank-orders',
+      expect.objectContaining({ _preservePaged: true }),
+    )
     expect(result.content).toHaveLength(1)
   })
 
@@ -39,7 +42,10 @@ describe('paginált végpontok _preservePaged regressziója', () => {
     mockApi.get.mockResolvedValue({ data: paged })
 
     const result = await diagnosticsApi.listErrors(0, 50)
-    expect(mockApi.get).toHaveBeenCalledWith('/diagnostics/errors', expect.objectContaining({ _preservePaged: true }))
+    expect(mockApi.get).toHaveBeenCalledWith(
+      '/diagnostics/errors',
+      expect.objectContaining({ _preservePaged: true }),
+    )
     expect(result.content).toHaveLength(1)
     expect(result.totalPages).toBe(1)
   })
@@ -49,6 +55,9 @@ describe('paginált végpontok _preservePaged regressziója', () => {
     mockApi.get.mockResolvedValue({ data: paged })
 
     await decadeReportApi.list('b1', 2026)
-    expect(mockApi.get).toHaveBeenCalledWith('/decade-reports', expect.objectContaining({ _preservePaged: true }))
+    expect(mockApi.get).toHaveBeenCalledWith(
+      '/decade-reports',
+      expect.objectContaining({ _preservePaged: true }),
+    )
   })
 })

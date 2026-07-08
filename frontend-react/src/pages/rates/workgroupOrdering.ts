@@ -7,7 +7,9 @@
  * A sorszám nélküli (legacyGroupNumber == null) csoportok a lista VÉGÉRE kerülnek,
  * stabil (eredeti) relatív sorrendben.
  */
-export function sortWorkgroupsBySequence<T extends { legacyGroupNumber?: number | null }>(list: T[]): T[] {
+export function sortWorkgroupsBySequence<T extends { legacyGroupNumber?: number | null }>(
+  list: T[],
+): T[] {
   return [...list].sort((a, b) => {
     const sa = a.legacyGroupNumber ?? Number.POSITIVE_INFINITY
     const sb = b.legacyGroupNumber ?? Number.POSITIVE_INFINITY

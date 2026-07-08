@@ -3,18 +3,17 @@
 # Verzió 1 — 2026-05-18
 
 version: 1
-last_updated: "2026-05-18"
+last_updated: '2026-05-18'
 
 faq:
-
   # =====================================================
   # TELEPÍTÉS + ELTÁVOLÍTÓ
   # =====================================================
 
   - id: telepito_valasztasa
-    q: "Melyik telepítőt használjam?"
+    q: 'Melyik telepítőt használjam?'
     related_module: clients
-    keywords: ["telepítés", "telepítő", "install", "setup"]
+    keywords: ['telepítés', 'telepítő', 'install', 'setup']
     a: |
       3 telepítő van, mindegyiket az adott munkakörhöz használd:
       - **Pénztáros és értéktáros** kollégák: Penztar-Setup-2.5.55…exe
@@ -24,9 +23,9 @@ faq:
       Telepítés előtt MINDIG futtasd a Penztar-Eltavolito-2.5.53-…exe-t a Letöltések mappából.
 
   - id: eltavolito_kotelezo
-    q: "Mindig kell eltávolítót futtatni a telepítés előtt?"
+    q: 'Mindig kell eltávolítót futtatni a telepítés előtt?'
     related_module: workflows.telepites
-    keywords: ["eltávolító", "uninstall", "kötelező", "frissítés", "upgrade"]
+    keywords: ['eltávolító', 'uninstall', 'kötelező', 'frissítés', 'upgrade']
     a: |
       Igen, az eltávolító MINDIG futtatandó új telepítés előtt. Ennek két oka:
       1. A régi userData (`%APPDATA%\valuta-penztar`) cache-elt .env fájljai miatt elavult konfiguráció lehet (pl. régi backend URL).
@@ -35,9 +34,9 @@ faq:
       Az eltávolító dupla-klikkel indul. UAC "Igen". A kérdésre "adatok megtartása?" → válassz **NEM**-et, így minden kitisztul. A Google bejelentkezési whitelist a szerveren van, helyi cache nem érinti.
 
   - id: telepito_uac_hiba
-    q: "A telepítő nem indul el, UAC-hiba"
+    q: 'A telepítő nem indul el, UAC-hiba'
     related_module: workflows.telepites
-    keywords: ["UAC", "rendszergazda", "engedély"]
+    keywords: ['UAC', 'rendszergazda', 'engedély']
     a: |
       A Penztar telepítő (HKLM = gépszintű) rendszergazdai jogot igényel. Jobb-klikk a telepítőre → "Futtatás rendszergazdaként". A Központi és Árfolyamkészítő (HKCU = per-user) NEM kér rendszergazdai jogot.
 
@@ -46,18 +45,18 @@ faq:
   # =====================================================
 
   - id: google_login_alapok
-    q: "Hogyan jelentkezem be Google fiókkal?"
+    q: 'Hogyan jelentkezem be Google fiókkal?'
     related_module: workflows.google_login
-    keywords: ["google", "bejelentkezés", "login", "OAuth"]
+    keywords: ['google', 'bejelentkezés', 'login', 'OAuth']
     a: |
       A bejelentkező képernyőn nyomd a "Belépés Google fiókkal" gombot. Választhatsz Google fiókok közül — a céges fiókoddal jelentkezz be (`*.ebc@gmail.com`, `*.eec@gmail.com` vagy `*.epc@gmail.com`).
 
       Ha több szerepköröd van (pl. főértéktáros + területi vezető), egy "Szerepkör kiválasztása" dialóg jelenik meg — válaszd ki, amelyikkel dolgozni akarsz.
 
   - id: google_401_hiba
-    q: "Backend HTTP 401 — Google bejelentkezés sikertelen"
-    related_error: "EBC-001"
-    keywords: ["401", "unauthorized", "google", "sikertelen"]
+    q: 'Backend HTTP 401 — Google bejelentkezés sikertelen'
+    related_error: 'EBC-001'
+    keywords: ['401', 'unauthorized', 'google', 'sikertelen']
     a: |
       Ez azt jelenti, hogy a backend nem találja a Google fiókodat a whitelist-en, VAGY régi (v2.5.53 vagy korábbi) telepítőt használsz.
 
@@ -67,9 +66,9 @@ faq:
       3. Ha v2.5.55 mégis nem megy: küldj Zoltánnak (a) hibaüzenet screenshot, (b) a Google email, (c) milyen szerepkörrel próbáltál belépni
 
   - id: tobb_munkakor_google_login
-    q: "Mit tegyek, ha több munkakörben dolgozom és Google-lel próbálok belépni?"
+    q: 'Mit tegyek, ha több munkakörben dolgozom és Google-lel próbálok belépni?'
     related_module: workers
-    keywords: ["munkakör", "helyettesítés", "google", "több szerepkör", "értéktár", "főértéktár"]
+    keywords: ['munkakör', 'helyettesítés', 'google', 'több szerepkör', 'értéktár', 'főértéktár']
     a: |
       Ha egy kolléga több munkakörben dolgozik (pl. saját értéktárosi pozíció + főértéktárosi helyettesítés + pénztáros-helyettesítés), akkor általában külön Google fiókja van mindegyikhez (vagy egy fiók 7 szerepkörrel):
       1. **Pénztárosi munka helyettesítéskor**: BCrypt jelszó + pénztáros kód (NEM Google) — a Pénztár kliensbe.
@@ -83,9 +82,9 @@ faq:
   # =====================================================
 
   - id: napnyitas
-    q: "Hogyan nyitom meg a napot?"
+    q: 'Hogyan nyitom meg a napot?'
     related_module: penztar.napnyitas
-    keywords: ["napnyitás", "nyitás", "kezdés"]
+    keywords: ['napnyitás', 'nyitás', 'kezdés']
     a: |
       1. Bejelentkezel a Pénztár klienssel
       2. Bal oldalon: "Napnyitás" menüpont
@@ -93,9 +92,9 @@ faq:
       4. Mentés → státusz: "Nap nyitva" (zöld jelzés a fejlécen)
 
   - id: vetel_alapok
-    q: "Hogyan rögzítek egy vételt?"
+    q: 'Hogyan rögzítek egy vételt?'
     related_module: penztar.vetel_eladas
-    keywords: ["vétel", "buy", "tranzakció", "új"]
+    keywords: ['vétel', 'buy', 'tranzakció', 'új']
     a: |
       1. Pénztáros főmenü → "Új tranzakció" gomb (vagy F1 = Vétel)
       2. Bal oszlop: válaszd ki a devizát (pl. EUR, 7-es billentyű)
@@ -105,9 +104,9 @@ faq:
       6. "Mentés és nyomtatás" → bizonylat nyomtatódik
 
   - id: ugyfelazonositas_kuszobertekek
-    q: "Mikor kell az ügyfelet azonosítani?"
+    q: 'Mikor kell az ügyfelet azonosítani?'
     related_module: penztar.vetel_eladas
-    keywords: ["AML", "azonosítás", "100000", "300000", "PEP"]
+    keywords: ['AML', 'azonosítás', '100000', '300000', 'PEP']
     a: |
       3 sáv a Pmt. (2017. évi LIII. törvény) szerint, zárt-nyitott intervallumokkal:
       - **100.000 Ft alatt** (< 100.000): NEM kell azonosítani (csak állampolgárság).
@@ -117,9 +116,9 @@ faq:
       Példa: 100.000 Ft = már Egyszerűsített (a határ alsó zárva). 300.000 Ft = már Teljes.
 
   - id: pep_nyilatkozat
-    q: "Mi az a PEP-nyilatkozat?"
+    q: 'Mi az a PEP-nyilatkozat?'
     related_module: penztar.vetel_eladas
-    keywords: ["PEP", "közszereplő", "saját név"]
+    keywords: ['PEP', 'közszereplő', 'saját név']
     a: |
       300.000 Ft feletti tranzakció esetén meg kell kérdezni az ügyfelet:
       1. Politikailag exponált személy-e (PEP)?
@@ -128,9 +127,9 @@ faq:
       A program ezt automatikusan kérdezi a tranzakció közben (PR #614 óta). Mindkettő válasz a bizonylatra rákerül.
 
   - id: napzaras_alapok
-    q: "Hogyan zárom le a napot?"
+    q: 'Hogyan zárom le a napot?'
     related_module: penztar.napzaras
-    keywords: ["napzárás", "zárás", "wizard", "9 lépés"]
+    keywords: ['napzárás', 'zárás', 'wizard', '9 lépés']
     a: |
       Pénztár kliens → "Napzárás" menüpont → 9-lépéses Wizard:
       1. MTCN szám ellenőrzés (Western Union)
@@ -149,9 +148,9 @@ faq:
   # =====================================================
 
   - id: arfolyamkeszites_indul
-    q: "Hogyan készítek árfolyamot?"
+    q: 'Hogyan készítek árfolyamot?'
     related_module: arfolyamkeszito.folap
-    keywords: ["árfolyam", "készítés", "RFM", "elszámoló"]
+    keywords: ['árfolyam', 'készítés', 'RFM', 'elszámoló']
     a: |
       Az Árfolyamkészítő KÜLÖN kliensben fut (`Arfolyamkeszito-Setup-2.5.55.exe`), CSAK főértéktáros tudja használni.
 
@@ -163,9 +162,9 @@ faq:
       6. A pénztárak 30s-en belül megkapják az új árfolyamot
 
   - id: arfolyamkeszites_iroda
-    q: "Hogyan rendelek hozzá irodát egy munkacsoporthoz?"
+    q: 'Hogyan rendelek hozzá irodát egy munkacsoporthoz?'
     related_module: arfolyamkeszito.csoportok_karbantartasa
-    keywords: ["iroda", "munkacsoport", "hozzárendelés"]
+    keywords: ['iroda', 'munkacsoport', 'hozzárendelés']
     a: |
       1. Csoportok karbantartása oldalon
       2. Válaszd ki a workgroupot bal oldalon
@@ -181,9 +180,9 @@ faq:
   # =====================================================
 
   - id: program_lefagyott
-    q: "Lefagyott a program, mit csináljak?"
-    related_error: "EBC-099"
-    keywords: ["lefagyás", "fagy", "nem reagál", "freeze"]
+    q: 'Lefagyott a program, mit csináljak?'
+    related_error: 'EBC-099'
+    keywords: ['lefagyás', 'fagy', 'nem reagál', 'freeze']
     a: |
       Először: várj 30 másodpercet, hátha csak hálózati lassúság.
 
@@ -195,9 +194,9 @@ faq:
       Ha többször előfordul: jegyezzünk fel hibajegyet (a hangsegéddel mondd: "Ne felejtsd el — a program lefagyott a Banki rendelések oldalon").
 
   - id: nyomtato_nem_ir
-    q: "Nem nyomtatja a blokkot"
-    related_error: "EBC-005"
-    keywords: ["nyomtató", "nyomtatás", "blokk", "bizonylat"]
+    q: 'Nem nyomtatja a blokkot'
+    related_error: 'EBC-005'
+    keywords: ['nyomtató', 'nyomtatás', 'blokk', 'bizonylat']
     a: |
       1. Ellenőrizd, hogy a Windows-on az EBC blokknyomtató be van-e állítva alapértelmezettként:
          Start → Beállítások → Eszközök → Nyomtatók
@@ -205,9 +204,9 @@ faq:
       3. Ha Windows OK, de program NEM: jegyezzünk fel hibajegyet a hangsegéddel
 
   - id: ugyfel_rogzites_hiba
-    q: "Az ügyfelet nem tudom rögzíteni"
-    related_error: "EBC-007"
-    keywords: ["ügyfél", "customer", "rögzítés", "duplikált"]
+    q: 'Az ügyfelet nem tudom rögzíteni'
+    related_error: 'EBC-007'
+    keywords: ['ügyfél', 'customer', 'rögzítés', 'duplikált']
     a: |
       Ez PR #607-tel javítva v2.5.55-ben (idempotent upsert).
 
@@ -217,9 +216,9 @@ faq:
       - Ha továbbra is fennáll: jelentsd hibajegyként
 
   - id: keszlet_negativ
-    q: "Negatív készlettel is enged vételt rögzíteni?"
-    related_error: "EBC-006"
-    keywords: ["készlet", "negatív", "ellátmány", "nincs elég"]
+    q: 'Negatív készlettel is enged vételt rögzíteni?'
+    related_error: 'EBC-006'
+    keywords: ['készlet', 'negatív', 'ellátmány', 'nincs elég']
     a: |
       PR #605 óta NEM engedi. Vételnél (BUY) a backend ellenőrzi, hogy van-e ellátmány. Ha nincs: "Nincs elég pénz a kasszában — a tétel nem rögzíthető" hibaüzenet.
 
@@ -230,15 +229,15 @@ faq:
   # =====================================================
 
   - id: kapcsolat_zoltan
-    q: "Kit hívjak ha probléma van?"
-    keywords: ["támogatás", "fejlesztő", "Zoltán", "kapcsolat"]
+    q: 'Kit hívjak ha probléma van?'
+    keywords: ['támogatás', 'fejlesztő', 'Zoltán', 'kapcsolat']
     a: |
       Email: `kosa.zoltan.ebc@gmail.com`
       Vagy a hangsegéddel mondd: "Készíts erről hibajegyet" — automatikusan elmenti a problémát, és a tesztelés végén egy `.md` fájlt töltesz le, amit Zoltánnak küldhetsz.
 
   - id: ebc_vs_eec_vs_exz_vs_epc
-    q: "Mi a különbség az EBC, EEC, EXZ, EPC domain-ek között?"
-    keywords: ["EBC", "EEC", "EXZ", "EPC", "domain"]
+    q: 'Mi a különbség az EBC, EEC, EXZ, EPC domain-ek között?'
+    keywords: ['EBC', 'EEC', 'EXZ', 'EPC', 'domain']
     a: |
       - **EBC** = Exclusive Best Change Zrt. — a Valutaváltó cég kódja (helyes)
       - **EEC** = ugyanaz, történelmi okból néhány email .eec domainű (Fabulya, Hrabina, Veress — V179 seed, szándékos)

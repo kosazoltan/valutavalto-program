@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Shield, Plus, CheckCircle, XCircle, Pause, Play, AlertCircle, Loader2 } from 'lucide-react'
-import { authorizedRepresentativeApi, Authorization, AuthorizationCreateRequest } from '../../services/api/transactions'
+import {
+  authorizedRepresentativeApi,
+  Authorization,
+  AuthorizationCreateRequest,
+} from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../ui/toaster'
 import { useAuthStore } from '../../stores/authStore'
@@ -19,7 +23,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function AuthorizationSection({ representativeId }: Props) {
   const { t } = useTranslation()
-  const worker = useAuthStore(s => s.worker)
+  const worker = useAuthStore((s) => s.worker)
   const workerId = worker?.id ?? 0
 
   const [authorizations, setAuthorizations] = useState<Authorization[]>([])
@@ -46,7 +50,9 @@ export default function AuthorizationSection({ representativeId }: Props) {
     }
   }, [representativeId])
 
-  useEffect(() => { void loadAuthorizations() }, [loadAuthorizations])
+  useEffect(() => {
+    void loadAuthorizations()
+  }, [loadAuthorizations])
 
   const handleCreate = async () => {
     try {
@@ -54,7 +60,10 @@ export default function AuthorizationSection({ representativeId }: Props) {
       await authorizedRepresentativeApi.createAuthorization(representativeId, form, workerId)
       toast.success('Meghatalmazás létrehozva')
       setShowForm(false)
-      setForm({ operationDid: 'CURRENCY_EXCHANGE', startDate: new Date().toISOString().split('T')[0]! })
+      setForm({
+        operationDid: 'CURRENCY_EXCHANGE',
+        startDate: new Date().toISOString().split('T')[0]!,
+      })
       void loadAuthorizations()
     } catch (err) {
       toast.error('Hiba', getErrorMessage(err))
@@ -63,10 +72,14 @@ export default function AuthorizationSection({ representativeId }: Props) {
     }
   }
 
-  const handleAction = async (authId: string, action: 'verify' | 'suspend' | 'resume' | 'revoke') => {
-    const reason = action === 'suspend' || action === 'revoke'
-      ? prompt(`${action === 'suspend' ? 'Felfüggesztés' : 'Visszavonás'} oka:`)
-      : undefined
+  const handleAction = async (
+    authId: string,
+    action: 'verify' | 'suspend' | 'resume' | 'revoke',
+  ) => {
+    const reason =
+      action === 'suspend' || action === 'revoke'
+        ? prompt(`${action === 'suspend' ? 'Felfüggesztés' : 'Visszavonás'} oka:`)
+        : undefined
     if ((action === 'suspend' || action === 'revoke') && !reason) return
 
     try {
@@ -95,10 +108,15 @@ export default function AuthorizationSection({ representativeId }: Props) {
     <div className="form-panel">
       <div className="flex justify-between items-center mb-3">
         <h2 className="section-title flex items-center gap-2">
-          <Shield size={16} />{t('components.meghatalmazasok')}
+          <Shield size={16} />
+          {t('components.meghatalmazasok')}
         </h2>
-        <button onClick={() => setShowForm(!showForm)} className="form-button flex items-center gap-1">
-          <Plus size={14} />{t('components.ujMeghatalmazas')}
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="form-button flex items-center gap-1"
+        >
+          <Plus size={14} />
+          {t('components.ujMeghatalmazas')}
         </button>
       </div>
 
@@ -113,7 +131,11 @@ export default function AuthorizationSection({ representativeId }: Props) {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-sm text-gray-600">{t('components.muveletTipus')}</label>
-              <select value={form.operationDid} onChange={e => setForm({ ...form, operationDid: e.target.value })} className="form-input w-full">
+              <select
+                value={form.operationDid}
+                onChange={(e) => setForm({ ...form, operationDid: e.target.value })}
+                className="form-input w-full"
+              >
                 <option value="CURRENCY_EXCHANGE">{t('components.valutavaltas')}</option>
                 <option value="CASH_DEPOSIT">{t('components.keszpenzBefizetes')}</option>
                 <option value="CASH_WITHDRAWAL">{t('components.keszpenzKifizetes')}</option>
@@ -122,31 +144,82 @@ export default function AuthorizationSection({ representativeId }: Props) {
             </div>
             <div>
               <label className="text-sm text-gray-600">{t('common.startDate')}</label>
-              <input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} className="form-input w-full" />
+              <input
+                type="date"
+                value={form.startDate}
+                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                className="form-input w-full"
+              />
             </div>
             <div>
               <label className="text-sm text-gray-600">{t('components.lejaratiDatum')}</label>
-              <input type="date" value={form.expiryDate || ''} onChange={e => setForm({ ...form, expiryDate: e.target.value || undefined })} className="form-input w-full" />
+              <input
+                type="date"
+                value={form.expiryDate || ''}
+                onChange={(e) => setForm({ ...form, expiryDate: e.target.value || undefined })}
+                className="form-input w-full"
+              />
             </div>
             <div>
               <label className="text-sm text-gray-600">{t('components.osszegLimitFt')}</label>
-              <input type="number" value={form.maxAmount || ''} onChange={e => setForm({ ...form, maxAmount: e.target.value ? Number(e.target.value) : undefined })} className="form-input w-full" placeholder="Korlátlan" />
+              <input
+                type="number"
+                value={form.maxAmount || ''}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    maxAmount: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+                className="form-input w-full"
+                placeholder="Korlátlan"
+              />
             </div>
             <div>
               <label className="text-sm text-gray-600">{t('components.maxTranzakcioszam')}</label>
-              <input type="number" min={1} value={form.maxTransactionCount || ''} onChange={e => setForm({ ...form, maxTransactionCount: e.target.value ? Number(e.target.value) : undefined })} className="form-input w-full" placeholder="Korlátlan" />
+              <input
+                type="number"
+                min={1}
+                value={form.maxTransactionCount || ''}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    maxTransactionCount: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+                className="form-input w-full"
+                placeholder="Korlátlan"
+              />
             </div>
             <div>
               <label className="text-sm text-gray-600">{t('components.egyszeriLimitFt')}</label>
-              <input type="number" value={form.singleTransactionLimit || ''} onChange={e => setForm({ ...form, singleTransactionLimit: e.target.value ? Number(e.target.value) : undefined })} className="form-input w-full" placeholder="Korlátlan" />
+              <input
+                type="number"
+                value={form.singleTransactionLimit || ''}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    singleTransactionLimit: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+                className="form-input w-full"
+                placeholder="Korlátlan"
+              />
             </div>
             <div>
               <label className="text-sm text-gray-600">{t('common.note')}</label>
-              <input type="text" value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value || undefined })} className="form-input w-full" />
+              <input
+                type="text"
+                value={form.notes || ''}
+                onChange={(e) => setForm({ ...form, notes: e.target.value || undefined })}
+                className="form-input w-full"
+              />
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-2">
-            <button onClick={() => setShowForm(false)} className="form-button">{t('common.cancel')}</button>
+            <button onClick={() => setShowForm(false)} className="form-button">
+              {t('common.cancel')}
+            </button>
             <button onClick={handleCreate} disabled={submitting} className="form-button-primary">
               {submitting ? 'Mentés...' : 'Létrehozás'}
             </button>
@@ -159,7 +232,9 @@ export default function AuthorizationSection({ representativeId }: Props) {
           <Loader2 size={16} className="animate-spin" /> Betöltés...
         </div>
       ) : authorizations.length === 0 ? (
-        <div className="text-center py-4 text-gray-500 text-sm">{t('components.nincsMeghatalmazas')}</div>
+        <div className="text-center py-4 text-gray-500 text-sm">
+          {t('components.nincsMeghatalmazas')}
+        </div>
       ) : (
         <table className="data-grid w-full text-sm">
           <thead>
@@ -174,33 +249,61 @@ export default function AuthorizationSection({ representativeId }: Props) {
             </tr>
           </thead>
           <tbody>
-            {authorizations.map(auth => (
+            {authorizations.map((auth) => (
               <tr key={auth.id}>
                 <td>{auth.authorizationTypeDid || '-'}</td>
                 <td>{getStatusBadge(auth.statusDid)}</td>
-                <td>{auth.startDate ? new Date(auth.startDate).toLocaleDateString('hu-HU') : '-'}</td>
-                <td>{auth.expiryDate ? new Date(auth.expiryDate).toLocaleDateString('hu-HU') : 'Korlátlan'}</td>
-                <td className="font-mono">{auth.maxAmount != null ? `${auth.maxAmount.toLocaleString('hu-HU')} Ft` : 'Korlátlan'}</td>
-                <td className="font-mono">{auth.usedTransactionCount ?? 0} / {auth.maxTransactionCount ?? '∞'}</td>
+                <td>
+                  {auth.startDate ? new Date(auth.startDate).toLocaleDateString('hu-HU') : '-'}
+                </td>
+                <td>
+                  {auth.expiryDate
+                    ? new Date(auth.expiryDate).toLocaleDateString('hu-HU')
+                    : 'Korlátlan'}
+                </td>
+                <td className="font-mono">
+                  {auth.maxAmount != null
+                    ? `${auth.maxAmount.toLocaleString('hu-HU')} Ft`
+                    : 'Korlátlan'}
+                </td>
+                <td className="font-mono">
+                  {auth.usedTransactionCount ?? 0} / {auth.maxTransactionCount ?? '∞'}
+                </td>
                 <td>
                   <div className="flex gap-1">
                     {auth.statusDid === 'PENDING' && (
-                      <button onClick={() => handleAction(auth.id, 'verify')} className="toolbar-button text-green-600" title="Jóváhagyás">
+                      <button
+                        onClick={() => handleAction(auth.id, 'verify')}
+                        className="toolbar-button text-green-600"
+                        title="Jóváhagyás"
+                      >
                         <CheckCircle size={14} />
                       </button>
                     )}
                     {auth.statusDid === 'ACTIVE' && (
-                      <button onClick={() => handleAction(auth.id, 'suspend')} className="toolbar-button text-orange-600" title="Felfüggesztés">
+                      <button
+                        onClick={() => handleAction(auth.id, 'suspend')}
+                        className="toolbar-button text-orange-600"
+                        title="Felfüggesztés"
+                      >
                         <Pause size={14} />
                       </button>
                     )}
                     {auth.statusDid === 'SUSPENDED' && (
-                      <button onClick={() => handleAction(auth.id, 'resume')} className="toolbar-button text-green-600" title="Újraaktiválás">
+                      <button
+                        onClick={() => handleAction(auth.id, 'resume')}
+                        className="toolbar-button text-green-600"
+                        title="Újraaktiválás"
+                      >
                         <Play size={14} />
                       </button>
                     )}
                     {auth.statusDid !== 'REVOKED' && (
-                      <button onClick={() => handleAction(auth.id, 'revoke')} className="toolbar-button text-red-600" title="Visszavonás">
+                      <button
+                        onClick={() => handleAction(auth.id, 'revoke')}
+                        className="toolbar-button text-red-600"
+                        title="Visszavonás"
+                      >
                         <XCircle size={14} />
                       </button>
                     )}

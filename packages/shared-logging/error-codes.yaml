@@ -7,38 +7,37 @@
 # A `VVLogger.error(error_code, ...)` minden hivasakor a kodnak SZEREPELNIE KELL itt.
 
 version: 1
-last_updated: "2026-06-12"
+last_updated: '2026-06-12'
 total_codes: 47
 
 codes:
-
   # =====================================================
   # VV-AML — penzmosas elleni (Pmt. 2017. evi LIII. tv.)
   # =====================================================
 
   VV-AML-001:
-    name: "AML 100k HUF identifikacios kuszob atlepve, identifikacio hianyzik"
+    name: 'AML 100k HUF identifikacios kuszob atlepve, identifikacio hianyzik'
     category: AML
     level: ERROR
-    user_impact: "Tranzakcio elutasitva, ugyfel ertesitve identifikacio szuksegerol"
+    user_impact: 'Tranzakcio elutasitva, ugyfel ertesitve identifikacio szuksegerol'
     ai_fix_hint: |
       AmlService.checkIdentification() KOTELEZO a tranzakcio commit ELOTT.
       NEM szabad commit utan ellenorizni. Lasd: backend AmlServiceTest.
 
   VV-AML-002:
-    name: "PEP nyilatkozat hianyzik 300k HUF felett"
+    name: 'PEP nyilatkozat hianyzik 300k HUF felett'
     category: AML
     level: ERROR
-    user_impact: "Tranzakcio elutasitva, PEP form kotelezo"
+    user_impact: 'Tranzakcio elutasitva, PEP form kotelezo'
     ai_fix_hint: |
       AmlService.checkPepDeclaration() hivas kotelezo 300k HUF felett,
       a checkIdentification() UTAN, commit ELOTT.
 
   VV-AML-003:
-    name: "Sanction-list talalat (EU/OFAC/ENSZ)"
+    name: 'Sanction-list talalat (EU/OFAC/ENSZ)'
     category: AML
     level: FATAL
-    user_impact: "Tranzakcio azonnal felfuggesztve, SAR auto-trigger"
+    user_impact: 'Tranzakcio azonnal felfuggesztve, SAR auto-trigger'
     ai_fix_hint: |
       SOHA ne lazitsd. Ha cache-only-ra valtasz, a backend revalidate
       KOTELEZO commit elott.
@@ -48,7 +47,7 @@ codes:
   # =====================================================
 
   VV-BIZ-001:
-    name: "Bizonylat-sorszam-ugras detektalva (V<iroda><seq> nem monoton)"
+    name: 'Bizonylat-sorszam-ugras detektalva (V<iroda><seq> nem monoton)'
     category: BUSINESS
     level: FATAL
     ai_fix_hint: |
@@ -56,7 +55,7 @@ codes:
       Ellenorizd a tranzakcio-izolaciot (REPEATABLE_READ minimum).
 
   VV-BIZ-002:
-    name: "Sztorno probalkozas napzaras UTAN"
+    name: 'Sztorno probalkozas napzaras UTAN'
     category: BUSINESS
     level: ERROR
     ai_fix_hint: |
@@ -64,7 +63,7 @@ codes:
       Frontend gombnak disabled-nek kell lennie, ha dailyClosing.status=CLOSED.
 
   VV-BIZ-003:
-    name: "Keszlet elteres: SUM(tranzakciok) != cache ertek"
+    name: 'Keszlet elteres: SUM(tranzakciok) != cache ertek'
     category: BUSINESS
     level: FATAL
     ai_fix_hint: |
@@ -72,7 +71,7 @@ codes:
       A keszletet MINDIG rekonstrualni kell ledger-bol.
 
   VV-BIZ-004:
-    name: "Sztorno indoklas hianyzik (kotelezo mezo)"
+    name: 'Sztorno indoklas hianyzik (kotelezo mezo)'
     category: BUSINESS
     level: ERROR
     ai_fix_hint: |
@@ -80,7 +79,7 @@ codes:
       is kell, mert szervergyenge.
 
   VV-BIZ-005:
-    name: "Kezelesi koltseg nem rogzitheto (V227 sync_active_columns function)"
+    name: 'Kezelesi koltseg nem rogzitheto (V227 sync_active_columns function)'
     category: BUSINESS
     level: ERROR
     ai_fix_hint: |
@@ -88,10 +87,10 @@ codes:
       Flyway repair + a hotfix migrate ujra.
 
   VV-BIZ-006:
-    name: "Napzaras lepes hiba (DailyClosingService)"
+    name: 'Napzaras lepes hiba (DailyClosingService)'
     category: BUSINESS
     level: ERROR
-    user_impact: "A napzaras kotelezo lepese elhasalt - manualis korrekcio + ujraindas szukseges"
+    user_impact: 'A napzaras kotelezo lepese elhasalt - manualis korrekcio + ujraindas szukseges'
     ai_fix_hint: |
       DailyClosingService.runStep(stepNumber, name, check) belso catch.
       A `step_number` attr mutatja melyik lepes (1..9, TOTAL_STEPS=9):
@@ -102,10 +101,10 @@ codes:
       POS-terminal offline.
 
   VV-BIZ-007:
-    name: "POS terminal napzaras hiba"
+    name: 'POS terminal napzaras hiba'
     category: BUSINESS
     level: ERROR
-    user_impact: "A POS terminal nem zart le - manualis zaras kell a terminal UI-jan"
+    user_impact: 'A POS terminal nem zart le - manualis zaras kell a terminal UI-jan'
     ai_fix_hint: |
       DailyClosingService POS-terminal closing loop catch (PosTerminalService.executeDailyClosing).
       A terminal_id attr azonositja a problemas eszkozt - LEHET NULL ha az
@@ -114,30 +113,30 @@ codes:
       error code. Kovetkezo napzaras elott manualis terminal-zaras a terminal UI-jan.
 
   VV-BIZ-008:
-    name: "Esti zaras adatcsomag kuldes hiba (központ felé)"
+    name: 'Esti zaras adatcsomag kuldes hiba (központ felé)'
     category: BUSINESS
     level: ERROR
-    user_impact: "A nap zart, DE a kozponti rendszer nem kapta meg az adatokat - retry kell"
+    user_impact: 'A nap zart, DE a kozponti rendszer nem kapta meg az adatokat - retry kell'
     ai_fix_hint: |
       EveningClosingService.sendDailyPackage(branchId, date) catch a
       DailyClosingService-bol. SFTP / HTTP transzfer fail.
       Retry: SyncController.runSync(branchId) vagy manualis push.
 
   VV-BIZ-009:
-    name: "Dekadjelentes generalas hiba (MNB)"
+    name: 'Dekadjelentes generalas hiba (MNB)'
     category: BUSINESS
     level: ERROR
-    user_impact: "A 10 napos MNB jelentés nem keszult el - manualis ujragyartas szukseges"
+    user_impact: 'A 10 napos MNB jelentés nem keszult el - manualis ujragyartas szukseges'
     ai_fix_hint: |
       DecadeReportService.generateForBranch(branchId, year, decade) catch a
       DailyClosingService-bol. Az year / decade attr mutatja a problemas
       idoszakot. Tipikus: hianyzo bizonylat, AML adat hianyos.
 
   VV-BIZ-010:
-    name: "Napi archivalas hiba (D-1 ledger snapshot)"
+    name: 'Napi archivalas hiba (D-1 ledger snapshot)'
     category: BUSINESS
     level: ERROR
-    user_impact: "Az aznapi ledger snapshot NEM mentődött - audit-szempontbol potolni kell"
+    user_impact: 'Az aznapi ledger snapshot NEM mentődött - audit-szempontbol potolni kell'
     ai_fix_hint: |
       MonthlyArchiveService.archiveDailyTransactions(branchId, date) vagy
       DailyClosingArchiveService.executeFullDailyArchive(branchId, date) catch.
@@ -151,7 +150,7 @@ codes:
   # =====================================================
 
   VV-RATE-001:
-    name: "Lejart arfolyammal probaltak tranzakciot inditani"
+    name: 'Lejart arfolyammal probaltak tranzakciot inditani'
     category: BUSINESS
     level: ERROR
     ai_fix_hint: |
@@ -159,7 +158,7 @@ codes:
       NEM a vegen. RateValidityFilter kell.
 
   VV-RATE-002:
-    name: "RFM publish konfliktus (optimistic locking version mismatch)"
+    name: 'RFM publish konfliktus (optimistic locking version mismatch)'
     category: BUSINESS
     level: WARN
     ai_fix_hint: |
@@ -167,7 +166,7 @@ codes:
       'Egy masik operator idokozben frissitette az arfolyamokat'.
 
   VV-RATE-003:
-    name: "Branch-iroda exclusivity violation (V234 - egy worker csak egy iroda)"
+    name: 'Branch-iroda exclusivity violation (V234 - egy worker csak egy iroda)'
     category: BUSINESS
     level: ERROR
     ai_fix_hint: |
@@ -179,7 +178,7 @@ codes:
   # =====================================================
 
   VV-MT-001:
-    name: "Cross-tenant lekerdezes detektalva (companyId mismatch)"
+    name: 'Cross-tenant lekerdezes detektalva (companyId mismatch)'
     category: SECURITY
     level: FATAL
     ai_fix_hint: |
@@ -188,7 +187,7 @@ codes:
       Lasd audit-iter5 P0.1 (IDOR fix TurnoverController).
 
   VV-MT-002:
-    name: "RateApproval tenant izolacio violation"
+    name: 'RateApproval tenant izolacio violation'
     category: SECURITY
     level: FATAL
     ai_fix_hint: |
@@ -200,31 +199,31 @@ codes:
   # =====================================================
 
   VV-SYNC-001:
-    name: "Outbox replay duplikacio (Idempotency-Key egyezes)"
+    name: 'Outbox replay duplikacio (Idempotency-Key egyezes)'
     category: TECHNICAL
     level: INFO
     ai_fix_hint: |
       Ez NEM hiba — az IdempotencyFilter helyesen kiszurte. Csak audit.
 
   VV-SYNC-002:
-    name: "Offline outbox > 100 elem (sync hiba?)"
+    name: 'Offline outbox > 100 elem (sync hiba?)'
     category: TECHNICAL
     level: WARN
     ai_fix_hint: |
       Halozat? Heartbeat? Backend leallt? Ellenorizd a /api/v1/health-et.
 
   VV-SYNC-003:
-    name: "Local SQLite outbox corrupted (better-sqlite3 IO error)"
+    name: 'Local SQLite outbox corrupted (better-sqlite3 IO error)'
     category: TECHNICAL
     level: ERROR
     ai_fix_hint: |
       penztar-client/electron/sqlite.ts - .db fajl serult.
 
   VV-SYNC-004:
-    name: "Backend branch-to-branch szinkronizacio sikertelen"
+    name: 'Backend branch-to-branch szinkronizacio sikertelen'
     category: TECHNICAL
     level: ERROR
-    user_impact: "Egy iroda tranzakciok/rates/sessions adatai nem szinkronizalodtak. Manualis retry vagy heartbeat-alapu auto-recovery szukseges."
+    user_impact: 'Egy iroda tranzakciok/rates/sessions adatai nem szinkronizalodtak. Manualis retry vagy heartbeat-alapu auto-recovery szukseges.'
     ai_fix_hint: |
       SyncService.runSync(branch, type) catch. Lehet:
       - integration_transport.outbox SFTP/HTTP unavailable
@@ -238,7 +237,7 @@ codes:
   # =====================================================
 
   VV-NET-001:
-    name: "ESET TLS proxy MITM detektalva"
+    name: 'ESET TLS proxy MITM detektalva'
     category: NETWORK
     level: WARN
     ai_fix_hint: |
@@ -246,7 +245,7 @@ codes:
       penztar-client/electron/api-proxy.ts mar implementalja.
 
   VV-NET-002:
-    name: "Backend bootstrap-status HTTP 502 (deploy elott)"
+    name: 'Backend bootstrap-status HTTP 502 (deploy elott)'
     category: NETWORK
     level: WARN
     ai_fix_hint: |
@@ -258,7 +257,7 @@ codes:
   # =====================================================
 
   VV-REG-001:
-    name: "MNB napi arfolyam-feltoltes sikertelen 14:30 elott"
+    name: 'MNB napi arfolyam-feltoltes sikertelen 14:30 elott'
     category: INTEGRATION
     level: FATAL
     ai_fix_hint: |
@@ -266,7 +265,7 @@ codes:
       HATARIDO: 14:30, P0 escalation.
 
   VV-REG-002:
-    name: "NAV NPG offline > 5 perc"
+    name: 'NAV NPG offline > 5 perc'
     category: INTEGRATION
     level: ERROR
     ai_fix_hint: |
@@ -274,7 +273,7 @@ codes:
       NavService.fallbackMode = true es audit-log irja.
 
   VV-REG-003:
-    name: "NGM SZJA 67.13.10.0 - adomentesseg-zaradek hianyzik a bizonylaton"
+    name: 'NGM SZJA 67.13.10.0 - adomentesseg-zaradek hianyzik a bizonylaton'
     category: INTEGRATION
     level: FATAL
     ai_fix_hint: |
@@ -286,7 +285,7 @@ codes:
   # =====================================================
 
   VV-SEC-001:
-    name: "Jelszo/secret/PII detektalva log payloadban"
+    name: 'Jelszo/secret/PII detektalva log payloadban'
     category: SECURITY
     level: FATAL
     ai_fix_hint: |
@@ -294,7 +293,7 @@ codes:
       a logot (admin), es fixalni a redactor regex-et.
 
   VV-SEC-002:
-    name: "Google OAuth backend signature mismatch"
+    name: 'Google OAuth backend signature mismatch'
     category: SECURITY
     level: ERROR
     ai_fix_hint: |
@@ -302,7 +301,7 @@ codes:
       GOOGLE_DESKTOP_CLIENT_ID multi-ertekes config hibas.
 
   VV-SEC-003:
-    name: "SetupWizard auth bypass attempt (BALI password NULL)"
+    name: 'SetupWizard auth bypass attempt (BALI password NULL)'
     category: SECURITY
     level: WARN
     ai_fix_hint: |
@@ -310,20 +309,20 @@ codes:
       kerdezzunk current_password-ot uj telepiteskor.
 
   VV-SEC-004:
-    name: "Audit-log iras meghiusult (currency_audit_log INSERT)"
+    name: 'Audit-log iras meghiusult (currency_audit_log INSERT)'
     category: SECURITY
     level: ERROR
-    user_impact: "A modositas megtortent, de az audit-bejegyzes NEM mentodott (audit-res)"
+    user_impact: 'A modositas megtortent, de az audit-bejegyzes NEM mentodott (audit-res)'
     ai_fix_hint: |
       AdminCurrencyService.writeAudit() catch-aga: a Currency-modositas mar commitalt,
       de a currency_audit_log INSERT bukott. Ellenorizd a DB-kapcsolatot/constraint-et.
       Pmt./NAV-megorzes szempontjabol a business-muvelet es az audit szetcsuszott.
 
   VV-SEC-005:
-    name: "Grace token-nelkuli first-time worker-setup felhasznalva (V279 kohorsz)"
+    name: 'Grace token-nelkuli first-time worker-setup felhasznalva (V279 kohorsz)'
     category: SECURITY
     level: WARN
-    user_impact: "Nincs kozvetlen hatas — null-hash kollega token nelkul allitott jelszot (deploy-kohorsz)"
+    user_impact: 'Nincs kozvetlen hatas — null-hash kollega token nelkul allitott jelszot (deploy-kohorsz)'
     ai_fix_hint: |
       WorkerFirstTimeSetupService grace-aga (V279): a deploy-pillanatban null-hash dolgozo
       EGYSZER token nelkul fejezte be a setupot. Verseny-alapu fiokatvetel utolagos
@@ -334,7 +333,7 @@ codes:
   # =====================================================
 
   VV-VOICE-001:
-    name: "OpenAI Realtime API ephemeral token kerese sikertelen"
+    name: 'OpenAI Realtime API ephemeral token kerese sikertelen'
     category: INTEGRATION
     level: ERROR
     ai_fix_hint: |
@@ -342,7 +341,7 @@ codes:
       Lasd: VoiceTokenService.requestEphemeralToken().
 
   VV-VOICE-002:
-    name: "Per-worker rate-limit lepve (>10 token-keres/ora)"
+    name: 'Per-worker rate-limit lepve (>10 token-keres/ora)'
     category: TECHNICAL
     level: WARN
     ai_fix_hint: |
@@ -350,7 +349,7 @@ codes:
       env var emelheto, de elobb root-cause vizsgalat.
 
   VV-VOICE-003:
-    name: "WebRTC SDP exchange timeout (>15s)"
+    name: 'WebRTC SDP exchange timeout (>15s)'
     category: NETWORK
     level: WARN
     ai_fix_hint: |
@@ -358,10 +357,10 @@ codes:
       AbortController-rel mar implementalja.
 
   VV-VOICE-004:
-    name: "OpenAI Realtime API hibas valasz (hianyzik client_secret)"
+    name: 'OpenAI Realtime API hibas valasz (hianyzik client_secret)'
     category: INTEGRATION
     level: ERROR
-    user_impact: "Hangsegéd nem aktivalhato — backend nem tudott ephemeral tokent atvenni"
+    user_impact: 'Hangsegéd nem aktivalhato — backend nem tudott ephemeral tokent atvenni'
     ai_fix_hint: |
       Az OpenAI valasz JSON nem tartalmaz `client_secret.value` mezot.
       Lehet model-deprecation (gpt-realtime-2 -> gpt-realtime-X), vagy
@@ -369,10 +368,10 @@ codes:
       https://platform.openai.com/docs/guides/realtime
 
   VV-VOICE-005:
-    name: "OpenAI Realtime API valasz JSON-parser hiba"
+    name: 'OpenAI Realtime API valasz JSON-parser hiba'
     category: INTEGRATION
     level: ERROR
-    user_impact: "Hangsegéd nem aktivalhato — szerver-szintu valasz-parser hiba"
+    user_impact: 'Hangsegéd nem aktivalhato — szerver-szintu valasz-parser hiba'
     ai_fix_hint: |
       Az OpenAI HTTP 200 valasz nem ervenyes JSON. TILOS a raw body
       logolasa (tartalmazhat ephemeral tokent / API kulcsot!). Csak
@@ -385,7 +384,7 @@ codes:
   # =====================================================
 
   VV-TECH-001:
-    name: "Flyway checksum mismatch (V<n> migration changed)"
+    name: 'Flyway checksum mismatch (V<n> migration changed)'
     category: TECHNICAL
     level: FATAL
     ai_fix_hint: |
@@ -393,7 +392,7 @@ codes:
       production-ben enable.
 
   VV-TECH-002:
-    name: "Database connection pool exhausted (HikariCP)"
+    name: 'Database connection pool exhausted (HikariCP)'
     category: TECHNICAL
     level: FATAL
     ai_fix_hint: |
@@ -401,37 +400,37 @@ codes:
       spring.datasource.hikari.* property-k vizsgalata.
 
   VV-TECH-FATAL:
-    name: "Uncaught exception / unhandled rejection"
+    name: 'Uncaught exception / unhandled rejection'
     category: TECHNICAL
     level: FATAL
     ai_fix_hint: |
       Generikus catch-all. A stack trace-ben latszik a tenyleges hely.
 
   VV-TECH-003:
-    name: "HUF currency lookup failure at startup (cache_huf_currency_id)"
+    name: 'HUF currency lookup failure at startup (cache_huf_currency_id)'
     category: TECHNICAL
     level: ERROR
-    user_impact: "Penztari kapcsolatos muveletek a HUF cache-elt ID hianyaban nem mukodnek (cash_balance)"
+    user_impact: 'Penztari kapcsolatos muveletek a HUF cache-elt ID hianyaban nem mukodnek (cash_balance)'
     ai_fix_hint: |
       TransactionService.@PostConstruct initHufCurrencyId() metodus catch-block.
       A currencies tabla tipusa lehet UUID vs Long mismatch. Ellenorizd a
       CurrencyRepository tipus-definiciot + a V31 migrationt.
 
   VV-TECH-004:
-    name: "Camera-tranzakcio link sikertelen (CameraTransactionLinker)"
+    name: 'Camera-tranzakcio link sikertelen (CameraTransactionLinker)'
     category: TECHNICAL
     level: ERROR
-    user_impact: "A tranzakcio rogzitve, de a kamerakep nem koto a bizonylathoz - utolagos osszekapcsolas kell"
+    user_impact: 'A tranzakcio rogzitve, de a kamerakep nem koto a bizonylathoz - utolagos osszekapcsolas kell'
     ai_fix_hint: |
       CameraTransactionLinker.linkTransaction() catch-all. Camera service offline?
       AML/audit ellenorzeshez kotelezo a kamerakep, manualis fix:
       - CameraExportController.linkManually(txId, branchId, timestamp, receiptNo)
 
   VV-TECH-005:
-    name: "Kamera hash-lanc integritas serult (previousHash eltres)"
+    name: 'Kamera hash-lanc integritas serult (previousHash eltres)'
     category: TECHNICAL
     level: ERROR
-    user_impact: "A kamera-felvetel utolagosan modosulhatott - a bizonyitekertek serult, hatosagi vizsgalat eseten jelezni kell"
+    user_impact: 'A kamera-felvetel utolagosan modosulhatott - a bizonyitekertek serult, hatosagi vizsgalat eseten jelezni kell'
     ai_fix_hint: |
       CameraHashChainService.verifyChain(): egy szegmens previousHash erteke
       nem egyezik az elozo szegmens chainHash-evel -> a lanc valahol megszakadt
@@ -439,30 +438,30 @@ codes:
       vagy DB-manipulacio tortent. Az auditLogService is rogzit (CAMERA_CHAIN_INTEGRITY_FAILURE).
 
   VV-TECH-006:
-    name: "Kamera hash-lanc ellenorzes szamitasi hiba"
+    name: 'Kamera hash-lanc ellenorzes szamitasi hiba'
     category: TECHNICAL
     level: ERROR
-    user_impact: "A kamera hash-lanc nem ellenorizheto - a verifikacio megszakadt, ujraindas szukseges"
+    user_impact: 'A kamera hash-lanc nem ellenorizheto - a verifikacio megszakadt, ujraindas szukseges'
     ai_fix_hint: |
       CameraHashChainService.verifyChain() computeChainHash() Exception-t dobott
       (pl. SHA-256 algoritmus nem elerheto, vagy metadata olvasasi hiba).
       Ellenorizd a MessageDigest.getInstance("SHA-256") elerhetoseget + a recording metadata-t.
 
   VV-TECH-007:
-    name: "Kamera chain hash mismatch (tamper-evidence)"
+    name: 'Kamera chain hash mismatch (tamper-evidence)'
     category: TECHNICAL
     level: ERROR
-    user_impact: "A kamera-szegmens tartalma elter a tarolt hash-tol - bizonyitekertek serult"
+    user_impact: 'A kamera-szegmens tartalma elter a tarolt hash-tol - bizonyitekertek serult'
     ai_fix_hint: |
       CameraHashChainService.verifyChain(): az ujraszamolt chainHash nem egyezik
       a tarolt ertekkel -> a szegmens tartalma (fileHash/metadata) megvaltozott a rogzites ota.
       Az auditLogService is rogzit (CAMERA_CHAIN_HASH_MISMATCH). Hatosagi/forenzikus eskalacio.
 
   VV-AML-004:
-    name: "AML service unavailable - tranzakcio blokkolva"
+    name: 'AML service unavailable - tranzakcio blokkolva'
     category: AML
     level: FATAL
-    user_impact: "Tranzakcio NEM hajthato vegre AML-szolgaltatas hibaja miatt"
+    user_impact: 'Tranzakcio NEM hajthato vegre AML-szolgaltatas hibaja miatt'
     ai_fix_hint: |
       AmlService.checkTransaction() null-t adott vissza. Lasd:
       - Sanction-list cache lejart?
@@ -475,10 +474,10 @@ codes:
   # =====================================================
 
   VV-VALID-003:
-    name: "Duplikalt egyediseg-ertek torzs-letrehozasnal/modositasnal — muvelet elutasitva"
+    name: 'Duplikalt egyediseg-ertek torzs-letrehozasnal/modositasnal — muvelet elutasitva'
     category: VALID
     level: ERROR
-    user_impact: "A letrehozas/modositas nem tortent meg; masik (nem foglalt) erteket kell megadni"
+    user_impact: 'A letrehozas/modositas nem tortent meg; masik (nem foglalt) erteket kell megadni'
     ai_fix_hint: |
       Kozos kod minden torzs-adat egyediseg-utkozesre (Codex PR #1096: NE szukitsd
       currency-only jelentesre). Hasznaloi:

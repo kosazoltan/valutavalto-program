@@ -29,7 +29,7 @@ async function mockCameraPlaybackApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockCameraPlaybackApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/features') && method === 'GET') {
@@ -67,7 +75,11 @@ async function mockCameraPlaybackApis(page: Page) {
       })
     }
 
-    if (path.endsWith('/branches') && method === 'GET' && url.searchParams.get('activeOnly') === 'true') {
+    if (
+      path.endsWith('/branches') &&
+      method === 'GET' &&
+      url.searchParams.get('activeOnly') === 'true'
+    ) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -198,31 +210,37 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('kamera visszajátszás branch-csel keres és felvétel részletet tölt mobil viewporton', async ({ page }) => {
+test('kamera visszajátszás branch-csel keres és felvétel részletet tölt mobil viewporton', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockCameraPlaybackApis(page)
   await login(page)
 
   await page.goto('/camera/playback', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('Felvétel visszajátszás')).toBeVisible()
-  await page.getByTestId('camera-playback-branch').selectOption('11111111-1111-1111-1111-111111111111')
+  await page
+    .getByTestId('camera-playback-branch')
+    .selectOption('11111111-1111-1111-1111-111111111111')
   await page.getByLabel('Kezdő dátum').fill('2026-06-18')
   await page.getByLabel('Záró dátum').fill('2026-06-18')
 
-  const recordingsRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && request.url().includes('/camera/recordings')
-    && request.url().includes('branchId=11111111-1111-1111-1111-111111111111')
+  const recordingsRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      request.url().includes('/camera/recordings') &&
+      request.url().includes('branchId=11111111-1111-1111-1111-111111111111'),
   )
   await page.getByRole('button', { name: 'Keresés', exact: true }).click()
   await recordingsRequest
   await expect(page.getByTestId('camera-server-recording-rec-1')).toBeVisible()
 
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/camera/recordings/rec-1')
+  const detailRequest = page.waitForRequest(
+    (request) => request.method() === 'GET' && request.url().includes('/camera/recordings/rec-1'),
   )
-  const accessLogRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/camera/admin/access-logs/rec-1')
+  const accessLogRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes('/camera/admin/access-logs/rec-1'),
   )
   await page.getByTestId('camera-server-recording-rec-1').click()
   await detailRequest
@@ -230,24 +248,26 @@ test('kamera visszajátszás branch-csel keres és felvétel részletet tölt mo
   await expect(page.getByText('Felvétel részletek')).toBeVisible()
   await expect(page.getByTestId('camera-access-log-count')).toHaveText('2')
 
-  const receiptRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/camera/recordings/by-receipt/V0001')
+  const receiptRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes('/camera/recordings/by-receipt/V0001'),
   )
   await page.getByLabel('Bizonylatszám').fill('V0001')
   await page.getByRole('button', { name: 'Bizonylat keresés' }).click()
   await receiptRequest
   await expect(page.getByTestId('camera-linked-recording-link-receipt-1')).toBeVisible()
 
-  const transactionRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/camera/recordings/by-transaction/123')
+  const transactionRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes('/camera/recordings/by-transaction/123'),
   )
   await page.getByLabel('Tranzakció ID').fill('123')
   await page.getByRole('button', { name: 'Tranzakció keresés' }).click()
   await transactionRequest
   await expect(page.getByTestId('camera-linked-recording-link-transaction-1')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

@@ -86,17 +86,19 @@ const PIN_LENGTH = 6
  * Sourcery review (#1089): közös CustomerPanel-adat → adatlap-ügyfél leképezés, hogy a
  * hívóhelyek (kassza + konverzió) ne duplikálják és ne drifteljenek szét.
  */
-export function toApprovalCustomer(data: {
-  name: string
-  motherName?: string
-  birthDate?: string
-  birthPlace?: string
-  address?: string
-  residence?: string
-  documentType?: string
-  documentNumber?: string
-  nationality?: string
-} | null): ApprovalRequestDetails['customer'] {
+export function toApprovalCustomer(
+  data: {
+    name: string
+    motherName?: string
+    birthDate?: string
+    birthPlace?: string
+    address?: string
+    residence?: string
+    documentType?: string
+    documentNumber?: string
+    nationality?: string
+  } | null,
+): ApprovalRequestDetails['customer'] {
   if (!data) return undefined
   return {
     name: data.name,
@@ -117,7 +119,16 @@ function approverLabel(a: EligibleApprover): string {
   return composed || `#${a.id}`
 }
 
-export default function AmlApproverModal({ open, currentWorkerId, reason, sessionId, customerName, details, onApproved, onCancel }: Props) {
+export default function AmlApproverModal({
+  open,
+  currentWorkerId,
+  reason,
+  sessionId,
+  customerName,
+  details,
+  onApproved,
+  onCancel,
+}: Props) {
   const [approvers, setApprovers] = useState<EligibleApprover[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pin, setPin] = useState('')
@@ -145,7 +156,9 @@ export default function AmlApproverModal({ open, currentWorkerId, reason, sessio
         )
       } catch (err) {
         logger.warn('AmlApproverModal', 'Engedélyező-lista betöltés hiba:', getErrorMessage(err))
-        setError('Az engedélyező-lista nem tölthető be (offline?). Jóváhagyás online kapcsolatot igényel.')
+        setError(
+          'Az engedélyező-lista nem tölthető be (offline?). Jóváhagyás online kapcsolatot igényel.',
+        )
       } finally {
         setLoading(false)
       }
@@ -195,7 +208,10 @@ export default function AmlApproverModal({ open, currentWorkerId, reason, sessio
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onCancel}
     >
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h2 id="aml-approver-title" className="mb-2 text-lg font-bold text-amber-800">
           AML felsővezetői jóváhagyás szükséges
         </h2>
@@ -213,7 +229,9 @@ export default function AmlApproverModal({ open, currentWorkerId, reason, sessio
               {(details.branchCode || details.branchName) && (
                 <>
                   <span className="text-gray-500">Pénztár:</span>
-                  <span>{[details.branchCode, details.branchName].filter(Boolean).join(' — ')}</span>
+                  <span>
+                    {[details.branchCode, details.branchName].filter(Boolean).join(' — ')}
+                  </span>
                 </>
               )}
               <span className="text-gray-500">Bizonylatszám:</span>
@@ -255,21 +273,24 @@ export default function AmlApproverModal({ open, currentWorkerId, reason, sessio
                   details.customer.motherName && `anyja neve: ${details.customer.motherName}`,
                   details.customer.birthPlace && details.customer.birthDate
                     ? `szül.: ${details.customer.birthPlace}, ${details.customer.birthDate}`
-                    : (details.customer.birthDate && `szül.: ${details.customer.birthDate}`),
+                    : details.customer.birthDate && `szül.: ${details.customer.birthDate}`,
                   details.customer.address && `lakcím: ${details.customer.address}`,
                   details.customer.residence && `tartózkodási hely: ${details.customer.residence}`,
                   details.customer.documentType && details.customer.documentNumber
                     ? `okmány: ${details.customer.documentType} ${details.customer.documentNumber}`
-                    : (details.customer.documentNumber && `okmány: ${details.customer.documentNumber}`),
+                    : details.customer.documentNumber &&
+                      `okmány: ${details.customer.documentNumber}`,
                   details.customer.nationality && `állampolgárság: ${details.customer.nationality}`,
-                ].filter(Boolean).join(' · ')}
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </div>
             )}
           </div>
         )}
         <p className="mb-3 text-sm text-gray-600">
-          A tranzakció rögzítéséhez egy supervisor / vezető jóváhagyása kell (4-szem-elv). Válassza ki az
-          engedélyezőt, és kérje a PIN-jét.
+          A tranzakció rögzítéséhez egy supervisor / vezető jóváhagyása kell (4-szem-elv). Válassza
+          ki az engedélyezőt, és kérje a PIN-jét.
         </p>
 
         {loading ? (
@@ -300,7 +321,9 @@ export default function AmlApproverModal({ open, currentWorkerId, reason, sessio
               </p>
             )}
 
-            <label className="mb-1 block text-sm font-semibold text-gray-700">Engedélyező PIN-je</label>
+            <label className="mb-1 block text-sm font-semibold text-gray-700">
+              Engedélyező PIN-je
+            </label>
             <input
               ref={pinRef}
               type="password"
@@ -321,7 +344,9 @@ export default function AmlApproverModal({ open, currentWorkerId, reason, sessio
         )}
 
         {error && (
-          <div className="mb-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>
+          <div className="mb-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+            {error}
+          </div>
         )}
 
         <div className="flex justify-end space-x-2">

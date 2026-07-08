@@ -29,7 +29,7 @@ async function mockBankMasterApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,19 +52,35 @@ async function mockBankMasterApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/ertektar/bank-transactions') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     if (path.endsWith('/currencies') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     if (path.endsWith('/banks') && method === 'GET') {
@@ -102,9 +118,11 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('bank-törzs kezelő a backend bank CRUD végpontokat hívja mobil viewporton', async ({ page }) => {
+test('bank-törzs kezelő a backend bank CRUD végpontokat hívja mobil viewporton', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  page.on('dialog', dialog => void dialog.accept())
+  page.on('dialog', (dialog) => void dialog.accept())
   await mockBankMasterApis(page)
   await login(page)
 
@@ -112,22 +130,22 @@ test('bank-törzs kezelő a backend bank CRUD végpontokat hívja mobil viewport
   await expect(page.getByText('Bank-törzs')).toBeVisible()
   await expect(page.getByText('Raiffeisen Bank')).toBeVisible()
 
-  const createRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().endsWith('/api/v1/banks')
+  const createRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().endsWith('/api/v1/banks'),
   )
   await page.getByLabel(/Bank neve/i).fill('Teszt Bank')
   await page.getByLabel(/Területkód/i).fill('30')
   await page.getByRole('button', { name: /Felvétel/i }).click()
   await createRequest
 
-  const deleteRequest = page.waitForRequest(request =>
-    request.method() === 'DELETE' && request.url().endsWith('/api/v1/banks/bank-1')
+  const deleteRequest = page.waitForRequest(
+    (request) => request.method() === 'DELETE' && request.url().endsWith('/api/v1/banks/bank-1'),
   )
   await page.getByTitle('Deaktiválás').click()
   await deleteRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

@@ -29,7 +29,7 @@ async function mockTranslationApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,15 +52,27 @@ async function mockTranslationApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/own-companies/active') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'company-1', name: 'EBC Zrt.' }]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ id: 'company-1', name: 'EBC Zrt.' }]),
+      })
     }
 
     if (path === '/api/v1/translations/hu/UI' && method === 'GET') {
@@ -96,7 +108,11 @@ async function mockTranslationApis(page: Page) {
       })
     }
 
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [], data: [] }) })
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ content: [], data: [] }),
+    })
   })
 }
 
@@ -110,7 +126,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('fordítás beállítás mobil viewporton kezeli a translations backend szerződést', async ({ page }) => {
+test('fordítás beállítás mobil viewporton kezeli a translations backend szerződést', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockTranslationApis(page)
   await login(page)
@@ -119,37 +137,38 @@ test('fordítás beállítás mobil viewporton kezeli a translations backend sze
   await page.getByRole('button', { name: /Fordítások/i }).click()
   await expect(page.getByRole('heading', { name: 'Fordítások' })).toBeVisible()
 
-  const languageRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().endsWith('/api/v1/translations/hu')
+  const languageRequest = page.waitForRequest(
+    (request) => request.method() === 'GET' && request.url().endsWith('/api/v1/translations/hu'),
   )
   await page.getByRole('button', { name: 'Nyelv' }).click()
   await languageRequest
   await expect(page.getByText('common.save').first()).toBeVisible()
 
-  const moduleRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().endsWith('/api/v1/translations/hu/UI')
+  const moduleRequest = page.waitForRequest(
+    (request) => request.method() === 'GET' && request.url().endsWith('/api/v1/translations/hu/UI'),
   )
   await page.getByRole('button', { name: 'Modul' }).click()
   await moduleRequest
   await expect(page.getByText('settings.title').first()).toBeVisible()
 
   await page.getByRole('textbox', { name: 'Fordítás', exact: true }).fill('Mentés most')
-  const saveRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().endsWith('/api/v1/translations')
+  const saveRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().endsWith('/api/v1/translations'),
   )
   await page.getByRole('button', { name: 'Fordítás mentése' }).click()
   await saveRequest
   await expect(page.getByText('Mentés most').first()).toBeVisible()
 
   await page.getByLabel('Fordítás JSON import').fill('{"settings.title":"Beállítások"}')
-  const importRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().endsWith('/api/v1/translations/import')
+  const importRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().endsWith('/api/v1/translations/import'),
   )
   await page.getByRole('button', { name: 'Import' }).click()
   await importRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

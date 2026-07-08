@@ -43,7 +43,14 @@ vi.mock('../../hooks/useVaultStockUpdates', () => ({
 // zárókészletre (500) mérünk, ami CSAK a tábla EUR-sorában jelenik meg (a HUF-összesítő kártya
 // a HUF zárót — 700 — mutatja, nem az EUR-t).
 const ROWS = [
-  { currencyCode: 'HUF', currencyName: 'Magyar forint', opening: 800, received: 0, issued: 0, closing: 700 },
+  {
+    currencyCode: 'HUF',
+    currencyName: 'Magyar forint',
+    opening: 800,
+    received: 0,
+    issued: 0,
+    closing: 700,
+  },
   { currencyCode: 'EUR', currencyName: 'Euró', opening: 300, received: 0, issued: 0, closing: 500 },
 ]
 
@@ -138,19 +145,29 @@ function setupApiGet() {
       return Promise.resolve({ data: BRANCH_STOCK_ROWS })
     }
     if (path === '/inventory/matrix') {
-      return Promise.resolve({ data: { matrix: { '11111111-1111-1111-1111-111111111111': { EUR: 1200, HUF: 700 } } } })
+      return Promise.resolve({
+        data: { matrix: { '11111111-1111-1111-1111-111111111111': { EUR: 1200, HUF: 700 } } },
+      })
     }
-    if (path === '/inventory/movements') return Promise.resolve({ data: { content: MOVEMENT_ROWS } })
+    if (path === '/inventory/movements')
+      return Promise.resolve({ data: { content: MOVEMENT_ROWS } })
     if (path === '/inventory/transfer-targets') return Promise.resolve({ data: TRANSFER_TARGETS })
     if (path === '/inventory/movements/77') {
-      return Promise.resolve({ data: { ...MOVEMENT_ROWS[0], statusDisplay: 'Részletesen jóváhagyva' } })
+      return Promise.resolve({
+        data: { ...MOVEMENT_ROWS[0], statusDisplay: 'Részletesen jóváhagyva' },
+      })
     }
-    if (path === '/inventory-movements/movement-log') return Promise.resolve({ data: MOVEMENT_ROWS })
+    if (path === '/inventory-movements/movement-log')
+      return Promise.resolve({ data: MOVEMENT_ROWS })
     if (path === '/inventory-movements/daily-balance') {
-      return Promise.resolve({ data: { currencyCode: 'EUR', closingBalance: 1200, totalIn: 300, totalOut: 100 } })
+      return Promise.resolve({
+        data: { currencyCode: 'EUR', closingBalance: 1200, totalIn: 300, totalOut: 100 },
+      })
     }
     if (path === '/inventory/regeneration/last') {
-      return Promise.resolve({ data: { discrepancyCount: 1, correctedCount: 1, regeneratedAt: '2026-06-18T08:00:00' } })
+      return Promise.resolve({
+        data: { discrepancyCount: 1, correctedCount: 1, regeneratedAt: '2026-06-18T08:00:00' },
+      })
     }
     if (path.includes('/banknote-inventory/branch/') && path.endsWith('/low-stock')) {
       return Promise.resolve({ data: [BANKNOTE_ROWS[0]] })
@@ -158,7 +175,8 @@ function setupApiGet() {
     if (path.includes('/banknote-inventory/branch/') && path.endsWith('/over-stock')) {
       return Promise.resolve({ data: [] })
     }
-    if (path.includes('/banknote-inventory/branch/')) return Promise.resolve({ data: BANKNOTE_ROWS })
+    if (path.includes('/banknote-inventory/branch/'))
+      return Promise.resolve({ data: BANKNOTE_ROWS })
     return Promise.resolve({ data: [] })
   })
 }
@@ -226,7 +244,8 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
       if (path.includes('/banknote-inventory/branch/') && path.endsWith('/over-stock')) {
         return Promise.resolve({ data: [] })
       }
-      if (path.includes('/banknote-inventory/branch/')) return Promise.resolve({ data: BANKNOTE_ROWS })
+      if (path.includes('/banknote-inventory/branch/'))
+        return Promise.resolve({ data: BANKNOTE_ROWS })
       return Promise.resolve({ data: [] })
     })
     expect(mocks.wsCallback.current).toBeTypeOf('function')
@@ -256,11 +275,19 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
   it('banknote-inventory: a saját branch címletszintű készletét és alacsony jelzését megjeleníti', async () => {
     render(<InventoryPage />)
 
-    await waitFor(() => expect(screen.getByText('Címletszintű értéktári készlet')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText('Címletszintű értéktári készlet')).toBeInTheDocument(),
+    )
 
-    expect(mocks.apiGet).toHaveBeenCalledWith('/banknote-inventory/branch/11111111-1111-1111-1111-111111111111')
-    expect(mocks.apiGet).toHaveBeenCalledWith('/banknote-inventory/branch/11111111-1111-1111-1111-111111111111/low-stock')
-    expect(mocks.apiGet).toHaveBeenCalledWith('/banknote-inventory/branch/11111111-1111-1111-1111-111111111111/over-stock')
+    expect(mocks.apiGet).toHaveBeenCalledWith(
+      '/banknote-inventory/branch/11111111-1111-1111-1111-111111111111',
+    )
+    expect(mocks.apiGet).toHaveBeenCalledWith(
+      '/banknote-inventory/branch/11111111-1111-1111-1111-111111111111/low-stock',
+    )
+    expect(mocks.apiGet).toHaveBeenCalledWith(
+      '/banknote-inventory/branch/11111111-1111-1111-1111-111111111111/over-stock',
+    )
     await waitFor(() => expect(screen.getByText('Alacsony: 1')).toBeInTheDocument())
     expect(screen.getAllByText('50').length).toBeGreaterThan(0)
     expect(screen.getByText('3')).toBeInTheDocument()
@@ -274,9 +301,12 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
 
     // FK-037: az operatív read-hívások `_skipGlobal403Toast: true` configgal mennek (a 403-at
     // hívásonként kezeljük, Promise.allSettled-del, nem globális toasttal).
-    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/stock/11111111-1111-1111-1111-111111111111', {
-      _skipGlobal403Toast: true,
-    })
+    expect(mocks.apiGet).toHaveBeenCalledWith(
+      '/inventory/stock/11111111-1111-1111-1111-111111111111',
+      {
+        _skipGlobal403Toast: true,
+      },
+    )
     expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/matrix', { _skipGlobal403Toast: true })
     expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/movements', {
       params: {
@@ -306,7 +336,9 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     })
     expect(screen.getByText('Készletmátrix')).toBeInTheDocument()
     expect(screen.getByTestId('inventory-operation-panel')).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByLabelText('Deviza kiválasztása')).toHaveTextContent('EUR – Euró'))
+    await waitFor(() =>
+      expect(screen.getByLabelText('Deviza kiválasztása')).toHaveTextContent('EUR – Euró'),
+    )
     expect(screen.getByText('telephely / valuta')).toBeInTheDocument()
     expect(screen.getByText('Utolsó regenerálás')).toBeInTheDocument()
     expect(screen.getByText('Napi mozgásnapló')).toBeInTheDocument()
@@ -322,11 +354,11 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
       if (path === '/inventory/vault-stock') return Promise.resolve({ data: ROWS })
       if (path.includes('/banknote-inventory/branch/')) return Promise.resolve({ data: [] })
       if (
-        path.startsWith('/inventory/stock/')
-        || path === '/inventory/matrix'
-        || path === '/inventory/movements'
-        || path.startsWith('/inventory-movements/')
-        || path === '/inventory/regeneration/last'
+        path.startsWith('/inventory/stock/') ||
+        path === '/inventory/matrix' ||
+        path === '/inventory/movements' ||
+        path.startsWith('/inventory-movements/') ||
+        path === '/inventory/regeneration/last'
       ) {
         return Promise.reject(forbidden)
       }
@@ -367,8 +399,12 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
 
     await waitFor(() => {
       expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/movements/77')
-      expect(screen.getByTestId('inventory-movement-detail')).toHaveTextContent('Mozgás részlete #77')
-      expect(screen.getByTestId('inventory-movement-detail')).toHaveTextContent('Részletesen jóváhagyva')
+      expect(screen.getByTestId('inventory-movement-detail')).toHaveTextContent(
+        'Mozgás részlete #77',
+      )
+      expect(screen.getByTestId('inventory-movement-detail')).toHaveTextContent(
+        'Részletesen jóváhagyva',
+      )
     })
   })
 
@@ -378,7 +414,9 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     await waitFor(() => expect(screen.getByTestId('inventory-operation-panel')).toBeInTheDocument())
 
     fireEvent.change(screen.getByPlaceholderText('Összeg'), { target: { value: '250' } })
-    fireEvent.change(screen.getByPlaceholderText('Opcionális'), { target: { value: 'Teszt bank kivét' } })
+    fireEvent.change(screen.getByPlaceholderText('Opcionális'), {
+      target: { value: 'Teszt bank kivét' },
+    })
     await clickEnabledButton('Művelet rögzítése')
 
     await waitFor(() => {
@@ -390,7 +428,9 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
       })
     })
 
-    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), { target: { value: 'bankDeposit' } })
+    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), {
+      target: { value: 'bankDeposit' },
+    })
     fireEvent.change(screen.getByPlaceholderText('Összeg'), { target: { value: '125' } })
     await clickEnabledButton('Művelet rögzítése')
 
@@ -403,7 +443,9 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
       })
     })
 
-    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), { target: { value: 'transfer' } })
+    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), {
+      target: { value: 'transfer' },
+    })
     const targetSelect = await screen.findByLabelText('Cél telephely kiválasztása')
     await waitFor(() => expect(targetSelect).toHaveTextContent('BR002 — Szeged Pénztár'))
     fireEvent.change(targetSelect, { target: { value: '22222222-2222-2222-2222-222222222222' } })
@@ -420,9 +462,13 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
       })
     })
 
-    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), { target: { value: 'correction' } })
+    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), {
+      target: { value: 'correction' },
+    })
     fireEvent.change(screen.getByPlaceholderText('Új egyenleg'), { target: { value: '1000' } })
-    fireEvent.change(screen.getByPlaceholderText('Kötelező indoklás'), { target: { value: 'Leltár korrekció' } })
+    fireEvent.change(screen.getByPlaceholderText('Kötelező indoklás'), {
+      target: { value: 'Leltár korrekció' },
+    })
     await clickEnabledButton('Művelet rögzítése')
 
     await waitFor(() => {
@@ -438,7 +484,11 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
   it('inventory műveletek: a deviza legördülőből kiválasztott currencyId Long kerül küldésre', async () => {
     render(<InventoryPage />)
 
-    await waitFor(() => expect(screen.getByLabelText('Deviza kiválasztása')).toHaveTextContent('USD – Amerikai dollár'))
+    await waitFor(() =>
+      expect(screen.getByLabelText('Deviza kiválasztása')).toHaveTextContent(
+        'USD – Amerikai dollár',
+      ),
+    )
     fireEvent.change(screen.getByLabelText('Deviza kiválasztása'), { target: { value: '840' } })
     fireEvent.change(screen.getByPlaceholderText('Összeg'), { target: { value: '250' } })
     fireEvent.click(screen.getByRole('button', { name: 'Művelet rögzítése' }))
@@ -457,11 +507,15 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     render(<InventoryPage />)
 
     await waitFor(() => expect(screen.getByTestId('inventory-operation-panel')).toBeInTheDocument())
-    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), { target: { value: 'transfer' } })
+    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), {
+      target: { value: 'transfer' },
+    })
 
     const targetSelect = await screen.findByLabelText('Cél telephely kiválasztása')
     await waitFor(() => expect(targetSelect).toHaveTextContent('BR002 — Szeged Pénztár'))
-    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/transfer-targets', { _skipGlobal403Toast: true })
+    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/transfer-targets', {
+      _skipGlobal403Toast: true,
+    })
 
     fireEvent.change(targetSelect, { target: { value: '22222222-2222-2222-2222-222222222222' } })
     fireEvent.change(screen.getByPlaceholderText('Összeg'), { target: { value: '75' } })
@@ -482,12 +536,20 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     render(<InventoryPage />)
 
     await waitFor(() => expect(screen.getByTestId('inventory-operation-panel')).toBeInTheDocument())
-    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), { target: { value: 'transfer' } })
+    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), {
+      target: { value: 'transfer' },
+    })
 
     const targetSelect = await screen.findByLabelText('Cél telephely kiválasztása')
-    await waitFor(() => expect(targetSelect).toHaveTextContent('VLT02 — Szeged Értéktár · Értéktár'))
-    expect(within(targetSelect).getByRole('option', { name: 'BR002 — Szeged Pénztár' })).toBeInTheDocument()
-    expect(within(targetSelect).getByRole('option', { name: 'VLT02 — Szeged Értéktár · Értéktár' })).toBeInTheDocument()
+    await waitFor(() =>
+      expect(targetSelect).toHaveTextContent('VLT02 — Szeged Értéktár · Értéktár'),
+    )
+    expect(
+      within(targetSelect).getByRole('option', { name: 'BR002 — Szeged Pénztár' }),
+    ).toBeInTheDocument()
+    expect(
+      within(targetSelect).getByRole('option', { name: 'VLT02 — Szeged Értéktár · Értéktár' }),
+    ).toBeInTheDocument()
   })
 
   it('inventory riportok: vault kontextusban fejléc Értéktár badge-et mutat', async () => {
@@ -500,9 +562,12 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
   it('inventory riportok: üres vault-stock lista mellett nincs fejléc Értéktár badge', async () => {
     mocks.apiGet.mockImplementation((path: string) => {
       if (path === '/inventory/vault-stock') return Promise.resolve({ data: [] })
-      if (path.includes('/banknote-inventory/branch/') && path.endsWith('/low-stock')) return Promise.resolve({ data: [BANKNOTE_ROWS[0]] })
-      if (path.includes('/banknote-inventory/branch/') && path.endsWith('/over-stock')) return Promise.resolve({ data: [] })
-      if (path.includes('/banknote-inventory/branch/')) return Promise.resolve({ data: BANKNOTE_ROWS })
+      if (path.includes('/banknote-inventory/branch/') && path.endsWith('/low-stock'))
+        return Promise.resolve({ data: [BANKNOTE_ROWS[0]] })
+      if (path.includes('/banknote-inventory/branch/') && path.endsWith('/over-stock'))
+        return Promise.resolve({ data: [] })
+      if (path.includes('/banknote-inventory/branch/'))
+        return Promise.resolve({ data: BANKNOTE_ROWS })
       return Promise.resolve({ data: [] })
     })
 
@@ -516,27 +581,36 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     mocks.apiGet.mockImplementation((path: string) => {
       if (path === '/inventory/transfer-targets') return Promise.resolve({ data: [] })
       if (path === '/inventory/vault-stock') return Promise.resolve({ data: ROWS })
-      if (path.includes('/banknote-inventory/branch/') && path.endsWith('/low-stock')) return Promise.resolve({ data: [BANKNOTE_ROWS[0]] })
-      if (path.includes('/banknote-inventory/branch/') && path.endsWith('/over-stock')) return Promise.resolve({ data: [] })
-      if (path.includes('/banknote-inventory/branch/')) return Promise.resolve({ data: BANKNOTE_ROWS })
+      if (path.includes('/banknote-inventory/branch/') && path.endsWith('/low-stock'))
+        return Promise.resolve({ data: [BANKNOTE_ROWS[0]] })
+      if (path.includes('/banknote-inventory/branch/') && path.endsWith('/over-stock'))
+        return Promise.resolve({ data: [] })
+      if (path.includes('/banknote-inventory/branch/'))
+        return Promise.resolve({ data: BANKNOTE_ROWS })
       return Promise.resolve({ data: [] })
     })
 
     render(<InventoryPage />)
 
     await waitFor(() => expect(screen.getByTestId('inventory-operation-panel')).toBeInTheDocument())
-    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), { target: { value: 'transfer' } })
+    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), {
+      target: { value: 'transfer' },
+    })
 
     const targetSelect = await screen.findByLabelText('Cél telephely kiválasztása')
     await waitFor(() => expect(targetSelect).toBeDisabled())
-    expect(screen.getByText('Nincs elérhető cél telephely a jelenlegi jogosultsági körben.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Nincs elérhető cél telephely a jelenlegi jogosultsági körben.'),
+    ).toBeInTheDocument()
   })
 
   it('inventory műveletek: devizalista betöltése alatt a rögzítés disabled, cél telephely csak transfernél aktív', async () => {
     let resolveCurrencies: (value: typeof INVENTORY_CURRENCIES) => void = () => {}
-    mocks.currencyList.mockReturnValue(new Promise((resolve) => {
-      resolveCurrencies = resolve
-    }))
+    mocks.currencyList.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCurrencies = resolve
+      }),
+    )
 
     render(<InventoryPage />)
 
@@ -552,7 +626,9 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     await waitFor(() => expect(submitButton).not.toBeDisabled())
     expect(targetSelect).toBeDisabled()
 
-    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), { target: { value: 'transfer' } })
+    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), {
+      target: { value: 'transfer' },
+    })
     await waitFor(() => expect(targetSelect).toHaveTextContent('BR002 — Szeged Pénztár'))
     expect(targetSelect).not.toBeDisabled()
   })
@@ -602,25 +678,33 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     await clickEnabledButton('Bevét')
 
     await waitFor(() => {
-      expect(mocks.apiPost).toHaveBeenCalledWith('/banknote-inventory/branch/11111111-1111-1111-1111-111111111111/add', null, {
-        params: {
-          currencyId: 978,
-          currencyCode: 'EUR',
-          faceValue: 50,
-          quantity: 4,
+      expect(mocks.apiPost).toHaveBeenCalledWith(
+        '/banknote-inventory/branch/11111111-1111-1111-1111-111111111111/add',
+        null,
+        {
+          params: {
+            currencyId: 978,
+            currencyCode: 'EUR',
+            faceValue: 50,
+            quantity: 4,
+          },
         },
-      })
+      )
     })
 
     await clickEnabledButton('Kiad')
     await waitFor(() => {
-      expect(mocks.apiPost).toHaveBeenCalledWith('/banknote-inventory/branch/11111111-1111-1111-1111-111111111111/remove', null, {
-        params: {
-          currencyId: 978,
-          faceValue: 50,
-          quantity: 4,
+      expect(mocks.apiPost).toHaveBeenCalledWith(
+        '/banknote-inventory/branch/11111111-1111-1111-1111-111111111111/remove',
+        null,
+        {
+          params: {
+            currencyId: 978,
+            faceValue: 50,
+            quantity: 4,
+          },
         },
-      })
+      )
     })
 
     await clickEnabledButton('Leltárdarab')

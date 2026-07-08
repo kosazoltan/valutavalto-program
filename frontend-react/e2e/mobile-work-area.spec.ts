@@ -29,7 +29,7 @@ async function mockMobileApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -60,10 +60,17 @@ async function mockMobileApis(page: Page) {
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
-    if (path.match(/\/api\/v1\/transfer-documents\/[^/]+\/(pickup|deliver|confirm)$/) && method === 'PUT') {
+    if (
+      path.match(/\/api\/v1\/transfer-documents\/[^/]+\/(pickup|deliver|confirm)$/) &&
+      method === 'PUT'
+    ) {
       const action = path.split('/').at(-1)
       return route.fulfill({
         status: 200,
@@ -77,7 +84,8 @@ async function mockMobileApis(page: Page) {
           destinationId: 'BUD01',
           currencyCode: 'EUR',
           quantity: 500,
-          status: action === 'pickup' ? 'PICKED_UP' : action === 'deliver' ? 'DELIVERED' : 'CONFIRMED',
+          status:
+            action === 'pickup' ? 'PICKED_UP' : action === 'deliver' ? 'DELIVERED' : 'CONFIRMED',
         }),
       })
     }
@@ -98,7 +106,12 @@ async function mockMobileApis(page: Page) {
       })
     }
 
-    if (path.match(/\/api\/v1\/ertektar\/(collections|distribution|bank-transactions)\/\d+\/status$/) && method === 'PATCH') {
+    if (
+      path.match(
+        /\/api\/v1\/ertektar\/(collections|distribution|bank-transactions)\/\d+\/status$/,
+      ) &&
+      method === 'PATCH'
+    ) {
       const parts = path.split('/')
       const id = Number(parts.at(-2))
       const status = url.searchParams.get('status') ?? 'IN_PROGRESS'
@@ -110,15 +123,30 @@ async function mockMobileApis(page: Page) {
     }
 
     if (path.endsWith('/supervisor/authenticate') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ authenticated: true }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ authenticated: true }),
+      })
     }
 
-    if ((path.endsWith('/supervisor/override-rate') || path.endsWith('/supervisor/override-fee')) && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
+    if (
+      (path.endsWith('/supervisor/override-rate') || path.endsWith('/supervisor/override-fee')) &&
+      method === 'POST'
+    ) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      })
     }
 
     if (path.endsWith('/year-opening/execute') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ targetYear: url.searchParams.get('targetYear'), status: 'DONE' }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ targetYear: url.searchParams.get('targetYear'), status: 'DONE' }),
+      })
     }
 
     const bodyByPath: Record<string, unknown> = {
@@ -221,10 +249,23 @@ async function mockMobileApis(page: Page) {
         },
       },
       '/api/v1/monitoring/online': [
-        { branchId: 'branch-online', isOnline: true, dailyTransactionCount: 12, dailyVolumeHuf: 1_200_000, openAlerts: 0 },
+        {
+          branchId: 'branch-online',
+          isOnline: true,
+          dailyTransactionCount: 12,
+          dailyVolumeHuf: 1_200_000,
+          openAlerts: 0,
+        },
       ],
       '/api/v1/monitoring/offline': [
-        { branchId: 'branch-offline', lastHeartbeat: '2026-06-18T09:45:00', isOnline: false, dailyTransactionCount: 3, dailyVolumeHuf: 250_000, openAlerts: 1 },
+        {
+          branchId: 'branch-offline',
+          lastHeartbeat: '2026-06-18T09:45:00',
+          isOnline: false,
+          dailyTransactionCount: 3,
+          dailyVolumeHuf: 250_000,
+          openAlerts: 1,
+        },
       ],
       '/api/v1/supervisor/params': [{ id: 'param-1', key: 'SUPERVISOR_LIMIT', value: '100000' }],
       '/api/v1/sync/restore/status': {
@@ -235,11 +276,28 @@ async function mockMobileApis(page: Page) {
         restoreAvailable: true,
       },
       '/api/v1/year-opening/status': { lastExecutionYear: 2025, canExecute: true, status: 'READY' },
-      '/api/v1/western-union/balance': [{ id: 'wu-1', branchId: 'branch-1', usdBalance: 1500, hufBalance: 540000 }],
-      '/api/v1/western-union/daily-report': { date: '2026-06-18', sendCount: 2, receiveCount: 1, totalFees: 3500 },
+      '/api/v1/western-union/balance': [
+        { id: 'wu-1', branchId: 'branch-1', usdBalance: 1500, hufBalance: 540000 },
+      ],
+      '/api/v1/western-union/daily-report': {
+        date: '2026-06-18',
+        sendCount: 2,
+        receiveCount: 1,
+        totalFees: 3500,
+      },
       '/api/v1/reports/daily/submission-status': [
-        { branchId: 'branch-online', branchCode: 'BUD01', branchName: 'Budapest 01', submitted: true },
-        { branchId: 'branch-offline', branchCode: 'SZEGED', branchName: 'Szeged Értéktár', submitted: false },
+        {
+          branchId: 'branch-online',
+          branchCode: 'BUD01',
+          branchName: 'Budapest 01',
+          submitted: true,
+        },
+        {
+          branchId: 'branch-offline',
+          branchCode: 'SZEGED',
+          branchName: 'Szeged Értéktár',
+          submitted: false,
+        },
       ],
       '/api/v1/rate-approvals/pending': [
         {
@@ -255,7 +313,13 @@ async function mockMobileApis(page: Page) {
         },
       ],
       '/api/v1/rate-approvals/history': [
-        { id: 'rate-approval-history-1', branchId: 'branch-1', currencyCode: 'USD', status: 'APPROVED', requestedAt: '2026-06-18T08:30:00' },
+        {
+          id: 'rate-approval-history-1',
+          branchId: 'branch-1',
+          currencyCode: 'USD',
+          status: 'APPROVED',
+          requestedAt: '2026-06-18T08:30:00',
+        },
       ],
       '/api/v1/camera/status': [
         { cameraId: 'cam-1', cameraName: 'Pénztár kamera', recording: true, connected: true },
@@ -426,7 +490,11 @@ async function mockMobileApis(page: Page) {
     }
 
     const body = bodyByPath[path] ?? { content: [], data: [], total: 0 }
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(body),
+    })
   })
 }
 
@@ -443,7 +511,7 @@ async function login(page: Page) {
 test('mobil munkanézet valós Chromium viewporton nem folyik ki', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockMobileApis(page)
-  page.on('dialog', dialog => dialog.accept())
+  page.on('dialog', (dialog) => dialog.accept())
   await login(page)
 
   await page.goto('/mobile', { waitUntil: 'domcontentloaded' })
@@ -479,7 +547,11 @@ test('mobil munkanézet valós Chromium viewporton nem folyik ki', async ({ page
   expect(bottomNavLayout.left).toBeGreaterThanOrEqual(0)
   expect(bottomNavLayout.right).toBeLessThanOrEqual(bottomNavLayout.viewportWidth + 1)
   expect(bottomNavLayout.bottom).toBeLessThanOrEqual(bottomNavLayout.viewportHeight + 1)
-  expect(bottomNavLayout.buttons.every(button => button.width >= 44 && button.height >= 44 && button.textFits)).toBe(true)
+  expect(
+    bottomNavLayout.buttons.every(
+      (button) => button.width >= 44 && button.height >= 44 && button.textFits,
+    ),
+  ).toBe(true)
   await expect(page.getByRole('button', { name: /Pénztár/i }).first()).toBeVisible()
   await expect(page.getByRole('button', { name: /Riasztás és státusz/i })).toBeVisible()
   await expect(page.getByRole('button', { name: /Jóváhagyás/i })).toBeVisible()
@@ -496,8 +568,9 @@ test('mobil munkanézet valós Chromium viewporton nem folyik ki', async ({ page
   await expect(page.getByText('Mobil átadási bizonylatok')).toBeVisible()
   await expect(page.getByText('ATD-101')).toBeVisible()
   await page.getByTestId('mobile-transfer-pin-101').fill('1234')
-  const pickupRequest = page.waitForRequest(request =>
-    request.method() === 'PUT' && request.url().includes('/transfer-documents/101/pickup')
+  const pickupRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'PUT' && request.url().includes('/transfer-documents/101/pickup'),
   )
   await page.getByTestId('mobile-transfer-pickup-101').click()
   await pickupRequest
@@ -506,8 +579,11 @@ test('mobil munkanézet valós Chromium viewporton nem folyik ki', async ({ page
   await expect(page.getByTestId('mobile-work-area-vault')).toBeVisible()
   await expect(page.getByText('Értéktári mobil státusz')).toBeVisible()
   await expect(page.getByText('Begyűjtés #11')).toBeVisible()
-  const ertektarStatusRequest = page.waitForRequest(request =>
-    request.method() === 'PATCH' && request.url().includes('/ertektar/collections/11/status') && request.url().includes('status=COMPLETED')
+  const ertektarStatusRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'PATCH' &&
+      request.url().includes('/ertektar/collections/11/status') &&
+      request.url().includes('status=COMPLETED'),
   )
   await page.getByRole('button', { name: 'Begyűjtés #11 mobil státusz COMPLETED' }).click()
   await ertektarStatusRequest
@@ -523,10 +599,15 @@ test('mobil munkanézet valós Chromium viewporton nem folyik ki', async ({ page
 
   await page.getByTestId('mobile-bottom-nav-approval').click()
   await expect(page.getByTestId('mobile-work-area-approval')).toBeVisible()
-  const rateApprovalRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/rate-approvals/rate-approval-1/approve')
+  const rateApprovalRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      request.url().includes('/rate-approvals/rate-approval-1/approve'),
   )
-  await page.getByRole('button', { name: /Árfolyam engedélyezés/i }).first().click()
+  await page
+    .getByRole('button', { name: /Árfolyam engedélyezés/i })
+    .first()
+    .click()
   await rateApprovalRequest
 
   await page.getByTestId('mobile-bottom-nav-customer').click()
@@ -538,8 +619,8 @@ test('mobil munkanézet valós Chromium viewporton nem folyik ki', async ({ page
   await expect(page.getByText('Telefonos okmányfeltöltés')).toBeVisible()
   await page.getByRole('button', { name: 'Lista' }).click()
   await expect(page.getByText('id-card.jpg')).toBeVisible()
-  const uploadRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/scanned-documents/upload')
+  const uploadRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/scanned-documents/upload'),
   )
   await page.getByTestId('mobile-document-upload-input').setInputFiles({
     name: 'mobil-id.jpg',
@@ -551,35 +632,43 @@ test('mobil munkanézet valós Chromium viewporton nem folyik ki', async ({ page
   await page.getByTestId('mobile-bottom-nav-management').click()
   await expect(page.getByTestId('mobile-work-area-management')).toBeVisible()
   await expect(page.getByTestId('mobile-sync-actions-panel')).toBeVisible()
-  const mobileSyncRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/sync/full/branch-1')
+  const mobileSyncRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/sync/full/branch-1'),
   )
   await page.getByTestId('mobile-sync-full').click()
   await mobileSyncRequest
   await expect(page.getByTestId('mobile-year-opening-panel')).toBeVisible()
-  const yearOpeningRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/year-opening/execute') && request.url().includes('targetYear=2027')
+  const yearOpeningRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      request.url().includes('/year-opening/execute') &&
+      request.url().includes('targetYear=2027'),
   )
   await page.getByLabel('Cél év').fill('2027')
-  await page.getByTestId('mobile-year-opening-panel').getByRole('button', { name: /Futtatás/i }).click()
+  await page
+    .getByTestId('mobile-year-opening-panel')
+    .getByRole('button', { name: /Futtatás/i })
+    .click()
   await yearOpeningRequest
   await expect(page.getByTestId('mobile-supervisor-override-panel')).toBeVisible()
-  const supervisorAuthRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/supervisor/authenticate')
+  const supervisorAuthRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/supervisor/authenticate'),
   )
   await page.getByLabel('Supervisor jelszó').fill('titkos')
   await page.getByRole('button', { name: 'Supervisor ellenőrzés' }).click()
   await supervisorAuthRequest
-  const supervisorRateRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/supervisor/override-rate')
+  const supervisorRateRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/supervisor/override-rate'),
   )
   await page.getByLabel('Vételi').fill('395.5')
   await page.getByLabel('Eladási').fill('401.25')
-  await page.getByRole('textbox', { name: 'Indoklás', exact: true }).fill('Mobil piaci felülbírálás')
+  await page
+    .getByRole('textbox', { name: 'Indoklás', exact: true })
+    .fill('Mobil piaci felülbírálás')
   await page.getByRole('button', { name: 'Árfolyam felülbírálás küldése' }).click()
   await supervisorRateRequest
-  const supervisorFeeRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/supervisor/override-fee')
+  const supervisorFeeRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/supervisor/override-fee'),
   )
   await page.getByLabel('Tranzakció ID').fill('987')
   await page.getByLabel('Új díj').fill('750')
@@ -587,8 +676,9 @@ test('mobil munkanézet valós Chromium viewporton nem folyik ki', async ({ page
   await page.getByRole('button', { name: 'Díj felülbírálás küldése' }).click()
   await supervisorFeeRequest
   await expect(page.getByText('Mobil értesítések')).toBeVisible()
-  const notificationRequest = page.waitForRequest(request =>
-    request.method() === 'PUT' && request.url().includes('/notifications/notification-1/read')
+  const notificationRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'PUT' && request.url().includes('/notifications/notification-1/read'),
   )
   await page.getByRole('button', { name: 'Olvasott', exact: true }).click()
   await notificationRequest
@@ -602,8 +692,9 @@ test('mobil munkanézet valós Chromium viewporton nem folyik ki', async ({ page
   await expect(integrationsArea.getByText('Pénztárgép 1')).toBeVisible()
   await expect(integrationsArea.getByText('NAV zárás mobil lista')).toBeVisible()
   await expect(integrationsArea.getByText('WU adapter mobil státusz')).toBeVisible()
-  const wuStatusRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/western-union-stub/status/1234567890')
+  const wuStatusRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes('/western-union-stub/status/1234567890'),
   )
   await integrationsArea.getByLabel('WU MTCN státusz').fill('1234567890')
   await integrationsArea.getByRole('button', { name: /Státusz/i }).click()
@@ -615,8 +706,8 @@ test('mobil munkanézet valós Chromium viewporton nem folyik ki', async ({ page
     await expect(page.getByRole('tabpanel')).toBeVisible()
   }
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

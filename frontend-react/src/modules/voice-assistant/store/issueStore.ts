@@ -35,7 +35,9 @@ function randomId(): string {
   return `issue-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-export async function createIssue(input: IssueDraftInput & { mode: IssueMode }): Promise<IssueRecord> {
+export async function createIssue(
+  input: IssueDraftInput & { mode: IssueMode },
+): Promise<IssueRecord> {
   const now = nowIso()
   const record: IssueRecord = {
     id: randomId(),
@@ -66,7 +68,7 @@ export async function getIssue(id: string): Promise<IssueRecord | undefined> {
 
 export async function updateIssue(
   id: string,
-  patch: IssueDraftInput
+  patch: IssueDraftInput,
 ): Promise<IssueRecord | undefined> {
   const db = getIssueDb()
   const existing = await db.issues.get(id)

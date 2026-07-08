@@ -224,7 +224,8 @@ interface WuStubStatus {
 }
 
 type PanelStatus = 'ok' | 'loading' | 'unavailable'
-type MobileWorkArea = 'cashier' | 'field' | 'camera' | 'vault' | 'approval' | 'customer' | 'management' | 'integrations'
+type MobileWorkArea =
+  'cashier' | 'field' | 'camera' | 'vault' | 'approval' | 'customer' | 'management' | 'integrations'
 type MobileErtektarStatusKind = 'collection' | 'distribution' | 'bankTransaction'
 type MobileBranchSyncKind = 'rates' | 'transactions' | 'inventory' | 'full'
 
@@ -234,8 +235,10 @@ const num = (value: number | string | null | undefined) => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 const isBranchOnline = (branch: BranchStatusResponse) => Boolean(branch.isOnline ?? branch.online)
-const compactBranchId = (branchId: string) => branchId.length > 18 ? `${branchId.slice(0, 8)}...${branchId.slice(-6)}` : branchId
-const formatLocalDateTime = (value?: string | null) => value ? value.replace('T', ' ').slice(0, 16) : 'Nincs adat'
+const compactBranchId = (branchId: string) =>
+  branchId.length > 18 ? `${branchId.slice(0, 8)}...${branchId.slice(-6)}` : branchId
+const formatLocalDateTime = (value?: string | null) =>
+  value ? value.replace('T', ' ').slice(0, 16) : 'Nincs adat'
 const formatBytes = (value?: number | null) => {
   const bytes = value ?? 0
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
@@ -271,14 +274,18 @@ export default function MobileOverviewPage() {
   const [yearOpeningStatus, setYearOpeningStatus] = useState<YearOpeningStatus | null>(null)
   const [wuBalance, setWuBalance] = useState<WuBalance[]>([])
   const [wuDailyReport, setWuDailyReport] = useState<WuDailyReport | null>(null)
-  const [dailyReportStatusRows, setDailyReportStatusRows] = useState<DailyReportSubmissionStatus[]>([])
+  const [dailyReportStatusRows, setDailyReportStatusRows] = useState<DailyReportSubmissionStatus[]>(
+    [],
+  )
   const [pendingRateApprovals, setPendingRateApprovals] = useState<RateApproval[]>([])
   const [rateApprovalHistory, setRateApprovalHistory] = useState<RateApproval[]>([])
   const [cameraStatuses, setCameraStatuses] = useState<CameraStatus[]>([])
   const [cameraStorageStats, setCameraStorageStats] = useState<CameraStorageStats | null>(null)
   const [cameraUploadStatus, setCameraUploadStatus] = useState<CameraUploadStatus | null>(null)
   const [posTerminals, setPosTerminals] = useState<PosTerminal[]>([])
-  const [posRuntimeStatuses, setPosRuntimeStatuses] = useState<Record<string, PosTerminalRuntimeStatus>>({})
+  const [posRuntimeStatuses, setPosRuntimeStatuses] = useState<
+    Record<string, PosTerminalRuntimeStatus>
+  >({})
   const [cashRegisterDevices, setCashRegisterDevices] = useState<CashRegisterDevice[]>([])
   const [cashRegisterEvents, setCashRegisterEvents] = useState<CashRegisterEvent[]>([])
   const [cashRegisterGaps, setCashRegisterGaps] = useState<string[]>([])
@@ -306,14 +313,17 @@ export default function MobileOverviewPage() {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
   const [actingNotificationId, setActingNotificationId] = useState<string | null>(null)
   const [mobileDocumentCustomerId, setMobileDocumentCustomerId] = useState('')
-  const [mobileDocumentType, setMobileDocumentType] = useState<DocumentScannerUploadRequest['documentType']>('ID_CARD')
+  const [mobileDocumentType, setMobileDocumentType] =
+    useState<DocumentScannerUploadRequest['documentType']>('ID_CARD')
   const [mobileDocumentNotes, setMobileDocumentNotes] = useState('')
   const [mobileScannedDocuments, setMobileScannedDocuments] = useState<ScannedDocument[]>([])
   const [mobileDocumentUploading, setMobileDocumentUploading] = useState(false)
   const [mobileDocumentError, setMobileDocumentError] = useState<string | null>(null)
   const [activeWorkArea, setActiveWorkArea] = useState<MobileWorkArea>('cashier')
   const [supervisorPassword, setSupervisorPassword] = useState('')
-  const [supervisorBranchId, setSupervisorBranchId] = useState(() => worker?.branchId ? String(worker.branchId) : '')
+  const [supervisorBranchId, setSupervisorBranchId] = useState(() =>
+    worker?.branchId ? String(worker.branchId) : '',
+  )
   const [supervisorCurrency, setSupervisorCurrency] = useState('EUR')
   const [supervisorBuyRate, setSupervisorBuyRate] = useState('')
   const [supervisorSellRate, setSupervisorSellRate] = useState('')
@@ -323,10 +333,15 @@ export default function MobileOverviewPage() {
   const [supervisorFeeReason, setSupervisorFeeReason] = useState('')
   const [supervisorOverrideMessage, setSupervisorOverrideMessage] = useState<string | null>(null)
   const [supervisorActionLoading, setSupervisorActionLoading] = useState<string | null>(null)
-  const [yearOpeningTargetYear, setYearOpeningTargetYear] = useState(() => String(new Date().getFullYear() + 1))
+  const [yearOpeningTargetYear, setYearOpeningTargetYear] = useState(() =>
+    String(new Date().getFullYear() + 1),
+  )
   const [yearOpeningRunning, setYearOpeningRunning] = useState(false)
-  const [mobileSyncBranchId, setMobileSyncBranchId] = useState(() => worker?.branchId ? String(worker.branchId) : '')
-  const [mobileSyncActionLoading, setMobileSyncActionLoading] = useState<MobileBranchSyncKind | null>(null)
+  const [mobileSyncBranchId, setMobileSyncBranchId] = useState(() =>
+    worker?.branchId ? String(worker.branchId) : '',
+  )
+  const [mobileSyncActionLoading, setMobileSyncActionLoading] =
+    useState<MobileBranchSyncKind | null>(null)
   const [mobileSyncMessage, setMobileSyncMessage] = useState<string | null>(null)
 
   const setPanel = useCallback((key: string, status: PanelStatus) => {
@@ -336,7 +351,23 @@ export default function MobileOverviewPage() {
   const load = useCallback(async () => {
     setRefreshing(true)
     setActionError(null)
-    const panelKeys = ['dashboard', 'position', 'rates', 'approvals', 'sync', 'dataCollection', 'diagnostics', 'branchMonitoring', 'operationalControl', 'rateApprovals', 'camera', 'integrations', 'transferDocuments', 'ertektarStatus', 'notifications']
+    const panelKeys = [
+      'dashboard',
+      'position',
+      'rates',
+      'approvals',
+      'sync',
+      'dataCollection',
+      'diagnostics',
+      'branchMonitoring',
+      'operationalControl',
+      'rateApprovals',
+      'camera',
+      'integrations',
+      'transferDocuments',
+      'ertektarStatus',
+      'notifications',
+    ]
     panelKeys.forEach((key) => setPanel(key, 'loading'))
     const branchId = worker?.branchId
     const reportDate = todayIso()
@@ -393,9 +424,13 @@ export default function MobileOverviewPage() {
         ? api.get<WuBalance[]>('/western-union/balance', { params: { branchId } })
         : Promise.reject(new Error('Nincs branchId a WU egyenleg lekéréshez.')),
       branchId
-        ? api.get<WuDailyReport>('/western-union/daily-report', { params: { branchId, date: reportDate } })
+        ? api.get<WuDailyReport>('/western-union/daily-report', {
+            params: { branchId, date: reportDate },
+          })
         : Promise.reject(new Error('Nincs branchId a WU napi riport lekéréshez.')),
-      api.get<DailyReportSubmissionStatus[]>('/reports/daily/submission-status', { params: { date: reportDate } }),
+      api.get<DailyReportSubmissionStatus[]>('/reports/daily/submission-status', {
+        params: { date: reportDate },
+      }),
       rateApprovalApi.pending(),
       rateApprovalApi.history(),
       api.get<CameraStatus[]>('/camera/status'),
@@ -404,10 +439,14 @@ export default function MobileOverviewPage() {
       posTerminalApi.list(),
       api.get<CashRegisterDevice[]>('/cash-register/devices'),
       branchId
-        ? api.get<CashRegisterEvent[]>(`/cash-register/events/${branchId}`, { params: { date: reportDate } })
+        ? api.get<CashRegisterEvent[]>(`/cash-register/events/${branchId}`, {
+            params: { date: reportDate },
+          })
         : Promise.reject(new Error('Nincs branchId a pénztárgép események lekéréshez.')),
       branchId
-        ? api.get<string[]>(`/cash-register/receipt-gaps/${branchId}`, { params: { date: reportDate } })
+        ? api.get<string[]>(`/cash-register/receipt-gaps/${branchId}`, {
+            params: { date: reportDate },
+          })
         : Promise.reject(new Error('Nincs branchId a pénztárgép sorszámellenőrzéshez.')),
       api.get<PageResponse<NavClosing> | NavClosing[]>('/nav/closings', {
         params: { page: 0, size: 5, dateFrom: reportDate, dateTo: reportDate },
@@ -478,9 +517,9 @@ export default function MobileOverviewPage() {
     }
 
     if (
-      branchDashboardResult.status === 'fulfilled'
-      && onlineBranchesResult.status === 'fulfilled'
-      && offlineBranchesResult.status === 'fulfilled'
+      branchDashboardResult.status === 'fulfilled' &&
+      onlineBranchesResult.status === 'fulfilled' &&
+      offlineBranchesResult.status === 'fulfilled'
     ) {
       setBranchDashboard(Object.values(branchDashboardResult.value ?? {}))
       setOnlineBranches(onlineBranchesResult.value)
@@ -494,12 +533,12 @@ export default function MobileOverviewPage() {
     }
 
     if (
-      supervisorParamsResult.status === 'fulfilled'
-      && syncRestoreResult.status === 'fulfilled'
-      && yearOpeningResult.status === 'fulfilled'
-      && wuBalanceResult.status === 'fulfilled'
-      && wuDailyReportResult.status === 'fulfilled'
-      && dailyReportStatusResult.status === 'fulfilled'
+      supervisorParamsResult.status === 'fulfilled' &&
+      syncRestoreResult.status === 'fulfilled' &&
+      yearOpeningResult.status === 'fulfilled' &&
+      wuBalanceResult.status === 'fulfilled' &&
+      wuDailyReportResult.status === 'fulfilled' &&
+      dailyReportStatusResult.status === 'fulfilled'
     ) {
       setSupervisorParams(supervisorParamsResult.value.data ?? [])
       setSyncRestoreStatus(syncRestoreResult.value.data ?? null)
@@ -519,8 +558,8 @@ export default function MobileOverviewPage() {
     }
 
     if (
-      pendingRateApprovalsResult.status === 'fulfilled'
-      && rateApprovalHistoryResult.status === 'fulfilled'
+      pendingRateApprovalsResult.status === 'fulfilled' &&
+      rateApprovalHistoryResult.status === 'fulfilled'
     ) {
       setPendingRateApprovals(pendingRateApprovalsResult.value ?? [])
       setRateApprovalHistory(rateApprovalHistoryResult.value ?? [])
@@ -532,9 +571,9 @@ export default function MobileOverviewPage() {
     }
 
     if (
-      cameraStatusResult.status === 'fulfilled'
-      && cameraStorageResult.status === 'fulfilled'
-      && cameraUploadResult.status === 'fulfilled'
+      cameraStatusResult.status === 'fulfilled' &&
+      cameraStorageResult.status === 'fulfilled' &&
+      cameraUploadResult.status === 'fulfilled'
     ) {
       setCameraStatuses(cameraStatusResult.value.data ?? [])
       setCameraStorageStats(cameraStorageResult.value.data ?? null)
@@ -548,19 +587,22 @@ export default function MobileOverviewPage() {
     }
 
     if (
-      posTerminalsResult.status === 'fulfilled'
-      && cashRegisterDevicesResult.status === 'fulfilled'
-      && cashRegisterEventsResult.status === 'fulfilled'
-      && cashRegisterGapsResult.status === 'fulfilled'
-      && navClosingsResult.status === 'fulfilled'
-      && wuStubRatesResult.status === 'fulfilled'
+      posTerminalsResult.status === 'fulfilled' &&
+      cashRegisterDevicesResult.status === 'fulfilled' &&
+      cashRegisterEventsResult.status === 'fulfilled' &&
+      cashRegisterGapsResult.status === 'fulfilled' &&
+      navClosingsResult.status === 'fulfilled' &&
+      wuStubRatesResult.status === 'fulfilled'
     ) {
       const terminals = posTerminalsResult.value ?? []
       const runtimeResults = await Promise.allSettled(
         terminals
           .filter((terminal) => terminal.isActive !== false)
           .slice(0, 3)
-          .map(async (terminal) => [terminal.terminalId, await posTerminalApi.status(terminal.terminalId)] as const),
+          .map(
+            async (terminal) =>
+              [terminal.terminalId, await posTerminalApi.status(terminal.terminalId)] as const,
+          ),
       )
       const runtimeStatuses: Record<string, PosTerminalRuntimeStatus> = {}
       for (const result of runtimeResults) {
@@ -574,7 +616,9 @@ export default function MobileOverviewPage() {
       setCashRegisterDevices(cashRegisterDevicesResult.value.data ?? [])
       setCashRegisterEvents(cashRegisterEventsResult.value.data ?? [])
       setCashRegisterGaps(cashRegisterGapsResult.value.data ?? [])
-      setNavClosings(Array.isArray(navClosingPayload) ? navClosingPayload : navClosingPayload?.content ?? [])
+      setNavClosings(
+        Array.isArray(navClosingPayload) ? navClosingPayload : (navClosingPayload?.content ?? []),
+      )
       setWuStubRates(wuStubRatesResult.value.data ?? [])
       setPanel('integrations', 'ok')
     } else {
@@ -597,13 +641,21 @@ export default function MobileOverviewPage() {
     }
 
     if (
-      ertektarCollectionsResult.status === 'fulfilled'
-      && ertektarDistributionsResult.status === 'fulfilled'
-      && ertektarBankTransactionsResult.status === 'fulfilled'
+      ertektarCollectionsResult.status === 'fulfilled' &&
+      ertektarDistributionsResult.status === 'fulfilled' &&
+      ertektarBankTransactionsResult.status === 'fulfilled'
     ) {
-      setErtektarCollections(Array.isArray(ertektarCollectionsResult.value) ? ertektarCollectionsResult.value : [])
-      setErtektarDistributions(Array.isArray(ertektarDistributionsResult.value) ? ertektarDistributionsResult.value : [])
-      setErtektarBankTransactions(Array.isArray(ertektarBankTransactionsResult.value) ? ertektarBankTransactionsResult.value : [])
+      setErtektarCollections(
+        Array.isArray(ertektarCollectionsResult.value) ? ertektarCollectionsResult.value : [],
+      )
+      setErtektarDistributions(
+        Array.isArray(ertektarDistributionsResult.value) ? ertektarDistributionsResult.value : [],
+      )
+      setErtektarBankTransactions(
+        Array.isArray(ertektarBankTransactionsResult.value)
+          ? ertektarBankTransactionsResult.value
+          : [],
+      )
       setPanel('ertektarStatus', 'ok')
     } else {
       setErtektarCollections([])
@@ -634,16 +686,31 @@ export default function MobileOverviewPage() {
     void load()
   }, [load])
 
-  const alertCount = (dashboard?.alertCount ?? 0) + (position?.lowBalanceAlerts ?? 0) + (position?.highBalanceAlerts ?? 0)
+  const alertCount =
+    (dashboard?.alertCount ?? 0) +
+    (position?.lowBalanceAlerts ?? 0) +
+    (position?.highBalanceAlerts ?? 0)
   const syncPendingCount = syncProbe?.pendingCount ?? 0
   const monitoredBranchCount = branchDashboard.length
   const onlineBranchCount = onlineBranches.length || branchDashboard.filter(isBranchOnline).length
-  const offlineBranchCount = offlineBranches.length || branchDashboard.filter((branch) => !isBranchOnline(branch)).length
-  const branchOpenAlerts = branchDashboard.reduce((sum, branch) => sum + (branch.openAlerts ?? 0), 0)
-  const branchDailyTransactions = branchDashboard.reduce((sum, branch) => sum + (branch.dailyTransactionCount ?? 0), 0)
-  const branchDailyVolume = branchDashboard.reduce((sum, branch) => sum + (branch.dailyVolumeHuf ?? 0), 0)
+  const offlineBranchCount =
+    offlineBranches.length || branchDashboard.filter((branch) => !isBranchOnline(branch)).length
+  const branchOpenAlerts = branchDashboard.reduce(
+    (sum, branch) => sum + (branch.openAlerts ?? 0),
+    0,
+  )
+  const branchDailyTransactions = branchDashboard.reduce(
+    (sum, branch) => sum + (branch.dailyTransactionCount ?? 0),
+    0,
+  )
+  const branchDailyVolume = branchDashboard.reduce(
+    (sum, branch) => sum + (branch.dailyVolumeHuf ?? 0),
+    0,
+  )
   const failedDataCollections = dataCollectionRows.filter((row) => row.status === 'FAILED').length
-  const pendingDataCollections = dataCollectionRows.filter((row) => row.status !== 'COMPLETED' && row.status !== 'FAILED').length
+  const pendingDataCollections = dataCollectionRows.filter(
+    (row) => row.status !== 'COMPLETED' && row.status !== 'FAILED',
+  ).length
   const latestDataCollection = dataCollectionRows[0]
   const restoreMissing = syncRestoreStatus ? !syncRestoreStatus.restoreAvailable : false
   const wuUsdBalance = wuBalance.reduce((sum, row) => sum + num(row.usdBalance), 0)
@@ -653,11 +720,20 @@ export default function MobileOverviewPage() {
   const latestRateApproval = rateApprovalHistory[0]
   const connectedCameraCount = cameraStatuses.filter((camera) => camera.connected !== false).length
   const recordingCameraCount = cameraStatuses.filter((camera) => camera.recording).length
-  const disconnectedCameraCount = cameraStatuses.filter((camera) => camera.connected === false).length
+  const disconnectedCameraCount = cameraStatuses.filter(
+    (camera) => camera.connected === false,
+  ).length
   const pendingCameraUploads = cameraUploadStatus?.pendingUploads ?? 0
-  const activePosTerminalCount = posTerminals.filter((terminal) => terminal.isActive !== false).length
-  const connectedPosTerminalCount = Object.values(posRuntimeStatuses).filter((status) => status.connected).length
-  const unavailablePosTerminalCount = Math.max(0, activePosTerminalCount - connectedPosTerminalCount)
+  const activePosTerminalCount = posTerminals.filter(
+    (terminal) => terminal.isActive !== false,
+  ).length
+  const connectedPosTerminalCount = Object.values(posRuntimeStatuses).filter(
+    (status) => status.connected,
+  ).length
+  const unavailablePosTerminalCount = Math.max(
+    0,
+    activePosTerminalCount - connectedPosTerminalCount,
+  )
   const staleCashRegisterDevices = cashRegisterDevices.filter((device) => {
     const age = minutesSince(device.lastSeenAt)
     return device.isActive !== false && (age == null || age > 10)
@@ -666,27 +742,68 @@ export default function MobileOverviewPage() {
     const status = String(closing.status ?? '').toUpperCase()
     return status !== 'SUBMITTED' && status !== 'CLOSED' && status !== 'ACCEPTED'
   }).length
-  const integrationAlertCount = unavailablePosTerminalCount + staleCashRegisterDevices.length + cashRegisterGaps.length
-  const activeTransferDocumentCount = transferDocuments.filter((row) => row.status !== 'CONFIRMED').length
-  const openErtektarCollections = ertektarCollections.filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED').slice(0, 3)
-  const openErtektarDistributions = ertektarDistributions.filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED').slice(0, 3)
-  const openErtektarBankTransactions = ertektarBankTransactions.filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED').slice(0, 3)
-  const openErtektarStatusCount = openErtektarCollections.length + openErtektarDistributions.length + openErtektarBankTransactions.length
+  const integrationAlertCount =
+    unavailablePosTerminalCount + staleCashRegisterDevices.length + cashRegisterGaps.length
+  const activeTransferDocumentCount = transferDocuments.filter(
+    (row) => row.status !== 'CONFIRMED',
+  ).length
+  const openErtektarCollections = ertektarCollections
+    .filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED')
+    .slice(0, 3)
+  const openErtektarDistributions = ertektarDistributions
+    .filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED')
+    .slice(0, 3)
+  const openErtektarBankTransactions = ertektarBankTransactions
+    .filter((row) => row.status !== 'COMPLETED' && row.status !== 'REJECTED')
+    .slice(0, 3)
+  const openErtektarStatusCount =
+    openErtektarCollections.length +
+    openErtektarDistributions.length +
+    openErtektarBankTransactions.length
   const cashPositionItems = useMemo(
-    () => [...(position?.items ?? [])]
-      .sort((a, b) => Number(b.isLowBalance || b.isHighBalance) - Number(a.isLowBalance || a.isHighBalance))
-      .slice(0, 4),
+    () =>
+      [...(position?.items ?? [])]
+        .sort(
+          (a, b) =>
+            Number(b.isLowBalance || b.isHighBalance) - Number(a.isLowBalance || a.isHighBalance),
+        )
+        .slice(0, 4),
     [position?.items],
   )
-  const criticalCount = approvals.length + pendingRateApprovals.length + alertCount + syncPendingCount + unreadNotificationCount + (errorSummary?.last24h ?? 0) + offlineBranchCount + branchOpenAlerts + failedDataCollections + (restoreMissing ? 1 : 0) + missingDailyReports.length + activeTransferDocumentCount + openErtektarStatusCount + disconnectedCameraCount + pendingCameraUploads + integrationAlertCount
+  const criticalCount =
+    approvals.length +
+    pendingRateApprovals.length +
+    alertCount +
+    syncPendingCount +
+    unreadNotificationCount +
+    (errorSummary?.last24h ?? 0) +
+    offlineBranchCount +
+    branchOpenAlerts +
+    failedDataCollections +
+    (restoreMissing ? 1 : 0) +
+    missingDailyReports.length +
+    activeTransferDocumentCount +
+    openErtektarStatusCount +
+    disconnectedCameraCount +
+    pendingCameraUploads +
+    integrationAlertCount
   const workAreaAlerts: Record<MobileWorkArea, number> = {
     cashier: alertCount + syncPendingCount,
-    field: offlineBranchCount + failedDataCollections + pendingDataCollections + activeTransferDocumentCount,
+    field:
+      offlineBranchCount +
+      failedDataCollections +
+      pendingDataCollections +
+      activeTransferDocumentCount,
     camera: disconnectedCameraCount + pendingCameraUploads,
     vault: openErtektarStatusCount,
     approval: approvals.length + pendingRateApprovals.length,
     customer: mobileScannedDocuments.length,
-    management: branchOpenAlerts + unreadNotificationCount + (errorSummary?.last24h ?? 0) + missingDailyReports.length + (restoreMissing ? 1 : 0),
+    management:
+      branchOpenAlerts +
+      unreadNotificationCount +
+      (errorSummary?.last24h ?? 0) +
+      missingDailyReports.length +
+      (restoreMissing ? 1 : 0),
     integrations: integrationAlertCount,
   }
 
@@ -858,7 +975,10 @@ export default function MobileOverviewPage() {
     }
   }
 
-  const updateTransferDocument = async (document: TransferDocument, action: 'pickup' | 'deliver' | 'confirm') => {
+  const updateTransferDocument = async (
+    document: TransferDocument,
+    action: 'pickup' | 'deliver' | 'confirm',
+  ) => {
     if (!document.id) return
     if ((action === 'pickup' || action === 'confirm') && !worker?.id) {
       setActionError('Nincs bejelentkezett dolgozó a mobil átadás-átvétel művelethez.')
@@ -922,8 +1042,14 @@ export default function MobileOverviewPage() {
       setSupervisorActionLoading('auth')
       setActionError(null)
       setSupervisorOverrideMessage(null)
-      const response = await api.post<{ authenticated: boolean }>('/supervisor/authenticate', { password })
-      setSupervisorOverrideMessage(response.data?.authenticated ? 'Supervisor jelszó ellenőrizve.' : 'Supervisor jelszó elutasítva.')
+      const response = await api.post<{ authenticated: boolean }>('/supervisor/authenticate', {
+        password,
+      })
+      setSupervisorOverrideMessage(
+        response.data?.authenticated
+          ? 'Supervisor jelszó ellenőrizve.'
+          : 'Supervisor jelszó elutasítva.',
+      )
       setSupervisorPassword('')
     } catch (err) {
       setActionError(getErrorMessage(err))
@@ -939,7 +1065,9 @@ export default function MobileOverviewPage() {
     const newSellRate = num(supervisorSellRate)
     const reason = supervisorRateReason.trim()
     if (!branchId || !currency || newBuyRate <= 0 || newSellRate <= 0 || !reason) {
-      setActionError('Árfolyam felülbíráláshoz iroda, valuta, két pozitív árfolyam és indoklás kell.')
+      setActionError(
+        'Árfolyam felülbíráláshoz iroda, valuta, két pozitív árfolyam és indoklás kell.',
+      )
       return
     }
 
@@ -947,7 +1075,13 @@ export default function MobileOverviewPage() {
       setSupervisorActionLoading('rate')
       setActionError(null)
       setSupervisorOverrideMessage(null)
-      await api.post('/supervisor/override-rate', { branchId, currency, newBuyRate, newSellRate, reason })
+      await api.post('/supervisor/override-rate', {
+        branchId,
+        currency,
+        newBuyRate,
+        newSellRate,
+        reason,
+      })
       setSupervisorOverrideMessage('Árfolyam felülbírálat rögzítve.')
       await load()
     } catch (err) {
@@ -992,14 +1126,32 @@ export default function MobileOverviewPage() {
       setActionError(null)
       setMobileSyncMessage(null)
       const requestConfig = { validateStatus: () => true }
-      const response = kind === 'rates'
-        ? await api.post<{ status?: string; syncType?: string }>(`/sync/rates/${selectedBranchId}`, null, requestConfig)
-        : kind === 'transactions'
-          ? await api.post<{ status?: string; syncType?: string }>(`/sync/transactions/${selectedBranchId}`, null, requestConfig)
-          : kind === 'inventory'
-            ? await api.post<{ status?: string; syncType?: string }>(`/sync/inventory/${selectedBranchId}`, null, requestConfig)
-            : await api.post<{ status?: string; syncType?: string }>(`/sync/full/${selectedBranchId}`, null, requestConfig)
-      if (response.status >= 400 && response.status !== 503) throw new Error(`HTTP ${response.status}`)
+      const response =
+        kind === 'rates'
+          ? await api.post<{ status?: string; syncType?: string }>(
+              `/sync/rates/${selectedBranchId}`,
+              null,
+              requestConfig,
+            )
+          : kind === 'transactions'
+            ? await api.post<{ status?: string; syncType?: string }>(
+                `/sync/transactions/${selectedBranchId}`,
+                null,
+                requestConfig,
+              )
+            : kind === 'inventory'
+              ? await api.post<{ status?: string; syncType?: string }>(
+                  `/sync/inventory/${selectedBranchId}`,
+                  null,
+                  requestConfig,
+                )
+              : await api.post<{ status?: string; syncType?: string }>(
+                  `/sync/full/${selectedBranchId}`,
+                  null,
+                  requestConfig,
+                )
+      if (response.status >= 400 && response.status !== 503)
+        throw new Error(`HTTP ${response.status}`)
       setMobileSyncMessage(`${selectedBranchId}: ${response.data?.status ?? kind} sync elindítva.`)
       await load()
     } catch (err) {
@@ -1015,7 +1167,12 @@ export default function MobileOverviewPage() {
       setActionError('Érvényes cél évet adj meg az évnyitáshoz.')
       return
     }
-    if (!window.confirm(`Biztosan futtatod az évnyitást ${targetYear} évre? Ez adminisztratív záró/nyitó workflow.`)) return
+    if (
+      !window.confirm(
+        `Biztosan futtatod az évnyitást ${targetYear} évre? Ez adminisztratív záró/nyitó workflow.`,
+      )
+    )
+      return
 
     try {
       setYearOpeningRunning(true)
@@ -1069,7 +1226,10 @@ export default function MobileOverviewPage() {
         </div>
       ) : (
         <>
-          <section className="grid gap-2 sm:grid-cols-2 xl:grid-cols-8" aria-label="Telefonos használati pontok">
+          <section
+            className="grid gap-2 sm:grid-cols-2 xl:grid-cols-8"
+            aria-label="Telefonos használati pontok"
+          >
             <MobileUseCaseCard
               icon={Wallet}
               title="Pénztár"
@@ -1143,20 +1303,30 @@ export default function MobileOverviewPage() {
             />
           </section>
 
-          <section className="rounded-lg border border-gray-200 bg-white p-3" data-testid="mobile-work-area">
+          <section
+            className="rounded-lg border border-gray-200 bg-white p-3"
+            data-testid="mobile-work-area"
+          >
             <div className="mb-3 flex items-center justify-between gap-2">
               <div>
                 <h2 className="text-sm font-bold text-gray-900">Mobil munkanézet</h2>
                 <p className="mt-0.5 text-xs text-gray-500">
-                  Nyitott ügy: {criticalCount}, offline iroda: {offlineBranchCount}, sync sor: {syncPendingCount}
+                  Nyitott ügy: {criticalCount}, offline iroda: {offlineBranchCount}, sync sor:{' '}
+                  {syncPendingCount}
                 </p>
               </div>
-              <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${criticalCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+              <span
+                className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${criticalCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}
+              >
                 {criticalCount > 0 ? `${criticalCount} ügy` : 'Rendben'}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-7" role="tablist" aria-label="Mobil munkanézet választó">
+            <div
+              className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-7"
+              role="tablist"
+              aria-label="Mobil munkanézet választó"
+            >
               <WorkAreaTab
                 id="cashier"
                 active={activeWorkArea === 'cashier'}
@@ -1228,17 +1398,36 @@ export default function MobileOverviewPage() {
                 <div className="space-y-3" data-testid="mobile-work-area-cashier">
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <StatusLine label="Készlet HUF" value={`${fmt(position?.totalHufValue)} Ft`} />
-                    <StatusLine label="Mai változás" value={`${fmt(position?.totalDailyChangeHuf)} Ft`} urgent={(position?.totalDailyChangeHuf ?? 0) < 0} />
-                    <StatusLine label="Nyitott tranzakció" value={dashboard?.openTransactions ?? 0} />
-                    <StatusLine label="Sync sor" value={syncPendingCount} urgent={syncPendingCount > 0} />
+                    <StatusLine
+                      label="Mai változás"
+                      value={`${fmt(position?.totalDailyChangeHuf)} Ft`}
+                      urgent={(position?.totalDailyChangeHuf ?? 0) < 0}
+                    />
+                    <StatusLine
+                      label="Nyitott tranzakció"
+                      value={dashboard?.openTransactions ?? 0}
+                    />
+                    <StatusLine
+                      label="Sync sor"
+                      value={syncPendingCount}
+                      urgent={syncPendingCount > 0}
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <MobileAction to="/transactions/cashier" icon={ArrowLeftRight} label="Vétel / eladás" />
+                    <MobileAction
+                      to="/transactions/cashier"
+                      icon={ArrowLeftRight}
+                      label="Vétel / eladás"
+                    />
                     <MobileAction to="/customers/new" icon={Users} label="Új ügyfél" />
                     <MobileAction to="/cashdesk/denominations" icon={Package} label="Címletezés" />
                     <MobileAction to="/closing/wizard" icon={FileText} label="Napzárás" />
                   </div>
-                  <MobilePanel title="Pénztári készletfigyelő" icon={Wallet} status={panel('position')}>
+                  <MobilePanel
+                    title="Pénztári készletfigyelő"
+                    icon={Wallet}
+                    status={panel('position')}
+                  >
                     {cashPositionItems.length === 0 ? (
                       <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
                         Nincs valutánkénti készletadat a mobil nézethez.
@@ -1253,9 +1442,14 @@ export default function MobileOverviewPage() {
                   </MobilePanel>
                   <div className="space-y-2">
                     {rates.slice(0, 3).map((rate) => (
-                      <div key={rate.currencyCode} className="flex items-center justify-between rounded-md border bg-gray-50 px-3 py-2 text-sm">
+                      <div
+                        key={rate.currencyCode}
+                        className="flex items-center justify-between rounded-md border bg-gray-50 px-3 py-2 text-sm"
+                      >
                         <span className="font-bold">{rate.currencyCode}</span>
-                        <span className="font-mono text-xs">V {rate.baseBuyRate.toFixed(2)} / E {rate.baseSellRate.toFixed(2)}</span>
+                        <span className="font-mono text-xs">
+                          V {rate.baseBuyRate.toFixed(2)} / E {rate.baseSellRate.toFixed(2)}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -1265,10 +1459,26 @@ export default function MobileOverviewPage() {
               {activeWorkArea === 'field' && (
                 <div className="space-y-3" data-testid="mobile-work-area-field">
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <StatusLine label="Offline irodák" value={offlineBranchCount} urgent={offlineBranchCount > 0} />
-                    <StatusLine label="Adatgyűjtés hiba" value={failedDataCollections} urgent={failedDataCollections > 0} />
-                    <StatusLine label="Folyamatban" value={pendingDataCollections} urgent={pendingDataCollections > 0} />
-                    <StatusLine label="Aktív átadás" value={activeTransferDocumentCount} urgent={activeTransferDocumentCount > 0} />
+                    <StatusLine
+                      label="Offline irodák"
+                      value={offlineBranchCount}
+                      urgent={offlineBranchCount > 0}
+                    />
+                    <StatusLine
+                      label="Adatgyűjtés hiba"
+                      value={failedDataCollections}
+                      urgent={failedDataCollections > 0}
+                    />
+                    <StatusLine
+                      label="Folyamatban"
+                      value={pendingDataCollections}
+                      urgent={pendingDataCollections > 0}
+                    />
+                    <StatusLine
+                      label="Aktív átadás"
+                      value={activeTransferDocumentCount}
+                      urgent={activeTransferDocumentCount > 0}
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <MobileAction to="/inventory" icon={Wallet} label="Értéktári készlet" />
@@ -1277,7 +1487,11 @@ export default function MobileOverviewPage() {
                     <MobileAction to="/transit" icon={Package} label="Úton lévő" />
                     <MobileAction to="/seal-tracking" icon={ShieldAlert} label="Plomba" />
                   </div>
-                  <MobilePanel title="Mobil átadási bizonylatok" icon={FileText} status={panel('transferDocuments')}>
+                  <MobilePanel
+                    title="Mobil átadási bizonylatok"
+                    icon={FileText}
+                    status={panel('transferDocuments')}
+                  >
                     {transferDocuments.length === 0 ? (
                       <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
                         Nincs aktív mobil átadási bizonylat.
@@ -1304,9 +1518,16 @@ export default function MobileOverviewPage() {
                       </p>
                     ) : (
                       offlineBranches.slice(0, 3).map((branch) => (
-                        <div key={branch.branchId} className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
-                          <div className="break-all text-sm font-semibold text-amber-900">{compactBranchId(branch.branchId)}</div>
-                          <div className="text-xs text-amber-800">Utolsó életjel: {formatLocalDateTime(branch.lastHeartbeat)}</div>
+                        <div
+                          key={branch.branchId}
+                          className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2"
+                        >
+                          <div className="break-all text-sm font-semibold text-amber-900">
+                            {compactBranchId(branch.branchId)}
+                          </div>
+                          <div className="text-xs text-amber-800">
+                            Utolsó életjel: {formatLocalDateTime(branch.lastHeartbeat)}
+                          </div>
                         </div>
                       ))
                     )}
@@ -1317,10 +1538,25 @@ export default function MobileOverviewPage() {
               {activeWorkArea === 'camera' && (
                 <div className="space-y-3" data-testid="mobile-work-area-camera">
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <StatusLine label="Elérhető kamera" value={`${connectedCameraCount}/${cameraStatuses.length}`} urgent={disconnectedCameraCount > 0} />
-                    <StatusLine label="Rögzít" value={recordingCameraCount} urgent={recordingCameraCount === 0 && cameraStatuses.length > 0} />
-                    <StatusLine label="Feltöltés vár" value={pendingCameraUploads} urgent={pendingCameraUploads > 0} />
-                    <StatusLine label="Tárhely" value={formatBytes(cameraStorageStats?.totalUsageBytes)} />
+                    <StatusLine
+                      label="Elérhető kamera"
+                      value={`${connectedCameraCount}/${cameraStatuses.length}`}
+                      urgent={disconnectedCameraCount > 0}
+                    />
+                    <StatusLine
+                      label="Rögzít"
+                      value={recordingCameraCount}
+                      urgent={recordingCameraCount === 0 && cameraStatuses.length > 0}
+                    />
+                    <StatusLine
+                      label="Feltöltés vár"
+                      value={pendingCameraUploads}
+                      urgent={pendingCameraUploads > 0}
+                    />
+                    <StatusLine
+                      label="Tárhely"
+                      value={formatBytes(cameraStorageStats?.totalUsageBytes)}
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <MobileAction to="/camera/live" icon={Camera} label="Élő kép" />
@@ -1339,7 +1575,9 @@ export default function MobileOverviewPage() {
                           <div
                             key={camera.cameraId}
                             className={`rounded-md border px-3 py-2 ${
-                              camera.connected === false ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'
+                              camera.connected === false
+                                ? 'border-red-200 bg-red-50'
+                                : 'border-gray-200 bg-gray-50'
                             }`}
                           >
                             <div className="flex items-start justify-between gap-2">
@@ -1351,9 +1589,13 @@ export default function MobileOverviewPage() {
                                   {camera.recording ? 'Rögzítés aktív' : 'Nem rögzít'}
                                 </div>
                               </div>
-                              <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${
-                                camera.connected === false ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'
-                              }`}>
+                              <span
+                                className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${
+                                  camera.connected === false
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-emerald-100 text-emerald-800'
+                                }`}
+                              >
                                 {camera.connected === false ? 'Offline' : 'Online'}
                               </span>
                             </div>
@@ -1363,8 +1605,13 @@ export default function MobileOverviewPage() {
                     )}
                     <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
                       <div>Felvétel: {cameraStorageStats?.totalRecordings ?? 0}</div>
-                      <div>Időszak: {cameraStorageStats?.oldestDate ?? '-'} - {cameraStorageStats?.newestDate ?? '-'}</div>
-                      <div>Szabad tárhely: {formatBytes(cameraStorageStats?.availableSpaceBytes)}</div>
+                      <div>
+                        Időszak: {cameraStorageStats?.oldestDate ?? '-'} -{' '}
+                        {cameraStorageStats?.newestDate ?? '-'}
+                      </div>
+                      <div>
+                        Szabad tárhely: {formatBytes(cameraStorageStats?.availableSpaceBytes)}
+                      </div>
                     </div>
                   </MobilePanel>
                 </div>
@@ -1373,9 +1620,21 @@ export default function MobileOverviewPage() {
               {activeWorkArea === 'approval' && (
                 <div className="space-y-3" data-testid="mobile-work-area-approval">
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <StatusLine label="Sztornó jóváhagyás" value={approvals.length} urgent={approvals.length > 0} />
-                    <StatusLine label="Árfolyam jóváhagyás" value={pendingRateApprovals.length} urgent={pendingRateApprovals.length > 0} />
-                    <StatusLine label="Hiba 24h" value={errorSummary?.last24h ?? 0} urgent={(errorSummary?.last24h ?? 0) > 0} />
+                    <StatusLine
+                      label="Sztornó jóváhagyás"
+                      value={approvals.length}
+                      urgent={approvals.length > 0}
+                    />
+                    <StatusLine
+                      label="Árfolyam jóváhagyás"
+                      value={pendingRateApprovals.length}
+                      urgent={pendingRateApprovals.length > 0}
+                    />
+                    <StatusLine
+                      label="Hiba 24h"
+                      value={errorSummary?.last24h ?? 0}
+                      urgent={(errorSummary?.last24h ?? 0) > 0}
+                    />
                     <StatusLine label="Audit útvonal" value="Elérhető" />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -1385,26 +1644,42 @@ export default function MobileOverviewPage() {
                     <MobileAction to="/audit-log" icon={FileText} label="Audit napló" />
                   </div>
                   {approvals.slice(0, 2).map((approval) => (
-                    <div key={approval.id} className="rounded-md border border-amber-200 bg-amber-50 p-2">
-                      <div className="text-sm font-semibold text-amber-900">{approval.receiptNumber || approval.transactionId}</div>
+                    <div
+                      key={approval.id}
+                      className="rounded-md border border-amber-200 bg-amber-50 p-2"
+                    >
+                      <div className="text-sm font-semibold text-amber-900">
+                        {approval.receiptNumber || approval.transactionId}
+                      </div>
                       <button
                         type="button"
                         onClick={() => void approve(approval)}
                         disabled={actingApprovalId === approval.id}
                         className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 text-sm font-semibold text-white disabled:opacity-60"
                       >
-                        {actingApprovalId === approval.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                        {actingApprovalId === approval.id ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <CheckCircle size={14} />
+                        )}
                         Mobil engedélyezés
                       </button>
                     </div>
                   ))}
                   {pendingRateApprovals.slice(0, 2).map((approval) => (
-                    <div key={approval.id ?? `${approval.branchId}-${approval.currencyCode}`} className="rounded-md border border-amber-200 bg-amber-50 p-2">
+                    <div
+                      key={approval.id ?? `${approval.branchId}-${approval.currencyCode}`}
+                      className="rounded-md border border-amber-200 bg-amber-50 p-2"
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <div className="text-sm font-semibold text-amber-900">{approval.currencyCode ?? 'Árfolyam'}</div>
+                          <div className="text-sm font-semibold text-amber-900">
+                            {approval.currencyCode ?? 'Árfolyam'}
+                          </div>
                           <div className="text-xs text-amber-800">
-                            {approval.branchName ?? 'Nincs iroda'} - V {fmt(Math.round(num(approval.newBuyRate)))} / E {fmt(Math.round(num(approval.newSellRate)))}
+                            {approval.branchName ?? 'Nincs iroda'} - V{' '}
+                            {fmt(Math.round(num(approval.newBuyRate)))} / E{' '}
+                            {fmt(Math.round(num(approval.newSellRate)))}
                           </div>
                         </div>
                         <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-800">
@@ -1415,19 +1690,27 @@ export default function MobileOverviewPage() {
                         <button
                           type="button"
                           onClick={() => void approveRateApproval(approval)}
-                          disabled={!approval.id || actingRateApprovalId === `${approval.id}:approve`}
+                          disabled={
+                            !approval.id || actingRateApprovalId === `${approval.id}:approve`
+                          }
                           className="inline-flex min-h-10 items-center justify-center gap-1 rounded-md bg-emerald-600 px-2 text-xs font-semibold text-white disabled:opacity-60"
                         >
-                          {actingRateApprovalId === `${approval.id}:approve` && <Loader2 size={13} className="animate-spin" />}
+                          {actingRateApprovalId === `${approval.id}:approve` && (
+                            <Loader2 size={13} className="animate-spin" />
+                          )}
                           Árfolyam engedélyezés
                         </button>
                         <button
                           type="button"
                           onClick={() => void rejectRateApproval(approval)}
-                          disabled={!approval.id || actingRateApprovalId === `${approval.id}:reject`}
+                          disabled={
+                            !approval.id || actingRateApprovalId === `${approval.id}:reject`
+                          }
                           className="inline-flex min-h-10 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-2 text-xs font-semibold text-red-700 disabled:opacity-60"
                         >
-                          {actingRateApprovalId === `${approval.id}:reject` && <Loader2 size={13} className="animate-spin" />}
+                          {actingRateApprovalId === `${approval.id}:reject` && (
+                            <Loader2 size={13} className="animate-spin" />
+                          )}
                           Árfolyam elutasítás
                         </button>
                       </div>
@@ -1439,10 +1722,26 @@ export default function MobileOverviewPage() {
               {activeWorkArea === 'vault' && (
                 <div className="space-y-3" data-testid="mobile-work-area-vault">
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <StatusLine label="Begyűjtés" value={openErtektarCollections.length} urgent={openErtektarCollections.length > 0} />
-                    <StatusLine label="Szétosztás" value={openErtektarDistributions.length} urgent={openErtektarDistributions.length > 0} />
-                    <StatusLine label="Banki tétel" value={openErtektarBankTransactions.length} urgent={openErtektarBankTransactions.length > 0} />
-                    <StatusLine label="Összes nyitott" value={openErtektarStatusCount} urgent={openErtektarStatusCount > 0} />
+                    <StatusLine
+                      label="Begyűjtés"
+                      value={openErtektarCollections.length}
+                      urgent={openErtektarCollections.length > 0}
+                    />
+                    <StatusLine
+                      label="Szétosztás"
+                      value={openErtektarDistributions.length}
+                      urgent={openErtektarDistributions.length > 0}
+                    />
+                    <StatusLine
+                      label="Banki tétel"
+                      value={openErtektarBankTransactions.length}
+                      urgent={openErtektarBankTransactions.length > 0}
+                    />
+                    <StatusLine
+                      label="Összes nyitott"
+                      value={openErtektarStatusCount}
+                      urgent={openErtektarStatusCount > 0}
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <MobileAction to="/treasury" icon={Wallet} label="Értéktári dashboard" />
@@ -1450,7 +1749,11 @@ export default function MobileOverviewPage() {
                     <MobileAction to="/treasury/bank" icon={Building2} label="Banki tételek" />
                     <MobileAction to="/inventory" icon={Package} label="Készlet" />
                   </div>
-                  <MobilePanel title="Értéktári mobil státusz" icon={Wallet} status={panel('ertektarStatus')}>
+                  <MobilePanel
+                    title="Értéktári mobil státusz"
+                    icon={Wallet}
+                    status={panel('ertektarStatus')}
+                  >
                     {openErtektarStatusCount === 0 ? (
                       <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
                         Nincs mobilon kezelendő értéktári státusz.
@@ -1464,7 +1767,9 @@ export default function MobileOverviewPage() {
                             title="Begyűjtés"
                             id={row.id}
                             status={row.status}
-                            primary={row.sourceBranchName ?? row.sourceBranchCode ?? 'Ismeretlen pénztár'}
+                            primary={
+                              row.sourceBranchName ?? row.sourceBranchCode ?? 'Ismeretlen pénztár'
+                            }
                             secondary={`${fmt(Math.round(row.amount ?? 0))} ${row.currencyCode ?? ''}`}
                             actingId={actingErtektarStatusId}
                             onUpdate={updateMobileErtektarStatus}
@@ -1479,8 +1784,17 @@ export default function MobileOverviewPage() {
                               title="Szétosztás"
                               id={row.id}
                               status={row.status}
-                              primary={firstLine?.targetBranchName ?? firstLine?.targetBranchCode ?? row.note ?? 'Cél nélküli tétel'}
-                              secondary={firstLine ? `${fmt(Math.round(firstLine.amount ?? 0))} ${firstLine.currencyCode ?? ''}` : row.createdAt ?? '-'}
+                              primary={
+                                firstLine?.targetBranchName ??
+                                firstLine?.targetBranchCode ??
+                                row.note ??
+                                'Cél nélküli tétel'
+                              }
+                              secondary={
+                                firstLine
+                                  ? `${fmt(Math.round(firstLine.amount ?? 0))} ${firstLine.currencyCode ?? ''}`
+                                  : (row.createdAt ?? '-')
+                              }
                               actingId={actingErtektarStatusId}
                               onUpdate={updateMobileErtektarStatus}
                             />
@@ -1508,10 +1822,28 @@ export default function MobileOverviewPage() {
               {activeWorkArea === 'customer' && (
                 <div className="space-y-3" data-testid="mobile-work-area-customer">
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <StatusLine label="Ügyfélkereső" value={customerResults.length > 0 ? `${customerResults.length} találat` : 'Készen áll'} />
+                    <StatusLine
+                      label="Ügyfélkereső"
+                      value={
+                        customerResults.length > 0
+                          ? `${customerResults.length} találat`
+                          : 'Készen áll'
+                      }
+                    />
                     <StatusLine label="AML útvonal" value="Elérhető" />
-                    <StatusLine label="Okmányfotó" value={mobileScannedDocuments.length > 0 ? `${mobileScannedDocuments.length} fájl` : 'Készen áll'} />
-                    <StatusLine label="Értesítés" value={unreadNotificationCount} urgent={unreadNotificationCount > 0} />
+                    <StatusLine
+                      label="Okmányfotó"
+                      value={
+                        mobileScannedDocuments.length > 0
+                          ? `${mobileScannedDocuments.length} fájl`
+                          : 'Készen áll'
+                      }
+                    />
+                    <StatusLine
+                      label="Értesítés"
+                      value={unreadNotificationCount}
+                      urgent={unreadNotificationCount > 0}
+                    />
                   </div>
                   <div className="flex gap-2">
                     <input
@@ -1530,7 +1862,11 @@ export default function MobileOverviewPage() {
                       className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-600 text-white disabled:opacity-60"
                       aria-label="Ügyfél keresése"
                     >
-                      {customerLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                      {customerLoading ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Search size={16} />
+                      )}
                     </button>
                   </div>
                   {customerError && <div className="text-sm text-red-700">{customerError}</div>}
@@ -1542,13 +1878,12 @@ export default function MobileOverviewPage() {
                   </div>
                   <div className="space-y-2">
                     {customerResults.slice(0, 5).map((customer) => (
-                      <div
-                        key={customer.id}
-                        className="rounded-md border bg-gray-50 px-3 py-2"
-                      >
+                      <div key={customer.id} className="rounded-md border bg-gray-50 px-3 py-2">
                         <Link to={`/customers/${customer.id}`} className="block">
                           <div className="text-sm font-semibold text-gray-900">{customer.name}</div>
-                          <div className="text-xs text-gray-500">{customer.documentNumber || 'Nincs okmányszám'}</div>
+                          <div className="text-xs text-gray-500">
+                            {customer.documentNumber || 'Nincs okmányszám'}
+                          </div>
                         </Link>
                         <button
                           type="button"
@@ -1572,7 +1907,11 @@ export default function MobileOverviewPage() {
                       <select
                         className="form-input"
                         value={mobileDocumentType}
-                        onChange={(event) => setMobileDocumentType(event.target.value as DocumentScannerUploadRequest['documentType'])}
+                        onChange={(event) =>
+                          setMobileDocumentType(
+                            event.target.value as DocumentScannerUploadRequest['documentType'],
+                          )
+                        }
                         aria-label="Mobil okmány típusa"
                       >
                         <option value="ID_CARD">Személyi igazolvány</option>
@@ -1603,7 +1942,11 @@ export default function MobileOverviewPage() {
                         Lista
                       </button>
                       <label className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-md bg-primary-600 px-3 text-sm font-semibold text-white">
-                        {mobileDocumentUploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
+                        {mobileDocumentUploading ? (
+                          <Loader2 size={15} className="animate-spin" />
+                        ) : (
+                          <Upload size={15} />
+                        )}
                         Feltöltés
                         <input
                           type="file"
@@ -1623,8 +1966,13 @@ export default function MobileOverviewPage() {
                         </p>
                       ) : (
                         mobileScannedDocuments.slice(0, 3).map((document) => (
-                          <div key={document.id} className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                            <div className="break-words text-sm font-semibold text-gray-900">{document.fileName}</div>
+                          <div
+                            key={document.id}
+                            className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2"
+                          >
+                            <div className="break-words text-sm font-semibold text-gray-900">
+                              {document.fileName}
+                            </div>
                             <div className="text-xs text-gray-500">
                               {document.documentType} - {formatLocalDateTime(document.scannedAt)}
                             </div>
@@ -1639,22 +1987,50 @@ export default function MobileOverviewPage() {
               {activeWorkArea === 'management' && (
                 <div className="space-y-3" data-testid="mobile-work-area-management">
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <StatusLine label="Napi jelentés" value={`${submittedDailyReports}/${dailyReportStatusRows.length}`} urgent={missingDailyReports.length > 0} />
-                    <StatusLine label="Hiányzó jelentés" value={missingDailyReports.length} urgent={missingDailyReports.length > 0} />
-                    <StatusLine label="Olvasatlan" value={unreadNotificationCount} urgent={unreadNotificationCount > 0} />
+                    <StatusLine
+                      label="Napi jelentés"
+                      value={`${submittedDailyReports}/${dailyReportStatusRows.length}`}
+                      urgent={missingDailyReports.length > 0}
+                    />
+                    <StatusLine
+                      label="Hiányzó jelentés"
+                      value={missingDailyReports.length}
+                      urgent={missingDailyReports.length > 0}
+                    />
+                    <StatusLine
+                      label="Olvasatlan"
+                      value={unreadNotificationCount}
+                      urgent={unreadNotificationCount > 0}
+                    />
                     <StatusLine label="WU USD" value={fmt(Math.round(wuUsdBalance))} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <MobileAction to="/central-workstation" icon={Server} label="Irányító" />
-                    <MobileAction to="/central/closing-control" icon={ClipboardCheck} label="Zárás" />
+                    <MobileAction
+                      to="/central/closing-control"
+                      icon={ClipboardCheck}
+                      label="Zárás"
+                    />
                     <MobileAction to="/treasury" icon={Wallet} label="Értéktár" />
                     <MobileAction to="/admin/error-monitor" icon={AlertTriangle} label="Hibák" />
                   </div>
-                  <MobilePanel title="Irodai sync gyorsműveletek" icon={RefreshCw} status={panel('sync')}>
+                  <MobilePanel
+                    title="Irodai sync gyorsműveletek"
+                    icon={RefreshCw}
+                    status={panel('sync')}
+                  >
                     <div className="space-y-3" data-testid="mobile-sync-actions-panel">
                       <div className="grid grid-cols-2 gap-2 text-sm">
-                        <StatusLine label="Sync sor" value={syncPendingCount} urgent={syncPendingCount > 0} />
-                        <StatusLine label="Sync szükséges" value={syncProbe?.shouldSync ? 'Igen' : 'Nem'} urgent={syncProbe?.shouldSync} />
+                        <StatusLine
+                          label="Sync sor"
+                          value={syncPendingCount}
+                          urgent={syncPendingCount > 0}
+                        />
+                        <StatusLine
+                          label="Sync szükséges"
+                          value={syncProbe?.shouldSync ? 'Igen' : 'Nem'}
+                          urgent={syncProbe?.shouldSync}
+                        />
                       </div>
                       <label className="grid gap-1 text-xs font-semibold text-gray-600">
                         Sync iroda ID
@@ -1670,12 +2046,14 @@ export default function MobileOverviewPage() {
                         </div>
                       )}
                       <div className="grid grid-cols-2 gap-2">
-                        {([
-                          ['rates', 'Árfolyam sync'],
-                          ['transactions', 'Tranzakció sync'],
-                          ['inventory', 'Készlet sync'],
-                          ['full', 'Teljes sync'],
-                        ] as const).map(([kind, label]) => (
+                        {(
+                          [
+                            ['rates', 'Árfolyam sync'],
+                            ['transactions', 'Tranzakció sync'],
+                            ['inventory', 'Készlet sync'],
+                            ['full', 'Teljes sync'],
+                          ] as const
+                        ).map(([kind, label]) => (
                           <button
                             key={kind}
                             type="button"
@@ -1684,18 +2062,28 @@ export default function MobileOverviewPage() {
                             data-testid={`mobile-sync-${kind}`}
                             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2 text-xs font-semibold text-gray-800 disabled:opacity-60"
                           >
-                            {mobileSyncActionLoading === kind ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                            {mobileSyncActionLoading === kind ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <RefreshCw size={14} />
+                            )}
                             {label}
                           </button>
                         ))}
                       </div>
                     </div>
                   </MobilePanel>
-                  <div className="rounded-md border border-red-200 bg-red-50 p-3" data-testid="mobile-year-opening-panel">
+                  <div
+                    className="rounded-md border border-red-200 bg-red-50 p-3"
+                    data-testid="mobile-year-opening-panel"
+                  >
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <div className="text-sm font-semibold text-red-900">Évnyitás admin workflow</div>
+                      <div className="text-sm font-semibold text-red-900">
+                        Évnyitás admin workflow
+                      </div>
                       <span className="rounded bg-white px-2 py-1 text-xs font-semibold text-red-800">
-                        {yearOpeningStatus?.status ?? (yearOpeningStatus?.canExecute ? 'Futtatható' : 'Kontroll')}
+                        {yearOpeningStatus?.status ??
+                          (yearOpeningStatus?.canExecute ? 'Futtatható' : 'Kontroll')}
                       </span>
                     </div>
                     <div className="grid grid-cols-[1fr_auto] gap-2">
@@ -1714,20 +2102,33 @@ export default function MobileOverviewPage() {
                         disabled={yearOpeningRunning || yearOpeningStatus?.canExecute === false}
                         className="self-end inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-red-700 px-3 text-sm font-semibold text-white disabled:opacity-60"
                       >
-                        {yearOpeningRunning ? <Loader2 size={15} className="animate-spin" /> : <AlertTriangle size={15} />}
+                        {yearOpeningRunning ? (
+                          <Loader2 size={15} className="animate-spin" />
+                        ) : (
+                          <AlertTriangle size={15} />
+                        )}
                         Futtatás
                       </button>
                     </div>
                   </div>
                   {missingDailyReports.slice(0, 2).map((row) => (
-                    <div key={row.branchId ?? row.branchCode ?? row.branchName} className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                    <div
+                      key={row.branchId ?? row.branchCode ?? row.branchName}
+                      className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2"
+                    >
                       <div className="text-sm font-semibold text-amber-900">
-                        {row.branchCode || row.branchName || compactBranchId(String(row.branchId ?? 'Ismeretlen iroda'))}
+                        {row.branchCode ||
+                          row.branchName ||
+                          compactBranchId(String(row.branchId ?? 'Ismeretlen iroda'))}
                       </div>
                       <div className="text-xs text-amber-800">Napi jelentés nincs leadva.</div>
                     </div>
                   ))}
-                  <MobilePanel title="Supervisor mobil felülbírálás" icon={ShieldAlert} status={panel('operationalControl')}>
+                  <MobilePanel
+                    title="Supervisor mobil felülbírálás"
+                    icon={ShieldAlert}
+                    status={panel('operationalControl')}
+                  >
                     <div className="space-y-3" data-testid="mobile-supervisor-override-panel">
                       {supervisorOverrideMessage && (
                         <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
@@ -1735,7 +2136,12 @@ export default function MobileOverviewPage() {
                         </div>
                       )}
                       <div className="grid gap-2">
-                        <label className="text-xs font-semibold text-gray-600" htmlFor="mobile-supervisor-password">Supervisor jelszó</label>
+                        <label
+                          className="text-xs font-semibold text-gray-600"
+                          htmlFor="mobile-supervisor-password"
+                        >
+                          Supervisor jelszó
+                        </label>
                         <input
                           id="mobile-supervisor-password"
                           type="password"
@@ -1750,12 +2156,18 @@ export default function MobileOverviewPage() {
                           disabled={supervisorActionLoading === 'auth'}
                           className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md bg-slate-800 px-3 text-sm font-semibold text-white disabled:opacity-60"
                         >
-                          {supervisorActionLoading === 'auth' ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle size={15} />}
+                          {supervisorActionLoading === 'auth' ? (
+                            <Loader2 size={15} className="animate-spin" />
+                          ) : (
+                            <CheckCircle size={15} />
+                          )}
                           Supervisor ellenőrzés
                         </button>
                       </div>
                       <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
-                        <div className="mb-2 text-sm font-semibold text-gray-900">Árfolyam felülbírálás</div>
+                        <div className="mb-2 text-sm font-semibold text-gray-900">
+                          Árfolyam felülbírálás
+                        </div>
                         <div className="grid grid-cols-2 gap-2">
                           <label className="col-span-2 grid gap-1 text-xs font-semibold text-gray-600">
                             Iroda ID
@@ -1769,7 +2181,9 @@ export default function MobileOverviewPage() {
                             Valuta
                             <input
                               value={supervisorCurrency}
-                              onChange={(event) => setSupervisorCurrency(event.target.value.toUpperCase())}
+                              onChange={(event) =>
+                                setSupervisorCurrency(event.target.value.toUpperCase())
+                              }
                               className="min-h-10 rounded-md border border-gray-300 px-3 text-sm font-normal text-gray-900"
                             />
                           </label>
@@ -1806,12 +2220,18 @@ export default function MobileOverviewPage() {
                           disabled={supervisorActionLoading === 'rate'}
                           className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md bg-primary-700 px-3 text-sm font-semibold text-white disabled:opacity-60"
                         >
-                          {supervisorActionLoading === 'rate' ? <Loader2 size={15} className="animate-spin" /> : <ShieldAlert size={15} />}
+                          {supervisorActionLoading === 'rate' ? (
+                            <Loader2 size={15} className="animate-spin" />
+                          ) : (
+                            <ShieldAlert size={15} />
+                          )}
                           Árfolyam felülbírálás küldése
                         </button>
                       </div>
                       <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
-                        <div className="mb-2 text-sm font-semibold text-gray-900">Kezelési díj felülbírálás</div>
+                        <div className="mb-2 text-sm font-semibold text-gray-900">
+                          Kezelési díj felülbírálás
+                        </div>
                         <div className="grid grid-cols-2 gap-2">
                           <label className="grid gap-1 text-xs font-semibold text-gray-600">
                             Tranzakció ID
@@ -1846,15 +2266,27 @@ export default function MobileOverviewPage() {
                           disabled={supervisorActionLoading === 'fee'}
                           className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md bg-primary-700 px-3 text-sm font-semibold text-white disabled:opacity-60"
                         >
-                          {supervisorActionLoading === 'fee' ? <Loader2 size={15} className="animate-spin" /> : <ShieldAlert size={15} />}
+                          {supervisorActionLoading === 'fee' ? (
+                            <Loader2 size={15} className="animate-spin" />
+                          ) : (
+                            <ShieldAlert size={15} />
+                          )}
                           Díj felülbírálás küldése
                         </button>
                       </div>
                     </div>
                   </MobilePanel>
-                  <MobilePanel title="Mobil értesítések" icon={Bell} status={panel('notifications')}>
+                  <MobilePanel
+                    title="Mobil értesítések"
+                    icon={Bell}
+                    status={panel('notifications')}
+                  >
                     <div className="mb-2 grid grid-cols-2 gap-2 text-sm">
-                      <StatusLine label="Olvasatlan" value={unreadNotificationCount} urgent={unreadNotificationCount > 0} />
+                      <StatusLine
+                        label="Olvasatlan"
+                        value={unreadNotificationCount}
+                        urgent={unreadNotificationCount > 0}
+                      />
                       <StatusLine label="Lista" value={notifications.length} />
                     </div>
                     <button
@@ -1863,7 +2295,11 @@ export default function MobileOverviewPage() {
                       disabled={notifications.length === 0 || actingNotificationId === 'all'}
                       className="mb-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-800 disabled:opacity-60"
                     >
-                      {actingNotificationId === 'all' ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle size={15} />}
+                      {actingNotificationId === 'all' ? (
+                        <Loader2 size={15} className="animate-spin" />
+                      ) : (
+                        <CheckCircle size={15} />
+                      )}
                       Mind olvasott
                     </button>
                     <div className="space-y-2">
@@ -1873,11 +2309,18 @@ export default function MobileOverviewPage() {
                         </p>
                       ) : (
                         notifications.slice(0, 4).map((notification) => (
-                          <div key={notification.id} className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                          <div
+                            key={notification.id}
+                            className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2"
+                          >
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0">
-                                <div className="break-words text-sm font-semibold text-amber-900">{notification.title}</div>
-                                <div className="mt-1 break-words text-xs text-amber-800">{notification.message}</div>
+                                <div className="break-words text-sm font-semibold text-amber-900">
+                                  {notification.title}
+                                </div>
+                                <div className="mt-1 break-words text-xs text-amber-800">
+                                  {notification.message}
+                                </div>
                               </div>
                               <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-amber-800">
                                 {notification.type}
@@ -1889,7 +2332,11 @@ export default function MobileOverviewPage() {
                               disabled={actingNotificationId === notification.id}
                               className="mt-2 inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 text-sm font-semibold text-white disabled:opacity-60"
                             >
-                              {actingNotificationId === notification.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                              {actingNotificationId === notification.id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <CheckCircle size={14} />
+                              )}
                               Olvasott
                             </button>
                           </div>
@@ -1903,11 +2350,27 @@ export default function MobileOverviewPage() {
               {activeWorkArea === 'integrations' && (
                 <div className="space-y-3" data-testid="mobile-work-area-integrations">
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <StatusLine label="POS aktív" value={activePosTerminalCount} urgent={unavailablePosTerminalCount > 0} />
-                    <StatusLine label="POS elérhető" value={`${connectedPosTerminalCount}/${activePosTerminalCount}`} urgent={unavailablePosTerminalCount > 0} />
-                    <StatusLine label="Pénztárgép stale" value={staleCashRegisterDevices.length} urgent={staleCashRegisterDevices.length > 0} />
+                    <StatusLine
+                      label="POS aktív"
+                      value={activePosTerminalCount}
+                      urgent={unavailablePosTerminalCount > 0}
+                    />
+                    <StatusLine
+                      label="POS elérhető"
+                      value={`${connectedPosTerminalCount}/${activePosTerminalCount}`}
+                      urgent={unavailablePosTerminalCount > 0}
+                    />
+                    <StatusLine
+                      label="Pénztárgép stale"
+                      value={staleCashRegisterDevices.length}
+                      urgent={staleCashRegisterDevices.length > 0}
+                    />
                     <StatusLine label="NAV nyitott" value={openNavClosingCount} />
-                    <StatusLine label="Sorszám-gap" value={cashRegisterGaps.length} urgent={cashRegisterGaps.length > 0} />
+                    <StatusLine
+                      label="Sorszám-gap"
+                      value={cashRegisterGaps.length}
+                      urgent={cashRegisterGaps.length > 0}
+                    />
                     <StatusLine label="WU árfolyam" value={wuStubRates.length} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -1916,7 +2379,11 @@ export default function MobileOverviewPage() {
                     <MobileAction to="/foertektar" icon={Server} label="Pénztárgépek" />
                     <MobileAction to="/western-union" icon={Globe} label="Western Union" />
                   </div>
-                  <MobilePanel title="POS mobil runtime" icon={CreditCard} status={panel('integrations')}>
+                  <MobilePanel
+                    title="POS mobil runtime"
+                    icon={CreditCard}
+                    status={panel('integrations')}
+                  >
                     {posTerminals.length === 0 ? (
                       <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
                         Nincs konfigurált POS terminál a mobil nézethez.
@@ -1927,15 +2394,32 @@ export default function MobileOverviewPage() {
                           const runtime = posRuntimeStatuses[terminal.terminalId]
                           const connected = runtime?.connected === true
                           return (
-                            <div key={terminal.id} className={`rounded-md border px-3 py-2 ${connected ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+                            <div
+                              key={terminal.id}
+                              className={`rounded-md border px-3 py-2 ${connected ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}
+                            >
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">
-                                  <div className="break-words text-sm font-bold text-gray-900">{terminal.terminalName}</div>
-                                  <div className="mt-1 break-all font-mono text-xs text-gray-600">{terminal.terminalId}</div>
-                                  {runtime?.message && <div className="mt-1 break-words text-xs text-gray-600">{runtime.message}</div>}
+                                  <div className="break-words text-sm font-bold text-gray-900">
+                                    {terminal.terminalName}
+                                  </div>
+                                  <div className="mt-1 break-all font-mono text-xs text-gray-600">
+                                    {terminal.terminalId}
+                                  </div>
+                                  {runtime?.message && (
+                                    <div className="mt-1 break-words text-xs text-gray-600">
+                                      {runtime.message}
+                                    </div>
+                                  )}
                                 </div>
-                                <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${connected ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                                  {connected ? 'Elérhető' : runtime ? 'Nem elérhető' : 'Nincs státusz'}
+                                <span
+                                  className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${connected ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}
+                                >
+                                  {connected
+                                    ? 'Elérhető'
+                                    : runtime
+                                      ? 'Nem elérhető'
+                                      : 'Nincs státusz'}
                                 </span>
                               </div>
                             </div>
@@ -1945,7 +2429,11 @@ export default function MobileOverviewPage() {
                     )}
                   </MobilePanel>
 
-                  <MobilePanel title="Pénztárgép mobil állapot" icon={Server} status={panel('integrations')}>
+                  <MobilePanel
+                    title="Pénztárgép mobil állapot"
+                    icon={Server}
+                    status={panel('integrations')}
+                  >
                     <div className="mb-2 grid grid-cols-2 gap-2 text-sm">
                       <StatusLine label="Eszköz" value={cashRegisterDevices.length} />
                       <StatusLine label="Mai esemény" value={cashRegisterEvents.length} />
@@ -1955,42 +2443,72 @@ export default function MobileOverviewPage() {
                         <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
                           Nincs regisztrált pénztárgép eszköz.
                         </p>
-                      ) : cashRegisterDevices.slice(0, 4).map((device) => {
-                        const age = minutesSince(device.lastSeenAt)
-                        const stale = device.isActive !== false && (age == null || age > 10)
-                        return (
-                          <div key={device.id} className={`rounded-md border px-3 py-2 ${stale ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}>
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <div className="break-words text-sm font-bold text-gray-900">{device.name || device.code}</div>
-                                <div className="mt-1 break-all text-xs text-gray-600">{device.appMode ?? '-'} {device.appVersion ?? ''}</div>
+                      ) : (
+                        cashRegisterDevices.slice(0, 4).map((device) => {
+                          const age = minutesSince(device.lastSeenAt)
+                          const stale = device.isActive !== false && (age == null || age > 10)
+                          return (
+                            <div
+                              key={device.id}
+                              className={`rounded-md border px-3 py-2 ${stale ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <div className="break-words text-sm font-bold text-gray-900">
+                                    {device.name || device.code}
+                                  </div>
+                                  <div className="mt-1 break-all text-xs text-gray-600">
+                                    {device.appMode ?? '-'} {device.appVersion ?? ''}
+                                  </div>
+                                </div>
+                                <span
+                                  className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${stale ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}
+                                >
+                                  {age == null
+                                    ? 'Nincs heartbeat'
+                                    : age < 60
+                                      ? `${age} perc`
+                                      : `${Math.floor(age / 60)} óra`}
+                                </span>
                               </div>
-                              <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${stale ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                                {age == null ? 'Nincs heartbeat' : age < 60 ? `${age} perc` : `${Math.floor(age / 60)} óra`}
-                              </span>
                             </div>
-                          </div>
-                        )
-                      })}
+                          )
+                        })
+                      )}
                     </div>
                     {cashRegisterGaps.length > 0 && (
                       <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-                        {cashRegisterGaps.slice(0, 3).map((gap) => <div key={gap} className="break-words">{gap}</div>)}
+                        {cashRegisterGaps.slice(0, 3).map((gap) => (
+                          <div key={gap} className="break-words">
+                            {gap}
+                          </div>
+                        ))}
                       </div>
                     )}
                     {cashRegisterEvents.length > 0 && (
                       <div className="mt-3 space-y-2">
                         {cashRegisterEvents.slice(0, 3).map((event, index) => (
-                          <div key={event.id ?? `${event.eventType}-${index}`} className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                            <div className="text-sm font-semibold text-gray-900">{event.eventType ?? 'Esemény'} - {event.status ?? '-'}</div>
-                            <div className="text-xs text-gray-500">{formatLocalDateTime(event.occurredAt ?? event.createdAt)}</div>
+                          <div
+                            key={event.id ?? `${event.eventType}-${index}`}
+                            className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2"
+                          >
+                            <div className="text-sm font-semibold text-gray-900">
+                              {event.eventType ?? 'Esemény'} - {event.status ?? '-'}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {formatLocalDateTime(event.occurredAt ?? event.createdAt)}
+                            </div>
                           </div>
                         ))}
                       </div>
                     )}
                   </MobilePanel>
 
-                  <MobilePanel title="NAV zárás mobil lista" icon={Database} status={panel('integrations')}>
+                  <MobilePanel
+                    title="NAV zárás mobil lista"
+                    icon={Database}
+                    status={panel('integrations')}
+                  >
                     {navClosings.length === 0 ? (
                       <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
                         Nincs mai NAV zárás találat.
@@ -1998,10 +2516,15 @@ export default function MobileOverviewPage() {
                     ) : (
                       <div className="space-y-2">
                         {navClosings.slice(0, 4).map((closing) => (
-                          <div key={closing.id} className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                          <div
+                            key={closing.id}
+                            className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2"
+                          >
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0">
-                                <div className="break-words text-sm font-bold text-gray-900">{closing.closingDate ?? '-'}</div>
+                                <div className="break-words text-sm font-bold text-gray-900">
+                                  {closing.closingDate ?? '-'}
+                                </div>
                                 <div className="mt-1 text-xs text-gray-600">
                                   Bevétel: {fmt(Math.round(num(closing.totalRevenue)))} Ft
                                 </div>
@@ -2016,23 +2539,37 @@ export default function MobileOverviewPage() {
                     )}
                   </MobilePanel>
 
-                  <MobilePanel title="WU adapter mobil státusz" icon={Globe} status={panel('integrations')}>
+                  <MobilePanel
+                    title="WU adapter mobil státusz"
+                    icon={Globe}
+                    status={panel('integrations')}
+                  >
                     <div className="space-y-2">
                       {wuStubRates.length === 0 ? (
                         <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
                           Nincs WU adapter árfolyam adat.
                         </p>
-                      ) : wuStubRates.slice(0, 3).map((rate, index) => (
-                        <div key={`${rate.currency ?? rate.targetCurrency ?? 'rate'}-${index}`} className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
-                          <span className="font-semibold">{rate.sourceCurrency ?? 'USD'} / {rate.targetCurrency ?? rate.currency ?? '-'}</span>
-                          <span className="font-mono">{num(rate.rate).toFixed(4)}</span>
-                        </div>
-                      ))}
+                      ) : (
+                        wuStubRates.slice(0, 3).map((rate, index) => (
+                          <div
+                            key={`${rate.currency ?? rate.targetCurrency ?? 'rate'}-${index}`}
+                            className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
+                          >
+                            <span className="font-semibold">
+                              {rate.sourceCurrency ?? 'USD'} /{' '}
+                              {rate.targetCurrency ?? rate.currency ?? '-'}
+                            </span>
+                            <span className="font-mono">{num(rate.rate).toFixed(4)}</span>
+                          </div>
+                        ))
+                      )}
                     </div>
                     <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
                       <input
                         value={wuStubMtcn}
-                        onChange={(event) => setWuStubMtcn(event.target.value.replace(/\D/g, '').slice(0, 10))}
+                        onChange={(event) =>
+                          setWuStubMtcn(event.target.value.replace(/\D/g, '').slice(0, 10))
+                        }
                         inputMode="numeric"
                         className="form-input min-w-0"
                         placeholder="MTCN 10 számjegy"
@@ -2044,14 +2581,24 @@ export default function MobileOverviewPage() {
                         disabled={wuStubStatusLoading}
                         className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-primary-700 px-3 text-sm font-semibold text-white disabled:opacity-60"
                       >
-                        {wuStubStatusLoading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                        {wuStubStatusLoading ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Search size={14} />
+                        )}
                         Státusz
                       </button>
                     </div>
                     {wuStubStatus && (
                       <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-                        <div className="font-semibold">{wuStubStatus.mtcn ?? wuStubMtcn} - {wuStubStatus.status ?? '-'}</div>
-                        <div className="mt-1 text-xs">{wuStubStatus.message ?? wuStubStatus.destinationCountry ?? 'Nincs további üzenet'}</div>
+                        <div className="font-semibold">
+                          {wuStubStatus.mtcn ?? wuStubMtcn} - {wuStubStatus.status ?? '-'}
+                        </div>
+                        <div className="mt-1 text-xs">
+                          {wuStubStatus.message ??
+                            wuStubStatus.destinationCountry ??
+                            'Nincs további üzenet'}
+                        </div>
                       </div>
                     )}
                   </MobilePanel>
@@ -2076,39 +2623,139 @@ export default function MobileOverviewPage() {
 
           <section className="grid gap-3 lg:grid-cols-2">
             <MobileTaskGroup title="Pénztári mobil műveletek" icon={Wallet}>
-              <TaskLink to="/transactions/cashier" icon={ArrowLeftRight} title="Valuta vétel / eladás" meta="Pénztári tranzakció" />
-              <TaskLink to="/customers/new" icon={Users} title="Új ügyfél" meta="Okmány-duplikáció ellenőrzéssel" />
-              <TaskLink to="/closing/wizard" icon={FileText} title="Napzárás" meta="Zárási varázsló" />
-              <TaskLink to="/cashdesk/denominations" icon={Package} title="Címletezés" meta="Kassza / címlet" />
+              <TaskLink
+                to="/transactions/cashier"
+                icon={ArrowLeftRight}
+                title="Valuta vétel / eladás"
+                meta="Pénztári tranzakció"
+              />
+              <TaskLink
+                to="/customers/new"
+                icon={Users}
+                title="Új ügyfél"
+                meta="Okmány-duplikáció ellenőrzéssel"
+              />
+              <TaskLink
+                to="/closing/wizard"
+                icon={FileText}
+                title="Napzárás"
+                meta="Zárási varázsló"
+              />
+              <TaskLink
+                to="/cashdesk/denominations"
+                icon={Package}
+                title="Címletezés"
+                meta="Kassza / címlet"
+              />
             </MobileTaskGroup>
 
             <MobileTaskGroup title="Értéktári és terepi mobil műveletek" icon={Building2}>
-              <TaskLink to="/inventory" icon={Wallet} title="Értéktári készlet" meta="Valutánkénti készlet" />
-              <TaskLink to="/shipments" icon={ArrowLeftRight} title="Átadás-átvétel" meta="Csomag és szállítólevél" />
-              <TaskLink to="/transfer-documents" icon={FileText} title="Átadási bizonylatok" meta="Átvétel, leadás, igazolás" />
-              <TaskLink to="/transit" icon={Package} title="Úton lévő csomagok" meta="Terepi státusz" />
-              <TaskLink to="/seal-tracking" icon={ShieldAlert} title="Plomba nyilvántartás" meta="Mai plombaszámok" />
+              <TaskLink
+                to="/inventory"
+                icon={Wallet}
+                title="Értéktári készlet"
+                meta="Valutánkénti készlet"
+              />
+              <TaskLink
+                to="/shipments"
+                icon={ArrowLeftRight}
+                title="Átadás-átvétel"
+                meta="Csomag és szállítólevél"
+              />
+              <TaskLink
+                to="/transfer-documents"
+                icon={FileText}
+                title="Átadási bizonylatok"
+                meta="Átvétel, leadás, igazolás"
+              />
+              <TaskLink
+                to="/transit"
+                icon={Package}
+                title="Úton lévő csomagok"
+                meta="Terepi státusz"
+              />
+              <TaskLink
+                to="/seal-tracking"
+                icon={ShieldAlert}
+                title="Plomba nyilvántartás"
+                meta="Mai plombaszámok"
+              />
             </MobileTaskGroup>
 
             <MobileTaskGroup title="Compliance mobil műveletek" icon={ShieldAlert}>
-              <TaskLink to="/compliance" icon={ClipboardCheck} title="AML ellenőrzés" meta="Kézi tranzakcióvizsgálat" />
-              <TaskLink to="/customers" icon={Search} title="Ügyfélkeresés" meta="Ügyfél törzsadat" />
-              <TaskLink to="/police-requests" icon={ShieldAlert} title="Rendőrségi megkeresés" meta="Compliance ügy" />
-              <TaskLink to="/audit-log" icon={FileText} title="Audit napló" meta="Ellenőrzési nyom" />
+              <TaskLink
+                to="/compliance"
+                icon={ClipboardCheck}
+                title="AML ellenőrzés"
+                meta="Kézi tranzakcióvizsgálat"
+              />
+              <TaskLink
+                to="/customers"
+                icon={Search}
+                title="Ügyfélkeresés"
+                meta="Ügyfél törzsadat"
+              />
+              <TaskLink
+                to="/police-requests"
+                icon={ShieldAlert}
+                title="Rendőrségi megkeresés"
+                meta="Compliance ügy"
+              />
+              <TaskLink
+                to="/audit-log"
+                icon={FileText}
+                title="Audit napló"
+                meta="Ellenőrzési nyom"
+              />
             </MobileTaskGroup>
 
             <MobileTaskGroup title="Vezetői mobil műveletek" icon={Server}>
-              <TaskLink to="/central-workstation" icon={Server} title="Irányítóközpont" meta="Központi állapot" />
-              <TaskLink to="/central/closing-control" icon={ClipboardCheck} title="Zárás beérkezés" meta="Napi kontroll" />
+              <TaskLink
+                to="/central-workstation"
+                icon={Server}
+                title="Irányítóközpont"
+                meta="Központi állapot"
+              />
+              <TaskLink
+                to="/central/closing-control"
+                icon={ClipboardCheck}
+                title="Zárás beérkezés"
+                meta="Napi kontroll"
+              />
               <TaskLink to="/company" icon={Building2} title="Cégadatok" meta="Admin részletek" />
-              <TaskLink to="/admin/branches" icon={Building2} title="Pénztár törzs" meta="Irodai lista" />
+              <TaskLink
+                to="/admin/branches"
+                icon={Building2}
+                title="Pénztár törzs"
+                meta="Irodai lista"
+              />
             </MobileTaskGroup>
 
             <MobileTaskGroup title="Integrációs mobil státusz" icon={CreditCard}>
-              <TaskLink to="/pos-terminal" icon={CreditCard} title="POS terminálok" meta="Runtime státusz" />
-              <TaskLink to="/nav-integration" icon={Database} title="NAV integráció" meta="Pénztárgép kapcsolat" />
-              <TaskLink to="/foertektar" icon={Server} title="Pénztárgépek" meta="Heartbeat / eszközlista" />
-              <TaskLink to="/western-union" icon={Globe} title="Western Union" meta="Adapter és napi státusz" />
+              <TaskLink
+                to="/pos-terminal"
+                icon={CreditCard}
+                title="POS terminálok"
+                meta="Runtime státusz"
+              />
+              <TaskLink
+                to="/nav-integration"
+                icon={Database}
+                title="NAV integráció"
+                meta="Pénztárgép kapcsolat"
+              />
+              <TaskLink
+                to="/foertektar"
+                icon={Server}
+                title="Pénztárgépek"
+                meta="Heartbeat / eszközlista"
+              />
+              <TaskLink
+                to="/western-union"
+                icon={Globe}
+                title="Western Union"
+                meta="Adapter és napi státusz"
+              />
             </MobileTaskGroup>
           </section>
 
@@ -2123,7 +2770,10 @@ export default function MobileOverviewPage() {
               icon={Building2}
               label="Aktív irodák"
               value={onlineBranchCount || dashboard?.activeBranches || 0}
-              unavailable={panelStatus.branchMonitoring === 'unavailable' && panelStatus.dashboard === 'unavailable'}
+              unavailable={
+                panelStatus.branchMonitoring === 'unavailable' &&
+                panelStatus.dashboard === 'unavailable'
+              }
             />
             <MetricCard
               icon={Server}
@@ -2158,11 +2808,17 @@ export default function MobileOverviewPage() {
             <MobilePanel title="Vezetői státusz" icon={Wallet} status={panel('position')}>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <StatusLine label="Készlet HUF" value={`${fmt(position?.totalHufValue)} Ft`} />
-                <StatusLine label="Napi változás" value={`${fmt(position?.totalDailyChangeHuf)} Ft`} />
+                <StatusLine
+                  label="Napi változás"
+                  value={`${fmt(position?.totalDailyChangeHuf)} Ft`}
+                />
                 <StatusLine label="Mai tranzakció" value={dashboard?.openTransactions ?? 0} />
                 <StatusLine label="Készlet riasztás" value={alertCount} urgent={alertCount > 0} />
               </div>
-              <Link to="/reports/live-cash-position" className="mt-3 inline-flex text-sm font-semibold text-primary-700">
+              <Link
+                to="/reports/live-cash-position"
+                className="mt-3 inline-flex text-sm font-semibold text-primary-700"
+              >
                 Pillanatnyi pénztárállás megnyitása
               </Link>
             </MobilePanel>
@@ -2173,11 +2829,16 @@ export default function MobileOverviewPage() {
               ) : (
                 <div className="space-y-2">
                   {approvals.slice(0, 3).map((approval) => (
-                    <div key={approval.id} className="rounded-md border border-amber-200 bg-amber-50 p-2">
+                    <div
+                      key={approval.id}
+                      className="rounded-md border border-amber-200 bg-amber-50 p-2"
+                    >
                       <div className="text-sm font-semibold text-amber-900">
                         {approval.receiptNumber || approval.transactionId}
                       </div>
-                      <div className="text-xs text-amber-800">{approval.workerName || approval.workerId}</div>
+                      <div className="text-xs text-amber-800">
+                        {approval.workerName || approval.workerId}
+                      </div>
                       <div className="mt-2 flex gap-2">
                         <button
                           type="button"
@@ -2185,7 +2846,11 @@ export default function MobileOverviewPage() {
                           disabled={actingApprovalId === approval.id}
                           className="inline-flex min-h-9 flex-1 items-center justify-center gap-1 rounded-md bg-emerald-600 px-3 text-sm font-semibold text-white disabled:opacity-60"
                         >
-                          {actingApprovalId === approval.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                          {actingApprovalId === approval.id ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <CheckCircle size={14} />
+                          )}
                           Engedélyezés
                         </button>
                         <Link
@@ -2201,9 +2866,17 @@ export default function MobileOverviewPage() {
               )}
             </MobilePanel>
 
-            <MobilePanel title="Árfolyam jóváhagyások" icon={ShieldAlert} status={panel('rateApprovals')}>
+            <MobilePanel
+              title="Árfolyam jóváhagyások"
+              icon={ShieldAlert}
+              status={panel('rateApprovals')}
+            >
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <StatusLine label="Függő árfolyam" value={pendingRateApprovals.length} urgent={pendingRateApprovals.length > 0} />
+                <StatusLine
+                  label="Függő árfolyam"
+                  value={pendingRateApprovals.length}
+                  urgent={pendingRateApprovals.length > 0}
+                />
                 <StatusLine label="Előzmények" value={rateApprovalHistory.length} />
               </div>
               <div className="mt-3 space-y-2">
@@ -2213,7 +2886,10 @@ export default function MobileOverviewPage() {
                   </p>
                 ) : (
                   pendingRateApprovals.slice(0, 3).map((approval) => (
-                    <div key={approval.id ?? `${approval.branchId}-${approval.currencyCode}`} className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                    <div
+                      key={approval.id ?? `${approval.branchId}-${approval.currencyCode}`}
+                      className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2"
+                    >
                       <div className="flex items-center justify-between gap-2">
                         <div className="text-sm font-semibold text-amber-900">
                           {approval.currencyCode ?? 'Árfolyam'}
@@ -2223,7 +2899,9 @@ export default function MobileOverviewPage() {
                         </div>
                       </div>
                       <div className="mt-1 text-xs text-amber-800">
-                        {approval.branchName ?? 'Nincs iroda'} - V {fmt(Math.round(num(approval.newBuyRate)))} / E {fmt(Math.round(num(approval.newSellRate)))}
+                        {approval.branchName ?? 'Nincs iroda'} - V{' '}
+                        {fmt(Math.round(num(approval.newBuyRate)))} / E{' '}
+                        {fmt(Math.round(num(approval.newSellRate)))}
                       </div>
                       {approval.reason && (
                         <div className="mt-1 break-words text-xs text-amber-800">
@@ -2234,19 +2912,27 @@ export default function MobileOverviewPage() {
                         <button
                           type="button"
                           onClick={() => void approveRateApproval(approval)}
-                          disabled={!approval.id || actingRateApprovalId === `${approval.id}:approve`}
+                          disabled={
+                            !approval.id || actingRateApprovalId === `${approval.id}:approve`
+                          }
                           className="inline-flex min-h-9 items-center justify-center gap-1 rounded-md bg-emerald-600 px-2 text-xs font-semibold text-white disabled:opacity-60"
                         >
-                          {actingRateApprovalId === `${approval.id}:approve` && <Loader2 size={13} className="animate-spin" />}
+                          {actingRateApprovalId === `${approval.id}:approve` && (
+                            <Loader2 size={13} className="animate-spin" />
+                          )}
                           Árfolyam engedélyezés
                         </button>
                         <button
                           type="button"
                           onClick={() => void rejectRateApproval(approval)}
-                          disabled={!approval.id || actingRateApprovalId === `${approval.id}:reject`}
+                          disabled={
+                            !approval.id || actingRateApprovalId === `${approval.id}:reject`
+                          }
                           className="inline-flex min-h-9 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-2 text-xs font-semibold text-red-700 disabled:opacity-60"
                         >
-                          {actingRateApprovalId === `${approval.id}:reject` && <Loader2 size={13} className="animate-spin" />}
+                          {actingRateApprovalId === `${approval.id}:reject` && (
+                            <Loader2 size={13} className="animate-spin" />
+                          )}
                           Árfolyam elutasítás
                         </button>
                       </div>
@@ -2256,59 +2942,112 @@ export default function MobileOverviewPage() {
               </div>
               {latestRateApproval && (
                 <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-                  Utolsó döntés: {latestRateApproval.currencyCode ?? '-'} / {latestRateApproval.status ?? '-'} / {formatLocalDateTime(latestRateApproval.requestedAt)}
+                  Utolsó döntés: {latestRateApproval.currencyCode ?? '-'} /{' '}
+                  {latestRateApproval.status ?? '-'} /{' '}
+                  {formatLocalDateTime(latestRateApproval.requestedAt)}
                 </div>
               )}
             </MobilePanel>
 
             <MobilePanel title="Monitoring" icon={Server} status={panel('diagnostics')}>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <StatusLine label="Utolsó 24 óra hiba" value={errorSummary?.last24h ?? 0} urgent={(errorSummary?.last24h ?? 0) > 0} />
+                <StatusLine
+                  label="Utolsó 24 óra hiba"
+                  value={errorSummary?.last24h ?? 0}
+                  urgent={(errorSummary?.last24h ?? 0) > 0}
+                />
                 <StatusLine label="Utolsó 7 nap hiba" value={errorSummary?.last7d ?? 0} />
                 <StatusLine label="Összes hiba" value={errorSummary?.totalAllTime ?? 0} />
-                <StatusLine label="Sync szükséges" value={syncProbe?.shouldSync ? 'Igen' : 'Nem'} urgent={syncProbe?.shouldSync} />
+                <StatusLine
+                  label="Sync szükséges"
+                  value={syncProbe?.shouldSync ? 'Igen' : 'Nem'}
+                  urgent={syncProbe?.shouldSync}
+                />
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Link to="/synchronization" className="rounded-md border px-3 py-2 text-sm font-semibold text-gray-700">
+                <Link
+                  to="/synchronization"
+                  className="rounded-md border px-3 py-2 text-sm font-semibold text-gray-700"
+                >
                   Sync
                 </Link>
-                <Link to="/admin/error-monitor" className="rounded-md border px-3 py-2 text-sm font-semibold text-gray-700">
+                <Link
+                  to="/admin/error-monitor"
+                  className="rounded-md border px-3 py-2 text-sm font-semibold text-gray-700"
+                >
                   Hiba-monitor
                 </Link>
               </div>
             </MobilePanel>
 
-            <MobilePanel title="Központi adatgyűjtés" icon={Database} status={panel('dataCollection')}>
+            <MobilePanel
+              title="Központi adatgyűjtés"
+              icon={Database}
+              status={panel('dataCollection')}
+            >
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <StatusLine label="Utolsó státusz" value={latestDataCollection?.status ?? 'Nincs adat'} urgent={latestDataCollection?.status === 'FAILED'} />
+                <StatusLine
+                  label="Utolsó státusz"
+                  value={latestDataCollection?.status ?? 'Nincs adat'}
+                  urgent={latestDataCollection?.status === 'FAILED'}
+                />
                 <StatusLine label="Irodák" value={dataCollectionRows.length} />
-                <StatusLine label="Hibás" value={failedDataCollections} urgent={failedDataCollections > 0} />
-                <StatusLine label="Folyamatban" value={pendingDataCollections} urgent={pendingDataCollections > 0} />
+                <StatusLine
+                  label="Hibás"
+                  value={failedDataCollections}
+                  urgent={failedDataCollections > 0}
+                />
+                <StatusLine
+                  label="Folyamatban"
+                  value={pendingDataCollections}
+                  urgent={pendingDataCollections > 0}
+                />
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                 <StatusLine label="Dátum" value={latestDataCollection?.collectionDate ?? '-'} />
-                <StatusLine label="Tranzakció" value={latestDataCollection?.transactionCount ?? 0} />
+                <StatusLine
+                  label="Tranzakció"
+                  value={latestDataCollection?.transactionCount ?? 0}
+                />
               </div>
               {latestDataCollection?.errorMessage && (
                 <p className="mt-3 break-words rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                   {latestDataCollection.errorMessage}
                 </p>
               )}
-              <Link to="/synchronization" className="mt-3 inline-flex text-sm font-semibold text-primary-700">
+              <Link
+                to="/synchronization"
+                className="mt-3 inline-flex text-sm font-semibold text-primary-700"
+              >
                 Adatgyűjtés kezelése
               </Link>
             </MobilePanel>
 
-            <MobilePanel title="Irodai online állapot" icon={Building2} status={panel('branchMonitoring')}>
+            <MobilePanel
+              title="Irodai online állapot"
+              icon={Building2}
+              status={panel('branchMonitoring')}
+            >
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <StatusLine label="Monitorozott iroda" value={monitoredBranchCount} />
                 <StatusLine label="Online iroda" value={onlineBranchCount} />
-                <StatusLine label="Offline iroda" value={offlineBranchCount} urgent={offlineBranchCount > 0} />
-                <StatusLine label="Nyitott riasztás" value={branchOpenAlerts} urgent={branchOpenAlerts > 0} />
+                <StatusLine
+                  label="Offline iroda"
+                  value={offlineBranchCount}
+                  urgent={offlineBranchCount > 0}
+                />
+                <StatusLine
+                  label="Nyitott riasztás"
+                  value={branchOpenAlerts}
+                  urgent={branchOpenAlerts > 0}
+                />
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                 <StatusLine label="Mai tranzakció" value={branchDailyTransactions} />
-                <StatusLine label="Napi volumen" value={`${formatMillions(branchDailyVolume)} Ft`} />
+                <StatusLine
+                  label="Napi volumen"
+                  value={`${formatMillions(branchDailyVolume)} Ft`}
+                />
               </div>
               <div className="mt-3 space-y-2">
                 {offlineBranches.length === 0 ? (
@@ -2317,7 +3056,10 @@ export default function MobileOverviewPage() {
                   </p>
                 ) : (
                   offlineBranches.slice(0, 3).map((branch) => (
-                    <div key={branch.branchId} className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                    <div
+                      key={branch.branchId}
+                      className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2"
+                    >
                       <div className="break-all text-sm font-semibold text-amber-900">
                         {compactBranchId(branch.branchId)}
                       </div>
@@ -2328,7 +3070,10 @@ export default function MobileOverviewPage() {
                   ))
                 )}
               </div>
-              <Link to="/foertektar" className="mt-3 inline-flex text-sm font-semibold text-primary-700">
+              <Link
+                to="/foertektar"
+                className="mt-3 inline-flex text-sm font-semibold text-primary-700"
+              >
                 Főértéktár dashboard megnyitása
               </Link>
             </MobilePanel>
@@ -2336,7 +3081,10 @@ export default function MobileOverviewPage() {
             <MobilePanel title="Árfolyam gyorsnézet" icon={ShieldAlert} status={panel('rates')}>
               <div className="space-y-2">
                 {rates.map((rate) => (
-                  <div key={rate.currencyCode} className="flex items-center justify-between rounded-md border bg-gray-50 px-3 py-2 text-sm">
+                  <div
+                    key={rate.currencyCode}
+                    className="flex items-center justify-between rounded-md border bg-gray-50 px-3 py-2 text-sm"
+                  >
                     <div>
                       <div className="font-bold">{rate.currencyCode}</div>
                       <div className="text-xs text-gray-500">{rate.currencyName}</div>
@@ -2356,20 +3104,45 @@ export default function MobileOverviewPage() {
             <MobilePanel title="Üzemi kontroll" icon={Server} status={panel('operationalControl')}>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <StatusLine label="Paraméterek" value={supervisorParams.length} />
-                <StatusLine label="Restore adat" value={syncRestoreStatus?.restoreAvailable ? 'Van' : 'Nincs'} urgent={restoreMissing} />
-                <StatusLine label="Restore tranzakció" value={syncRestoreStatus?.totalTransactions ?? 0} />
-                <StatusLine label="Évnyitás" value={yearOpeningStatus?.status ?? (yearOpeningStatus?.canExecute ? 'Futtatható' : 'Kontroll')} urgent={yearOpeningStatus?.canExecute} />
+                <StatusLine
+                  label="Restore adat"
+                  value={syncRestoreStatus?.restoreAvailable ? 'Van' : 'Nincs'}
+                  urgent={restoreMissing}
+                />
+                <StatusLine
+                  label="Restore tranzakció"
+                  value={syncRestoreStatus?.totalTransactions ?? 0}
+                />
+                <StatusLine
+                  label="Évnyitás"
+                  value={
+                    yearOpeningStatus?.status ??
+                    (yearOpeningStatus?.canExecute ? 'Futtatható' : 'Kontroll')
+                  }
+                  urgent={yearOpeningStatus?.canExecute}
+                />
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                 <StatusLine label="WU USD" value={fmt(Math.round(wuUsdBalance))} />
                 <StatusLine label="WU HUF" value={`${fmt(Math.round(wuHufBalance))} Ft`} />
                 <StatusLine label="WU küldés" value={wuDailyReport?.sendCount ?? 0} />
                 <StatusLine label="WU fogadás" value={wuDailyReport?.receiveCount ?? 0} />
-                <StatusLine label="Napi jelentés" value={`${submittedDailyReports}/${dailyReportStatusRows.length}`} urgent={missingDailyReports.length > 0} />
-                <StatusLine label="Hiányzó jelentés" value={missingDailyReports.length} urgent={missingDailyReports.length > 0} />
+                <StatusLine
+                  label="Napi jelentés"
+                  value={`${submittedDailyReports}/${dailyReportStatusRows.length}`}
+                  urgent={missingDailyReports.length > 0}
+                />
+                <StatusLine
+                  label="Hiányzó jelentés"
+                  value={missingDailyReports.length}
+                  urgent={missingDailyReports.length > 0}
+                />
               </div>
               <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-                <div>Restore időszak: {syncRestoreStatus?.earliestDate ?? '-'} - {syncRestoreStatus?.latestDate ?? '-'}</div>
+                <div>
+                  Restore időszak: {syncRestoreStatus?.earliestDate ?? '-'} -{' '}
+                  {syncRestoreStatus?.latestDate ?? '-'}
+                </div>
                 <div>WU díj ma: {fmt(Math.round(num(wuDailyReport?.totalFees)))} Ft</div>
               </div>
               {missingDailyReports.length > 0 && (
@@ -2380,7 +3153,9 @@ export default function MobileOverviewPage() {
                       className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2"
                     >
                       <div className="text-sm font-semibold text-amber-900">
-                        {row.branchCode || row.branchName || compactBranchId(String(row.branchId ?? 'Ismeretlen iroda'))}
+                        {row.branchCode ||
+                          row.branchName ||
+                          compactBranchId(String(row.branchId ?? 'Ismeretlen iroda'))}
                       </div>
                       <div className="text-xs text-amber-800">
                         {row.branchName || 'Nincs irodanév'} - napi jelentés nincs leadva.
@@ -2391,7 +3166,6 @@ export default function MobileOverviewPage() {
               )}
             </MobilePanel>
           </section>
-
         </>
       )}
     </div>
@@ -2430,12 +3204,16 @@ function MobileUseCaseCard({
       className={`flex min-h-[6.25rem] w-full items-start gap-3 rounded-lg border p-3 text-left shadow-sm ${tone}`}
       data-testid={`mobile-use-case-${title.toLowerCase().replaceAll(' ', '-')}`}
     >
-      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${urgent ? 'bg-amber-100 text-amber-700' : 'bg-primary-50 text-primary-700'}`}>
+      <span
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${urgent ? 'bg-amber-100 text-amber-700' : 'bg-primary-50 text-primary-700'}`}
+      >
         <Icon size={18} />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-bold leading-tight">{title}</span>
-        <span className="mt-1 block break-words text-base font-semibold leading-tight">{summary}</span>
+        <span className="mt-1 block break-words text-base font-semibold leading-tight">
+          {summary}
+        </span>
         <span className="mt-1 block break-words text-xs leading-4 text-gray-600">{detail}</span>
       </span>
     </button>
@@ -2539,9 +3317,7 @@ function MobileBottomNavigation({
               onClick={() => onSelect(id)}
               aria-current={isActive ? 'page' : undefined}
               className={`relative flex min-h-[3.5rem] flex-col items-center justify-center gap-1 rounded-md px-1 text-[11px] font-semibold leading-tight ${
-                isActive
-                  ? 'bg-primary-50 text-primary-800'
-                  : 'text-gray-600'
+                isActive ? 'bg-primary-50 text-primary-800' : 'text-gray-600'
               }`}
               data-testid={`mobile-bottom-nav-${id}`}
             >
@@ -2594,21 +3370,26 @@ function TransferDocumentMobileCard({
   onAction: (document: TransferDocument, action: 'pickup' | 'deliver' | 'confirm') => void
 }) {
   const status = document.status ?? 'PENDING'
-  const amount = document.quantity == null
-    ? '-'
-    : typeof document.quantity === 'number'
-      ? document.quantity.toLocaleString('hu-HU')
-      : document.quantity
+  const amount =
+    document.quantity == null
+      ? '-'
+      : typeof document.quantity === 'number'
+        ? document.quantity.toLocaleString('hu-HU')
+        : document.quantity
 
   return (
-    <div className="rounded-md border border-gray-200 bg-gray-50 p-3" data-testid={`mobile-transfer-document-${document.id}`}>
+    <div
+      className="rounded-md border border-gray-200 bg-gray-50 p-3"
+      data-testid={`mobile-transfer-document-${document.id}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="break-words text-sm font-bold text-gray-900">
             {document.documentNumber ?? document.id}
           </div>
           <div className="mt-1 break-words text-xs text-gray-600">
-            {document.sourceType ?? '-'}:{document.sourceId ?? '-'} - {document.destinationType ?? '-'}:{document.destinationId ?? '-'}
+            {document.sourceType ?? '-'}:{document.sourceId ?? '-'} -{' '}
+            {document.destinationType ?? '-'}:{document.destinationId ?? '-'}
           </div>
         </div>
         <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-gray-700">
@@ -2695,7 +3476,10 @@ function MobileErtektarStatusCard({
   const targetStatuses: VaultOperationStatus[] = ['IN_PROGRESS', 'COMPLETED', 'REJECTED']
 
   return (
-    <div className="rounded-md border border-gray-200 bg-gray-50 p-3" data-testid={`mobile-ertektar-status-${kind}-${id}`}>
+    <div
+      className="rounded-md border border-gray-200 bg-gray-50 p-3"
+      data-testid={`mobile-ertektar-status-${kind}-${id}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="break-words text-sm font-bold text-gray-900">
@@ -2721,7 +3505,11 @@ function MobileErtektarStatusCard({
               aria-label={`${title} #${id} mobil státusz ${targetStatus}`}
             >
               {actingId === key && <Loader2 size={12} className="animate-spin" />}
-              {targetStatus === 'IN_PROGRESS' ? 'Folyamat' : targetStatus === 'COMPLETED' ? 'Kész' : 'Elutasít'}
+              {targetStatus === 'IN_PROGRESS'
+                ? 'Folyamat'
+                : targetStatus === 'COMPLETED'
+                  ? 'Kész'
+                  : 'Elutasít'}
             </button>
           )
         })}
@@ -2736,7 +3524,9 @@ function CashPositionMobileCard({ item }: { item: CashPositionItem }) {
   const dailyChangeHuf = item.dailyChangeHuf ?? 0
 
   return (
-    <div className={`rounded-md border p-3 ${urgent ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}>
+    <div
+      className={`rounded-md border p-3 ${urgent ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="font-mono text-sm font-bold text-blue-700">{item.currencyCode}</div>
@@ -2750,9 +3540,21 @@ function CashPositionMobileCard({ item }: { item: CashPositionItem }) {
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
         <StatusLine label="Aktuális" value={fmt(Math.round(item.currentBalance))} urgent={urgent} />
-        <StatusLine label="HUF érték" value={`${fmt(Math.round(item.hufValue))} Ft`} urgent={urgent} />
-        <StatusLine label="Mai változás" value={fmt(Math.round(dailyChange))} urgent={dailyChange < 0} />
-        <StatusLine label="Napi HUF" value={`${fmt(Math.round(dailyChangeHuf))} Ft`} urgent={dailyChangeHuf < 0} />
+        <StatusLine
+          label="HUF érték"
+          value={`${fmt(Math.round(item.hufValue))} Ft`}
+          urgent={urgent}
+        />
+        <StatusLine
+          label="Mai változás"
+          value={fmt(Math.round(dailyChange))}
+          urgent={dailyChange < 0}
+        />
+        <StatusLine
+          label="Napi HUF"
+          value={`${fmt(Math.round(dailyChangeHuf))} Ft`}
+          urgent={dailyChangeHuf < 0}
+        />
       </div>
       <div className="mt-2 text-xs text-gray-500">
         Utolsó mozgás: {formatLocalDateTime(item.lastTransactionAt)}
@@ -2776,9 +3578,7 @@ function MobileTaskGroup({
         <Icon size={16} />
         {title}
       </h2>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {children}
-      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{children}</div>
     </section>
   )
 }
@@ -2824,7 +3624,9 @@ function MetricCard({
   unavailable?: boolean
 }) {
   return (
-    <div className={`rounded-lg border bg-white p-3 ${urgent ? 'border-amber-300' : 'border-gray-200'}`}>
+    <div
+      className={`rounded-lg border bg-white p-3 ${urgent ? 'border-amber-300' : 'border-gray-200'}`}
+    >
       <div className="flex items-center gap-1.5 text-xs text-gray-500">
         <Icon size={14} />
         <span>{label}</span>
@@ -2862,7 +3664,9 @@ function MobilePanel({
         )}
       </div>
       {status === 'unavailable' ? (
-        <p className="text-sm text-gray-500">Ehhez a panelhez nincs jogosultság vagy a backend nem válaszolt.</p>
+        <p className="text-sm text-gray-500">
+          Ehhez a panelhez nincs jogosultság vagy a backend nem válaszolt.
+        </p>
       ) : (
         children
       )}
@@ -2882,7 +3686,11 @@ function StatusLine({
   return (
     <div className="rounded-md bg-gray-50 p-2">
       <div className="text-xs text-gray-500">{label}</div>
-      <div className={`mt-0.5 break-words font-semibold ${urgent ? 'text-amber-700' : 'text-gray-900'}`}>{value}</div>
+      <div
+        className={`mt-0.5 break-words font-semibold ${urgent ? 'text-amber-700' : 'text-gray-900'}`}
+      >
+        {value}
+      </div>
     </div>
   )
 }

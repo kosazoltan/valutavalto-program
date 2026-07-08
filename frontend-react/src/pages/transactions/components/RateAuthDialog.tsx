@@ -56,10 +56,12 @@ export default function RateAuthDialog({
       onSuccess()
     } else {
       const remaining = MAX_ATTEMPTS - attempts - 1
-      setAttempts(a => a + 1)
-      setError(remaining > 0
-        ? `Hibás engedélyezési kód! Még ${remaining} próbálkozás.`
-        : `Túl sok próbálkozás (${MAX_ATTEMPTS}). Zárja be és próbálja újra.`)
+      setAttempts((a) => a + 1)
+      setError(
+        remaining > 0
+          ? `Hibás engedélyezési kód! Még ${remaining} próbálkozás.`
+          : `Túl sok próbálkozás (${MAX_ATTEMPTS}). Zárja be és próbálja újra.`,
+      )
       setResponse('')
       inputRef.current?.focus()
     }
@@ -80,7 +82,8 @@ export default function RateAuthDialog({
 
         <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm">
           <p className="font-semibold text-amber-800 dark:text-amber-200">
-            {mode === 'buy' ? 'Vételi' : 'Eladási'} árfolyam: {customRate.toFixed(2)} HUF/{currencyCode}
+            {mode === 'buy' ? 'Vételi' : 'Eladási'} árfolyam: {customRate.toFixed(2)} HUF/
+            {currencyCode}
           </p>
           <p className="text-amber-700 dark:text-amber-300 mt-1">
             A sávon kívüli árfolyamhoz értéktárosi/főértéktárosi engedély szükséges.
@@ -105,7 +108,10 @@ export default function RateAuthDialog({
             type="text"
             inputMode="numeric"
             value={response}
-            onChange={(e) => { setResponse(e.target.value); setError('') }}
+            onChange={(e) => {
+              setResponse(e.target.value)
+              setError('')
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSubmit()
               if (e.key === 'Escape') onCancel()

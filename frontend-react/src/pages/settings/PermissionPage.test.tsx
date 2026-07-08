@@ -107,7 +107,9 @@ describe('PermissionPage backend contract', () => {
     const codeCell = await screen.findByText('TRANSACTION_CREATE')
     const row = codeCell.closest('tr')
     expect(row).not.toBeNull()
-    await user.click(within(row as HTMLTableRowElement).getByRole('button', { name: 'common.edit' }))
+    await user.click(
+      within(row as HTMLTableRowElement).getByRole('button', { name: 'common.edit' }),
+    )
 
     await waitFor(() => {
       expect(mocks.getById).toHaveBeenCalledWith('11111111-1111-1111-1111-111111111111')

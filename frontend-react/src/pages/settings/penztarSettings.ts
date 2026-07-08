@@ -38,25 +38,25 @@ export type HandlingFeeMode = 'NINCS' | 'EZRELEKES' | 'SAVOS'
 export type FutofenyMode = 'ARFOLYAM' | 'SZOVEG' | 'VALTAKOZO'
 
 export interface PenztarSettings {
-  machineRole: MachineRole                 // FR-02
-  applications: string[]                   // FR-03 (VALUTAVALTAS, WESTERN_UNION, ...)
-  displayColor: DisplayColor               // FR-04
+  machineRole: MachineRole // FR-02
+  applications: string[] // FR-03 (VALUTAVALTAS, WESTERN_UNION, ...)
+  displayColor: DisplayColor // FR-04
   serverIp: [number, number, number, number] // FR-05
-  dailyReportEmail: string                 // FR-06 (értéktár e-mail — branch adat olvasásához)
-  saturdayOpen: boolean                    // FR-06 (szombati nyitvatartás — branch adat)
-  dataSendFrequencyMin: number             // FR-07 (0–25)
-  printerPort: PrinterPort                 // FR-08
-  scannerDriver: string                    // FR-09 (driver neve)
-  handlingFeeMode: HandlingFeeMode         // FR-10
+  dailyReportEmail: string // FR-06 (értéktár e-mail — branch adat olvasásához)
+  saturdayOpen: boolean // FR-06 (szombati nyitvatartás — branch adat)
+  dataSendFrequencyMin: number // FR-07 (0–25)
+  printerPort: PrinterPort // FR-08
+  scannerDriver: string // FR-09 (driver neve)
+  handlingFeeMode: HandlingFeeMode // FR-10
   // FR-11: Futófény beállítások (soros-port vezérlés runtime-feladat, ez csak konfig)
-  futofenyDarab: number                    // hány futófénytábla van
-  futofenyCom1: number                     // első tábla COM-portja
-  futofenyCom2: number                     // második tábla COM-portja
-  futofenyMod: FutofenyMode                // megjelenítési mód
-  futofenyKikapcsolva: boolean             // futófény ki/be kapcsolva
-  futofenySebesseg: number                 // 1–10 sebesség-skála
-  cardPaymentEnabled: boolean              // FR-12
-  adOnDisplay: boolean                     // FR-13
+  futofenyDarab: number // hány futófénytábla van
+  futofenyCom1: number // első tábla COM-portja
+  futofenyCom2: number // második tábla COM-portja
+  futofenyMod: FutofenyMode // megjelenítési mód
+  futofenyKikapcsolva: boolean // futófény ki/be kapcsolva
+  futofenySebesseg: number // 1–10 sebesség-skála
+  cardPaymentEnabled: boolean // FR-12
+  adOnDisplay: boolean // FR-13
 }
 
 export const FREQUENCY_MIN = 0
@@ -171,15 +171,24 @@ export function clampFutofenyDarab(v: unknown): number {
 /** Hiányzó mezők kitöltése default-tal + tartomány-/union-validáció. */
 export function normalize(s: Partial<PenztarSettings>): PenztarSettings {
   const d = DEFAULT_PENZTAR_SETTINGS
-  const ip = Array.isArray(s.serverIp) && s.serverIp.length === 4
-    ? (s.serverIp.map((o) => (isValidOctet(o as number) ? o : 0)) as [number, number, number, number])
-    : [...d.serverIp] as [number, number, number, number]
+  const ip =
+    Array.isArray(s.serverIp) && s.serverIp.length === 4
+      ? (s.serverIp.map((o) => (isValidOctet(o as number) ? o : 0)) as [
+          number,
+          number,
+          number,
+          number,
+        ])
+      : ([...d.serverIp] as [number, number, number, number])
   return {
     machineRole: oneOf(s.machineRole, MACHINE_ROLES, d.machineRole),
-    applications: Array.isArray(s.applications) ? s.applications.filter((a) => typeof a === 'string') : [...d.applications],
+    applications: Array.isArray(s.applications)
+      ? s.applications.filter((a) => typeof a === 'string')
+      : [...d.applications],
     displayColor: oneOf(s.displayColor, DISPLAY_COLORS, d.displayColor),
     serverIp: ip,
-    dailyReportEmail: typeof s.dailyReportEmail === 'string' ? s.dailyReportEmail : d.dailyReportEmail,
+    dailyReportEmail:
+      typeof s.dailyReportEmail === 'string' ? s.dailyReportEmail : d.dailyReportEmail,
     saturdayOpen: typeof s.saturdayOpen === 'boolean' ? s.saturdayOpen : d.saturdayOpen,
     dataSendFrequencyMin: clampFrequency(s.dataSendFrequencyMin ?? d.dataSendFrequencyMin),
     printerPort: oneOf(s.printerPort, PRINTER_PORTS, d.printerPort),
@@ -190,9 +199,11 @@ export function normalize(s: Partial<PenztarSettings>): PenztarSettings {
     futofenyCom1: isValidComPort(s.futofenyCom1) ? (s.futofenyCom1 as number) : d.futofenyCom1,
     futofenyCom2: isValidComPort(s.futofenyCom2) ? (s.futofenyCom2 as number) : d.futofenyCom2,
     futofenyMod: oneOf(s.futofenyMod, FUTOFENY_MODES, d.futofenyMod),
-    futofenyKikapcsolva: typeof s.futofenyKikapcsolva === 'boolean' ? s.futofenyKikapcsolva : d.futofenyKikapcsolva,
+    futofenyKikapcsolva:
+      typeof s.futofenyKikapcsolva === 'boolean' ? s.futofenyKikapcsolva : d.futofenyKikapcsolva,
     futofenySebesseg: clampFutofenySebesseg(s.futofenySebesseg ?? d.futofenySebesseg),
-    cardPaymentEnabled: typeof s.cardPaymentEnabled === 'boolean' ? s.cardPaymentEnabled : d.cardPaymentEnabled,
+    cardPaymentEnabled:
+      typeof s.cardPaymentEnabled === 'boolean' ? s.cardPaymentEnabled : d.cardPaymentEnabled,
     adOnDisplay: typeof s.adOnDisplay === 'boolean' ? s.adOnDisplay : d.adOnDisplay,
   }
 }

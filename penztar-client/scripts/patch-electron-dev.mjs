@@ -1,6 +1,6 @@
 /**
  * patch-electron-dev.mjs
- * 
+ *
  * Patches node_modules/electron so that require('electron') in the Electron
  * main process resolves to the built-in module instead of the npm package's
  * path-exporting index.js.

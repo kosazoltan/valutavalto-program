@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Playwright config for FULL E2E tests
@@ -36,4 +36,4 @@ export default defineConfig({
   timeout: 90000,
   expect: { timeout: 15000 },
   outputDir: './playwright-artifacts/full-e2e',
-})
+});

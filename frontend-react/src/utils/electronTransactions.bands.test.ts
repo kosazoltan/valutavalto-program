@@ -8,23 +8,25 @@ import { mapCachedRatesToExchangeRates, type ElectronCachedRate } from './electr
  */
 describe('mapCachedRatesToExchangeRates — sávos árfolyam mezők', () => {
   it('átadja az official_rate + limit1/2/3 mezőket az ExchangeRate-be', () => {
-    const cached: ElectronCachedRate[] = [{
-      currency_code: 'EUR',
-      buy_rate: 405,
-      sell_rate: 411,
-      unit: 1,
-      updated_at: '2026-06-02T10:00:00',
-      official_rate: 408,
-      limit1_amount: 100000,
-      limit1_buy_rate: 406,
-      limit1_sell_rate: 410,
-      limit2_amount: 300000,
-      limit2_buy_rate: 407,
-      limit2_sell_rate: 409,
-      limit3_amount: 1000000,
-      limit3_buy_rate: 408,
-      limit3_sell_rate: 408,
-    }]
+    const cached: ElectronCachedRate[] = [
+      {
+        currency_code: 'EUR',
+        buy_rate: 405,
+        sell_rate: 411,
+        unit: 1,
+        updated_at: '2026-06-02T10:00:00',
+        official_rate: 408,
+        limit1_amount: 100000,
+        limit1_buy_rate: 406,
+        limit1_sell_rate: 410,
+        limit2_amount: 300000,
+        limit2_buy_rate: 407,
+        limit2_sell_rate: 409,
+        limit3_amount: 1000000,
+        limit3_buy_rate: 408,
+        limit3_sell_rate: 408,
+      },
+    ]
 
     const rate = mapCachedRatesToExchangeRates(cached, [])[0]!
 
@@ -41,17 +43,19 @@ describe('mapCachedRatesToExchangeRates — sávos árfolyam mezők', () => {
   })
 
   it('null sávmezőket undefined-ra konvertál (nincs sávos árfolyam esetén)', () => {
-    const cached: ElectronCachedRate[] = [{
-      currency_code: 'USD',
-      buy_rate: 360,
-      sell_rate: 366,
-      unit: 1,
-      updated_at: '2026-06-02T10:00:00',
-      official_rate: null,
-      limit1_amount: null,
-      limit1_buy_rate: null,
-      limit1_sell_rate: null,
-    }]
+    const cached: ElectronCachedRate[] = [
+      {
+        currency_code: 'USD',
+        buy_rate: 360,
+        sell_rate: 366,
+        unit: 1,
+        updated_at: '2026-06-02T10:00:00',
+        official_rate: null,
+        limit1_amount: null,
+        limit1_buy_rate: null,
+        limit1_sell_rate: null,
+      },
+    ]
 
     const rate = mapCachedRatesToExchangeRates(cached, [])[0]!
 

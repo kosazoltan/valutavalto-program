@@ -76,10 +76,12 @@ describe('CustomerCreatePage compliance controls', () => {
     await user.click(screen.getByTestId('customer-create-save-button'))
 
     await waitFor(() => expect(mocks.customerCreate).toHaveBeenCalled())
-    expect(mocks.customerCreate).toHaveBeenCalledWith(expect.objectContaining({
-      isPep: false,
-      notes: expect.stringContaining('ADATKEZELESI_TAJEKOZTATO_ACK v2026-06-09'),
-    }))
+    expect(mocks.customerCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isPep: false,
+        notes: expect.stringContaining('ADATKEZELESI_TAJEKOZTATO_ACK v2026-06-09'),
+      }),
+    )
     expect(mocks.navigate).toHaveBeenCalledWith('/customers/42')
   })
 

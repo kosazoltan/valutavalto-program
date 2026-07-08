@@ -15,10 +15,25 @@ export function Section({ title, children }: { title: string; children: ReactNod
   )
 }
 
-export function Check({ label, checked, onChange, hint }: { label: string; checked: boolean; onChange: (v: boolean) => void; hint?: string }) {
+export function Check({
+  label,
+  checked,
+  onChange,
+  hint,
+}: {
+  label: string
+  checked: boolean
+  onChange: (v: boolean) => void
+  hint?: string
+}) {
   return (
     <label className="inline-flex items-start gap-2 cursor-pointer">
-      <input type="checkbox" className="form-checkbox h-4 w-4 mt-0.5" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <input
+        type="checkbox"
+        className="form-checkbox h-4 w-4 mt-0.5"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
       <span className="text-sm">
         {label}
         {hint ? <span className="block text-xs text-gray-500">{hint}</span> : null}

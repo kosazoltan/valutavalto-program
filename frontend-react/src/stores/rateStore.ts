@@ -155,8 +155,8 @@ export const useRateStore = create<RateState>()((set, get) => ({
       const parsedBuy = Number(update.buyRate)
       const parsedSell = Number(update.sellRate)
 
-      const baseBuyRate = Number.isFinite(parsedBuy) ? parsedBuy : current?.baseBuyRate ?? 0
-      const baseSellRate = Number.isFinite(parsedSell) ? parsedSell : current?.baseSellRate ?? 0
+      const baseBuyRate = Number.isFinite(parsedBuy) ? parsedBuy : (current?.baseBuyRate ?? 0)
+      const baseSellRate = Number.isFinite(parsedSell) ? parsedSell : (current?.baseSellRate ?? 0)
 
       // For brand-new currencies arriving via WebSocket (not yet in the store),
       // scaffold the required ExchangeRate fields with safe defaults. Required

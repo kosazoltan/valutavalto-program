@@ -47,7 +47,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -70,11 +70,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path === '/api/v1/branches/code/BR027' && method === 'GET') {
@@ -97,7 +105,9 @@ async function mockApis(page: Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ ...branch, id: 'vault-1', code: 'VAULT1', name: 'Szeged Értéktár', isVault: true }]),
+        body: JSON.stringify([
+          { ...branch, id: 'vault-1', code: 'VAULT1', name: 'Szeged Értéktár', isVault: true },
+        ]),
       })
     }
 
@@ -107,21 +117,29 @@ async function mockApis(page: Page) {
         contentType: 'application/json',
         body: JSON.stringify({
           territorialCashiers: [{ ...branch, id: 'cashier-1' }],
-          peerVaults: [{ ...branch, id: 'vault-2', code: 'VAULT2', name: 'Másik értéktár', isVault: true }],
+          peerVaults: [
+            { ...branch, id: 'vault-2', code: 'VAULT2', name: 'Másik értéktár', isVault: true },
+          ],
           fixedCounterparties: [{ ...branch, id: 'mnb-1', code: 'MNB', name: 'MNB' }],
         }),
       })
     }
 
     if (path.endsWith('/branches') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([branch]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([branch]),
+      })
     }
 
     if (path.endsWith('/admin/branches') && method === 'GET') {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ id: branch.id, workerCount: 3, lastSyncAt: null, syncStatus: 'SYNCED' }]),
+        body: JSON.stringify([
+          { id: branch.id, workerCount: 3, lastSyncAt: null, syncStatus: 'SYNCED' },
+        ]),
       })
     }
 
@@ -152,9 +170,10 @@ test('pénztár törzs mobil nézetben backend kód szerinti keresést használ'
   await expect(page.getByTestId('branch-vaults-count')).toContainText('1')
   await expect(page.getByTestId('branch-counterparties-count')).toContainText('3')
 
-  const codeRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/branches/code/BR027'
+  const codeRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/branches/code/BR027',
   )
   await page.getByRole('textbox', { name: 'Pontos pénztárkód' }).fill('BR027')
   await page.getByRole('button', { name: 'Kód keresés' }).click()
@@ -162,8 +181,8 @@ test('pénztár törzs mobil nézetben backend kód szerinti keresést használ'
 
   await expect(page.getByTestId('branch-code-result')).toContainText('Backend kód találat')
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

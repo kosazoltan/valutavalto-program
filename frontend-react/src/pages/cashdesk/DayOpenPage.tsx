@@ -33,10 +33,13 @@ export default function DayOpenPage() {
   const [openWarnings, setOpenWarnings] = useState<string[]>([])
   const [reversalCount, setReversalCount] = useState<number | null>(null)
   const [reversalCountError, setReversalCountError] = useState<string | null>(null)
-  const [sessionOpeningBalances, setSessionOpeningBalances] = useState<Record<string, number> | null>(null)
+  const [sessionOpeningBalances, setSessionOpeningBalances] = useState<Record<
+    string,
+    number
+  > | null>(null)
   const [showDenomination, setShowDenomination] = useState(false)
-  const [denomQuantities, setDenomQuantities] = useState<Record<number, number>>(
-    () => Object.fromEntries(HUF_DENOMINATIONS.map((d) => [d, 0]))
+  const [denomQuantities, setDenomQuantities] = useState<Record<number, number>>(() =>
+    Object.fromEntries(HUF_DENOMINATIONS.map((d) => [d, 0])),
   )
 
   const denomTotal = useMemo(
@@ -117,9 +120,15 @@ export default function DayOpenPage() {
         setSessionOpeningBalances(await sessionOpenApi.getOpeningBalance(openedSession.sessionId))
       } catch (err) {
         logger.warn('DayOpenPage', 'Session nyito keszlet lekerdezes sikertelen:', err)
-        setOpenWarnings((prev) => [...prev, 'A session megnyílt, de a nyitó készlet nem kérdezhető le.'])
+        setOpenWarnings((prev) => [
+          ...prev,
+          'A session megnyílt, de a nyitó készlet nem kérdezhető le.',
+        ])
       }
-      toast.success('Nap megnyitva', `${new Date().toLocaleDateString('hu-HU')} — ${worker.fullName}`)
+      toast.success(
+        'Nap megnyitva',
+        `${new Date().toLocaleDateString('hu-HU')} — ${worker.fullName}`,
+      )
       navigate('/cashier')
     } catch (err: unknown) {
       const axErr = err as { response?: { data?: { message?: string } }; message?: string }
@@ -169,194 +178,212 @@ export default function DayOpenPage() {
   return (
     <div className="flex flex-col items-center justify-center">
       <div className="w-full max-w-lg space-y-2">
-          {/* Header */}
-          <div className="text-center">
-            <Sun className="mx-auto h-8 w-8 text-amber-500" />
-            <h1 className="mt-1 text-base font-bold text-gray-900">{t('cashdesk.napnyitas')}</h1>
-            <p className="text-xs text-gray-500">
-              {new Date().toLocaleDateString('hu-HU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              {' — '}
-              {worker?.fullName ?? 'Ismeretlen pénztáros'}
-            </p>
+        {/* Header */}
+        <div className="text-center">
+          <Sun className="mx-auto h-8 w-8 text-amber-500" />
+          <h1 className="mt-1 text-base font-bold text-gray-900">{t('cashdesk.napnyitas')}</h1>
+          <p className="text-xs text-gray-500">
+            {new Date().toLocaleDateString('hu-HU', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+            {' — '}
+            {worker?.fullName ?? 'Ismeretlen pénztáros'}
+          </p>
+        </div>
+
+        {/* Balance error */}
+        {balanceError && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <p className="text-xs text-amber-800">{balanceError}</p>
           </div>
+        )}
 
-          {/* Balance error */}
-          {balanceError && (
-            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-              <p className="text-xs text-amber-800">{balanceError}</p>
+        {openWarnings.length > 0 && (
+          <div
+            className="rounded-lg border border-amber-200 bg-amber-50 p-2"
+            data-testid="session-open-warnings"
+          >
+            <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-amber-900">
+              <AlertTriangle className="h-4 w-4" />
+              Napnyitási figyelmeztetés
             </div>
-          )}
-
-          {openWarnings.length > 0 && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-2" data-testid="session-open-warnings">
-              <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-amber-900">
-                <AlertTriangle className="h-4 w-4" />
-                Napnyitási figyelmeztetés
-              </div>
-              <ul className="space-y-1 text-xs text-amber-800">
-                {openWarnings.map((warning) => (
-                  <li key={warning}>- {warning}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="rounded-lg border border-slate-200 bg-white p-2 text-xs shadow-sm" data-testid="daily-reversal-count">
-            <div className="flex items-center justify-between gap-3">
-              <span className="font-semibold text-slate-600">Mai sztornók</span>
-              <span className="font-mono text-sm font-bold text-slate-900">
-                {reversalCount ?? '-'}
-              </span>
-            </div>
-            {reversalCountError && (
-              <div className="mt-1 text-amber-700">{reversalCountError}</div>
-            )}
+            <ul className="space-y-1 text-xs text-amber-800">
+              {openWarnings.map((warning) => (
+                <li key={warning}>- {warning}</li>
+              ))}
+            </ul>
           </div>
+        )}
 
-          {sessionOpeningBalanceRows.length > 0 && (
-            <div className="rounded-lg border border-green-200 bg-green-50 p-2 shadow-sm" data-testid="session-opening-balances">
-              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-green-700">
-                Backend nyitó készlet
-              </h3>
-              <div className="grid grid-cols-2 gap-x-3">
-                {sessionOpeningBalanceRows.map(([currencyCode, amount]) => (
-                  <div key={currencyCode} className="flex items-center justify-between px-1 py-0.5 text-xs">
-                    <span className="font-medium text-green-800">{currencyCode}</span>
-                    <span className="text-green-900">
-                      {Number(amount).toLocaleString('hu-HU', { maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+        <div
+          className="rounded-lg border border-slate-200 bg-white p-2 text-xs shadow-sm"
+          data-testid="daily-reversal-count"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-semibold text-slate-600">Mai sztornók</span>
+            <span className="font-mono text-sm font-bold text-slate-900">
+              {reversalCount ?? '-'}
+            </span>
+          </div>
+          {reversalCountError && <div className="mt-1 text-amber-700">{reversalCountError}</div>}
+        </div>
 
-          {/* Opening balance display */}
-          {balances.length > 0 && (
-            <div className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
-              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                {t('cashdesk.nyitoEgyenleg')}
-              </h3>
-
-              {/* HUF balance — highlighted */}
-              {hufBalance && (
-                <div className="mb-1 flex items-center justify-between rounded bg-blue-50 px-2 py-1">
-                  <span className="text-sm font-bold text-blue-900">HUF</span>
-                  <span className="text-sm font-bold text-blue-900">
-                    {hufBalance.currentBalance.toLocaleString('hu-HU')} {t('common.ft')}
+        {sessionOpeningBalanceRows.length > 0 && (
+          <div
+            className="rounded-lg border border-green-200 bg-green-50 p-2 shadow-sm"
+            data-testid="session-opening-balances"
+          >
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-green-700">
+              Backend nyitó készlet
+            </h3>
+            <div className="grid grid-cols-2 gap-x-3">
+              {sessionOpeningBalanceRows.map(([currencyCode, amount]) => (
+                <div
+                  key={currencyCode}
+                  className="flex items-center justify-between px-1 py-0.5 text-xs"
+                >
+                  <span className="font-medium text-green-800">{currencyCode}</span>
+                  <span className="text-green-900">
+                    {Number(amount).toLocaleString('hu-HU', { maximumFractionDigits: 2 })}
                   </span>
                 </div>
-              )}
-
-              {/* Foreign currency balances */}
-              {foreignBalances.length > 0 && (
-                <div className="grid grid-cols-2 gap-x-3">
-                  {foreignBalances.map((b) => (
-                    <div key={b.id} className="flex items-center justify-between px-1 py-0.5 text-xs">
-                      <span className="font-medium text-gray-700">{b.currencyCode}</span>
-                      <span className="text-gray-900">
-                        {b.currentBalance.toLocaleString('hu-HU', { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Denomination input toggle */}
-          <button
-            onClick={() => setShowDenomination((v) => !v)}
-            className="flex w-full items-center justify-center gap-2 rounded border border-gray-300 bg-white py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <Coins className="h-3.5 w-3.5" />
-            {showDenomination ? 'Címletezés elrejtése' : 'Nyitó címletezés kitöltése'}
-          </button>
+        {/* Opening balance display */}
+        {balances.length > 0 && (
+          <div className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+              {t('cashdesk.nyitoEgyenleg')}
+            </h3>
 
-          {/* Denomination grid */}
-          {showDenomination && (
-            <div className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
-              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                {t('cashdesk.hufCimletezes')}
-              </h3>
-              {/* Codex P2 #345 fix: a 2-oszlopos cella (max-w-lg/2 ≈ 250px) NEM fér el
-                  w-20 label + w-20 input + computed text esetén. Kompaktabb: w-14 + w-14
-                  és a computed text egy sorba a szumma alá. */}
-              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-                {HUF_DENOMINATIONS.map((faceValue) => (
-                  <div key={faceValue} className="flex items-center gap-2">
-                    <span className="w-14 text-right text-xs font-medium text-gray-700">
-                      {faceValue.toLocaleString('hu-HU')}
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={denomQuantities[faceValue] || ''}
-                      onChange={(e) => {
-                        const val = Math.max(0, parseInt(e.target.value) || 0)
-                        setDenomQuantities((prev) => ({ ...prev, [faceValue]: val }))
-                      }}
-                      className="w-14 rounded border border-gray-300 px-1 py-0.5 text-center text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      placeholder="0"
-                    />
-                    {/* Codex P2 #347: min-w-0 kell a truncate-hez, mert flex item default
-                        min-width: auto megakadalyozza a shrink-et a tartalom alá. */}
-                    <span className="min-w-0 flex-1 text-xs text-gray-500 truncate">
-                      = {(faceValue * (denomQuantities[faceValue] ?? 0)).toLocaleString('hu-HU')} {t('common.ft')}
+            {/* HUF balance — highlighted */}
+            {hufBalance && (
+              <div className="mb-1 flex items-center justify-between rounded bg-blue-50 px-2 py-1">
+                <span className="text-sm font-bold text-blue-900">HUF</span>
+                <span className="text-sm font-bold text-blue-900">
+                  {hufBalance.currentBalance.toLocaleString('hu-HU')} {t('common.ft')}
+                </span>
+              </div>
+            )}
+
+            {/* Foreign currency balances */}
+            {foreignBalances.length > 0 && (
+              <div className="grid grid-cols-2 gap-x-3">
+                {foreignBalances.map((b) => (
+                  <div key={b.id} className="flex items-center justify-between px-1 py-0.5 text-xs">
+                    <span className="font-medium text-gray-700">{b.currencyCode}</span>
+                    <span className="text-gray-900">
+                      {b.currentBalance.toLocaleString('hu-HU', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 ))}
               </div>
-              {/* Total */}
-              <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
-                <span className="text-sm font-bold text-gray-800">{t('cashdesk.osszesen')}</span>
-                <span className="text-lg font-bold text-blue-900">
-                  {denomTotal.toLocaleString('hu-HU')} {t('common.ft')}
-                </span>
-              </div>
-              {/* Comparison with system balance */}
-              {hufBalance && (
-                <div className={`mt-2 rounded-md p-2 text-sm ${
+            )}
+          </div>
+        )}
+
+        {/* Denomination input toggle */}
+        <button
+          onClick={() => setShowDenomination((v) => !v)}
+          className="flex w-full items-center justify-center gap-2 rounded border border-gray-300 bg-white py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+        >
+          <Coins className="h-3.5 w-3.5" />
+          {showDenomination ? 'Címletezés elrejtése' : 'Nyitó címletezés kitöltése'}
+        </button>
+
+        {/* Denomination grid */}
+        {showDenomination && (
+          <div className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+              {t('cashdesk.hufCimletezes')}
+            </h3>
+            {/* Codex P2 #345 fix: a 2-oszlopos cella (max-w-lg/2 ≈ 250px) NEM fér el
+                  w-20 label + w-20 input + computed text esetén. Kompaktabb: w-14 + w-14
+                  és a computed text egy sorba a szumma alá. */}
+            <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+              {HUF_DENOMINATIONS.map((faceValue) => (
+                <div key={faceValue} className="flex items-center gap-2">
+                  <span className="w-14 text-right text-xs font-medium text-gray-700">
+                    {faceValue.toLocaleString('hu-HU')}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={denomQuantities[faceValue] || ''}
+                    onChange={(e) => {
+                      const val = Math.max(0, parseInt(e.target.value) || 0)
+                      setDenomQuantities((prev) => ({ ...prev, [faceValue]: val }))
+                    }}
+                    className="w-14 rounded border border-gray-300 px-1 py-0.5 text-center text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    placeholder="0"
+                  />
+                  {/* Codex P2 #347: min-w-0 kell a truncate-hez, mert flex item default
+                        min-width: auto megakadalyozza a shrink-et a tartalom alá. */}
+                  <span className="min-w-0 flex-1 text-xs text-gray-500 truncate">
+                    = {(faceValue * (denomQuantities[faceValue] ?? 0)).toLocaleString('hu-HU')}{' '}
+                    {t('common.ft')}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {/* Total */}
+            <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
+              <span className="text-sm font-bold text-gray-800">{t('cashdesk.osszesen')}</span>
+              <span className="text-lg font-bold text-blue-900">
+                {denomTotal.toLocaleString('hu-HU')} {t('common.ft')}
+              </span>
+            </div>
+            {/* Comparison with system balance */}
+            {hufBalance && (
+              <div
+                className={`mt-2 rounded-md p-2 text-sm ${
                   denomTotal === hufBalance.currentBalance
                     ? 'bg-green-50 text-green-800'
                     : 'bg-red-50 text-red-800'
-                }`}>
-                  {denomTotal === hufBalance.currentBalance
-                    ? '✓ A cimletezés megegyezik a rendszer egyenleggel'
-                    : `✗ Eltérés: ${(denomTotal - hufBalance.currentBalance).toLocaleString('hu-HU')} Ft (rendszer: ${hufBalance.currentBalance.toLocaleString('hu-HU')} Ft)`}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Open day button */}
-          <button
-            onClick={handleOpenDay}
-            disabled={opening || !!balanceError}
-            className="w-full rounded-lg bg-green-600 py-2 text-base font-bold text-white transition-colors hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {opening ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Megnyitás...
-              </span>
-            ) : (
-              'Nap megnyitása'
+                }`}
+              >
+                {denomTotal === hufBalance.currentBalance
+                  ? '✓ A cimletezés megegyezik a rendszer egyenleggel'
+                  : `✗ Eltérés: ${(denomTotal - hufBalance.currentBalance).toLocaleString('hu-HU')} Ft (rendszer: ${hufBalance.currentBalance.toLocaleString('hu-HU')} Ft)`}
+              </div>
             )}
-          </button>
+          </div>
+        )}
 
-          {/* Back */}
-          <button
-            onClick={async () => {
-              logout()
-              await clearPersistedToken()
-              navigate('/login', { replace: true })
-            }}
-            className="w-full text-center text-xs text-gray-500 hover:text-gray-700"
-          >
-            {t('layout.logoutButton')}
-          </button>
+        {/* Open day button */}
+        <button
+          onClick={handleOpenDay}
+          disabled={opening || !!balanceError}
+          className="w-full rounded-lg bg-green-600 py-2 text-base font-bold text-white transition-colors hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          {opening ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Megnyitás...
+            </span>
+          ) : (
+            'Nap megnyitása'
+          )}
+        </button>
+
+        {/* Back */}
+        <button
+          onClick={async () => {
+            logout()
+            await clearPersistedToken()
+            navigate('/login', { replace: true })
+          }}
+          className="w-full text-center text-xs text-gray-500 hover:text-gray-700"
+        >
+          {t('layout.logoutButton')}
+        </button>
       </div>
     </div>
   )

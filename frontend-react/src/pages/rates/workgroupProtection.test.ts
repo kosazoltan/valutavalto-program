@@ -36,40 +36,66 @@ describe('validateWorkgroupProtection (FK-04/E)', () => {
     const v = validateWorkgroupProtection([row({ buy: 410 })], true, '3-es csoport')
     expect(v).toHaveLength(1)
     expect(v[0]!.column).toBe('L vétel')
-    expect(v[0]!.message).toBe('3-es csoport EUR L vétel nem lehet magasabb az elszámolónál (410 > 400).')
+    expect(v[0]!.message).toBe(
+      '3-es csoport EUR L vétel nem lehet magasabb az elszámolónál (410 > 400).',
+    )
   })
 
   it('eladási (M) < J → magyar "alacsonyabb" üzenet', () => {
     const v = validateWorkgroupProtection([row({ sell: 390 })], true, '7-es csoport')
     expect(v).toHaveLength(1)
     expect(v[0]!.column).toBe('M eladás')
-    expect(v[0]!.message).toBe('7-es csoport EUR M eladás nem lehet alacsonyabb az elszámolónál (390 < 400).')
+    expect(v[0]!.message).toBe(
+      '7-es csoport EUR M eladás nem lehet alacsonyabb az elszámolónál (390 < 400).',
+    )
   })
 
   it('kedvezménysávok (N,P,R / O,Q,S) is ellenőrződnek', () => {
     const v = validateWorkgroupProtection(
-      [row({ limit1Buy: 401, limit2Buy: 402, limit3Buy: 403, limit1Sell: 399, limit2Sell: 398, limit3Sell: 397 })],
+      [
+        row({
+          limit1Buy: 401,
+          limit2Buy: 402,
+          limit3Buy: 403,
+          limit1Sell: 399,
+          limit2Sell: 398,
+          limit3Sell: 397,
+        }),
+      ],
       true,
       '1-es csoport',
     )
     const cols = v.map((x) => x.column).sort()
-    expect(cols).toEqual(['N vétel', 'O eladás', 'P vétel', 'Q eladás', 'R vétel', 'S eladás'].sort())
+    expect(cols).toEqual(
+      ['N vétel', 'O eladás', 'P vétel', 'Q eladás', 'R vétel', 'S eladás'].sort(),
+    )
   })
 
   it('üres (0) cellákat NEM ellenőrzi (kötelező-ráta külön szabály)', () => {
     // sell=0 < J=400 lenne, de 0 = nem beállított → kihagyva
-    const v = validateWorkgroupProtection([row({ sell: 0, buy: 0, official: 400 })], true, '1-es csoport')
+    const v = validateWorkgroupProtection(
+      [row({ sell: 0, buy: 0, official: 400 })],
+      true,
+      '1-es csoport',
+    )
     expect(v).toEqual([])
   })
 
   it('J=null vagy J<=0 → a sort kihagyja (nincs referencia)', () => {
-    expect(validateWorkgroupProtection([row({ official: null, buy: 999 })], true, '1-es csoport')).toEqual([])
-    expect(validateWorkgroupProtection([row({ official: 0, buy: 999 })], true, '1-es csoport')).toEqual([])
+    expect(
+      validateWorkgroupProtection([row({ official: null, buy: 999 })], true, '1-es csoport'),
+    ).toEqual([])
+    expect(
+      validateWorkgroupProtection([row({ official: 0, buy: 999 })], true, '1-es csoport'),
+    ).toEqual([])
   })
 
   it('több valuta, vegyes sértés → minden sértés külön bejegyzés', () => {
     const v = validateWorkgroupProtection(
-      [row({ currencyCode: 'EUR', buy: 410 }), row({ currencyCode: 'USD', official: 360, buy: 355, sell: 350 })],
+      [
+        row({ currencyCode: 'EUR', buy: 410 }),
+        row({ currencyCode: 'USD', official: 360, buy: 355, sell: 350 }),
+      ],
       true,
       '2-es csoport',
     )

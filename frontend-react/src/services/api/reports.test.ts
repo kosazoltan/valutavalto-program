@@ -126,7 +126,11 @@ describe('navReportApi backend contract', () => {
   })
 
   it('approveDiscrepancy calls POST /nav/closings/{id}/approve-discrepancy with amount and justification params', async () => {
-    await navReportApi.approveDiscrepancy('closing-1', 1_200_000, 'Pénztárgép kerekítési eltérés igazolva')
+    await navReportApi.approveDiscrepancy(
+      'closing-1',
+      1_200_000,
+      'Pénztárgép kerekítési eltérés igazolva',
+    )
 
     expect(mockApi.post).toHaveBeenCalledWith('/nav/closings/closing-1/approve-discrepancy', null, {
       params: {

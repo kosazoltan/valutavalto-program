@@ -1,6 +1,19 @@
 import { useState, useEffect, useCallback } from 'react'
-import { CalendarCheck, Download, FileText, Search, RefreshCw, AlertTriangle, Eye } from 'lucide-react'
-import { mnbReportsApi, type MnbDailyReport, type MnbMonthlyReport, type MnbReport } from '../../services/api/mnbReports'
+import {
+  CalendarCheck,
+  Download,
+  FileText,
+  Search,
+  RefreshCw,
+  AlertTriangle,
+  Eye,
+} from 'lucide-react'
+import {
+  mnbReportsApi,
+  type MnbDailyReport,
+  type MnbMonthlyReport,
+  type MnbReport,
+} from '../../services/api/mnbReports'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
@@ -122,12 +135,10 @@ export default function MnbReportPage() {
     }
   }
 
-  const filtered = items.filter(item => {
+  const filtered = items.filter((item) => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
+    return Object.values(item).some((v) => v != null && String(v).toLowerCase().includes(term))
   })
 
   return (
@@ -151,7 +162,7 @@ export default function MnbReportPage() {
             type="text"
             placeholder="Keresés..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="form-input w-full pl-10"
           />
         </div>
@@ -161,12 +172,14 @@ export default function MnbReportPage() {
         <div className="rounded border border-gray-200 bg-white p-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="flex-1">
-              <label className="form-label" htmlFor="mnb-report-date">MNB ellenőrzési nap</label>
+              <label className="form-label" htmlFor="mnb-report-date">
+                MNB ellenőrzési nap
+              </label>
               <input
                 id="mnb-report-date"
                 type="date"
                 value={reportDate}
-                onChange={e => setReportDate(e.target.value)}
+                onChange={(e) => setReportDate(e.target.value)}
                 className="form-input w-full"
               />
             </div>
@@ -192,20 +205,28 @@ export default function MnbReportPage() {
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div className="rounded border border-emerald-200 bg-emerald-50 p-3">
               <div className="text-xs text-emerald-700">Napi tranzakció</div>
-              <div className="text-xl font-semibold text-emerald-900">{formatNumber(dailyReport?.totalTransactions)}</div>
+              <div className="text-xl font-semibold text-emerald-900">
+                {formatNumber(dailyReport?.totalTransactions)}
+              </div>
             </div>
             <div className="rounded border border-blue-200 bg-blue-50 p-3">
               <div className="text-xs text-blue-700">Havi tranzakció</div>
-              <div className="text-xl font-semibold text-blue-900">{formatNumber(monthlyReport?.totalTransactions)}</div>
+              <div className="text-xl font-semibold text-blue-900">
+                {formatNumber(monthlyReport?.totalTransactions)}
+              </div>
             </div>
             <div className="rounded border border-amber-200 bg-amber-50 p-3">
               <div className="text-xs text-amber-700">Validációs üzenet</div>
-              <div className="text-xl font-semibold text-amber-900">{validationMessages.length}</div>
+              <div className="text-xl font-semibold text-amber-900">
+                {validationMessages.length}
+              </div>
             </div>
           </div>
           {validationMessages.length > 0 && (
             <ul className="mt-3 space-y-1 text-sm text-amber-800">
-              {validationMessages.map(message => <li key={message}>{message}</li>)}
+              {validationMessages.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
             </ul>
           )}
         </div>
@@ -219,9 +240,13 @@ export default function MnbReportPage() {
               <dt className="text-gray-500">Dátum</dt>
               <dd className="font-medium text-gray-900">{selectedReport.reportDate ?? '-'}</dd>
               <dt className="text-gray-500">Vétel HUF</dt>
-              <dd className="font-medium text-gray-900">{formatNumber(selectedReport.totalBuyHuf)}</dd>
+              <dd className="font-medium text-gray-900">
+                {formatNumber(selectedReport.totalBuyHuf)}
+              </dd>
               <dt className="text-gray-500">Eladás HUF</dt>
-              <dd className="font-medium text-gray-900">{formatNumber(selectedReport.totalSellHuf)}</dd>
+              <dd className="font-medium text-gray-900">
+                {formatNumber(selectedReport.totalSellHuf)}
+              </dd>
               <dt className="text-gray-500">Sorok</dt>
               <dd className="font-medium text-gray-900">{selectedReport.lines?.length ?? 0}</dd>
               <dt className="text-gray-500">Elutasítás oka</dt>
@@ -244,45 +269,72 @@ export default function MnbReportPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.type')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('reports.riportDatum')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('reports.tranzakcioDb')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.status2')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('darius.bekuldes')}</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.actions')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.type')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('reports.riportDatum')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('reports.tranzakcioDb')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.status2')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('darius.bekuldes')}
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                {t('common.actions')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.reportType ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.reportDate ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.totalTransactions ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.submittedAt ? new Date(item.submittedAt).toLocaleString('hu-HU') : '-'}</td>
-                <td className="px-4 py-3 text-right text-sm">
-                  <button
-                    type="button"
-                    onClick={() => void handleShowDetails(item)}
-                    disabled={detailLoadingId === item.id}
-                    className="form-button justify-center text-xs"
-                  >
-                    <Eye className={`h-3.5 w-3.5 ${detailLoadingId === item.id ? 'animate-pulse' : ''}`} />
-                    Részletek
-                  </button>
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                  Betöltés...
                 </td>
               </tr>
-            ))}
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('common.noData')}
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm">{item.reportType ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.reportDate ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.totalTransactions ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.submittedAt ? new Date(item.submittedAt).toLocaleString('hu-HU') : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm">
+                    <button
+                      type="button"
+                      onClick={() => void handleShowDetails(item)}
+                      disabled={detailLoadingId === item.id}
+                      className="form-button justify-center text-xs"
+                    >
+                      <Eye
+                        className={`h-3.5 w-3.5 ${detailLoadingId === item.id ? 'animate-pulse' : ''}`}
+                      />
+                      Részletek
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="text-sm text-gray-500">
-        {t('audit.osszesen')}{filtered.length} / {items.length}
+        {t('audit.osszesen')}
+        {filtered.length} / {items.length}
       </div>
     </div>
   )

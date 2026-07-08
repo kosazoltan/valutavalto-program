@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,15 +52,27 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/features') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({}),
+      })
     }
 
     if (path.endsWith('/fees/types') && method === 'GET') {
@@ -68,7 +80,13 @@ async function mockApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { id: 'fee-type-1', code: 'HANDLING', name: 'Kezelési díj', calculationMethod: 'FIXED', isActive: true },
+          {
+            id: 'fee-type-1',
+            code: 'HANDLING',
+            name: 'Kezelési díj',
+            calculationMethod: 'FIXED',
+            isActive: true,
+          },
         ]),
       })
     }
@@ -78,7 +96,15 @@ async function mockApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { id: 'fee-rate-1', feeTypeId: 'fee-type-1', feeTypeName: 'Kezelési díj', currencyCode: 'EUR', rate: 1.5, validFrom: '2026-01-01', isActive: true },
+          {
+            id: 'fee-rate-1',
+            feeTypeId: 'fee-type-1',
+            feeTypeName: 'Kezelési díj',
+            currencyCode: 'EUR',
+            rate: 1.5,
+            validFrom: '2026-01-01',
+            isActive: true,
+          },
         ]),
       })
     }
@@ -88,7 +114,15 @@ async function mockApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { id: 'fee-discount-1', code: 'VIP', name: 'VIP kedvezmény', discountType: 'PERCENT', discountValue: 10, validFrom: '2026-01-01', isActive: true },
+          {
+            id: 'fee-discount-1',
+            code: 'VIP',
+            name: 'VIP kedvezmény',
+            discountType: 'PERCENT',
+            discountValue: 10,
+            validFrom: '2026-01-01',
+            isActive: true,
+          },
         ]),
       })
     }
@@ -120,16 +154,17 @@ test('Díjkezelés mobil nézetben törli a díjtípust backend végponton', asy
   await expect(page.getByRole('heading', { name: /Díjkezelés|fees\.dijkezeles/i })).toBeVisible()
   await expect(page.getByText('Kezelési díj')).toBeVisible()
 
-  const deleteRequest = page.waitForRequest(request =>
-    request.method() === 'DELETE'
-    && new URL(request.url()).pathname === '/api/v1/fees/types/fee-type-1'
+  const deleteRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'DELETE' &&
+      new URL(request.url()).pathname === '/api/v1/fees/types/fee-type-1',
   )
-  page.once('dialog', dialog => dialog.accept())
+  page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: /Törlés/i }).click()
   await deleteRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

@@ -12,9 +12,18 @@
     "os": "KITÖLTENDŐ: pl. Windows 11 Pro 24H2, friss snapshot",
     "cleanSnapshot": false,
     "steps": {
-      "install": { "result": "KITÖLTENDŐ: PASS vagy FAIL", "notes": "KITÖLTENDŐ: SmartScreen/UAC viselkedés" },
-      "launch": { "result": "KITÖLTENDŐ: PASS vagy FAIL", "notes": "KITÖLTENDŐ: első indítás + bejelentkezés" },
-      "uninstall": { "result": "KITÖLTENDŐ: PASS vagy FAIL", "notes": "KITÖLTENDŐ: Eltavolito lefutott, adatvédelem rendben" }
+      "install": {
+        "result": "KITÖLTENDŐ: PASS vagy FAIL",
+        "notes": "KITÖLTENDŐ: SmartScreen/UAC viselkedés"
+      },
+      "launch": {
+        "result": "KITÖLTENDŐ: PASS vagy FAIL",
+        "notes": "KITÖLTENDŐ: első indítás + bejelentkezés"
+      },
+      "uninstall": {
+        "result": "KITÖLTENDŐ: PASS vagy FAIL",
+        "notes": "KITÖLTENDŐ: Eltavolito lefutott, adatvédelem rendben"
+      }
     }
   },
   "testedAt": "KITÖLTENDŐ: ISO dátum",

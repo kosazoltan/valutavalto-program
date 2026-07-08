@@ -22,12 +22,12 @@
  *   tests: offline CRUD, reconnect sync, concurrent edit
  */
 
-import { app, ipcMain, safeStorage } from 'electron';
-import path from 'node:path';
-import fs from 'node:fs';
-import { randomUUID } from 'node:crypto';
-import log from 'electron-log';
-import type { Database } from 'sql.js';
+import { app, ipcMain, safeStorage } from 'electron'
+import path from 'node:path'
+import fs from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import log from 'electron-log'
+import type { Database } from 'sql.js'
 import {
   initLocalDatabase,
   getDb,
@@ -41,21 +41,21 @@ import {
   SERVER_AUTHORITY,
   LAST_WRITE_WINS,
   fieldMerge,
-} from '../../packages/local-first-core/src';
-import type { OutboxEntry } from '../../packages/local-first-core/src';
+} from '../../packages/local-first-core/src'
+import type { OutboxEntry } from '../../packages/local-first-core/src'
 
 function resolveWasmPath(): string {
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'sql-wasm.wasm');
+    return path.join(process.resourcesPath, 'sql-wasm.wasm')
   }
   const candidates = [
     path.join(__dirname, '../node_modules/sql.js/dist/sql-wasm.wasm'),
     path.join(process.cwd(), 'node_modules/sql.js/dist/sql-wasm.wasm'),
-  ];
+  ]
   for (const c of candidates) {
-    if (fs.existsSync(c)) return c;
+    if (fs.existsSync(c)) return c
   }
-  throw new Error(`sql-wasm.wasm not found. Tried: ${candidates.join(', ')}`);
+  throw new Error(`sql-wasm.wasm not found. Tried: ${candidates.join(', ')}`)
 }
 
 // --- Conflict policies ---
@@ -72,92 +72,102 @@ conflictPolicy.registerPolicy({
     valid_from: 'server',
     valid_until: 'server',
   }),
-});
+})
 
 conflictPolicy.registerPolicy({
   entityType: 'published_rate',
   strategy: 'server_authority',
   description: 'Published rates: immutable, server is source of truth',
   resolve: SERVER_AUTHORITY,
-});
+})
 
 conflictPolicy.registerPolicy({
   entityType: 'currency_pair',
   strategy: 'server_authority',
   description: 'Currency pairs: master data from server',
   resolve: SERVER_AUTHORITY,
-});
+})
 
 conflictPolicy.registerPolicy({
   entityType: 'settings',
   strategy: 'last_write_wins',
   description: 'Settings: LWW acceptable, no critical data loss',
   resolve: LAST_WRITE_WINS,
-});
+})
 
 // --- Rate Maker Sync Engine ---
 
 class RateMakerSyncEngine extends SyncEngineBase {
-  private apiUrl: string;
-  private getToken: () => string | null;
+  private apiUrl: string
+  private getToken: () => string | null
 
   constructor(db: Database, apiUrl: string, getToken: () => string | null) {
-    super(db, 30_000);
-    this.apiUrl = apiUrl;
-    this.getToken = getToken;
+    super(db, 30_000)
+    this.apiUrl = apiUrl
+    this.getToken = getToken
   }
 
   async getAuthToken(): Promise<string | null> {
-    return this.getToken();
+    return this.getToken()
   }
 
-  async pullChanges(token: string, checkpoint: string | null): Promise<{ checkpoint: string; count: number }> {
-    const url = `${this.apiUrl}/rate-maker/sync/pull${checkpoint ? `?since=${encodeURIComponent(checkpoint)}` : ''}`;
+  async pullChanges(
+    token: string,
+    checkpoint: string | null,
+  ): Promise<{ checkpoint: string; count: number }> {
+    const url = `${this.apiUrl}/rate-maker/sync/pull${checkpoint ? `?since=${encodeURIComponent(checkpoint)}` : ''}`
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
       signal: AbortSignal.timeout(15_000),
-    });
+    })
 
     if (!response.ok) {
-      throw new Error(`Pull failed: HTTP ${response.status}`);
+      throw new Error(`Pull failed: HTTP ${response.status}`)
     }
 
-    const data = await response.json() as {
-      checkpoint: string;
-      rates?: Array<{ id: string; [key: string]: unknown }>;
-      currencyPairs?: Array<{ id: string; [key: string]: unknown }>;
-      deletedIds?: Array<{ entityType: string; entityId: string }>;
-    };
+    const data = (await response.json()) as {
+      checkpoint: string
+      rates?: Array<{ id: string; [key: string]: unknown }>
+      currencyPairs?: Array<{ id: string; [key: string]: unknown }>
+      deletedIds?: Array<{ entityType: string; entityId: string }>
+    }
 
-    let count = 0;
+    let count = 0
 
     if (data.rates) {
       for (const rate of data.rates) {
-        cachedEntities.upsertCached(this.db, 'published_rate', rate.id, rate, 1, String(rate.updatedAt ?? ''));
-        count++;
+        cachedEntities.upsertCached(
+          this.db,
+          'published_rate',
+          rate.id,
+          rate,
+          1,
+          String(rate.updatedAt ?? ''),
+        )
+        count++
       }
     }
 
     if (data.currencyPairs) {
       for (const pair of data.currencyPairs) {
-        cachedEntities.upsertCached(this.db, 'currency_pair', pair.id, pair, 1);
-        count++;
+        cachedEntities.upsertCached(this.db, 'currency_pair', pair.id, pair, 1)
+        count++
       }
     }
 
     if (data.deletedIds) {
       for (const del of data.deletedIds) {
-        cachedEntities.softDeleteCached(this.db, del.entityType, del.entityId);
-        count++;
+        cachedEntities.softDeleteCached(this.db, del.entityType, del.entityId)
+        count++
       }
     }
 
-    saveDatabase();
-    return { checkpoint: data.checkpoint ?? new Date().toISOString(), count };
+    saveDatabase()
+    return { checkpoint: data.checkpoint ?? new Date().toISOString(), count }
   }
 
   async pushEntry(token: string, entry: OutboxEntry): Promise<void> {
-    const url = `${this.apiUrl}/rate-maker/sync/push`;
+    const url = `${this.apiUrl}/rate-maker/sync/push`
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -173,26 +183,26 @@ class RateMakerSyncEngine extends SyncEngineBase {
         payload: JSON.parse(entry.payload),
       }),
       signal: AbortSignal.timeout(15_000),
-    });
+    })
 
     if (!response.ok) {
-      throw new Error(`Push failed: HTTP ${response.status}`);
+      throw new Error(`Push failed: HTTP ${response.status}`)
     }
   }
 }
 
 // --- Module state ---
 
-let syncEngine: RateMakerSyncEngine | null = null;
-let cachedToken: string | null = null;
+let syncEngine: RateMakerSyncEngine | null = null
+let cachedToken: string | null = null
 
 function loadPersistedToken(): string | null {
   try {
-    const tokenFilePath = path.join(app.getPath('userData'), 'auth-token.bin');
-    if (!safeStorage.isEncryptionAvailable() || !fs.existsSync(tokenFilePath)) return null;
-    return safeStorage.decryptString(fs.readFileSync(tokenFilePath));
+    const tokenFilePath = path.join(app.getPath('userData'), 'auth-token.bin')
+    if (!safeStorage.isEncryptionAvailable() || !fs.existsSync(tokenFilePath)) return null
+    return safeStorage.decryptString(fs.readFileSync(tokenFilePath))
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -209,26 +219,28 @@ function loadPersistedToken(): string | null {
 // miatt megtartjuk a paramétert), és a DB-init visszatérési értékét sem kell
 // elkapni — a `getDb()` modul-szintű accessoron át érjük el a lokál cache-t.
 export async function initLocalFirst(_apiUrl: string): Promise<void> {
-  const dbDir = path.join(app.getPath('home'), '.valuta-rate-maker');
+  const dbDir = path.join(app.getPath('home'), '.valuta-rate-maker')
   await initLocalDatabase({
     dbDir,
     dbName: 'rate-maker.db',
     wasmPath: resolveWasmPath(),
-  });
+  })
 
-  cachedToken = loadPersistedToken();
+  cachedToken = loadPersistedToken()
 
-  log.info('[LocalFirst] Rate Maker local-first initialized (sync-motor KIHAGYVA — közvetlen REST publikálás)');
+  log.info(
+    '[LocalFirst] Rate Maker local-first initialized (sync-motor KIHAGYVA — közvetlen REST publikálás)',
+  )
 }
 
 export function shutdownLocalFirst(): void {
-  syncEngine?.stop();
-  closeDatabase();
-  log.info('[LocalFirst] Rate Maker local-first shutdown');
+  syncEngine?.stop()
+  closeDatabase()
+  log.info('[LocalFirst] Rate Maker local-first shutdown')
 }
 
 export function setAuthToken(token: string | null): void {
-  cachedToken = token;
+  cachedToken = token
 }
 
 // --- IPC Handlers ---
@@ -236,62 +248,75 @@ export function setAuthToken(token: string | null): void {
 export function registerLocalFirstIpcHandlers(): void {
   ipcMain.handle('lf:sync-status', () => {
     try {
-      return syncState.getSyncState(getDb());
+      return syncState.getSyncState(getDb())
     } catch {
-      return { status: 'idle', lastPullAt: null, lastPushAt: null, lastPullCheckpoint: null, errorMessage: null, consecutiveFailures: 0 };
+      return {
+        status: 'idle',
+        lastPullAt: null,
+        lastPushAt: null,
+        lastPullCheckpoint: null,
+        errorMessage: null,
+        consecutiveFailures: 0,
+      }
     }
-  });
+  })
 
   ipcMain.handle('lf:outbox-stats', () => {
     try {
-      return outbox.getStats(getDb());
+      return outbox.getStats(getDb())
     } catch {
-      return {};
+      return {}
     }
-  });
+  })
 
   ipcMain.handle('lf:trigger-sync', async () => {
-    if (!syncEngine) return { error: 'Sync engine not initialized' };
-    return syncEngine.runCycle();
-  });
+    if (!syncEngine) return { error: 'Sync engine not initialized' }
+    return syncEngine.runCycle()
+  })
 
   ipcMain.handle('lf:save-rate-draft', (_event, draft: Record<string, unknown>) => {
-    const db = getDb();
-    const entityId = String(draft.id ?? randomUUID());
-    const mutationId = outbox.enqueue(db, 'rate_draft', 'CREATE', { ...draft, id: entityId }, entityId);
-    cachedEntities.upsertCached(db, 'rate_draft', entityId, { ...draft, id: entityId }, 1);
-    saveDatabase();
-    return { ok: true, mutationId };
-  });
+    const db = getDb()
+    const entityId = String(draft.id ?? randomUUID())
+    const mutationId = outbox.enqueue(
+      db,
+      'rate_draft',
+      'CREATE',
+      { ...draft, id: entityId },
+      entityId,
+    )
+    cachedEntities.upsertCached(db, 'rate_draft', entityId, { ...draft, id: entityId }, 1)
+    saveDatabase()
+    return { ok: true, mutationId }
+  })
 
   ipcMain.handle('lf:update-rate-draft', (_event, draft: Record<string, unknown>) => {
-    const db = getDb();
-    const entityId = String(draft.id ?? '');
-    outbox.enqueue(db, 'rate_draft', 'UPDATE', draft, entityId);
-    cachedEntities.upsertCached(db, 'rate_draft', entityId, draft, 1);
-    saveDatabase();
-    return { ok: true };
-  });
+    const db = getDb()
+    const entityId = String(draft.id ?? '')
+    outbox.enqueue(db, 'rate_draft', 'UPDATE', draft, entityId)
+    cachedEntities.upsertCached(db, 'rate_draft', entityId, draft, 1)
+    saveDatabase()
+    return { ok: true }
+  })
 
   ipcMain.handle('lf:delete-rate-draft', (_event, entityId: string) => {
-    const db = getDb();
-    outbox.enqueue(db, 'rate_draft', 'DELETE', { id: entityId }, entityId);
-    cachedEntities.softDeleteCached(db, 'rate_draft', entityId);
-    saveDatabase();
-    return { ok: true };
-  });
+    const db = getDb()
+    outbox.enqueue(db, 'rate_draft', 'DELETE', { id: entityId }, entityId)
+    cachedEntities.softDeleteCached(db, 'rate_draft', entityId)
+    saveDatabase()
+    return { ok: true }
+  })
 
   ipcMain.handle('lf:get-rate-drafts', () => {
-    return cachedEntities.listCached(getDb(), 'rate_draft');
-  });
+    return cachedEntities.listCached(getDb(), 'rate_draft')
+  })
 
   ipcMain.handle('lf:get-published-rates', () => {
-    return cachedEntities.listCached(getDb(), 'published_rate');
-  });
+    return cachedEntities.listCached(getDb(), 'published_rate')
+  })
 
   ipcMain.handle('lf:get-currency-pairs', () => {
-    return cachedEntities.listCached(getDb(), 'currency_pair');
-  });
+    return cachedEntities.listCached(getDb(), 'currency_pair')
+  })
 
   // FK02-B (csoport-árfolyamlap FR-11/FR-12): a beírt csoport-ráta ÉRTÉKEK TARTÓS offline
   // perzisztálása az onBlur-ra, hogy lapváltás/offline után se vesszenek el. A local-first
@@ -299,41 +324,57 @@ export function registerLocalFirstIpcHandlers(): void {
   // entityId=groupId, data = a teljes `${currencyId}.${field}` → string érték-map (a localStorage
   // szemantikájával 1:1, így a sávok K_1/K_2/E_1/E_2 is megőrződnek, nem csak a vétel/eladás).
   // Csak lokál (a vékony publikáló kliens nem futtat sync-motort).
-  ipcMain.handle('lf:save-group-rate-values', (_event, payload: {
-    groupId: string;
-    values: Record<string, string>;
-  }) => {
-    try {
-      const db = getDb();
-      const { groupId, values } = payload ?? { groupId: '', values: {} };
-      // Szigorú payload-validáció (Copilot review): groupId string ÉS values sima objektum (nem tömb/null).
-      if (typeof groupId !== 'string' || !groupId
-          || typeof values !== 'object' || values === null || Array.isArray(values)) {
-        return { ok: false, error: 'invalid payload' };
+  ipcMain.handle(
+    'lf:save-group-rate-values',
+    (
+      _event,
+      payload: {
+        groupId: string
+        values: Record<string, string>
+      },
+    ) => {
+      try {
+        const db = getDb()
+        const { groupId, values } = payload ?? { groupId: '', values: {} }
+        // Szigorú payload-validáció (Copilot review): groupId string ÉS values sima objektum (nem tömb/null).
+        if (
+          typeof groupId !== 'string' ||
+          !groupId ||
+          typeof values !== 'object' ||
+          values === null ||
+          Array.isArray(values)
+        ) {
+          return { ok: false, error: 'invalid payload' }
+        }
+        // Üres map → tombstone (a publikálás-utáni overlay-törléssel összhangban; betöltéskor {}).
+        if (Object.keys(values).length === 0) {
+          cachedEntities.softDeleteCached(db, 'group_rate_values', groupId)
+        } else {
+          cachedEntities.upsertCached(db, 'group_rate_values', groupId, values, 1)
+        }
+        saveDatabase()
+        return { ok: true }
+      } catch (error) {
+        log.error('[LocalFirst] Hiba a csoport-árfolyam értékek SQLite mentésekor:', error)
+        return { ok: false, error: error instanceof Error ? error.message : String(error) }
       }
-      // Üres map → tombstone (a publikálás-utáni overlay-törléssel összhangban; betöltéskor {}).
-      if (Object.keys(values).length === 0) {
-        cachedEntities.softDeleteCached(db, 'group_rate_values', groupId);
-      } else {
-        cachedEntities.upsertCached(db, 'group_rate_values', groupId, values, 1);
-      }
-      saveDatabase();
-      return { ok: true };
-    } catch (error) {
-      log.error('[LocalFirst] Hiba a csoport-árfolyam értékek SQLite mentésekor:', error);
-      return { ok: false, error: error instanceof Error ? error.message : String(error) };
-    }
-  });
+    },
+  )
 
   ipcMain.handle('lf:get-group-rate-values', (_event, groupId: string) => {
     try {
-      if (typeof groupId !== 'string' || !groupId) return {};
-      const entity = cachedEntities.getCached<Record<string, string>>(getDb(), 'group_rate_values', groupId);
+      if (typeof groupId !== 'string' || !groupId) return {}
+      const entity = cachedEntities.getCached<Record<string, string>>(
+        getDb(),
+        'group_rate_values',
+        groupId,
+      )
       return entity && entity.data && typeof entity.data === 'object' && !Array.isArray(entity.data)
-        ? entity.data : {};
+        ? entity.data
+        : {}
     } catch (error) {
-      log.error('[LocalFirst] Hiba a csoport-árfolyam értékek SQLite lekérésekor:', error);
-      return {};
+      log.error('[LocalFirst] Hiba a csoport-árfolyam értékek SQLite lekérésekor:', error)
+      return {}
     }
-  });
+  })
 }

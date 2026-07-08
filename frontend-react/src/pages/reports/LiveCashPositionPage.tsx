@@ -1,92 +1,98 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { api, cashBalanceApi, type DetailedCashPosition } from '@/services/api/index';
-import { safeArray } from '@/utils/safeArray';
+import { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { api, cashBalanceApi, type DetailedCashPosition } from '@/services/api/index'
+import { safeArray } from '@/utils/safeArray'
 
 interface CurrencyLine {
-  currencyCode: string;
-  currencyName: string;
-  opening: number;
-  income: number;
-  expense: number;
-  closing: number;
+  currencyCode: string
+  currencyName: string
+  opening: number
+  income: number
+  expense: number
+  closing: number
 }
 
 interface LiveCashPosition {
-  branchId: string;
-  date: string;
-  lines: CurrencyLine[];
-  handlingFeeHuf: number;
+  branchId: string
+  date: string
+  lines: CurrencyLine[]
+  handlingFeeHuf: number
 }
 
-const fmt = (n: number) => (n ?? 0).toLocaleString('hu-HU');
+const fmt = (n: number) => (n ?? 0).toLocaleString('hu-HU')
 
 export default function LiveCashPositionPage() {
-  const navigate = useNavigate();
-  const [data, setData] = useState<LiveCashPosition | null>(null);
-  const [position, setPosition] = useState<DetailedCashPosition | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate()
+  const [data, setData] = useState<LiveCashPosition | null>(null)
+  const [position, setPosition] = useState<DetailedCashPosition | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   // FR-PA-04: külön "Kezelési díj nyomtatása" — ilyenkor csak a díj-blokk nyomtatódik (CSS print-mód).
-  const [feePrintOnly, setFeePrintOnly] = useState(false);
+  const [feePrintOnly, setFeePrintOnly] = useState(false)
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
     try {
       const [response, detailedPosition] = await Promise.all([
         api.get('/reports/live-cash-position'),
         cashBalanceApi.getDetailedPosition().catch(() => null),
-      ]);
-      setData(response?.data ?? null);
-      setPosition(detailedPosition);
+      ])
+      setData(response?.data ?? null)
+      setPosition(detailedPosition)
     } catch {
-      setError('A pillanatnyi pénztárállás lekérése sikertelen.');
-      setData(null);
-      setPosition(null);
+      setError('A pillanatnyi pénztárállás lekérése sikertelen.')
+      setData(null)
+      setPosition(null)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load()
+  }, [load])
 
   // FR-PA-04: a díj-only nyomtatás a state beállítása UTÁN fut (a CSS print-osztály már érvényes), majd
   // visszaáll. Codex P2: csak akkor nyomtatunk, ha a friss adat MÁR betöltött (különben 0 Ft-os fals díj).
   useEffect(() => {
-    if (!feePrintOnly) return;
-    if (data) window.print();
-    setFeePrintOnly(false);
-  }, [feePrintOnly, data]);
+    if (!feePrintOnly) return
+    if (data) window.print()
+    setFeePrintOnly(false)
+  }, [feePrintOnly, data])
 
   // FR-PA-04: "VISSZA A FŐMENÜRE (Escape)". Codex P2 (#1033): explicit FIX route a pénztáros-főmenühöz
   // (/cashier, ld. DayOpenPage konvenció), NEM navigate(-1) — a history-alapú vissza a riport-listára (vagy
   // közvetlen/bookmark-látogatásnál idegen bejegyzésre) vinne, nem a spec által ígért főmenüre.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') navigate('/cashier');
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [navigate]);
+      if (e.key === 'Escape') navigate('/cashier')
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [navigate])
 
-  const lines = safeArray<CurrencyLine>(data?.lines);
-  const feeHuf = data?.handlingFeeHuf ?? 0;
-  const totalHufValue = position?.totalHufValue ?? 0;
-  const totalDailyChangeHuf = position?.totalDailyChangeHuf ?? 0;
-  const alertCount = (position?.lowBalanceAlerts ?? 0) + (position?.highBalanceAlerts ?? 0);
+  const lines = safeArray<CurrencyLine>(data?.lines)
+  const feeHuf = data?.handlingFeeHuf ?? 0
+  const totalHufValue = position?.totalHufValue ?? 0
+  const totalDailyChangeHuf = position?.totalDailyChangeHuf ?? 0
+  const alertCount = (position?.lowBalanceAlerts ?? 0) + (position?.highBalanceAlerts ?? 0)
 
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-3 print:hidden">
         <h1 className="text-lg font-bold">A PILLANATNYI PÉNZTÁRÁLLÁS KIMUTATÁSA</h1>
         <div className="flex gap-2">
-          <button onClick={() => void load()} className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">
+          <button
+            onClick={() => void load()}
+            className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200"
+          >
             Frissítés
           </button>
-          <button onClick={() => window.print()} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+          <button
+            onClick={() => window.print()}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
             Pillanatnyi állás kinyomtatása
           </button>
           <button
@@ -96,15 +102,16 @@ export default function LiveCashPositionPage() {
           >
             Kezelési díj nyomtatása
           </button>
-          <button onClick={() => navigate('/cashier')} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+          <button
+            onClick={() => navigate('/cashier')}
+            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+          >
             Vissza (Esc)
           </button>
         </div>
       </div>
 
-      {data?.date && (
-        <div className="mb-2 text-sm text-gray-600">Dátum: {data.date}</div>
-      )}
+      {data?.date && <div className="mb-2 text-sm text-gray-600">Dátum: {data.date}</div>}
 
       {position && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 print:hidden">
@@ -114,7 +121,9 @@ export default function LiveCashPositionPage() {
           </div>
           <div className="bg-white rounded border p-3">
             <div className="text-xs text-gray-500">Napi változás HUF</div>
-            <div className={`text-lg font-bold ${totalDailyChangeHuf >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+            <div
+              className={`text-lg font-bold ${totalDailyChangeHuf >= 0 ? 'text-green-700' : 'text-red-700'}`}
+            >
               {fmt(totalDailyChangeHuf)} Ft
             </div>
           </div>
@@ -124,7 +133,9 @@ export default function LiveCashPositionPage() {
           </div>
           <div className="bg-white rounded border p-3">
             <div className="text-xs text-gray-500">Készlet riasztások</div>
-            <div className={`text-lg font-bold ${alertCount > 0 ? 'text-amber-700' : 'text-gray-900'}`}>
+            <div
+              className={`text-lg font-bold ${alertCount > 0 ? 'text-amber-700' : 'text-gray-900'}`}
+            >
               {alertCount}
             </div>
           </div>
@@ -165,7 +176,7 @@ export default function LiveCashPositionPage() {
             </thead>
             <tbody>
               {lines.map((l) => {
-                const isHuf = l.currencyCode === 'HUF';
+                const isHuf = l.currencyCode === 'HUF'
                 return (
                   // FR-PA-03: a HUF sort zölddel kiemeljük, a deviza-sorok ZÁRÓ értékét pirossal formázzuk.
                   <tr key={l.currencyCode} className={`border-t ${isHuf ? 'bg-green-50' : ''}`}>
@@ -177,11 +188,13 @@ export default function LiveCashPositionPage() {
                     {/* KEZ-I DÍJ: a kezelési díj HUF-alapú subledger-egyenleg, ezért a HUF soron jelenik meg
                         (a devizasorokon nincs külön per-valuta díj-attribúció az adatmodellben). */}
                     <td className="p-2 text-right">{isHuf ? fmt(feeHuf) : ''}</td>
-                    <td className={`p-2 text-right font-semibold ${isHuf ? 'text-green-700' : 'text-red-600'}`}>
+                    <td
+                      className={`p-2 text-right font-semibold ${isHuf ? 'text-green-700' : 'text-red-600'}`}
+                    >
                       {fmt(l.closing)}
                     </td>
                   </tr>
-                );
+                )
               })}
               {/* Codex P2: ha NINCS HUF készlet-sor (pl. csak deviza pozíció), a kezelési díj akkor is
                   látszódjon a KEZ-I DÍJ oszlopban — egy dedikált díj-sorral. */}
@@ -207,12 +220,12 @@ export default function LiveCashPositionPage() {
                 készpénz-mozgás egyik tagja: a per-valuta NYITÓ + BEVÉTEL − KIADÁS = ZÁRÓ egyenlet a
                 díj NÉLKÜL áll fenn; a KEZ-I DÍJ külön, tájékoztató figura (ezért a "*"). */}
             <div className="mt-1 text-left text-xs text-gray-500">
-              * A KEZ-I DÍJ a kezelési-díj alszámla napi egyenlege (tájékoztató) — külön nyilvántartás,
-              nem a NYITÓ + BEVÉTEL − KIADÁS = ZÁRÓ készpénz-mozgás tétele.
+              * A KEZ-I DÍJ a kezelési-díj alszámla napi egyenlege (tájékoztató) — külön
+              nyilvántartás, nem a NYITÓ + BEVÉTEL − KIADÁS = ZÁRÓ készpénz-mozgás tétele.
             </div>
           </div>
         </div>
       )}
     </div>
-  );
+  )
 }

@@ -105,8 +105,32 @@ const preparedRateCreation = {
   currencyId: '1',
   currencyCode: 'EUR',
   currencyName: 'Euró',
-  bankRates: [{ id: 'bank-1', bankCode: 'MNB', bankName: 'MNB', currencyCode: 'EUR', buyRate: 391, sellRate: 399, middleRate: 395, validFrom: '2026-06-19T08:00:00' }],
-  competitorRates: [{ id: 'competitor-1', competitorCode: 'RIV', competitorName: 'Rivális', currencyId: '1', currencyCode: 'EUR', currencyName: 'Euró', buyRate: 392, sellRate: 400, middleRate: 396, recordedAt: '2026-06-19T08:05:00' }],
+  bankRates: [
+    {
+      id: 'bank-1',
+      bankCode: 'MNB',
+      bankName: 'MNB',
+      currencyCode: 'EUR',
+      buyRate: 391,
+      sellRate: 399,
+      middleRate: 395,
+      validFrom: '2026-06-19T08:00:00',
+    },
+  ],
+  competitorRates: [
+    {
+      id: 'competitor-1',
+      competitorCode: 'RIV',
+      competitorName: 'Rivális',
+      currencyId: '1',
+      currencyCode: 'EUR',
+      currencyName: 'Euró',
+      buyRate: 392,
+      sellRate: 400,
+      middleRate: 396,
+      recordedAt: '2026-06-19T08:05:00',
+    },
+  ],
   recommendedBuyRate: 391.5,
   recommendedSellRate: 398.5,
   recommendedMiddleRate: 395,
@@ -132,7 +156,7 @@ async function loginForRates(page: Page): Promise<boolean> {
     permissions: ['RATE_READ', 'RATE_WRITE'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -294,23 +318,43 @@ async function loginForRates(page: Page): Promise<boolean> {
     }
 
     if (path.endsWith('/rate-creation/bank-rates') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     if (path.endsWith('/rate-creation/competitor-rates') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     if (path.endsWith('/rate-creation/overview') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rateCreationOverview) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(rateCreationOverview),
+      })
     }
 
     if (path.endsWith('/rate-creation/workgroups') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rateCreationWorkgroups) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(rateCreationWorkgroups),
+      })
     }
 
     if (path.endsWith('/rate-creation/prepare/1') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(preparedRateCreation) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(preparedRateCreation),
+      })
     }
 
     if (path.endsWith('/rate-creation/prepare/all') && method === 'POST') {
@@ -322,7 +366,11 @@ async function loginForRates(page: Page): Promise<boolean> {
     }
 
     if (path.endsWith('/rounding-rules') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     // Default: üres
@@ -361,7 +409,10 @@ async function loginForRates(page: Page): Promise<boolean> {
 test('árfolyam oldal betöltődik', async ({ page }) => {
   const loggedIn = await loginForRates(page)
   if (!loggedIn) {
-    test.skip(true, 'backend nem elérhető (login nem navigált central-workstation-re) — E2E graceful skip')
+    test.skip(
+      true,
+      'backend nem elérhető (login nem navigált central-workstation-re) — E2E graceful skip',
+    )
   }
 
   // Navigálunk a rates oldalra
@@ -388,9 +439,15 @@ test('árfolyam oldal betöltődik', async ({ page }) => {
   // Alapvető elem jelenléte. Backend nélküli E2E-ben (ECONNREFUSED a refresh-cookie-n) az oldal
   // nem mindig renderel látható body-t → graceful skip (a sor-178 testvér-teszt mintájára),
   // hogy ez a smoke-eset ne legyen flaky és ne blokkolja a frontend-PR-eket.
-  const hasContent = await page.locator('body').isVisible().catch(() => false)
+  const hasContent = await page
+    .locator('body')
+    .isVisible()
+    .catch(() => false)
   if (!hasContent) {
-    test.skip(true, 'oldal nem renderelt látható body-t (backend nem elérhető E2E-ben) — graceful skip')
+    test.skip(
+      true,
+      'oldal nem renderelt látható body-t (backend nem elérhető E2E-ben) — graceful skip',
+    )
   }
   expect(hasContent).toBe(true)
 })
@@ -407,7 +464,10 @@ test('árfolyam lista megjelenik (mock adat)', async ({ page }) => {
 
   if (!tableVisible) {
     // Alternatív: szöveg keresése
-    const hasEUR = await page.locator('text=/EUR|HUF|USD/').isVisible().catch(() => false)
+    const hasEUR = await page
+      .locator('text=/EUR|HUF|USD/')
+      .isVisible()
+      .catch(() => false)
     if (!hasEUR) {
       test.skip()
     }
@@ -430,10 +490,15 @@ test('árfolyam adatok betöltődnek (keine backend esetén graceful skip)', asy
   expect(true).toBe(true)
 })
 
-test('árfolyam polling vezérlő meghívja a backend trigger, margin és source update route-okat', async ({ page }) => {
+test('árfolyam polling vezérlő meghívja a backend trigger, margin és source update route-okat', async ({
+  page,
+}) => {
   const loggedIn = await loginForRates(page)
   if (!loggedIn) {
-    test.skip(true, 'backend nem elérhető (login nem navigált central-workstation-re) — E2E graceful skip')
+    test.skip(
+      true,
+      'backend nem elérhető (login nem navigált central-workstation-re) — E2E graceful skip',
+    )
   }
 
   await page.setViewportSize({ width: 390, height: 844 })
@@ -443,30 +508,31 @@ test('árfolyam polling vezérlő meghívja a backend trigger, margin és source
   await expect(panel).toBeVisible()
   await expect(panel.getByText('Árfolyam polling vezérlés')).toBeVisible()
 
-  const triggerRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/rates/polling/trigger')
+  const triggerRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/rates/polling/trigger'),
   )
   await panel.getByRole('button', { name: 'MNB polling indítása' }).click()
   await triggerRequest
   await expect(page.getByText('MNB árfolyam polling elindítva')).toBeVisible()
 
   await panel.getByLabel('Spread').fill('3,5')
-  const marginRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/rates/polling/apply-margins')
+  const marginRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes('/rates/polling/apply-margins'),
   )
   await panel.getByRole('button', { name: 'Alkalmaz' }).click()
   const margin = await marginRequest
   expect(margin.postDataJSON()).toMatchObject({ currencyId: 1, spread: 3.5 })
 
-  const activeRequest = page.waitForRequest(request =>
-    request.method() === 'PUT' && request.url().includes('/rates/polling/sources/2')
+  const activeRequest = page.waitForRequest(
+    (request) => request.method() === 'PUT' && request.url().includes('/rates/polling/sources/2'),
   )
   await panel.getByRole('checkbox').nth(1).click()
   const active = await activeRequest
   expect(active.postDataJSON()).toMatchObject({ active: true })
 
-  const intervalRequest = page.waitForRequest(request =>
-    request.method() === 'PUT' && request.url().includes('/rates/polling/sources/2')
+  const intervalRequest = page.waitForRequest(
+    (request) => request.method() === 'PUT' && request.url().includes('/rates/polling/sources/2'),
   )
   await panel.getByLabel('ECB polling intervallum').selectOption('60')
   const interval = await intervalRequest
@@ -479,42 +545,48 @@ test('árfolyam polling vezérlő meghívja a backend trigger, margin és source
     mimeType: 'text/plain',
     buffer: Buffer.from('GETARF'),
   })
-  const previewRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/exchange-rates/upload-rate-file')
+  const previewRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes('/exchange-rates/upload-rate-file'),
   )
   await filePanel.getByRole('button', { name: /Előnézet/i }).click()
   await previewRequest
   await expect(filePanel.getByText('1 feldolgozott sor, 0 kihagyott sor.')).toBeVisible()
   await expect(filePanel.getByText('EUR')).toBeVisible()
 
-  const importRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/exchange-rates/import-rate-file')
+  const importRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' && request.url().includes('/exchange-rates/import-rate-file'),
   )
   await filePanel.getByRole('button', { name: /Import/i }).click()
   await importRequest
   await expect(filePanel.getByText('2 árfolyam importálva.')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
 
-test('árfolyamkészítés mobil nézetben a backend egyedi prepare endpointot használja', async ({ page }) => {
+test('árfolyamkészítés mobil nézetben a backend egyedi prepare endpointot használja', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   const loggedIn = await loginForRates(page)
   if (!loggedIn) {
-    test.skip(true, 'backend nem elérhető (login nem navigált central-workstation-re) — E2E graceful skip')
+    test.skip(
+      true,
+      'backend nem elérhető (login nem navigált central-workstation-re) — E2E graceful skip',
+    )
   }
 
   await page.goto('/rates/creation', { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: /Budapest központ.*árfolyamlap megnyitása/i }).click()
   await expect(page.getByTestId('rate-prepare-1')).toBeVisible()
 
-  const prepareRequest = page.waitForRequest(request => {
+  const prepareRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'GET'
-      && url.pathname === '/api/v1/rate-creation/prepare/1'
+    return request.method() === 'GET' && url.pathname === '/api/v1/rate-creation/prepare/1'
   })
   await page.getByTestId('rate-prepare-1').click()
   await prepareRequest
@@ -524,17 +596,16 @@ test('árfolyamkészítés mobil nézetben a backend egyedi prepare endpointot h
   await expect(panel.getByText('391.5')).toBeVisible()
   await expect(panel.getByText('398.5')).toBeVisible()
 
-  const prepareAllRequest = page.waitForRequest(request => {
+  const prepareAllRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'POST'
-      && url.pathname === '/api/v1/rate-creation/prepare/all'
+    return request.method() === 'POST' && url.pathname === '/api/v1/rate-creation/prepare/all'
   })
   await page.getByTestId('rate-prepare-all').click()
   await prepareAllRequest
   await expect(page.getByText('Tömeges árfolyamtervezet elkészült: 12 valuta.')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

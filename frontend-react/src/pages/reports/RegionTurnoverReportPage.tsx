@@ -53,14 +53,19 @@ export default function RegionTurnoverReportPage() {
     }
   }, [yearMonth, t])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    void load()
+  }, [load])
 
   const regions = safeArray<RegionLine>(data?.regions)
   const fmtHuf = (n: number) => n.toLocaleString('hu-HU', { maximumFractionDigits: 0 }) + ' Ft'
-  const fmtPct = (n: number) => `${n > 0 ? '+' : ''}${n.toLocaleString('hu-HU', { maximumFractionDigits: 1 })}%`
+  const fmtPct = (n: number) =>
+    `${n > 0 ? '+' : ''}${n.toLocaleString('hu-HU', { maximumFractionDigits: 1 })}%`
 
   const TrendCell = ({ pct }: { pct: number }) => (
-    <span className={`inline-flex items-center gap-1 font-mono ${pct > 0 ? 'text-green-600' : pct < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+    <span
+      className={`inline-flex items-center gap-1 font-mono ${pct > 0 ? 'text-green-600' : pct < 0 ? 'text-red-600' : 'text-gray-500'}`}
+    >
       {pct > 0 ? <TrendingUp size={14} /> : pct < 0 ? <TrendingDown size={14} /> : null}
       {fmtPct(pct)}
     </span>
@@ -68,11 +73,16 @@ export default function RegionTurnoverReportPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold flex items-center gap-2"><MapIcon />{t('reports.koerzetForgalom')}</h1>
+      <h1 className="text-xl font-bold flex items-center gap-2">
+        <MapIcon />
+        {t('reports.koerzetForgalom')}
+      </h1>
 
       <div className="form-panel flex gap-3 items-end flex-wrap">
         <div>
-          <label className="form-label" htmlFor="region-turnover-month">{t('common.period')}</label>
+          <label className="form-label" htmlFor="region-turnover-month">
+            {t('common.period')}
+          </label>
           <input
             id="region-turnover-month"
             type="month"
@@ -82,12 +92,15 @@ export default function RegionTurnoverReportPage() {
           />
         </div>
         <button onClick={() => void load()} disabled={loading} className="form-button-primary">
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />{t('reports.lekerdezes')}
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          {t('reports.lekerdezes')}
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
       )}
 
       {loading ? (
@@ -95,7 +108,9 @@ export default function RegionTurnoverReportPage() {
       ) : data && regions.length > 0 ? (
         <div className="form-panel">
           <div className="flex justify-between items-center mb-2 text-sm text-gray-600">
-            <span>{data.yearMonth} ({t('reports.elozoHonap')}: {data.previousYearMonth})</span>
+            <span>
+              {data.yearMonth} ({t('reports.elozoHonap')}: {data.previousYearMonth})
+            </span>
             <span className="flex items-center gap-2">
               {t('reports.osszesen')}: <strong>{fmtHuf(data.totalTurnoverHuf)}</strong>
               <TrendCell pct={data.totalTrendPercent} />
@@ -124,7 +139,9 @@ export default function RegionTurnoverReportPage() {
                   <td className="text-right">{r.distinctCustomers}</td>
                   <td className="text-right">{r.activeDays}</td>
                   <td className="text-right font-mono">{fmtHuf(r.avgDailyTurnoverHuf)}</td>
-                  <td className="text-right"><TrendCell pct={r.trendPercent} /></td>
+                  <td className="text-right">
+                    <TrendCell pct={r.trendPercent} />
+                  </td>
                 </tr>
               ))}
             </tbody>

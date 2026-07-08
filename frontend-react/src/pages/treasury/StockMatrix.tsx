@@ -1,10 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import {
-  RefreshCw,
-  Pause,
-  Play,
-  Download,
-} from 'lucide-react'
+import { RefreshCw, Pause, Play, Download } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { cashBalanceApi, currencyApi } from '../../services/api/index'
 import type { CashBalance, Currency } from '../../services/api/index'
@@ -161,7 +156,8 @@ export default function StockMatrix() {
             {autoRefresh ? (
               <span>
                 {/* eslint-disable-next-line i18next/no-literal-string */}
-                {t('treasury.autoRefresh')}<strong>{countdown}s</strong>
+                {t('treasury.autoRefresh')}
+                <strong>{countdown}s</strong>
               </span>
             ) : (
               <span className="text-warning-600">{t('treasury.szuneteltetve')}</span>
@@ -189,7 +185,10 @@ export default function StockMatrix() {
             value={branchFilter}
             onChange={(e) => setBranchFilter(e.target.value)}
           >
-            <option value="all">{t('treasury.mind')}{branchRows.length})</option>
+            <option value="all">
+              {t('treasury.mind')}
+              {branchRows.length})
+            </option>
             {branchRows.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
@@ -204,7 +203,10 @@ export default function StockMatrix() {
             value={currencyFilter}
             onChange={(e) => setCurrencyFilter(e.target.value)}
           >
-            <option value="all">{t('treasury.mind')}{currencies.length})</option>
+            <option value="all">
+              {t('treasury.mind')}
+              {currencies.length})
+            </option>
             <option value="top8">{t('treasury.top8')}</option>
             {currencies
               .filter((c) => c.active)
@@ -222,7 +224,9 @@ export default function StockMatrix() {
         <table className="data-grid w-full min-w-[1200px]">
           <thead>
             <tr>
-              <th className="sticky left-0 bg-secondary-50 z-10 min-w-[180px]">{t('common.office')}</th>
+              <th className="sticky left-0 bg-secondary-50 z-10 min-w-[180px]">
+                {t('common.office')}
+              </th>
               {displayCurrencies.map((c) => (
                 <th key={c.code} className="text-right min-w-[80px]">
                   <div className="flex flex-col items-end">

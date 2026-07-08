@@ -41,7 +41,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -64,11 +64,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith(`/pos-terminal/${terminal.id}`) && method === 'GET') {
@@ -110,7 +118,9 @@ for (const viewport of [
   { name: 'desktop', width: 1280, height: 800 },
   { name: 'mobil', width: 390, height: 844 },
 ]) {
-  test(`POS terminál részletek ${viewport.name} nézetben a backend detail endpointot használják`, async ({ page }) => {
+  test(`POS terminál részletek ${viewport.name} nézetben a backend detail endpointot használják`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height })
     await mockApis(page)
     await login(page)
@@ -118,9 +128,10 @@ for (const viewport of [
     await page.goto('/pos-terminal', { waitUntil: 'domcontentloaded' })
     await expect(page.locator('button:visible', { hasText: 'Részletek' }).first()).toBeVisible()
 
-    const detailRequest = page.waitForRequest(request =>
-      request.method() === 'GET'
-      && new URL(request.url()).pathname === `/api/v1/pos-terminal/${terminal.id}`
+    const detailRequest = page.waitForRequest(
+      (request) =>
+        request.method() === 'GET' &&
+        new URL(request.url()).pathname === `/api/v1/pos-terminal/${terminal.id}`,
     )
     await page.locator('button:visible', { hasText: 'Részletek' }).first().click()
     await detailRequest
@@ -129,8 +140,8 @@ for (const viewport of [
     await expect(page.getByText('10.0.0.15')).toBeVisible()
     await expect(page.getByText('TCP')).toBeVisible()
 
-    const horizontalOverflow = await page.evaluate(() =>
-      document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    const horizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
     )
     expect(horizontalOverflow).toBe(false)
   })

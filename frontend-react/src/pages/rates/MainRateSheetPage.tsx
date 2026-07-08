@@ -1,6 +1,17 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, LogOut, Globe, Save, ArrowRight, Info, Wifi, WifiOff, Settings, CheckCircle2 } from 'lucide-react'
+import {
+  Send,
+  LogOut,
+  Globe,
+  Save,
+  ArrowRight,
+  Info,
+  Wifi,
+  WifiOff,
+  Settings,
+  CheckCircle2,
+} from 'lucide-react'
 import { nextEditableCell, EDITABLE_ORDER, type EditableCol, type NavKey } from './sheetNavigation'
 import {
   isFormula,
@@ -13,21 +24,34 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { useAuthStore } from '../../stores/authStore'
-import { exchangeRateMasterApi, type ExchangeRateMaster } from '../../services/api/exchangeRateMaster'
+import {
+  exchangeRateMasterApi,
+  type ExchangeRateMaster,
+} from '../../services/api/exchangeRateMaster'
 // FK05 (FR-1): a Főlap szétküldése is a munkacsoport-publish útvonalon megy.
 import { publishAllWorkgroups, summarizePublishAll } from './publishAllWorkgroups'
 import { exchangeRateApi } from '../../services/api/exchange-rates'
 import { getCrossBase, useCurrencyCatalog } from '../../hooks/useCurrencyCatalog'
 import CurrencyManagerModal from './components/CurrencyManagerModal'
-import { arfolyamInternetLinkApi, type ArfolyamInternetLink } from '../../services/api/arfolyamInternetLinks'
-import { computeCrossSettlement, resolveSettlement, crossSettlementStaysAuto } from './mainSheetRules'
+import {
+  arfolyamInternetLinkApi,
+  type ArfolyamInternetLink,
+} from '../../services/api/arfolyamInternetLinks'
+import {
+  computeCrossSettlement,
+  resolveSettlement,
+  crossSettlementStaysAuto,
+} from './mainSheetRules'
 import { validateRateDirection } from './rateDirectionRules'
 // FK06: a Főlap E/F oszlop 10%-os eltérés-figyelmeztetésének tiszta döntési logikája
 // (a közös deviationCheck.ts küszöbét használja — nincs duplikált küszöb-definíció).
 import { evaluateDeviationWarning } from './mainSheetCommit'
 import {
-  euaDeviationExceeds, computeEuaRate, raiffeisenBandViolations,
-  RAIFFEISEN_BAND_PERCENT, type BandSource,
+  euaDeviationExceeds,
+  computeEuaRate,
+  raiffeisenBandViolations,
+  RAIFFEISEN_BAND_PERCENT,
+  type BandSource,
 } from './rfmRules'
 
 /**
@@ -64,16 +88,16 @@ import {
  */
 
 interface MainRateRow {
-  currency: string         // D oszlop (VÉDETT)
-  settlement: number       // A oszlop (Elszámoló)
-  otp: number              // B oszlop (OTP segéd)
-  helper: number           // C oszlop (Segéd)
-  weakMultiBuy: number     // E oszlop (Gyenge multis vétel)
-  weakMultiSell: number    // F oszlop (Gyenge multis eladás)
-  crossSettlement: number  // G oszlop (EUR/USD kereszt alapú elszámoló — számolt)
-  crossRate: number        // H oszlop (kereszt forrás, 6 tizedes)
-  wholesale: number        // I oszlop (Nagybani)
-  crossBase: 'EUR' | 'USD' | null  // melyik főváluta a kereszt alapja (NULL ha nem kereszt)
+  currency: string // D oszlop (VÉDETT)
+  settlement: number // A oszlop (Elszámoló)
+  otp: number // B oszlop (OTP segéd)
+  helper: number // C oszlop (Segéd)
+  weakMultiBuy: number // E oszlop (Gyenge multis vétel)
+  weakMultiSell: number // F oszlop (Gyenge multis eladás)
+  crossSettlement: number // G oszlop (EUR/USD kereszt alapú elszámoló — számolt)
+  crossRate: number // H oszlop (kereszt forrás, 6 tizedes)
+  wholesale: number // I oszlop (Nagybani)
+  crossBase: 'EUR' | 'USD' | null // melyik főváluta a kereszt alapja (NULL ha nem kereszt)
   settlementManual?: boolean // 2026-05-20: kereszt-valutánál is kézzel felülírható az A (true=kézi, A=G auto ha false)
 }
 
@@ -155,7 +179,7 @@ export function loadFromStorage(): MainRateRow[] {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw) as MainRateRow[]
-    return parsed.filter(r => !excluded(r.currency))
+    return parsed.filter((r) => !excluded(r.currency))
   } catch (e) {
     logger.error('MainRateSheetPage', 'Storage load failed', e)
     return []
@@ -175,10 +199,10 @@ export function buildRowsFromCatalog(
   catalog: Array<{ code: string }>,
   cachedRows: MainRateRow[],
 ): MainRateRow[] {
-  const cachedByCode = new Map(cachedRows.map(r => [r.currency, r]))
+  const cachedByCode = new Map(cachedRows.map((r) => [r.currency, r]))
   return catalog
-    .filter(c => !REMOVED_CURRENCIES.has(c.code))
-    .map(c => {
+    .filter((c) => !REMOVED_CURRENCIES.has(c.code))
+    .map((c) => {
       const crossBase = getCrossBase(c.code)
       const cached = cachedByCode.get(c.code)
       return cached ? { ...cached, crossBase } : emptyRow(c.code, crossBase)
@@ -191,7 +215,7 @@ export function buildRowsFromCatalog(
 // 2026-05-26 (legacy képlet-motor): a Főlapon képletezhető ÉRTÉK-oszlopok = A, B, C, E, F.
 // (D=ISO-címke védett; G/H=kereszt-auto változatlan; I/Nagybani NEM képletezhető — spec.)
 const FORMULA_COLUMNS = ['settlement', 'otp', 'helper', 'weakMultiBuy', 'weakMultiSell'] as const
-type FormulaColumn = typeof FORMULA_COLUMNS[number]
+type FormulaColumn = (typeof FORMULA_COLUMNS)[number]
 // Humanreadable oszlop-nevek a user-facing hibajelzéshez.
 const COL_NAMES: Record<FormulaColumn, string> = {
   settlement: 'A — Elszámoló',
@@ -243,12 +267,14 @@ export function loadFormulasFromStorage(cachedRows: Array<{ currency: string }>)
     const raw = localStorage.getItem(FORMULA_STORAGE_KEY)
     if (!raw) return {}
     const parsed = JSON.parse(raw) as Record<string, string>
-    const hasLegacyKeys = Object.keys(parsed).some(k => /^\d+\./.test(k))
+    const hasLegacyKeys = Object.keys(parsed).some((k) => /^\d+\./.test(k))
     if (!hasLegacyKeys) return parsed
     const migrated = migrateLegacyFormulaKeys(parsed, cachedRows)
     try {
       localStorage.setItem(FORMULA_STORAGE_KEY, JSON.stringify(migrated))
-    } catch { /* quota / privát mód — a migrált map a memóriában él tovább */ }
+    } catch {
+      /* quota / privát mód — a migrált map a memóriában él tovább */
+    }
     return migrated
   } catch {
     return {}
@@ -259,8 +285,9 @@ export function loadFormulasFromStorage(cachedRows: Array<{ currency: string }>)
 
 export default function MainRateSheetPage() {
   const navigate = useNavigate()
-  const canEdit = useAuthStore((state) =>
-    state.hasRole('ADMIN') || state.hasCanonicalRole(['foertektar', 'ugyvezeto', 'admin']),
+  const canEdit = useAuthStore(
+    (state) =>
+      state.hasRole('ADMIN') || state.hasCanonicalRole(['foertektar', 'ugyvezeto', 'admin']),
   )
   const [rows, setRows] = useState<MainRateRow[]>(() => loadFromStorage())
   const [dirty, setDirty] = useState(false)
@@ -268,7 +295,9 @@ export default function MainRateSheetPage() {
   // látná (stale closure) — a ref-ből a VÁLASZ beérkezésekor érvényes értéket olvassuk,
   // különben a fetch közben commitolt user-szerkesztést a válasz némán felülírná.
   const dirtyRef = useRef(dirty)
-  useEffect(() => { dirtyRef.current = dirty }, [dirty])
+  useEffect(() => {
+    dirtyRef.current = dirty
+  }, [dirty])
   // FK06 baseline-frissítés: amikor a rows NEM dirty (frissen betöltött/szinkronizált állapot),
   // rögzítjük az E/F értékeket valutakódonként. Dirty (felhasználó által szerkesztett) állapotban
   // NEM frissítjük, hogy a szerkesztés közbeni értékek ne mossák el a valódi baseline-t.
@@ -292,11 +321,15 @@ export default function MainRateSheetPage() {
   // (useCurrencyCatalog). A Valutakezelő módosítása után catalog.reload() frissít
   // (a korábbi currencyReloadVersion bump helyett), app-újraindítás nélkül.
   const catalog = useCurrencyCatalog()
-  const [activeCell, setActiveCell] = useState<{ rowIdx: number; col: keyof MainRateRow } | null>(null)
+  const [activeCell, setActiveCell] = useState<{ rowIdx: number; col: keyof MainRateRow } | null>(
+    null,
+  )
   // Képletek per cella, kulcs = `${valutakód}.${col}` (FK04). Csak a felhasználói képletek
   // vannak itt — fix számérték NEM kerül ide. Szintaxis: legacy (lásd mainSheetFormula).
   // A legacy rowIdx-kulcsú képleteket a betöltés a row-cache alapján migrálja.
-  const [formulas, setFormulas] = useState<FormulaMap>(() => loadFormulasFromStorage(loadFromStorage()))
+  const [formulas, setFormulas] = useState<FormulaMap>(() =>
+    loadFormulasFromStorage(loadFromStorage()),
+  )
   // Codex P1 #581 fix: editBuffer őrzi a felhasználó RAW input-ját az aktív cella szerkesztésekor.
   const [editBuffer, setEditBuffer] = useState<string>('')
   // 2026-05-21 (Kósa Zoltán): Excel-szerű kétállapotú cella — kijelölt (editing=false,
@@ -310,13 +343,17 @@ export default function MainRateSheetPage() {
   const [showHelp, setShowHelp] = useState(false)
   const [publishing, setPublishing] = useState(false)
   // FK05 (FR-8): "X / Y munkacsoport elküldve" folyamat-visszajelzés a szétküldés alatt.
-  const [publishProgress, setPublishProgress] = useState<{ done: number; total: number } | null>(null)
+  const [publishProgress, setPublishProgress] = useState<{ done: number; total: number } | null>(
+    null,
+  )
   // FR-RFM-12/13: Raiffeisen ±N% sáv. A bázis (elszámoló/OTP) és a százalék szabadon
   // állítható, szezonálisan kézzel döntött → localStorage-ban perzisztált.
   const [bandBase, setBandBase] = useState<BandSource>(() => {
     try {
       return localStorage.getItem('mainRateSheet.bandBase') === 'otp' ? 'otp' : 'settlement'
-    } catch { return 'settlement' }
+    } catch {
+      return 'settlement'
+    }
   })
   const [bandPercent, setBandPercent] = useState<number>(() => {
     try {
@@ -324,14 +361,18 @@ export default function MainRateSheetPage() {
       // null (még sosem mentve) → alapérték; tárolt "0" → 0 (megengedett, NEM esik vissza alapra).
       const raw = stored === null ? NaN : Number(stored)
       return Number.isFinite(raw) && raw >= 0 ? raw : RAIFFEISEN_BAND_PERCENT
-    } catch { return RAIFFEISEN_BAND_PERCENT }
+    } catch {
+      return RAIFFEISEN_BAND_PERCENT
+    }
   })
   useEffect(() => {
     // Defenzív: privát mód / quota / tiltott storage esetén a setItem dobhat — ne döntse le a rendert.
     try {
       localStorage.setItem('mainRateSheet.bandBase', bandBase)
       localStorage.setItem('mainRateSheet.bandPercent', String(bandPercent))
-    } catch { /* storage nem elérhető — a beállítás csak a munkamenetre érvényes */ }
+    } catch {
+      /* storage nem elérhető — a beállítás csak a munkamenetre érvényes */
+    }
   }, [bandBase, bandPercent])
   // V238 (2026-05-19): Valutakezelő modal — uj valuta hozzaadasa / aktivalas / deaktivalas
   const [showCurrencyManager, setShowCurrencyManager] = useState(false)
@@ -349,13 +390,24 @@ export default function MainRateSheetPage() {
     }
   }, [])
 
-  useEffect(() => { void loadInternetLinks() }, [loadInternetLinks])
+  useEffect(() => {
+    void loadInternetLinks()
+  }, [loadInternetLinks])
 
   const addInternetLink = async () => {
     const num = parseInt(linkForm.buttonNumber, 10)
-    if (Number.isNaN(num)) { toast.error('Hiba', 'A gombszám szám legyen.'); return }
-    if (!linkForm.label.trim() || !linkForm.url.trim()) { toast.error('Hiba', 'Felirat és URL kötelező.'); return }
-    if (!/^https?:\/\/\S+$/i.test(linkForm.url.trim())) { toast.error('Hiba', 'Az URL csak http:// vagy https:// címmel kezdődhet.'); return }
+    if (Number.isNaN(num)) {
+      toast.error('Hiba', 'A gombszám szám legyen.')
+      return
+    }
+    if (!linkForm.label.trim() || !linkForm.url.trim()) {
+      toast.error('Hiba', 'Felirat és URL kötelező.')
+      return
+    }
+    if (!/^https?:\/\/\S+$/i.test(linkForm.url.trim())) {
+      toast.error('Hiba', 'Az URL csak http:// vagy https:// címmel kezdődhet.')
+      return
+    }
     try {
       await arfolyamInternetLinkApi.create(num, linkForm.label.trim(), linkForm.url.trim())
       setLinkForm({ buttonNumber: '', label: '', url: '' })
@@ -376,13 +428,15 @@ export default function MainRateSheetPage() {
   // Phase 2 wiring (Kosa Zoltan 2026-05-18 directive): a foertektaros által az
   // EXE-ben végzett árfolyam-szerkesztés a KÖZPONTI szerveren tárolt
   // ExchangeRateMaster állományt írja/olvassa. Az EXE thin client.
-  const [serverSyncState, setServerSyncState] = useState<'loading' | 'online' | 'offline' | 'idle'>('idle')
+  const [serverSyncState, setServerSyncState] = useState<'loading' | 'online' | 'offline' | 'idle'>(
+    'idle',
+  )
   const [serverLastSyncAt, setServerLastSyncAt] = useState<string | null>(null)
   const currencyIdMapRef = useRef<Map<string, number>>(new Map())
 
   // Computed cross settlement for G column
-  const eurRow = useMemo(() => rows.find(r => r.currency === 'EUR'), [rows])
-  const usdRow = useMemo(() => rows.find(r => r.currency === 'USD'), [rows])
+  const eurRow = useMemo(() => rows.find((r) => r.currency === 'EUR'), [rows])
+  const usdRow = useMemo(() => rows.find((r) => r.currency === 'USD'), [rows])
   const eurSettlement = eurRow?.settlement ?? 0
   const usdSettlement = usdRow?.settlement ?? 0
 
@@ -416,7 +470,10 @@ export default function MainRateSheetPage() {
   // megakadályozza, hogy a saját setRows végtelen effekt-loopot indítson.
   const recomputeGuardRef = useRef(false)
   useEffect(() => {
-    if (recomputeGuardRef.current) { recomputeGuardRef.current = false; return }
+    if (recomputeGuardRef.current) {
+      recomputeGuardRef.current = false
+      return
+    }
     const formulaKeys = Object.keys(formulas)
     if (formulaKeys.length === 0) return
 
@@ -447,19 +504,28 @@ export default function MainRateSheetPage() {
           if ('error' in res) continue // hibás képlet → érték marad (a hover/edit floating jelzi a képletet)
           const dec = row.currency === 'JPY' ? 3 : 2
           const val = Number(res.value.toFixed(dec))
-          if (nr[field] !== val) { nr = { ...nr, [field]: val }; changedThisPass = true }
+          if (nr[field] !== val) {
+            nr = { ...nr, [field]: val }
+            changedThisPass = true
+          }
         }
         return nr
       })
       working = nextWorking
       if (changedThisPass) changedOverall = true
-      else { converged = true; break }
+      else {
+        converged = true
+        break
+      }
     }
     // Copilot/Codex #863: ha NEM konvergált a maxIter alatt (körhivatkozás-gyanú, pl. `A` cella
     // képlete `A+1`), NEM commitoljuk a tetszőleges nem-konvergált részeredményt (az korrumpálná
     // a megjelenített/publikált rátát). A korábbi (stabil) értékek maradnak; csak figyelmeztetünk.
     if (!converged) {
-      logger.warn('MainRateSheetPage', 'Képlet-újraszámítás nem konvergált (körhivatkozás-gyanú) — a részeredményt elvetjük, a korábbi értékek maradnak')
+      logger.warn(
+        'MainRateSheetPage',
+        'Képlet-újraszámítás nem konvergált (körhivatkozás-gyanú) — a részeredményt elvetjük, a korábbi értékek maradnak',
+      )
       return
     }
     if (changedOverall) {
@@ -473,173 +539,206 @@ export default function MainRateSheetPage() {
   // setFormulas() side-effect-et hív, ha "=" képletet/képlet-törlést detektál
   // (Copilot P2 #697). De a returned snapshot a save/dispatch szempontjából
   // VALÓDI tartalmat hordoz (HF synchronous evaluation, NEM placeholder 0).
-  const computeCellCommit = useCallback((
-    currentRows: MainRateRow[],
-    rowIdx: number,
-    col: keyof MainRateRow,
-    raw: string,
-  ): MainRateRow[] | null => {
-    if (col === 'currency' || col === 'crossBase' || col === 'crossSettlement') return null
-    // 2026-05-20: az A (settlement) kereszt-valutánál is szerkeszthető (settlementManual jelöléssel).
-    const trimmed = raw.trim()
-    const isCrossSettlement = col === 'settlement' && !!currentRows[rowIdx]?.crossBase
+  const computeCellCommit = useCallback(
+    (
+      currentRows: MainRateRow[],
+      rowIdx: number,
+      col: keyof MainRateRow,
+      raw: string,
+    ): MainRateRow[] | null => {
+      if (col === 'currency' || col === 'crossBase' || col === 'crossSettlement') return null
+      // 2026-05-20: az A (settlement) kereszt-valutánál is szerkeszthető (settlementManual jelöléssel).
+      const trimmed = raw.trim()
+      const isCrossSettlement = col === 'settlement' && !!currentRows[rowIdx]?.crossBase
 
-    // 2026-05-26 (legacy képlet-motor): ha az input KÉPLET (nem tiszta szám) → tároljuk
-    // a képlet-stringet + szinkron kiértékelés a save/dispatch path-hoz (NEM placeholder 0,
-    // hogy a publikálás valódi értéket lásson; az effekt később idempotensen újraszámol).
-    // FK04: a kulcs valutakód-alapú — a rowIdx a katalógus-vezérelt listában instabil.
-    const formulaKey = `${currentRows[rowIdx]?.currency ?? rowIdx}.${col}`
-    const isFormulaCol = FORMULA_COLUMNS.includes(col as FormulaColumn)
-    if (isFormulaCol && isFormula(trimmed)) {
-      setFormulas(prev => ({ ...prev, [formulaKey]: trimmed }))
-      const colVals = (r: MainRateRow): ColValues => ({
-        A: resolveSettlement(r, eurSettlement, usdSettlement),
-        B: r.otp,
-        C: r.helper,
-        E: r.weakMultiBuy,
-        F: r.weakMultiSell,
-      })
-      const byCurrency = new Map<string, ColValues>()
-      currentRows.forEach((r) => byCurrency.set(r.currency.toUpperCase(), colVals(r)))
-      const res = evaluateFormula(trimmed, { self: colVals(currentRows[rowIdx]!), byCurrency })
-      let evaluated: number
-      if ('error' in res) {
-        // Hibás képlet → NEM némán 0; warn + toast, az érték a régi marad (rollback).
-        logger.warn('MainRateSheetPage', `Formula error in cell ${formulaKey}: ${res.error}`, trimmed)
-        toast.warning('Képlet hiba', `${COL_NAMES[col as FormulaColumn] ?? col} cellában: ${res.error} (${trimmed})`)
-        const currentValue = currentRows[rowIdx]?.[col]
-        evaluated = typeof currentValue === 'number' ? currentValue : 0
-      } else {
-        const dec = currentRows[rowIdx]?.currency === 'JPY' ? 3 : 2
-        evaluated = Number(res.value.toFixed(dec))
+      // 2026-05-26 (legacy képlet-motor): ha az input KÉPLET (nem tiszta szám) → tároljuk
+      // a képlet-stringet + szinkron kiértékelés a save/dispatch path-hoz (NEM placeholder 0,
+      // hogy a publikálás valódi értéket lásson; az effekt később idempotensen újraszámol).
+      // FK04: a kulcs valutakód-alapú — a rowIdx a katalógus-vezérelt listában instabil.
+      const formulaKey = `${currentRows[rowIdx]?.currency ?? rowIdx}.${col}`
+      const isFormulaCol = FORMULA_COLUMNS.includes(col as FormulaColumn)
+      if (isFormulaCol && isFormula(trimmed)) {
+        setFormulas((prev) => ({ ...prev, [formulaKey]: trimmed }))
+        const colVals = (r: MainRateRow): ColValues => ({
+          A: resolveSettlement(r, eurSettlement, usdSettlement),
+          B: r.otp,
+          C: r.helper,
+          E: r.weakMultiBuy,
+          F: r.weakMultiSell,
+        })
+        const byCurrency = new Map<string, ColValues>()
+        currentRows.forEach((r) => byCurrency.set(r.currency.toUpperCase(), colVals(r)))
+        const res = evaluateFormula(trimmed, { self: colVals(currentRows[rowIdx]!), byCurrency })
+        let evaluated: number
+        if ('error' in res) {
+          // Hibás képlet → NEM némán 0; warn + toast, az érték a régi marad (rollback).
+          logger.warn(
+            'MainRateSheetPage',
+            `Formula error in cell ${formulaKey}: ${res.error}`,
+            trimmed,
+          )
+          toast.warning(
+            'Képlet hiba',
+            `${COL_NAMES[col as FormulaColumn] ?? col} cellában: ${res.error} (${trimmed})`,
+          )
+          const currentValue = currentRows[rowIdx]?.[col]
+          evaluated = typeof currentValue === 'number' ? currentValue : 0
+        } else {
+          const dec = currentRows[rowIdx]?.currency === 'JPY' ? 3 : 2
+          evaluated = Number(res.value.toFixed(dec))
+        }
+        const next = [...currentRows]
+        next[rowIdx] = {
+          ...next[rowIdx]!,
+          [col]: evaluated,
+          ...(isCrossSettlement ? { settlementManual: true } : {}),
+        }
+        return next
       }
-      const next = [...currentRows]
-      next[rowIdx] = { ...next[rowIdx]!, [col]: evaluated, ...(isCrossSettlement ? { settlementManual: true } : {}) }
-      return next
-    }
-    // Ha korábban képlet volt itt, de most fix számot ad meg a user, töröljük
-    // a képletet a map-ből.
-    if (isFormulaCol && formulas[formulaKey]) {
-      setFormulas(prev => {
-        const copy = { ...prev }
-        delete copy[formulaKey]
-        return copy
-      })
-    }
+      // Ha korábban képlet volt itt, de most fix számot ad meg a user, töröljük
+      // a képletet a map-ből.
+      if (isFormulaCol && formulas[formulaKey]) {
+        setFormulas((prev) => {
+          const copy = { ...prev }
+          delete copy[formulaKey]
+          return copy
+        })
+      }
 
-    let nextValue: number
-    // Kereszt-valuta A oszlop: üres beírás → vissza auto módba (settlementManual=false, A=G).
-    if (isCrossSettlement && trimmed === '') {
+      let nextValue: number
+      // Kereszt-valuta A oszlop: üres beírás → vissza auto módba (settlementManual=false, A=G).
+      if (isCrossSettlement && trimmed === '') {
+        const next = [...currentRows]
+        next[rowIdx] = { ...next[rowIdx]!, settlementManual: false }
+        return next
+      }
+      if (trimmed === '') {
+        nextValue = 0
+      } else {
+        const parsed = Number.parseFloat(trimmed.replace(/\s/g, '').replace(',', '.'))
+        if (Number.isNaN(parsed)) return null
+        nextValue = parsed
+      }
+      // Kereszt-valuta A oszlop: csak akkor billentünk KÉZI módba, ha az érték TÉNYLEG eltér
+      // a G auto-értéktől. Ha a felhasználó csak rákattint és kilép (változatlan érték), MARAD
+      // auto — különben a puszta fókusz/blur lezárná a kereszt-követést (Codex/Copilot P1 #722).
+      if (isCrossSettlement) {
+        const cur = currentRows[rowIdx]!
+        const autoG = computeCrossSettlement(cur, eurSettlement, usdSettlement)
+        const dec = cur.currency === 'JPY' ? 3 : 2
+        if (crossSettlementStaysAuto(nextValue, autoG, dec, !!cur.settlementManual)) return null // változatlan → marad auto
+        const next = [...currentRows]
+        next[rowIdx] = { ...cur, settlement: nextValue, settlementManual: true }
+        return next
+      }
+      const currentValue = currentRows[rowIdx]?.[col]
+      // Codex P2 #581 iter-3: no-op ha érték nem változott
+      if (typeof currentValue === 'number' && currentValue === nextValue) return null
       const next = [...currentRows]
-      next[rowIdx] = { ...next[rowIdx]!, settlementManual: false }
+      next[rowIdx] = { ...next[rowIdx]!, [col]: nextValue }
       return next
-    }
-    if (trimmed === '') {
-      nextValue = 0
-    } else {
-      const parsed = Number.parseFloat(trimmed.replace(/\s/g, '').replace(',', '.'))
-      if (Number.isNaN(parsed)) return null
-      nextValue = parsed
-    }
-    // Kereszt-valuta A oszlop: csak akkor billentünk KÉZI módba, ha az érték TÉNYLEG eltér
-    // a G auto-értéktől. Ha a felhasználó csak rákattint és kilép (változatlan érték), MARAD
-    // auto — különben a puszta fókusz/blur lezárná a kereszt-követést (Codex/Copilot P1 #722).
-    if (isCrossSettlement) {
-      const cur = currentRows[rowIdx]!
-      const autoG = computeCrossSettlement(cur, eurSettlement, usdSettlement)
-      const dec = cur.currency === 'JPY' ? 3 : 2
-      if (crossSettlementStaysAuto(nextValue, autoG, dec, !!cur.settlementManual)) return null // változatlan → marad auto
-      const next = [...currentRows]
-      next[rowIdx] = { ...cur, settlement: nextValue, settlementManual: true }
-      return next
-    }
-    const currentValue = currentRows[rowIdx]?.[col]
-    // Codex P2 #581 iter-3: no-op ha érték nem változott
-    if (typeof currentValue === 'number' && currentValue === nextValue) return null
-    const next = [...currentRows]
-    next[rowIdx] = { ...next[rowIdx]!, [col]: nextValue }
-    return next
-  }, [formulas, eurSettlement, usdSettlement])
+    },
+    [formulas, eurSettlement, usdSettlement],
+  )
 
   // Side-effect wrapper: aszinkron állapotfrissítés (NEM használható azonnali serialization-höz).
-  const commitCell = useCallback((rowIdx: number, col: keyof MainRateRow, raw: string) => {
-    if (!canEdit) return
-    // FK06 (FR-1..5): E (vétel) / F (eladás) oszlopnál 10%-os eltérés-figyelmeztetés a betöltött
-    // baseline-hoz mérten, a közös `deviationCheck.ts` küszöbével (nincs duplikált küszöb).
-    // A döntés tiszta függvényben (mainSheetCommit.ts) — itt csak a megerősítő UI + revert.
-    if (col === 'weakMultiBuy' || col === 'weakMultiSell') {
-      const code = rows[rowIdx]?.currency?.toUpperCase()
-      const base = code ? efBaselineRef.current[code] : undefined
-      const baseline = base ? (col === 'weakMultiBuy' ? base.E : base.F) : null
-      const decision = evaluateDeviationWarning(col, raw, baseline)
-      if (decision.warn) {
-        const label = COL_NAMES[col as FormulaColumn] ?? String(col)
-        const proceed = window.confirm(
-          `Nagy árfolyam-eltérés:\n\n${rows[rowIdx]?.currency} – ${label}: ${decision.previous} → ${decision.next} ` +
-          `(${decision.percent}% eltérés a korábbi értékhez képest).\n\nBiztosan elmenti?`,
-        )
-        if (!proceed) return // revert: a cella az előző értéken marad (nincs commit)
+  const commitCell = useCallback(
+    (rowIdx: number, col: keyof MainRateRow, raw: string) => {
+      if (!canEdit) return
+      // FK06 (FR-1..5): E (vétel) / F (eladás) oszlopnál 10%-os eltérés-figyelmeztetés a betöltött
+      // baseline-hoz mérten, a közös `deviationCheck.ts` küszöbével (nincs duplikált küszöb).
+      // A döntés tiszta függvényben (mainSheetCommit.ts) — itt csak a megerősítő UI + revert.
+      if (col === 'weakMultiBuy' || col === 'weakMultiSell') {
+        const code = rows[rowIdx]?.currency?.toUpperCase()
+        const base = code ? efBaselineRef.current[code] : undefined
+        const baseline = base ? (col === 'weakMultiBuy' ? base.E : base.F) : null
+        const decision = evaluateDeviationWarning(col, raw, baseline)
+        if (decision.warn) {
+          const label = COL_NAMES[col as FormulaColumn] ?? String(col)
+          const proceed = window.confirm(
+            `Nagy árfolyam-eltérés:\n\n${rows[rowIdx]?.currency} – ${label}: ${decision.previous} → ${decision.next} ` +
+              `(${decision.percent}% eltérés a korábbi értékhez képest).\n\nBiztosan elmenti?`,
+          )
+          if (!proceed) return // revert: a cella az előző értéken marad (nincs commit)
+        }
       }
-    }
 
-    const next = computeCellCommit(rows, rowIdx, col, raw)
-    if (next) {
-      setRows(next)
-      setDirty(true)
-      // FK07 (FR-1..6): commit-szinkron perzisztálás — az érték ÉS a képlet AZONNAL a localStorage-ba
-      // íródik (nem a 1000 ms debounce-ra halasztva), így azonnali lapváltásnál sem vész el.
-      // A képlet-snapshotot itt szinkronban számoljuk (a setFormulas async), a flushActiveCell mintája
-      // szerint — különben a stale closure-beli `formulas` menne a tárba (Copilot #863 tanulság).
-      const trimmed = raw.trim()
-      const formulaKey = `${rows[rowIdx]?.currency ?? rowIdx}.${String(col)}`
-      const isFormulaCol = (FORMULA_COLUMNS as readonly string[]).includes(col as string)
-      let nextFormulas = formulas
-      if (isFormulaCol) {
-        if (isFormula(trimmed)) nextFormulas = { ...formulas, [formulaKey]: trimmed }
-        else if (formulas[formulaKey]) { nextFormulas = { ...formulas }; delete nextFormulas[formulaKey] }
+      const next = computeCellCommit(rows, rowIdx, col, raw)
+      if (next) {
+        setRows(next)
+        setDirty(true)
+        // FK07 (FR-1..6): commit-szinkron perzisztálás — az érték ÉS a képlet AZONNAL a localStorage-ba
+        // íródik (nem a 1000 ms debounce-ra halasztva), így azonnali lapváltásnál sem vész el.
+        // A képlet-snapshotot itt szinkronban számoljuk (a setFormulas async), a flushActiveCell mintája
+        // szerint — különben a stale closure-beli `formulas` menne a tárba (Copilot #863 tanulság).
+        const trimmed = raw.trim()
+        const formulaKey = `${rows[rowIdx]?.currency ?? rowIdx}.${String(col)}`
+        const isFormulaCol = (FORMULA_COLUMNS as readonly string[]).includes(col as string)
+        let nextFormulas = formulas
+        if (isFormulaCol) {
+          if (isFormula(trimmed)) nextFormulas = { ...formulas, [formulaKey]: trimmed }
+          else if (formulas[formulaKey]) {
+            nextFormulas = { ...formulas }
+            delete nextFormulas[formulaKey]
+          }
+        }
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+          localStorage.setItem(FORMULA_STORAGE_KEY, JSON.stringify(nextFormulas))
+          // FK07-fix (FR-1): perzisztált helyi-módosítás jelző — remount után is jelzi,
+          // hogy ez a cella a legutóbbi szerver-szinkronnál frissebb, ki nem küldött
+          // helyi értéket hordoz (a mount-merge nem írhatja felül, FR-2).
+          const editFlags = loadLocalEditFlags()
+          editFlags[formulaKey] = Date.now()
+          localStorage.setItem(LOCAL_EDIT_STORAGE_KEY, JSON.stringify(editFlags))
+        } catch (e) {
+          logger.error(
+            'MainRateSheetPage',
+            'Commit-szinkron helyi mentés sikertelen (quota/privát?)',
+            e,
+          )
+        }
       }
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-        localStorage.setItem(FORMULA_STORAGE_KEY, JSON.stringify(nextFormulas))
-        // FK07-fix (FR-1): perzisztált helyi-módosítás jelző — remount után is jelzi,
-        // hogy ez a cella a legutóbbi szerver-szinkronnál frissebb, ki nem küldött
-        // helyi értéket hordoz (a mount-merge nem írhatja felül, FR-2).
-        const editFlags = loadLocalEditFlags()
-        editFlags[formulaKey] = Date.now()
-        localStorage.setItem(LOCAL_EDIT_STORAGE_KEY, JSON.stringify(editFlags))
-      } catch (e) {
-        logger.error('MainRateSheetPage', 'Commit-szinkron helyi mentés sikertelen (quota/privát?)', e)
-      }
-    }
-  }, [canEdit, rows, computeCellCommit, formulas])
+    },
+    [canEdit, rows, computeCellCommit, formulas],
+  )
 
-  const blurCell = useCallback((rowIdx: number, col: keyof MainRateRow) => {
-    // CSAK akkor commitolunk, ha tényleg szerkesztés volt — különben a kijelölt
-    // (nem-szerkesztés) cellából kilépve üres editBuffer-rel adatvesztés lenne.
-    // Az activeCell-t NEM nullázzuk itt: a nyíl-navigáció fókusz-mozgásakor a régi
-    // cella blur-je nem törölheti az új aktív cellát (fókusz-race elkerülés).
-    if (editing) {
-      commitCell(rowIdx, col, editBuffer)
-    }
-    // Copilot #762: az edit-állapotot MINDIG visszaállítjuk (nincs stale editing/buffer
-    // ugyanabban az event-timingban), de az activeCell-t a fókusz-race miatt nem bántjuk.
-    setEditBuffer('')
-    setEditing(false)
-  }, [editing, commitCell, editBuffer])
+  const blurCell = useCallback(
+    (rowIdx: number, col: keyof MainRateRow) => {
+      // CSAK akkor commitolunk, ha tényleg szerkesztés volt — különben a kijelölt
+      // (nem-szerkesztés) cellából kilépve üres editBuffer-rel adatvesztés lenne.
+      // Az activeCell-t NEM nullázzuk itt: a nyíl-navigáció fókusz-mozgásakor a régi
+      // cella blur-je nem törölheti az új aktív cellát (fókusz-race elkerülés).
+      if (editing) {
+        commitCell(rowIdx, col, editBuffer)
+      }
+      // Copilot #762: az edit-állapotot MINDIG visszaállítjuk (nincs stale editing/buffer
+      // ugyanabban az event-timingban), de az activeCell-t a fókusz-race miatt nem bántjuk.
+      setEditBuffer('')
+      setEditing(false)
+    },
+    [editing, commitCell, editBuffer],
+  )
 
   // ===== 2026-05-21: Excel-szerű billentyűzetes navigáció + Enter-edit =====
-  const decimalsForCol = useCallback((rowIdx: number, col: keyof MainRateRow): number => {
-    if (col === 'crossRate') return 6
-    const r = enrichedRows[rowIdx]
-    return r && isJpy(r.currency) ? 3 : 2
-  }, [enrichedRows])
+  const decimalsForCol = useCallback(
+    (rowIdx: number, col: keyof MainRateRow): number => {
+      if (col === 'crossRate') return 6
+      const r = enrichedRows[rowIdx]
+      return r && isJpy(r.currency) ? 3 : 2
+    },
+    [enrichedRows],
+  )
 
-  const seedBuffer = useCallback((rowIdx: number, col: keyof MainRateRow): string => {
-    const formula = formulas[`${enrichedRows[rowIdx]?.currency ?? rowIdx}.${String(col)}`]
-    if (formula) return formula
-    const v = enrichedRows[rowIdx]?.[col]
-    return typeof v === 'number' && v ? v.toFixed(decimalsForCol(rowIdx, col)) : ''
-  }, [formulas, enrichedRows, decimalsForCol])
+  const seedBuffer = useCallback(
+    (rowIdx: number, col: keyof MainRateRow): string => {
+      const formula = formulas[`${enrichedRows[rowIdx]?.currency ?? rowIdx}.${String(col)}`]
+      if (formula) return formula
+      const v = enrichedRows[rowIdx]?.[col]
+      return typeof v === 'number' && v ? v.toFixed(decimalsForCol(rowIdx, col)) : ''
+    },
+    [formulas, enrichedRows, decimalsForCol],
+  )
 
   // Kijelölés (nyíl-navigáció után): aktív cella, DE nem szerkesztés.
   const selectCell = useCallback((rowIdx: number, col: EditableCol) => {
@@ -649,13 +748,16 @@ export default function MainRateSheetPage() {
   }, [])
 
   // Szerkesztésbe lépés (Enter / dupla-katt / kattintás): buffer seed + editing=true.
-  const startEdit = useCallback((rowIdx: number, col: keyof MainRateRow) => {
-    if (!canEdit || !EDITABLE_ORDER.includes(col as EditableCol)) return
-    pendingFocusRef.current = true // szöveg-kijelölés/fókusz az aktív input-ra
-    setActiveCell({ rowIdx, col })
-    setEditBuffer(seedBuffer(rowIdx, col))
-    setEditing(true)
-  }, [canEdit, seedBuffer])
+  const startEdit = useCallback(
+    (rowIdx: number, col: keyof MainRateRow) => {
+      if (!canEdit || !EDITABLE_ORDER.includes(col as EditableCol)) return
+      pendingFocusRef.current = true // szöveg-kijelölés/fókusz az aktív input-ra
+      setActiveCell({ rowIdx, col })
+      setEditBuffer(seedBuffer(rowIdx, col))
+      setEditing(true)
+    },
+    [canEdit, seedBuffer],
+  )
 
   // Fókusz-kezelés: CSAK akkor fókuszálunk programatikusan, ha billentyűzetes
   // navigáció/Enter-edit kérte (pendingFocusRef) — így a rácson kívülre is lehet
@@ -663,47 +765,61 @@ export default function MainRateSheetPage() {
   useEffect(() => {
     if (!activeCell || !pendingFocusRef.current) return
     pendingFocusRef.current = false
-    const el = document.getElementById(`cell-${activeCell.rowIdx}-${String(activeCell.col)}`) as HTMLInputElement | null
+    const el = document.getElementById(
+      `cell-${activeCell.rowIdx}-${String(activeCell.col)}`,
+    ) as HTMLInputElement | null
     if (!el) return
     if (document.activeElement !== el) el.focus()
     if (editing) el.select()
   }, [activeCell, editing])
 
-  const handleCellKeyDown = useCallback((
-    e: KeyboardEvent<HTMLInputElement>,
-    rowIdx: number,
-    col: keyof MainRateRow,
-  ) => {
-    if (!canEdit || !EDITABLE_ORDER.includes(col as EditableCol)) return
-    const isEditingThis = activeCell?.rowIdx === rowIdx && activeCell.col === col && editing
-    if (isEditingThis) {
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        commitCell(rowIdx, col, editBuffer)
-        setEditBuffer('')
-        setEditing(false)
-        const nxt = nextEditableCell({ rowIdx, col: col as EditableCol }, 'ArrowDown', enrichedRows)
-        pendingFocusRef.current = true
-        setActiveCell({ rowIdx: nxt.rowIdx, col: nxt.col })
-      } else if (e.key === 'Escape') {
-        e.preventDefault()
-        setEditBuffer('')
-        setEditing(false)
+  const handleCellKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>, rowIdx: number, col: keyof MainRateRow) => {
+      if (!canEdit || !EDITABLE_ORDER.includes(col as EditableCol)) return
+      const isEditingThis = activeCell?.rowIdx === rowIdx && activeCell.col === col && editing
+      if (isEditingThis) {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          commitCell(rowIdx, col, editBuffer)
+          setEditBuffer('')
+          setEditing(false)
+          const nxt = nextEditableCell(
+            { rowIdx, col: col as EditableCol },
+            'ArrowDown',
+            enrichedRows,
+          )
+          pendingFocusRef.current = true
+          setActiveCell({ rowIdx: nxt.rowIdx, col: nxt.col })
+        } else if (e.key === 'Escape') {
+          e.preventDefault()
+          setEditBuffer('')
+          setEditing(false)
+        }
+        // nyilak szerkesztés közben: alapértelmezett kurzor-mozgás
+        return
       }
-      // nyilak szerkesztés közben: alapértelmezett kurzor-mozgás
-      return
-    }
-    // Kijelölt (nem-szerkesztés) mód:
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      e.preventDefault()
-      const nxt = nextEditableCell({ rowIdx, col: col as EditableCol }, e.key as NavKey, enrichedRows)
-      pendingFocusRef.current = true
-      selectCell(nxt.rowIdx, nxt.col)
-    } else if (e.key === 'Enter' || e.key === 'F2') {
-      e.preventDefault()
-      startEdit(rowIdx, col)
-    }
-  }, [canEdit, activeCell, editing, editBuffer, enrichedRows, commitCell, selectCell, startEdit])
+      // Kijelölt (nem-szerkesztés) mód:
+      if (
+        e.key === 'ArrowUp' ||
+        e.key === 'ArrowDown' ||
+        e.key === 'ArrowLeft' ||
+        e.key === 'ArrowRight'
+      ) {
+        e.preventDefault()
+        const nxt = nextEditableCell(
+          { rowIdx, col: col as EditableCol },
+          e.key as NavKey,
+          enrichedRows,
+        )
+        pendingFocusRef.current = true
+        selectCell(nxt.rowIdx, nxt.col)
+      } else if (e.key === 'Enter' || e.key === 'F2') {
+        e.preventDefault()
+        startEdit(rowIdx, col)
+      }
+    },
+    [canEdit, activeCell, editing, editBuffer, enrichedRows, commitCell, selectCell, startEdit],
+  )
 
   // Codex P1 #581 iter-4 fix: flushActiveCell SYNC visszaadja a "rows to save"-et.
   // Ha aktív cella van → computeCellCommit-tal kalkulálja a next-et, setRows-t hív
@@ -728,7 +844,10 @@ export default function MainRateSheetPage() {
     let nextFormulas = formulas
     if (isFormulaCol) {
       if (isFormula(trimmed)) nextFormulas = { ...formulas, [key]: trimmed }
-      else if (formulas[key]) { nextFormulas = { ...formulas }; delete nextFormulas[key] }
+      else if (formulas[key]) {
+        nextFormulas = { ...formulas }
+        delete nextFormulas[key]
+      }
     }
     const next = computeCellCommit(rows, activeCell.rowIdx, activeCell.col, editBuffer)
     setActiveCell(null)
@@ -799,13 +918,15 @@ export default function MainRateSheetPage() {
         // nélküli indításkor sem jelenik meg, és reaktiváláskor visszajön.
         // Copilot PR #1097: a katalógus-tag inaktívak (EUA — szándékosan inaktív törzs, V298)
         // NEM kerülhetnek a szűrőlistába, különben offline eltűnne az EUA sora.
-        const catalogCodes = new Set(catalog.currencies.map(c => c.code))
+        const catalogCodes = new Set(catalog.currencies.map((c) => c.code))
         const inactiveCodes = currencies
-          .filter(c => c.active === false && !catalogCodes.has(c.code))
-          .map(c => c.code)
+          .filter((c) => c.active === false && !catalogCodes.has(c.code))
+          .map((c) => c.code)
         try {
           localStorage.setItem(INACTIVE_STORAGE_KEY, JSON.stringify(inactiveCodes))
-        } catch { /* quota / privát mód → a szerver-szűrés a memóriában akkor is érvényesül */ }
+        } catch {
+          /* quota / privát mód → a szerver-szűrés a memóriában akkor is érvényesül */
+        }
 
         // 2. Lehuzzuk az aktiv (publikalt) torzs arfolyamokat
         const serverRates = await exchangeRateMasterApi.listActivePublished()
@@ -819,7 +940,9 @@ export default function MainRateSheetPage() {
           // currencyCode lehet hianyzo a backendben - keressuk vissza a mapbol
           let code = sr.currencyCode
           if (!code) {
-            const codeMatch = Array.from(codeToId.entries()).find(([_c, id]) => id === sr.currencyId)
+            const codeMatch = Array.from(codeToId.entries()).find(
+              ([_c, id]) => id === sr.currencyId,
+            )
             code = codeMatch?.[0]
           }
           if (code) codeToServerRate.set(code, sr)
@@ -835,10 +958,13 @@ export default function MainRateSheetPage() {
           // Az ERTEKEIT nem irjuk felul szerver-rataval, de a sorlista TAGSAGAT a friss
           // katalogushoz igazitjuk (FR-3: uj/inaktivalt valuta dirty alatt is ervenyesul,
           // kulonben az onCurrencyChanged "a Folap frissult" toastja hamis lenne — verif P2).
-          setRows(prev => buildRowsFromCatalog(catalog.currencies, prev))
+          setRows((prev) => buildRowsFromCatalog(catalog.currencies, prev))
           setServerSyncState('online')
           setServerLastSyncAt(new Date().toISOString())
-          logger.info('MainRateSheetPage', `Server sync (user editing - ertekek megorzve, tagsag frissitve): ${serverRates.length} aktiv arfolyam`)
+          logger.info(
+            'MainRateSheetPage',
+            `Server sync (user editing - ertekek megorzve, tagsag frissitve): ${serverRates.length} aktiv arfolyam`,
+          )
           return
         }
 
@@ -846,7 +972,10 @@ export default function MainRateSheetPage() {
         // lehúzzuk, hogy a publikálatlan valuták NE maradjanak üresek a 0-s lapon — a
         // főértéktáros mind a 28 valutát lássa a központi MNB-alapértékkel. (Eddig csak
         // EUR/USD látszott, mert csak azoknak volt publikált master rátája.)
-        const officialByCode = new Map<string, { officialRate: number; baseBuyRate: number; baseSellRate: number }>()
+        const officialByCode = new Map<
+          string,
+          { officialRate: number; baseBuyRate: number; baseSellRate: number }
+        >()
         try {
           const officialRates = await exchangeRateApi.list()
           if (cancelled) return
@@ -860,7 +989,11 @@ export default function MainRateSheetPage() {
             }
           }
         } catch (offErr) {
-          logger.warn('MainRateSheetPage', 'MNB hivatalos ráták lehúzása sikertelen — seed kihagyva', offErr)
+          logger.warn(
+            'MainRateSheetPage',
+            'MNB hivatalos ráták lehúzása sikertelen — seed kihagyva',
+            offErr,
+          )
         }
 
         // FK07-fix (FR-2): a perzisztált helyi-módosítás jelzők — a remountot túlélő,
@@ -879,11 +1012,14 @@ export default function MainRateSheetPage() {
             return {
               ...row,
               settlement: isLocallyEdited(row.currency, 'settlement')
-                ? row.settlement : (Number(sr.officialRate) || row.settlement),
+                ? row.settlement
+                : Number(sr.officialRate) || row.settlement,
               weakMultiBuy: isLocallyEdited(row.currency, 'weakMultiBuy')
-                ? row.weakMultiBuy : (Number(sr.baseBuyRate) || row.weakMultiBuy),
+                ? row.weakMultiBuy
+                : Number(sr.baseBuyRate) || row.weakMultiBuy,
               weakMultiSell: isLocallyEdited(row.currency, 'weakMultiSell')
-                ? row.weakMultiSell : (Number(sr.baseSellRate) || row.weakMultiSell),
+                ? row.weakMultiSell
+                : Number(sr.baseSellRate) || row.weakMultiSell,
             }
           }
           // Nincs publikált master ráta → seed az MNB hivatalos rátából (ha van),
@@ -893,11 +1029,14 @@ export default function MainRateSheetPage() {
             return {
               ...row,
               settlement: isLocallyEdited(row.currency, 'settlement')
-                ? row.settlement : (off.officialRate || off.baseBuyRate || row.settlement),
+                ? row.settlement
+                : off.officialRate || off.baseBuyRate || row.settlement,
               weakMultiBuy: isLocallyEdited(row.currency, 'weakMultiBuy')
-                ? row.weakMultiBuy : (off.baseBuyRate || row.weakMultiBuy),
+                ? row.weakMultiBuy
+                : off.baseBuyRate || row.weakMultiBuy,
               weakMultiSell: isLocallyEdited(row.currency, 'weakMultiSell')
-                ? row.weakMultiSell : (off.baseSellRate || row.weakMultiSell),
+                ? row.weakMultiSell
+                : off.baseSellRate || row.weakMultiSell,
             }
           }
           return row // se master, se hivatalos ráta — marad üres
@@ -905,10 +1044,13 @@ export default function MainRateSheetPage() {
         // Verif P1 (2. ablak): a user az MNB-ráták fetch-e KÖZBEN is commitolhatott —
         // utolsó ellenőrzés a felülírás előtt; dirty alatt csak tagság-frissítés.
         if (dirtyRef.current) {
-          setRows(prev => buildRowsFromCatalog(catalog.currencies, prev))
+          setRows((prev) => buildRowsFromCatalog(catalog.currencies, prev))
           setServerSyncState('online')
           setServerLastSyncAt(new Date().toISOString())
-          logger.info('MainRateSheetPage', 'Server sync (user editing a 2. fetch alatt) - ertekek megorzve')
+          logger.info(
+            'MainRateSheetPage',
+            'Server sync (user editing a 2. fetch alatt) - ertekek megorzve',
+          )
           return
         }
         setRows(mergedRows)
@@ -919,11 +1061,18 @@ export default function MainRateSheetPage() {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedRows))
         } catch (storageErr) {
-          logger.error('MainRateSheetPage', 'Failed to persist server-merged rows to localStorage', storageErr)
+          logger.error(
+            'MainRateSheetPage',
+            'Failed to persist server-merged rows to localStorage',
+            storageErr,
+          )
           // NEM doblunk - a memoriaban levo state-tel mukodunk tovabb
         }
 
-        logger.info('MainRateSheetPage', `Server sync: ${serverRates.length} aktiv arfolyam betoltve + cached`)
+        logger.info(
+          'MainRateSheetPage',
+          `Server sync: ${serverRates.length} aktiv arfolyam betoltve + cached`,
+        )
       } catch (err) {
         if (cancelled) return
         logger.error('MainRateSheetPage', 'Server sync failed - fallback localStorage cache', err)
@@ -935,7 +1084,9 @@ export default function MainRateSheetPage() {
       }
     }
     void loadServerData()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
     // dirty szándékosan NINCS a dep-listában — csak a katalógus betöltésekor ÉS valuta-
     // aktiválás/inaktiválás után (catalog.reload → catalog.all új referencia) syncolunk.
     // A dirty AKTUÁLIS (válaszkori) értékét a dirtyRef adja, NEM a closure (verif P1).
@@ -1028,7 +1179,7 @@ export default function MainRateSheetPage() {
     if (euaSell > 0 && eurSell > 0 && euaDeviationExceeds(euaSell, eurSell)) {
       warnings.push(
         `• EUA: az euró-érme árfolyam (${euaSell}) több mint 20%-kal eltér a képzett ` +
-        `értéktől (${computeEuaRate(eurSell).toFixed(2)} = gyenge euró eladás × 1.2)`,
+          `értéktől (${computeEuaRate(eurSell).toFixed(2)} = gyenge euró eladás × 1.2)`,
       )
     }
 
@@ -1048,8 +1199,8 @@ export default function MainRateSheetPage() {
     for (const v of bandViolations) {
       warnings.push(
         `• Raiffeisen sáv: ${v.currency} ${v.kind === 'buy' ? 'vétel' : 'eladás'} (${v.rate}) a ` +
-        `±${bandPercent}%-os sávon kívül [${v.min.toFixed(2)}–${v.max.toFixed(2)}], ` +
-        `bázis: ${bandBaseLabel} (${v.base.toFixed(2)})`,
+          `±${bandPercent}%-os sávon kívül [${v.min.toFixed(2)}–${v.max.toFixed(2)}], ` +
+          `bázis: ${bandBaseLabel} (${v.base.toFixed(2)})`,
       )
     }
 
@@ -1058,8 +1209,9 @@ export default function MainRateSheetPage() {
       // mintával (ReservationPage). Egyedi modal-dialógusra cserélése külön UX-kör,
       // a futó-app (Electron) verifikációval együtt (Sourcery #787).
       const proceed = window.confirm(
-        'Árfolyam-figyelmeztetés (FR-RFM-25 / FR-RFM-09):\n\n' + warnings.join('\n') +
-        '\n\nBiztosan kiküldi így az árfolyamot?',
+        'Árfolyam-figyelmeztetés (FR-RFM-25 / FR-RFM-09):\n\n' +
+          warnings.join('\n') +
+          '\n\nBiztosan kiküldi így az árfolyamot?',
       )
       if (!proceed) {
         setPublishing(false)
@@ -1093,7 +1245,9 @@ export default function MainRateSheetPage() {
           // (a ki nem küldött érték védelme fontosabb).
           try {
             localStorage.removeItem(LOCAL_EDIT_STORAGE_KEY)
-          } catch { /* quota/privát mód — a védelem legfeljebb tovább él */ }
+          } catch {
+            /* quota/privát mód — a védelem legfeljebb tovább él */
+          }
           toast.success(summary.title, summary.detail)
         } else if (result.published > 0) {
           toast.warning(summary.title, summary.detail)
@@ -1126,7 +1280,9 @@ export default function MainRateSheetPage() {
       <div className="flex items-center justify-between bg-white px-4 py-2 border-b border-slate-200 shadow-sm">
         <div className="flex items-center gap-3">
           <h1 className="text-base font-bold text-slate-900">Főlap — Elszámoló árfolyamok</h1>
-          <span className="text-xs text-slate-500 px-2 py-0.5 bg-slate-100 rounded">0-s lap (Alap)</span>
+          <span className="text-xs text-slate-500 px-2 py-0.5 bg-slate-100 rounded">
+            0-s lap (Alap)
+          </span>
           {dirty && <span className="text-xs text-orange-600 font-medium">● módosítva</span>}
           {/* Phase 2: kozponti szerver szinkron-allapot indikator */}
           {serverSyncState === 'loading' && (
@@ -1135,7 +1291,10 @@ export default function MainRateSheetPage() {
             </span>
           )}
           {serverSyncState === 'online' && (
-            <span className="text-xs text-green-700 flex items-center gap-1" title={serverLastSyncAt ?? ''}>
+            <span
+              className="text-xs text-green-700 flex items-center gap-1"
+              title={serverLastSyncAt ?? ''}
+            >
               <Wifi size={12} /> Online (kp. szerver)
             </span>
           )}
@@ -1148,7 +1307,10 @@ export default function MainRateSheetPage() {
         <div className="flex items-center gap-2">
           {/* FR-RFM-12/13: Raiffeisen ±N% eltérési sáv — bázis (elszámoló/OTP) + százalék. A
               kiküldés/ellenőrzés ezen a sávon kívüli vétel/eladásra figyelmeztet. */}
-          <div className="flex items-center gap-1 text-xs" title="Raiffeisen eltérési sáv (FR-RFM-12/13): a vétel/eladás max ennyivel térhet el a választott bázistól">
+          <div
+            className="flex items-center gap-1 text-xs"
+            title="Raiffeisen eltérési sáv (FR-RFM-12/13): a vétel/eladás max ennyivel térhet el a választott bázistól"
+          >
             <span className="text-slate-500">Sáv:</span>
             <select
               value={bandBase}
@@ -1165,7 +1327,10 @@ export default function MainRateSheetPage() {
               min={0}
               step={0.5}
               value={bandPercent}
-              onChange={(e) => { const n = Number(e.target.value); if (Number.isFinite(n) && n >= 0) setBandPercent(n) }}
+              onChange={(e) => {
+                const n = Number(e.target.value)
+                if (Number.isFinite(n) && n >= 0) setBandPercent(n)
+              }}
               disabled={!canEdit}
               className="w-12 px-1 py-0.5 border border-slate-300 rounded text-xs disabled:opacity-40"
               title="Megengedett eltérés százaléka (alap 10%) — FR-RFM-12"
@@ -1213,39 +1378,50 @@ export default function MainRateSheetPage() {
         <button
           onClick={() => {
             const violations = validateRateDirection(
-              rows.map(r => ({
-                currencyCode: r.currency, settlement: r.settlement,
-                buyRate: r.weakMultiBuy, sellRate: r.weakMultiSell,
+              rows.map((r) => ({
+                currencyCode: r.currency,
+                settlement: r.settlement,
+                buyRate: r.weakMultiBuy,
+                sellRate: r.weakMultiSell,
               })),
             )
-            const warnings = violations.map(v => `• ${v.message}`)
-            const eurSell = rows.find(r => r.currency === 'EUR')?.weakMultiSell ?? 0
-            const euaSell = rows.find(r => r.currency === 'EUA')?.weakMultiSell ?? 0
+            const warnings = violations.map((v) => `• ${v.message}`)
+            const eurSell = rows.find((r) => r.currency === 'EUR')?.weakMultiSell ?? 0
+            const euaSell = rows.find((r) => r.currency === 'EUA')?.weakMultiSell ?? 0
             if (euaSell > 0 && eurSell > 0 && euaDeviationExceeds(euaSell, eurSell)) {
-              warnings.push(`• EUA: az euró-érme árfolyam (${euaSell}) >20%-kal eltér a képzett értéktől (${computeEuaRate(eurSell).toFixed(2)})`)
+              warnings.push(
+                `• EUA: az euró-érme árfolyam (${euaSell}) >20%-kal eltér a képzett értéktől (${computeEuaRate(eurSell).toFixed(2)})`,
+              )
             }
             // FR-RFM-12/13: Raiffeisen ±N% sáv-ellenőrzés (a kiküldéssel azonos szabály, mentés/kiküldés nélkül).
             // Kereszt-valutáknál a tényleges elszámoló a resolveSettlement-tel számolt (mint a dispatch-út),
             // különben az auto-módú soroknál a nyers settlement=0 hibásan kihagyná a sávellenőrzést.
-            const eurSettle = rows.find(r => r.currency === 'EUR')?.settlement ?? 0
-            const usdSettle = rows.find(r => r.currency === 'USD')?.settlement ?? 0
+            const eurSettle = rows.find((r) => r.currency === 'EUR')?.settlement ?? 0
+            const usdSettle = rows.find((r) => r.currency === 'USD')?.settlement ?? 0
             for (const v of raiffeisenBandViolations(
-              rows.map(r => ({
+              rows.map((r) => ({
                 currency: r.currency,
                 base: bandBase === 'otp' ? r.otp : resolveSettlement(r, eurSettle, usdSettle),
-                buy: r.weakMultiBuy, sell: r.weakMultiSell,
+                buy: r.weakMultiBuy,
+                sell: r.weakMultiSell,
               })),
               bandPercent,
             )) {
               warnings.push(
                 `• Raiffeisen sáv: ${v.currency} ${v.kind === 'buy' ? 'vétel' : 'eladás'} (${v.rate}) a ±${bandPercent}%-os ` +
-                `sávon kívül [${v.min.toFixed(2)}–${v.max.toFixed(2)}], bázis: ${bandBase === 'otp' ? 'OTP' : 'elszámoló'}`,
+                  `sávon kívül [${v.min.toFixed(2)}–${v.max.toFixed(2)}], bázis: ${bandBase === 'otp' ? 'OTP' : 'elszámoló'}`,
               )
             }
             if (warnings.length === 0) {
-              toast.success('Ellenőrzés', 'A mentett táblázat rendben — a kiküldés a szerver-oldali ellenőrzést is elvégzi.')
+              toast.success(
+                'Ellenőrzés',
+                'A mentett táblázat rendben — a kiküldés a szerver-oldali ellenőrzést is elvégzi.',
+              )
             } else {
-              toast.warning('Ellenőrzés', `${warnings.length} eltérés:\n${warnings.slice(0, 6).join('\n')}`)
+              toast.warning(
+                'Ellenőrzés',
+                `${warnings.length} eltérés:\n${warnings.slice(0, 6).join('\n')}`,
+              )
             }
           }}
           className="px-3 py-1 text-xs font-medium bg-blue-600 text-white border border-blue-700 rounded hover:bg-blue-700 flex items-center gap-1"
@@ -1264,7 +1440,7 @@ export default function MainRateSheetPage() {
             : 'ÁRFOLYAMOK SZÉTKÜLDÉSE'}
         </button>
         {/* N1 (legacy ARFOLYAM / TINTERNETTMKFORM) — internet-link gyors-megnyitók */}
-        {internetLinks.map(link => (
+        {internetLinks.map((link) => (
           <button
             key={link.id}
             onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
@@ -1275,7 +1451,10 @@ export default function MainRateSheetPage() {
           </button>
         ))}
         <button
-          onClick={() => { setInternetOpen(true); void loadInternetLinks() }}
+          onClick={() => {
+            setInternetOpen(true)
+            void loadInternetLinks()
+          }}
           title="Internet-címek karbantartása (legacy TINTERNETTMKFORM)"
           className="px-3 py-1 text-xs font-medium bg-white border border-slate-300 rounded hover:bg-slate-50 flex items-center gap-1"
         >
@@ -1302,7 +1481,11 @@ export default function MainRateSheetPage() {
             const hadPendingBuffer = activeCell !== null
             flushActiveCell()
             const hasUnsavedChanges = dirty || hadPendingBuffer
-            if (hasUnsavedChanges && !confirm('Vannak nem mentett módosítások. Biztosan kilépsz mentés nélkül?')) return
+            if (
+              hasUnsavedChanges &&
+              !confirm('Vannak nem mentett módosítások. Biztosan kilépsz mentés nélkül?')
+            )
+              return
             useAuthStore.getState().logout()
             navigate('/login')
           }}
@@ -1317,11 +1500,15 @@ export default function MainRateSheetPage() {
         <table className="w-full text-xs border-collapse bg-white shadow-sm rounded overflow-hidden">
           <thead className="sticky top-0 bg-slate-200 border-b-2 border-slate-400">
             <tr className="text-[10px] uppercase font-bold text-slate-700">
-              <th className="border border-slate-300 px-2 py-1 bg-orange-100" colSpan={1}>A — Elszámoló</th>
+              <th className="border border-slate-300 px-2 py-1 bg-orange-100" colSpan={1}>
+                A — Elszámoló
+              </th>
               <th className="border border-slate-300 px-2 py-1 bg-blue-50">B — OTP</th>
               <th className="border border-slate-300 px-2 py-1 bg-blue-50">C — Segéd</th>
               <th className="border border-slate-300 px-2 py-1 bg-slate-300">D — Valuta</th>
-              <th className="border border-slate-300 px-2 py-1 bg-yellow-100" colSpan={2}>E-F — Gyenge multis (vét/elad)</th>
+              <th className="border border-slate-300 px-2 py-1 bg-yellow-100" colSpan={2}>
+                E-F — Gyenge multis (vét/elad)
+              </th>
               <th className="border border-slate-300 px-2 py-1 bg-amber-50">G — Kereszt számolt</th>
               <th className="border border-slate-300 px-2 py-1 bg-pink-50">H — Kereszt forrás</th>
               <th className="border border-slate-300 px-2 py-1 bg-slate-100">I — Nagybani</th>
@@ -1333,32 +1520,47 @@ export default function MainRateSheetPage() {
               // 2026-05-20: kereszt-valuta A oszlopa AUTO (G-ből), amíg kézzel nem írják felül.
               // Az A MINDIG szerkeszthető; az auto-állapot csak vizuális jelzés.
               const aIsAutoCross = !!row.crossBase && !row.settlementManual
-              const isActive = (col: keyof MainRateRow) => activeCell?.rowIdx === idx && activeCell.col === col
+              const isActive = (col: keyof MainRateRow) =>
+                activeCell?.rowIdx === idx && activeCell.col === col
               const cellClass = (col: keyof MainRateRow, baseClass: string) =>
                 `${baseClass} ${isActive(col) ? 'ring-2 ring-blue-500' : ''}`
               // EditableInput closure: while focused, show editBuffer (raw user input);
               // when blurred, parse + commit. Codex P1 #581 fix.
-              const renderInput = (col: keyof MainRateRow, currentVal: number, decimalsFor: number, classes: string, placeholder?: string) => {
+              const renderInput = (
+                col: keyof MainRateRow,
+                currentVal: number,
+                decimalsFor: number,
+                classes: string,
+                placeholder?: string,
+              ) => {
                 const activeThis = isActive(col)
                 const editingThis = activeThis && editing
                 // Hover (lebegő) jelzés: a cella képlet eredménye-e, kézi- vagy auto-érték.
                 const cellFormula = formulas[`${row.currency}.${String(col)}`]
-                const isFormulaColHere = (FORMULA_COLUMNS as readonly string[]).includes(col as string)
+                const isFormulaColHere = (FORMULA_COLUMNS as readonly string[]).includes(
+                  col as string,
+                )
                 const hoverTitle = cellFormula
                   ? `Képlet: ${cellFormula} = ${currentVal ? currentVal.toFixed(decimalsFor) : '0'}`
-                  : (col === 'settlement' && aIsAutoCross
+                  : col === 'settlement' && aIsAutoCross
                     ? 'Automatikus érték (G kereszt-számolt). Írj be értéket/képletet a kézi felülíráshoz; üres = vissza auto.'
-                    : (isFormulaColHere ? 'Kézi bevitelű érték (képlet is írható, pl. C*0,97 vagy !FEUR)' : undefined))
+                    : isFormulaColHere
+                      ? 'Kézi bevitelű érték (képlet is írható, pl. C*0,97 vagy !FEUR)'
+                      : undefined
                 return (
                   <input
                     id={`cell-${idx}-${String(col)}`}
                     type="text"
                     // Szerkesztéskor a RAW buffer, egyébként a formázott érték (readOnly).
-                    value={editingThis ? editBuffer : (currentVal ? currentVal.toFixed(decimalsFor) : '0')}
+                    value={
+                      editingThis ? editBuffer : currentVal ? currentVal.toFixed(decimalsFor) : '0'
+                    }
                     readOnly={!canEdit || !editingThis}
                     onChange={(e) => setEditBuffer(e.target.value)}
                     onClick={() => startEdit(idx, col)}
-                    onFocus={() => { if (!editingThis) selectCell(idx, col as EditableCol) }}
+                    onFocus={() => {
+                      if (!editingThis) selectCell(idx, col as EditableCol)
+                    }}
                     onKeyDown={(e) => handleCellKeyDown(e, idx, col)}
                     onBlur={() => blurCell(idx, col)}
                     className={`${classes} ${activeThis && !editing ? 'cursor-pointer' : ''}`}
@@ -1372,44 +1574,119 @@ export default function MainRateSheetPage() {
                 <tr key={row.currency} className="hover:bg-slate-50">
                   {/* A — Elszámoló (MINDIG szerkeszthető; kereszt-valutánál auto=G amíg nem írják felül) */}
                   <td
-                    className={cellClass('settlement', `border border-slate-300 px-2 py-1 text-right font-mono font-bold ${aIsAutoCross ? 'text-amber-700 bg-amber-50/40' : 'text-red-700 bg-orange-50/50'}`)}
-                    title={aIsAutoCross ? 'Auto (G kereszt-számolt). Írj be értéket a kézi felülíráshoz; üres = vissza auto.' : undefined}
+                    className={cellClass(
+                      'settlement',
+                      `border border-slate-300 px-2 py-1 text-right font-mono font-bold ${aIsAutoCross ? 'text-amber-700 bg-amber-50/40' : 'text-red-700 bg-orange-50/50'}`,
+                    )}
+                    title={
+                      aIsAutoCross
+                        ? 'Auto (G kereszt-számolt). Írj be értéket a kézi felülíráshoz; üres = vissza auto.'
+                        : undefined
+                    }
                   >
-                    {renderInput('settlement', row.settlement, decimals, `w-full bg-transparent text-right font-mono font-bold focus:outline-none ${aIsAutoCross ? 'text-amber-700 italic' : 'text-red-700'}`)}
+                    {renderInput(
+                      'settlement',
+                      row.settlement,
+                      decimals,
+                      `w-full bg-transparent text-right font-mono font-bold focus:outline-none ${aIsAutoCross ? 'text-amber-700 italic' : 'text-red-700'}`,
+                    )}
                   </td>
                   {/* B — OTP (kék segéd) */}
-                  <td className={cellClass('otp', 'border border-slate-300 px-2 py-1 text-right font-mono text-blue-800 bg-blue-50/30')}>
-                    {renderInput('otp', row.otp, decimals, 'w-full bg-transparent text-right font-mono text-blue-800 focus:outline-none')}
+                  <td
+                    className={cellClass(
+                      'otp',
+                      'border border-slate-300 px-2 py-1 text-right font-mono text-blue-800 bg-blue-50/30',
+                    )}
+                  >
+                    {renderInput(
+                      'otp',
+                      row.otp,
+                      decimals,
+                      'w-full bg-transparent text-right font-mono text-blue-800 focus:outline-none',
+                    )}
                   </td>
                   {/* C — Segéd (kék) */}
-                  <td className={cellClass('helper', 'border border-slate-300 px-2 py-1 text-right font-mono text-blue-700 bg-blue-50/20')}>
-                    {renderInput('helper', row.helper, decimals, 'w-full bg-transparent text-right font-mono text-blue-700 focus:outline-none')}
+                  <td
+                    className={cellClass(
+                      'helper',
+                      'border border-slate-300 px-2 py-1 text-right font-mono text-blue-700 bg-blue-50/20',
+                    )}
+                  >
+                    {renderInput(
+                      'helper',
+                      row.helper,
+                      decimals,
+                      'w-full bg-transparent text-right font-mono text-blue-700 focus:outline-none',
+                    )}
                   </td>
                   {/* D — Valuta (VÉDETT, fekete bold) */}
                   <td className="border border-slate-300 px-2 py-1 text-center font-mono font-bold text-slate-900 bg-slate-100">
                     {row.currency}
                   </td>
                   {/* E — Gyenge multis vétel (sárga) */}
-                  <td className={cellClass('weakMultiBuy', 'border border-slate-300 px-2 py-1 text-right font-mono text-amber-900 bg-yellow-50')}>
-                    {renderInput('weakMultiBuy', row.weakMultiBuy, decimals, 'w-full bg-transparent text-right font-mono text-amber-900 focus:outline-none')}
+                  <td
+                    className={cellClass(
+                      'weakMultiBuy',
+                      'border border-slate-300 px-2 py-1 text-right font-mono text-amber-900 bg-yellow-50',
+                    )}
+                  >
+                    {renderInput(
+                      'weakMultiBuy',
+                      row.weakMultiBuy,
+                      decimals,
+                      'w-full bg-transparent text-right font-mono text-amber-900 focus:outline-none',
+                    )}
                   </td>
                   {/* F — Gyenge multis eladás (sárga) */}
-                  <td className={cellClass('weakMultiSell', 'border border-slate-300 px-2 py-1 text-right font-mono text-amber-900 bg-yellow-50')}>
-                    {renderInput('weakMultiSell', row.weakMultiSell, decimals, 'w-full bg-transparent text-right font-mono text-amber-900 focus:outline-none')}
+                  <td
+                    className={cellClass(
+                      'weakMultiSell',
+                      'border border-slate-300 px-2 py-1 text-right font-mono text-amber-900 bg-yellow-50',
+                    )}
+                  >
+                    {renderInput(
+                      'weakMultiSell',
+                      row.weakMultiSell,
+                      decimals,
+                      'w-full bg-transparent text-right font-mono text-amber-900 focus:outline-none',
+                    )}
                   </td>
                   {/* G — Kereszt számolt (read-only, barna) */}
                   <td className="border border-slate-300 px-2 py-1 text-right font-mono text-amber-700 bg-amber-50/40 italic">
                     {row.crossBase ? formatCell(row.crossSettlement, decimals) : '—'}
                   </td>
                   {/* H — Kereszt forrás (rózsa, 6 tizedes) — csak crossBase row */}
-                  <td className={cellClass('crossRate', 'border border-slate-300 px-2 py-1 text-right font-mono text-pink-800 bg-pink-50/40')}>
-                    {row.crossBase
-                      ? renderInput('crossRate', row.crossRate, 6, 'w-full bg-transparent text-right font-mono text-pink-800 focus:outline-none', `${row.crossBase}/${row.currency}`)
-                      : <span className="text-slate-400">—</span>}
+                  <td
+                    className={cellClass(
+                      'crossRate',
+                      'border border-slate-300 px-2 py-1 text-right font-mono text-pink-800 bg-pink-50/40',
+                    )}
+                  >
+                    {row.crossBase ? (
+                      renderInput(
+                        'crossRate',
+                        row.crossRate,
+                        6,
+                        'w-full bg-transparent text-right font-mono text-pink-800 focus:outline-none',
+                        `${row.crossBase}/${row.currency}`,
+                      )
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
                   </td>
                   {/* I — Nagybani (szürke, opcionális) */}
-                  <td className={cellClass('wholesale', 'border border-slate-300 px-2 py-1 text-right font-mono text-slate-600 bg-slate-50')}>
-                    {renderInput('wholesale', row.wholesale, decimals, 'w-full bg-transparent text-right font-mono text-slate-600 focus:outline-none')}
+                  <td
+                    className={cellClass(
+                      'wholesale',
+                      'border border-slate-300 px-2 py-1 text-right font-mono text-slate-600 bg-slate-50',
+                    )}
+                  >
+                    {renderInput(
+                      'wholesale',
+                      row.wholesale,
+                      decimals,
+                      'w-full bg-transparent text-right font-mono text-slate-600 focus:outline-none',
+                    )}
                   </td>
                 </tr>
               )
@@ -1421,13 +1698,16 @@ export default function MainRateSheetPage() {
         {editing && activeCell && (
           <div className="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg border border-blue-400 bg-white px-4 py-3 shadow-lg">
             <div className="text-xs font-semibold text-blue-700">
-              {rows[activeCell.rowIdx]?.currency} · {COL_NAMES[activeCell.col as FormulaColumn] ?? String(activeCell.col)}
+              {rows[activeCell.rowIdx]?.currency} ·{' '}
+              {COL_NAMES[activeCell.col as FormulaColumn] ?? String(activeCell.col)}
             </div>
             <div className="mt-1 break-all font-mono text-sm text-slate-900">
               {editBuffer || <span className="text-slate-400">(üres → auto/törlés)</span>}
             </div>
             {isFormula(editBuffer) && (
-              <div className="mt-1 text-[11px] text-slate-500">Képlet — Enter: jóváhagy, Esc: elvet</div>
+              <div className="mt-1 text-[11px] text-slate-500">
+                Képlet — Enter: jóváhagy, Esc: elvet
+              </div>
             )}
           </div>
         )}
@@ -1435,40 +1715,154 @@ export default function MainRateSheetPage() {
         {/* === LEGEND / INFO === */}
         <div className="mt-4 p-3 bg-white border border-slate-300 rounded text-xs text-slate-700 space-y-1">
           <div className="font-bold text-slate-900 mb-1">Oszlop magyarázatok:</div>
-          <div><b>A — Elszámoló:</b> Itt állítjuk az elszámoló árfolyamokat. Minden munkalapon ugyanazok az értékek a J oszlopban. EUR/USD/GBP/CHF (4 főváluta) napközben kézzel állítva, többi képlettel.</div>
-          <div><b>B — OTP:</b> OTP közzétett vételi árfolyamok (segédérték az alap vételi/eladási árfolyamok megállapítására). Forrás: <a href="https://www.otpbank.hu/portal/hu/Arfolyamok/OTP" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">otpbank.hu</a></div>
-          <div><b>D — Valuta nem:</b> ISO kód (VÉDETT, nem módosítható).</div>
-          <div><b>E-F — Gyenge multis árfolyamok:</b> Pár munkacsoportban módosítás nélkül áthívva, pár helyen képlet alapja.</div>
-          <div><b>G — Kereszt számolt:</b> Az EUR/USD keresztárfolyam alapú elszámoló (számolt: A oszlop EUR vagy USD értéke / H oszlop érték). Pl. CZK A = EUR settlement / EUR/CZK kereszt. Read-only, automatikusan követi az A oszlop EUR/USD változását.</div>
-          <div><b>H — Kereszt forrás:</b> Reggel/napközben beírt EUR vagy USD kereszt árfolyam (forrás: <a href="https://www.xe.com/currencyconverter/" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">xe.com</a>). Min. 6 tizedes pontosság. EUR-tartozó: CZK, PLN, RON, RSD, BGN, BAM, TRY. USD-tartozó: ILS, UAH, RUB, CNY, THB, BRL, MXN, NZD.</div>
-          <div><b>I — Nagybani:</b> Jelenleg nem használt (Phase 2).</div>
-          <div className="mt-2 text-slate-500"><b>Phase 1 (MVP):</b> Lokális mentés (localStorage). <b>Phase 2:</b> Backend persistence + reaktív adatfolyam munkacsoportokhoz (A → minden mcs J oszlopa).</div>
+          <div>
+            <b>A — Elszámoló:</b> Itt állítjuk az elszámoló árfolyamokat. Minden munkalapon
+            ugyanazok az értékek a J oszlopban. EUR/USD/GBP/CHF (4 főváluta) napközben kézzel
+            állítva, többi képlettel.
+          </div>
+          <div>
+            <b>B — OTP:</b> OTP közzétett vételi árfolyamok (segédérték az alap vételi/eladási
+            árfolyamok megállapítására). Forrás:{' '}
+            <a
+              href="https://www.otpbank.hu/portal/hu/Arfolyamok/OTP"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline"
+            >
+              otpbank.hu
+            </a>
+          </div>
+          <div>
+            <b>D — Valuta nem:</b> ISO kód (VÉDETT, nem módosítható).
+          </div>
+          <div>
+            <b>E-F — Gyenge multis árfolyamok:</b> Pár munkacsoportban módosítás nélkül áthívva, pár
+            helyen képlet alapja.
+          </div>
+          <div>
+            <b>G — Kereszt számolt:</b> Az EUR/USD keresztárfolyam alapú elszámoló (számolt: A
+            oszlop EUR vagy USD értéke / H oszlop érték). Pl. CZK A = EUR settlement / EUR/CZK
+            kereszt. Read-only, automatikusan követi az A oszlop EUR/USD változását.
+          </div>
+          <div>
+            <b>H — Kereszt forrás:</b> Reggel/napközben beírt EUR vagy USD kereszt árfolyam (forrás:{' '}
+            <a
+              href="https://www.xe.com/currencyconverter/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline"
+            >
+              xe.com
+            </a>
+            ). Min. 6 tizedes pontosság. EUR-tartozó: CZK, PLN, RON, RSD, BGN, BAM, TRY.
+            USD-tartozó: ILS, UAH, RUB, CNY, THB, BRL, MXN, NZD.
+          </div>
+          <div>
+            <b>I — Nagybani:</b> Jelenleg nem használt (Phase 2).
+          </div>
+          <div className="mt-2 text-slate-500">
+            <b>Phase 1 (MVP):</b> Lokális mentés (localStorage). <b>Phase 2:</b> Backend persistence
+            + reaktív adatfolyam munkacsoportokhoz (A → minden mcs J oszlopa).
+          </div>
         </div>
       </div>
 
       {/* === HELP MODAL === */}
       {showHelp && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowHelp(false)}>
-          <div className="bg-emerald-50 border-2 border-emerald-700 rounded-lg p-6 max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-emerald-900 text-center mb-4">SEGÍTSÉG AZ ÁRFOLYAM SZERKESZTŐ PROGRAMHOZ</h2>
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowHelp(false)}
+        >
+          <div
+            className="bg-emerald-50 border-2 border-emerald-700 rounded-lg p-6 max-w-2xl w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-bold text-emerald-900 text-center mb-4">
+              SEGÍTSÉG AZ ÁRFOLYAM SZERKESZTŐ PROGRAMHOZ
+            </h2>
             <div className="bg-white border border-emerald-300 rounded p-3 mb-4">
               <div className="font-bold text-sm mb-2 text-center">FÜGGVÉNYEK KEZELÉSE</div>
               <table className="w-full text-xs">
                 <tbody>
-                  <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300 w-24">A, B, C, E, F</td><td className="py-1 px-2 italic">Az AKTUÁLIS valuta sorának adott oszlopa (saját sor). A 0-s lapon ez az 5 érték-oszlop képletezhető.</td></tr>
-                  <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300">C*0,97</td><td className="py-1 px-2 italic">Példa: az aktuális valuta C oszlopa szorozva 0,97-tel. (Tizedeselválasztó: vessző.)</td></tr>
-                  <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300">!Fxxx</td><td className="py-1 px-2 italic">Más valuta sorának oszlopa (F=oszlop, xxx=valutakód). Pl. <b>!FEUR</b> = az EUR sor F (eladás) oszlopa — pl. az EUA eladása mindig az EUR eladása.</td></tr>
-                  <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300">Műveletek</td><td className="py-1 px-2 italic">+ - * / és zárójel (a zárójel kötelező eltérő prioritású műveletek esetén)</td></tr>
-                  <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300">(üres)</td><td className="py-1 px-2 italic">Üres cella → automatikus érték. Fix szám → kézi felülírás. Képlet → a képlet eredménye, automatikus újraszámítással.</td></tr>
-                  <tr><td className="py-1 px-2 font-mono font-bold border-r border-slate-300">#NNL</td><td className="py-1 px-2 italic">Munkacsoportok közötti hivatkozás (<span className="font-mono">#</span> + kétjegyű csoportazonosító + oszlopbetű, pl. <span className="font-mono">#01L</span>). A 0-s lapon nem értelmezett — a <b>csoport árfolyamlapokon</b> használható, a <span className="font-mono">J–S</span> oszlop-hivatkozásokkal együtt (lásd a csoport-lap „Képlet-súgó" gombját).</td></tr>
+                  <tr>
+                    <td className="py-1 px-2 font-mono font-bold border-r border-slate-300 w-24">
+                      A, B, C, E, F
+                    </td>
+                    <td className="py-1 px-2 italic">
+                      Az AKTUÁLIS valuta sorának adott oszlopa (saját sor). A 0-s lapon ez az 5
+                      érték-oszlop képletezhető.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
+                      C*0,97
+                    </td>
+                    <td className="py-1 px-2 italic">
+                      Példa: az aktuális valuta C oszlopa szorozva 0,97-tel. (Tizedeselválasztó:
+                      vessző.)
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
+                      !Fxxx
+                    </td>
+                    <td className="py-1 px-2 italic">
+                      Más valuta sorának oszlopa (F=oszlop, xxx=valutakód). Pl. <b>!FEUR</b> = az
+                      EUR sor F (eladás) oszlopa — pl. az EUA eladása mindig az EUR eladása.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
+                      Műveletek
+                    </td>
+                    <td className="py-1 px-2 italic">
+                      + - * / és zárójel (a zárójel kötelező eltérő prioritású műveletek esetén)
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
+                      (üres)
+                    </td>
+                    <td className="py-1 px-2 italic">
+                      Üres cella → automatikus érték. Fix szám → kézi felülírás. Képlet → a képlet
+                      eredménye, automatikus újraszámítással.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
+                      #NNL
+                    </td>
+                    <td className="py-1 px-2 italic">
+                      Munkacsoportok közötti hivatkozás (<span className="font-mono">#</span> +
+                      kétjegyű csoportazonosító + oszlopbetű, pl.{' '}
+                      <span className="font-mono">#01L</span>). A 0-s lapon nem értelmezett — a{' '}
+                      <b>csoport árfolyamlapokon</b> használható, a{' '}
+                      <span className="font-mono">J–S</span> oszlop-hivatkozásokkal együtt (lásd a
+                      csoport-lap „Képlet-súgó" gombját).
+                    </td>
+                  </tr>
                 </tbody>
               </table>
-              <div className="mt-2 text-[11px] text-slate-500">Megjegyzés: a képlet NEM kezdődik „=" jellel; egyszerűen írd be (pl. <span className="font-mono">C*0,97</span> vagy <span className="font-mono">!FEUR</span>). A G és H oszlop (kereszt-számolt / kereszt-forrás) automatikus, nem képletezhető.</div>
+              <div className="mt-2 text-[11px] text-slate-500">
+                Megjegyzés: a képlet NEM kezdődik „=" jellel; egyszerűen írd be (pl.{' '}
+                <span className="font-mono">C*0,97</span> vagy{' '}
+                <span className="font-mono">!FEUR</span>). A G és H oszlop (kereszt-számolt /
+                kereszt-forrás) automatikus, nem képletezhető.
+              </div>
             </div>
             <div className="bg-white border border-emerald-300 rounded p-3 mb-4 text-xs space-y-2">
-              <div><b>Adatmásolás:</b> CTRL + bal egér gomb a másolandó terület első adatának kijelöléséhez (LILA KERET) → kijelölés befejezése bal egér gomb lenyomásával (ZÖLD KERET)</div>
-              <div><b>Adatlehúzás:</b> Az alap-árfolyam táblán egy, a munkacsoportoknál több oszlop adata húzható le. (Phase 2)</div>
-              <div><b>Felbukkanó menük:</b> jobb egér gomb (Phase 2)</div>
+              <div>
+                <b>Adatmásolás:</b> CTRL + bal egér gomb a másolandó terület első adatának
+                kijelöléséhez (LILA KERET) → kijelölés befejezése bal egér gomb lenyomásával (ZÖLD
+                KERET)
+              </div>
+              <div>
+                <b>Adatlehúzás:</b> Az alap-árfolyam táblán egy, a munkacsoportoknál több oszlop
+                adata húzható le. (Phase 2)
+              </div>
+              <div>
+                <b>Felbukkanó menük:</b> jobb egér gomb (Phase 2)
+              </div>
             </div>
             <div className="text-center">
               <button
@@ -1503,22 +1897,41 @@ export default function MainRateSheetPage() {
               <h2 className="text-lg font-bold flex items-center gap-2">
                 <Globe size={18} /> Internet-címek karbantartása
               </h2>
-              <button onClick={() => setInternetOpen(false)} className="text-slate-500 hover:text-slate-700">✕</button>
+              <button
+                onClick={() => setInternetOpen(false)}
+                className="text-slate-500 hover:text-slate-700"
+              >
+                ✕
+              </button>
             </div>
 
             {canEdit && (
               <div className="mt-3 grid grid-cols-12 gap-2">
-                <input type="number" placeholder="Sorsz." value={linkForm.buttonNumber}
-                  onChange={e => setLinkForm(f => ({ ...f, buttonNumber: e.target.value }))}
-                  className="col-span-2 form-input" />
-                <input type="text" placeholder="Felirat" value={linkForm.label}
-                  onChange={e => setLinkForm(f => ({ ...f, label: e.target.value }))}
-                  className="col-span-4 form-input" />
-                <input type="text" placeholder="https://..." value={linkForm.url}
-                  onChange={e => setLinkForm(f => ({ ...f, url: e.target.value }))}
-                  className="col-span-4 form-input" />
-                <button onClick={() => void addInternetLink()}
-                  className="col-span-2 px-2 py-1 text-xs font-medium bg-green-600 text-white rounded hover:bg-green-700">
+                <input
+                  type="number"
+                  placeholder="Sorsz."
+                  value={linkForm.buttonNumber}
+                  onChange={(e) => setLinkForm((f) => ({ ...f, buttonNumber: e.target.value }))}
+                  className="col-span-2 form-input"
+                />
+                <input
+                  type="text"
+                  placeholder="Felirat"
+                  value={linkForm.label}
+                  onChange={(e) => setLinkForm((f) => ({ ...f, label: e.target.value }))}
+                  className="col-span-4 form-input"
+                />
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={linkForm.url}
+                  onChange={(e) => setLinkForm((f) => ({ ...f, url: e.target.value }))}
+                  className="col-span-4 form-input"
+                />
+                <button
+                  onClick={() => void addInternetLink()}
+                  className="col-span-2 px-2 py-1 text-xs font-medium bg-green-600 text-white rounded hover:bg-green-700"
+                >
                   Hozzáad
                 </button>
               </div>
@@ -1528,16 +1941,28 @@ export default function MainRateSheetPage() {
               {internetLinks.length === 0 && (
                 <li className="px-3 py-2 text-sm text-slate-400">Nincs internet-cím rögzítve.</li>
               )}
-              {internetLinks.map(link => (
+              {internetLinks.map((link) => (
                 <li key={link.id} className="flex items-center justify-between px-3 py-2 text-sm">
                   <span className="flex items-center gap-2">
                     <span className="font-mono text-sky-700">{link.buttonNumber}.</span>
                     <span className="font-medium">{link.label}</span>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-slate-500 underline">{link.url}</a>
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-slate-500 underline"
+                    >
+                      {link.url}
+                    </a>
                   </span>
                   {canEdit && (
-                    <button onClick={() => void removeInternetLink(link.id)}
-                      className="text-red-500 hover:text-red-700" title="Törlés">✕</button>
+                    <button
+                      onClick={() => void removeInternetLink(link.id)}
+                      className="text-red-500 hover:text-red-700"
+                      title="Törlés"
+                    >
+                      ✕
+                    </button>
                   )}
                 </li>
               ))}

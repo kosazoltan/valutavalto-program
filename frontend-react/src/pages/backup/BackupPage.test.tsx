@@ -40,7 +40,9 @@ describe('BackupPage config export', () => {
     mocks.apiGet.mockResolvedValue({ data: [] })
     mocks.apiPost.mockResolvedValue({ data: {} })
     mocks.exportBranch.mockResolvedValue({ branchId: 'branch-1', branchCode: 'SZEGED' })
-    mocks.exportAll.mockResolvedValue({ 'branch-1': { branchId: 'branch-1', branchCode: 'SZEGED' } })
+    mocks.exportAll.mockResolvedValue({
+      'branch-1': { branchId: 'branch-1', branchCode: 'SZEGED' },
+    })
     vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:config')
     vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => undefined)
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)

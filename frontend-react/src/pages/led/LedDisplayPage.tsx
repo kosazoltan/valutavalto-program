@@ -98,10 +98,12 @@ export default function LedDisplayPage() {
       const operationalByBranch = new Map(
         operationalStatuses.map((entry) => [entry.branchId, entry.rows[0]]),
       )
-      setItems(serialItems.map((item) => {
-        const operational = operationalByBranch.get(item.branchId)
-        return operational ? { ...item, ...operational } : item
-      }))
+      setItems(
+        serialItems.map((item) => {
+          const operational = operationalByBranch.get(item.branchId)
+          return operational ? { ...item, ...operational } : item
+        }),
+      )
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('LedDisplayPage', 'Betöltési hiba:', err)
@@ -115,12 +117,10 @@ export default function LedDisplayPage() {
     void loadData()
   }, [loadData])
 
-  const filtered = items.filter(item => {
+  const filtered = items.filter((item) => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
+    return Object.values(item).some((v) => v != null && String(v).toLowerCase().includes(term))
   })
 
   const refreshBranch = async (branchId: string) => {
@@ -156,21 +156,38 @@ export default function LedDisplayPage() {
   const openConfig = async (branchId: string) => {
     try {
       setError(null)
-      const [displayConfigResponse, serialConfigResponse, contentResponse, statusResponse] = await Promise.all([
-        api.get<Partial<LedConfigForm> & { refreshIntervalSeconds?: number; speed?: number; decimalSeparator?: string }>(`/led/config/${branchId}`),
-        api.get<Partial<LedConfigForm> & { refreshIntervalSeconds?: number; speed?: number; decimalSeparator?: string }>(`/led-display/config/${branchId}`),
-        api.get<LedDisplayLine[]>(`/led/content/${branchId}`),
-        api.get<LedDisplayStatus>(`/led-display/status/${branchId}`),
-      ])
+      const [displayConfigResponse, serialConfigResponse, contentResponse, statusResponse] =
+        await Promise.all([
+          api.get<
+            Partial<LedConfigForm> & {
+              refreshIntervalSeconds?: number
+              speed?: number
+              decimalSeparator?: string
+            }
+          >(`/led/config/${branchId}`),
+          api.get<
+            Partial<LedConfigForm> & {
+              refreshIntervalSeconds?: number
+              speed?: number
+              decimalSeparator?: string
+            }
+          >(`/led-display/config/${branchId}`),
+          api.get<LedDisplayLine[]>(`/led/content/${branchId}`),
+          api.get<LedDisplayStatus>(`/led-display/status/${branchId}`),
+        ])
       const data = { ...(displayConfigResponse.data ?? {}), ...(serialConfigResponse.data ?? {}) }
-      setDisplayContent((current) => ({ ...current, [branchId]: safeArray<LedDisplayLine>(contentResponse.data) }))
+      setDisplayContent((current) => ({
+        ...current,
+        [branchId]: safeArray<LedDisplayLine>(contentResponse.data),
+      }))
       setSerialStatuses((current) => ({ ...current, [branchId]: statusResponse.data }))
       setConfigForm({
         branchId,
         displayType: data.displayType ?? 'NETWORK',
         connectionString: data.connectionString ?? '',
         isActive: data.isActive ?? true,
-        refreshIntervalSeconds: data.refreshIntervalSeconds != null ? String(data.refreshIntervalSeconds) : '60',
+        refreshIntervalSeconds:
+          data.refreshIntervalSeconds != null ? String(data.refreshIntervalSeconds) : '60',
         displayedCurrencies: data.displayedCurrencies ?? '',
         serialDisplayType: data.serialDisplayType ?? 'STANDARD',
         comPorts: data.comPorts ?? 'COM1',
@@ -197,14 +214,23 @@ export default function LedDisplayPage() {
       return <p className="text-sm text-gray-500">Nincs részletes fizikai státusz.</p>
     }
     return (
-      <dl className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4" data-testid="led-serial-status-panel">
+      <dl
+        className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4"
+        data-testid="led-serial-status-panel"
+      >
         <div className="rounded border border-gray-100 bg-gray-50 px-3 py-2">
           <dt className="text-[10px] uppercase text-gray-500">Telephely</dt>
-          <dd className="break-words font-semibold text-gray-900">{status.branchName ?? status.branchId}</dd>
+          <dd className="break-words font-semibold text-gray-900">
+            {status.branchName ?? status.branchId}
+          </dd>
         </div>
         <div className="rounded border border-gray-100 bg-gray-50 px-3 py-2">
           <dt className="text-[10px] uppercase text-gray-500">Kapcsolat</dt>
-          <dd className={status.connected ? 'font-semibold text-green-700' : 'font-semibold text-gray-700'}>
+          <dd
+            className={
+              status.connected ? 'font-semibold text-green-700' : 'font-semibold text-gray-700'
+            }
+          >
             {status.connected ? 'Online' : 'Offline'}
           </dd>
         </div>
@@ -332,8 +358,12 @@ export default function LedDisplayPage() {
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button onClick={() => void refreshAll()} className="form-button-primary flex items-center gap-1">
-            <RefreshCw className="h-4 w-4" />Összes frissítése
+          <button
+            onClick={() => void refreshAll()}
+            className="form-button-primary flex items-center gap-1"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Összes frissítése
           </button>
         </div>
       </div>
@@ -343,53 +373,177 @@ export default function LedDisplayPage() {
           <h2 className="text-base font-semibold">LED konfiguráció</h2>
           <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
             <div>
-              <label htmlFor="led-display-type" className="form-label">Kapcsolat típus</label>
-              <select id="led-display-type" value={configForm.displayType} onChange={(e) => setConfigForm((current) => current ? { ...current, displayType: e.target.value } : current)} className="form-input w-full">
+              <label htmlFor="led-display-type" className="form-label">
+                Kapcsolat típus
+              </label>
+              <select
+                id="led-display-type"
+                value={configForm.displayType}
+                onChange={(e) =>
+                  setConfigForm((current) =>
+                    current ? { ...current, displayType: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              >
                 <option value="NETWORK">NETWORK</option>
                 <option value="SERIAL">SERIAL</option>
                 <option value="USB">USB</option>
               </select>
             </div>
             <div>
-              <label htmlFor="led-connection" className="form-label">Kapcsolat</label>
-              <input id="led-connection" value={configForm.connectionString} onChange={(e) => setConfigForm((current) => current ? { ...current, connectionString: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="led-connection" className="form-label">
+                Kapcsolat
+              </label>
+              <input
+                id="led-connection"
+                value={configForm.connectionString}
+                onChange={(e) =>
+                  setConfigForm((current) =>
+                    current ? { ...current, connectionString: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="led-refresh-interval" className="form-label">Frissítés mp</label>
-              <input id="led-refresh-interval" value={configForm.refreshIntervalSeconds} onChange={(e) => setConfigForm((current) => current ? { ...current, refreshIntervalSeconds: e.target.value } : current)} className="form-input w-full" inputMode="numeric" />
+              <label htmlFor="led-refresh-interval" className="form-label">
+                Frissítés mp
+              </label>
+              <input
+                id="led-refresh-interval"
+                value={configForm.refreshIntervalSeconds}
+                onChange={(e) =>
+                  setConfigForm((current) =>
+                    current ? { ...current, refreshIntervalSeconds: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+                inputMode="numeric"
+              />
             </div>
             <div>
-              <label htmlFor="led-com-ports" className="form-label">COM portok</label>
-              <input id="led-com-ports" value={configForm.comPorts} onChange={(e) => setConfigForm((current) => current ? { ...current, comPorts: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="led-com-ports" className="form-label">
+                COM portok
+              </label>
+              <input
+                id="led-com-ports"
+                value={configForm.comPorts}
+                onChange={(e) =>
+                  setConfigForm((current) =>
+                    current ? { ...current, comPorts: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="led-currencies" className="form-label">Valuták</label>
-              <input id="led-currencies" value={configForm.currencies} onChange={(e) => setConfigForm((current) => current ? { ...current, currencies: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="led-currencies" className="form-label">
+                Valuták
+              </label>
+              <input
+                id="led-currencies"
+                value={configForm.currencies}
+                onChange={(e) =>
+                  setConfigForm((current) =>
+                    current ? { ...current, currencies: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="led-speed" className="form-label">Sebesség</label>
-              <input id="led-speed" value={configForm.speed} onChange={(e) => setConfigForm((current) => current ? { ...current, speed: e.target.value } : current)} className="form-input w-full" inputMode="numeric" />
+              <label htmlFor="led-speed" className="form-label">
+                Sebesség
+              </label>
+              <input
+                id="led-speed"
+                value={configForm.speed}
+                onChange={(e) =>
+                  setConfigForm((current) =>
+                    current ? { ...current, speed: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+                inputMode="numeric"
+              />
             </div>
             <div>
-              <label htmlFor="led-end-markers" className="form-label">Záró bájtok</label>
-              <input id="led-end-markers" value={configForm.endMarkers} onChange={(e) => setConfigForm((current) => current ? { ...current, endMarkers: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="led-end-markers" className="form-label">
+                Záró bájtok
+              </label>
+              <input
+                id="led-end-markers"
+                value={configForm.endMarkers}
+                onChange={(e) =>
+                  setConfigForm((current) =>
+                    current ? { ...current, endMarkers: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="led-decimal" className="form-label">Tizedesjel</label>
-              <input id="led-decimal" value={configForm.decimalSeparator} onChange={(e) => setConfigForm((current) => current ? { ...current, decimalSeparator: e.target.value.slice(0, 1) } : current)} className="form-input w-full" maxLength={1} />
+              <label htmlFor="led-decimal" className="form-label">
+                Tizedesjel
+              </label>
+              <input
+                id="led-decimal"
+                value={configForm.decimalSeparator}
+                onChange={(e) =>
+                  setConfigForm((current) =>
+                    current
+                      ? { ...current, decimalSeparator: e.target.value.slice(0, 1) }
+                      : current,
+                  )
+                }
+                className="form-input w-full"
+                maxLength={1}
+              />
             </div>
             <div>
-              <label htmlFor="led-display-ids" className="form-label">Kijelző ID-k</label>
-              <input id="led-display-ids" value={configForm.displayIds} onChange={(e) => setConfigForm((current) => current ? { ...current, displayIds: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="led-display-ids" className="form-label">
+                Kijelző ID-k
+              </label>
+              <input
+                id="led-display-ids"
+                value={configForm.displayIds}
+                onChange={(e) =>
+                  setConfigForm((current) =>
+                    current ? { ...current, displayIds: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <label className="flex items-end gap-2 pb-2 text-sm">
-              <input type="checkbox" checked={configForm.isActive} onChange={(e) => setConfigForm((current) => current ? { ...current, isActive: e.target.checked } : current)} />
+              <input
+                type="checkbox"
+                checked={configForm.isActive}
+                onChange={(e) =>
+                  setConfigForm((current) =>
+                    current ? { ...current, isActive: e.target.checked } : current,
+                  )
+                }
+              />
               Aktív
             </label>
           </div>
           <div>
-            <label htmlFor="led-custom-text" className="form-label">Egyéni szöveg</label>
-            <textarea id="led-custom-text" value={configForm.customText} onChange={(e) => setConfigForm((current) => current ? { ...current, customText: e.target.value } : current)} className="form-input h-24 w-full" maxLength={1000} />
+            <label htmlFor="led-custom-text" className="form-label">
+              Egyéni szöveg
+            </label>
+            <textarea
+              id="led-custom-text"
+              value={configForm.customText}
+              onChange={(e) =>
+                setConfigForm((current) =>
+                  current ? { ...current, customText: e.target.value } : current,
+                )
+              }
+              className="form-input h-24 w-full"
+              maxLength={1000}
+            />
           </div>
           <div>
             <h3 className="mb-2 text-sm font-semibold text-gray-700">Fizikai státusz</h3>
@@ -400,9 +554,26 @@ export default function LedDisplayPage() {
             {renderContentPreview(configForm.branchId)}
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => void saveConfig()} disabled={saving} className="form-button-primary">{saving ? 'Mentés...' : 'Mentés'}</button>
-            <button type="button" onClick={() => void sendText()} disabled={saving} className="form-button flex items-center gap-1"><Send className="h-4 w-4" />Szöveg küldése</button>
-            <button type="button" onClick={() => setConfigForm(null)} className="form-button">Mégse</button>
+            <button
+              type="button"
+              onClick={() => void saveConfig()}
+              disabled={saving}
+              className="form-button-primary"
+            >
+              {saving ? 'Mentés...' : 'Mentés'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void sendText()}
+              disabled={saving}
+              className="form-button flex items-center gap-1"
+            >
+              <Send className="h-4 w-4" />
+              Szöveg küldése
+            </button>
+            <button type="button" onClick={() => setConfigForm(null)} className="form-button">
+              Mégse
+            </button>
           </div>
         </div>
       )}
@@ -414,7 +585,7 @@ export default function LedDisplayPage() {
             type="text"
             placeholder="Keresés..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="form-input w-full pl-10"
           />
         </div>
@@ -435,74 +606,121 @@ export default function LedDisplayPage() {
 
       <div className="space-y-3 md:hidden">
         {loading ? (
-          <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">Betöltés...</div>
+          <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">
+            Betöltés...
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">{t('common.noData')}</div>
-        ) : filtered.map(item => (
-          <article key={item.branchId} className="rounded border border-gray-200 bg-white p-3 shadow-sm">
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="break-words font-semibold text-gray-900">{item.branchName ?? item.branchId}</p>
-                <p className="font-mono text-xs text-gray-500">{item.branchId}</p>
+          <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">
+            {t('common.noData')}
+          </div>
+        ) : (
+          filtered.map((item) => (
+            <article
+              key={item.branchId}
+              className="rounded border border-gray-200 bg-white p-3 shadow-sm"
+            >
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="break-words font-semibold text-gray-900">
+                    {item.branchName ?? item.branchId}
+                  </p>
+                  <p className="font-mono text-xs text-gray-500">{item.branchId}</p>
+                </div>
+                <span className={`badge ${item.connected ? 'badge-green' : 'badge-gray'}`}>
+                  {item.connected ? 'Online' : 'Offline'}
+                </span>
               </div>
-              <span className={`badge ${item.connected ? 'badge-green' : 'badge-gray'}`}>
-                {item.connected ? 'Online' : 'Offline'}
-              </span>
-            </div>
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-              <div>
-                <dt className="text-gray-500">Utolsó frissítés</dt>
-                <dd className="text-gray-900">{fmtDate(item.lastRefresh)}</dd>
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                <div>
+                  <dt className="text-gray-500">Utolsó frissítés</dt>
+                  <dd className="text-gray-900">{fmtDate(item.lastRefresh)}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">Hiba</dt>
+                  <dd className="text-gray-900">{item.lastError ?? '-'}</dd>
+                </div>
+              </dl>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => void refreshBranch(item.branchId)}
+                  className="form-button justify-center text-xs"
+                  title="Frissítés"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => void openConfig(item.branchId)}
+                  className="form-button justify-center text-xs text-blue-600"
+                  title="Szerkesztés"
+                >
+                  <Edit2 className="h-4 w-4" />
+                </button>
               </div>
-              <div>
-                <dt className="text-gray-500">Hiba</dt>
-                <dd className="text-gray-900">{item.lastError ?? '-'}</dd>
-              </div>
-            </dl>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button onClick={() => void refreshBranch(item.branchId)} className="form-button justify-center text-xs" title="Frissítés">
-                <RefreshCw className="h-4 w-4" />
-              </button>
-              <button onClick={() => void openConfig(item.branchId)} className="form-button justify-center text-xs text-blue-600" title="Szerkesztés">
-                <Edit2 className="h-4 w-4" />
-              </button>
-            </div>
-          </article>
-        ))}
+            </article>
+          ))
+        )}
       </div>
 
       <div className="data-grid hidden overflow-x-auto md:block">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('led.penztar')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.online')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Utolsó frissítés</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Hiba</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('competitors.muveletek')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('led.penztar')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.online')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Utolsó frissítés
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Hiba
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                {t('competitors.muveletek')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.branchId} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.branchName ?? item.branchId}</td>
-                <td className="px-4 py-3 text-sm">{item.connected ? 'Igen' : 'Nem'}</td>
-                <td className="px-4 py-3 text-sm">{fmtDate(item.lastRefresh)}</td>
-                <td className="px-4 py-3 text-sm">{item.lastError ?? '-'}</td>
-                <td className="px-4 py-3 text-right whitespace-nowrap">
-                  <button onClick={() => void refreshBranch(item.branchId)} className="form-button mr-2 p-1" title="Frissítés">
-                    <RefreshCw className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => void openConfig(item.branchId)} className="form-button mr-2 p-1 text-blue-600" title="Szerkesztés">
-                    <Edit2 className="h-4 w-4" />
-                  </button>
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                  Betöltés...
                 </td>
               </tr>
-            ))}
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('common.noData')}
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => (
+                <tr key={item.branchId} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm">{item.branchName ?? item.branchId}</td>
+                  <td className="px-4 py-3 text-sm">{item.connected ? 'Igen' : 'Nem'}</td>
+                  <td className="px-4 py-3 text-sm">{fmtDate(item.lastRefresh)}</td>
+                  <td className="px-4 py-3 text-sm">{item.lastError ?? '-'}</td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <button
+                      onClick={() => void refreshBranch(item.branchId)}
+                      className="form-button mr-2 p-1"
+                      title="Frissítés"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => void openConfig(item.branchId)}
+                      className="form-button mr-2 p-1 text-blue-600"
+                      title="Szerkesztés"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

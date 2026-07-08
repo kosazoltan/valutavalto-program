@@ -35,7 +35,9 @@ describe('hrkMonthlyApi', () => {
 
     const result = await hrkMonthlyApi.getSummary('2026-06')
 
-    expect(mockApi.get).toHaveBeenCalledWith('/hrk/monthly/summary', { params: { yearMonth: '2026-06' } })
+    expect(mockApi.get).toHaveBeenCalledWith('/hrk/monthly/summary', {
+      params: { yearMonth: '2026-06' },
+    })
     expect(result.totalTransactions).toBe(2)
   })
 
@@ -53,7 +55,9 @@ describe('hrkMonthlyApi', () => {
 
     const result = await hrkMonthlyApi.close('2026-06')
 
-    expect(mockApi.post).toHaveBeenCalledWith('/hrk/monthly/close', undefined, { params: { yearMonth: '2026-06' } })
+    expect(mockApi.post).toHaveBeenCalledWith('/hrk/monthly/close', undefined, {
+      params: { yearMonth: '2026-06' },
+    })
     expect(result.netHuf).toBe(150000)
   })
 })
@@ -84,7 +88,9 @@ describe('hrkDailyApi', () => {
 
     const result = await hrkDailyApi.handover('branch-1', payload)
 
-    expect(mockApi.post).toHaveBeenCalledWith('/hrk/handover', payload, { headers: { 'X-Branch-Id': 'branch-1' } })
+    expect(mockApi.post).toHaveBeenCalledWith('/hrk/handover', payload, {
+      headers: { 'X-Branch-Id': 'branch-1' },
+    })
     expect(result.type).toBe('HANDOVER')
   })
 
@@ -107,7 +113,9 @@ describe('hrkDailyApi', () => {
 
     const result = await hrkDailyApi.receive('branch-1', payload)
 
-    expect(mockApi.post).toHaveBeenCalledWith('/hrk/receive', payload, { headers: { 'X-Branch-Id': 'branch-1' } })
+    expect(mockApi.post).toHaveBeenCalledWith('/hrk/receive', payload, {
+      headers: { 'X-Branch-Id': 'branch-1' },
+    })
     expect(result.type).toBe('RECEIVE')
   })
 
@@ -127,7 +135,9 @@ describe('hrkDailyApi', () => {
 
     const result = await hrkDailyApi.getJournal('branch-1')
 
-    expect(mockApi.get).toHaveBeenCalledWith('/hrk/journal', { headers: { 'X-Branch-Id': 'branch-1' } })
+    expect(mockApi.get).toHaveBeenCalledWith('/hrk/journal', {
+      headers: { 'X-Branch-Id': 'branch-1' },
+    })
     expect(result[0]?.reference).toBeUndefined()
     expect(result[0]?.currencyCode).toBe('EUR')
   })

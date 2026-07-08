@@ -44,7 +44,7 @@ async function mockVatRefundApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -67,11 +67,19 @@ async function mockVatRefundApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path === '/api/v1/vat-refund' && method === 'GET') {
@@ -98,7 +106,11 @@ async function mockVatRefundApis(page: Page) {
       })
     }
 
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [], data: [] }) })
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ content: [], data: [] }),
+    })
   })
 }
 
@@ -112,7 +124,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('ÁFA-visszatérítés mobil nézet használja a daily és detail backend szerződést', async ({ page }) => {
+test('ÁFA-visszatérítés mobil nézet használja a daily és detail backend szerződést', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockVatRefundApis(page)
   await login(page)
@@ -120,8 +134,8 @@ test('ÁFA-visszatérítés mobil nézet használja a daily és detail backend s
   await page.goto('/treasury/vat', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('VAT-001').first()).toBeVisible()
 
-  const dailyRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/api/v1/vat-refund/daily')
+  const dailyRequest = page.waitForRequest(
+    (request) => request.method() === 'GET' && request.url().includes('/api/v1/vat-refund/daily'),
   )
   await page.getByRole('button', { name: 'Mai nap' }).click()
   await dailyRequest
@@ -129,15 +143,15 @@ test('ÁFA-visszatérítés mobil nézet használja a daily és detail backend s
 
   await page.goto('/treasury/vat', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('VAT-001').first()).toBeVisible()
-  const detailRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().endsWith('/api/v1/vat-refund/1')
+  const detailRequest = page.waitForRequest(
+    (request) => request.method() === 'GET' && request.url().endsWith('/api/v1/vat-refund/1'),
   )
   await page.locator('button[aria-label="Részletek VAT-001"]').first().click()
   await detailRequest
   await expect(page.getByText('Részlet Ügyfél')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

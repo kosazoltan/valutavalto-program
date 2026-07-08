@@ -20,7 +20,9 @@ export default function HandoverSheetPage() {
   const electronQueueAvailable = isElectronQueueAvailable()
   const [sheets, setSheets] = useState<HandoverSheet[]>([])
   const [cashDesks, setCashDesks] = useState<CashDesk[]>([])
-  const [localPendingOperations, setLocalPendingOperations] = useState<LocalPendingHandoverOperation[]>([])
+  const [localPendingOperations, setLocalPendingOperations] = useState<
+    LocalPendingHandoverOperation[]
+  >([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -31,7 +33,7 @@ export default function HandoverSheetPage() {
     fromCashDeskId: '',
     toCashDeskId: '',
     transferDate: new Date().toISOString().split('T')[0],
-    amounts: {}
+    amounts: {},
   })
 
   const loadData = useCallback(async () => {
@@ -68,13 +70,14 @@ export default function HandoverSheetPage() {
 
   const filteredSheets = useMemo(() => {
     const cashDeskNames = new Map(cashDesks.map((desk) => [desk.id, desk.name]))
-    const localGenerated = mapPendingHandoverGeneratesToSheets(localPendingOperations, cashDeskNames)
+    const localGenerated = mapPendingHandoverGeneratesToSheets(
+      localPendingOperations,
+      cashDeskNames,
+    )
     let filtered = [...localGenerated, ...sheets]
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
-      filtered = filtered.filter(s =>
-        s.sheetNumber?.toLowerCase().includes(term)
-      )
+      filtered = filtered.filter((s) => s.sheetNumber?.toLowerCase().includes(term))
     }
     return filtered
   }, [sheets, searchTerm, localPendingOperations, cashDesks])
@@ -100,7 +103,7 @@ export default function HandoverSheetPage() {
           formData.fromCashDeskId || '',
           formData.toCashDeskId || '',
           (formData.transferDate || new Date().toISOString().split('T')[0]) as string,
-          formData.amounts
+          formData.amounts,
         )
         await recordLocalAuditEvent({
           entityType: 'HANDOVER_SHEET',
@@ -213,7 +216,11 @@ export default function HandoverSheetPage() {
           <FileText />
           {t('handover.atadoLapok')}
         </h1>
-        <button type="button" onClick={() => setShowForm(true)} className="form-button-primary flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setShowForm(true)}
+          className="form-button-primary flex items-center gap-2"
+        >
           <Plus size={16} />
           {t('handover.ujAtadoLap')}
         </button>
@@ -229,8 +236,17 @@ export default function HandoverSheetPage() {
         <div>
           <label className="form-label">{t('common.search')}</label>
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-            <input type="text" className="form-input pl-8" placeholder="Lapszám..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <Search
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={16}
+            />
+            <input
+              type="text"
+              className="form-input pl-8"
+              placeholder="Lapszám..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </div>
       </div>
@@ -240,30 +256,69 @@ export default function HandoverSheetPage() {
           <div className="bg-white rounded-lg p-4 w-full max-w-2xl">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">{t('handover.ujAtadoLap')}</h2>
-              <button type="button" onClick={() => setShowForm(false)} className="text-gray-500">X</button>
+              <button type="button" onClick={() => setShowForm(false)} className="text-gray-500">
+                X
+              </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label htmlFor="fromCashDesk" className="form-label">{t('handover.kuldoPenztar')}</label>
-                <select id="fromCashDesk" title="Küldő pénztár kiválasztása" className="form-input" value={formData.fromCashDeskId} onChange={(e) => setFormData({ ...formData, fromCashDeskId: e.target.value })}>
+                <label htmlFor="fromCashDesk" className="form-label">
+                  {t('handover.kuldoPenztar')}
+                </label>
+                <select
+                  id="fromCashDesk"
+                  title="Küldő pénztár kiválasztása"
+                  className="form-input"
+                  value={formData.fromCashDeskId}
+                  onChange={(e) => setFormData({ ...formData, fromCashDeskId: e.target.value })}
+                >
                   <option value="">Válasszon...</option>
-                  {cashDesks.map(cd => <option key={cd.id} value={cd.id}>{cd.name}</option>)}
+                  {cashDesks.map((cd) => (
+                    <option key={cd.id} value={cd.id}>
+                      {cd.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label htmlFor="toCashDesk" className="form-label">{t('handover.fogadoPenztar')}</label>
-                <select id="toCashDesk" title="Fogadó pénztár kiválasztása" className="form-input" value={formData.toCashDeskId} onChange={(e) => setFormData({ ...formData, toCashDeskId: e.target.value })}>
+                <label htmlFor="toCashDesk" className="form-label">
+                  {t('handover.fogadoPenztar')}
+                </label>
+                <select
+                  id="toCashDesk"
+                  title="Fogadó pénztár kiválasztása"
+                  className="form-input"
+                  value={formData.toCashDeskId}
+                  onChange={(e) => setFormData({ ...formData, toCashDeskId: e.target.value })}
+                >
                   <option value="">Válasszon...</option>
-                  {cashDesks.map(cd => <option key={cd.id} value={cd.id}>{cd.name}</option>)}
+                  {cashDesks.map((cd) => (
+                    <option key={cd.id} value={cd.id}>
+                      {cd.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label htmlFor="transferDate" className="form-label">{t('handover.atadasDatuma')}</label>
-                <input id="transferDate" type="date" className="form-input" placeholder="éééé-hh-nn" value={formData.transferDate} onChange={(e) => setFormData({ ...formData, transferDate: e.target.value })} />
+                <label htmlFor="transferDate" className="form-label">
+                  {t('handover.atadasDatuma')}
+                </label>
+                <input
+                  id="transferDate"
+                  type="date"
+                  className="form-input"
+                  placeholder="éééé-hh-nn"
+                  value={formData.transferDate}
+                  onChange={(e) => setFormData({ ...formData, transferDate: e.target.value })}
+                />
               </div>
               <div className="flex justify-end gap-2 pt-4 border-t">
-                <button type="button" onClick={() => setShowForm(false)} className="form-button">{t('common.cancel')}</button>
-                <button type="button" onClick={handleGenerate} className="form-button-primary">{t('darius.generalas')}</button>
+                <button type="button" onClick={() => setShowForm(false)} className="form-button">
+                  {t('common.cancel')}
+                </button>
+                <button type="button" onClick={handleGenerate} className="form-button-primary">
+                  {t('darius.generalas')}
+                </button>
               </div>
             </div>
           </div>
@@ -282,25 +337,46 @@ export default function HandoverSheetPage() {
               <div>
                 <div className="font-semibold">{selectedSheet.sheetNumber}</div>
                 <div className="text-xs text-blue-700">
-                  {selectedSheet.fromCashDeskName ?? selectedSheet.fromCashDeskId} → {selectedSheet.toCashDeskName ?? selectedSheet.toCashDeskId}
+                  {selectedSheet.fromCashDeskName ?? selectedSheet.fromCashDeskId} →{' '}
+                  {selectedSheet.toCashDeskName ?? selectedSheet.toCashDeskId}
                 </div>
               </div>
               <span className="badge badge-yellow">{selectedSheet.status}</span>
             </div>
             <div className="mt-2 grid gap-2 text-xs md:grid-cols-3">
-              <div><span className="font-semibold">{t('common.date')}:</span> {new Date(selectedSheet.transferDate).toLocaleDateString('hu-HU')}</div>
-              <div><span className="font-semibold">{t('handover.kuldo')}:</span> {selectedSheet.fromCashDeskName ?? selectedSheet.fromCashDeskId}</div>
-              <div><span className="font-semibold">{t('handover.fogado')}:</span> {selectedSheet.toCashDeskName ?? selectedSheet.toCashDeskId}</div>
+              <div>
+                <span className="font-semibold">{t('common.date')}:</span>{' '}
+                {new Date(selectedSheet.transferDate).toLocaleDateString('hu-HU')}
+              </div>
+              <div>
+                <span className="font-semibold">{t('handover.kuldo')}:</span>{' '}
+                {selectedSheet.fromCashDeskName ?? selectedSheet.fromCashDeskId}
+              </div>
+              <div>
+                <span className="font-semibold">{t('handover.fogado')}:</span>{' '}
+                {selectedSheet.toCashDeskName ?? selectedSheet.toCashDeskId}
+              </div>
             </div>
           </div>
         )}
         <table className="data-grid w-full">
           <thead>
-            <tr><th>{t('handover.lapszam')}</th><th>{t('handover.kuldo')}</th><th>{t('handover.fogado')}</th><th>{t('common.date')}</th><th>{t('common.status')}</th><th>{t('common.actions')}</th></tr>
+            <tr>
+              <th>{t('handover.lapszam')}</th>
+              <th>{t('handover.kuldo')}</th>
+              <th>{t('handover.fogado')}</th>
+              <th>{t('common.date')}</th>
+              <th>{t('common.status')}</th>
+              <th>{t('common.actions')}</th>
+            </tr>
           </thead>
           <tbody>
             {filteredSheets.length === 0 ? (
-              <tr><td colSpan={6} className="text-center text-gray-500 py-4">{t('common.noResult')}</td></tr>
+              <tr>
+                <td colSpan={6} className="text-center text-gray-500 py-4">
+                  {t('common.noResult')}
+                </td>
+              </tr>
             ) : (
               filteredSheets.map((s) => (
                 <tr key={s.id}>
@@ -308,7 +384,13 @@ export default function HandoverSheetPage() {
                   <td>{s.fromCashDeskName}</td>
                   <td>{s.toCashDeskName}</td>
                   <td>{new Date(s.transferDate).toLocaleDateString('hu-HU')}</td>
-                  <td><span className={`badge ${s.status === 'COMPLETED' ? 'badge-green' : s.status === 'PENDING_SYNC' ? 'badge-yellow' : 'badge-yellow'}`}>{s.status === 'PENDING_SYNC' ? 'HELYBEN MENTVE' : s.status}</span></td>
+                  <td>
+                    <span
+                      className={`badge ${s.status === 'COMPLETED' ? 'badge-green' : s.status === 'PENDING_SYNC' ? 'badge-yellow' : 'badge-yellow'}`}
+                    >
+                      {s.status === 'PENDING_SYNC' ? 'HELYBEN MENTVE' : s.status}
+                    </span>
+                  </td>
                   <td>
                     <div className="flex gap-2">
                       <button
@@ -317,10 +399,32 @@ export default function HandoverSheetPage() {
                         disabled={s.status === 'PENDING_SYNC' || detailLoadingId === s.id}
                         className="form-button text-xs disabled:opacity-50"
                       >
-                        <Eye size={12} className={detailLoadingId === s.id ? 'animate-pulse' : ''} />{t('common.details')}
+                        <Eye
+                          size={12}
+                          className={detailLoadingId === s.id ? 'animate-pulse' : ''}
+                        />
+                        {t('common.details')}
                       </button>
-                      <button type="button" onClick={() => handlePrint(s.id)} disabled={s.status === 'PENDING_SYNC'} className="form-button text-xs disabled:opacity-50"><Printer size={12} />{t('common.print')}</button>
-                      {s.status !== 'COMPLETED' && <button type="button" onClick={() => handleComplete(s.id)} disabled={s.status === 'PENDING_SYNC'} className="form-button text-xs disabled:opacity-50"><CheckCircle size={12} />{t('archiving.befejezes')}</button>}
+                      <button
+                        type="button"
+                        onClick={() => handlePrint(s.id)}
+                        disabled={s.status === 'PENDING_SYNC'}
+                        className="form-button text-xs disabled:opacity-50"
+                      >
+                        <Printer size={12} />
+                        {t('common.print')}
+                      </button>
+                      {s.status !== 'COMPLETED' && (
+                        <button
+                          type="button"
+                          onClick={() => handleComplete(s.id)}
+                          disabled={s.status === 'PENDING_SYNC'}
+                          className="form-button text-xs disabled:opacity-50"
+                        >
+                          <CheckCircle size={12} />
+                          {t('archiving.befejezes')}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

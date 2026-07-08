@@ -187,9 +187,11 @@ describe('CustomerPanel — missing required fields UX (bug #2 fix)', () => {
     await user.click(saveButton)
 
     expect(mocks.toastWarning).not.toHaveBeenCalled()
-    expect(mocks.customerApiCreate).toHaveBeenCalledWith(expect.objectContaining({
-      notes: expect.stringContaining('ADATKEZELESI_TAJEKOZTATO_ACK v2026-06-09'),
-    }))
+    expect(mocks.customerApiCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        notes: expect.stringContaining('ADATKEZELESI_TAJEKOZTATO_ACK v2026-06-09'),
+      }),
+    )
   })
 })
 

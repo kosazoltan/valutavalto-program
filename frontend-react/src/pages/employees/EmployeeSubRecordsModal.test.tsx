@@ -30,13 +30,19 @@ describe('EmployeeSubRecordsModal backend kapcsolatok', () => {
     vi.clearAllMocks()
     mockApi.get.mockImplementation((url: string) => {
       if (url === '/employees/42/occupational-health') {
-        return Promise.resolve({ data: [{ id: 1, status: 'Érvényes', examDate: '2026-06-18', result: 'Alkalmas' }] })
+        return Promise.resolve({
+          data: [{ id: 1, status: 'Érvényes', examDate: '2026-06-18', result: 'Alkalmas' }],
+        })
       }
       if (url === '/employees/42/vacations') {
-        return Promise.resolve({ data: [{ id: 2, year: 2026, vacationDays: 20, takenVacation: 4 }] })
+        return Promise.resolve({
+          data: [{ id: 2, year: 2026, vacationDays: 20, takenVacation: 4 }],
+        })
       }
       if (url === '/employees/42/children') {
-        return Promise.resolve({ data: [{ id: 3, name: 'Teszt Gyermek', birthDate: '2020-01-01' }] })
+        return Promise.resolve({
+          data: [{ id: 3, name: 'Teszt Gyermek', birthDate: '2020-01-01' }],
+        })
       }
       if (url === '/employees/42') {
         return Promise.resolve({ data: { workerId: 77 } })
@@ -45,7 +51,9 @@ describe('EmployeeSubRecordsModal backend kapcsolatok', () => {
         return Promise.resolve({ data: { id: 77, workerCode: 'BORSI', fullName: 'Borsi Teszt' } })
       }
       if (url === '/worker-management/42/attendance') {
-        return Promise.resolve({ data: { content: [{ id: 'att-1', loginAt: '2026-06-18T08:00:00', logoutAt: null }] } })
+        return Promise.resolve({
+          data: { content: [{ id: 'att-1', loginAt: '2026-06-18T08:00:00', logoutAt: null }] },
+        })
       }
       if (url === '/workers/42/roles') {
         return Promise.resolve({ data: ['penztaros'] })
@@ -86,9 +94,13 @@ describe('EmployeeSubRecordsModal backend kapcsolatok', () => {
     await user.click(screen.getByTestId('worker-reset-password'))
 
     await waitFor(() => {
-      expect(mockApi.post).toHaveBeenCalledWith('/worker-management/42/break-start', { reason: 'Ebédszünet' })
+      expect(mockApi.post).toHaveBeenCalledWith('/worker-management/42/break-start', {
+        reason: 'Ebédszünet',
+      })
       expect(mockApi.post).toHaveBeenCalledWith('/worker-management/42/break-end')
-      expect(mockApi.post).toHaveBeenCalledWith('/worker-management/42/reset-password', { newPassword: 'Teszt1234' })
+      expect(mockApi.post).toHaveBeenCalledWith('/worker-management/42/reset-password', {
+        newPassword: 'Teszt1234',
+      })
     })
   })
 

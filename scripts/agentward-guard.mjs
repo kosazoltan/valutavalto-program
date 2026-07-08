@@ -41,9 +41,30 @@ const excludedPrefixes = [
 ]
 
 const textExtensions = new Set([
-  '.cjs', '.conf', '.css', '.env', '.example', '.html', '.java', '.js', '.json',
-  '.jsx', '.md', '.mjs', '.properties', '.ps1', '.qmd', '.sh', '.sql', '.toml',
-  '.ts', '.tsx', '.txt', '.xml', '.yaml', '.yml',
+  '.cjs',
+  '.conf',
+  '.css',
+  '.env',
+  '.example',
+  '.html',
+  '.java',
+  '.js',
+  '.json',
+  '.jsx',
+  '.md',
+  '.mjs',
+  '.properties',
+  '.ps1',
+  '.qmd',
+  '.sh',
+  '.sql',
+  '.toml',
+  '.ts',
+  '.tsx',
+  '.txt',
+  '.xml',
+  '.yaml',
+  '.yml',
 ])
 
 const checks = []
@@ -79,11 +100,14 @@ function listGitFiles() {
     // ls-files kimenet tullepte a Node default 1MB-os maxBuffer-et → a guard elhalt.
     maxBuffer: 64 * 1024 * 1024,
   })
-  return out.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+  return out
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
 }
 
 function isExcluded(file) {
-  return excludedPrefixes.some(prefix => file === prefix.slice(0, -1) || file.startsWith(prefix))
+  return excludedPrefixes.some((prefix) => file === prefix.slice(0, -1) || file.startsWith(prefix))
 }
 
 function isProbablyText(file) {
@@ -112,20 +136,44 @@ function checkRequiredFiles() {
     'scripts/agent-decision-log.mjs',
     'vault/procedures/parallax-agentward-protocol.md',
   ]
-  const missing = required.filter(file => !fs.existsSync(path.join(repoRoot, file)))
-  addCheck('global-procedure-files', missing.length === 0, missing.length ? `missing: ${missing.join(', ')}` : 'present')
+  const missing = required.filter((file) => !fs.existsSync(path.join(repoRoot, file)))
+  addCheck(
+    'global-procedure-files',
+    missing.length === 0,
+    missing.length ? `missing: ${missing.join(', ')}` : 'present',
+  )
 }
 
 function checkPackageScripts() {
   const pkg = JSON.parse(readText(path.join(repoRoot, 'package.json')))
   const scripts = pkg.scripts ?? {}
-  const requiredScripts = ['agent:guard', 'agent:archive', 'self-check:before-lint', 'self-check:before-merge', 'self-check:before-deploy']
-  const missingScripts = requiredScripts.filter(name => !scripts[name])
-  addCheck('package-script-presence', missingScripts.length === 0, missingScripts.length ? `missing: ${missingScripts.join(', ')}` : 'present')
+  const requiredScripts = [
+    'agent:guard',
+    'agent:archive',
+    'self-check:before-lint',
+    'self-check:before-merge',
+    'self-check:before-deploy',
+  ]
+  const missingScripts = requiredScripts.filter((name) => !scripts[name])
+  addCheck(
+    'package-script-presence',
+    missingScripts.length === 0,
+    missingScripts.length ? `missing: ${missingScripts.join(', ')}` : 'present',
+  )
 
-  const gateScripts = ['self-check:before-lint', 'self-check:before-merge', 'self-check:before-deploy']
-  const missingGuard = gateScripts.filter(name => !String(scripts[name] ?? '').includes('agent:guard'))
-  addCheck('agentward-in-npm-gates', missingGuard.length === 0, missingGuard.length ? `missing in: ${missingGuard.join(', ')}` : 'wired')
+  const gateScripts = [
+    'self-check:before-lint',
+    'self-check:before-merge',
+    'self-check:before-deploy',
+  ]
+  const missingGuard = gateScripts.filter(
+    (name) => !String(scripts[name] ?? '').includes('agent:guard'),
+  )
+  addCheck(
+    'agentward-in-npm-gates',
+    missingGuard.length === 0,
+    missingGuard.length ? `missing in: ${missingGuard.join(', ')}` : 'wired',
+  )
 
   const prePush = readText(path.join(repoRoot, 'scripts', 'pre-push-quality-gate.ps1'))
   addCheck('agentward-in-pre-push-gate', prePush.includes('agentward-guard.mjs'), 'PowerShell gate')
@@ -134,8 +182,12 @@ function checkPackageScripts() {
 function checkGitignore() {
   const gitignore = readText(path.join(repoRoot, '.gitignore'))
   const requiredPatterns = ['client_secret*.json', '*client_secret*.json']
-  const missing = requiredPatterns.filter(pattern => !gitignore.includes(pattern))
-  addCheck('oauth-secret-filename-ignore', missing.length === 0, missing.length ? `missing: ${missing.join(', ')}` : 'present')
+  const missing = requiredPatterns.filter((pattern) => !gitignore.includes(pattern))
+  addCheck(
+    'oauth-secret-filename-ignore',
+    missing.length === 0,
+    missing.length ? `missing: ${missing.join(', ')}` : 'present',
+  )
 }
 
 function scanFiles() {
@@ -145,7 +197,11 @@ function scanFiles() {
     // Copilot PR #1106: a FAJLNEV-alapu tiltas MINDEN fajlra fut — a kizart fak
     // (legacy-transfer/, forrasok/Anti/) alatt sem lapulhat OAuth client-secret JSON.
     if (/client_secret.*\.json$/i.test(path.basename(file))) {
-      addFinding('oauth-client-secret-file', file, 'Google OAuth client secret JSON must stay outside the repo')
+      addFinding(
+        'oauth-client-secret-file',
+        file,
+        'Google OAuth client secret JSON must stay outside the repo',
+      )
     }
 
     // A TARTALOM-szkenneles a kizart fakra nem fut (teljesitmeny + base64-zaj).
@@ -172,24 +228,48 @@ function scanFiles() {
     }
   }
 
-  addCheck('secret-and-blocklist-scan', findings.length === 0, findings.length ? `${findings.length} finding(s)` : `${contentScanned} file(s) content-scanned, ${allFiles.length} filename-checked`)
+  addCheck(
+    'secret-and-blocklist-scan',
+    findings.length === 0,
+    findings.length
+      ? `${findings.length} finding(s)`
+      : `${contentScanned} file(s) content-scanned, ${allFiles.length} filename-checked`,
+  )
 }
 
 function hasSecretLikeEnvAssignment(text) {
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim()
     if (!line || line.startsWith('#')) continue
-    const match = line.match(/^([A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PRIVATE_KEY)[A-Z0-9_]*)\s*=\s*(.+)$/)
+    const match = line.match(
+      /^([A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PRIVATE_KEY)[A-Z0-9_]*)\s*=\s*(.+)$/,
+    )
     if (!match) continue
     const value = match[1] && match[2] ? match[2].trim().replace(/^['"]|['"]$/g, '') : ''
     if (!value) continue
     const normalized = value.toLowerCase()
     const placeholderPrefixes = [
-      '${', '<', 'change_', 'change-', 'change this', 'change_me', 'change_this',
-      'changeme', 'your_', 'your-', 'placeholder', 'replace_', 'set_by_', 'secure_',
-      'local_secure_', 'example_', 'dummy_', 'test_', '$',
+      '${',
+      '<',
+      'change_',
+      'change-',
+      'change this',
+      'change_me',
+      'change_this',
+      'changeme',
+      'your_',
+      'your-',
+      'placeholder',
+      'replace_',
+      'set_by_',
+      'secure_',
+      'local_secure_',
+      'example_',
+      'dummy_',
+      'test_',
+      '$',
     ]
-    if (placeholderPrefixes.some(prefix => normalized.startsWith(prefix))) continue
+    if (placeholderPrefixes.some((prefix) => normalized.startsWith(prefix))) continue
     if (normalized.includes('placeholder') || normalized.includes('change_me')) continue
     if (value.length >= 24) return true
   }
@@ -207,13 +287,18 @@ function writeReport() {
     '',
     '## Checks',
     '',
-    ...checks.map(check => `- ${check.ok ? 'PASS' : 'FAIL'} ${check.name}${check.detail ? ` - ${check.detail}` : ''}`),
+    ...checks.map(
+      (check) =>
+        `- ${check.ok ? 'PASS' : 'FAIL'} ${check.name}${check.detail ? ` - ${check.detail}` : ''}`,
+    ),
     '',
     '## Findings',
     '',
     findings.length === 0
       ? '- none'
-      : findings.map(finding => `- ${finding.kind}: ${finding.file} - ${finding.detail}`).join('\n'),
+      : findings
+          .map((finding) => `- ${finding.kind}: ${finding.file} - ${finding.detail}`)
+          .join('\n'),
     '',
   ]
   fs.writeFileSync(reportPath, lines.join('\n'), 'utf8')
@@ -231,6 +316,6 @@ try {
   process.exit(1)
 }
 
-if (checks.some(check => !check.ok) || findings.length > 0) {
+if (checks.some((check) => !check.ok) || findings.length > 0) {
   process.exit(1)
 }

@@ -62,7 +62,7 @@ function readConfig(): Record<string, string> {
     const raw = fs.readFileSync(configPath(), 'utf8')
     const parsed = JSON.parse(raw) as unknown
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? parsed as Record<string, string>
+      ? (parsed as Record<string, string>)
       : {}
   } catch {
     return {}
@@ -178,9 +178,12 @@ function createWindow(): void {
     void mainWindow.loadURL('app://localhost/')
   }
 
-  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
-    log.error(`[Renderer] did-fail-load ${errorCode} ${errorDescription} @ ${validatedURL}`)
-  })
+  mainWindow.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription, validatedURL) => {
+      log.error(`[Renderer] did-fail-load ${errorCode} ${errorDescription} @ ${validatedURL}`)
+    },
+  )
 
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
     log.error('[Renderer] process gone:', details.reason)
@@ -281,19 +284,22 @@ function registerIpcHandlers(): void {
     app.quit()
   })
 
-  ipcMain.handle('diagnostics:report-error', (_event, payload: { message?: string; component?: string }) => {
-    log.warn('[Renderer diagnostic]', payload.component ?? 'renderer', payload.message ?? '')
-    return { ok: true }
-  })
+  ipcMain.handle(
+    'diagnostics:report-error',
+    (_event, payload: { message?: string; component?: string }) => {
+      log.warn('[Renderer diagnostic]', payload.component ?? 'renderer', payload.message ?? '')
+      return { ok: true }
+    },
+  )
   ipcMain.handle('diagnostics:set-user-identifier', () => ({ ok: true }))
 
   ipcMain.handle('auth:google-oauth-flow', async () => {
-    const clientId = process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID
-      ?? process.env.GOOGLE_DESKTOP_CLIENT_ID
-      ?? ''
-    const clientSecret = process.env.VITE_GOOGLE_DESKTOP_CLIENT_SECRET
-      ?? process.env.GOOGLE_DESKTOP_CLIENT_SECRET
-      ?? ''
+    const clientId =
+      process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID ?? process.env.GOOGLE_DESKTOP_CLIENT_ID ?? ''
+    const clientSecret =
+      process.env.VITE_GOOGLE_DESKTOP_CLIENT_SECRET ??
+      process.env.GOOGLE_DESKTOP_CLIENT_SECRET ??
+      ''
 
     if (!clientId || !clientSecret) {
       log.error('[RateMaker] auth:google-oauth-flow MISCONFIGURED')
@@ -319,12 +325,12 @@ function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('auth:google-oauth-flow-with-backend', async () => {
-    const clientId = process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID
-      ?? process.env.GOOGLE_DESKTOP_CLIENT_ID
-      ?? ''
-    const clientSecret = process.env.VITE_GOOGLE_DESKTOP_CLIENT_SECRET
-      ?? process.env.GOOGLE_DESKTOP_CLIENT_SECRET
-      ?? ''
+    const clientId =
+      process.env.VITE_GOOGLE_DESKTOP_CLIENT_ID ?? process.env.GOOGLE_DESKTOP_CLIENT_ID ?? ''
+    const clientSecret =
+      process.env.VITE_GOOGLE_DESKTOP_CLIENT_SECRET ??
+      process.env.GOOGLE_DESKTOP_CLIENT_SECRET ??
+      ''
 
     if (!clientId || !clientSecret) {
       log.error('[RateMaker] auth:google-oauth-flow-with-backend MISCONFIGURED')
@@ -355,48 +361,60 @@ function registerIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('auth:password-login', async (_event, payload: {
-    companyCode?: string
-    workerCode?: string
-    password?: string
-    appMode?: string
-  }) => {
-    if (!payload.companyCode || !payload.workerCode || !payload.password) {
-      return { ok: false, code: 'BAD_REQUEST', message: 'Cégkód, dolgozókód és jelszó kötelező.' }
-    }
-
-    try {
-      const response = await fetchViaElectronNet({
-        method: 'POST',
-        url: `${resolveConfiguredApiUrl()}/auth/login`,
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          companyCode: payload.companyCode,
-          workerCode: payload.workerCode,
-          password: payload.password,
-          appMode: 'rate-maker',
-        }),
-      })
-
-      if (!response.ok) {
-        return {
-          ok: false,
-          code: `HTTP_${response.status}`,
-          message: parseErrorMessage(response.body, response.statusText || 'Bejelentkezési hiba'),
-        }
+  ipcMain.handle(
+    'auth:password-login',
+    async (
+      _event,
+      payload: {
+        companyCode?: string
+        workerCode?: string
+        password?: string
+        appMode?: string
+      },
+    ) => {
+      if (!payload.companyCode || !payload.workerCode || !payload.password) {
+        return { ok: false, code: 'BAD_REQUEST', message: 'Cégkód, dolgozókód és jelszó kötelező.' }
       }
 
-      return { ok: true, response: JSON.parse(response.body) as unknown }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      log.warn('[auth:password-login] failed:', message)
-      return { ok: false, code: 'NETWORK_ERROR', message }
-    }
-  })
+      try {
+        const response = await fetchViaElectronNet({
+          method: 'POST',
+          url: `${resolveConfiguredApiUrl()}/auth/login`,
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            companyCode: payload.companyCode,
+            workerCode: payload.workerCode,
+            password: payload.password,
+            appMode: 'rate-maker',
+          }),
+        })
+
+        if (!response.ok) {
+          return {
+            ok: false,
+            code: `HTTP_${response.status}`,
+            message: parseErrorMessage(response.body, response.statusText || 'Bejelentkezési hiba'),
+          }
+        }
+
+        return { ok: true, response: JSON.parse(response.body) as unknown }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        log.warn('[auth:password-login] failed:', message)
+        return { ok: false, code: 'NETWORK_ERROR', message }
+      }
+    },
+  )
 
   ipcMain.handle('api:fetch', async (_event, params: ApiProxyRequest) => {
     if (!params?.url || !params.method) {
-      return { ok: false, status: 0, statusText: 'BAD_REQUEST', headers: {}, body: '{"error":"url and method required"}' }
+      return {
+        ok: false,
+        status: 0,
+        statusText: 'BAD_REQUEST',
+        headers: {},
+        body: '{"error":"url and method required"}',
+      }
     }
 
     const fullUrl = params.url.startsWith('http')
@@ -423,7 +441,13 @@ function registerIpcHandlers(): void {
       }
     }
 
-    return { ok: false, status: 0, statusText: 'NETWORK_ERROR', headers: {}, body: '{"error":"unknown"}' }
+    return {
+      ok: false,
+      status: 0,
+      statusText: 'NETWORK_ERROR',
+      headers: {},
+      body: '{"error":"unknown"}',
+    }
   })
 }
 
@@ -444,72 +468,81 @@ app.on('second-instance', () => {
 process.on('uncaughtException', (err) => log.error('[Process] uncaughtException', err))
 process.on('unhandledRejection', (reason) => log.error('[Process] unhandledRejection', reason))
 
-app.whenReady().then(async () => {
-  // 2026-05-15 user-direktiva (Google OAuth fix, analog penztar-client): production
-  // buildben a dotenv NEM tolti be a userData/.env-et, ezert promotaljuk most.
-  try {
-    const envPath = path.join(app.getPath('userData'), '.env')
-    if (fs.existsSync(envPath)) {
-      const raw = fs.readFileSync(envPath, 'utf8')
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const dotenv = require('dotenv') as { parse: (input: string | Buffer) => Record<string, string> }
-      const parsed = dotenv.parse(raw)
-      for (const [k, v] of Object.entries(parsed)) {
-        if (!process.env[k]) process.env[k] = v
-      }
-      log.info(`[App] userData/.env betoltve a process.env-be (${Object.keys(parsed).length} kulcs)`)
-    } else {
-      log.warn('[App] userData/.env nem letezik — Google OAuth lehet sikertelen.')
-    }
-  } catch (err) {
-    log.error('[App] userData/.env betoltesi hiba:', err)
-  }
-
-  // EBC Hangsegéd Phase 9.5 — mikrofon engedély (lasd penztar-client/electron/main.ts).
-  // Security: URL parse + exact hostname/protocol compare (Codex P1 + CodeQL + Copilot fix).
-  // F-006 (audit 2026-05-29): non-media permission BIZTONSAGOS DEFAULT = DENY (nem default-allow).
-  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
-    if (permission !== 'media') {
-      log.warn('[Security] Non-media permission elutasitva (default-deny):', permission)
-      callback(false)
-      return
-    }
+app
+  .whenReady()
+  .then(async () => {
+    // 2026-05-15 user-direktiva (Google OAuth fix, analog penztar-client): production
+    // buildben a dotenv NEM tolti be a userData/.env-et, ezert promotaljuk most.
     try {
-      const url = new URL(String(details?.requestingUrl ?? ''))
-      const isLocalApp = url.protocol === 'app:' && url.hostname === 'localhost'
-      const isLocalHttp = url.protocol === 'http:' && url.hostname === 'localhost'
-      const isProduction = url.protocol === 'https:' && url.hostname === 'excvaluta.com'
-      if (isLocalApp || isLocalHttp || isProduction) {
-        log.info('[VoiceAssistant] media (mic) engedely megadva:', url.origin)
-        callback(true)
-        return
+      const envPath = path.join(app.getPath('userData'), '.env')
+      if (fs.existsSync(envPath)) {
+        const raw = fs.readFileSync(envPath, 'utf8')
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const dotenv = require('dotenv') as {
+          parse: (input: string | Buffer) => Record<string, string>
+        }
+        const parsed = dotenv.parse(raw)
+        for (const [k, v] of Object.entries(parsed)) {
+          if (!process.env[k]) process.env[k] = v
+        }
+        log.info(
+          `[App] userData/.env betoltve a process.env-be (${Object.keys(parsed).length} kulcs)`,
+        )
+      } else {
+        log.warn('[App] userData/.env nem letezik — Google OAuth lehet sikertelen.')
       }
-      log.warn('[VoiceAssistant] media (mic) engedely elutasitva (idegen origin):', url.origin)
     } catch (err) {
-      log.warn('[VoiceAssistant] media (mic) URL parse hiba — elutasitva:', err)
+      log.error('[App] userData/.env betoltesi hiba:', err)
     }
-    callback(false)
+
+    // EBC Hangsegéd Phase 9.5 — mikrofon engedély (lasd penztar-client/electron/main.ts).
+    // Security: URL parse + exact hostname/protocol compare (Codex P1 + CodeQL + Copilot fix).
+    // F-006 (audit 2026-05-29): non-media permission BIZTONSAGOS DEFAULT = DENY (nem default-allow).
+    session.defaultSession.setPermissionRequestHandler(
+      (_webContents, permission, callback, details) => {
+        if (permission !== 'media') {
+          log.warn('[Security] Non-media permission elutasitva (default-deny):', permission)
+          callback(false)
+          return
+        }
+        try {
+          const url = new URL(String(details?.requestingUrl ?? ''))
+          const isLocalApp = url.protocol === 'app:' && url.hostname === 'localhost'
+          const isLocalHttp = url.protocol === 'http:' && url.hostname === 'localhost'
+          const isProduction = url.protocol === 'https:' && url.hostname === 'excvaluta.com'
+          if (isLocalApp || isLocalHttp || isProduction) {
+            log.info('[VoiceAssistant] media (mic) engedely megadva:', url.origin)
+            callback(true)
+            return
+          }
+          log.warn('[VoiceAssistant] media (mic) engedely elutasitva (idegen origin):', url.origin)
+        } catch (err) {
+          log.warn('[VoiceAssistant] media (mic) URL parse hiba — elutasitva:', err)
+        }
+        callback(false)
+      },
+    )
+
+    ensureInitialConfig()
+    registerIpcHandlers()
+    registerLocalFirstIpcHandlers()
+    registerProtocol()
+
+    // Local-first: SQLite + sync engine initialization
+    try {
+      await initLocalFirst(resolveConfiguredApiUrl())
+      log.info('[App] Local-first infrastructure ready')
+    } catch (err) {
+      log.error('[App] Local-first init failed (continuing online-only):', err)
+    }
+
+    createWindow()
   })
-
-  ensureInitialConfig()
-  registerIpcHandlers()
-  registerLocalFirstIpcHandlers()
-  registerProtocol()
-
-  // Local-first: SQLite + sync engine initialization
-  try {
-    await initLocalFirst(resolveConfiguredApiUrl())
-    log.info('[App] Local-first infrastructure ready')
-  } catch (err) {
-    log.error('[App] Local-first init failed (continuing online-only):', err)
-  }
-
-  createWindow()
-}).catch((err) => {
-  log.error('[App] startup failed:', err)
-  dialog.showErrorBox('Indítási hiba', err instanceof Error ? err.message : String(err))
-  app.quit()
-})
+  .catch((err) => {
+    log.error('[App] startup failed:', err)
+    dialog.showErrorBox('Indítási hiba', err instanceof Error ? err.message : String(err))
+    app.quit()
+  })
 
 app.on('window-all-closed', () => {
   shutdownLocalFirst()

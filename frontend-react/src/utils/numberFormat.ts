@@ -10,12 +10,12 @@ export function formatInteger(value: number | string | null | undefined): string
   if (value === null || value === undefined || value === '') {
     return '0'
   }
-  
+
   const num = typeof value === 'string' ? parseFloat(value) : value
   if (isNaN(num)) {
     return '0'
   }
-  
+
   return Math.floor(num).toLocaleString('hu-HU')
 }
 
@@ -28,20 +28,20 @@ export function formatInteger(value: number | string | null | undefined): string
 export function formatDecimal(
   value: number | string | null | undefined,
   minDecimals: number = 0,
-  maxDecimals: number = 2
+  maxDecimals: number = 2,
 ): string {
   if (value === null || value === undefined || value === '') {
     return '0'
   }
-  
+
   const num = typeof value === 'string' ? parseFloat(value) : value
   if (isNaN(num)) {
     return '0'
   }
-  
+
   return num.toLocaleString('hu-HU', {
     minimumFractionDigits: minDecimals,
-    maximumFractionDigits: maxDecimals
+    maximumFractionDigits: maxDecimals,
   })
 }
 
@@ -59,4 +59,3 @@ export function formatCurrency(value: number | string | null | undefined): strin
 export function getNumberClassName(additionalClasses: string = ''): string {
   return `font-mono ${additionalClasses}`.trim()
 }
-

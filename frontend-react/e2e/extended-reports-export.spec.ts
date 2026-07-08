@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/reports/period/csv') && method === 'GET') {
@@ -240,7 +248,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('kibővített riportok CSV exportja valós Chromium nézetből backend csv endpointot hív', async ({ page }) => {
+test('kibővített riportok CSV exportja valós Chromium nézetből backend csv endpointot hív', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1366, height: 768 })
   await mockApis(page)
   await login(page)
@@ -252,27 +262,29 @@ test('kibővített riportok CSV exportja valós Chromium nézetből backend csv 
   await page.locator('input[type="date"]').nth(0).fill('2026-06-01')
   await page.locator('input[type="date"]').nth(1).fill('2026-06-18')
 
-  const csvRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/reports/period/csv')
+  const csvRequest = page.waitForRequest(
+    (request) => request.method() === 'GET' && request.url().includes('/reports/period/csv'),
   )
   await page.getByRole('button', { name: /CSV export/i }).click()
   await csvRequest
 
   await page.getByRole('combobox').selectOption('transfer-summary')
-  const transferReportRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/reports/transfers')
+  const transferReportRequest = page.waitForRequest(
+    (request) => request.method() === 'GET' && request.url().includes('/reports/transfers'),
   )
   await page.getByRole('button', { name: /Riport generálása/i }).click()
   await transferReportRequest
   await expect(page.getByText('transferCount')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
 
-test('napi zárás teljes riport és PDF export mobil nézetből backend endpointot hív', async ({ page }) => {
+test('napi zárás teljes riport és PDF export mobil nézetből backend endpointot hív', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -284,26 +296,32 @@ test('napi zárás teljes riport és PDF export mobil nézetből backend endpoin
   await page.getByTestId('daily-report-branch-id').fill('branch-1')
   await page.getByTestId('daily-report-date').fill('2026-06-18')
 
-  const dailyFullRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/reports/daily/branch-1/2026-06-18/full')
+  const dailyFullRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      request.url().includes('/reports/daily/branch-1/2026-06-18/full'),
   )
   await page.getByRole('button', { name: /Riport generálása/i }).click()
   await dailyFullRequest
   await expect(page.locator('pre').filter({ hasText: '"branchName": "Budapest 01"' })).toBeVisible()
 
-  const pdfRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/reports/daily/branch-1/2026-06-18/pdf')
+  const pdfRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      request.url().includes('/reports/daily/branch-1/2026-06-18/pdf'),
   )
   await page.getByRole('button', { name: /PDF export/i }).click()
   await pdfRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
 
-test('kibővített riportok mobil nézetben cash, today és currency read endpointokat hív', async ({ page }) => {
+test('kibővített riportok mobil nézetben cash, today és currency read endpointokat hív', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -312,16 +330,16 @@ test('kibővített riportok mobil nézetben cash, today és currency read endpoi
   await expect(page.getByRole('heading', { name: /Bővített Riportok/i })).toBeVisible()
 
   await page.getByRole('combobox').selectOption('cash-status')
-  const cashStatusRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/reports/cash-status')
+  const cashStatusRequest = page.waitForRequest(
+    (request) => request.method() === 'GET' && request.url().includes('/reports/cash-status'),
   )
   await page.getByRole('button', { name: /Riport generálása/i }).click()
   await cashStatusRequest
   await expect(page.getByText('totalHufEquivalent')).toBeVisible()
 
   await page.getByRole('combobox').selectOption('today-summary')
-  const todaySummaryRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/reports/today-summary')
+  const todaySummaryRequest = page.waitForRequest(
+    (request) => request.method() === 'GET' && request.url().includes('/reports/today-summary'),
   )
   await page.getByRole('button', { name: /Riport generálása/i }).click()
   await todaySummaryRequest
@@ -331,8 +349,8 @@ test('kibővített riportok mobil nézetben cash, today és currency read endpoi
   await page.getByTestId('currency-report-id').fill('1')
   await page.locator('input[type="date"]').nth(0).fill('2026-06-01')
   await page.locator('input[type="date"]').nth(1).fill('2026-06-18')
-  const currencyReportRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/reports/currency/1')
+  const currencyReportRequest = page.waitForRequest(
+    (request) => request.method() === 'GET' && request.url().includes('/reports/currency/1'),
   )
   await page.getByRole('button', { name: /Riport generálása/i }).click()
   await currencyReportRequest
@@ -341,8 +359,9 @@ test('kibővített riportok mobil nézetben cash, today és currency read endpoi
   await page.getByRole('combobox').selectOption('extended-monthly-turnover')
   await page.locator('input[type="number"]').nth(0).fill('2026')
   await page.locator('input[type="number"]').nth(1).fill('6')
-  const extendedMonthlyRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/reports-extended/monthly-turnover')
+  const extendedMonthlyRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes('/reports-extended/monthly-turnover'),
   )
   await page.getByRole('button', { name: /Riport generálása/i }).click()
   await extendedMonthlyRequest
@@ -351,8 +370,9 @@ test('kibővített riportok mobil nézetben cash, today és currency read endpoi
   await page.getByRole('combobox').selectOption('extended-handling-cost')
   await page.locator('input[type="date"]').nth(0).fill('2026-06-01')
   await page.locator('input[type="date"]').nth(1).fill('2026-06-18')
-  const extendedHandlingRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/reports-extended/handling-cost')
+  const extendedHandlingRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes('/reports-extended/handling-cost'),
   )
   await page.getByRole('button', { name: /Riport generálása/i }).click()
   await extendedHandlingRequest
@@ -361,8 +381,9 @@ test('kibővített riportok mobil nézetben cash, today és currency read endpoi
   await page.getByRole('combobox').selectOption('daily-cash-desk')
   await page.getByTestId('cash-desk-report-id').fill('cashdesk-1')
   await page.locator('input[type="date"]').fill('2026-06-18')
-  const dailyCashDeskRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/reports-extended/daily-cash-desk')
+  const dailyCashDeskRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes('/reports-extended/daily-cash-desk'),
   )
   await page.getByRole('button', { name: /Riport generálása/i }).click()
   await dailyCashDeskRequest
@@ -370,15 +391,17 @@ test('kibővített riportok mobil nézetben cash, today és currency read endpoi
 
   await page.getByRole('combobox').selectOption('current-cash-desk-status')
   await page.getByTestId('cash-desk-report-id').fill('cashdesk-1')
-  const currentCashDeskRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/reports-extended/current-cash-desk-status')
+  const currentCashDeskRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      request.url().includes('/reports-extended/current-cash-desk-status'),
   )
   await page.getByRole('button', { name: /Riport generálása/i }).click()
   await currentCashDeskRequest
   await expect(page.getByText('OPEN')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

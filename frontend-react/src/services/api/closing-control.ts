@@ -34,7 +34,9 @@ export const closingControlApi = {
 
   getBranch: async (branchId: string, date?: string): Promise<ClosingControlStatus> => {
     const params = date ? { date } : undefined
-    const response = await api.get<ClosingControlStatus>(`/closing-control/branch/${branchId}`, { params })
+    const response = await api.get<ClosingControlStatus>(`/closing-control/branch/${branchId}`, {
+      params,
+    })
     return response.data
   },
 

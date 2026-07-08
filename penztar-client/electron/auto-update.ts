@@ -63,7 +63,9 @@ export function initAutoUpdate(mainWindow: BrowserWindow | null) {
   });
 
   autoUpdater.on('download-progress', (p) => {
-    log.info(`[autoUpdate] download ${Math.round(p.percent)}% (${Math.round(p.bytesPerSecond / 1024)} KB/s)`);
+    log.info(
+      `[autoUpdate] download ${Math.round(p.percent)}% (${Math.round(p.bytesPerSecond / 1024)} KB/s)`,
+    );
     mainWindow?.webContents.send('autoUpdate:progress', p);
   });
 
@@ -88,7 +90,7 @@ export function initAutoUpdate(mainWindow: BrowserWindow | null) {
   });
 
   // Elso check 10 mp-el app indulas utan (hogy ne blokkoljunk a UI rendering-et)
-  setTimeout(() => autoUpdater.checkForUpdates().catch(e => log.error(e)), 10_000);
+  setTimeout(() => autoUpdater.checkForUpdates().catch((e) => log.error(e)), 10_000);
   // Utana minden 4 oraban
-  setInterval(() => autoUpdater.checkForUpdates().catch(e => log.error(e)), 4 * 60 * 60 * 1000);
+  setInterval(() => autoUpdater.checkForUpdates().catch((e) => log.error(e)), 4 * 60 * 60 * 1000);
 }

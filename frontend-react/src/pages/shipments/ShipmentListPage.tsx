@@ -1,10 +1,25 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Package, Eye, CheckCircle, XCircle, AlertCircle, ArrowUpFromLine, ArrowDownToLine, Printer, Pencil, Save } from 'lucide-react'
-import { shipmentRequestApi, ShipmentRequest, ShipmentUpdateRequest } from '../../services/api/index'
+import {
+  Package,
+  Eye,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  ArrowUpFromLine,
+  ArrowDownToLine,
+  Printer,
+  Pencil,
+  Save,
+} from 'lucide-react'
+import {
+  shipmentRequestApi,
+  ShipmentRequest,
+  ShipmentUpdateRequest,
+} from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 import { ReceiptPreviewModal } from '../../components/electron'
 import { isElectron } from '../../utils/electron'
@@ -254,14 +269,18 @@ export default function ShipmentListPage() {
   const handleReprintPrint = async (): Promise<void> => {
     if (!reprintReceipt) return
     if (!window.electronAPI?.printReceipt) {
-      toast.warning('Nyomtatás nem elérhető', isElectron()
-        ? 'Electron preload/electronAPI hiba — indítsa újra a klienst.'
-        : 'A nyomtatás csak az asztali (Electron) kliensben érhető el.')
+      toast.warning(
+        'Nyomtatás nem elérhető',
+        isElectron()
+          ? 'Electron preload/electronAPI hiba — indítsa újra a klienst.'
+          : 'A nyomtatás csak az asztali (Electron) kliensben érhető el.',
+      )
       return
     }
     try {
       const ok = await window.electronAPI.printReceipt(JSON.stringify(reprintReceipt))
-      if (ok) toast.success('Nyomtatás elindítva', `Bizonylat: ${reprintReceipt.receiptNumber ?? '—'}`)
+      if (ok)
+        toast.success('Nyomtatás elindítva', `Bizonylat: ${reprintReceipt.receiptNumber ?? '—'}`)
       else toast.error('Nyomtatás sikertelen', 'A nyomtató nem válaszolt.')
     } catch (e) {
       toast.error('Nyomtatás hiba', getErrorMessage(e))
@@ -289,7 +308,10 @@ export default function ShipmentListPage() {
       CANCELLED: { label: 'Megszakítva', className: 'bg-red-100 text-red-700' },
       REJECTED: { label: 'Elutasítva', className: 'bg-red-100 text-red-700' },
     }
-    const statusInfo = statusMap[status] || { label: status, className: 'bg-gray-100 text-gray-700' }
+    const statusInfo = statusMap[status] || {
+      label: status,
+      className: 'bg-gray-100 text-gray-700',
+    }
     return (
       <span className={`px-2 py-1 text-xs rounded ${statusInfo.className}`}>
         {statusInfo.label}
@@ -315,7 +337,10 @@ export default function ShipmentListPage() {
 
   // "Korábbi" fül: a kiválasztott nap összes bizonylata, státusztól függetlenül (FR-8).
   const pastDayShipments = useMemo(
-    () => (selectedDate ? allShipments.filter((s) => dateOnly(s.requestedDeliveryDate) === selectedDate) : []),
+    () =>
+      selectedDate
+        ? allShipments.filter((s) => dateOnly(s.requestedDeliveryDate) === selectedDate)
+        : [],
     [allShipments, selectedDate],
   )
 
@@ -463,7 +488,9 @@ export default function ShipmentListPage() {
           onClick={() => handleTabChange('today')}
           data-testid="shipment-tab-today"
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-            activeTab === 'today' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+            activeTab === 'today'
+              ? 'border-blue-600 text-blue-700'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
           {t('shipments.ma')}
@@ -473,7 +500,9 @@ export default function ShipmentListPage() {
           onClick={() => handleTabChange('past')}
           data-testid="shipment-tab-past"
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-            activeTab === 'past' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+            activeTab === 'past'
+              ? 'border-blue-600 text-blue-700'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
           {t('shipments.korabbi')}
@@ -522,10 +551,13 @@ export default function ShipmentListPage() {
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-blue-950">
-                {t('shipments.szallitmanyReszletei', { requestNumber: selectedShipment.requestNumber })}
+                {t('shipments.szallitmanyReszletei', {
+                  requestNumber: selectedShipment.requestNumber,
+                })}
               </h2>
               <p className="text-sm text-blue-900">
-                {selectedShipment.requestingBranchName || selectedShipment.requestingBranchId} → {selectedShipment.targetBranchName || selectedShipment.targetBranchId}
+                {selectedShipment.requestingBranchName || selectedShipment.requestingBranchId} →{' '}
+                {selectedShipment.targetBranchName || selectedShipment.targetBranchId}
               </p>
             </div>
             <button
@@ -538,7 +570,10 @@ export default function ShipmentListPage() {
           </div>
           <div className="grid gap-2 text-sm md:grid-cols-4">
             <DetailLine label="Státusz" value={selectedShipment.requestStatus} />
-            <DetailLine label="Kézbesítés" value={formatDate(selectedShipment.requestedDeliveryDate)} />
+            <DetailLine
+              label="Kézbesítés"
+              value={formatDate(selectedShipment.requestedDeliveryDate)}
+            />
             <DetailLine label="Szállító" value={selectedShipment.carrierName || '-'} />
             <DetailLine label="Plomba" value={selectedShipment.sealNumber || '-'} />
           </div>
@@ -560,7 +595,9 @@ export default function ShipmentListPage() {
                         className="form-input mt-1"
                         value={editDraft.deliveryDate}
                         data-testid="shipment-edit-delivery-date"
-                        onChange={(event) => setEditDraft({ ...editDraft, deliveryDate: event.target.value })}
+                        onChange={(event) =>
+                          setEditDraft({ ...editDraft, deliveryDate: event.target.value })
+                        }
                       />
                     </label>
                     <label className="form-label">
@@ -570,7 +607,9 @@ export default function ShipmentListPage() {
                         className="form-input mt-1"
                         value={editDraft.carrierName}
                         data-testid="shipment-edit-carrier"
-                        onChange={(event) => setEditDraft({ ...editDraft, carrierName: event.target.value })}
+                        onChange={(event) =>
+                          setEditDraft({ ...editDraft, carrierName: event.target.value })
+                        }
                       />
                     </label>
                     <label className="form-label">
@@ -580,7 +619,9 @@ export default function ShipmentListPage() {
                         className="form-input mt-1"
                         value={editDraft.sealNumber}
                         data-testid="shipment-edit-seal"
-                        onChange={(event) => setEditDraft({ ...editDraft, sealNumber: event.target.value })}
+                        onChange={(event) =>
+                          setEditDraft({ ...editDraft, sealNumber: event.target.value })
+                        }
                       />
                     </label>
                   </div>
@@ -590,7 +631,9 @@ export default function ShipmentListPage() {
                       className="form-input mt-1 min-h-20"
                       value={editDraft.notes}
                       data-testid="shipment-edit-notes"
-                      onChange={(event) => setEditDraft({ ...editDraft, notes: event.target.value })}
+                      onChange={(event) =>
+                        setEditDraft({ ...editDraft, notes: event.target.value })
+                      }
                     />
                   </label>
                   <div className="flex gap-2">
@@ -641,7 +684,9 @@ export default function ShipmentListPage() {
                   {selectedShipment.items.map((item) => (
                     <tr key={item.id ?? `${item.currencyId}-${item.requestedAmount}`}>
                       <td>{item.currencyCode ?? item.currencyId}</td>
-                      <td className="text-right">{formatAmount(item.requestedAmount ?? item.amount)}</td>
+                      <td className="text-right">
+                        {formatAmount(item.requestedAmount ?? item.amount)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -652,8 +697,8 @@ export default function ShipmentListPage() {
       )}
 
       {/* FR-2..FR-4: "Ma" fül — csak aznapi bizonylatok, teljes műveleti paletta. */}
-      {activeTab === 'today' && (
-        loading ? (
+      {activeTab === 'today' &&
+        (loading ? (
           <div className="form-panel text-center py-8 text-gray-500">Betöltés...</div>
         ) : todaysShipments.length === 0 ? (
           <div className="form-panel text-center py-8 text-gray-500">
@@ -661,8 +706,7 @@ export default function ShipmentListPage() {
           </div>
         ) : (
           renderTable(todaysShipments, 'today')
-        )
-      )}
+        ))}
 
       {/* FR-5..FR-11: "Korábbi" fül — bal naptár, jobb napi lista (csak megtekintés + újranyomtatás). */}
       {activeTab === 'past' && (
@@ -679,7 +723,10 @@ export default function ShipmentListPage() {
             {pastLoading ? (
               <div className="form-panel text-center py-8 text-gray-500">Betöltés...</div>
             ) : !selectedDate ? (
-              <div className="form-panel text-center py-8 text-gray-500" data-testid="past-empty-state">
+              <div
+                className="form-panel text-center py-8 text-gray-500"
+                data-testid="past-empty-state"
+              >
                 {t('shipments.valasszonNapotANaptarbol')}
               </div>
             ) : pastDayShipments.length === 0 ? (

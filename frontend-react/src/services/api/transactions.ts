@@ -150,8 +150,15 @@ export const customerApi = {
     return response.data
   },
   /** FS-2 (MNB): kockázati besorolás állítása — MANAGER/ADMIN jogosultság. */
-  setRiskRating: async (id: number, riskRating: 'LOW' | 'MEDIUM' | 'HIGH', reason: string): Promise<Customer> => {
-    const response = await api.post<Customer>(`/customers/${id}/risk-rating`, { riskRating, reason })
+  setRiskRating: async (
+    id: number,
+    riskRating: 'LOW' | 'MEDIUM' | 'HIGH',
+    reason: string,
+  ): Promise<Customer> => {
+    const response = await api.post<Customer>(`/customers/${id}/risk-rating`, {
+      riskRating,
+      reason,
+    })
     return response.data
   },
   review: async (id: number): Promise<Customer> => {
@@ -198,11 +205,19 @@ export const customerApi = {
     const response = await api.get<Customer[]>('/customers/vip')
     return response.data
   },
-  getFrequent: async (params?: { branchId?: string; minTx?: number }): Promise<CustomerRanking[]> => {
+  getFrequent: async (params?: {
+    branchId?: string
+    minTx?: number
+  }): Promise<CustomerRanking[]> => {
     const response = await api.get<CustomerRanking[]>('/customers/frequent', { params })
     return response.data
   },
-  getTop: async (params?: { branchId?: string; from?: string; to?: string; limit?: number }): Promise<CustomerRanking[]> => {
+  getTop: async (params?: {
+    branchId?: string
+    from?: string
+    to?: string
+    limit?: number
+  }): Promise<CustomerRanking[]> => {
     const response = await api.get<CustomerRanking[]>('/customers/top', { params })
     return response.data
   },
@@ -210,7 +225,10 @@ export const customerApi = {
     const response = await api.get<CustomerStats>(`/customers/${id}/stats`)
     return response.data
   },
-  getHistory: async (id: number, params?: { from?: string; to?: string }): Promise<CustomerStats> => {
+  getHistory: async (
+    id: number,
+    params?: { from?: string; to?: string },
+  ): Promise<CustomerStats> => {
     const response = await api.get<CustomerStats>(`/customers/${id}/history`, { params })
     return response.data
   },
@@ -227,7 +245,7 @@ export const customerApi = {
   },
   activate: async (id: number): Promise<void> => {
     await api.post(`/customers/${id}/activate`)
-  }
+  },
 }
 
 export const customerControlApi = {
@@ -266,7 +284,7 @@ export const teaorApi = {
   search: async (q: string): Promise<TeaorCode[]> => {
     const response = await api.get<TeaorCode[]>('/teaor', { params: { q } })
     return response.data
-  }
+  },
 }
 
 // ================== TRANSACTIONS API ==================
@@ -292,12 +310,7 @@ export interface TransactionLineRequest {
  * `type` alias és a list() szűrő ne driftelhessen szét (Sourcery/Copilot #780).
  */
 export type TransactionTypeName =
-  | 'BUY'
-  | 'SELL'
-  | 'REVERSAL'
-  | 'CONVERSION'
-  | 'TRANSFER_OUT'
-  | 'TRANSFER_IN'
+  'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION' | 'TRANSFER_OUT' | 'TRANSFER_IN'
 
 export interface Transaction {
   id: number
@@ -334,7 +347,7 @@ export interface Transaction {
   branchName?: string
   workerId: number
   workerName?: string
-  workerCode?: string  // 2026-04-29 v2.3.12 (E-B2): backend mar adja, hozzaadtuk a tipust audit display-hez
+  workerCode?: string // 2026-04-29 v2.3.12 (E-B2): backend mar adja, hozzaadtuk a tipust audit display-hez
   createdAt: string
   // G3-G4: PEP + Jogcím nyilatkozat (Legacy Gap Fix)
   customerIsPep?: boolean
@@ -391,7 +404,8 @@ export interface BuyRequest {
   customerOnOwnBehalf?: boolean
   customerActorName?: string
   // V235 (2026-05-19 HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
-  customerPepKind?: 'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+  customerPepKind?:
+    'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
   /** V325 (Batch3-C): jogi szemely ugyfel + tenyleges tulajdonosok (max 4). */
   isLegalEntityCustomer?: boolean
   legalEntityName?: string
@@ -463,7 +477,8 @@ export interface SellRequest {
   customerOnOwnBehalf?: boolean
   customerActorName?: string
   // V235 (2026-05-19 HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
-  customerPepKind?: 'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+  customerPepKind?:
+    'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
   /** V325 (Batch3-C): jogi szemely ugyfel + tenyleges tulajdonosok (max 4). */
   isLegalEntityCustomer?: boolean
   legalEntityName?: string
@@ -542,7 +557,8 @@ export interface ConversionRequest {
   customerDocumentType?: string
   customerOnOwnBehalf?: boolean
   customerActorName?: string
-  customerPepKind?: 'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+  customerPepKind?:
+    'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
   /** V325 (Batch3-C): jogi szemely ugyfel + tenyleges tulajdonosok (max 4). */
   isLegalEntityCustomer?: boolean
   legalEntityName?: string
@@ -588,7 +604,10 @@ export const transactionApi = {
     page?: number
     size?: number
   }): Promise<PagedResponse<Transaction>> => {
-    const response = await api.get<PagedResponse<Transaction>>('/transactions', { params, _preservePaged: true } as Record<string, unknown>)
+    const response = await api.get<PagedResponse<Transaction>>('/transactions', {
+      params,
+      _preservePaged: true,
+    } as Record<string, unknown>)
     return response.data
   },
   getById: async (id: string | number): Promise<Transaction> => {
@@ -620,7 +639,7 @@ export const transactionApi = {
   conversion: async (data: ConversionRequest): Promise<Transaction> => {
     const response = await api.post<Transaction>('/transactions/conversion', data)
     return response.data
-  }
+  },
   // Megj.: a korábbi `getReceipt` (GET /transactions/{id}/receipt blob) HOLT KÓD volt és NEM létező
   // végpontra mutatott (404). Eltávolítva (architect-mode audit, 2026-05-27). A valódi bizonylat-PDF
   // backend-végpontja: GET /api/v1/receipts/transaction/{id}/pdf (ReceiptController) — ehhez jelenleg
@@ -775,7 +794,7 @@ export const cashBalanceApi = {
       _skipGlobal403Toast: true,
     })
     return response.data
-  }
+  },
 }
 
 // CashDesk interface for legacy compatibility
@@ -815,7 +834,7 @@ export const cashDeskApi = {
           isActive: cashDesk.is_active === 1,
         }))
     }
-  }
+  },
 }
 
 export interface WorkerMaster {
@@ -950,14 +969,14 @@ export const dailySessionApi = {
   },
   getHistory: async (startDate: string, endDate: string): Promise<DailySession[]> => {
     const response = await api.get<DailySession[]>('/daily-sessions/history', {
-      params: { startDate, endDate }
+      params: { startDate, endDate },
     })
     return response.data
   },
   validateClosing: async (): Promise<DailyClosingValidation> => {
     const response = await api.get<DailyClosingValidation>('/daily-sessions/validate-closing')
     return response.data
-  }
+  },
 }
 
 // ================== STORNO API ==================
@@ -1005,13 +1024,17 @@ export const stornoApi = {
   },
   requestApproval: async (transactionId: string, reason: string): Promise<StornoApproval> => {
     const response = await api.post<StornoApproval>('/stornos/request-approval', null, {
-      params: { transactionId, reason }
+      params: { transactionId, reason },
     })
     return response.data
   },
-  approve: async (approvalId: string, approved: boolean, reason?: string): Promise<StornoApproval> => {
+  approve: async (
+    approvalId: string,
+    approved: boolean,
+    reason?: string,
+  ): Promise<StornoApproval> => {
     const response = await api.post<StornoApproval>(`/stornos/approve/${approvalId}`, null, {
-      params: { approved, reason }
+      params: { approved, reason },
     })
     return response.data
   },
@@ -1028,7 +1051,7 @@ export const stornoApi = {
     approverWorkerId: number,
     pin: string,
     approved: boolean,
-    reason?: string
+    reason?: string,
   ): Promise<StornoApproval> => {
     const response = await api.post<StornoApproval>('/stornos/approve-by-pin', {
       approvalId,
@@ -1042,7 +1065,7 @@ export const stornoApi = {
   execute: async (request: StornoRequest): Promise<Transaction> => {
     const response = await api.post<Transaction>('/stornos/execute', request)
     return response.data
-  }
+  },
 }
 
 // ================== CLOSING WIZARD API ==================
@@ -1110,9 +1133,14 @@ export interface ClosingWizardDifference {
 }
 
 export const closingWizardApi = {
-  start: async (branchId: string, cashDeskId: string | undefined, closingType: string, workerId: string): Promise<ClosingWizard> => {
+  start: async (
+    branchId: string,
+    cashDeskId: string | undefined,
+    closingType: string,
+    workerId: string,
+  ): Promise<ClosingWizard> => {
     const response = await api.post<ClosingWizard>('/closing-wizard/start', null, {
-      params: { branchId, cashDeskId, closingType, workerId }
+      params: { branchId, cashDeskId, closingType, workerId },
     })
     return response.data
   },
@@ -1121,12 +1149,14 @@ export const closingWizardApi = {
     return response.data
   },
   getStep: async (wizardId: string, stepNumber: number): Promise<ClosingWizardStep> => {
-    const response = await api.get<ClosingWizardStep>(`/closing-wizard/${wizardId}/step/${stepNumber}`)
+    const response = await api.get<ClosingWizardStep>(
+      `/closing-wizard/${wizardId}/step/${stepNumber}`,
+    )
     return response.data
   },
   navigate: async (wizardId: string, targetStep: number): Promise<ClosingWizard> => {
     const response = await api.post<ClosingWizard>(`/closing-wizard/${wizardId}/navigate`, null, {
-      params: { targetStep }
+      params: { targetStep },
     })
     return response.data
   },
@@ -1138,7 +1168,11 @@ export const closingWizardApi = {
     const response = await api.post<ClosingWizard>(`/closing-wizard/${wizardId}/cancel`)
     return response.data
   },
-  finalize: async (wizardId: string, workerId: string, discrepancyExplanation?: string): Promise<{ success: boolean; message: string }> => {
+  finalize: async (
+    wizardId: string,
+    workerId: string,
+    discrepancyExplanation?: string,
+  ): Promise<{ success: boolean; message: string }> => {
     // G3 (FR-13): az eltérés-magyarázat a body-ban (akár 1000 karakter) — Sourcery #791.
     const response = await api.post<{ success: boolean; message: string }>(
       `/closing-wizard/${wizardId}/finalize`,
@@ -1148,21 +1182,30 @@ export const closingWizardApi = {
     return response.data
   },
   /** Submit denomination counts — body: { "HUF": { 500: 3, 1000: 5, ... } } */
-  submitDenominations: async (wizardId: string, denomCounts: Record<string, Record<number, number>>): Promise<Record<string, unknown>> => {
-    const response = await api.post<Record<string, unknown>>(`/closing-wizard/${wizardId}/denominations`, denomCounts)
+  submitDenominations: async (
+    wizardId: string,
+    denomCounts: Record<string, Record<number, number>>,
+  ): Promise<Record<string, unknown>> => {
+    const response = await api.post<Record<string, unknown>>(
+      `/closing-wizard/${wizardId}/denominations`,
+      denomCounts,
+    )
     return response.data
   },
   calculateDifferences: async (
     wizardId: string,
     physicalCounts: Record<string, number>,
   ): Promise<ClosingWizardDifference[]> => {
-    const response = await api.post<ClosingWizardDifference[]>(`/closing-wizard/${wizardId}/differences`, physicalCounts)
+    const response = await api.post<ClosingWizardDifference[]>(
+      `/closing-wizard/${wizardId}/differences`,
+      physicalCounts,
+    )
     return response.data
   },
   getReport: async (wizardId: string): Promise<ClosingWizardReport> => {
     const response = await api.get<ClosingWizardReport>(`/closing-wizard/${wizardId}/report`)
     return response.data
-  }
+  },
 }
 
 // ================== AUTHORIZED REPRESENTATIVE API ==================
@@ -1248,16 +1291,22 @@ export interface AuthorizationCreateRequest {
 }
 
 export const authorizedRepresentativeApi = {
-  register: async (customerId: string, request: RepresentativeRegistrationRequest, workerId: string): Promise<AuthorizedRepresentative> => {
+  register: async (
+    customerId: string,
+    request: RepresentativeRegistrationRequest,
+    workerId: string,
+  ): Promise<AuthorizedRepresentative> => {
     const response = await api.post<AuthorizedRepresentative>(
       `/authorized-representatives/customer/${customerId}/register`,
       request,
-      { params: { workerId } }
+      { params: { workerId } },
     )
     return response.data
   },
   findByCustomer: async (customerId: string): Promise<AuthorizedRepresentative[]> => {
-    const response = await api.get<AuthorizedRepresentative[]>(`/authorized-representatives/customer/${customerId}`)
+    const response = await api.get<AuthorizedRepresentative[]>(
+      `/authorized-representatives/customer/${customerId}`,
+    )
     return response.data
   },
   list: async (customerId?: string): Promise<AuthorizedRepresentative[]> => {
@@ -1270,57 +1319,85 @@ export const authorizedRepresentativeApi = {
     const response = await api.get<AuthorizedRepresentative>(`/authorized-representatives/${id}`)
     return response.data
   },
-  update: async (id: string, request: RepresentativeRegistrationRequest): Promise<AuthorizedRepresentative> => {
-    const response = await api.put<AuthorizedRepresentative>(`/authorized-representatives/${id}`, request)
+  update: async (
+    id: string,
+    request: RepresentativeRegistrationRequest,
+  ): Promise<AuthorizedRepresentative> => {
+    const response = await api.put<AuthorizedRepresentative>(
+      `/authorized-representatives/${id}`,
+      request,
+    )
     return response.data
   },
   delete: async (id: string): Promise<void> => {
     await api.delete(`/authorized-representatives/${id}`)
   },
-  createAuthorization: async (representativeId: string, request: AuthorizationCreateRequest, workerId: number): Promise<Authorization> => {
+  createAuthorization: async (
+    representativeId: string,
+    request: AuthorizationCreateRequest,
+    workerId: number,
+  ): Promise<Authorization> => {
     const response = await api.post<Authorization>(
       `/authorized-representatives/${representativeId}/authorizations`,
       request,
-      { params: { workerId } }
+      { params: { workerId } },
     )
     return response.data
   },
-  verifyAuthorization: async (authorizationId: string, workerId: number, notes?: string): Promise<Authorization> => {
+  verifyAuthorization: async (
+    authorizationId: string,
+    workerId: number,
+    notes?: string,
+  ): Promise<Authorization> => {
     const response = await api.post<Authorization>(
       `/authorized-representatives/authorizations/${authorizationId}/verify`,
       null,
-      { params: { workerId, notes } }
+      { params: { workerId, notes } },
     )
     return response.data
   },
-  resumeAuthorization: async (authorizationId: string, workerId: number, notes?: string): Promise<Authorization> => {
+  resumeAuthorization: async (
+    authorizationId: string,
+    workerId: number,
+    notes?: string,
+  ): Promise<Authorization> => {
     const response = await api.post<Authorization>(
       `/authorized-representatives/authorizations/${authorizationId}/resume`,
       null,
-      { params: { workerId, notes } }
+      { params: { workerId, notes } },
     )
     return response.data
   },
-  suspendAuthorization: async (authorizationId: string, workerId: number, reason: string): Promise<Authorization> => {
+  suspendAuthorization: async (
+    authorizationId: string,
+    workerId: number,
+    reason: string,
+  ): Promise<Authorization> => {
     const response = await api.post<Authorization>(
       `/authorized-representatives/authorizations/${authorizationId}/suspend`,
       null,
-      { params: { workerId, reason } }
+      { params: { workerId, reason } },
     )
     return response.data
   },
-  revokeAuthorization: async (authorizationId: string, workerId: number, reason: string): Promise<Authorization> => {
+  revokeAuthorization: async (
+    authorizationId: string,
+    workerId: number,
+    reason: string,
+  ): Promise<Authorization> => {
     const response = await api.post<Authorization>(
       `/authorized-representatives/authorizations/${authorizationId}/revoke`,
       null,
-      { params: { workerId, reason } }
+      { params: { workerId, reason } },
     )
     return response.data
   },
   findAuthorizations: async (representativeId: string): Promise<Authorization[]> => {
-    const response = await api.get<Authorization[]>(`/authorized-representatives/${representativeId}/authorizations`)
+    const response = await api.get<Authorization[]>(
+      `/authorized-representatives/${representativeId}/authorizations`,
+    )
     return response.data
-  }
+  },
 }
 
 // ================== TRANSACTION BANKNOTE API ==================
@@ -1345,11 +1422,19 @@ export interface TransactionBanknoteCreateRequest {
 
 export const transactionBanknoteApi = {
   getByTransaction: async (transactionId: number): Promise<TransactionBanknote[]> => {
-    const response = await api.get<TransactionBanknote[]>(`/transactions/${transactionId}/banknotes`)
+    const response = await api.get<TransactionBanknote[]>(
+      `/transactions/${transactionId}/banknotes`,
+    )
     return response.data
   },
-  create: async (transactionId: number, request: TransactionBanknoteCreateRequest): Promise<TransactionBanknote> => {
-    const response = await api.post<TransactionBanknote>(`/transactions/${transactionId}/banknotes`, request)
+  create: async (
+    transactionId: number,
+    request: TransactionBanknoteCreateRequest,
+  ): Promise<TransactionBanknote> => {
+    const response = await api.post<TransactionBanknote>(
+      `/transactions/${transactionId}/banknotes`,
+      request,
+    )
     return response.data
   },
 }
@@ -1431,23 +1516,32 @@ export interface ShipmentUpdateRequest {
  * frontend `{requestStatus, requestedDeliveryDate, requestingBranchId, targetBranchId, ...}`-ra.
  */
 function normalizeShipmentRequest(raw: Record<string, unknown>): ShipmentRequest {
-    const r = raw as Partial<ShipmentRequest> & Record<string, unknown>
-    return {
-        ...r,
-        // Ha a backend raw mezot kuldott, de frontend-kompat mezoje hianyzik, masoljuk at
-        requestStatus: (r.requestStatus ?? r['status']) as ShipmentRequest['requestStatus'],
-        requestedDeliveryDate: (r.requestedDeliveryDate ?? r['deliveryDate']) as ShipmentRequest['requestedDeliveryDate'],
-        requestingBranchId: (r.requestingBranchId ?? r['fromBranchId']) as ShipmentRequest['requestingBranchId'],
-        targetBranchId: (r.targetBranchId ?? r['toBranchId']) as ShipmentRequest['targetBranchId'],
-        fromBranchName: (r.fromBranchName ?? r['requestingBranchName']) as ShipmentRequest['fromBranchName'],
-        toBranchName: (r.toBranchName ?? r['targetBranchName']) as ShipmentRequest['toBranchName'],
-        requestingBranchName: (r.requestingBranchName ?? r['fromBranchName']) as ShipmentRequest['requestingBranchName'],
-        targetBranchName: (r.targetBranchName ?? r['toBranchName']) as ShipmentRequest['targetBranchName'],
-        requestedByWorkerName: (r.requestedByWorkerName ?? r['requestedBy']) as ShipmentRequest['requestedByWorkerName'],
-        requestedByWorkerId: (r.requestedByWorkerId ?? r['requestedById']) as ShipmentRequest['requestedByWorkerId'],
-        requestedAt: (r.requestedAt ?? r['createdAt'] ?? r['requestDate']) as ShipmentRequest['requestedAt'],
-        requestNumber: (r.requestNumber ?? r['number']) as ShipmentRequest['requestNumber'],
-    } as ShipmentRequest
+  const r = raw as Partial<ShipmentRequest> & Record<string, unknown>
+  return {
+    ...r,
+    // Ha a backend raw mezot kuldott, de frontend-kompat mezoje hianyzik, masoljuk at
+    requestStatus: (r.requestStatus ?? r['status']) as ShipmentRequest['requestStatus'],
+    requestedDeliveryDate: (r.requestedDeliveryDate ??
+      r['deliveryDate']) as ShipmentRequest['requestedDeliveryDate'],
+    requestingBranchId: (r.requestingBranchId ??
+      r['fromBranchId']) as ShipmentRequest['requestingBranchId'],
+    targetBranchId: (r.targetBranchId ?? r['toBranchId']) as ShipmentRequest['targetBranchId'],
+    fromBranchName: (r.fromBranchName ??
+      r['requestingBranchName']) as ShipmentRequest['fromBranchName'],
+    toBranchName: (r.toBranchName ?? r['targetBranchName']) as ShipmentRequest['toBranchName'],
+    requestingBranchName: (r.requestingBranchName ??
+      r['fromBranchName']) as ShipmentRequest['requestingBranchName'],
+    targetBranchName: (r.targetBranchName ??
+      r['toBranchName']) as ShipmentRequest['targetBranchName'],
+    requestedByWorkerName: (r.requestedByWorkerName ??
+      r['requestedBy']) as ShipmentRequest['requestedByWorkerName'],
+    requestedByWorkerId: (r.requestedByWorkerId ??
+      r['requestedById']) as ShipmentRequest['requestedByWorkerId'],
+    requestedAt: (r.requestedAt ??
+      r['createdAt'] ??
+      r['requestDate']) as ShipmentRequest['requestedAt'],
+    requestNumber: (r.requestNumber ?? r['number']) as ShipmentRequest['requestNumber'],
+  } as ShipmentRequest
 }
 
 /**
@@ -1467,7 +1561,7 @@ function normalizeShipmentRequest(raw: Record<string, unknown>): ShipmentRequest
 async function fetchPaged<T>(
   path: string,
   extraParams: Record<string, unknown> = {},
-  opts: { maxPages?: number; pageSize?: number } = {}
+  opts: { maxPages?: number; pageSize?: number } = {},
 ): Promise<T[]> {
   const pageSize = opts.pageSize ?? 100
   const maxPages = opts.maxPages ?? 20
@@ -1475,13 +1569,10 @@ async function fetchPaged<T>(
   let page = 0
   let lastPageReached = false
   while (page < maxPages) {
-    const response = await api.get<{ content: T[]; totalPages?: number; last?: boolean }>(
-      path,
-      {
-        params: { ...extraParams, page, size: pageSize },
-        _preservePaged: true,
-      } as Record<string, unknown>
-    )
+    const response = await api.get<{ content: T[]; totalPages?: number; last?: boolean }>(path, {
+      params: { ...extraParams, page, size: pageSize },
+      _preservePaged: true,
+    } as Record<string, unknown>)
     const batch = asArray<T>(response.data?.content)
     all.push(...batch)
     if (
@@ -1499,8 +1590,8 @@ async function fetchPaged<T>(
     // A no-console rule a projektben most mar nem tiltja a console.warn-t, igy az
     // eslint-disable directive feleslegesse valt (PR #222 post-merge CI fix).
     console.warn(
-      `[fetchPaged] MAX_PAGES=${maxPages} (size=${pageSize}) elerve ${path}-on, `
-      + `lehetseges silent truncation. Backend-oldali filter kell vagy maxPages emelese.`
+      `[fetchPaged] MAX_PAGES=${maxPages} (size=${pageSize}) elerve ${path}-on, ` +
+        `lehetseges silent truncation. Backend-oldali filter kell vagy maxPages emelese.`,
     )
   }
   return all
@@ -1561,10 +1652,9 @@ export const shipmentRequestApi = {
       const response = await api.get<unknown[]>(`/shipments`, { params: { page: 0, size: 100 } })
       return asArray<Record<string, unknown>>(response.data).map(normalizeShipmentRequest)
     }
-    const response = await api.get<unknown[]>(
-      `/shipments`,
-      { params: { status, page: 0, size: 100 } }
-    )
+    const response = await api.get<unknown[]>(`/shipments`, {
+      params: { status, page: 0, size: 100 },
+    })
     return asArray<Record<string, unknown>>(response.data).map(normalizeShipmentRequest)
   },
   findByBranch: async (branchId: string): Promise<ShipmentRequest[]> => {
@@ -1576,11 +1666,16 @@ export const shipmentRequestApi = {
     return rawPages.map(normalizeShipmentRequest)
   },
   // Approve: backend POST /api/v1/shipments/{id}/approve (params ignoralva: workerId + approvedItems + notes)
-  approve: async (requestId: string, workerId: string, approvedItems?: ShipmentRequestItem[], notes?: string): Promise<ShipmentRequest> => {
+  approve: async (
+    requestId: string,
+    workerId: string,
+    approvedItems?: ShipmentRequestItem[],
+    notes?: string,
+  ): Promise<ShipmentRequest> => {
     const response = await api.post<ShipmentRequest>(
       `/shipments/${requestId}/approve`,
       approvedItems || null,
-      { params: { workerId, notes } }
+      { params: { workerId, notes } },
     )
     return response.data
   },
@@ -1589,11 +1684,9 @@ export const shipmentRequestApi = {
   // rejectionReason + rejectedByWorkerId (a hitelesített user) mezőket. A workerId paramétert a
   // backend a security-contextből származtatja (mint approve), a kliens-érték nem authoritative.
   reject: async (requestId: string, workerId: string, reason: string): Promise<ShipmentRequest> => {
-    const response = await api.post<ShipmentRequest>(
-      `/shipments/${requestId}/reject`,
-      null,
-      { params: { workerId, reason } }
-    )
+    const response = await api.post<ShipmentRequest>(`/shipments/${requestId}/reject`, null, {
+      params: { workerId, reason },
+    })
     return response.data
   },
   deliver: async (requestId: string): Promise<ShipmentRequest> => {
@@ -1603,7 +1696,7 @@ export const shipmentRequestApi = {
   cancel: async (requestId: string): Promise<ShipmentRequest> => {
     const response = await api.post<Record<string, unknown>>(`/shipments/${requestId}/cancel`)
     return normalizeShipmentRequest(response.data)
-  }
+  },
 }
 
 // ================== TRANSFER API ==================
@@ -1625,7 +1718,18 @@ export interface Transfer {
   fromWorkerName: string
   toWorkerId?: number
   toWorkerName?: string
-  transferType: 'CURRENCY' | 'CASH' | 'HANDLING_FEE' | 'VAULT_DEPOSIT' | 'VAULT_WITHDRAW' | 'CORRECTION' | 'OTHER' | 'ERB' | 'FRB' | 'TRB' | 'PRB'
+  transferType:
+    | 'CURRENCY'
+    | 'CASH'
+    | 'HANDLING_FEE'
+    | 'VAULT_DEPOSIT'
+    | 'VAULT_WITHDRAW'
+    | 'CORRECTION'
+    | 'OTHER'
+    | 'ERB'
+    | 'FRB'
+    | 'TRB'
+    | 'PRB'
   transferTypeDisplay: string
   direction?: 'F' | 'U' | 'UF' | 'FF'
   status: 'PENDING' | 'IN_TRANSIT' | 'RECEIVED' | 'COMPLETED' | 'REJECTED' | 'CANCELLED'
@@ -1696,7 +1800,18 @@ export interface CreateTransferRequest {
   currencyId: number
   amount: number
   hufValue?: number
-  transferType: 'CURRENCY' | 'CASH' | 'HANDLING_FEE' | 'VAULT_DEPOSIT' | 'VAULT_WITHDRAW' | 'CORRECTION' | 'OTHER' | 'ERB' | 'FRB' | 'TRB' | 'PRB'
+  transferType:
+    | 'CURRENCY'
+    | 'CASH'
+    | 'HANDLING_FEE'
+    | 'VAULT_DEPOSIT'
+    | 'VAULT_WITHDRAW'
+    | 'CORRECTION'
+    | 'OTHER'
+    | 'ERB'
+    | 'FRB'
+    | 'TRB'
+    | 'PRB'
   direction?: 'F' | 'U' | 'UF' | 'FF'
   notes?: string
   carrierName?: string
@@ -1722,7 +1837,9 @@ export const transferApi = {
     return response.data
   },
   reject: async (id: number, reason: string): Promise<Transfer> => {
-    const response = await api.post<Transfer>(`/transfers/${id}/reject`, null, { params: { reason } })
+    const response = await api.post<Transfer>(`/transfers/${id}/reject`, null, {
+      params: { reason },
+    })
     return response.data
   },
   cancel: async (id: number): Promise<void> => {
@@ -1767,13 +1884,16 @@ export const transferApi = {
     page?: number
     size?: number
   }): Promise<PagedResponse<Transfer>> => {
-    const response = await api.get<PagedResponse<Transfer>>('/transfers', { params, _preservePaged: true } as Record<string, unknown>)
+    const response = await api.get<PagedResponse<Transfer>>('/transfers', {
+      params,
+      _preservePaged: true,
+    } as Record<string, unknown>)
     return response.data
   },
   countPending: async (): Promise<number> => {
     const response = await api.get<number>('/transfers/pending/count')
     return response.data
-  }
+  },
 }
 
 // ================== SEAL NUMBER API ==================
@@ -1821,9 +1941,17 @@ export const handoverSheetApi = {
     const response = await api.get<HandoverSheet>(`/handover-sheets/${id}`)
     return response.data
   },
-  generate: async (fromCashDeskId: string, toCashDeskId: string, transferDate: string, amounts: CurrencyAmounts): Promise<HandoverSheet> => {
+  generate: async (
+    fromCashDeskId: string,
+    toCashDeskId: string,
+    transferDate: string,
+    amounts: CurrencyAmounts,
+  ): Promise<HandoverSheet> => {
     const response = await api.post<HandoverSheet>('/handover-sheets/generate', {
-      fromCashDeskId, toCashDeskId, transferDate, amounts
+      fromCashDeskId,
+      toCashDeskId,
+      transferDate,
+      amounts,
     })
     return response.data
   },
@@ -1833,7 +1961,7 @@ export const handoverSheetApi = {
   complete: async (id: string): Promise<HandoverSheet> => {
     const response = await api.post<HandoverSheet>(`/handover-sheets/${id}/complete`)
     return response.data
-  }
+  },
 }
 
 // ================== RECEIPT API ==================
@@ -1907,7 +2035,9 @@ export const receiptApi = {
     const response = await api.get<Receipt>(`/receipts/${id}`)
     return response.data
   },
-  createCancelledTransaction: async (request: CancelledTransactionReceiptRequest): Promise<Receipt> => {
+  createCancelledTransaction: async (
+    request: CancelledTransactionReceiptRequest,
+  ): Promise<Receipt> => {
     const response = await api.post<Receipt>('/receipts/cancelled-transaction', request)
     return response.data
   },
@@ -1915,17 +2045,23 @@ export const receiptApi = {
     await api.post(`/receipts/${id}/print`)
   },
   downloadTransactionPdf: async (transactionId: string | number): Promise<Blob> => {
-    const response = await api.get<Blob>(`/receipts/transaction/${transactionId}/pdf`, { responseType: 'blob' })
+    const response = await api.get<Blob>(`/receipts/transaction/${transactionId}/pdf`, {
+      responseType: 'blob',
+    })
     return response.data
   },
   downloadTransactionEscPos: async (transactionId: string | number): Promise<Blob> => {
-    const response = await api.get<Blob>(`/receipts/transaction/${transactionId}/escpos`, { responseType: 'blob' })
+    const response = await api.get<Blob>(`/receipts/transaction/${transactionId}/escpos`, {
+      responseType: 'blob',
+    })
     return response.data
   },
   downloadClosingPdf: async (closingId: string): Promise<Blob> => {
-    const response = await api.get<Blob>(`/receipts/closing/${closingId}/pdf`, { responseType: 'blob' })
+    const response = await api.get<Blob>(`/receipts/closing/${closingId}/pdf`, {
+      responseType: 'blob',
+    })
     return response.data
-  }
+  },
 }
 
 // ================== AML ENHANCED API ==================
@@ -1943,12 +2079,16 @@ export interface AmlCheckResultDto {
 }
 
 export const amlApi = {
-  checkAllThresholds: async (customerId: string, hufAmount: number, currencyCode?: string): Promise<AmlCheckResultDto> => {
+  checkAllThresholds: async (
+    customerId: string,
+    hufAmount: number,
+    currencyCode?: string,
+  ): Promise<AmlCheckResultDto> => {
     const response = await api.get<AmlCheckResultDto>('/aml/check-all-thresholds', {
-      params: { customerId, hufAmount, currencyCode }
+      params: { customerId, hufAmount, currencyCode },
     })
     return response.data
-  }
+  },
 }
 
 // ================== MONTHLY CLOSING API ==================
@@ -1971,15 +2111,19 @@ export interface MonthlyClosingSummary {
 
 export const monthlyClosingApi = {
   performClosing: async (branchId: string, yearMonth: string): Promise<MonthlyClosingSummary> => {
-    const response = await api.post<MonthlyClosingSummary>(`/closing/monthly/${branchId}/${yearMonth}`)
+    const response = await api.post<MonthlyClosingSummary>(
+      `/closing/monthly/${branchId}/${yearMonth}`,
+    )
     return response.data
   },
   getReport: async (branchId: string, yearMonth: string): Promise<MonthlyClosingSummary> => {
-    const response = await api.get<MonthlyClosingSummary>(`/closing/monthly/${branchId}/${yearMonth}`)
+    const response = await api.get<MonthlyClosingSummary>(
+      `/closing/monthly/${branchId}/${yearMonth}`,
+    )
     return response.data
   },
   getAllClosedMonths: async (branchId: string): Promise<MonthlyClosingSummary[]> => {
     const response = await api.get<MonthlyClosingSummary[]>(`/closing/monthly/${branchId}`)
     return response.data
-  }
+  },
 }

@@ -14,9 +14,10 @@ type WorkerDto = components['schemas']['WorkerDto']
 // Runtime-ban mindig megletszo mezok: a backend JPA entitas @NotNull-lal
 // kenyszeriti, de az OpenAPI spec nincs 'required' annotaciokkal marklosva.
 // Local kontraktus: Required<Pick> a stabil mezoket nem-null-kent kezeli.
-type Worker = Required<Pick<WorkerDto,
-  'id' | 'workerCode' | 'firstName' | 'lastName' | 'fullName'
->> & Partial<WorkerDto> & { isActive?: boolean }
+type Worker = Required<
+  Pick<WorkerDto, 'id' | 'workerCode' | 'firstName' | 'lastName' | 'fullName'>
+> &
+  Partial<WorkerDto> & { isActive?: boolean }
 
 interface WorkerForm {
   workerCode: string
@@ -67,9 +68,10 @@ export default function WorkerPage() {
     try {
       setLoading(true)
       setError(null)
-      const res = scope === 'branch' && branchId
-        ? await api.get(`/workers/branch/${branchId}`)
-        : await api.get('/workers')
+      const res =
+        scope === 'branch' && branchId
+          ? await api.get(`/workers/branch/${branchId}`)
+          : await api.get('/workers')
       setWorkers(safeArray<Worker>(res.data))
     } catch (err) {
       logger.error('WorkerPage', 'load error', err)
@@ -90,7 +92,10 @@ export default function WorkerPage() {
 
   const showBranchWorkers = async () => {
     if (!branchId) {
-      toast.warning('Hiányzó fiók', 'A fiók szerinti dolgozólista betöltéséhez hiányzik a bejelentkezett fiók azonosítója.')
+      toast.warning(
+        'Hiányzó fiók',
+        'A fiók szerinti dolgozólista betöltéséhez hiányzik a bejelentkezett fiók azonosítója.',
+      )
       return
     }
     setListScope('branch')
@@ -162,27 +167,45 @@ export default function WorkerPage() {
 
   return (
     <div className="space-y-4">
-      <BulkEmailModal open={showBulkModal} onClose={() => setShowBulkModal(false)} onSuccess={() => { void load(); setShowBulkModal(false); }} />
+      <BulkEmailModal
+        open={showBulkModal}
+        onClose={() => setShowBulkModal(false)}
+        onSuccess={() => {
+          void load()
+          setShowBulkModal(false)
+        }}
+      />
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Users />
           {t('workers.dolgozok')}
         </h1>
-        <button onClick={() => setShowBulkModal(true)} className="mr-2 flex items-center gap-2 px-3 py-1.5 border border-primary-300 text-primary-700 rounded hover:bg-primary-50 text-sm"><Upload size={14} />{t('workers.emailImport')}</button>
-                <button onClick={openCreate} className="form-button-primary flex items-center gap-2">
+        <button
+          onClick={() => setShowBulkModal(true)}
+          className="mr-2 flex items-center gap-2 px-3 py-1.5 border border-primary-300 text-primary-700 rounded hover:bg-primary-50 text-sm"
+        >
+          <Upload size={14} />
+          {t('workers.emailImport')}
+        </button>
+        <button onClick={openCreate} className="form-button-primary flex items-center gap-2">
           <Plus size={16} />
           {t('workers.ujDolgozo')}
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
       )}
 
       <div className="form-panel">
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            <Search
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={16}
+            />
             <input
               type="text"
               className="form-input pl-8"
@@ -219,7 +242,10 @@ export default function WorkerPage() {
               <h2 className="text-lg font-bold">
                 {editingWorker ? 'Dolgozó szerkesztése' : 'Új dolgozó'}
               </h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-700">
+              <button
+                onClick={() => setShowForm(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -373,7 +399,9 @@ export default function WorkerPage() {
                   <td>{w.phone ?? '-'}</td>
                   <td>{w.branchName ?? '-'}</td>
                   <td>
-                    <span className={`badge ${(w.active ?? w.isActive) ? 'badge-green' : 'badge-red'}`}>
+                    <span
+                      className={`badge ${(w.active ?? w.isActive) ? 'badge-green' : 'badge-red'}`}
+                    >
                       {(w.active ?? w.isActive) ? 'Aktív' : 'Inaktív'}
                     </span>
                   </td>

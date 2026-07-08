@@ -40,13 +40,17 @@ const sources = packageJsonPaths.map((relativePath) => ({
 // backend/pom.xml: a projekt <version> a <artifactId>valuta-backend</artifactId> után álló
 // <version>, NEM a <parent> spring-boot-starter-parent verziója.
 const pomXml = readText('backend/pom.xml')
-const pomMatch = pomXml.match(/<artifactId>valuta-backend<\/artifactId>\s*<version>([^<]+)<\/version>/)
+const pomMatch = pomXml.match(
+  /<artifactId>valuta-backend<\/artifactId>\s*<version>([^<]+)<\/version>/,
+)
 const pomVersion = pomMatch ? pomMatch[1].trim() : null
 sources.push({ source: 'backend/pom.xml (valuta-backend)', version: pomVersion })
 
 const failures = []
 if (!pomVersion) {
-  failures.push('backend/pom.xml: nem található a valuta-backend <artifactId> utáni <version> (projekt-verzió)')
+  failures.push(
+    'backend/pom.xml: nem található a valuta-backend <artifactId> utáni <version> (projekt-verzió)',
+  )
 }
 
 const uniqueVersions = new Set(sources.map((entry) => entry.version))

@@ -25,11 +25,13 @@ vi.mock('react-router-dom', async () => {
 })
 
 vi.mock('../../stores/authStore', () => ({
-  useAuthStore: (selector: (state: {
-    login: typeof mocks.loginStore
-    selectRole: typeof mocks.selectRoleStore
-    logout: typeof mocks.logoutStore
-  }) => unknown) =>
+  useAuthStore: (
+    selector: (state: {
+      login: typeof mocks.loginStore
+      selectRole: typeof mocks.selectRoleStore
+      logout: typeof mocks.logoutStore
+    }) => unknown,
+  ) =>
     selector({
       login: mocks.loginStore,
       selectRole: mocks.selectRoleStore,

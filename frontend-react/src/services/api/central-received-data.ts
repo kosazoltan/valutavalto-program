@@ -1,6 +1,7 @@
 import { api } from './client'
 
-export type CentralReceivedDataStatus = 'SUBMITTED' | 'RECEIVED' | 'MISSING' | 'WAITING' | 'CRITICAL' | string
+export type CentralReceivedDataStatus =
+  'SUBMITTED' | 'RECEIVED' | 'MISSING' | 'WAITING' | 'CRITICAL' | string
 
 export interface CentralReceivedDataRow {
   branchId: string
@@ -53,7 +54,9 @@ export interface CentralReceivedDataOverview {
 export const centralReceivedDataApi = {
   status: async (date?: string): Promise<CentralReceivedDataOverview> => {
     const params = date ? { date } : undefined
-    const response = await api.get<CentralReceivedDataOverview>('/central/received-data/status', { params })
+    const response = await api.get<CentralReceivedDataOverview>('/central/received-data/status', {
+      params,
+    })
     return response.data
   },
 }

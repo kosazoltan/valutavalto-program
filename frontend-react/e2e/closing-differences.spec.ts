@@ -31,7 +31,7 @@ async function mockClosingApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -54,11 +54,19 @@ async function mockClosingApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/daily-sessions/validate-closing') && method === 'GET') {
@@ -156,7 +164,11 @@ async function mockClosingApis(page: Page) {
 
     if (path.endsWith(`/closing-wizard/${wizardId}/denominations`) && method === 'POST') {
       expect(await route.request().postDataJSON()).toEqual({ HUF: { 20000: 5 } })
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ total: 100000 }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ total: 100000 }),
+      })
     }
 
     if (path.endsWith(`/closing-wizard/${wizardId}/differences`) && method === 'POST') {
@@ -180,7 +192,14 @@ async function mockClosingApis(page: Page) {
           branchId: 'branch-1',
           status: 'IN_PROGRESS',
           closingType: 'DAILY',
-          steps: [{ stepNumber: targetStep, stepName: `Step ${targetStep}`, completed: true, status: 'OK' }],
+          steps: [
+            {
+              stepNumber: targetStep,
+              stepName: `Step ${targetStep}`,
+              completed: true,
+              status: 'OK',
+            },
+          ],
         }),
       })
     }
@@ -195,7 +214,9 @@ async function mockClosingApis(page: Page) {
           closingDate: '2026-06-18',
           closingType: 'DAILY',
           transactionCount: 3,
-          inventory: [{ currencyCode: 'HUF', openingBalance: 100000, currentBalance: 100000, dailyChange: 0 }],
+          inventory: [
+            { currencyCode: 'HUF', openingBalance: 100000, currentBalance: 100000, dailyChange: 0 },
+          ],
         }),
       })
     }
@@ -214,14 +235,18 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('zárási eltérés ellenőrzés mobil viewporton backend differences POST után renderel', async ({ page }) => {
+test('zárási eltérés ellenőrzés mobil viewporton backend differences POST után renderel', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockClosingApis(page)
   await login(page)
 
   await page.goto('/closing/wizard', { waitUntil: 'domcontentloaded' })
-  const validationRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === '/api/v1/closing-wizard/validate-transactions'
+  const validationRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/closing-wizard/validate-transactions',
   )
   await page.getByRole('button', { name: /ELLENŐRZÉS INDÍTÁSA/i }).click()
   await validationRequest
@@ -235,22 +260,28 @@ test('zárási eltérés ellenőrzés mobil viewporton backend differences POST 
   await expect(page.getByTestId('closing-differences-table')).toContainText('Nincs eltérés')
   await expect(page.getByText('Zárási riport előnézet')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })
 
-test('zárási varázsló mobil viewporton route wizardId alapján backend detail és step endpointból tölt', async ({ page }) => {
+test('zárási varázsló mobil viewporton route wizardId alapján backend detail és step endpointból tölt', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockClosingApis(page)
   await login(page)
 
-  const wizardRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === `/api/v1/closing-wizard/${wizardId}`
+  const wizardRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === `/api/v1/closing-wizard/${wizardId}`,
   )
-  const stepRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && new URL(request.url()).pathname === `/api/v1/closing-wizard/${wizardId}/step/2`
+  const stepRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === `/api/v1/closing-wizard/${wizardId}/step/2`,
   )
   await page.goto(`/closing/wizard/${wizardId}`, { waitUntil: 'domcontentloaded' })
   await wizardRequest
@@ -259,8 +290,8 @@ test('zárási varázsló mobil viewporton route wizardId alapján backend detai
   await expect(page.getByTestId('closing-wizard-current-step')).toContainText('Backend címletezés')
   await expect(page.getByText('Backend MTCN ellenőrzés')).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

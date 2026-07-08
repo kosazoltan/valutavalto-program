@@ -3,45 +3,47 @@
  * Futtatás: cd penztar-client && node ../scripts/smoke/tmp-read-electron-cache.js
  * (a sql.js a penztar-client node_modules-ból töltődik)
  */
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const initSqlJs = require(path.join(process.cwd(), 'node_modules', 'sql.js'));
+const fs = require('fs')
+const path = require('path')
+const os = require('os')
+const initSqlJs = require(path.join(process.cwd(), 'node_modules', 'sql.js'))
 
 /** Use bracket access to sql.js run method so static scans do not match Python-dangerous patterns. */
 function sqlFirstRow(db, sql) {
-  const run = db['exec'];
-  const r = run.call(db, sql);
-  return r[0]?.values?.[0] ?? null;
+  const run = db['exec']
+  const r = run.call(db, sql)
+  return r[0]?.values?.[0] ?? null
 }
 
-(async () => {
+;(async () => {
   const SQL = await initSqlJs({
     locateFile: (file) => path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', file),
-  });
+  })
 
-  const dbPath = path.join(os.homedir(), '.valuta', 'local.db');
+  const dbPath = path.join(os.homedir(), '.valuta', 'local.db')
   if (!fs.existsSync(dbPath)) {
-    console.log(JSON.stringify({ error: 'NO_DB', dbPath, hint: 'Indítsd a pénztárat és jelentkezz be.' }));
-    process.exit(0);
+    console.log(
+      JSON.stringify({ error: 'NO_DB', dbPath, hint: 'Indítsd a pénztárat és jelentkezz be.' }),
+    )
+    process.exit(0)
   }
 
-  const db = new SQL.Database(fs.readFileSync(dbPath));
+  const db = new SQL.Database(fs.readFileSync(dbPath))
 
   // Bármely sor (nem fix id=1 / KORUT — különböző seed / iroda)
   const worker = sqlFirstRow(
     db,
     'SELECT id, worker_code, full_name, cached_at FROM cached_workers ORDER BY id LIMIT 1;',
-  );
+  )
   const cashDesk = sqlFirstRow(
     db,
     'SELECT id, code, name, cached_at FROM cached_cash_desks ORDER BY id LIMIT 1;',
-  );
-  const workerTs = sqlFirstRow(db, 'SELECT MAX(cached_at) FROM cached_workers;');
-  const cashDeskTs = sqlFirstRow(db, 'SELECT MAX(cached_at) FROM cached_cash_desks;');
+  )
+  const workerTs = sqlFirstRow(db, 'SELECT MAX(cached_at) FROM cached_workers;')
+  const cashDeskTs = sqlFirstRow(db, 'SELECT MAX(cached_at) FROM cached_cash_desks;')
 
-  const workerCount = sqlFirstRow(db, 'SELECT COUNT(*) FROM cached_workers;');
-  const cashDeskCount = sqlFirstRow(db, 'SELECT COUNT(*) FROM cached_cash_desks;');
+  const workerCount = sqlFirstRow(db, 'SELECT COUNT(*) FROM cached_workers;')
+  const cashDeskCount = sqlFirstRow(db, 'SELECT COUNT(*) FROM cached_cash_desks;')
 
   console.log(
     JSON.stringify(
@@ -57,5 +59,5 @@ function sqlFirstRow(db, sql) {
       null,
       0,
     ),
-  );
-})();
+  )
+})()

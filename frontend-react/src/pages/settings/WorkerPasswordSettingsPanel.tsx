@@ -77,7 +77,10 @@ export default function WorkerPasswordSettingsPanel() {
         </p>
       </div>
 
-      <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3" data-testid="own-user-profile">
+      <div
+        className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3"
+        data-testid="own-user-profile"
+      >
         <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
           <UserRound size={16} />
           Saját felhasználói profil
@@ -96,7 +99,9 @@ export default function WorkerPasswordSettingsPanel() {
             </div>
             <div>
               <dt className="text-xs uppercase text-slate-500">Név</dt>
-              <dd className="font-semibold text-slate-900">{profile.name ?? profile.workerName ?? '-'}</dd>
+              <dd className="font-semibold text-slate-900">
+                {profile.name ?? profile.workerName ?? '-'}
+              </dd>
             </div>
             <div>
               <dt className="text-xs uppercase text-slate-500">E-mail</dt>

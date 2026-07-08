@@ -11,17 +11,23 @@ export interface SheetNavRow {
 }
 
 export type EditableCol =
-  | 'settlement'   // A
-  | 'otp'          // B
-  | 'helper'       // C
+  | 'settlement' // A
+  | 'otp' // B
+  | 'helper' // C
   | 'weakMultiBuy' // E
-  | 'weakMultiSell'// F
-  | 'crossRate'    // H (csak crossBase sor)
-  | 'wholesale'    // I
+  | 'weakMultiSell' // F
+  | 'crossRate' // H (csak crossBase sor)
+  | 'wholesale' // I
 
 /** Vizuális oszlop-sorrend (balról jobbra). D és G kimarad (védett). */
 export const EDITABLE_ORDER: EditableCol[] = [
-  'settlement', 'otp', 'helper', 'weakMultiBuy', 'weakMultiSell', 'crossRate', 'wholesale',
+  'settlement',
+  'otp',
+  'helper',
+  'weakMultiBuy',
+  'weakMultiSell',
+  'crossRate',
+  'wholesale',
 ]
 
 export interface CellPos {

@@ -33,7 +33,10 @@ export const currencyCalculatorApi = {
   convert: async (request: CurrencyConvertRequest): Promise<CurrencyCalculationResult> =>
     (await api.post<CurrencyCalculationResult>('/calculator/convert', request)).data,
 
-  reverse: async (request: { currency: string; hufAmount: number }): Promise<CurrencyReverseResult> =>
+  reverse: async (request: {
+    currency: string
+    hufAmount: number
+  }): Promise<CurrencyReverseResult> =>
     (await api.post<CurrencyReverseResult>('/calculator/reverse', request)).data,
 
   matrix: async (): Promise<CurrencyExchangeMatrix> =>

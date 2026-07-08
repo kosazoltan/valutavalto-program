@@ -40,7 +40,7 @@ export default function SchedulerPage() {
       setLoading(true)
       setError(null)
       const response = await api.get<SchedulerJobItem[]>('/scheduler/tasks')
-      setItems(safeArray<typeof items[0]>(response.data))
+      setItems(safeArray<(typeof items)[0]>(response.data))
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('SchedulerPage', 'Betöltési hiba:', err)
@@ -126,12 +126,10 @@ export default function SchedulerPage() {
     }
   }
 
-  const filtered = items.filter(item => {
+  const filtered = items.filter((item) => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return Object.values(item).some(v =>
-      v != null && String(v).toLowerCase().includes(term)
-    )
+    return Object.values(item).some((v) => v != null && String(v).toLowerCase().includes(term))
   })
 
   return (
@@ -146,7 +144,8 @@ export default function SchedulerPage() {
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <button onClick={openNewForm} className="form-button-primary flex items-center gap-1">
-            <Plus className="h-4 w-4" />{t('common.new')}
+            <Plus className="h-4 w-4" />
+            {t('common.new')}
           </button>
         </div>
       </div>
@@ -156,16 +155,49 @@ export default function SchedulerPage() {
           <h2 className="text-base font-semibold">Új ütemezett feladat</h2>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div>
-              <label htmlFor="scheduler-task-name" className="form-label">Feladat neve</label>
-              <input id="scheduler-task-name" value={form.taskName} onChange={(e) => setForm((current) => current ? { ...current, taskName: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="scheduler-task-name" className="form-label">
+                Feladat neve
+              </label>
+              <input
+                id="scheduler-task-name"
+                value={form.taskName}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, taskName: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="scheduler-cron" className="form-label">Cron kifejezés</label>
-              <input id="scheduler-cron" value={form.cronExpression} onChange={(e) => setForm((current) => current ? { ...current, cronExpression: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="scheduler-cron" className="form-label">
+                Cron kifejezés
+              </label>
+              <input
+                id="scheduler-cron"
+                value={form.cronExpression}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, cronExpression: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
             <div>
-              <label htmlFor="scheduler-task-type" className="form-label">Feladattípus</label>
-              <select id="scheduler-task-type" value={form.taskType} onChange={(e) => setForm((current) => current ? { ...current, taskType: e.target.value } : current)} className="form-input w-full">
+              <label htmlFor="scheduler-task-type" className="form-label">
+                Feladattípus
+              </label>
+              <select
+                id="scheduler-task-type"
+                value={form.taskType}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, taskType: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              >
                 <option value="RATE_SYNC">RATE_SYNC</option>
                 <option value="BACKUP">BACKUP</option>
                 <option value="REPORT">REPORT</option>
@@ -174,15 +206,33 @@ export default function SchedulerPage() {
               </select>
             </div>
             <div>
-              <label htmlFor="scheduler-parameters" className="form-label">Paraméterek JSON</label>
-              <input id="scheduler-parameters" value={form.parameters} onChange={(e) => setForm((current) => current ? { ...current, parameters: e.target.value } : current)} className="form-input w-full" />
+              <label htmlFor="scheduler-parameters" className="form-label">
+                Paraméterek JSON
+              </label>
+              <input
+                id="scheduler-parameters"
+                value={form.parameters}
+                onChange={(e) =>
+                  setForm((current) =>
+                    current ? { ...current, parameters: e.target.value } : current,
+                  )
+                }
+                className="form-input w-full"
+              />
             </div>
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => void createTask()} disabled={saving || !form.taskName.trim() || !form.cronExpression.trim()} className="form-button-primary">
+            <button
+              type="button"
+              onClick={() => void createTask()}
+              disabled={saving || !form.taskName.trim() || !form.cronExpression.trim()}
+              className="form-button-primary"
+            >
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
-            <button type="button" onClick={() => setForm(null)} className="form-button">Mégse</button>
+            <button type="button" onClick={() => setForm(null)} className="form-button">
+              Mégse
+            </button>
           </div>
         </div>
       )}
@@ -194,7 +244,7 @@ export default function SchedulerPage() {
             type="text"
             placeholder="Keresés..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="form-input w-full pl-10"
           />
         </div>
@@ -217,46 +267,87 @@ export default function SchedulerPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('scheduler.feladat')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('scheduler.utemezes')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Típus</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('scheduler.utolsoFutas')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('scheduler.kovetkezoFutas')}</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Eredmény</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('common.active')}</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('common.actions')}</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('scheduler.feladat')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('scheduler.utemezes')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Típus
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('scheduler.utolsoFutas')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('scheduler.kovetkezoFutas')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                Eredmény
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('common.active')}
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                {t('common.actions')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-500">Betöltés...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-500">{t('common.noData')}</td></tr>
-            ) : filtered.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm">{item.taskName ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.cronExpression ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.taskType ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.lastRunAt ? new Date(item.lastRunAt).toLocaleString('hu-HU') : '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.nextRunAt ? new Date(item.nextRunAt).toLocaleString('hu-HU') : '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.lastResult ?? '-'}</td>
-                <td className="px-4 py-3 text-sm">{item.isActive ? 'Igen' : 'Nem'}</td>
-                <td className="px-4 py-3 text-right whitespace-nowrap">
-                  <button onClick={() => void runNow(item)} disabled={saving} className="form-button mr-2 p-1 text-blue-600" title="Futtatás most">
-                    <Play className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => void toggleTask(item)} disabled={saving} className="form-button p-1 text-slate-700" title={item.isActive ? 'Deaktiválás' : 'Aktiválás'}>
-                    <Power className="h-4 w-4" />
-                  </button>
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-500">
+                  Betöltés...
                 </td>
               </tr>
-            ))}
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {t('common.noData')}
+                </td>
+              </tr>
+            ) : (
+              filtered.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm">{item.taskName ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.cronExpression ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.taskType ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.lastRunAt ? new Date(item.lastRunAt).toLocaleString('hu-HU') : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {item.nextRunAt ? new Date(item.nextRunAt).toLocaleString('hu-HU') : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm">{item.lastResult ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm">{item.isActive ? 'Igen' : 'Nem'}</td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <button
+                      onClick={() => void runNow(item)}
+                      disabled={saving}
+                      className="form-button mr-2 p-1 text-blue-600"
+                      title="Futtatás most"
+                    >
+                      <Play className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => void toggleTask(item)}
+                      disabled={saving}
+                      className="form-button p-1 text-slate-700"
+                      title={item.isActive ? 'Deaktiválás' : 'Aktiválás'}
+                    >
+                      <Power className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="text-sm text-gray-500">
-        {t('audit.osszesen')}{filtered.length} / {items.length}
+        {t('audit.osszesen')}
+        {filtered.length} / {items.length}
       </div>
     </div>
   )

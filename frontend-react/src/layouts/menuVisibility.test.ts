@@ -100,7 +100,9 @@ describe('menuVisibility — konzisztens szigorítás (full mód)', () => {
   it('FK-049: irodavezeto (full) NEM látja az "Átlag árfolyam" itemet, a többi Riportok-itemet igen', () => {
     const riportok = groupByLabel('Riportok')
     const ctx = ctxFor(['irodavezeto'], 'full')
-    expect(isMenuItemVisible(itemByPath(riportok, '/reports/average-rate'), riportok, ctx)).toBe(false)
+    expect(isMenuItemVisible(itemByPath(riportok, '/reports/average-rate'), riportok, ctx)).toBe(
+      false,
+    )
     // egy örökölt (item-szintű roles nélküli) Riportok-item viszont látszik neki (csoport örökli)
     expect(isMenuItemVisible(itemByPath(riportok, '/reports'), riportok, ctx)).toBe(true)
   })

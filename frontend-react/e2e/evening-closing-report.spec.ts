@@ -63,7 +63,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -86,11 +86,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/features') && method === 'GET') {
@@ -102,11 +110,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/vault-closing-checklist') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(checklist) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(checklist),
+      })
     }
 
     if (path.endsWith('/evening-closing/branch-1/2026-06-18/report') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(report) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(report),
+      })
     }
 
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
@@ -131,10 +147,12 @@ test('esti zárás mobil nézetben a napi jelentés backend endpointot hívja', 
   await page.goto('/evening-closing', { waitUntil: 'domcontentloaded' })
   await page.locator('input[type="date"]').fill('2026-06-18')
 
-  const reportRequest = page.waitForRequest(request => {
+  const reportRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'GET'
-      && url.pathname === '/api/v1/evening-closing/branch-1/2026-06-18/report'
+    return (
+      request.method() === 'GET' &&
+      url.pathname === '/api/v1/evening-closing/branch-1/2026-06-18/report'
+    )
   })
   await page.getByRole('button', { name: /Napi jelentés/i }).click()
   await reportRequest
@@ -145,8 +163,8 @@ test('esti zárás mobil nézetben a napi jelentés backend endpointot hívja', 
   await expect(reportPanel.getByText('USD')).toBeVisible()
   await expect(reportPanel.getByText(/Sztornó: 1/)).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

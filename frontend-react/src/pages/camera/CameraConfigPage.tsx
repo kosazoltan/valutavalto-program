@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Settings, Plus, Trash2, Save } from 'lucide-react'
 import { api } from '../../services/api/index'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
 const isElectron = () => !!window.electronAPI
@@ -31,8 +31,8 @@ export default function CameraConfigPage() {
     fetchConfigs()
     if (isElectron()) {
       // Lokális kamerák detektálása
-      navigator.mediaDevices.enumerateDevices().then(devices => {
-        setLocalDevices(devices.filter(d => d.kind === 'videoinput'))
+      navigator.mediaDevices.enumerateDevices().then((devices) => {
+        setLocalDevices(devices.filter((d) => d.kind === 'videoinput'))
       })
     }
   }, [])
@@ -69,7 +69,7 @@ export default function CameraConfigPage() {
         // Electron: lokális mentés
         const existing = [...configs]
         if (config.id) {
-          const idx = existing.findIndex(c => c.id === config.id)
+          const idx = existing.findIndex((c) => c.id === config.id)
           if (idx >= 0) existing[idx] = config
         } else {
           config.id = crypto.randomUUID()
@@ -91,7 +91,7 @@ export default function CameraConfigPage() {
     if (!confirm('Biztosan törli a kamera konfigurációt?')) return
     try {
       if (isElectron()) {
-        const updated = configs.filter(c => c.id !== id)
+        const updated = configs.filter((c) => c.id !== id)
         await window.electronAPI!.setConfig('camera_configs', JSON.stringify(updated))
         setConfigs(updated)
       } else {
@@ -122,7 +122,9 @@ export default function CameraConfigPage() {
         <h1 className="text-lg font-bold flex items-center gap-2">
           <Settings className="h-6 w-6" />
           {t('camera.kameraKonfiguracio')}
-          {isElectron() && <span className="text-sm font-normal text-muted-foreground">{t('camera.lokalis')}</span>}
+          {isElectron() && (
+            <span className="text-sm font-normal text-muted-foreground">{t('camera.lokalis')}</span>
+          )}
         </h1>
         <button
           className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
@@ -143,7 +145,8 @@ export default function CameraConfigPage() {
             <div className="space-y-1">
               {localDevices.map((d, i) => (
                 <p key={d.deviceId || i} className="text-sm text-muted-foreground">
-                  {d.label || `Kamera ${i + 1}`} <span className="text-xs">({d.deviceId?.slice(0, 12)}...)</span>
+                  {d.label || `Kamera ${i + 1}`}{' '}
+                  <span className="text-xs">({d.deviceId?.slice(0, 12)}...)</span>
                 </p>
               ))}
             </div>
@@ -164,7 +167,9 @@ export default function CameraConfigPage() {
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.cameraName}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, cameraName: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setEditing({ ...editing, cameraName: e.target.value })
+                  }
                 />
               </div>
               <div>
@@ -173,7 +178,9 @@ export default function CameraConfigPage() {
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   type="number"
                   value={editing.fps}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, fps: parseInt(e.target.value, 10) || 5 })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setEditing({ ...editing, fps: parseInt(e.target.value, 10) || 5 })
+                  }
                 />
               </div>
               <div>
@@ -182,7 +189,9 @@ export default function CameraConfigPage() {
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   type="number"
                   value={editing.resolutionWidth}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, resolutionWidth: parseInt(e.target.value, 10) || 640 })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setEditing({ ...editing, resolutionWidth: parseInt(e.target.value, 10) || 640 })
+                  }
                 />
               </div>
               <div>
@@ -191,7 +200,12 @@ export default function CameraConfigPage() {
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   type="number"
                   value={editing.resolutionHeight}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, resolutionHeight: parseInt(e.target.value, 10) || 480 })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setEditing({
+                      ...editing,
+                      resolutionHeight: parseInt(e.target.value, 10) || 480,
+                    })
+                  }
                 />
               </div>
               <div className="col-span-2">
@@ -199,7 +213,9 @@ export default function CameraConfigPage() {
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   value={editing.localStoragePath}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditing({ ...editing, localStoragePath: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setEditing({ ...editing, localStoragePath: e.target.value })
+                  }
                 />
               </div>
             </div>
@@ -226,7 +242,9 @@ export default function CameraConfigPage() {
       {loading ? (
         <p>Betöltés...</p>
       ) : configs.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">{t('camera.nincsKonfiguraltKamera')}</div>
+        <div className="text-center py-12 text-muted-foreground">
+          {t('camera.nincsKonfiguraltKamera')}
+        </div>
       ) : (
         <div className="space-y-3">
           {configs.map((config) => (
@@ -235,9 +253,13 @@ export default function CameraConfigPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{config.cameraName || config.cameraId}</span>
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      config.enabled ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
-                    }`}>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        config.enabled
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-secondary text-secondary-foreground'
+                      }`}
+                    >
                       {config.enabled ? t('common.active') : t('common.inactive')}
                     </span>
                   </div>
@@ -246,7 +268,10 @@ export default function CameraConfigPage() {
                     {config.resolutionWidth}x{config.resolutionHeight} @ {config.fps} FPS
                   </p>
                   {/* eslint-enable i18next/no-literal-string */}
-                  <p className="text-xs text-muted-foreground">{t('camera.utvonal')}{config.localStoragePath}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t('camera.utvonal')}
+                    {config.localStoragePath}
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <button

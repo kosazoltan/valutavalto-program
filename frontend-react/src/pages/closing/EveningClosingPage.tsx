@@ -1,5 +1,16 @@
 import { useState, useCallback } from 'react'
-import { Moon, Calendar, Package, Send, Eye, CheckCircle, AlertTriangle, Clock, Printer, BarChart3 } from 'lucide-react'
+import {
+  Moon,
+  Calendar,
+  Package,
+  Send,
+  Eye,
+  CheckCircle,
+  AlertTriangle,
+  Clock,
+  Printer,
+  BarChart3,
+} from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -14,14 +25,24 @@ interface EveningClosingPreview {
   branchName: string
   date: string
   status: 'NOT_STARTED' | 'PREVIEW' | 'SENT' | 'CONFIRMED'
-  balances: Array<{ currency: string; amount: number; denominationBreakdown?: Array<{ denomination: number; count: number }> }>
+  balances: Array<{
+    currency: string
+    amount: number
+    denominationBreakdown?: Array<{ denomination: number; count: number }>
+  }>
   transactionCount: number
   totalBuyHuf: number
   totalSellHuf: number
   pendingSyncs: number
   openReservations: number
   warnings: string[]
-  packages: Array<{ packageId: string; currency: string; amount: number; sealNumber?: string; destination: string }>
+  packages: Array<{
+    packageId: string
+    currency: string
+    amount: number
+    sealNumber?: string
+    destination: string
+  }>
 }
 
 interface EveningClosingReport {
@@ -52,7 +73,10 @@ export default function EveningClosingPage() {
   const [error, setError] = useState<string | null>(null)
 
   const loadPreview = useCallback(async () => {
-    if (!branchId) { toast.warning('Fiók szükséges'); return }
+    if (!branchId) {
+      toast.warning('Fiók szükséges')
+      return
+    }
     try {
       setLoading(true)
       setError(null)
@@ -68,7 +92,10 @@ export default function EveningClosingPage() {
   }, [branchId, date])
 
   const loadReport = useCallback(async () => {
-    if (!branchId) { toast.warning('Fiók szükséges'); return }
+    if (!branchId) {
+      toast.warning('Fiók szükséges')
+      return
+    }
     try {
       setReportLoading(true)
       setError(null)
@@ -85,7 +112,11 @@ export default function EveningClosingPage() {
 
   const handleSend = async () => {
     if (!branchId || !preview) return
-    if (preview.warnings.length > 0 && !confirm(`${preview.warnings.length} figyelmeztetés van. Biztosan elküldi az esti zárást?`)) return
+    if (
+      preview.warnings.length > 0 &&
+      !confirm(`${preview.warnings.length} figyelmeztetés van. Biztosan elküldi az esti zárást?`)
+    )
+      return
     try {
       setSending(true)
       setError(null)
@@ -100,7 +131,8 @@ export default function EveningClosingPage() {
     }
   }
 
-  const fmtNum = (n: number) => n.toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const fmtNum = (n: number) =>
+    n.toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const fmtHuf = (n: number) => n.toLocaleString('hu-HU', { minimumFractionDigits: 0 }) + ' Ft'
 
   const handlePrint = () => window.print()
@@ -108,7 +140,10 @@ export default function EveningClosingPage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><Moon />{t('closing.estiZarasCsomagkeszites')}</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <Moon />
+          {t('closing.estiZarasCsomagkeszites')}
+        </h1>
         <div className="no-print flex gap-2">
           {preview && (
             <button onClick={handlePrint} className="form-button">
@@ -129,10 +164,19 @@ export default function EveningClosingPage() {
           <label className="form-label">{t('common.date')}</label>
           <div className="flex items-center gap-1">
             <Calendar size={16} className="text-gray-400" />
-            <input className="form-input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+            <input
+              className="form-input"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
         </div>
-        <button onClick={() => void loadPreview()} disabled={loading} className="form-button-primary">
+        <button
+          onClick={() => void loadPreview()}
+          disabled={loading}
+          className="form-button-primary"
+        >
           <Eye size={16} /> {loading ? 'Betöltés...' : 'Előnézet'}
         </button>
         <button onClick={() => void loadReport()} disabled={reportLoading} className="form-button">
@@ -144,12 +188,17 @@ export default function EveningClosingPage() {
       <VaultClosingChecklistPanel date={date} />
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
       )}
 
       {report && (
         <div className="form-panel" data-testid="evening-closing-report-panel">
-          <h2 className="font-semibold mb-3 flex items-center gap-1"><BarChart3 size={16} />Napi jelentés</h2>
+          <h2 className="font-semibold mb-3 flex items-center gap-1">
+            <BarChart3 size={16} />
+            Napi jelentés
+          </h2>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div className="text-center rounded bg-gray-50 p-2">
               <div className="text-lg font-bold">{report.totalTransactionCount}</div>
@@ -164,7 +213,9 @@ export default function EveningClosingPage() {
               <div className="text-xs text-gray-500">Eladás</div>
             </div>
             <div className="text-center rounded bg-orange-50 p-2">
-              <div className="text-lg font-bold text-orange-700">{fmtHuf(report.totalHandlingFees)}</div>
+              <div className="text-lg font-bold text-orange-700">
+                {fmtHuf(report.totalHandlingFees)}
+              </div>
               <div className="text-xs text-gray-500">Kezelési díj</div>
             </div>
             <div className="text-center rounded bg-purple-50 p-2">
@@ -181,7 +232,8 @@ export default function EveningClosingPage() {
             ))}
           </div>
           <div className="mt-3 text-xs text-gray-500">
-            Vétel: {report.buyCount} | Eladás: {report.sellCount} | Sztornó: {report.reversalCount} | Konverzió: {report.conversionCount}
+            Vétel: {report.buyCount} | Eladás: {report.sellCount} | Sztornó: {report.reversalCount}{' '}
+            | Konverzió: {report.conversionCount}
           </div>
         </div>
       )}
@@ -190,25 +242,51 @@ export default function EveningClosingPage() {
         <>
           {/* Státusz */}
           <div className="flex gap-3 items-center">
-            <span className={`badge ${
-              preview.status === 'CONFIRMED' ? 'badge-green' :
-              preview.status === 'SENT' ? 'badge-blue' :
-              preview.status === 'PREVIEW' ? 'badge-yellow' : 'badge-gray'
-            }`}>
-              {preview.status === 'CONFIRMED' ? <><CheckCircle size={10} className="inline" /> {t('closing.jovahagyva')}</> :
-               preview.status === 'SENT' ? <><Send size={10} className="inline" /> {t('closing.elkuldve')}</> :
-               preview.status === 'PREVIEW' ? <><Eye size={10} className="inline" /> {t('closing.elonezet')}</> :
-               <><Clock size={10} className="inline" /> {t('closing.nemIndult')}</>}
+            <span
+              className={`badge ${
+                preview.status === 'CONFIRMED'
+                  ? 'badge-green'
+                  : preview.status === 'SENT'
+                    ? 'badge-blue'
+                    : preview.status === 'PREVIEW'
+                      ? 'badge-yellow'
+                      : 'badge-gray'
+              }`}
+            >
+              {preview.status === 'CONFIRMED' ? (
+                <>
+                  <CheckCircle size={10} className="inline" /> {t('closing.jovahagyva')}
+                </>
+              ) : preview.status === 'SENT' ? (
+                <>
+                  <Send size={10} className="inline" /> {t('closing.elkuldve')}
+                </>
+              ) : preview.status === 'PREVIEW' ? (
+                <>
+                  <Eye size={10} className="inline" /> {t('closing.elonezet')}
+                </>
+              ) : (
+                <>
+                  <Clock size={10} className="inline" /> {t('closing.nemIndult')}
+                </>
+              )}
             </span>
-            <span className="text-sm text-gray-500">{preview.branchName} — {preview.date}</span>
+            <span className="text-sm text-gray-500">
+              {preview.branchName} — {preview.date}
+            </span>
           </div>
 
           {/* Figyelmeztetések */}
           {preview.warnings.length > 0 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded p-3 space-y-1">
-              <div className="font-semibold flex items-center gap-1 text-yellow-700"><AlertTriangle size={16} />{t('closing.figyelmeztetesek')}</div>
+              <div className="font-semibold flex items-center gap-1 text-yellow-700">
+                <AlertTriangle size={16} />
+                {t('closing.figyelmeztetesek')}
+              </div>
               {preview.warnings.map((w) => (
-                <div key={w} className="text-sm text-yellow-600">• {w}</div>
+                <div key={w} className="text-sm text-yellow-600">
+                  • {w}
+                </div>
               ))}
             </div>
           )}
@@ -248,7 +326,10 @@ export default function EveningClosingPage() {
 
           {/* Csomagok */}
           <div className="form-panel">
-            <h2 className="font-semibold mb-2 flex items-center gap-1"><Package size={16} />{t('closing.keszitettCsomagok')}</h2>
+            <h2 className="font-semibold mb-2 flex items-center gap-1">
+              <Package size={16} />
+              {t('closing.keszitettCsomagok')}
+            </h2>
             {(preview.packages || []).length === 0 ? (
               <div className="text-center text-gray-500 py-4">{t('closing.nincsCsomag')}</div>
             ) : (
@@ -263,7 +344,7 @@ export default function EveningClosingPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {preview.packages.map(p => (
+                  {preview.packages.map((p) => (
                     <tr key={p.packageId}>
                       <td className="font-mono text-sm">{p.packageId}</td>
                       <td className="font-mono">{p.currency}</td>

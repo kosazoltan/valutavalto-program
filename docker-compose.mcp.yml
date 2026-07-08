@@ -13,7 +13,7 @@ services:
     volumes:
       - ./:/workspace:rw
     ports:
-      - "8810:8810"
+      - '8810:8810'
     restart: unless-stopped
 
   mcp-git:
@@ -26,7 +26,7 @@ services:
     volumes:
       - ./:/workspace:rw
     ports:
-      - "8811:8811"
+      - '8811:8811'
     restart: unless-stopped
 
   mcp-fetch:
@@ -36,7 +36,7 @@ services:
       sh -lc "npx -y supergateway --port 8812 --stdio
       'npx -y @mokei/mcp-fetch'"
     ports:
-      - "8812:8812"
+      - '8812:8812'
     restart: unless-stopped
 
   mcp-postgres:
@@ -51,7 +51,7 @@ services:
       sh -lc "npx -y supergateway --port 8813 --stdio
       'npx -y @modelcontextprotocol/server-postgres $DATABASE_URL'"
     ports:
-      - "8813:8813"
+      - '8813:8813'
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
@@ -63,7 +63,7 @@ services:
   mcp-shell:
     image: node:20-alpine
     container_name: mcp-shell
-    profiles: ["optional-mcp"]
+    profiles: ['optional-mcp']
     working_dir: /workspace
     command: >
       sh -lc "npx -y supergateway --port 8814 --stdio
@@ -71,20 +71,20 @@ services:
     volumes:
       - ./:/workspace:rw
     ports:
-      - "8814:8814"
+      - '8814:8814'
     restart: unless-stopped
 
   mcp-docker:
     image: node:20-alpine
     container_name: mcp-docker
-    profiles: ["optional-mcp"]
+    profiles: ['optional-mcp']
     command: >
       sh -lc "npx -y supergateway --port 8815 --stdio
       'npx -y mcp-server-docker'"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
-      - "8815:8815"
+      - '8815:8815'
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
@@ -94,7 +94,7 @@ services:
   mcp-cognee:
     image: python:3.12-slim
     container_name: mcp-cognee
-    profiles: ["knowledge-mcp"]
+    profiles: ['knowledge-mcp']
     working_dir: /workspace
     environment:
       LLM_PROVIDER: ${COGNEE_LLM_PROVIDER:-openai}
@@ -110,7 +110,7 @@ services:
       - ./:/workspace:rw
       - cognee-data:/workspace/.cognee
     ports:
-      - "8820:8820"
+      - '8820:8820'
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
@@ -123,7 +123,7 @@ services:
   mcp-obsidian:
     image: node:20-alpine
     container_name: mcp-obsidian
-    profiles: ["knowledge-mcp"]
+    profiles: ['knowledge-mcp']
     environment:
       OBSIDIAN_API_KEY: ${OBSIDIAN_API_KEY:-}
       # host.docker.internal mukodik Docker Desktop (Windows/macOS) eseteben
@@ -134,10 +134,10 @@ services:
       sh -lc "npx -y supergateway --port 8821 --stdio
       'npx -y obsidian-mcp-server'"
     ports:
-      - "8821:8821"
+      - '8821:8821'
     restart: unless-stopped
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - 'host.docker.internal:host-gateway'
 
 volumes:
   cognee-data:

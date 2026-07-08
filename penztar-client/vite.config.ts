@@ -17,8 +17,10 @@ const nodeExternals = [
   'dotenv/config',
   // graceful-fs + serialport + nan - nativ dep-ek, nem bundle-olhatok
   'graceful-fs',
-  'serialport', '@serialport/bindings-cpp',
-  'nan', 'node-gyp-build',
+  'serialport',
+  '@serialport/bindings-cpp',
+  'nan',
+  'node-gyp-build',
   ...builtinModules,
   ...builtinModules.map((m) => `node:${m}`),
 ];
@@ -59,7 +61,15 @@ function launchElectronIfReady() {
   if (fs.existsSync(path.resolve('dist'))) {
     fs.cpSync(path.resolve('dist'), path.join(tmpAppDir, 'dist'), { recursive: true });
   }
-  const prodDeps = ['electron-log', 'electron-updater', 'qrcode', 'sql.js', 'serialport', '@serialport/bindings-cpp', 'graceful-fs'];
+  const prodDeps = [
+    'electron-log',
+    'electron-updater',
+    'qrcode',
+    'sql.js',
+    'serialport',
+    '@serialport/bindings-cpp',
+    'graceful-fs',
+  ];
   fs.mkdirSync(path.join(tmpAppDir, 'node_modules'), { recursive: true });
   for (const dep of prodDeps) {
     const src = path.resolve('node_modules', dep);
@@ -71,14 +81,18 @@ function launchElectronIfReady() {
     const pkgJsonPath = path.resolve('node_modules', pkgName, 'package.json');
     if (!fs.existsSync(pkgJsonPath)) return;
     try {
-      const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8')) as { dependencies?: Record<string, string> };
+      const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8')) as {
+        dependencies?: Record<string, string>;
+      };
       for (const dep of Object.keys(pkg.dependencies ?? {})) {
         if (!walkedDeps.has(dep)) {
           walkedDeps.add(dep);
           walkDep(dep);
         }
       }
-    } catch { /* pkg.json parse hiba - skip */ }
+    } catch {
+      /* pkg.json parse hiba - skip */
+    }
   };
   prodDeps.forEach(walkDep);
   for (const dep of walkedDeps) {
@@ -94,7 +108,10 @@ function launchElectronIfReady() {
     execSync(`npx asar pack "${tmpAppDir}" "${asarPath}"`, { stdio: 'pipe' });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error('[vite-electron] ASAR pack HIBA — Electron NEM indul (korrupt archivum helyett inkabb nem indul):', message);
+    console.error(
+      '[vite-electron] ASAR pack HIBA — Electron NEM indul (korrupt archivum helyett inkabb nem indul):',
+      message,
+    );
     return; // ne spawn-oljuk az Electron-t korrupt ASAR-ral
   }
 
@@ -117,11 +134,12 @@ function launchElectronIfReady() {
   electronDevProcess.once('exit', () => {
     try {
       fs.rmSync(tmpAppDir, { recursive: true, force: true });
-    } catch { /* cleanup race on Windows - ignore */ }
+    } catch {
+      /* cleanup race on Windows - ignore */
+    }
     electronDevProcess = null;
   });
 }
-
 
 export default defineConfig(({ mode }) => {
   // Load .env.<mode> -> Object<string,string> with all VITE_* keys (and others without prefix filter).

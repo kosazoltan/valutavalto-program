@@ -44,7 +44,8 @@ export default function ReceivedDataOverviewPage() {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<ReconFilter>('all')
   const [result, setResult] = useState<TransferReconciliationResult | null>(null)
-  const [receivedDataOverview, setReceivedDataOverview] = useState<CentralReceivedDataOverview | null>(null)
+  const [receivedDataOverview, setReceivedDataOverview] =
+    useState<CentralReceivedDataOverview | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasRun, setHasRun] = useState(false)
@@ -75,15 +76,17 @@ export default function ReceivedDataOverviewPage() {
     const rows = result?.rows ?? []
     const q = query.trim().toLowerCase()
     return rows.filter((row) => {
-      const matchesQuery = !q || [
-        row.fromBranchCode,
-        row.fromBranchName,
-        row.toBranchCode,
-        row.toBranchName,
-        row.currencyCode,
-        row.transferNumber,
-        row.discrepancyNote,
-      ].some((value) => value?.toLowerCase().includes(q))
+      const matchesQuery =
+        !q ||
+        [
+          row.fromBranchCode,
+          row.fromBranchName,
+          row.toBranchCode,
+          row.toBranchName,
+          row.currencyCode,
+          row.transferNumber,
+          row.discrepancyNote,
+        ].some((value) => value?.toLowerCase().includes(q))
       if (!matchesQuery) return false
       if (filter === 'match') return isMatch(row.status)
       if (filter === 'mismatch') return !isMatch(row.status)
@@ -102,17 +105,23 @@ export default function ReceivedDataOverviewPage() {
       'statusz',
       'megjegyzes',
     ]
-    const lines = filteredRows.map((row) => [
-      row.date,
-      `${row.fromBranchCode ?? ''} ${row.fromBranchName ?? ''}`.trim(),
-      `${row.toBranchCode ?? ''} ${row.toBranchName ?? ''}`.trim(),
-      row.currencyCode,
-      String(row.sentAmount ?? ''),
-      String(row.receivedAmount ?? ''),
-      row.status,
-      row.discrepancyNote ?? '',
-    ].map((value) => `"${value.replace(/"/g, '""')}"`).join(';'))
-    const blob = new Blob([[header.join(';'), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' })
+    const lines = filteredRows.map((row) =>
+      [
+        row.date,
+        `${row.fromBranchCode ?? ''} ${row.fromBranchName ?? ''}`.trim(),
+        `${row.toBranchCode ?? ''} ${row.toBranchName ?? ''}`.trim(),
+        row.currencyCode,
+        String(row.sentAmount ?? ''),
+        String(row.receivedAmount ?? ''),
+        row.status,
+        row.discrepancyNote ?? '',
+      ]
+        .map((value) => `"${value.replace(/"/g, '""')}"`)
+        .join(';'),
+    )
+    const blob = new Blob([[header.join(';'), ...lines].join('\n')], {
+      type: 'text/csv;charset=utf-8',
+    })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -128,8 +137,12 @@ export default function ReceivedDataOverviewPage() {
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-slate-700" />
             <div>
-              <h1 className="text-lg font-semibold text-slate-900">Beérkezett adatok áttekintése</h1>
-              <div className="text-xs text-slate-500">Beérkezett napi adatok és pénztárak közötti pénzmozgások — egyeztetés</div>
+              <h1 className="text-lg font-semibold text-slate-900">
+                Beérkezett adatok áttekintése
+              </h1>
+              <div className="text-xs text-slate-500">
+                Beérkezett napi adatok és pénztárak közötti pénzmozgások — egyeztetés
+              </div>
             </div>
           </div>
           <div className="flex gap-2">
@@ -164,11 +177,26 @@ export default function ReceivedDataOverviewPage() {
           <Metric label="Értesített értéktár" value={result?.notifiedBranches ?? 0} tone="amber" />
         </div>
 
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4" data-testid="central-received-data-status">
+        <div
+          className="grid grid-cols-2 gap-2 md:grid-cols-4"
+          data-testid="central-received-data-status"
+        >
           <Metric label="Irodák" value={receivedDataOverview?.totalBranches ?? 0} />
-          <Metric label="Beérkezett jelentés" value={receivedDataOverview?.receivedReports ?? 0} tone="green" />
-          <Metric label="Hiányzó jelentés" value={receivedDataOverview?.missingReports ?? 0} tone="red" />
-          <Metric label="Kritikus zárás" value={receivedDataOverview?.criticalClosings ?? 0} tone="amber" />
+          <Metric
+            label="Beérkezett jelentés"
+            value={receivedDataOverview?.receivedReports ?? 0}
+            tone="green"
+          />
+          <Metric
+            label="Hiányzó jelentés"
+            value={receivedDataOverview?.missingReports ?? 0}
+            tone="red"
+          />
+          <Metric
+            label="Kritikus zárás"
+            value={receivedDataOverview?.criticalClosings ?? 0}
+            tone="amber"
+          />
         </div>
 
         <div className="rounded-md border border-slate-200 bg-white p-3">
@@ -255,10 +283,15 @@ export default function ReceivedDataOverviewPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredRows.map((row, index) => (
-                  <tr key={`${row.transferId}-${row.currencyCode}-${index}`} className={isMatch(row.status) ? undefined : 'bg-red-50'}>
+                  <tr
+                    key={`${row.transferId}-${row.currencyCode}-${index}`}
+                    className={isMatch(row.status) ? undefined : 'bg-red-50'}
+                  >
                     <td className="px-3 py-2 text-slate-700">{row.date}</td>
                     <td className="px-3 py-2">
-                      <div className="font-semibold text-slate-900">{row.fromBranchCode ?? '-'}</div>
+                      <div className="font-semibold text-slate-900">
+                        {row.fromBranchCode ?? '-'}
+                      </div>
                       <div className="text-xs text-slate-500">{row.fromBranchName ?? ''}</div>
                     </td>
                     <td className="px-3 py-2">
@@ -266,8 +299,12 @@ export default function ReceivedDataOverviewPage() {
                       <div className="text-xs text-slate-500">{row.toBranchName ?? ''}</div>
                     </td>
                     <td className="px-3 py-2 font-mono text-slate-700">{row.currencyCode}</td>
-                    <td className="px-3 py-2 text-right font-mono text-slate-700">{formatAmount(row.sentAmount)}</td>
-                    <td className="px-3 py-2 text-right font-mono text-slate-700">{formatAmount(row.receivedAmount)}</td>
+                    <td className="px-3 py-2 text-right font-mono text-slate-700">
+                      {formatAmount(row.sentAmount)}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-slate-700">
+                      {formatAmount(row.receivedAmount)}
+                    </td>
                     <td className="px-3 py-2">
                       {isMatch(row.status) ? (
                         <span className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
@@ -309,7 +346,9 @@ export default function ReceivedDataOverviewPage() {
             </table>
           </div>
           {loading && (
-            <div className="border-t border-slate-100 px-3 py-3 text-sm text-slate-500">Egyeztetés folyamatban...</div>
+            <div className="border-t border-slate-100 px-3 py-3 text-sm text-slate-500">
+              Egyeztetés folyamatban...
+            </div>
           )}
         </div>
       </div>
@@ -317,7 +356,15 @@ export default function ReceivedDataOverviewPage() {
   )
 }
 
-function Metric({ label, value, tone = 'slate' }: { label: string; value: number | string; tone?: 'slate' | 'green' | 'red' | 'amber' }) {
+function Metric({
+  label,
+  value,
+  tone = 'slate',
+}: {
+  label: string
+  value: number | string
+  tone?: 'slate' | 'green' | 'red' | 'amber'
+}) {
   const classes = {
     slate: 'border-slate-200 bg-white text-slate-900',
     green: 'border-emerald-200 bg-emerald-50 text-emerald-800',

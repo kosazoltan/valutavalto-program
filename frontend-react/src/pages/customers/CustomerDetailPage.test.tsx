@@ -56,9 +56,18 @@ const BASE_CUSTOMER = {
 function setRole(role: string) {
   useAuthStore.setState({
     worker: {
-      id: 7, workerCode: 'W7', firstName: 'T', lastName: 'T', fullName: 'T T',
-      role, branchId: 'BR-A', branchCode: 'EBC', branchName: 'Teszt',
-      companyId: 'C-1', companyCode: 'EXC', companyName: 'Exc Valuta',
+      id: 7,
+      workerCode: 'W7',
+      firstName: 'T',
+      lastName: 'T',
+      fullName: 'T T',
+      role,
+      branchId: 'BR-A',
+      branchCode: 'EBC',
+      branchName: 'Teszt',
+      companyId: 'C-1',
+      companyCode: 'EXC',
+      companyName: 'Exc Valuta',
     } as never,
     isAuthenticated: true,
     roles: [],
@@ -116,7 +125,10 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
       highFrequency: false,
       highVolume: false,
     })
-    mocks.amlApi.structuringCheck.mockResolvedValue({ customerId: '42', structuringDetected: false })
+    mocks.amlApi.structuringCheck.mockResolvedValue({
+      customerId: '42',
+      structuringDetected: false,
+    })
     mocks.customerApi.getVersions.mockResolvedValue([])
     mocks.customerApi.getVersion.mockResolvedValue({
       versionNo: 1,
@@ -142,7 +154,9 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
   it('EDD-jelölés gomb supervisor-nak látszik, indokkal POST-ol és frissíti az ügyfelet', async () => {
     mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER, eddActive: false })
     mocks.customerApi.markEdd.mockResolvedValue({
-      ...BASE_CUSTOMER, eddActive: true, eddUntil: '2027-06-11',
+      ...BASE_CUSTOMER,
+      eddActive: true,
+      eddUntil: '2027-06-11',
       eddReason: 'Pmt. 30.§ (1) bejelentés (V.2.7 c): NAV 2026/123',
     })
     renderPage()
@@ -187,8 +201,20 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
     mocks.customerControlApi.getRestrictions.mockResolvedValue([])
     mocks.customerControlApi.getAnnualTotal.mockResolvedValue(0)
     mocks.customerControlApi.getScreeningLog.mockResolvedValue([])
-    mocks.customerApi.getStats.mockResolvedValue({ customerId: 42, customerName: 'Teszt Elek', totalTransactions: 0, totalVolumeHuf: 0, averageAmount: 0 })
-    mocks.customerApi.getHistory.mockResolvedValue({ customerId: 42, customerName: 'Teszt Elek', totalTransactions: 0, totalVolumeHuf: 0, averageAmount: 0 })
+    mocks.customerApi.getStats.mockResolvedValue({
+      customerId: 42,
+      customerName: 'Teszt Elek',
+      totalTransactions: 0,
+      totalVolumeHuf: 0,
+      averageAmount: 0,
+    })
+    mocks.customerApi.getHistory.mockResolvedValue({
+      customerId: 42,
+      customerName: 'Teszt Elek',
+      totalTransactions: 0,
+      totalVolumeHuf: 0,
+      averageAmount: 0,
+    })
     mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER, riskRating: 'LOW' })
     renderPage()
     await waitFor(() => expect(mocks.customerApi.getById).toHaveBeenCalledWith(42))
@@ -202,11 +228,15 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
 
     renderPage()
     fireEvent.click(await screen.findByText('Kockázati besorolás állítása'))
-    fireEvent.change(await screen.findByLabelText('Kockázati besorolás'), { target: { value: 'HIGH' } })
+    fireEvent.change(await screen.findByLabelText('Kockázati besorolás'), {
+      target: { value: 'HIGH' },
+    })
     fireEvent.change(screen.getByLabelText('Indok'), { target: { value: 'Compliance döntés' } })
     fireEvent.click(screen.getByText('Besorolás mentése'))
 
-    await waitFor(() => expect(mocks.customerApi.setRiskRating).toHaveBeenCalledWith(42, 'HIGH', 'Compliance döntés'))
+    await waitFor(() =>
+      expect(mocks.customerApi.setRiskRating).toHaveBeenCalledWith(42, 'HIGH', 'Compliance döntés'),
+    )
     expect(await screen.findByText('Magas')).toBeInTheDocument()
   })
 
@@ -264,25 +294,27 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
 
   it('betölti és dátumszűrővel frissíti a CustomerController stats/history read endpointokat', async () => {
     mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER })
-    mocks.customerApi.getHistory.mockResolvedValueOnce({
-      customerId: 42,
-      customerName: 'Teszt Elek',
-      totalTransactions: 2,
-      totalVolumeHuf: 850000,
-      averageAmount: 425000,
-      firstVisit: '2026-06-01',
-      lastVisit: '2026-06-18',
-      preferredCurrency: 'USD',
-    }).mockResolvedValueOnce({
-      customerId: 42,
-      customerName: 'Teszt Elek',
-      totalTransactions: 1,
-      totalVolumeHuf: 500000,
-      averageAmount: 500000,
-      firstVisit: '2026-06-10',
-      lastVisit: '2026-06-10',
-      preferredCurrency: 'CHF',
-    })
+    mocks.customerApi.getHistory
+      .mockResolvedValueOnce({
+        customerId: 42,
+        customerName: 'Teszt Elek',
+        totalTransactions: 2,
+        totalVolumeHuf: 850000,
+        averageAmount: 425000,
+        firstVisit: '2026-06-01',
+        lastVisit: '2026-06-18',
+        preferredCurrency: 'USD',
+      })
+      .mockResolvedValueOnce({
+        customerId: 42,
+        customerName: 'Teszt Elek',
+        totalTransactions: 1,
+        totalVolumeHuf: 500000,
+        averageAmount: 500000,
+        firstVisit: '2026-06-10',
+        lastVisit: '2026-06-10',
+        preferredCurrency: 'CHF',
+      })
 
     renderPage()
 
@@ -292,14 +324,18 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
     expect(screen.getByTestId('customer-history-stats')).toHaveTextContent('850 000 Ft')
     expect(screen.getByTestId('customer-history-stats')).toHaveTextContent('USD')
 
-    fireEvent.change(screen.getByTestId('customer-history-from'), { target: { value: '2026-06-10' } })
+    fireEvent.change(screen.getByTestId('customer-history-from'), {
+      target: { value: '2026-06-10' },
+    })
     fireEvent.change(screen.getByTestId('customer-history-to'), { target: { value: '2026-06-19' } })
     fireEvent.click(screen.getByText('Időszak frissítése'))
 
-    await waitFor(() => expect(mocks.customerApi.getHistory).toHaveBeenLastCalledWith(42, {
-      from: '2026-06-10',
-      to: '2026-06-19',
-    }))
+    await waitFor(() =>
+      expect(mocks.customerApi.getHistory).toHaveBeenLastCalledWith(42, {
+        from: '2026-06-10',
+        to: '2026-06-19',
+      }),
+    )
     expect(await screen.findByText('500 000 Ft')).toBeInTheDocument()
     expect(screen.getByText('CHF')).toBeInTheDocument()
   })
@@ -327,18 +363,26 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
     renderPage()
     await screen.findByText('Fokozott figyelés')
 
-    fireEvent.change(screen.getByTestId('restriction-type-select'), { target: { value: 'BLOCKED' } })
-    fireEvent.change(screen.getByTestId('restriction-reason-input'), { target: { value: 'Tiltás oka' } })
+    fireEvent.change(screen.getByTestId('restriction-type-select'), {
+      target: { value: 'BLOCKED' },
+    })
+    fireEvent.change(screen.getByTestId('restriction-reason-input'), {
+      target: { value: 'Tiltás oka' },
+    })
     fireEvent.click(screen.getByText('Korlátozás rögzítése'))
 
-    await waitFor(() => expect(mocks.customerControlApi.addRestriction).toHaveBeenCalledWith(42, {
-      restrictionType: 'BLOCKED',
-      reason: 'Tiltás oka',
-      expiresAt: null,
-    }))
+    await waitFor(() =>
+      expect(mocks.customerControlApi.addRestriction).toHaveBeenCalledWith(42, {
+        restrictionType: 'BLOCKED',
+        reason: 'Tiltás oka',
+        expiresAt: null,
+      }),
+    )
 
     fireEvent.click(screen.getByLabelText('Korlátozás deaktiválása'))
-    await waitFor(() => expect(mocks.customerControlApi.removeRestriction).toHaveBeenCalledWith('restr-1'))
+    await waitFor(() =>
+      expect(mocks.customerControlApi.removeRestriction).toHaveBeenCalledWith('restr-1'),
+    )
   })
 
   it('manager ügyfél-összevonásnál meghívja a /customers/merge backend szerződést', async () => {
@@ -374,7 +418,9 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
     fireEvent.change(screen.getByTestId('duplicate-customer-id-input'), { target: { value: '42' } })
     fireEvent.click(screen.getByText('Ügyfelek összevonása'))
 
-    expect(await screen.findByText('Az elsődleges és a duplikált ügyfél nem lehet ugyanaz.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Az elsődleges és a duplikált ügyfél nem lehet ugyanaz.'),
+    ).toBeInTheDocument()
     expect(mocks.customerApi.merge).not.toHaveBeenCalled()
     expect(confirmSpy).not.toHaveBeenCalled()
     confirmSpy.mockRestore()
@@ -391,7 +437,10 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
   })
 
   it('PENDING_REVIEW ügyfélnél látszik az Átnézésre vár badge és az Átnézve gomb', async () => {
-    mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER, reviewStatus: 'PENDING_REVIEW' })
+    mocks.customerApi.getById.mockResolvedValue({
+      ...BASE_CUSTOMER,
+      reviewStatus: 'PENDING_REVIEW',
+    })
 
     renderPage()
 
@@ -400,8 +449,15 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
   })
 
   it('Átnézve gomb kattintás review API-t hív és REVIEWED badge-re frissít', async () => {
-    mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER, reviewStatus: 'PENDING_REVIEW' })
-    mocks.customerApi.review.mockResolvedValue({ ...BASE_CUSTOMER, reviewStatus: 'REVIEWED', reviewedBy: 'W7' })
+    mocks.customerApi.getById.mockResolvedValue({
+      ...BASE_CUSTOMER,
+      reviewStatus: 'PENDING_REVIEW',
+    })
+    mocks.customerApi.review.mockResolvedValue({
+      ...BASE_CUSTOMER,
+      reviewStatus: 'REVIEWED',
+      reviewedBy: 'W7',
+    })
 
     renderPage()
     fireEvent.click(await screen.findByText('Átnézve'))
@@ -411,7 +467,11 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
   })
 
   it('REVIEWED ügyfélnél az Átnézve gomb nem látszik', async () => {
-    mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER, reviewStatus: 'REVIEWED', reviewedBy: 'W7' })
+    mocks.customerApi.getById.mockResolvedValue({
+      ...BASE_CUSTOMER,
+      reviewStatus: 'REVIEWED',
+      reviewedBy: 'W7',
+    })
 
     renderPage()
 
@@ -422,7 +482,12 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
   it('kirendereli a verziótörténet metaadatait', async () => {
     mocks.customerApi.getById.mockResolvedValue({ ...BASE_CUSTOMER, reviewStatus: 'REVIEWED' })
     mocks.customerApi.getVersions.mockResolvedValue([
-      { versionNo: 2, changedBy: 'W2', changedAt: '2026-07-06T12:00:00', changeSource: 'COMPLIANCE' },
+      {
+        versionNo: 2,
+        changedBy: 'W2',
+        changedAt: '2026-07-06T12:00:00',
+        changeSource: 'COMPLIANCE',
+      },
       { versionNo: 1, changedBy: 'W1', changedAt: '2026-07-06T10:00:00', changeSource: 'CASHIER' },
     ])
 

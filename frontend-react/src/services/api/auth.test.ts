@@ -102,7 +102,11 @@ describe('authApi', () => {
       const responseData = { token: 'new-token', tokenType: 'Bearer', expiresAt: '', worker: {} }
       mockApi.post.mockResolvedValue({ data: responseData })
 
-      const result = await authApi.selectRole({ token: 'old-token', roleCode: 'MANAGER', appMode: 'full' })
+      const result = await authApi.selectRole({
+        token: 'old-token',
+        roleCode: 'MANAGER',
+        appMode: 'full',
+      })
       expect(mockApi.post).toHaveBeenCalledWith('/auth/login/select-role', {
         token: 'old-token',
         roleCode: 'MANAGER',
@@ -118,9 +122,13 @@ describe('authApi', () => {
 
       const result = await authApi.verifyMfa('login-token', '123456')
 
-      expect(mockApi.post).toHaveBeenCalledWith('/mfa/verify', { code: '123456' }, {
-        headers: { Authorization: 'Bearer login-token' },
-      })
+      expect(mockApi.post).toHaveBeenCalledWith(
+        '/mfa/verify',
+        { code: '123456' },
+        {
+          headers: { Authorization: 'Bearer login-token' },
+        },
+      )
       expect(result.verified).toBe(true)
     })
 
@@ -129,9 +137,13 @@ describe('authApi', () => {
 
       const result = await authApi.verifyMfaBackup('login-token', '12345678')
 
-      expect(mockApi.post).toHaveBeenCalledWith('/mfa/verify-backup', { code: '12345678' }, {
-        headers: { Authorization: 'Bearer login-token' },
-      })
+      expect(mockApi.post).toHaveBeenCalledWith(
+        '/mfa/verify-backup',
+        { code: '12345678' },
+        {
+          headers: { Authorization: 'Bearer login-token' },
+        },
+      )
       expect(result.message).toBe('backup ok')
     })
   })

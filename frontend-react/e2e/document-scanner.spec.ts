@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/documents') && method === 'GET') {
@@ -79,7 +87,10 @@ async function mockApis(page: Page) {
       })
     }
 
-    if ((path.endsWith('/document-scanner/scan') || path.endsWith('/document-scanner/upload')) && method === 'POST') {
+    if (
+      (path.endsWith('/document-scanner/scan') || path.endsWith('/document-scanner/upload')) &&
+      method === 'POST'
+    ) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -153,8 +164,8 @@ test('Dokumentumtár scanner panel a scan és upload backend végpontokat hívja
   await page.goto('/documents', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('UPLOAD_BRIDGE')).toBeVisible()
 
-  const scanRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/document-scanner/scan')
+  const scanRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/document-scanner/scan'),
   )
   await page.getByTestId('scanner-scan-input').setInputFiles({
     name: 'scan.pdf',
@@ -163,8 +174,8 @@ test('Dokumentumtár scanner panel a scan és upload backend végpontokat hívja
   })
   await scanRequest
 
-  const uploadRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/document-scanner/upload')
+  const uploadRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/document-scanner/upload'),
   )
   await page.getByTestId('scanner-upload-input').setInputFiles({
     name: 'upload.png',
@@ -174,15 +185,16 @@ test('Dokumentumtár scanner panel a scan és upload backend végpontokat hívja
   await uploadRequest
 
   await page.getByLabel('Azonosító').fill('12')
-  const scannedListRequest = page.waitForRequest(request =>
-    request.method() === 'GET' && request.url().includes('/scanned-documents/customer/12')
+  const scannedListRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes('/scanned-documents/customer/12'),
   )
   await page.getByRole('button', { name: /Lista/i }).click()
   await scannedListRequest
   await expect(page.getByText('szemelyi.pdf')).toBeVisible()
 
-  const canonicalUploadRequest = page.waitForRequest(request =>
-    request.method() === 'POST' && request.url().includes('/scanned-documents/upload')
+  const canonicalUploadRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/scanned-documents/upload'),
   )
   await page.getByTestId('scanned-documents-upload-input').setInputFiles({
     name: 'uj.pdf',
@@ -191,15 +203,19 @@ test('Dokumentumtár scanner panel a scan és upload backend végpontokat hívja
   })
   await canonicalUploadRequest
 
-  page.once('dialog', dialog => dialog.accept())
-  const deleteRequest = page.waitForRequest(request =>
-    request.method() === 'DELETE' && request.url().includes('/scanned-documents/scanned-1')
+  page.once('dialog', (dialog) => dialog.accept())
+  const deleteRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'DELETE' && request.url().includes('/scanned-documents/scanned-1'),
   )
-  await page.getByTestId('scanned-documents-panel').getByRole('button', { name: /Törlés/i }).click()
+  await page
+    .getByTestId('scanned-documents-panel')
+    .getByRole('button', { name: /Törlés/i })
+    .click()
   await deleteRequest
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

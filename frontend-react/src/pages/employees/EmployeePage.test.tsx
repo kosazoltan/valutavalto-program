@@ -59,7 +59,9 @@ describe('EmployeePage backend kapcsolatok', () => {
         ],
       })
     })
-    mockApi.post.mockResolvedValue({ data: { imported: 1, message: '1 dolgozó sikeresen importálva' } })
+    mockApi.post.mockResolvedValue({
+      data: { imported: 1, message: '1 dolgozó sikeresen importálva' },
+    })
   })
 
   it('betölti és megjeleníti a FEOR referencia endpointot', async () => {
@@ -67,7 +69,9 @@ describe('EmployeePage backend kapcsolatok', () => {
 
     expect((await screen.findAllByText('Teszt Elek')).length).toBeGreaterThan(0)
     expect(mockApi.get).toHaveBeenCalledWith('/employees/feor-codes')
-    expect(screen.getByTestId('employee-feor-summary')).toHaveTextContent('employees.feorReferenciaKodok: 1')
+    expect(screen.getByTestId('employee-feor-summary')).toHaveTextContent(
+      'employees.feorReferenciaKodok: 1',
+    )
     expect(screen.getAllByText('employees.feorPrefix: 4211').length).toBeGreaterThan(0)
   })
 
@@ -83,11 +87,14 @@ describe('EmployeePage backend kapcsolatok', () => {
     await user.click(screen.getByRole('button', { name: 'Mentés' }))
 
     await waitFor(() => {
-      expect(mockApi.post).toHaveBeenCalledWith('/employees', expect.objectContaining({
-        lastName: 'Új',
-        firstName: 'Dolgozó',
-        feorCode: '4211',
-      }))
+      expect(mockApi.post).toHaveBeenCalledWith(
+        '/employees',
+        expect.objectContaining({
+          lastName: 'Új',
+          firstName: 'Dolgozó',
+          feorCode: '4211',
+        }),
+      )
     })
   })
 

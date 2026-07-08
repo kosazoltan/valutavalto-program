@@ -1,5 +1,5 @@
 interface PagedResponse {
-  content: unknown[];
+  content: unknown[]
 }
 
 function isPagedResponse(data: unknown): data is PagedResponse {
@@ -8,13 +8,13 @@ function isPagedResponse(data: unknown): data is PagedResponse {
     typeof data === 'object' &&
     'content' in data &&
     Array.isArray((data as PagedResponse).content)
-  );
+  )
 }
 
 export function safeArray<T>(data: unknown): T[] {
-  if (Array.isArray(data)) return data as T[];
+  if (Array.isArray(data)) return data as T[]
   if (isPagedResponse(data)) {
-    return data.content as T[];
+    return data.content as T[]
   }
-  return [];
+  return []
 }

@@ -1,38 +1,38 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { api, reservationsApi } from '@/services/api/index';
-import { customerApi, type Customer } from '@/services/api/transactions';
-import { useAuthStore } from '@/stores/authStore';
-import { safeArray } from '@/utils/safeArray';
+import React, { useState, useEffect, useCallback } from 'react'
+import { api, reservationsApi } from '@/services/api/index'
+import { customerApi, type Customer } from '@/services/api/transactions'
+import { useAuthStore } from '@/stores/authStore'
+import { safeArray } from '@/utils/safeArray'
 import { useTranslation } from 'react-i18next'
 
 // A backend ReservationDto részleges leképezése (a UI által használt mezők) —
 // backend/.../dto/reservation/ReservationDto.java.
 interface Reservation {
-  id: number;
-  customerId: number | null;
-  customerName: string | null;
-  branchId: string;
-  branchName: string | null;
-  currencyCode: string;
-  reservedAmount: number;
-  exchangeRate: number;
-  depositAmount: number;
-  status: string;
-  expiresAt: string;
-  createdAt: string;
-  fulfilledAt: string | null;
-  cancelledAt: string | null;
-  receiptNumber: string | null;
-  cancellationReason: string | null;
-  refundAmount: number | null;
-  notes: string | null;
-  expired: boolean;
+  id: number
+  customerId: number | null
+  customerName: string | null
+  branchId: string
+  branchName: string | null
+  currencyCode: string
+  reservedAmount: number
+  exchangeRate: number
+  depositAmount: number
+  status: string
+  expiresAt: string
+  createdAt: string
+  fulfilledAt: string | null
+  cancelledAt: string | null
+  receiptNumber: string | null
+  cancellationReason: string | null
+  refundAmount: number | null
+  notes: string | null
+  expired: boolean
 }
 
 interface ReservedStock {
-  currencyCode: string;
-  reservedAmount: number;
-  activeCount: number;
+  currencyCode: string
+  reservedAmount: number
+  activeCount: number
 }
 
 // Backend ReservationStatus enum értékei.
@@ -42,7 +42,7 @@ const statusColors: Record<string, string> = {
   CANCELLED_BY_CUSTOMER: 'bg-red-500',
   CANCELLED_BY_COMPANY: 'bg-orange-500',
   EXPIRED: 'bg-gray-500',
-};
+}
 
 const statusLabels: Record<string, string> = {
   ACTIVE: 'Aktív',
@@ -50,159 +50,175 @@ const statusLabels: Record<string, string> = {
   CANCELLED_BY_CUSTOMER: 'Ügyfél lemondta',
   CANCELLED_BY_COMPANY: 'EBC lemondta',
   EXPIRED: 'Lejárt',
-};
+}
 
-const EXPIRING_SOON_HOURS = 4;
+const EXPIRING_SOON_HOURS = 4
 
 export default function ReservationPage() {
   const { t } = useTranslation()
-  const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'active' | 'expiring' | 'expired'>('active');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [reservedStock, setReservedStock] = useState<ReservedStock[]>([]);
-  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
-  const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null);
-  const workerBranchId = useAuthStore((state) => state.worker?.branchId ?? '');
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'active' | 'expiring' | 'expired'>('active')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [reservedStock, setReservedStock] = useState<ReservedStock[]>([])
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
+  const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null)
+  const workerBranchId = useAuthStore((state) => state.worker?.branchId ?? '')
 
   const loadReservations = useCallback(async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const branchId = workerBranchId || localStorage.getItem('branchId') || '';
+      const branchId = workerBranchId || localStorage.getItem('branchId') || ''
       if (branchId) {
         try {
-          const stock = await reservationsApi.reservedStock(branchId) as unknown as ReservedStock[];
-          setReservedStock(safeArray<ReservedStock>(stock));
+          const stock = (await reservationsApi.reservedStock(
+            branchId,
+          )) as unknown as ReservedStock[]
+          setReservedStock(safeArray<ReservedStock>(stock))
         } catch {
-          setReservedStock([]);
+          setReservedStock([])
         }
       } else {
-        setReservedStock([]);
+        setReservedStock([])
       }
-      let data: Reservation[] = [];
+      let data: Reservation[] = []
       if (activeTab === 'expired') {
-        data = await reservationsApi.list({ status: 'EXPIRED' }) as unknown as Reservation[];
+        data = (await reservationsApi.list({ status: 'EXPIRED' })) as unknown as Reservation[]
       } else {
         // A backend UUID branchId-t vár; üres érték → 400. Ilyenkor üres lista (nincs hívás).
         if (!branchId) {
-          setReservations([]);
-          return;
+          setReservations([])
+          return
         }
         // active + expiring egyaránt az aktív listából (a backend nem ad külön végpontot)
-        data = await reservationsApi.list({ branchId }) as unknown as Reservation[];
+        data = (await reservationsApi.list({ branchId })) as unknown as Reservation[]
         if (activeTab === 'expiring') {
-          const limit = Date.now() + EXPIRING_SOON_HOURS * 3600 * 1000;
+          const limit = Date.now() + EXPIRING_SOON_HOURS * 3600 * 1000
           data = safeArray<Reservation>(data).filter(
-            (r) => new Date(r.expiresAt).getTime() <= limit
-          );
+            (r) => new Date(r.expiresAt).getTime() <= limit,
+          )
         }
       }
-      setReservations(data);
+      setReservations(data)
     } catch {
-      setReservations([]);
-      setReservedStock([]);
+      setReservations([])
+      setReservedStock([])
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [activeTab, workerBranchId]);
+  }, [activeTab, workerBranchId])
 
   useEffect(() => {
-    void loadReservations();
-  }, [loadReservations]);
+    void loadReservations()
+  }, [loadReservations])
 
   // Codex P2 (#1032): a teljesítés utáni auto-letöltés HIBÁJÁNÁL maradjon retry-út — különben a FULFILLED
   // foglaló a listából eltűnik, és a pénztáros sosem tudja kinyomtatni a kötelező beszámítási bizonylatot.
-  const [failedReceiptId, setFailedReceiptId] = useState<number | null>(null);
+  const [failedReceiptId, setFailedReceiptId] = useState<number | null>(null)
 
   // G14: Foglaló-bizonylat (átvétel / visszafizetés) PDF letöltése. Visszaad: sikeres volt-e (retry-hez).
-  const handleDownloadReceipt = useCallback(async (id: number, refund: boolean): Promise<boolean> => {
-    try {
-      const blob = await reservationsApi.receipt(id, refund);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `foglalo-${refund ? 'visszafizetes' : 'atvetel'}-${id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      return true;
-    } catch {
-      // A hiba-visszajelzést a backend toast adja; a hívó dönt a retry-útról.
-      return false;
-    }
-  }, []);
+  const handleDownloadReceipt = useCallback(
+    async (id: number, refund: boolean): Promise<boolean> => {
+      try {
+        const blob = await reservationsApi.receipt(id, refund)
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `foglalo-${refund ? 'visszafizetes' : 'atvetel'}-${id}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+        return true
+      } catch {
+        // A hiba-visszajelzést a backend toast adja; a hívó dönt a retry-útról.
+        return false
+      }
+    },
+    [],
+  )
 
-  const handleFulfill = useCallback(async (id: number) => {
-    try {
-      await reservationsApi.fulfill(id);
-      // Codex P2 (#1032): a teljesített foglaló a listából eltűnik (csak ACTIVE/expired töltődik), ezért a
-      // kötelező BESZÁMÍTÁSI bizonylatot (FR-14, refund=false) RÖGTÖN a teljesítés után letöltjük — ez az
-      // egyetlen elérhető nyomtatási út a FULFILLED állapotú foglalóhoz a termék-flow-ban. Ha a letöltés
-      // elhasal (hálózat/blob), megjegyezzük az id-t és retry-bannert mutatunk (a foglaló már teljesítve van).
-      const ok = await handleDownloadReceipt(id, false);
-      setFailedReceiptId(ok ? null : id);
-      void loadReservations();
-    } catch {
-      // A teljesítés maga hasalt el (nem a letöltés) — a lista látható marad, a hibát a backend toast adja.
-    }
-  }, [loadReservations, handleDownloadReceipt]);
+  const handleFulfill = useCallback(
+    async (id: number) => {
+      try {
+        await reservationsApi.fulfill(id)
+        // Codex P2 (#1032): a teljesített foglaló a listából eltűnik (csak ACTIVE/expired töltődik), ezért a
+        // kötelező BESZÁMÍTÁSI bizonylatot (FR-14, refund=false) RÖGTÖN a teljesítés után letöltjük — ez az
+        // egyetlen elérhető nyomtatási út a FULFILLED állapotú foglalóhoz a termék-flow-ban. Ha a letöltés
+        // elhasal (hálózat/blob), megjegyezzük az id-t és retry-bannert mutatunk (a foglaló már teljesítve van).
+        const ok = await handleDownloadReceipt(id, false)
+        setFailedReceiptId(ok ? null : id)
+        void loadReservations()
+      } catch {
+        // A teljesítés maga hasalt el (nem a letöltés) — a lista látható marad, a hibát a backend toast adja.
+      }
+    },
+    [loadReservations, handleDownloadReceipt],
+  )
 
   // Retry: a sikertelen beszámítási bizonylat újra-letöltése (a FULFILLED foglaló id-jával).
   const handleRetryReceipt = useCallback(async () => {
-    if (failedReceiptId == null) return;
-    const ok = await handleDownloadReceipt(failedReceiptId, false);
-    if (ok) setFailedReceiptId(null);
-  }, [failedReceiptId, handleDownloadReceipt]);
+    if (failedReceiptId == null) return
+    const ok = await handleDownloadReceipt(failedReceiptId, false)
+    if (ok) setFailedReceiptId(null)
+  }, [failedReceiptId, handleDownloadReceipt])
 
   const handleShowDetails = useCallback(async (id: number) => {
     try {
-      setDetailLoadingId(id);
-      setSelectedReservation(await reservationsApi.getById(String(id)) as unknown as Reservation);
+      setDetailLoadingId(id)
+      setSelectedReservation((await reservationsApi.getById(String(id))) as unknown as Reservation)
     } catch {
-      setSelectedReservation(null);
+      setSelectedReservation(null)
     } finally {
-      setDetailLoadingId(null);
+      setDetailLoadingId(null)
     }
-  }, []);
+  }, [])
 
-  const handleCancelByCustomer = useCallback(async (id: number) => {
-    const reason = prompt('Lemondás oka (ügyfél miatt — a letét nem jár vissza):');
-    if (reason === null || !reason.trim()) return;
-    try {
-      await reservationsApi.cancel(id, reason.trim());
-      void loadReservations();
-    } catch {
-      // noop
-    }
-  }, [loadReservations]);
+  const handleCancelByCustomer = useCallback(
+    async (id: number) => {
+      const reason = prompt('Lemondás oka (ügyfél miatt — a letét nem jár vissza):')
+      if (reason === null || !reason.trim()) return
+      try {
+        await reservationsApi.cancel(id, reason.trim())
+        void loadReservations()
+      } catch {
+        // noop
+      }
+    },
+    [loadReservations],
+  )
 
-  const handleCancelByCompany = useCallback(async (id: number) => {
-    const reason = prompt('Lemondás oka (EBC miatt — dupla letét-visszafizetés, supervisor jóváhagyás):');
-    if (reason === null || !reason.trim()) return;
-    const supervisorWorkerId = Number(localStorage.getItem('workerId')) || undefined;
-    if (!supervisorWorkerId) {
-      // A backend kötelezővé teszi a supervisorWorkerId-t az EBC-stornóhoz.
-      alert('Hiányzó supervisor azonosító — jelentkezzen be újra a jóváhagyáshoz.');
-      return;
-    }
-    try {
-      await reservationsApi.cancelByCompany(id, { reason: reason.trim(), supervisorWorkerId });
-      void loadReservations();
-    } catch {
-      // noop
-    }
-  }, [loadReservations]);
+  const handleCancelByCompany = useCallback(
+    async (id: number) => {
+      const reason = prompt(
+        'Lemondás oka (EBC miatt — dupla letét-visszafizetés, supervisor jóváhagyás):',
+      )
+      if (reason === null || !reason.trim()) return
+      const supervisorWorkerId = Number(localStorage.getItem('workerId')) || undefined
+      if (!supervisorWorkerId) {
+        // A backend kötelezővé teszi a supervisorWorkerId-t az EBC-stornóhoz.
+        alert('Hiányzó supervisor azonosító — jelentkezzen be újra a jóváhagyáshoz.')
+        return
+      }
+      try {
+        await reservationsApi.cancelByCompany(id, { reason: reason.trim(), supervisorWorkerId })
+        void loadReservations()
+      } catch {
+        // noop
+      }
+    },
+    [loadReservations],
+  )
 
   const filteredReservations = safeArray<Reservation>(reservations).filter((r) => {
-    const term = searchTerm.toLowerCase();
+    const term = searchTerm.toLowerCase()
     return (
       (r.receiptNumber || '').toLowerCase().includes(term) ||
       (r.customerName || '').toLowerCase().includes(term) ||
       String(r.id).includes(term)
-    );
-  });
+    )
+  })
 
   return (
     <div className="container mx-auto p-4">
@@ -219,7 +235,10 @@ export default function ReservationPage() {
       {failedReceiptId != null && (
         // Codex P2 (#1032): retry-út a sikertelen beszámítási bizonylat-letöltéshez (a foglaló már teljesítve).
         <div className="mb-3 flex items-center justify-between rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          <span>A beszámítási bizonylat letöltése nem sikerült (foglaló #{failedReceiptId}). Próbálja újra.</span>
+          <span>
+            A beszámítási bizonylat letöltése nem sikerült (foglaló #{failedReceiptId}). Próbálja
+            újra.
+          </span>
           <button
             onClick={() => void handleRetryReceipt()}
             className="ml-3 rounded bg-amber-600 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-700"
@@ -240,8 +259,13 @@ export default function ReservationPage() {
       </div>
 
       {reservedStock.length > 0 && (
-        <section className="mb-4 rounded border bg-white p-3" aria-label={t('reservations.foglaltKeszletOsszesito')}>
-          <div className="mb-3 text-sm font-semibold text-gray-800">{t('reservations.foglaltKeszletValutanemenkent')}</div>
+        <section
+          className="mb-4 rounded border bg-white p-3"
+          aria-label={t('reservations.foglaltKeszletOsszesito')}
+        >
+          <div className="mb-3 text-sm font-semibold text-gray-800">
+            {t('reservations.foglaltKeszletValutanemenkent')}
+          </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {reservedStock.map((stock) => (
               <div key={stock.currencyCode} className="rounded bg-blue-50 p-3">
@@ -301,18 +325,27 @@ export default function ReservationPage() {
               <tbody>
                 {filteredReservations.map((reservation) => (
                   <tr key={reservation.id} className="border-t hover:bg-gray-50">
-                    <td className="p-3 font-mono">{reservation.receiptNumber || `#${reservation.id}`}</td>
+                    <td className="p-3 font-mono">
+                      {reservation.receiptNumber || `#${reservation.id}`}
+                    </td>
                     <td className="p-3">{reservation.customerName || '-'}</td>
                     <td className="p-3">
-                      {reservation.reservedAmount?.toLocaleString('hu-HU')} {reservation.currencyCode}
+                      {reservation.reservedAmount?.toLocaleString('hu-HU')}{' '}
+                      {reservation.currencyCode}
                     </td>
                     <td className="p-3">{reservation.exchangeRate?.toFixed(4)}</td>
-                    <td className="p-3">{reservation.depositAmount?.toLocaleString('hu-HU')} {t('components.ft')}</td>
                     <td className="p-3">
-                      {reservation.expiresAt ? new Date(reservation.expiresAt).toLocaleString('hu-HU') : '-'}
+                      {reservation.depositAmount?.toLocaleString('hu-HU')} {t('components.ft')}
                     </td>
                     <td className="p-3">
-                      <span className={`px-2 py-1 text-xs text-white rounded ${statusColors[reservation.status] || 'bg-gray-400'}`}>
+                      {reservation.expiresAt
+                        ? new Date(reservation.expiresAt).toLocaleString('hu-HU')
+                        : '-'}
+                    </td>
+                    <td className="p-3">
+                      <span
+                        className={`px-2 py-1 text-xs text-white rounded ${statusColors[reservation.status] || 'bg-gray-400'}`}
+                      >
                         {statusLabels[reservation.status] || reservation.status}
                       </span>
                     </td>
@@ -353,9 +386,9 @@ export default function ReservationPage() {
                             </button>
                           </>
                         )}
-                        {(reservation.status === 'CANCELLED_BY_CUSTOMER'
-                          || reservation.status === 'CANCELLED_BY_COMPANY'
-                          || reservation.status === 'EXPIRED') && (
+                        {(reservation.status === 'CANCELLED_BY_CUSTOMER' ||
+                          reservation.status === 'CANCELLED_BY_COMPANY' ||
+                          reservation.status === 'EXPIRED') && (
                           <button
                             onClick={() => handleDownloadReceipt(reservation.id, true)}
                             className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -374,7 +407,10 @@ export default function ReservationPage() {
       </div>
 
       {selectedReservation && (
-        <section className="mt-4 rounded border bg-white p-4" data-testid="reservation-detail-panel">
+        <section
+          className="mt-4 rounded border bg-white p-4"
+          data-testid="reservation-detail-panel"
+        >
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-base font-semibold text-gray-800">Foglaló részletei</h2>
             <button
@@ -387,20 +423,27 @@ export default function ReservationPage() {
           <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
             <div>
               <dt className="text-gray-500">Ügyfél</dt>
-              <dd className="font-medium text-gray-900">{selectedReservation.customerName || '-'}</dd>
+              <dd className="font-medium text-gray-900">
+                {selectedReservation.customerName || '-'}
+              </dd>
             </div>
             <div>
               <dt className="text-gray-500">Foglaló szám</dt>
-              <dd className="font-mono text-gray-900">{selectedReservation.receiptNumber || `#${selectedReservation.id}`}</dd>
+              <dd className="font-mono text-gray-900">
+                {selectedReservation.receiptNumber || `#${selectedReservation.id}`}
+              </dd>
             </div>
             <div>
               <dt className="text-gray-500">Státusz</dt>
-              <dd className="font-medium text-gray-900">{statusLabels[selectedReservation.status] || selectedReservation.status}</dd>
+              <dd className="font-medium text-gray-900">
+                {statusLabels[selectedReservation.status] || selectedReservation.status}
+              </dd>
             </div>
             <div>
               <dt className="text-gray-500">Valutaösszeg</dt>
               <dd className="font-mono text-gray-900">
-                {selectedReservation.reservedAmount?.toLocaleString('hu-HU')} {selectedReservation.currencyCode}
+                {selectedReservation.reservedAmount?.toLocaleString('hu-HU')}{' '}
+                {selectedReservation.currencyCode}
               </dd>
             </div>
             <div>
@@ -412,7 +455,9 @@ export default function ReservationPage() {
             <div>
               <dt className="text-gray-500">Lejárat</dt>
               <dd className="font-medium text-gray-900">
-                {selectedReservation.expiresAt ? new Date(selectedReservation.expiresAt).toLocaleString('hu-HU') : '-'}
+                {selectedReservation.expiresAt
+                  ? new Date(selectedReservation.expiresAt).toLocaleString('hu-HU')
+                  : '-'}
               </dd>
             </div>
           </dl>
@@ -430,8 +475,8 @@ export default function ReservationPage() {
             <h2 className="text-xl font-bold mb-4">{t('reservations.ujFoglaloLetrehozasa')}</h2>
             <CreateReservationForm
               onSuccess={() => {
-                setShowCreateDialog(false);
-                void loadReservations();
+                setShowCreateDialog(false)
+                void loadReservations()
               }}
               onCancel={() => setShowCreateDialog(false)}
             />
@@ -439,80 +484,80 @@ export default function ReservationPage() {
         </div>
       )}
     </div>
-  );
+  )
 }
 
 interface CurrencyOption {
-  code?: string;
-  currencyCode?: string;
-  name?: string;
+  code?: string
+  currencyCode?: string
+  name?: string
 }
 
 function CreateReservationForm({
   onSuccess,
   onCancel,
 }: {
-  onSuccess: () => void;
-  onCancel: () => void;
+  onSuccess: () => void
+  onCancel: () => void
 }) {
   const { t } = useTranslation()
-  const [customerSearch, setCustomerSearch] = useState('');
-  const [customerResults, setCustomerResults] = useState<Customer[]>([]);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [currencies, setCurrencies] = useState<CurrencyOption[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [customerResults, setCustomerResults] = useState<Customer[]>([])
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [currencies, setCurrencies] = useState<CurrencyOption[]>([])
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     currencyCode: '',
     amount: '',
     exchangeRate: '',
     validityHours: '24',
     notes: '',
-  });
+  })
 
   useEffect(() => {
     void (async () => {
       try {
-        const response = await api.get('/currencies');
-        setCurrencies(safeArray<CurrencyOption>(response?.data));
+        const response = await api.get('/currencies')
+        setCurrencies(safeArray<CurrencyOption>(response?.data))
       } catch {
-        setCurrencies([]);
+        setCurrencies([])
       }
-    })();
-  }, []);
+    })()
+  }, [])
 
   useEffect(() => {
     if (!customerSearch.trim()) {
-      setCustomerResults([]);
-      return;
+      setCustomerResults([])
+      return
     }
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          const results = await customerApi.search(customerSearch.trim());
-          setCustomerResults(safeArray<Customer>(results));
+          const results = await customerApi.search(customerSearch.trim())
+          setCustomerResults(safeArray<Customer>(results))
         } catch {
-          setCustomerResults([]);
+          setCustomerResults([])
         }
-      })();
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [customerSearch]);
+      })()
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [customerSearch])
 
   const toLocalDateTime = (hoursAhead: number): string => {
-    const d = new Date(Date.now() + hoursAhead * 3600 * 1000);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
-  };
+    const d = new Date(Date.now() + hoursAhead * 3600 * 1000)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
+    e.preventDefault()
+    setError(null)
     if (!selectedCustomer) {
-      setError('Válasszon ügyfelet a keresőből!');
-      return;
+      setError('Válasszon ügyfelet a keresőből!')
+      return
     }
-    setSubmitting(true);
+    setSubmitting(true)
     try {
       await reservationsApi.create({
         customerId: selectedCustomer.id,
@@ -521,14 +566,14 @@ function CreateReservationForm({
         exchangeRate: parseFloat(formData.exchangeRate),
         expiresAt: toLocalDateTime(parseInt(formData.validityHours, 10)),
         notes: formData.notes || undefined,
-      });
-      onSuccess();
+      })
+      onSuccess()
     } catch {
-      setError('A foglaló létrehozása sikertelen. Ellenőrizze az adatokat.');
+      setError('A foglaló létrehozása sikertelen. Ellenőrizze az adatokat.')
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
-  };
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -538,8 +583,15 @@ function CreateReservationForm({
         <label className="block text-sm font-medium mb-1">{t('pep.ugyfelNeve')}</label>
         {selectedCustomer ? (
           <div className="flex items-center justify-between p-2 border rounded bg-green-50">
-            <span>{selectedCustomer.name} {selectedCustomer.customerCode ? `(${selectedCustomer.customerCode})` : ''}</span>
-            <button type="button" onClick={() => setSelectedCustomer(null)} className="text-xs text-red-600">
+            <span>
+              {selectedCustomer.name}{' '}
+              {selectedCustomer.customerCode ? `(${selectedCustomer.customerCode})` : ''}
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedCustomer(null)}
+              className="text-xs text-red-600"
+            >
               {t('common.cancel')}
             </button>
           </div>
@@ -548,7 +600,9 @@ function CreateReservationForm({
             <input
               type="text"
               value={customerSearch}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomerSearch(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setCustomerSearch(e.target.value)
+              }
               placeholder="Ügyfél keresése név alapján..."
               className="w-full p-2 border rounded"
             />
@@ -558,7 +612,11 @@ function CreateReservationForm({
                   <li key={c.id}>
                     <button
                       type="button"
-                      onClick={() => { setSelectedCustomer(c); setCustomerResults([]); setCustomerSearch(''); }}
+                      onClick={() => {
+                        setSelectedCustomer(c)
+                        setCustomerResults([])
+                        setCustomerSearch('')
+                      }}
                       className="w-full text-left p-2 hover:bg-gray-100"
                     >
                       {c.name} {c.customerCode ? `(${c.customerCode})` : ''}
@@ -584,8 +642,13 @@ function CreateReservationForm({
           >
             <option value="">—</option>
             {currencies.map((c) => {
-              const code = c.code || c.currencyCode || '';
-              return code ? <option key={code} value={code}>{code}{c.name ? ` – ${c.name}` : ''}</option> : null;
+              const code = c.code || c.currencyCode || ''
+              return code ? (
+                <option key={code} value={code}>
+                  {code}
+                  {c.name ? ` – ${c.name}` : ''}
+                </option>
+              ) : null
             })}
           </select>
         </div>
@@ -603,7 +666,9 @@ function CreateReservationForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">{t('reservations.garantaltArfolyam')}</label>
+          <label className="block text-sm font-medium mb-1">
+            {t('reservations.garantaltArfolyam')}
+          </label>
           <input
             type="number"
             step="0.0001"
@@ -616,7 +681,9 @@ function CreateReservationForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">{t('reservations.ervenyessegOra')}</label>
+          <label className="block text-sm font-medium mb-1">
+            {t('reservations.ervenyessegOra')}
+          </label>
           <select
             value={formData.validityHours}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
@@ -645,7 +712,11 @@ function CreateReservationForm({
       </div>
 
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="px-4 py-2 border rounded hover:bg-gray-50">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 border rounded hover:bg-gray-50"
+        >
           {t('common.cancel')}
         </button>
         <button
@@ -657,5 +728,5 @@ function CreateReservationForm({
         </button>
       </div>
     </form>
-  );
+  )
 }

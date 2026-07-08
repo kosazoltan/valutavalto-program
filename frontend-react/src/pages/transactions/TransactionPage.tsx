@@ -1,12 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  ArrowLeftRight,
-  Calculator,
-  Printer,
-  X,
-  AlertCircle,
-} from 'lucide-react'
+import { ArrowLeftRight, Calculator, Printer, X, AlertCircle } from 'lucide-react'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal } from '../../utils/numberFormat'
 import { receiptApi, transactionApi } from '../../services/api/index'
@@ -28,7 +22,12 @@ import CustomerPanel from './components/CustomerPanel'
 import type { CustomerPanelData } from './components/CustomerPanel'
 import type { AmlCheckResultDto } from '../../services/api/transactions'
 import { useTranslation } from 'react-i18next'
-import { getBandForAmount, isWithinBand, isWithinHardLimit, getHardLimitMessage } from '../../utils/rateBands'
+import {
+  getBandForAmount,
+  isWithinBand,
+  isWithinHardLimit,
+  getHardLimitMessage,
+} from '../../utils/rateBands'
 import RateAuthDialog from './components/RateAuthDialog'
 
 export default function TransactionPage() {
@@ -77,10 +76,11 @@ export default function TransactionPage() {
 
   // Auth store for receipt info
   const { user } = useAuthStore()
-  const worker = useAuthStore(s => s.worker)
+  const worker = useAuthStore((s) => s.worker)
 
   // Identification logic
-  const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } = useIdentificationLevel(hufAmount)
+  const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } =
+    useIdentificationLevel(hufAmount)
 
   // Auto-select first currency when rates load
   useEffect(() => {
@@ -106,18 +106,26 @@ export default function TransactionPage() {
     : undefined
 
   const baseRate = selectedCurrency
-    ? (transactionType === 'BUY' ? selectedCurrency.buyRate : selectedCurrency.sellRate)
+    ? transactionType === 'BUY'
+      ? selectedCurrency.buyRate
+      : selectedCurrency.sellRate
     : 0
 
-  const effectiveRate = customRate ?? (() => {
-    if (!rateObj) return baseRate
-    const foreignNum = parseFloat((foreignAmount || '0').replace(',', '.')) || 0
-    if (foreignNum <= 0) return baseRate
-    const unit = selectedCurrency?.unit || 1
-    const baseAmountHuf = (foreignNum / unit) * baseRate
-    const band = getBandForAmount(rateObj, transactionType === 'BUY' ? 'buy' : 'sell', baseAmountHuf)
-    return band.tierRate
-  })()
+  const effectiveRate =
+    customRate ??
+    (() => {
+      if (!rateObj) return baseRate
+      const foreignNum = parseFloat((foreignAmount || '0').replace(',', '.')) || 0
+      if (foreignNum <= 0) return baseRate
+      const unit = selectedCurrency?.unit || 1
+      const baseAmountHuf = (foreignNum / unit) * baseRate
+      const band = getBandForAmount(
+        rateObj,
+        transactionType === 'BUY' ? 'buy' : 'sell',
+        baseAmountHuf,
+      )
+      return band.tierRate
+    })()
 
   const currentRate = effectiveRate
 
@@ -152,7 +160,11 @@ export default function TransactionPage() {
       if (e.key === 'Escape') void handleCancel()
       if (e.key >= '1' && e.key <= '8' && !e.ctrlKey && !e.altKey) {
         const target = e.target as HTMLElement
-        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.isContentEditable) {
+        if (
+          target.tagName !== 'INPUT' &&
+          target.tagName !== 'TEXTAREA' &&
+          !target.isContentEditable
+        ) {
           const index = parseInt(e.key, 10) - 1
           if (currencyRates[index]) {
             setSelectedCurrency(currencyRates[index])
@@ -209,13 +221,16 @@ export default function TransactionPage() {
   const handleRateBlur = () => {
     setEditingRate(false)
     if (customRate == null || !rateObj) return
-    const mode = transactionType === 'BUY' ? 'buy' as const : 'sell' as const
+    const mode = transactionType === 'BUY' ? ('buy' as const) : ('sell' as const)
     const foreignNum = parseFloat((foreignAmount || '0').replace(',', '.')) || 0
     const unit = selectedCurrency?.unit || 1
     const baseAmountHuf = (foreignNum / unit) * baseRate
 
     if (!isWithinHardLimit(customRate, rateObj.officialRate, mode)) {
-      toast.error('Árfolyam meghaladja a hard limitet', getHardLimitMessage(mode, rateObj.officialRate!))
+      toast.error(
+        'Árfolyam meghaladja a hard limitet',
+        getHardLimitMessage(mode, rateObj.officialRate!),
+      )
       setCustomRate(null)
       return
     }
@@ -235,7 +250,10 @@ export default function TransactionPage() {
         const el = document.querySelector<HTMLInputElement>('[data-testid="customer-name-input"]')
         el?.focus()
       } else {
-        setTimeout(() => document.querySelector<HTMLButtonElement>('[data-action="save"]')?.focus(), 50)
+        setTimeout(
+          () => document.querySelector<HTMLButtonElement>('[data-action="save"]')?.focus(),
+          50,
+        )
       }
     }
   }
@@ -253,19 +271,21 @@ export default function TransactionPage() {
           reason: 'USER_CANCELLED',
           customerName: cd?.name,
           customerDocumentNumber: cd?.documentNumber,
-          lines: [{
-            currencyCode: selectedCurrency?.code,
-            foreignAmount: foreignNum > 0 ? foreignNum : undefined,
-            rate: currentRate > 0 ? currentRate : undefined,
-            hufAmount: hufNum > 0 ? hufNum : undefined,
-          }],
+          lines: [
+            {
+              currencyCode: selectedCurrency?.code,
+              foreignAmount: foreignNum > 0 ? foreignNum : undefined,
+              rate: currentRate > 0 ? currentRate : undefined,
+              hufAmount: hufNum > 0 ? hufNum : undefined,
+            },
+          ],
         })
         toast.info('Megszakított bizonylat rögzítve', `Bizonylat: ${receipt.receiptNumber}`)
       } catch (error) {
         console.warn('Cancelled transaction receipt could not be recorded', error)
         toast.warning(
           'Megszakítás lokálisan elvetve',
-          'A megszakított bizonylat szerveroldali rögzítése nem sikerült. Ellenőrizze a kapcsolatot.'
+          'A megszakított bizonylat szerveroldali rögzítése nem sikerült. Ellenőrizze a kapcsolatot.',
         )
       }
     }
@@ -292,15 +312,31 @@ export default function TransactionPage() {
     const aml = amlResultRef.current
     if (identificationLevel !== 'SIMPLE') {
       if (!cd?.name?.trim()) {
-        toast.warning('Ügyfél azonosítás kötelező', '100.000 Ft feletti tranzakcióhoz ügyfél azonosítás KÖTELEZŐ!')
+        toast.warning(
+          'Ügyfél azonosítás kötelező',
+          '100.000 Ft feletti tranzakcióhoz ügyfél azonosítás KÖTELEZŐ!',
+        )
         return
       }
       if (identificationLevel === 'SIMPLIFIED' && (!cd?.birthPlace || !cd?.birthDate)) {
-        toast.warning('Egyszerűsített azonosítás hiányos', '100.000 Ft felett születési hely és születési idő is KÖTELEZŐ!')
+        toast.warning(
+          'Egyszerűsített azonosítás hiányos',
+          '100.000 Ft felett születési hely és születési idő is KÖTELEZŐ!',
+        )
         return
       }
-      if (identificationLevel === 'FULL' && (!cd?.documentNumber?.trim() || !cd?.birthPlace || !cd?.birthDate || !cd?.motherName || !cd?.address)) {
-        toast.warning('Teljes azonosítás kötelező', '300.000 Ft felett teljes ügyféladatsor szükséges (okmányszám, születési hely/idő, anyja neve, lakcím)!')
+      if (
+        identificationLevel === 'FULL' &&
+        (!cd?.documentNumber?.trim() ||
+          !cd?.birthPlace ||
+          !cd?.birthDate ||
+          !cd?.motherName ||
+          !cd?.address)
+      ) {
+        toast.warning(
+          'Teljes azonosítás kötelező',
+          '300.000 Ft felett teljes ügyféladatsor szükséges (okmányszám, születési hely/idő, anyja neve, lakcím)!',
+        )
         return
       }
     }
@@ -323,7 +359,9 @@ export default function TransactionPage() {
         })
         if (checkRes.data?.requiresApproval) {
           approvalSessionIdRef.current = crypto.randomUUID()
-          setAmlApprovalReason(typeof checkRes.data?.reason === 'string' ? checkRes.data.reason : '')
+          setAmlApprovalReason(
+            typeof checkRes.data?.reason === 'string' ? checkRes.data.reason : '',
+          )
           setShowAmlApprover(true)
           return
         }
@@ -337,49 +375,51 @@ export default function TransactionPage() {
     setIsSubmitting(true)
     try {
       // Cashier-minta: REST AML payload (:880-933), S1-ben approver mezők nélkül.
-      const customerData = cd ? {
-        ...(cd.id ? { customerId: cd.id } : {}),
-        customerName: cd.name || undefined,
-        customerDocumentNumber: cd.documentNumber || undefined,
-        customerDocumentType: cd.documentType || undefined,
-        customerNationality: cd.nationality || undefined,
-        customerBirthPlace: cd.birthPlace || undefined,
-        customerBirthDate: cd.birthDate || undefined,
-        customerMotherName: cd.motherName || undefined,
-        customerAddress: cd.address || undefined,
-        customerIsPep: cd.isPep,
-        sourceOfFunds: cd.sourceOfFunds,
-        sourceOfFundsDocType: cd.sourceOfFundsDocType,
-        sourceOfFundsDocDate: cd.sourceOfFundsDocDate,
-        customerOnOwnBehalf: cd.onOwnBehalf,
-        customerActorName: cd.actorName,
-        customerPepKind: cd.pepKind ?? undefined,
-        customerActorBirthPlace: cd.actorIdentity?.birthPlace,
-        customerActorBirthDate: cd.actorIdentity?.birthDate,
-        customerActorMotherName: cd.actorIdentity?.motherName,
-        customerActorNationality: cd.actorIdentity?.nationality,
-        customerActorDocumentType: cd.actorIdentity?.documentType,
-        customerActorDocumentNumber: cd.actorIdentity?.documentNumber,
-        customerActorAddress: cd.actorIdentity?.address,
-        approverWorkerId: approverWorkerIdRef.current ?? undefined,
-        approvalSessionId: approvalSessionIdRef.current ?? undefined,
-        isLegalEntityCustomer: cd.isLegalEntity ?? undefined,
-        legalEntityName: cd.legalEntityName,
-        legalEntitySeat: cd.legalEntitySeat,
-        legalEntityTaxNumber: cd.legalEntityTaxNumber,
-        legalDeedNumber: cd.legalDeedNumber,
-        beneficialOwners: cd.beneficialOwners?.map(o => ({
-          name: o.name,
-          address: o.address || undefined,
-          birthPlace: o.birthPlace || undefined,
-          birthDate: o.birthDate || undefined,
-          nationality: o.nationality || undefined,
-          residenceAbroad: o.residenceAbroad || undefined,
-          interestNature: o.interestNature || undefined,
-          interestExtent: o.interestExtent || undefined,
-          isPep: o.isPep,
-        })),
-      } : {}
+      const customerData = cd
+        ? {
+            ...(cd.id ? { customerId: cd.id } : {}),
+            customerName: cd.name || undefined,
+            customerDocumentNumber: cd.documentNumber || undefined,
+            customerDocumentType: cd.documentType || undefined,
+            customerNationality: cd.nationality || undefined,
+            customerBirthPlace: cd.birthPlace || undefined,
+            customerBirthDate: cd.birthDate || undefined,
+            customerMotherName: cd.motherName || undefined,
+            customerAddress: cd.address || undefined,
+            customerIsPep: cd.isPep,
+            sourceOfFunds: cd.sourceOfFunds,
+            sourceOfFundsDocType: cd.sourceOfFundsDocType,
+            sourceOfFundsDocDate: cd.sourceOfFundsDocDate,
+            customerOnOwnBehalf: cd.onOwnBehalf,
+            customerActorName: cd.actorName,
+            customerPepKind: cd.pepKind ?? undefined,
+            customerActorBirthPlace: cd.actorIdentity?.birthPlace,
+            customerActorBirthDate: cd.actorIdentity?.birthDate,
+            customerActorMotherName: cd.actorIdentity?.motherName,
+            customerActorNationality: cd.actorIdentity?.nationality,
+            customerActorDocumentType: cd.actorIdentity?.documentType,
+            customerActorDocumentNumber: cd.actorIdentity?.documentNumber,
+            customerActorAddress: cd.actorIdentity?.address,
+            approverWorkerId: approverWorkerIdRef.current ?? undefined,
+            approvalSessionId: approvalSessionIdRef.current ?? undefined,
+            isLegalEntityCustomer: cd.isLegalEntity ?? undefined,
+            legalEntityName: cd.legalEntityName,
+            legalEntitySeat: cd.legalEntitySeat,
+            legalEntityTaxNumber: cd.legalEntityTaxNumber,
+            legalDeedNumber: cd.legalDeedNumber,
+            beneficialOwners: cd.beneficialOwners?.map((o) => ({
+              name: o.name,
+              address: o.address || undefined,
+              birthPlace: o.birthPlace || undefined,
+              birthDate: o.birthDate || undefined,
+              nationality: o.nationality || undefined,
+              residenceAbroad: o.residenceAbroad || undefined,
+              interestNature: o.interestNature || undefined,
+              interestExtent: o.interestExtent || undefined,
+              isPep: o.isPep,
+            })),
+          }
+        : {}
 
       const rate = currentRate
 
@@ -424,7 +464,9 @@ export default function TransactionPage() {
             legalEntitySeat: cd?.legalEntitySeat || null,
             legalEntityTaxNumber: cd?.legalEntityTaxNumber || null,
             legalDeedNumber: cd?.legalDeedNumber || null,
-            beneficialOwnersJson: cd?.beneficialOwners?.length ? JSON.stringify(cd.beneficialOwners) : null,
+            beneficialOwnersJson: cd?.beneficialOwners?.length
+              ? JSON.stringify(cd.beneficialOwners)
+              : null,
             denominations: null,
           },
         ])
@@ -435,13 +477,18 @@ export default function TransactionPage() {
         } else if (outcome.syncErrors && outcome.syncErrors.length > 0) {
           // Server-oldali hiba (pl. rate mismatch, insufficient balance)
           const firstError = outcome.syncErrors[0]
-          toast.error('Szinkron hiba - a tranzakció lokálisan mentve, de a szerver elutasitotta', firstError)
+          toast.error(
+            'Szinkron hiba - a tranzakció lokálisan mentve, de a szerver elutasitotta',
+            firstError,
+          )
         } else {
-          toast.warning('Offline mentés megtörtént', 'A tranzakció helyi queue-ba került, később szinkronizálódik.')
+          toast.warning(
+            'Offline mentés megtörtént',
+            'A tranzakció helyi queue-ba került, később szinkronizálódik.',
+          )
         }
         resetAmlApproval()
-      }
-      else if (transactionType === 'BUY') {
+      } else if (transactionType === 'BUY') {
         const request: BuyRequest = {
           currencyId: parseInt(selectedCurrency.id),
           currencyAmount: foreignNum,
@@ -452,9 +499,11 @@ export default function TransactionPage() {
         const result = await transactionApi.buy(request)
         setSavedTransaction(result)
         resetAmlApproval()
-        toast.success('Vétel tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
-      }
-      else {
+        toast.success(
+          'Vétel tranzakció sikeresen mentve!',
+          `Bizonylat szám: ${result.receiptNumber}`,
+        )
+      } else {
         const request: SellRequest = {
           currencyId: parseInt(selectedCurrency.id),
           currencyAmount: foreignNum,
@@ -465,7 +514,10 @@ export default function TransactionPage() {
         const result = await transactionApi.sell(request)
         setSavedTransaction(result)
         resetAmlApproval()
-        toast.success('Eladás tranzakció sikeresen mentve!', `Bizonylat szám: ${result.receiptNumber}`)
+        toast.success(
+          'Eladás tranzakció sikeresen mentve!',
+          `Bizonylat szám: ${result.receiptNumber}`,
+        )
       }
 
       // Don't navigate away — let user print receipt first
@@ -507,8 +559,15 @@ export default function TransactionPage() {
           {t('misc.ujTranzakcio')}
         </h1>
         <div className="flex gap-2">
-          <button onClick={() => { void handleCancel() }} className="form-button flex items-center gap-1" title="Mégsem (Esc)">
-            <X size={16} />{t('common.cancel')}
+          <button
+            onClick={() => {
+              void handleCancel()
+            }}
+            className="form-button flex items-center gap-1"
+            title="Mégsem (Esc)"
+          >
+            <X size={16} />
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleSaveAndPrint}
@@ -542,33 +601,50 @@ export default function TransactionPage() {
           <div className="flex gap-1 mb-3">
             <button
               onClick={() => switchTransactionType('BUY')}
-              onKeyDown={(e) => { if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); switchTransactionType('SELL') } }}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowRight' || e.key === ' ') {
+                  e.preventDefault()
+                  switchTransactionType('SELL')
+                }
+              }}
               data-testid="tx-type-buy"
               className={`flex-1 py-2 text-center font-semibold border rounded-l focus:outline-none focus:ring-2 focus:ring-primary ${
-                transactionType === 'BUY' ? 'bg-green-600 text-white border-green-700' : 'bg-gray-100 border-form-border hover:bg-gray-200'
+                transactionType === 'BUY'
+                  ? 'bg-green-600 text-white border-green-700'
+                  : 'bg-gray-100 border-form-border hover:bg-gray-200'
               }`}
             >
               {t('transactions.vetel')}
-              <div className="text-xs font-normal">{t('transactions.ugyfelElad')}{selectedCurrency?.code || 'devizát'})</div>
+              <div className="text-xs font-normal">
+                {t('transactions.ugyfelElad')}
+                {selectedCurrency?.code || 'devizát'})
+              </div>
             </button>
             <button
               onClick={() => switchTransactionType('SELL')}
-              onKeyDown={(e) => { if (e.key === 'ArrowLeft' || e.key === ' ') { e.preventDefault(); switchTransactionType('BUY') } }}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft' || e.key === ' ') {
+                  e.preventDefault()
+                  switchTransactionType('BUY')
+                }
+              }}
               data-testid="tx-type-sell"
               className={`flex-1 py-2 text-center font-semibold border rounded-r focus:outline-none focus:ring-2 focus:ring-primary ${
-                transactionType === 'SELL' ? 'bg-blue-600 text-white border-blue-700' : 'bg-gray-100 border-form-border hover:bg-gray-200'
+                transactionType === 'SELL'
+                  ? 'bg-blue-600 text-white border-blue-700'
+                  : 'bg-gray-100 border-form-border hover:bg-gray-200'
               }`}
             >
               {t('transactions.eladas')}
-              <div className="text-xs font-normal">{t('transactions.ugyfelVesz')}{selectedCurrency?.code || 'devizát'})</div>
+              <div className="text-xs font-normal">
+                {t('transactions.ugyfelVesz')}
+                {selectedCurrency?.code || 'devizát'})
+              </div>
             </button>
           </div>
 
           {/* Currency quick search */}
-          <CurrencySearchInput
-            currencyRates={currencyRates}
-            onSelect={handleCurrencySelect}
-          />
+          <CurrencySearchInput currencyRates={currencyRates} onSelect={handleCurrencySelect} />
 
           {/* Current rate display — editable */}
           <div className="form-group-box pt-4 mb-3">
@@ -585,22 +661,38 @@ export default function TransactionPage() {
                 }}
                 onBlur={handleRateBlur}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') { e.preventDefault(); rateInputRef.current?.blur() }
-                  if (e.key === 'Escape') { setCustomRate(null); setEditingRate(false) }
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    rateInputRef.current?.blur()
+                  }
+                  if (e.key === 'Escape') {
+                    setCustomRate(null)
+                    setEditingRate(false)
+                  }
                 }}
                 type="text"
                 inputMode="decimal"
                 className="w-40 text-center text-3xl font-bold font-mono bg-transparent border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:border-transparent h-12"
-                style={{ color: 'var(--primary)', '--tw-ring-color': 'var(--primary)' } as React.CSSProperties}
+                style={
+                  {
+                    color: 'var(--primary)',
+                    '--tw-ring-color': 'var(--primary)',
+                  } as React.CSSProperties
+                }
               />
-              <span className="text-gray-500">{t('transactions.huf1')}{selectedCurrency?.code || ''}</span>
+              <span className="text-gray-500">
+                {t('transactions.huf1')}
+                {selectedCurrency?.code || ''}
+              </span>
             </div>
           </div>
 
           {/* Amount inputs */}
           <div className="space-y-3">
             <div className="form-group-box pt-4">
-              <span className="form-group-box-title">{selectedCurrency?.code || 'Deviza'} {t('transactions.osszeg')}</span>
+              <span className="form-group-box-title">
+                {selectedCurrency?.code || 'Deviza'} {t('transactions.osszeg')}
+              </span>
               <NumberInput
                 ref={foreignAmountRef}
                 value={foreignAmount}
@@ -667,16 +759,24 @@ export default function TransactionPage() {
 
           {/* Identification warnings */}
           {identificationLevel !== 'SIMPLE' && (
-            <div className={`mt-3 p-2 rounded text-sm flex items-start gap-2 ${
-              identificationLevel === 'FULL'
-                ? 'bg-red-50 border border-red-200 text-red-700'
-                : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
-            }`}>
+            <div
+              className={`mt-3 p-2 rounded text-sm flex items-start gap-2 ${
+                identificationLevel === 'FULL'
+                  ? 'bg-red-50 border border-red-200 text-red-700'
+                  : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
+              }`}
+            >
               <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
               <div>
-                <strong>{identificationLevel === 'FULL' ? 'Teljes azonosítás szükséges!' : 'Egyszerűsített azonosítás szükséges!'}</strong>
+                <strong>
+                  {identificationLevel === 'FULL'
+                    ? 'Teljes azonosítás szükséges!'
+                    : 'Egyszerűsített azonosítás szükséges!'}
+                </strong>
                 <div className="text-xs mt-1">
-                  {identificationLevel === 'FULL' ? '300.000 Ft feletti tranzakció' : '100.000 - 300.000 Ft közötti tranzakció'}
+                  {identificationLevel === 'FULL'
+                    ? '300.000 Ft feletti tranzakció'
+                    : '100.000 - 300.000 Ft közötti tranzakció'}
                 </div>
               </div>
             </div>
@@ -699,7 +799,9 @@ export default function TransactionPage() {
           onLevelChange={setIdentificationLevel}
           requiresSourceVerification={requiresSourceVerification}
           hufTotal={parseFloat(hufAmount.replace(/\s/g, '').replace(',', '.')) || 0}
-          onCustomerReady={(data) => { customerDataRef.current = data }}
+          onCustomerReady={(data) => {
+            customerDataRef.current = data
+          }}
           onAmlResult={(result) => {
             amlResultRef.current = result
             setAmlBlocked(result?.blocked ?? false)
@@ -733,7 +835,16 @@ export default function TransactionPage() {
           branchCode: worker?.branchCode ?? undefined,
           branchName: worker?.branchName ?? undefined,
           totalHuf: approvalHufNum,
-          lines: selectedCurrency ? [{ currencyCode: selectedCurrency.code, amount: approvalForeignNum, rate: currentRate, hufValue: approvalHufNum }] : [],
+          lines: selectedCurrency
+            ? [
+                {
+                  currencyCode: selectedCurrency.code,
+                  amount: approvalForeignNum,
+                  rate: currentRate,
+                  hufValue: approvalHufNum,
+                },
+              ]
+            : [],
           customer: toApprovalCustomer(customerDataRef.current),
         }}
         onApproved={(workerId, name) => {

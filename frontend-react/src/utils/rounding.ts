@@ -59,14 +59,8 @@ export function multiLinePayable(
   discountPercent: number,
   handlingFee: number,
 ): number {
-  const discountAmount = discountPercent > 0
-    ? Math.round((totalRaw * discountPercent) / 100)
-    : 0
-  const net = mode === 'buy'
-    ? totalRaw + discountAmount
-    : totalRaw - discountAmount
-  const gross = mode === 'buy'
-    ? net - handlingFee
-    : net + handlingFee
+  const discountAmount = discountPercent > 0 ? Math.round((totalRaw * discountPercent) / 100) : 0
+  const net = mode === 'buy' ? totalRaw + discountAmount : totalRaw - discountAmount
+  const gross = mode === 'buy' ? net - handlingFee : net + handlingFee
   return roundHuf(gross)
 }

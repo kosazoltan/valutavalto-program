@@ -46,10 +46,12 @@ describe('CashierHeader', () => {
     mocks.useCompanyTheme.mockReturnValue({ theme: mockTheme })
     // v2.3.33 (B4): a komponens elsodlegesen az useAuthStore-bol toltodik.
     // Selector pattern: useAuthStore((s) => s.worker) — a mock argumentumkent kapja a selectort.
-    mocks.useAuthStore.mockImplementation((selector?: (s: { worker: typeof mockWorker | null }) => unknown) => {
-      const state = { worker: mockWorker }
-      return selector ? selector(state) : state
-    })
+    mocks.useAuthStore.mockImplementation(
+      (selector?: (s: { worker: typeof mockWorker | null }) => unknown) => {
+        const state = { worker: mockWorker }
+        return selector ? selector(state) : state
+      },
+    )
   })
 
   it('komponens renderelése (banner role)', () => {
@@ -93,7 +95,14 @@ describe('CashierHeader', () => {
   })
 
   it('explicit prop felulirja az authStore-t (branchCode override)', () => {
-    render(<CashierHeader branchCode="999" branchName="Override Branch" workerName="Override Worker" workerId="OVR" />)
+    render(
+      <CashierHeader
+        branchCode="999"
+        branchName="Override Branch"
+        workerName="Override Worker"
+        workerId="OVR"
+      />,
+    )
     const header = screen.getByRole('banner')
     expect(header.textContent).toMatch(/Pénztár:\s*999/)
     expect(header.textContent).toContain('Override Branch')

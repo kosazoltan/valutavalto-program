@@ -43,10 +43,7 @@ export default function ResetPasswordPage() {
     return () => window.clearTimeout(id)
   }, [success, navigate])
 
-  const canSubmit = token
-    && newPassword.length >= 8
-    && newPassword === confirmPassword
-    && !loading
+  const canSubmit = token && newPassword.length >= 8 && newPassword === confirmPassword && !loading
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -73,7 +70,9 @@ export default function ResetPasswordPage() {
           <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-600">
             <Lock size={24} />
           </div>
-          <h1 className="text-2xl font-bold text-secondary-900 mb-2">{t('resetPassword.successTitle')}</h1>
+          <h1 className="text-2xl font-bold text-secondary-900 mb-2">
+            {t('resetPassword.successTitle')}
+          </h1>
           <p className="text-sm text-secondary-600 mb-4">{t('resetPassword.successMessage')}</p>
           <p className="text-xs text-secondary-500">{t('resetPassword.successRedirect')}</p>
         </div>
@@ -92,7 +91,9 @@ export default function ResetPasswordPage() {
           <p className="text-sm text-secondary-600 mt-2">{t('resetPassword.subtitle')}</p>
         </div>
 
-        <label className="block text-sm font-semibold text-secondary-900 mb-1">{t('resetPassword.newPasswordLabel')}</label>
+        <label className="block text-sm font-semibold text-secondary-900 mb-1">
+          {t('resetPassword.newPasswordLabel')}
+        </label>
         <div className="relative mb-4">
           <input
             type={showPassword ? 'text' : 'password'}
@@ -108,13 +109,17 @@ export default function ResetPasswordPage() {
             className="absolute right-2 top-1/2 -translate-y-1/2 text-secondary-500 hover:text-secondary-900"
             onClick={() => setShowPassword((p) => !p)}
             tabIndex={-1}
-            aria-label={showPassword ? t('resetPassword.hidePassword') : t('resetPassword.showPassword')}
+            aria-label={
+              showPassword ? t('resetPassword.hidePassword') : t('resetPassword.showPassword')
+            }
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
 
-        <label className="block text-sm font-semibold text-secondary-900 mb-1">{t('resetPassword.confirmPasswordLabel')}</label>
+        <label className="block text-sm font-semibold text-secondary-900 mb-1">
+          {t('resetPassword.confirmPasswordLabel')}
+        </label>
         <input
           type={showPassword ? 'text' : 'password'}
           value={confirmPassword}
@@ -144,12 +149,12 @@ export default function ResetPasswordPage() {
             className="form-button"
             onClick={() => navigate('/login')}
             disabled={loading}
-          >{t('resetPassword.cancel')}</button>
-          <button
-            type="submit"
-            className="form-button-primary"
-            disabled={!canSubmit}
-          >{loading ? t('resetPassword.saving') : t('resetPassword.submit')}</button>
+          >
+            {t('resetPassword.cancel')}
+          </button>
+          <button type="submit" className="form-button-primary" disabled={!canSubmit}>
+            {loading ? t('resetPassword.saving') : t('resetPassword.submit')}
+          </button>
         </div>
       </form>
     </div>

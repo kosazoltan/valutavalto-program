@@ -144,17 +144,23 @@ describe('handleApiError', () => {
   it('humanizes SSL/certificate error to Hungarian message', () => {
     const err = new Error('ERR_CERT_AUTHORITY_INVALID')
     const result = handleApiError(err)
-    expect(result.message).toBe('Tanúsítvány hiba a szerver felé. Ellenőrizze a HTTPS beállításokat.')
+    expect(result.message).toBe(
+      'Tanúsítvány hiba a szerver felé. Ellenőrizze a HTTPS beállításokat.',
+    )
   })
 
   it('humanizes CORS error to Hungarian message', () => {
     const err = new Error('CORS policy: cross-origin request blocked')
     const result = handleApiError(err)
-    expect(result.message).toBe('A szerver nem engedélyezi a hozzáférést (CORS). Forduljon a rendszergazdához.')
+    expect(result.message).toBe(
+      'A szerver nem engedélyezi a hozzáférést (CORS). Forduljon a rendszergazdához.',
+    )
   })
 
   it('prefers server message over network error humanization', () => {
-    const axErr = makeAxiosError(400, { message: 'Nincs ebben a programban használható szerepköre.' })
+    const axErr = makeAxiosError(400, {
+      message: 'Nincs ebben a programban használható szerepköre.',
+    })
     const result = handleApiError(axErr)
     expect(result.message).toBe('Nincs ebben a programban használható szerepköre.')
   })
@@ -180,14 +186,18 @@ describe('handleApiError', () => {
   })
 
   it('returns server 409 Conflict message as-is', () => {
-    const axErr = makeAxiosError(409, { message: 'Ez a Google fiók már egy másik dolgozóhoz van kötve.' })
+    const axErr = makeAxiosError(409, {
+      message: 'Ez a Google fiók már egy másik dolgozóhoz van kötve.',
+    })
     const result = handleApiError(axErr)
     expect(result.status).toBe(409)
     expect(result.message).toBe('Ez a Google fiók már egy másik dolgozóhoz van kötve.')
   })
 
   it('returns server 500 catch-all message as-is', () => {
-    const axErr = makeAxiosError(500, { message: 'Belső szerverhiba történt. Kérjük, próbálja újra később.' })
+    const axErr = makeAxiosError(500, {
+      message: 'Belső szerverhiba történt. Kérjük, próbálja újra később.',
+    })
     const result = handleApiError(axErr)
     expect(result.status).toBe(500)
     expect(result.message).toBe('Belső szerverhiba történt. Kérjük, próbálja újra később.')
@@ -208,12 +218,19 @@ describe('getErrorMessage', () => {
 
   it('humanizes Network Error for end user', () => {
     const err = new Error('Network Error')
-    expect(getErrorMessage(err)).toBe('A szerver nem érhető el. Ellenőrizze a hálózati kapcsolatot.')
+    expect(getErrorMessage(err)).toBe(
+      'A szerver nem érhető el. Ellenőrizze a hálózati kapcsolatot.',
+    )
   })
 
   it('passes through server error messages', () => {
-    const axErr = makeAxiosError(400, { message: 'A telepites mar lezarult — a jelenlegi vagy kezdo dolgozoi jelszo kotelezo az uj jelszo beallitasahoz.' })
-    expect(getErrorMessage(axErr)).toBe('A telepites mar lezarult — a jelenlegi vagy kezdo dolgozoi jelszo kotelezo az uj jelszo beallitasahoz.')
+    const axErr = makeAxiosError(400, {
+      message:
+        'A telepites mar lezarult — a jelenlegi vagy kezdo dolgozoi jelszo kotelezo az uj jelszo beallitasahoz.',
+    })
+    expect(getErrorMessage(axErr)).toBe(
+      'A telepites mar lezarult — a jelenlegi vagy kezdo dolgozoi jelszo kotelezo az uj jelszo beallitasahoz.',
+    )
   })
 })
 
@@ -299,15 +316,21 @@ describe('isNotFoundError', () => {
 
 describe('humanizeError', () => {
   it('humanizes Error with Network Error message', () => {
-    expect(humanizeError(new Error('Network Error'))).toBe('A szerver nem érhető el. Ellenőrizze a hálózati kapcsolatot.')
+    expect(humanizeError(new Error('Network Error'))).toBe(
+      'A szerver nem érhető el. Ellenőrizze a hálózati kapcsolatot.',
+    )
   })
 
   it('humanizes Error with ECONNREFUSED', () => {
-    expect(humanizeError(new Error('connect ECONNREFUSED 127.0.0.1:8080'))).toBe('A szerver nem fogadja a kapcsolatot.')
+    expect(humanizeError(new Error('connect ECONNREFUSED 127.0.0.1:8080'))).toBe(
+      'A szerver nem fogadja a kapcsolatot.',
+    )
   })
 
   it('humanizes Error with SSL certificate issue', () => {
-    expect(humanizeError(new Error('ERR_CERT_AUTHORITY_INVALID'))).toBe('Tanúsítvány hiba a szerver felé. Ellenőrizze a HTTPS beállításokat.')
+    expect(humanizeError(new Error('ERR_CERT_AUTHORITY_INVALID'))).toBe(
+      'Tanúsítvány hiba a szerver felé. Ellenőrizze a HTTPS beállításokat.',
+    )
   })
 
   it('returns String(value) for non-Error input', () => {
@@ -324,64 +347,80 @@ describe('humanizeError', () => {
 
 describe('humanizeIpcError', () => {
   it('passes through HTTP_4xx backend messages (already Hungarian)', () => {
-    expect(humanizeIpcError('HTTP_401', 'Hibás jelszó vagy dolgozói kód.')).toBe('Hibás jelszó vagy dolgozói kód.')
-    expect(humanizeIpcError('HTTP_400', 'Ismeretlen dolgozoi azonosito: XYZ (ceg: EBC)')).toBe('Ismeretlen dolgozoi azonosito: XYZ (ceg: EBC)')
+    expect(humanizeIpcError('HTTP_401', 'Hibás jelszó vagy dolgozói kód.')).toBe(
+      'Hibás jelszó vagy dolgozói kód.',
+    )
+    expect(humanizeIpcError('HTTP_400', 'Ismeretlen dolgozoi azonosito: XYZ (ceg: EBC)')).toBe(
+      'Ismeretlen dolgozoi azonosito: XYZ (ceg: EBC)',
+    )
     expect(humanizeIpcError('HTTP_403', 'Nincs jogosultsága')).toBe('Nincs jogosultsága')
     expect(humanizeIpcError('HTTP_429', 'Túl sok kísérlet')).toBe('Túl sok kísérlet')
   })
 
   it('humanizes NETWORK code to Hungarian', () => {
-    expect(humanizeIpcError('NETWORK', 'Backend network hiba: connect ECONNREFUSED 10.0.0.1:8080'))
-      .toBe('A szerver nem fogadja a kapcsolatot.')
+    expect(
+      humanizeIpcError('NETWORK', 'Backend network hiba: connect ECONNREFUSED 10.0.0.1:8080'),
+    ).toBe('A szerver nem fogadja a kapcsolatot.')
   })
 
   it('humanizes NETWORK with unknown raw message to generic Hungarian', () => {
-    expect(humanizeIpcError('NETWORK', 'some unknown network failure'))
-      .toBe('A szerver nem érhető el. Ellenőrizze a hálózati kapcsolatot.')
+    expect(humanizeIpcError('NETWORK', 'some unknown network failure')).toBe(
+      'A szerver nem érhető el. Ellenőrizze a hálózati kapcsolatot.',
+    )
   })
 
   it('humanizes TIMEOUT code to Hungarian', () => {
-    expect(humanizeIpcError('TIMEOUT', 'A backend nem valaszolt 30000ms-en belul.'))
-      .toBe('A szerver nem válaszolt időben. Próbálja újra.')
+    expect(humanizeIpcError('TIMEOUT', 'A backend nem valaszolt 30000ms-en belul.')).toBe(
+      'A szerver nem válaszolt időben. Próbálja újra.',
+    )
   })
 
   it('humanizes PARSE_ERROR code to Hungarian', () => {
-    expect(humanizeIpcError('PARSE_ERROR', 'Unexpected token < in JSON'))
-      .toBe('A szerver válasza nem értelmezhető.')
+    expect(humanizeIpcError('PARSE_ERROR', 'Unexpected token < in JSON')).toBe(
+      'A szerver válasza nem értelmezhető.',
+    )
   })
 
   it('humanizes UNEXPECTED code to Hungarian', () => {
-    expect(humanizeIpcError('UNEXPECTED', 'TypeError: Cannot read properties of undefined'))
-      .toBe('Váratlan hiba történt a bejelentkezés során.')
+    expect(humanizeIpcError('UNEXPECTED', 'TypeError: Cannot read properties of undefined')).toBe(
+      'Váratlan hiba történt a bejelentkezés során.',
+    )
   })
 
   it('humanizes BAD_REQUEST code to Hungarian', () => {
-    expect(humanizeIpcError('BAD_REQUEST', 'companyCode, workerCode, password kotelezo'))
-      .toBe('Hiányzó bejelentkezési adatok.')
+    expect(humanizeIpcError('BAD_REQUEST', 'companyCode, workerCode, password kotelezo')).toBe(
+      'Hiányzó bejelentkezési adatok.',
+    )
   })
 
   it('passes through MISCONFIGURED message (already Hungarian from main.ts)', () => {
-    expect(humanizeIpcError('MISCONFIGURED', 'Google Desktop OAuth client nincs konfiguralva. Kerd az adminisztratort.'))
-      .toBe('Google Desktop OAuth client nincs konfiguralva. Kerd az adminisztratort.')
+    expect(
+      humanizeIpcError(
+        'MISCONFIGURED',
+        'Google Desktop OAuth client nincs konfiguralva. Kerd az adminisztratort.',
+      ),
+    ).toBe('Google Desktop OAuth client nincs konfiguralva. Kerd az adminisztratort.')
   })
 
   it('humanizes NETWORK with ENOTFOUND via humanizeRawMessage', () => {
-    expect(humanizeIpcError('NETWORK', 'Backend network hiba: getaddrinfo ENOTFOUND excvaluta.com'))
-      .toBe('A szerver címe nem található.')
+    expect(
+      humanizeIpcError('NETWORK', 'Backend network hiba: getaddrinfo ENOTFOUND excvaluta.com'),
+    ).toBe('A szerver címe nem található.')
   })
 
   it('humanizes NETWORK with ETIMEDOUT via humanizeRawMessage', () => {
-    expect(humanizeIpcError('NETWORK', 'Backend network hiba: connect ETIMEDOUT'))
-      .toBe('A szerver nem válaszolt időben.')
+    expect(humanizeIpcError('NETWORK', 'Backend network hiba: connect ETIMEDOUT')).toBe(
+      'A szerver nem válaszolt időben.',
+    )
   })
 
   it('humanizes NETWORK with SSL error via humanizeRawMessage', () => {
-    expect(humanizeIpcError('NETWORK', 'SSL certificate problem'))
-      .toBe('Tanúsítvány hiba a szerver felé. Ellenőrizze a HTTPS beállításokat.')
+    expect(humanizeIpcError('NETWORK', 'SSL certificate problem')).toBe(
+      'Tanúsítvány hiba a szerver felé. Ellenőrizze a HTTPS beállításokat.',
+    )
   })
 
   it('returns raw message for unknown IPC code', () => {
-    expect(humanizeIpcError('SOME_NEW_CODE', 'Whatever message'))
-      .toBe('Whatever message')
+    expect(humanizeIpcError('SOME_NEW_CODE', 'Whatever message')).toBe('Whatever message')
   })
 })

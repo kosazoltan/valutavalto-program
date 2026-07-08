@@ -52,13 +52,14 @@ export function CurrencyAutocomplete({
   // Filter rates based on input text
   const filtered = useCallback(() => {
     const q = inputText.trim().toLowerCase()
-    if (!q) return rates.filter(r => r.active)
+    if (!q) return rates.filter((r) => r.active)
 
     return rates
-      .filter(r => r.active)
-      .filter(r =>
-        r.currencyCode.toLowerCase().includes(q) ||
-        (r.currencyName?.toLowerCase().includes(q) ?? false)
+      .filter((r) => r.active)
+      .filter(
+        (r) =>
+          r.currencyCode.toLowerCase().includes(q) ||
+          (r.currencyName?.toLowerCase().includes(q) ?? false),
       )
       .sort((a, b) => {
         // Exact code match first
@@ -99,78 +100,86 @@ export function CurrencyAutocomplete({
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const selectRate = useCallback((rate: ExchangeRate) => {
-    setInputText(rate.currencyCode)
-    onChange(rate.currencyCode, rate)
-    setIsOpen(false)
-    onConfirm()
-  }, [onChange, onConfirm])
-
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.toUpperCase()
-    setInputText(raw)
-    setIsOpen(true)
-
-    // Instant match: if exact 3-letter code matches an active rate
-    const exact = raw.length === 3
-      ? rates.find(r => r.currencyCode === raw && r.active)
-      : undefined
-    if (exact) {
-      onChange(raw, exact)
+  const selectRate = useCallback(
+    (rate: ExchangeRate) => {
+      setInputText(rate.currencyCode)
+      onChange(rate.currencyCode, rate)
       setIsOpen(false)
       onConfirm()
-      return
-    }
+    },
+    [onChange, onConfirm],
+  )
 
-    // Partial: notify parent with code only, no rate yet
-    onChange(raw, null)
-  }, [rates, onChange, onConfirm])
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!isOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-      e.preventDefault()
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value.toUpperCase()
+      setInputText(raw)
       setIsOpen(true)
-      return
-    }
 
-    if (isOpen) {
-          if (e.key === 'ArrowDown') {
-            e.preventDefault()
-            setHighlightIdx(prev => Math.min(prev + 1, suggestions.length - 1))
-            return
-          }
-          if (e.key === 'ArrowUp') {
-            e.preventDefault()
-            setHighlightIdx(prev => Math.max(prev - 1, 0))
-            return
-          }
-          if (e.key === 'Enter' || e.key === 'Tab') {
-            e.preventDefault()
-            if (suggestions[highlightIdx]) {
-              selectRate(suggestions[highlightIdx])
-            }
-            return
-          }
-          if (e.key === 'Escape') {
-            e.preventDefault()
-            setIsOpen(false)
-            return
-          }
+      // Instant match: if exact 3-letter code matches an active rate
+      const exact =
+        raw.length === 3 ? rates.find((r) => r.currencyCode === raw && r.active) : undefined
+      if (exact) {
+        onChange(raw, exact)
+        setIsOpen(false)
+        onConfirm()
+        return
+      }
+
+      // Partial: notify parent with code only, no rate yet
+      onChange(raw, null)
+    },
+    [rates, onChange, onConfirm],
+  )
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!isOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        e.preventDefault()
+        setIsOpen(true)
+        return
+      }
+
+      if (isOpen) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault()
+          setHighlightIdx((prev) => Math.min(prev + 1, suggestions.length - 1))
+          return
         }
-    else if (e.key === 'Enter' || e.key === 'Tab') {
-            const exact = inputText.length === 3
-              ? rates.find(r => r.currencyCode === inputText && r.active)
-              : undefined
-            if (exact) {
-              e.preventDefault()
-              selectRate(exact)
-              return
-            }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault()
+          setHighlightIdx((prev) => Math.max(prev - 1, 0))
+          return
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault()
+          if (suggestions[highlightIdx]) {
+            selectRate(suggestions[highlightIdx])
           }
+          return
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          setIsOpen(false)
+          return
+        }
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        const exact =
+          inputText.length === 3
+            ? rates.find((r) => r.currencyCode === inputText && r.active)
+            : undefined
+        if (exact) {
+          e.preventDefault()
+          selectRate(exact)
+          return
+        }
+      }
 
-    // Forward other keys to external handler (ArrowUp/Down for row nav when closed)
-    externalKeyDown?.(e)
-  }, [isOpen, suggestions, highlightIdx, inputText, rates, selectRate, externalKeyDown])
+      // Forward other keys to external handler (ArrowUp/Down for row nav when closed)
+      externalKeyDown?.(e)
+    },
+    [isOpen, suggestions, highlightIdx, inputText, rates, selectRate, externalKeyDown],
+  )
 
   return (
     <div ref={containerRef} className="relative">
@@ -212,9 +221,10 @@ export function CurrencyAutocomplete({
               }}
               onMouseEnter={() => setHighlightIdx(idx)}
               className={`w-full text-left px-3 py-2 flex items-center gap-3 text-sm transition-colors
-                ${idx === highlightIdx
-                  ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                  : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                ${
+                  idx === highlightIdx
+                    ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
                 }`}
             >
               <span className="font-mono font-bold text-base w-10">{rate.currencyCode}</span>
@@ -232,7 +242,8 @@ export function CurrencyAutocomplete({
       {/* Empty state */}
       {isOpen && suggestions.length === 0 && inputText.length > 0 && (
         <div className="absolute z-50 mt-1 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 text-sm text-gray-500">
-          {t('components.nincsTalalat')}{inputText}"
+          {t('components.nincsTalalat')}
+          {inputText}"
         </div>
       )}
     </div>

@@ -16,14 +16,29 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('../../services/api/index', () => ({
-  rateWorkgroupApi: { list: mocks.list, create: mocks.create, update: mocks.update, remove: mocks.remove },
-  rateCreationApi: { getBranches: mocks.getBranches, updateWorkgroupBranches: mocks.updateWorkgroupBranches },
+  rateWorkgroupApi: {
+    list: mocks.list,
+    create: mocks.create,
+    update: mocks.update,
+    remove: mocks.remove,
+  },
+  rateCreationApi: {
+    getBranches: mocks.getBranches,
+    updateWorkgroupBranches: mocks.updateWorkgroupBranches,
+  },
   currencyApi: { list: mocks.currencyList },
 }))
 vi.mock('../../utils/logger', () => ({ logger: mocks.logger }))
 
 const WORKGROUPS = [
-  { id: 'wg1', code: 'WG01', name: 'Budapest központ', legacyGroupNumber: 1, active: true, tileColor: 'sky' },
+  {
+    id: 'wg1',
+    code: 'WG01',
+    name: 'Budapest központ',
+    legacyGroupNumber: 1,
+    active: true,
+    tileColor: 'sky',
+  },
   { id: 'wg2', code: 'WG02', name: 'Pécs', legacyGroupNumber: 2, active: true, tileColor: 'amber' },
   // Inaktív (soft-deleted) — NEM jelenhet meg a csempék között.
   { id: 'wg3', code: 'WG09', name: 'Régi', legacyGroupNumber: 9, active: false, tileColor: 'red' },
@@ -77,15 +92,21 @@ describe('WorkgroupManager (FK-02)', () => {
     await waitFor(() => expect(screen.getByText('Budapest központ')).toBeInTheDocument())
     fireEvent.click(screen.getByText('Új munkacsoport'))
     // FK02-E (FR-1): a modal csak a nevet kéri; a Kód mező megszűnt (szerver generálja a sorszámból).
-    const dialog = screen.getByText('Új munkacsoport', { selector: 'h3' }).closest('div') as HTMLElement
+    const dialog = screen
+      .getByText('Új munkacsoport', { selector: 'h3' })
+      .closest('div') as HTMLElement
     const scope = within(dialog)
     expect(scope.queryByPlaceholderText('pl. WG01')).toBeNull()
-    fireEvent.change(scope.getByPlaceholderText('pl. Budapest központ'), { target: { value: 'Szeged' } })
+    fireEvent.change(scope.getByPlaceholderText('pl. Budapest központ'), {
+      target: { value: 'Szeged' },
+    })
     fireEvent.click(scope.getByText('Mentés'))
     await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1))
     // FK02-E (FR-2): a sorszám üresen marad → a szerver osztja ki (a teljes cég-scope alapján,
     // az inaktív csoportok foglalt sorszámát is figyelembe véve), a payload legacyGroupNumber-e undefined.
-    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Szeged', legacyGroupNumber: undefined }))
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Szeged', legacyGroupNumber: undefined }),
+    )
   })
 
   it('törlés megerősítő dialógus után hívja a remove (soft-delete) API-t', async () => {

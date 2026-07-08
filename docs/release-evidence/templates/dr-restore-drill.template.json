@@ -6,8 +6,14 @@
   "restoreStartedAt": "KITÖLTENDŐ: ISO időpont",
   "restoreCompletedAt": "KITÖLTENDŐ: ISO időpont (cél: indulástól ≤ 60 perc)",
   "postRestoreChecks": [
-    { "name": "Sortszám/integritás egyezés a forrás DB-vel (kulcstáblák)", "result": "KITÖLTENDŐ: PASS vagy FAIL" },
-    { "name": "Alkalmazás-bejelentkezés + tranzakciólista a visszaállított DB-n", "result": "KITÖLTENDŐ: PASS vagy FAIL" }
+    {
+      "name": "Sortszám/integritás egyezés a forrás DB-vel (kulcstáblák)",
+      "result": "KITÖLTENDŐ: PASS vagy FAIL"
+    },
+    {
+      "name": "Alkalmazás-bejelentkezés + tranzakciólista a visszaállított DB-n",
+      "result": "KITÖLTENDŐ: PASS vagy FAIL"
+    }
   ],
   "result": "KITÖLTENDŐ: PASS csak ha minden ellenőrzés PASS",
   "notes": "KITÖLTENDŐ: runbook-eltérések, tanulságok (docs/operations/dr-backup-runbook.md frissítése ha kellett)"

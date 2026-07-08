@@ -1,7 +1,25 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, Plus, FileText, Printer, Eye, XCircle, ChevronLeft, ChevronRight, Loader2, RefreshCw, FileDown, CalendarDays } from 'lucide-react'
-import { receiptApi, transactionApi, type Transaction, type TransactionTypeName } from '../../services/api/transactions'
+import {
+  Search,
+  Plus,
+  FileText,
+  Printer,
+  Eye,
+  XCircle,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  RefreshCw,
+  FileDown,
+  CalendarDays,
+} from 'lucide-react'
+import {
+  receiptApi,
+  transactionApi,
+  type Transaction,
+  type TransactionTypeName,
+} from '../../services/api/transactions'
 import type { PagedResponse } from '../../services/api/client'
 import { toast } from '../../components/ui/toaster'
 import { isElectron, getElectronAPI } from '../../utils/electron'
@@ -36,7 +54,10 @@ function formatDate(dateStr: string, timeStr?: string): string {
 
 function formatNumber(n: number | null | undefined, decimals = 2): string {
   if (n === null || n === undefined) return '—'
-  return n.toLocaleString('hu-HU', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+  return n.toLocaleString('hu-HU', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })
 }
 
 function downloadBlob(blob: Blob, filename: string): void {
@@ -85,34 +106,44 @@ export default function TransactionListPage() {
         if (api?.getPendingTransactions) {
           try {
             const rows = await api.getPendingTransactions()
-            localPending = rows.map((r) => ({
-              id: -(PENDING_TX_ID_OFFSET + Number(r.id)),
-              receiptNumber: (r as { local_reference_number?: string }).local_reference_number ?? `L-${String(r.id).padStart(8, '0')}`, // NGM helyi bizonylatszam (V/E/K/AA/AV prefix)
-              transactionDate: (r as { created_at?: string }).created_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
-              transactionTime: (r as { created_at?: string }).created_at?.slice(11, 19) ?? '',
-              transactionType: (String(r.type).toUpperCase() as Transaction['transactionType']) || 'BUY',
-              currencyId: 0,
-              currencyCode: r.currency_code,
-              currencyAmount: Number(r.foreign_amount),
-              exchangeRate: Number(r.rate),
-              hufAmount: Number(r.huf_amount),
-              roundedHufAmount: Number(r.rounded_huf_amount ?? r.huf_amount),
-              status: 'PENDING' as const,
-              customerName: r.customer_name ?? undefined,
-              workerName: undefined,
-              workerId: 0,
-              branchId: '',
-              printed: false,
-              handlingFee: r.handling_fee != null ? Number(r.handling_fee) : 0,
-              discountAmount: 0,
-              discountPercent: r.discount_percent != null ? Number(r.discount_percent) : 0,
-              createdAt: (r as { created_at?: string }).created_at ?? new Date().toISOString(),
-              // FK-SYNC (2026-06-02): a tartós sync-hiba (ha a tétel feltöltése elbukott) — a UI
-              // megmutatja, MIÉRT ragadt "Függőben", hogy a tranzakció ne tűnjön el némán.
-              syncError: r.sync_error ?? undefined,
-              syncAttempts: r.sync_attempts ?? undefined,
-            } as Transaction & { syncError?: string; syncAttempts?: number }))
-          } catch { /* SQLite nem elerheto */ }
+            localPending = rows.map(
+              (r) =>
+                ({
+                  id: -(PENDING_TX_ID_OFFSET + Number(r.id)),
+                  receiptNumber:
+                    (r as { local_reference_number?: string }).local_reference_number ??
+                    `L-${String(r.id).padStart(8, '0')}`, // NGM helyi bizonylatszam (V/E/K/AA/AV prefix)
+                  transactionDate:
+                    (r as { created_at?: string }).created_at?.slice(0, 10) ??
+                    new Date().toISOString().slice(0, 10),
+                  transactionTime: (r as { created_at?: string }).created_at?.slice(11, 19) ?? '',
+                  transactionType:
+                    (String(r.type).toUpperCase() as Transaction['transactionType']) || 'BUY',
+                  currencyId: 0,
+                  currencyCode: r.currency_code,
+                  currencyAmount: Number(r.foreign_amount),
+                  exchangeRate: Number(r.rate),
+                  hufAmount: Number(r.huf_amount),
+                  roundedHufAmount: Number(r.rounded_huf_amount ?? r.huf_amount),
+                  status: 'PENDING' as const,
+                  customerName: r.customer_name ?? undefined,
+                  workerName: undefined,
+                  workerId: 0,
+                  branchId: '',
+                  printed: false,
+                  handlingFee: r.handling_fee != null ? Number(r.handling_fee) : 0,
+                  discountAmount: 0,
+                  discountPercent: r.discount_percent != null ? Number(r.discount_percent) : 0,
+                  createdAt: (r as { created_at?: string }).created_at ?? new Date().toISOString(),
+                  // FK-SYNC (2026-06-02): a tartós sync-hiba (ha a tétel feltöltése elbukott) — a UI
+                  // megmutatja, MIÉRT ragadt "Függőben", hogy a tranzakció ne tűnjön el némán.
+                  syncError: r.sync_error ?? undefined,
+                  syncAttempts: r.sync_attempts ?? undefined,
+                }) as Transaction & { syncError?: string; syncAttempts?: number },
+            )
+          } catch {
+            /* SQLite nem elerheto */
+          }
         }
 
         // Pending konverziok (kulon tabla az Electron SQLite-ban)
@@ -121,31 +152,37 @@ export default function TransactionListPage() {
             const convRows = await api.getPendingConversions()
             const pendingConversions: Transaction[] = convRows
               .filter((c) => !c.synced)
-              .map((c) => ({
-                id: -(PENDING_CONVERSION_ID_OFFSET + Number(c.id)),
-                receiptNumber: c.local_reference_number ?? `K-${String(c.id).padStart(8, '0')}`,
-                transactionDate: c.created_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
-                transactionTime: c.created_at?.slice(11, 19) ?? '',
-                transactionType: 'CONVERSION' as Transaction['transactionType'],
-                currencyId: c.from_currency_id ?? 0,
-                currencyCode: c.from_currency_code,
-                currencyAmount: Number(c.from_amount),
-                exchangeRate: Number(c.conversion_rate),
-                hufAmount: Number(c.calculated_huf_amount),
-                roundedHufAmount: Number(c.calculated_huf_amount),
-                status: 'PENDING' as const,
-                customerName: c.customer_name ?? undefined,
-                workerName: undefined,
-                workerId: 0,
-                branchId: '',
-                printed: false,
-                handlingFee: c.handling_fee != null ? Number(c.handling_fee) : 0,
-                discountAmount: 0,
-                discountPercent: 0,
-                createdAt: c.created_at ?? new Date().toISOString(),
-              } as Transaction))
+              .map(
+                (c) =>
+                  ({
+                    id: -(PENDING_CONVERSION_ID_OFFSET + Number(c.id)),
+                    receiptNumber: c.local_reference_number ?? `K-${String(c.id).padStart(8, '0')}`,
+                    transactionDate:
+                      c.created_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+                    transactionTime: c.created_at?.slice(11, 19) ?? '',
+                    transactionType: 'CONVERSION' as Transaction['transactionType'],
+                    currencyId: c.from_currency_id ?? 0,
+                    currencyCode: c.from_currency_code,
+                    currencyAmount: Number(c.from_amount),
+                    exchangeRate: Number(c.conversion_rate),
+                    hufAmount: Number(c.calculated_huf_amount),
+                    roundedHufAmount: Number(c.calculated_huf_amount),
+                    status: 'PENDING' as const,
+                    customerName: c.customer_name ?? undefined,
+                    workerName: undefined,
+                    workerId: 0,
+                    branchId: '',
+                    printed: false,
+                    handlingFee: c.handling_fee != null ? Number(c.handling_fee) : 0,
+                    discountAmount: 0,
+                    discountPercent: 0,
+                    createdAt: c.created_at ?? new Date().toISOString(),
+                  }) as Transaction,
+              )
             localPending = [...localPending, ...pendingConversions]
-          } catch { /* SQLite nem elerheto */ }
+          } catch {
+            /* SQLite nem elerheto */
+          }
         }
       }
 
@@ -175,9 +212,7 @@ export default function TransactionListPage() {
   // FR-PA-05 "csak ügyfeles" SZERVER-oldali (customerOnly param) → a lapozás helyes; itt csak a
   // helyi név-keresés marad kliens-oldalon (a meglévő viselkedés szerint).
   const filteredTransactions = search
-    ? transactions.filter(tx =>
-        tx.customerName?.toLowerCase().includes(search.toLowerCase())
-      )
+    ? transactions.filter((tx) => tx.customerName?.toLowerCase().includes(search.toLowerCase()))
     : transactions
 
   const handleSearch = () => {
@@ -287,7 +322,10 @@ export default function TransactionListPage() {
             <input
               type="date"
               value={dateFrom}
-              onChange={(e) => { setDateFrom(e.target.value); setPage(0) }}
+              onChange={(e) => {
+                setDateFrom(e.target.value)
+                setPage(0)
+              }}
               className="form-input"
             />
           </div>
@@ -296,7 +334,10 @@ export default function TransactionListPage() {
             <input
               type="date"
               value={dateTo}
-              onChange={(e) => { setDateTo(e.target.value); setPage(0) }}
+              onChange={(e) => {
+                setDateTo(e.target.value)
+                setPage(0)
+              }}
               className="form-input"
             />
           </div>
@@ -304,7 +345,10 @@ export default function TransactionListPage() {
             <label className="form-label">{t('common.type')}</label>
             <select
               value={typeFilter}
-              onChange={(e) => { setTypeFilter(e.target.value as TransactionTypeName | ''); setPage(0) }}
+              onChange={(e) => {
+                setTypeFilter(e.target.value as TransactionTypeName | '')
+                setPage(0)
+              }}
               className="form-input"
             >
               <option value="">{t('common.all')}</option>
@@ -323,7 +367,10 @@ export default function TransactionListPage() {
               <input
                 type="checkbox"
                 checked={customerOnly}
-                onChange={(e) => { setCustomerOnly(e.target.checked); setPage(0) }}
+                onChange={(e) => {
+                  setCustomerOnly(e.target.checked)
+                  setPage(0)
+                }}
                 data-testid="filter-customer-only"
               />
               {t('transactions.csakUgyfeles', 'Csak ügyfeles')}
@@ -334,9 +381,7 @@ export default function TransactionListPage() {
 
       {/* Error */}
       {error && (
-        <div className="form-panel bg-red-50 border-red-200 text-red-700 text-sm">
-          {error}
-        </div>
+        <div className="form-panel bg-red-50 border-red-200 text-red-700 text-sm">{error}</div>
       )}
 
       {/* Loading */}
@@ -374,30 +419,44 @@ export default function TransactionListPage() {
                   </tr>
                 ) : (
                   filteredTransactions.map((tx) => (
-                    <tr key={tx.id} className={tx.status === 'REVERSED' ? 'opacity-50 line-through' : ''}>
+                    <tr
+                      key={tx.id}
+                      className={tx.status === 'REVERSED' ? 'opacity-50 line-through' : ''}
+                    >
                       <td className="font-mono text-sm text-gray-600">{tx.receiptNumber || '—'}</td>
-                      <td className="font-mono text-sm">{formatDate(tx.transactionDate, tx.transactionTime)}</td>
+                      <td className="font-mono text-sm">
+                        {formatDate(tx.transactionDate, tx.transactionTime)}
+                      </td>
                       <td>
-                        <span className={`px-1.5 py-0.5 text-xs rounded ${
-                          tx.transactionType === 'BUY'
-                            ? 'bg-green-100 text-green-700'
+                        <span
+                          className={`px-1.5 py-0.5 text-xs rounded ${
+                            tx.transactionType === 'BUY'
+                              ? 'bg-green-100 text-green-700'
+                              : tx.transactionType === 'SELL'
+                                ? 'bg-blue-100 text-blue-700'
+                                : tx.transactionType === 'REVERSAL'
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-purple-100 text-purple-700'
+                          }`}
+                        >
+                          {tx.transactionType === 'BUY'
+                            ? 'Vétel'
                             : tx.transactionType === 'SELL'
-                              ? 'bg-blue-100 text-blue-700'
+                              ? 'Eladás'
                               : tx.transactionType === 'REVERSAL'
-                                ? 'bg-red-100 text-red-700'
-                                : 'bg-purple-100 text-purple-700'
-                        }`}>
-                          {tx.transactionType === 'BUY' ? 'Vétel'
-                            : tx.transactionType === 'SELL' ? 'Eladás'
-                              : tx.transactionType === 'REVERSAL' ? 'Sztornó'
-                                : tx.transactionType === 'TRANSFER_OUT' ? 'Átadás'
-                                  : tx.transactionType === 'TRANSFER_IN' ? 'Átvétel'
+                                ? 'Sztornó'
+                                : tx.transactionType === 'TRANSFER_OUT'
+                                  ? 'Átadás'
+                                  : tx.transactionType === 'TRANSFER_IN'
+                                    ? 'Átvétel'
                                     : 'Átváltás'}
                         </span>
                       </td>
                       <td className="font-bold">{tx.currencyCode}</td>
                       <td className="text-right font-mono">{formatNumber(tx.currencyAmount)}</td>
-                      <td className="text-right font-mono text-gray-600">{formatNumber(tx.exchangeRate, 4)}</td>
+                      <td className="text-right font-mono text-gray-600">
+                        {formatNumber(tx.exchangeRate, 4)}
+                      </td>
                       <td className="text-right font-mono font-semibold">
                         {formatNumber(tx.roundedHufAmount ?? tx.hufAmount, 0)} {t('common.ft')}
                       </td>
@@ -419,15 +478,19 @@ export default function TransactionListPage() {
                             )
                           }
                           return (
-                            <span className={`px-1.5 py-0.5 text-xs rounded ${
-                              tx.status === 'COMPLETED'
-                                ? 'bg-green-100 text-green-700'
+                            <span
+                              className={`px-1.5 py-0.5 text-xs rounded ${
+                                tx.status === 'COMPLETED'
+                                  ? 'bg-green-100 text-green-700'
+                                  : tx.status === 'REVERSED'
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-yellow-100 text-yellow-700'
+                              }`}
+                            >
+                              {tx.status === 'COMPLETED'
+                                ? 'Teljesítve'
                                 : tx.status === 'REVERSED'
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-yellow-100 text-yellow-700'
-                            }`}>
-                              {tx.status === 'COMPLETED' ? 'Teljesítve'
-                                : tx.status === 'REVERSED' ? 'Sztornózva'
+                                  ? 'Sztornózva'
                                   : 'Függőben'}
                             </span>
                           )
@@ -445,7 +508,11 @@ export default function TransactionListPage() {
                           </button>
                           <button
                             className="toolbar-button"
-                            title={tx.id > 0 ? 'Bizonylat PDF letöltés' : 'Bizonylat PDF csak szinkronizált tranzakcióhoz érhető el'}
+                            title={
+                              tx.id > 0
+                                ? 'Bizonylat PDF letöltés'
+                                : 'Bizonylat PDF csak szinkronizált tranzakcióhoz érhető el'
+                            }
                             onClick={() => void downloadReceiptPdf(tx)}
                             disabled={tx.id <= 0}
                             data-testid={`receipt-pdf-tx-${tx.id}`}
@@ -454,7 +521,11 @@ export default function TransactionListPage() {
                           </button>
                           <button
                             className="toolbar-button"
-                            title={tx.id > 0 ? 'ESC/POS bizonylat letöltés' : 'ESC/POS csak szinkronizált tranzakcióhoz érhető el'}
+                            title={
+                              tx.id > 0
+                                ? 'ESC/POS bizonylat letöltés'
+                                : 'ESC/POS csak szinkronizált tranzakcióhoz érhető el'
+                            }
                             onClick={() => void downloadReceiptEscPos(tx)}
                             disabled={tx.id <= 0}
                             data-testid={`receipt-escpos-tx-${tx.id}`}
@@ -472,7 +543,9 @@ export default function TransactionListPage() {
                                 <button
                                   className="toolbar-button text-red-600 hover:text-red-700"
                                   title="Sztornó"
-                                  onClick={() => navigate(`/transactions/${tx.receiptNumber || tx.id}/storno`)}
+                                  onClick={() =>
+                                    navigate(`/transactions/${tx.receiptNumber || tx.id}/storno`)
+                                  }
                                   data-testid={`storno-tx-${tx.id}`}
                                 >
                                   <XCircle size={14} />
@@ -510,28 +583,39 @@ export default function TransactionListPage() {
         <div className="form-panel">
           <div className="flex flex-wrap justify-between gap-2 text-sm">
             <span>
-              {totalElements} {t('transactions.tranzakcio')}{totalPages > 1 && ` (${page + 1}/${totalPages} oldal)`}
+              {totalElements} {t('transactions.tranzakcio')}
+              {totalPages > 1 && ` (${page + 1}/${totalPages} oldal)`}
             </span>
             <div className="flex items-center gap-2">
               <button
                 className="form-button px-2 py-1"
                 disabled={page === 0}
-                onClick={() => setPage(p => Math.max(0, p - 1))}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
               >
                 <ChevronLeft size={14} />
               </button>
-              <span className="font-mono text-xs">{page + 1} / {Math.max(totalPages, 1)}</span>
+              <span className="font-mono text-xs">
+                {page + 1} / {Math.max(totalPages, 1)}
+              </span>
               <button
                 className="form-button px-2 py-1"
                 disabled={page >= totalPages - 1}
-                onClick={() => setPage(p => p + 1)}
+                onClick={() => setPage((p) => p + 1)}
               >
                 <ChevronRight size={14} />
               </button>
             </div>
             <span>
-              {t('audit.osszesen')}<strong className="font-mono">
-                {formatNumber(filteredTransactions.reduce((sum, tx) => sum + (tx.roundedHufAmount ?? tx.hufAmount), 0), 0)} {t('common.ft')}
+              {t('audit.osszesen')}
+              <strong className="font-mono">
+                {formatNumber(
+                  filteredTransactions.reduce(
+                    (sum, tx) => sum + (tx.roundedHufAmount ?? tx.hufAmount),
+                    0,
+                  ),
+                  0,
+                )}{' '}
+                {t('common.ft')}
               </strong>
             </span>
           </div>

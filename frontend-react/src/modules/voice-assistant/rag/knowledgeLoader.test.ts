@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { loadKnowledgeBase, lookupModuleById, __resetKnowledgeCacheForTesting } from './knowledgeLoader'
+import {
+  loadKnowledgeBase,
+  lookupModuleById,
+  __resetKnowledgeCacheForTesting,
+} from './knowledgeLoader'
 
 /**
  * EBC Hangsegéd knowledgeLoader smoke teszt (Copilot+Codex PR #665 P1 fix).

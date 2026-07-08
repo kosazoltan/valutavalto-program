@@ -78,9 +78,7 @@ const mockWorker = {
 }
 
 function renderClosingWizardPage(initialEntries = ['/closing/wizard']) {
-  mocks.useAuthStore.mockImplementation((selector: any) =>
-    selector({ worker: mockWorker }),
-  )
+  mocks.useAuthStore.mockImplementation((selector: any) => selector({ worker: mockWorker }))
 
   render(
     <MemoryRouter initialEntries={initialEntries}>
@@ -192,16 +190,16 @@ describe('ClosingWizardPage', () => {
         },
       ],
     })
-  mocks.closingWizardApiGetStep.mockResolvedValue({
-    stepNumber: 2,
-    stepTitle: 'Backend címletezés',
-    stepDescription: 'Backendből betöltött aktuális lépés',
-    completed: false,
-    canProceed: true,
-    stepData: {},
-  })
-  mocks.closingWizardApiValidateTransactions.mockResolvedValue([])
-  mocks.dailySessionApiValidateClosing.mockResolvedValue({
+    mocks.closingWizardApiGetStep.mockResolvedValue({
+      stepNumber: 2,
+      stepTitle: 'Backend címletezés',
+      stepDescription: 'Backendből betöltött aktuális lépés',
+      completed: false,
+      canProceed: true,
+      stepData: {},
+    })
+    mocks.closingWizardApiValidateTransactions.mockResolvedValue([])
+    mocks.dailySessionApiValidateClosing.mockResolvedValue({
       validationDate: '2026-06-18',
       errorCode: 0,
       errorMessage: 'Minden címletezés rendben',
@@ -300,9 +298,7 @@ describe('ClosingWizardPage', () => {
   })
 
   it('nem bejelentkezett felhasználó esetén error toast', async () => {
-    mocks.useAuthStore.mockImplementation((selector: any) =>
-      selector({ worker: null }),
-    )
+    mocks.useAuthStore.mockImplementation((selector: any) => selector({ worker: null }))
 
     render(
       <MemoryRouter>
@@ -349,9 +345,11 @@ describe('ClosingWizardPage', () => {
     // Use a function matcher since toLocaleString may produce non-breaking spaces
     // v2.5.3 (PR #345): a text-xl text-base-re csökkent a kompakt layout során
     const totalEl = screen.getByText((_content, element) => {
-      return element?.tagName === 'SPAN' &&
+      return (
+        element?.tagName === 'SPAN' &&
         element.classList.contains('text-base') &&
-        (element.textContent?.replace(/\s/g, '') === '20000Ft')
+        element.textContent?.replace(/\s/g, '') === '20000Ft'
+      )
     })
     expect(totalEl).toBeInTheDocument()
   })
@@ -382,7 +380,9 @@ describe('ClosingWizardPage', () => {
 
     // Verify steps 2-9 navigate calls happen
     await waitFor(() => {
-      expect(mocks.closingWizardApiCalculateDifferences).toHaveBeenCalledWith('wizard-1', { HUF: 100000 })
+      expect(mocks.closingWizardApiCalculateDifferences).toHaveBeenCalledWith('wizard-1', {
+        HUF: 100000,
+      })
       // Step 1 was called in runStep1, steps 2-9 = 8 more calls
       expect(mocks.closingWizardApiNavigate).toHaveBeenCalledTimes(9) // 1 + 8
     })
@@ -396,7 +396,9 @@ describe('ClosingWizardPage', () => {
       expect(mocks.closingWizardApiGetStep).toHaveBeenCalledWith('wizard-1', 2)
     })
 
-    expect(screen.getByTestId('closing-wizard-current-step')).toHaveTextContent('Backend címletezés')
+    expect(screen.getByTestId('closing-wizard-current-step')).toHaveTextContent(
+      'Backend címletezés',
+    )
     expect(screen.getByText('Backend MTCN ellenőrzés')).toBeInTheDocument()
   })
 
@@ -422,7 +424,9 @@ describe('ClosingWizardPage', () => {
     await user.click(screen.getByRole('button', { name: /Cimletezés rogzitese/i }))
 
     await waitFor(() => {
-      expect(mocks.closingWizardApiCalculateDifferences).toHaveBeenCalledWith('wizard-1', { HUF: 120000 })
+      expect(mocks.closingWizardApiCalculateDifferences).toHaveBeenCalledWith('wizard-1', {
+        HUF: 120000,
+      })
       expect(screen.getByText('Eltérés ellenőrzés')).toBeInTheDocument()
       expect(screen.getByTestId('closing-differences-table')).toHaveTextContent('DISCREPANCY')
     })

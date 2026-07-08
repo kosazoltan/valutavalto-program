@@ -22,12 +22,26 @@ export function HotkeyBar({ left, right = [] }: HotkeyBarProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {left.map((h) => (
-            <HotkeyButton key={h.key} hotkey={h.key} label={h.label} onClick={h.onClick} active={h.active} variant={h.variant} />
+            <HotkeyButton
+              key={h.key}
+              hotkey={h.key}
+              label={h.label}
+              onClick={h.onClick}
+              active={h.active}
+              variant={h.variant}
+            />
           ))}
         </div>
         <div className="flex items-center gap-3">
           {right.map((h) => (
-            <HotkeyButton key={h.key} hotkey={h.key} label={h.label} onClick={h.onClick} active={h.active} variant={h.variant} />
+            <HotkeyButton
+              key={h.key}
+              hotkey={h.key}
+              label={h.label}
+              onClick={h.onClick}
+              active={h.active}
+              variant={h.variant}
+            />
           ))}
         </div>
       </div>
@@ -48,7 +62,8 @@ function HotkeyButton({
   active?: boolean
   variant?: 'default' | 'danger' | 'secondary'
 }) {
-  const base = 'flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-white/40'
+  const base =
+    'flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-white/40'
   const variants: Record<string, string> = {
     default: active
       ? 'bg-[var(--primary)] text-white shadow-lg'

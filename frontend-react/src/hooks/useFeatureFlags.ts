@@ -36,18 +36,21 @@ export function useFeatureFlags(): FeatureFlags {
 
   useEffect(() => {
     let cancelled = false
-    api.get<FeatureFlags>('/features')
-      .then(r => {
+    api
+      .get<FeatureFlags>('/features')
+      .then((r) => {
         if (!cancelled) setFlags({ ...DEFAULT_FEATURES, ...r.data })
       })
-      .catch(err => {
+      .catch((err) => {
         // 401 (pre-login) varhato eset, NEM logoljuk (zaj elkerulese).
         // Mas hibat (500, network error, stb.) monitorozzuk.
         if (!isExpected401(err)) {
           logger.warn('useFeatureFlags', 'Feature flag fetch failed, using defaults', err)
         }
       })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   return flags

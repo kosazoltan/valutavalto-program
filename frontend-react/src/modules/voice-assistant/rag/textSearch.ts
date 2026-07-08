@@ -15,16 +15,55 @@
  */
 
 const ACCENT_FOLD: Record<string, string> = {
-  á: 'a', é: 'e', í: 'i', ó: 'o', ö: 'o', ő: 'o', ú: 'u', ü: 'u', ű: 'u',
+  á: 'a',
+  é: 'e',
+  í: 'i',
+  ó: 'o',
+  ö: 'o',
+  ő: 'o',
+  ú: 'u',
+  ü: 'u',
+  ű: 'u',
 }
 
 // Copilot PR #665: 'ki' korabban duplikalva volt. Most a kifejlesztett set
 // 30 magyar stopword-ot tartalmaz, mindegyik egyszer szerepel.
 const STOP_WORDS = new Set([
-  'a', 'az', 'es', 'is', 'de', 'hogy', 'meg', 'el', 'ki', 'be', 'fel', 'le',
-  'ha', 'nem', 'igen', 'ott', 'itt', 'ez', 'ezt', 'azt', 'mi', 'mit',
-  'minden', 'csak', 'mar', 'lehet', 'kell', 'vagy', 'vagyis', 'majd', 'most',
-  'olyan', 'sem', 'volt', 'lesz',
+  'a',
+  'az',
+  'es',
+  'is',
+  'de',
+  'hogy',
+  'meg',
+  'el',
+  'ki',
+  'be',
+  'fel',
+  'le',
+  'ha',
+  'nem',
+  'igen',
+  'ott',
+  'itt',
+  'ez',
+  'ezt',
+  'azt',
+  'mi',
+  'mit',
+  'minden',
+  'csak',
+  'mar',
+  'lehet',
+  'kell',
+  'vagy',
+  'vagyis',
+  'majd',
+  'most',
+  'olyan',
+  'sem',
+  'volt',
+  'lesz',
 ])
 
 export function normalizeText(input: string): string {
@@ -79,7 +118,7 @@ export function scoreDoc(
   queryTokens: string[],
   doc: SearchableDoc,
   precomputedDocTokens?: Set<string>,
-  precomputedTitleTokens?: string[]
+  precomputedTitleTokens?: string[],
 ): number {
   if (queryTokens.length === 0) return 0
   const docTokens = precomputedDocTokens ?? new Set(tokenize(`${doc.title} ${doc.body}`))
@@ -111,7 +150,7 @@ export function scoreDoc(
 export function searchDocs(
   query: string,
   docs: SearchableDoc[],
-  options: { topK?: number; minScore?: number } = {}
+  options: { topK?: number; minScore?: number } = {},
 ): SearchResult[] {
   const queryTokens = tokenize(query)
   if (queryTokens.length === 0) return []

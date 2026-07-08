@@ -13,21 +13,31 @@ import { describe, it, expect } from 'vitest'
 
 // --- Helper: az adapter URL builder logikajat tesztelo pure fuggveny ---
 function buildProxyUrl(
-  config: { baseURL?: string; url?: string; params?: Record<string, unknown>; paramsSerializer?: unknown },
+  config: {
+    baseURL?: string
+    url?: string
+    params?: Record<string, unknown>
+    paramsSerializer?: unknown
+  },
   defaultBaseUrl: string,
 ): string {
   const baseUrl = config.baseURL ?? defaultBaseUrl
-  let url = config.url?.startsWith('http')
-    ? config.url
-    : `${baseUrl}${config.url ?? ''}`
+  let url = config.url?.startsWith('http') ? config.url : `${baseUrl}${config.url ?? ''}`
 
   if (config.params && typeof config.params === 'object') {
     const serializer = config.paramsSerializer
     let queryString: string
     if (typeof serializer === 'function') {
       queryString = (serializer as (params: unknown) => string)(config.params)
-    } else if (serializer && typeof serializer === 'object' && 'serialize' in (serializer as object) && typeof (serializer as { serialize: unknown }).serialize === 'function') {
-      queryString = ((serializer as { serialize: (params: unknown, opts: unknown) => string }).serialize)(config.params, serializer)
+    } else if (
+      serializer &&
+      typeof serializer === 'object' &&
+      'serialize' in (serializer as object) &&
+      typeof (serializer as { serialize: unknown }).serialize === 'function'
+    ) {
+      queryString = (
+        serializer as { serialize: (params: unknown, opts: unknown) => string }
+      ).serialize(config.params, serializer)
     } else {
       const searchParams = new URLSearchParams()
       for (const [key, value] of Object.entries(config.params)) {
@@ -59,13 +69,17 @@ function reconstructBinary(
   contentType: string,
 ): unknown {
   if ((responseType === 'blob' || responseType === 'arraybuffer') && isBase64) {
-    const binary = Uint8Array.from(atob(body), c => c.charCodeAt(0))
+    const binary = Uint8Array.from(atob(body), (c) => c.charCodeAt(0))
     return responseType === 'blob'
       ? new Blob([binary], { type: contentType.split(';')[0] || 'application/octet-stream' })
       : binary.buffer
   }
   if (contentType.includes('json') && typeof body === 'string') {
-    try { return JSON.parse(body) } catch { return body }
+    try {
+      return JSON.parse(body)
+    } catch {
+      return body
+    }
   }
   return body
 }
@@ -74,7 +88,9 @@ describe('Electron IPC adapter — URL builder', () => {
   const BASE = 'https://excvaluta.com/api/v1'
 
   it('relatív URL → baseURL + url', () => {
-    expect(buildProxyUrl({ url: '/auth/login' }, BASE)).toBe('https://excvaluta.com/api/v1/auth/login')
+    expect(buildProxyUrl({ url: '/auth/login' }, BASE)).toBe(
+      'https://excvaluta.com/api/v1/auth/login',
+    )
   })
 
   it('abszolút URL → bypass baseURL', () => {
@@ -82,15 +98,19 @@ describe('Electron IPC adapter — URL builder', () => {
   })
 
   it('explicit baseURL felülírja a default-ot', () => {
-    expect(buildProxyUrl({ baseURL: 'https://custom.com', url: '/test' }, BASE))
-      .toBe('https://custom.com/test')
+    expect(buildProxyUrl({ baseURL: 'https://custom.com', url: '/test' }, BASE)).toBe(
+      'https://custom.com/test',
+    )
   })
 
   it('params → query string', () => {
-    const url = buildProxyUrl({
-      url: '/transactions',
-      params: { page: 1, size: 20, status: 'ACTIVE' },
-    }, BASE)
+    const url = buildProxyUrl(
+      {
+        url: '/transactions',
+        params: { page: 1, size: 20, status: 'ACTIVE' },
+      },
+      BASE,
+    )
     expect(url).toContain('/transactions?')
     expect(url).toContain('page=1')
     expect(url).toContain('size=20')
@@ -98,48 +118,63 @@ describe('Electron IPC adapter — URL builder', () => {
   })
 
   it('params null/undefined értékek kiszűrődnek', () => {
-    const url = buildProxyUrl({
-      url: '/search',
-      params: { q: 'test', empty: null, undef: undefined } as Record<string, unknown>,
-    }, BASE)
+    const url = buildProxyUrl(
+      {
+        url: '/search',
+        params: { q: 'test', empty: null, undef: undefined } as Record<string, unknown>,
+      },
+      BASE,
+    )
     expect(url).toContain('q=test')
     expect(url).not.toContain('empty')
     expect(url).not.toContain('undef')
   })
 
   it('már létező query string-hez & jellel fűz', () => {
-    const url = buildProxyUrl({
-      url: 'https://api.test/data?existing=1',
-      params: { extra: 'yes' },
-    }, BASE)
+    const url = buildProxyUrl(
+      {
+        url: 'https://api.test/data?existing=1',
+        params: { extra: 'yes' },
+      },
+      BASE,
+    )
     expect(url).toBe('https://api.test/data?existing=1&extra=yes')
   })
 
   it('paramsSerializer függvény támogatás', () => {
-    const url = buildProxyUrl({
-      url: '/custom',
-      params: { a: 1, b: 2 },
-      paramsSerializer: (p: Record<string, number>) => `custom=${Object.values(p).join(',')}`,
-    }, BASE)
+    const url = buildProxyUrl(
+      {
+        url: '/custom',
+        params: { a: 1, b: 2 },
+        paramsSerializer: (p: Record<string, number>) => `custom=${Object.values(p).join(',')}`,
+      },
+      BASE,
+    )
     expect(url).toContain('custom=1,2')
   })
 
   it('paramsSerializer object.serialize támogatás', () => {
-    const url = buildProxyUrl({
-      url: '/custom',
-      params: { x: 'hello' },
-      paramsSerializer: {
-        serialize: (p: Record<string, string>) => `ser=${Object.values(p).join('+')}`,
+    const url = buildProxyUrl(
+      {
+        url: '/custom',
+        params: { x: 'hello' },
+        paramsSerializer: {
+          serialize: (p: Record<string, string>) => `ser=${Object.values(p).join('+')}`,
+        },
       },
-    }, BASE)
+      BASE,
+    )
     expect(url).toContain('ser=hello')
   })
 
   it('üres params → nincs query string', () => {
-    const url = buildProxyUrl({
-      url: '/clean',
-      params: {},
-    }, BASE)
+    const url = buildProxyUrl(
+      {
+        url: '/clean',
+        params: {},
+      },
+      BASE,
+    )
     expect(url).toBe('https://excvaluta.com/api/v1/clean')
   })
 })
@@ -168,18 +203,18 @@ describe('Electron IPC adapter — body serialization', () => {
 
 describe('Electron IPC adapter — binary response reconstruction', () => {
   it('blob responseType + isBase64 → Blob', () => {
-    const b64 = btoa('hello');
+    const b64 = btoa('hello')
     const result = reconstructBinary('blob', true, b64, 'application/pdf')
     expect(result).toBeInstanceOf(Blob)
     expect((result as Blob).type).toBe('application/pdf')
   })
 
   it('arraybuffer responseType + isBase64 → ArrayBuffer', () => {
-    const b64 = btoa('test');
+    const b64 = btoa('test')
     const result = reconstructBinary('arraybuffer', true, b64, 'application/octet-stream')
     expect(result).toBeInstanceOf(ArrayBuffer)
     expect(new Uint8Array(result as ArrayBuffer)).toEqual(
-      Uint8Array.from(atob(b64), c => c.charCodeAt(0)),
+      Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)),
     )
   })
 

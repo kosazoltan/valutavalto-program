@@ -25,9 +25,28 @@ vi.mock('../../services/api/index', () => ({
 
 // 21 aktív deviza + HUF (FR-2)
 const CURRENCY_CODES = [
-  'EUR', 'USD', 'GBP', 'CHF', 'JPY', 'AUD', 'CAD', 'CZK', 'PLN', 'RON',
-  'TRY', 'CNY', 'RSD', 'UAH', 'ILS', 'AED', 'THB', 'KRW', 'MXN', 'ZAR',
-  'EUA', 'HUF',
+  'EUR',
+  'USD',
+  'GBP',
+  'CHF',
+  'JPY',
+  'AUD',
+  'CAD',
+  'CZK',
+  'PLN',
+  'RON',
+  'TRY',
+  'CNY',
+  'RSD',
+  'UAH',
+  'ILS',
+  'AED',
+  'THB',
+  'KRW',
+  'MXN',
+  'ZAR',
+  'EUA',
+  'HUF',
 ]
 
 function gridRow(code: string, overrides: Record<string, number | null> = {}) {
@@ -69,7 +88,20 @@ describe('FK-047 — Napi ellenőrző lista grid', () => {
     const grid = await screen.findByTestId('daily-check-grid')
     expect(grid).toBeInTheDocument()
     // FR-3: a 12 oszlopfejléc
-    for (const h of ['DEVIZA', 'NYITÓ', 'VÉTEL', 'ELADÁS', 'PTÁR+', 'PTÁR-', 'ZÁRÓ', 'SZÁMZÁR', 'TÖBB', 'HIÁNY', 'BANK+', 'BANK-']) {
+    for (const h of [
+      'DEVIZA',
+      'NYITÓ',
+      'VÉTEL',
+      'ELADÁS',
+      'PTÁR+',
+      'PTÁR-',
+      'ZÁRÓ',
+      'SZÁMZÁR',
+      'TÖBB',
+      'HIÁNY',
+      'BANK+',
+      'BANK-',
+    ]) {
       expect(screen.getByText(h)).toBeInTheDocument()
     }
     expect(screen.getByText('EUR')).toBeInTheDocument()
@@ -142,8 +174,9 @@ describe('FK-047 — Napi ellenőrző lista grid', () => {
     await loadGrid()
 
     const grid = await screen.findByTestId('daily-check-grid')
-    const eurRow = Array.from(grid.querySelectorAll('tbody tr'))
-      .find((tr) => tr.querySelector('td')?.textContent === 'EUR')!
+    const eurRow = Array.from(grid.querySelectorAll('tbody tr')).find(
+      (tr) => tr.querySelector('td')?.textContent === 'EUR',
+    )!
     const cells = Array.from(eurRow.querySelectorAll('td')).map((td) => td.textContent)
     // TÖBB (index 8) és HIÁNY (index 9) egyaránt 0,00 — nem „–"
     expect(cells[8]).toBe('0,00')
@@ -156,8 +189,9 @@ describe('FK-047 — Napi ellenőrző lista grid', () => {
     await loadGrid()
 
     const grid = await screen.findByTestId('daily-check-grid')
-    const eurRow = Array.from(grid.querySelectorAll('tbody tr'))
-      .find((tr) => tr.querySelector('td')?.textContent === 'EUR')!
+    const eurRow = Array.from(grid.querySelectorAll('tbody tr')).find(
+      (tr) => tr.querySelector('td')?.textContent === 'EUR',
+    )!
     const cells = Array.from(eurRow.querySelectorAll('td')).map((td) => td.textContent)
     expect(cells[7]).toBe('–') // SZÁMZÁR oszlop
   })

@@ -15,7 +15,9 @@ function readJson(relativePath) {
 }
 
 function normalizeUrl(value) {
-  return String(value ?? '').trim().replace(/\/+$/, '')
+  return String(value ?? '')
+    .trim()
+    .replace(/\/+$/, '')
 }
 
 function check(condition, message, detail) {
@@ -25,22 +27,32 @@ function check(condition, message, detail) {
 }
 
 function hasProductionUrlsResource(builderConfig) {
-  return Array.isArray(builderConfig.extraResources)
-    && builderConfig.extraResources.some((resource) =>
-      String(resource?.to ?? '') === 'production-urls.json'
-      && String(resource?.from ?? '').replaceAll('\\', '/').endsWith('config/production-urls.json'))
+  return (
+    Array.isArray(builderConfig.extraResources) &&
+    builderConfig.extraResources.some(
+      (resource) =>
+        String(resource?.to ?? '') === 'production-urls.json' &&
+        String(resource?.from ?? '')
+          .replaceAll('\\', '/')
+          .endsWith('config/production-urls.json'),
+    )
+  )
 }
 
 const productionUrls = readJson('config/production-urls.json')
 const expectedApiUrl = normalizeUrl(productionUrls.api_url)
 const expectedHealthUrl = `${expectedApiUrl}/auth/bootstrap-status`
 
-check(expectedApiUrl === 'https://excvaluta.com/api/v1',
+check(
+  expectedApiUrl === 'https://excvaluta.com/api/v1',
   'production API URL eltér a jóváhagyott éles végponttól',
-  expectedApiUrl)
-check(normalizeUrl(productionUrls.health_url) === expectedHealthUrl,
+  expectedApiUrl,
+)
+check(
+  normalizeUrl(productionUrls.health_url) === expectedHealthUrl,
   'production health URL nem az API URL-ből következő bootstrap-status végpont',
-  productionUrls.health_url)
+  productionUrls.health_url,
+)
 
 const packagePaths = [
   'package.json',
@@ -54,15 +66,19 @@ const versions = packagePaths.map((relativePath) => ({
   version: readJson(relativePath).version,
 }))
 const uniqueVersions = new Set(versions.map((entry) => entry.version))
-check(uniqueVersions.size === 1,
+check(
+  uniqueVersions.size === 1,
   'a monorepo, frontend és három telepíthető kliens verziója nincs szinkronban',
-  versions.map((entry) => `${entry.relativePath}=${entry.version}`).join(', '))
+  versions.map((entry) => `${entry.relativePath}=${entry.version}`).join(', '),
+)
 
 notes.push(`version=${versions[0]?.version ?? 'unknown'}`)
 notes.push(`api=${expectedApiUrl}`)
 
 const frontendAppModeRoles = readText('frontend-react/src/utils/appModeRoles.ts')
-const backendAppModeRoles = readText('backend/src/main/java/hu/puzzleir/valuta/util/AppModeRoleConstants.java')
+const backendAppModeRoles = readText(
+  'backend/src/main/java/hu/puzzleir/valuta/util/AppModeRoleConstants.java',
+)
 const menuGroups = readText('frontend-react/src/layouts/menuGroups.ts')
 const appRoutes = readText('frontend-react/src/App.tsx')
 const firstRunSource = readText('penztar-client/electron/first-run.ts')
@@ -113,66 +129,101 @@ for (const installer of installers) {
   const builderConfig = readJson(installer.builderPath)
   const mainSource = readText(installer.mainPath)
 
-  check(builderConfig.appId === installer.expectedAppId,
+  check(
+    builderConfig.appId === installer.expectedAppId,
     `${installer.name}: appId eltérés`,
-    builderConfig.appId)
-  check(builderConfig.productName === installer.expectedProductName,
+    builderConfig.appId,
+  )
+  check(
+    builderConfig.productName === installer.expectedProductName,
     `${installer.name}: productName eltérés`,
-    builderConfig.productName)
-  check(builderConfig.win?.artifactName === installer.expectedArtifactName,
+    builderConfig.productName,
+  )
+  check(
+    builderConfig.win?.artifactName === installer.expectedArtifactName,
     `${installer.name}: installer artifactName eltérés`,
-    builderConfig.win?.artifactName)
-  check(hasProductionUrlsResource(builderConfig),
-    `${installer.name}: production-urls.json nincs becsomagolva extraResource-ként`)
-  check(mainSource.includes('production-urls.json'),
-    `${installer.name}: main process nem olvassa a production-urls.json végpontforrást`)
-  check(mainSource.includes(expectedApiUrl),
+    builderConfig.win?.artifactName,
+  )
+  check(
+    hasProductionUrlsResource(builderConfig),
+    `${installer.name}: production-urls.json nincs becsomagolva extraResource-ként`,
+  )
+  check(
+    mainSource.includes('production-urls.json'),
+    `${installer.name}: main process nem olvassa a production-urls.json végpontforrást`,
+  )
+  check(
+    mainSource.includes(expectedApiUrl),
     `${installer.name}: main process fallback API URL nem egyezik a production végponttal`,
-    expectedApiUrl)
+    expectedApiUrl,
+  )
 
   const devRenderer = String(packageJson.scripts?.['dev:renderer'] ?? '')
   if (devRenderer) {
-    check(devRenderer.includes("VITE_PROXY_TARGET='https://excvaluta.com'"),
+    check(
+      devRenderer.includes("VITE_PROXY_TARGET='https://excvaluta.com'"),
       `${installer.name}: dev renderer proxy cél nem az excvaluta.com`,
-      devRenderer)
+      devRenderer,
+    )
   }
 
   const buildFrontend = String(packageJson.scripts?.['build:frontend'] ?? '')
   if (installer.merged) {
     // Összevont kliens: a build:frontend MINDKÉT flavort lefedi (külön dist-subdir),
     // és a main.ts dinamikusan (mód-választó + dual-dist) szolgálja ki őket.
-    check(Array.isArray(installer.mergedFlavors) && installer.mergedFlavors.length > 0,
-      `${installer.name}: merged kliens mergedFlavors hiányzik vagy nem tömb`)
-    for (const flavor of (Array.isArray(installer.mergedFlavors) ? installer.mergedFlavors : [])) {
+    check(
+      Array.isArray(installer.mergedFlavors) && installer.mergedFlavors.length > 0,
+      `${installer.name}: merged kliens mergedFlavors hiányzik vagy nem tömb`,
+    )
+    for (const flavor of Array.isArray(installer.mergedFlavors) ? installer.mergedFlavors : []) {
       const flavorBuilt =
         buildFrontend.includes(`VITE_APP_FLAVOR='${flavor}'`) ||
         readText(installer.packagePath).includes(`VITE_APP_FLAVOR='${flavor}'`)
-      check(flavorBuilt,
-        `${installer.name}: az összevont build nem fordítja a(z) ${flavor} flavort`)
+      check(
+        flavorBuilt,
+        `${installer.name}: az összevont build nem fordítja a(z) ${flavor} flavort`,
+      )
     }
-    check(mainSource.includes('activeAppMode'),
-      `${installer.name}: a main.ts nem használ dinamikus (activeAppMode) módot`)
-    check(mainSource.includes('pickWorkstationMode') || mainSource.includes('determineStartupMode'),
-      `${installer.name}: a main.ts nem tartalmaz induláskori mód-választót`)
-    check(/dist['"`\)]?\s*,\s*MODE_DIST_SUBDIR/.test(mainSource) || mainSource.includes('MODE_DIST_SUBDIR[activeAppMode]'),
-      `${installer.name}: a protokoll-kiszolgálás nem a mód-specifikus dist-subdir-ből történik`)
+    check(
+      mainSource.includes('activeAppMode'),
+      `${installer.name}: a main.ts nem használ dinamikus (activeAppMode) módot`,
+    )
+    check(
+      mainSource.includes('pickWorkstationMode') || mainSource.includes('determineStartupMode'),
+      `${installer.name}: a main.ts nem tartalmaz induláskori mód-választót`,
+    )
+    check(
+      /dist['"`\)]?\s*,\s*MODE_DIST_SUBDIR/.test(mainSource) ||
+        mainSource.includes('MODE_DIST_SUBDIR[activeAppMode]'),
+      `${installer.name}: a protokoll-kiszolgálás nem a mód-specifikus dist-subdir-ből történik`,
+    )
   } else if (installer.flavor) {
-    check(buildFrontend.includes(`VITE_APP_FLAVOR='${installer.flavor}'`),
+    check(
+      buildFrontend.includes(`VITE_APP_FLAVOR='${installer.flavor}'`),
       `${installer.name}: frontend build flavor nincs rögzítve`,
-      buildFrontend)
+      buildFrontend,
+    )
   } else {
-    check(!buildFrontend.includes('VITE_APP_FLAVOR='),
+    check(
+      !buildFrontend.includes('VITE_APP_FLAVOR='),
       `${installer.name}: pénztár/értéktár közös kliens buildje nem lehet RFM vagy központi flavorre rögzítve`,
-      buildFrontend)
+      buildFrontend,
+    )
   }
 
   if (installer.fixedMode) {
-    check(mainSource.includes(`return '${installer.fixedMode}'`),
-      `${installer.name}: getConfig('app_mode') nem fix ${installer.fixedMode} módot ad`)
-    check(mainSource.includes(`config.app_mode = '${installer.fixedMode}'`),
-      `${installer.name}: initial config nem fix ${installer.fixedMode} módot ír`)
-    check(mainSource.includes(`appMode: '${installer.fixedMode}'`),
-      `${installer.name}: backend login nem fix ${installer.fixedMode} appMode-dal történik`)
+    check(
+      mainSource.includes(`return '${installer.fixedMode}'`),
+      `${installer.name}: getConfig('app_mode') nem fix ${installer.fixedMode} módot ad`,
+    )
+    check(
+      mainSource.includes(`config.app_mode = '${installer.fixedMode}'`),
+      `${installer.name}: initial config nem fix ${installer.fixedMode} módot ír`,
+    )
+    check(
+      mainSource.includes(`appMode: '${installer.fixedMode}'`),
+      `${installer.name}: backend login nem fix ${installer.fixedMode} appMode-dal történik`,
+    )
   }
 
   notes.push(`${installer.name}: appId=${builderConfig.appId}`)
@@ -214,31 +265,46 @@ const functionalAreas = [
 ]
 
 for (const area of functionalAreas) {
-  check(firstRunSource.includes(`'${area.appMode}'`) || area.appMode === 'full',
+  check(
+    firstRunSource.includes(`'${area.appMode}'`) || area.appMode === 'full',
     `${area.name}: setup/appMode lista nem tartalmazza a működési módot`,
-    area.appMode)
-  check(frontendAppModeRoles.includes(area.frontendRoleGuard),
+    area.appMode,
+  )
+  check(
+    frontendAppModeRoles.includes(area.frontendRoleGuard),
     `${area.name}: frontend szerepkör-szűrés nem kezeli külön ezt az appMode-ot`,
-    area.appMode)
-  check(backendAppModeRoles.includes(area.backendModeMarker),
+    area.appMode,
+  )
+  check(
+    backendAppModeRoles.includes(area.backendModeMarker),
     `${area.name}: backend appMode-szűrés nem kezeli külön ezt az appMode-ot`,
-    area.appMode)
+    area.appMode,
+  )
   // Idézőjel-független: a Prettier a menuGroups.ts-ben dupla->szimpla idézőjelre formázhat
   // (modes: ["full"] -> modes: ['full']); a mód-jelölés megléte a lényeg, nem az idézőjel-stílus.
-  check(menuGroups.replace(/'/g, '"').includes(area.menuModeMarker) || area.name === 'rfm-keszito',
+  check(
+    menuGroups.replace(/'/g, '"').includes(area.menuModeMarker) || area.name === 'rfm-keszito',
     `${area.name}: menü/flavor nem tartalmazza a működési mód jelölését`,
-    area.menuModeMarker)
-  check(appRoutes.includes(`path="${area.route}"`) || appRoutes.includes(`to="${area.route}"`),
+    area.menuModeMarker,
+  )
+  check(
+    appRoutes.includes(`path="${area.route}"`) || appRoutes.includes(`to="${area.route}"`),
     `${area.name}: fő útvonal nincs bekötve az App route-ok közé`,
-    area.route)
+    area.route,
+  )
   notes.push(`${area.name}: appMode=${area.appMode}, route=${area.route}`)
 }
 
-check(/appMode:\s*payload\??\.appMode/.test(penztarMain) || /appMode:\s*payload\.appMode/.test(firstRunSource),
-  'pénztár/értéktár közös kliens: backend login nem adja tovább a kiválasztott appMode-ot')
+check(
+  /appMode:\s*payload\??\.appMode/.test(penztarMain) ||
+    /appMode:\s*payload\.appMode/.test(firstRunSource),
+  'pénztár/értéktár közös kliens: backend login nem adja tovább a kiválasztott appMode-ot',
+)
 
 if (failures.length > 0) {
-  console.error('[four-area-alignment] HIBA: a pénztár, értéktár, RFM készítő és központi működés nincs összhangban.')
+  console.error(
+    '[four-area-alignment] HIBA: a pénztár, értéktár, RFM készítő és központi működés nincs összhangban.',
+  )
   for (const failure of failures) {
     console.error(`- ${failure}`)
   }

@@ -141,26 +141,46 @@ async function exchangeCodeForIdToken(params: {
       response.on('end', () => {
         if (response.statusCode === 200) {
           try {
-            const json = JSON.parse(responseBody) as { id_token?: string; error?: string; error_description?: string };
+            const json = JSON.parse(responseBody) as {
+              id_token?: string;
+              error?: string;
+              error_description?: string;
+            };
             if (!json.id_token) {
-              reject(new GoogleOAuthFailedException('NO_ID_TOKEN',
-                  'Google token endpoint nem adott vissza id_token-t.'));
+              reject(
+                new GoogleOAuthFailedException(
+                  'NO_ID_TOKEN',
+                  'Google token endpoint nem adott vissza id_token-t.',
+                ),
+              );
               return;
             }
             resolve(json.id_token);
           } catch (parseErr) {
-            reject(new GoogleOAuthFailedException('TOKEN_EXCHANGE_FAILED',
-                'Google token response parse hiba: ' + (parseErr as Error).message));
+            reject(
+              new GoogleOAuthFailedException(
+                'TOKEN_EXCHANGE_FAILED',
+                'Google token response parse hiba: ' + (parseErr as Error).message,
+              ),
+            );
           }
         } else {
-          reject(new GoogleOAuthFailedException('TOKEN_EXCHANGE_FAILED',
-              `Google token endpoint HTTP ${response.statusCode}: ${responseBody.slice(0, 200)}`));
+          reject(
+            new GoogleOAuthFailedException(
+              'TOKEN_EXCHANGE_FAILED',
+              `Google token endpoint HTTP ${response.statusCode}: ${responseBody.slice(0, 200)}`,
+            ),
+          );
         }
       });
     });
     request.on('error', (err) => {
-      reject(new GoogleOAuthFailedException('NETWORK',
-          'Google token endpoint network hiba: ' + err.message));
+      reject(
+        new GoogleOAuthFailedException(
+          'NETWORK',
+          'Google token endpoint network hiba: ' + err.message,
+        ),
+      );
     });
     request.write(body.toString());
     request.end();
@@ -184,9 +204,11 @@ export async function performGoogleOAuthFlow(config: {
   timeoutMs?: number;
 }): Promise<GoogleOAuthResult> {
   if (!config.clientId || !config.clientSecret) {
-    throw new GoogleOAuthFailedException('MISCONFIGURED',
-        'Google Desktop OAuth client ID vagy secret hianyzik. ' +
-        'Allitsd be a VITE_GOOGLE_DESKTOP_CLIENT_ID es VITE_GOOGLE_DESKTOP_CLIENT_SECRET env-eket.');
+    throw new GoogleOAuthFailedException(
+      'MISCONFIGURED',
+      'Google Desktop OAuth client ID vagy secret hianyzik. ' +
+        'Allitsd be a VITE_GOOGLE_DESKTOP_CLIENT_ID es VITE_GOOGLE_DESKTOP_CLIENT_SECRET env-eket.',
+    );
   }
 
   const { codeVerifier, codeChallenge } = generatePkce();
@@ -195,22 +217,34 @@ export async function performGoogleOAuthFlow(config: {
 
   // 1. Ephemeral HTTP server inditasa loopback redirect-hez (RFC 8252).
   //    A `port: 0` az OS-tol egy szabad portot ker.
-  const { server, redirectUri } = await new Promise<{ server: http.Server; redirectUri: string }>((resolve, reject) => {
-    const tmpServer = http.createServer();
-    tmpServer.on('error', (err) => reject(new GoogleOAuthFailedException('NETWORK',
-        'Loopback HTTP server inditasi hiba: ' + err.message)));
-    tmpServer.listen(0, '127.0.0.1', () => {
-      const address = tmpServer.address();
-      if (typeof address === 'string' || address === null) {
-        reject(new GoogleOAuthFailedException('NETWORK',
-            'Loopback HTTP server portot nem kaptuk meg.'));
-        return;
-      }
-      const uri = `http://127.0.0.1:${address.port}/callback`;
-      log.info('[google-oauth] Loopback HTTP server elindult: ' + uri);
-      resolve({ server: tmpServer, redirectUri: uri });
-    });
-  });
+  const { server, redirectUri } = await new Promise<{ server: http.Server; redirectUri: string }>(
+    (resolve, reject) => {
+      const tmpServer = http.createServer();
+      tmpServer.on('error', (err) =>
+        reject(
+          new GoogleOAuthFailedException(
+            'NETWORK',
+            'Loopback HTTP server inditasi hiba: ' + err.message,
+          ),
+        ),
+      );
+      tmpServer.listen(0, '127.0.0.1', () => {
+        const address = tmpServer.address();
+        if (typeof address === 'string' || address === null) {
+          reject(
+            new GoogleOAuthFailedException(
+              'NETWORK',
+              'Loopback HTTP server portot nem kaptuk meg.',
+            ),
+          );
+          return;
+        }
+        const uri = `http://127.0.0.1:${address.port}/callback`;
+        log.info('[google-oauth] Loopback HTTP server elindult: ' + uri);
+        resolve({ server: tmpServer, redirectUri: uri });
+      });
+    },
+  );
 
   // 2. Auth URL osszeallitasa Google docs alapjan.
   const authUrl = new URL(GOOGLE_AUTH_URI);
@@ -228,8 +262,12 @@ export async function performGoogleOAuthFlow(config: {
   // 3. Promise: vagy a callback eredmenyet vagy a timeout-ot/cancel-t var.
   const authPromise = new Promise<string>((resolve, reject) => {
     const timeoutHandle = setTimeout(() => {
-      reject(new GoogleOAuthFailedException('TIMEOUT',
-          'Google bejelentkezes timeout (5 perc) — a felhasznalo nem fejezte be a flow-t.'));
+      reject(
+        new GoogleOAuthFailedException(
+          'TIMEOUT',
+          'Google bejelentkezes timeout (5 perc) — a felhasznalo nem fejezte be a flow-t.',
+        ),
+      );
     }, timeoutMs);
 
     server.on('request', (req, res) => {
@@ -250,16 +288,24 @@ export async function performGoogleOAuthFlow(config: {
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
           res.end(buildHtmlResponse(false, `Google bejelentkezes hiba: ${errorParam}`));
           clearTimeout(timeoutHandle);
-          reject(new GoogleOAuthFailedException('USER_CANCELLED',
-              `A felhasznalo megszakitotta a Google bejelentkezest: ${errorParam}`));
+          reject(
+            new GoogleOAuthFailedException(
+              'USER_CANCELLED',
+              `A felhasznalo megszakitotta a Google bejelentkezest: ${errorParam}`,
+            ),
+          );
           return;
         }
         if (!code) {
           res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
           res.end(buildHtmlResponse(false, 'Hianyzo authorization code.'));
           clearTimeout(timeoutHandle);
-          reject(new GoogleOAuthFailedException('NO_CODE',
-              'Google callback nem tartalmazott authorization code-ot.'));
+          reject(
+            new GoogleOAuthFailedException(
+              'NO_CODE',
+              'Google callback nem tartalmazott authorization code-ot.',
+            ),
+          );
           return;
         }
         if (returnedState !== state) {
@@ -267,8 +313,12 @@ export async function performGoogleOAuthFlow(config: {
           res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
           res.end(buildHtmlResponse(false, 'CSRF state mismatch — biztonsagi hiba.'));
           clearTimeout(timeoutHandle);
-          reject(new GoogleOAuthFailedException('STATE_MISMATCH',
-              'CSRF state parameter mismatch — potencialis spoofing.'));
+          reject(
+            new GoogleOAuthFailedException(
+              'STATE_MISMATCH',
+              'CSRF state parameter mismatch — potencialis spoofing.',
+            ),
+          );
           return;
         }
 
@@ -280,8 +330,9 @@ export async function performGoogleOAuthFlow(config: {
       } catch (handlerErr) {
         log.error('[google-oauth] callback handler hiba:', handlerErr);
         clearTimeout(timeoutHandle);
-        reject(new GoogleOAuthFailedException('CALLBACK_HANDLER_ERROR',
-            (handlerErr as Error).message));
+        reject(
+          new GoogleOAuthFailedException('CALLBACK_HANDLER_ERROR', (handlerErr as Error).message),
+        );
       }
     });
   });
@@ -332,7 +383,7 @@ export async function performGoogleOAuthFlow(config: {
 export async function performGoogleOAuthFlowWithBackendLogin(config: {
   clientId: string;
   clientSecret: string;
-  apiBaseUrl: string;          // pl. https://excvaluta.com/api/v1
+  apiBaseUrl: string; // pl. https://excvaluta.com/api/v1
   appMode?: string;
   timeoutMs?: number;
   // FK-ÉRTÉKTÁR (V285): a kliens támogatja a kétlépcsős értéktári belépést (dolgozóválasztó).
@@ -360,7 +411,13 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
     try {
       const responseJson = await postJsonViaElectronNet(url, reqBody, 30_000);
-      log.info('[google-oauth] Backend google-login sikeres (attempt ' + (attempt + 1) + '/' + MAX_RETRIES + ')');
+      log.info(
+        '[google-oauth] Backend google-login sikeres (attempt ' +
+          (attempt + 1) +
+          '/' +
+          MAX_RETRIES +
+          ')',
+      );
       return {
         response: responseJson,
         email: oauthResult.email,
@@ -373,15 +430,30 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
       const isLastAttempt = attempt === MAX_RETRIES - 1;
       const errCode = (err as GoogleOAuthFailedException).code ?? 'UNKNOWN';
       const errMsg = (err as Error).message ?? String(err);
-      log.warn('[google-oauth] Backend google-login hiba (' + errCode + ', attempt ' + (attempt + 1) + '/' +
-          MAX_RETRIES + '): ' + errMsg);
+      log.warn(
+        '[google-oauth] Backend google-login hiba (' +
+          errCode +
+          ', attempt ' +
+          (attempt + 1) +
+          '/' +
+          MAX_RETRIES +
+          '): ' +
+          errMsg,
+      );
       if (isLastAttempt) {
-        throw new GoogleOAuthFailedException('BACKEND_LOGIN_FAILED',
-            'A bejelentkezes szervere ' + MAX_RETRIES + ' probalkozas utan sem fogadta el a Google azonositot. ' +
-            'Kerlek probald meg ujra par masodperc mulva. (' + errMsg + ')');
+        throw new GoogleOAuthFailedException(
+          'BACKEND_LOGIN_FAILED',
+          'A bejelentkezes szervere ' +
+            MAX_RETRIES +
+            ' probalkozas utan sem fogadta el a Google azonositot. ' +
+            'Kerlek probald meg ujra par masodperc mulva. (' +
+            errMsg +
+            ')',
+        );
       }
       // network/timeout-ra retry-zunk; 4xx/5xx valaszra azonnal dobjuk
-      const isNetworkErr = errCode === 'NETWORK' || errCode === 'TIMEOUT' || /timeout|abort|ECONNRESET/i.test(errMsg);
+      const isNetworkErr =
+        errCode === 'NETWORK' || errCode === 'TIMEOUT' || /timeout|abort|ECONNRESET/i.test(errMsg);
       if (!isNetworkErr) {
         throw err;
       }
@@ -396,7 +468,12 @@ export async function performGoogleOAuthFlowWithBackendLogin(config: {
  * Main-process net.request POST JSON helper. Robust net stack (NEM renderer fetch),
  * Windows certificate store + Chromium switches alkalmazva (--disable-http2, etc.).
  */
-const OAUTH_ALLOWED_HOSTS = ['excvaluta.com', 'oauth2.googleapis.com', 'accounts.google.com', 'localhost'];
+const OAUTH_ALLOWED_HOSTS = [
+  'excvaluta.com',
+  'oauth2.googleapis.com',
+  'accounts.google.com',
+  'localhost',
+];
 
 function isPrivateOrLoopbackHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
@@ -409,21 +486,38 @@ function isPrivateOrLoopbackHost(hostname: string): boolean {
   }
   const a = parts[0] ?? -1;
   const b = parts[1] ?? -1;
-  return a === 10
-    || (a === 172 && b >= 16 && b <= 31)
-    || (a === 192 && b === 168)
-    || (a === 169 && b === 254)
-    || a === 127;
+  return (
+    a === 10 ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 169 && b === 254) ||
+    a === 127
+  );
 }
 
-function postJsonViaElectronNet(url: string, jsonBody: string, timeoutMs: number): Promise<unknown> {
+function postJsonViaElectronNet(
+  url: string,
+  jsonBody: string,
+  timeoutMs: number,
+): Promise<unknown> {
   try {
     const parsed = new URL(url);
-    if (!OAUTH_ALLOWED_HOSTS.some(h => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`))
-        && !isPrivateOrLoopbackHost(parsed.hostname)) {
-      return Promise.reject(new GoogleOAuthFailedException('INVALID_URL', `Blocked: host not in allowlist: ${parsed.hostname}`));
+    if (
+      !OAUTH_ALLOWED_HOSTS.some(
+        (h) => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`),
+      ) &&
+      !isPrivateOrLoopbackHost(parsed.hostname)
+    ) {
+      return Promise.reject(
+        new GoogleOAuthFailedException(
+          'INVALID_URL',
+          `Blocked: host not in allowlist: ${parsed.hostname}`,
+        ),
+      );
     }
-  } catch { return Promise.reject(new GoogleOAuthFailedException('INVALID_URL', `Invalid URL: ${url}`)); }
+  } catch {
+    return Promise.reject(new GoogleOAuthFailedException('INVALID_URL', `Invalid URL: ${url}`));
+  }
 
   return new Promise((resolve, reject) => {
     const request = electronNet.request({ method: 'POST', url });
@@ -434,13 +528,23 @@ function postJsonViaElectronNet(url: string, jsonBody: string, timeoutMs: number
     let timedOut = false;
     const timeoutHandle = setTimeout(() => {
       timedOut = true;
-      try { request.abort(); } catch { /* ignore */ }
-      reject(new GoogleOAuthFailedException('TIMEOUT',
-          `A backend nem valaszolt ${timeoutMs}ms-en belul.`));
+      try {
+        request.abort();
+      } catch {
+        /* ignore */
+      }
+      reject(
+        new GoogleOAuthFailedException(
+          'TIMEOUT',
+          `A backend nem valaszolt ${timeoutMs}ms-en belul.`,
+        ),
+      );
     }, timeoutMs);
 
     request.on('response', (response) => {
-      response.on('data', (chunk) => { responseBody += chunk.toString('utf8'); });
+      response.on('data', (chunk) => {
+        responseBody += chunk.toString('utf8');
+      });
       response.on('end', () => {
         if (timedOut) return;
         clearTimeout(timeoutHandle);
@@ -449,20 +553,27 @@ function postJsonViaElectronNet(url: string, jsonBody: string, timeoutMs: number
           try {
             resolve(JSON.parse(responseBody));
           } catch (parseErr) {
-            reject(new GoogleOAuthFailedException('PARSE_ERROR',
-                'Backend JSON parse hiba: ' + (parseErr as Error).message));
+            reject(
+              new GoogleOAuthFailedException(
+                'PARSE_ERROR',
+                'Backend JSON parse hiba: ' + (parseErr as Error).message,
+              ),
+            );
           }
         } else {
-          reject(new GoogleOAuthFailedException('HTTP_' + status,
-              `Backend HTTP ${status}: ${responseBody.slice(0, 200)}`));
+          reject(
+            new GoogleOAuthFailedException(
+              'HTTP_' + status,
+              `Backend HTTP ${status}: ${responseBody.slice(0, 200)}`,
+            ),
+          );
         }
       });
     });
     request.on('error', (err) => {
       if (timedOut) return;
       clearTimeout(timeoutHandle);
-      reject(new GoogleOAuthFailedException('NETWORK',
-          'Backend network hiba: ' + err.message));
+      reject(new GoogleOAuthFailedException('NETWORK', 'Backend network hiba: ' + err.message));
     });
     request.write(jsonBody);
     request.end();
@@ -506,15 +617,29 @@ export async function performPasswordLoginMainProcess(params: {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
     try {
       const responseJson = await postJsonViaElectronNet(url, reqBody, timeoutMs);
-      log.info('[main-process-login] /auth/login sikeres (attempt ' + (attempt + 1) + '/' + MAX_RETRIES + ')');
+      log.info(
+        '[main-process-login] /auth/login sikeres (attempt ' +
+          (attempt + 1) +
+          '/' +
+          MAX_RETRIES +
+          ')',
+      );
       return responseJson;
     } catch (err) {
       lastErr = err;
       const isLastAttempt = attempt === MAX_RETRIES - 1;
       const errCode = (err as GoogleOAuthFailedException).code ?? 'UNKNOWN';
       const errMsg = (err as Error).message ?? String(err);
-      log.warn('[main-process-login] /auth/login hiba (' + errCode + ', attempt ' + (attempt + 1) + '/' +
-          MAX_RETRIES + '): ' + errMsg);
+      log.warn(
+        '[main-process-login] /auth/login hiba (' +
+          errCode +
+          ', attempt ' +
+          (attempt + 1) +
+          '/' +
+          MAX_RETRIES +
+          '): ' +
+          errMsg,
+      );
 
       // 4xx (rossz jelszo, blokk, etc.): NE retry-zunk — a backend valaszolt
       if (errCode.startsWith('HTTP_4')) {
@@ -524,8 +649,10 @@ export async function performPasswordLoginMainProcess(params: {
         break;
       }
       // network/timeout-ra retry-zunk
-      const isNetworkErr = errCode === 'NETWORK' || errCode === 'TIMEOUT'
-          || /timeout|abort|ECONNRESET|EAI_AGAIN/i.test(errMsg);
+      const isNetworkErr =
+        errCode === 'NETWORK' ||
+        errCode === 'TIMEOUT' ||
+        /timeout|abort|ECONNRESET|EAI_AGAIN/i.test(errMsg);
       if (!isNetworkErr) {
         throw err;
       }

@@ -97,7 +97,9 @@ export default function CustomerPanel({
               if (e.key === 'Enter') {
                 e.preventDefault()
                 if (identificationLevel !== 'SIMPLE' && !customer) {
-                  const el = document.querySelector<HTMLInputElement>('[data-field="customer-name"]')
+                  const el = document.querySelector<HTMLInputElement>(
+                    '[data-field="customer-name"]',
+                  )
                   el?.focus()
                 }
               }
@@ -115,7 +117,9 @@ export default function CustomerPanel({
         <div className="space-y-2">
           <div className="p-2 bg-green-50 border border-green-200 rounded flex items-center gap-2">
             <CheckCircle size={18} className="text-green-600" />
-            <span className="text-green-700 font-semibold">{t('transactions.ugyfelKivalasztva2')}</span>
+            <span className="text-green-700 font-semibold">
+              {t('transactions.ugyfelKivalasztva2')}
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>

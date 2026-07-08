@@ -86,7 +86,9 @@ export default function CentralReportsPage() {
 
       <div className="bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
         <div>
-          <label className="block text-xs text-gray-500 mb-1" htmlFor="cr-type">{t('reports.centralReports.reportType')}</label>
+          <label className="block text-xs text-gray-500 mb-1" htmlFor="cr-type">
+            {t('reports.centralReports.reportType')}
+          </label>
           <select
             id="cr-type"
             value={reportType}
@@ -101,20 +103,44 @@ export default function CentralReportsPage() {
 
         {reportType === 'daily' && (
           <div>
-            <label className="block text-xs text-gray-500 mb-1" htmlFor="cr-day">{t('reports.centralReports.date')}</label>
-            <input id="cr-day" type="date" value={day} onChange={(e) => setDay(e.target.value)} className="form-input w-full text-sm" />
+            <label className="block text-xs text-gray-500 mb-1" htmlFor="cr-day">
+              {t('reports.centralReports.date')}
+            </label>
+            <input
+              id="cr-day"
+              type="date"
+              value={day}
+              onChange={(e) => setDay(e.target.value)}
+              className="form-input w-full text-sm"
+            />
           </div>
         )}
         {reportType === 'weekly' && (
           <div>
-            <label className="block text-xs text-gray-500 mb-1" htmlFor="cr-week">{t('reports.centralReports.weekStart')}</label>
-            <input id="cr-week" type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} className="form-input w-full text-sm" />
+            <label className="block text-xs text-gray-500 mb-1" htmlFor="cr-week">
+              {t('reports.centralReports.weekStart')}
+            </label>
+            <input
+              id="cr-week"
+              type="date"
+              value={weekStart}
+              onChange={(e) => setWeekStart(e.target.value)}
+              className="form-input w-full text-sm"
+            />
           </div>
         )}
         {reportType === 'monthly' && (
           <div>
-            <label className="block text-xs text-gray-500 mb-1" htmlFor="cr-month">{t('reports.centralReports.month')}</label>
-            <input id="cr-month" type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="form-input w-full text-sm" />
+            <label className="block text-xs text-gray-500 mb-1" htmlFor="cr-month">
+              {t('reports.centralReports.month')}
+            </label>
+            <input
+              id="cr-month"
+              type="month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              className="form-input w-full text-sm"
+            />
           </div>
         )}
 
@@ -126,7 +152,9 @@ export default function CentralReportsPage() {
             className="form-button-primary flex items-center gap-2"
           >
             <Download className="h-4 w-4" />
-            {loading ? t('reports.centralReports.downloading') : t('reports.centralReports.download')}
+            {loading
+              ? t('reports.centralReports.downloading')
+              : t('reports.centralReports.download')}
           </button>
         </div>
       </div>

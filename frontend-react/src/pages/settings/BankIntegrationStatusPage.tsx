@@ -108,7 +108,9 @@ export default function BankIntegrationStatusPage() {
   const loadStatus = useCallback(async (): Promise<boolean> => {
     setLoading(true)
     try {
-      const response = await api.get<BankIntegrationStatusResponse>('/admin/bank-integration/status')
+      const response = await api.get<BankIntegrationStatusResponse>(
+        '/admin/bank-integration/status',
+      )
       setStatus(response.data)
       return true
     } catch (err) {
@@ -217,10 +219,11 @@ export default function BankIntegrationStatusPage() {
       </div>
 
       <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-        <strong>Forrás:</strong> A `Felmérés/Valuta/Kósa Tervezés és fejlesztés/Bank API/API_bank.docx`
-        két publikus URL-t hivatkozott: <code>mnb.hu</code> árfolyam webservice + <code>api.rbinternational.com</code>.
-        Az MNB és Raiffeisen árfolyam-letöltés AUTOMATIKUS. A Darius napi jelentés outbox-fájl-alapú
-        (manuálisan továbbítandó a banki rendszerbe egy compliance kolléga által).
+        <strong>Forrás:</strong> A `Felmérés/Valuta/Kósa Tervezés és fejlesztés/Bank
+        API/API_bank.docx` két publikus URL-t hivatkozott: <code>mnb.hu</code> árfolyam webservice +{' '}
+        <code>api.rbinternational.com</code>. Az MNB és Raiffeisen árfolyam-letöltés AUTOMATIKUS. A
+        Darius napi jelentés outbox-fájl-alapú (manuálisan továbbítandó a banki rendszerbe egy
+        compliance kolléga által).
       </div>
 
       {status && (
@@ -270,16 +273,24 @@ export default function BankIntegrationStatusPage() {
 
           {/* Darius */}
           <div className="p-3 rounded border border-amber-200 bg-amber-50">
-            <h3 className="font-medium text-gray-800 mb-2">Darius napi jelentés ({status.darius.currentMonth})</h3>
+            <h3 className="font-medium text-gray-800 mb-2">
+              Darius napi jelentés ({status.darius.currentMonth})
+            </h3>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>Időszak:</div>
-              <div className="font-mono">{status.darius.periodStart} → {status.darius.periodEnd}</div>
+              <div className="font-mono">
+                {status.darius.periodStart} → {status.darius.periodEnd}
+              </div>
 
               <div>Beküldve:</div>
-              <div className="font-mono text-green-700">{status.darius.submittedReportsCount} db</div>
+              <div className="font-mono text-green-700">
+                {status.darius.submittedReportsCount} db
+              </div>
 
               <div>Folyamatban (GENERATED):</div>
-              <div className="font-mono text-yellow-700">{status.darius.pendingReportsCount} db</div>
+              <div className="font-mono text-yellow-700">
+                {status.darius.pendingReportsCount} db
+              </div>
 
               <div>Sikertelen (FAILED):</div>
               <div className="font-mono text-red-700">{status.darius.failedReportsCount} db</div>
@@ -292,14 +303,13 @@ export default function BankIntegrationStatusPage() {
             </div>
             {status.darius.failedReportsCount > 0 && (
               <div className="mt-2 text-sm text-red-700">
-                ⚠️ Sikertelen jelentések — kérjük, lépj a Darius riport admin oldalra a retry futtatáshoz.
+                ⚠️ Sikertelen jelentések — kérjük, lépj a Darius riport admin oldalra a retry
+                futtatáshoz.
               </div>
             )}
           </div>
 
-          <div className="text-xs text-gray-500">
-            Ellenőrizve: {status.checkedAt}
-          </div>
+          <div className="text-xs text-gray-500">Ellenőrizve: {status.checkedAt}</div>
         </>
       )}
 
@@ -318,7 +328,11 @@ export default function BankIntegrationStatusPage() {
               onClick={() => void handleFetchRaiffeisenNow()}
               disabled={fetchingRaiffeisen || configLoading}
             >
-              {fetchingRaiffeisen ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+              {fetchingRaiffeisen ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Play size={14} />
+              )}
               Raiffeisen kézi fetch
             </button>
             <button
@@ -342,25 +356,35 @@ export default function BankIntegrationStatusPage() {
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,340px)]">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="form-label" htmlFor="bank-api-mode">Mód</label>
+                <label className="form-label" htmlFor="bank-api-mode">
+                  Mód
+                </label>
                 <select
                   id="bank-api-mode"
                   className="form-input w-full"
                   value={configForm.mode}
-                  onChange={(event) => setConfigForm((prev) => ({ ...prev, mode: event.target.value }))}
+                  onChange={(event) =>
+                    setConfigForm((prev) => ({ ...prev, mode: event.target.value }))
+                  }
                 >
                   <option value="HTML_SCRAPING_FALLBACK">HTML scraping fallback</option>
-                  <option value="REST_PRIMARY_WITH_HTML_FALLBACK">REST elsődleges + HTML fallback</option>
+                  <option value="REST_PRIMARY_WITH_HTML_FALLBACK">
+                    REST elsődleges + HTML fallback
+                  </option>
                   <option value="DISABLED">Tiltva</option>
                 </select>
               </div>
               <div>
-                <label className="form-label" htmlFor="bank-api-auth-type">Auth típus</label>
+                <label className="form-label" htmlFor="bank-api-auth-type">
+                  Auth típus
+                </label>
                 <select
                   id="bank-api-auth-type"
                   className="form-input w-full"
                   value={configForm.authType}
-                  onChange={(event) => setConfigForm((prev) => ({ ...prev, authType: event.target.value }))}
+                  onChange={(event) =>
+                    setConfigForm((prev) => ({ ...prev, authType: event.target.value }))
+                  }
                 >
                   <option value="NONE">Nincs</option>
                   <option value="OAUTH2_CLIENT_CREDENTIALS">OAuth2 client credentials</option>
@@ -368,59 +392,83 @@ export default function BankIntegrationStatusPage() {
                 </select>
               </div>
               <div className="sm:col-span-2">
-                <label className="form-label" htmlFor="bank-api-endpoint">Endpoint URL</label>
+                <label className="form-label" htmlFor="bank-api-endpoint">
+                  Endpoint URL
+                </label>
                 <input
                   id="bank-api-endpoint"
                   className="form-input w-full"
                   value={configForm.endpointUrl}
-                  onChange={(event) => setConfigForm((prev) => ({ ...prev, endpointUrl: event.target.value }))}
+                  onChange={(event) =>
+                    setConfigForm((prev) => ({ ...prev, endpointUrl: event.target.value }))
+                  }
                   placeholder="https://..."
                 />
               </div>
               <div>
-                <label className="form-label" htmlFor="bank-api-client-id">Client ID</label>
+                <label className="form-label" htmlFor="bank-api-client-id">
+                  Client ID
+                </label>
                 <input
                   id="bank-api-client-id"
                   className="form-input w-full"
                   value={configForm.clientId}
-                  onChange={(event) => setConfigForm((prev) => ({ ...prev, clientId: event.target.value }))}
+                  onChange={(event) =>
+                    setConfigForm((prev) => ({ ...prev, clientId: event.target.value }))
+                  }
                 />
               </div>
               <div>
-                <label className="form-label" htmlFor="bank-api-client-secret">Client secret</label>
+                <label className="form-label" htmlFor="bank-api-client-secret">
+                  Client secret
+                </label>
                 <input
                   id="bank-api-client-secret"
                   type="password"
                   className="form-input w-full"
                   value={configForm.clientSecret}
-                  onChange={(event) => setConfigForm((prev) => ({ ...prev, clientSecret: event.target.value }))}
-                  placeholder={raiffeisenConfig?.clientSecretConfigured ? 'Már beállítva' : 'Nincs beállítva'}
+                  onChange={(event) =>
+                    setConfigForm((prev) => ({ ...prev, clientSecret: event.target.value }))
+                  }
+                  placeholder={
+                    raiffeisenConfig?.clientSecretConfigured ? 'Már beállítva' : 'Nincs beállítva'
+                  }
                   autoComplete="new-password"
                 />
               </div>
               <div>
-                <label className="form-label" htmlFor="bank-api-mtls-alias">mTLS certificate alias</label>
+                <label className="form-label" htmlFor="bank-api-mtls-alias">
+                  mTLS certificate alias
+                </label>
                 <input
                   id="bank-api-mtls-alias"
                   className="form-input w-full"
                   value={configForm.mtlsCertificateAlias}
-                  onChange={(event) => setConfigForm((prev) => ({ ...prev, mtlsCertificateAlias: event.target.value }))}
+                  onChange={(event) =>
+                    setConfigForm((prev) => ({ ...prev, mtlsCertificateAlias: event.target.value }))
+                  }
                 />
               </div>
               <div>
-                <label className="form-label" htmlFor="bank-api-frequency">Ütemezés</label>
+                <label className="form-label" htmlFor="bank-api-frequency">
+                  Ütemezés
+                </label>
                 <input
                   id="bank-api-frequency"
                   className="form-input w-full"
                   value={configForm.updateFrequency}
-                  onChange={(event) => setConfigForm((prev) => ({ ...prev, updateFrequency: event.target.value }))}
+                  onChange={(event) =>
+                    setConfigForm((prev) => ({ ...prev, updateFrequency: event.target.value }))
+                  }
                 />
               </div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                 <input
                   type="checkbox"
                   checked={configForm.enabled}
-                  onChange={(event) => setConfigForm((prev) => ({ ...prev, enabled: event.target.checked }))}
+                  onChange={(event) =>
+                    setConfigForm((prev) => ({ ...prev, enabled: event.target.checked }))
+                  }
                 />
                 Raiffeisen integráció engedélyezve
               </label>
@@ -430,13 +478,17 @@ export default function BankIntegrationStatusPage() {
               <div className="font-semibold text-gray-800">Konfigurációs státusz</div>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <span>Provider</span>
-                <span className="font-mono">{raiffeisenConfig?.providerName ?? RAIFFEISEN_PROVIDER}</span>
+                <span className="font-mono">
+                  {raiffeisenConfig?.providerName ?? RAIFFEISEN_PROVIDER}
+                </span>
                 <span>Listaelemek</span>
                 <span className="font-mono">{configs.length}</span>
                 <span>Secret</span>
                 <span>{raiffeisenConfig?.clientSecretConfigured ? 'beállítva' : 'nincs'}</span>
                 <span>Utolsó futás</span>
-                <span className="break-words font-mono">{raiffeisenConfig?.lastRunStatus ?? '—'}</span>
+                <span className="break-words font-mono">
+                  {raiffeisenConfig?.lastRunStatus ?? '—'}
+                </span>
                 <span>Frissítve</span>
                 <span className="break-words font-mono">{raiffeisenConfig?.updatedAt ?? '—'}</span>
               </div>

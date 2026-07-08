@@ -73,7 +73,11 @@ describe('ReceiptPreviewModal — átadási bizonylat (transfer)', () => {
 
   it('FR-2: tranzakció-specifikus szekciók (ügyfél / jogcím) NEM jelennek meg transfer bizonylaton', () => {
     // Magas HUF-érték is — a transfer-elrejtés a típuson múlik, nem a küszöbön
-    const { container } = renderModal({ ...base, hufAmount: 6_000_000, roundedHufAmount: 6_000_000 })
+    const { container } = renderModal({
+      ...base,
+      hufAmount: 6_000_000,
+      roundedHufAmount: 6_000_000,
+    })
     const txt = container.textContent ?? ''
     expect(txt).not.toContain('ügyfél adatai')
     expect(txt).not.toContain('JOGCÍM NYILATKOZAT')

@@ -32,7 +32,9 @@ describe('treasuryApi', () => {
     mockApi.get.mockResolvedValueOnce({ data: rows })
 
     await expect(treasuryApi.branchComparison()).resolves.toBe(rows)
-    expect(mockApi.get).toHaveBeenCalledWith('/treasury/branch-comparison', { _skipGlobal403Toast: true })
+    expect(mockApi.get).toHaveBeenCalledWith('/treasury/branch-comparison', {
+      _skipGlobal403Toast: true,
+    })
   })
 
   it('a beküldési státuszt a dedikált backend végpontról kéri', async () => {
@@ -40,7 +42,9 @@ describe('treasuryApi', () => {
     mockApi.get.mockResolvedValueOnce({ data: rows })
 
     await expect(treasuryApi.submissionStatus()).resolves.toBe(rows)
-    expect(mockApi.get).toHaveBeenCalledWith('/treasury/submission-status', { _skipGlobal403Toast: true })
+    expect(mockApi.get).toHaveBeenCalledWith('/treasury/submission-status', {
+      _skipGlobal403Toast: true,
+    })
   })
 
   it('a bankflow összesítőt a dedikált backend végpontról kéri', async () => {
@@ -48,7 +52,10 @@ describe('treasuryApi', () => {
     mockApi.get.mockResolvedValueOnce({ data: rows })
 
     await expect(treasuryApi.bankFlow()).resolves.toBe(rows)
-    expect(mockApi.get).toHaveBeenCalledWith('/treasury/bank-flow', { params: {}, _skipGlobal403Toast: true })
+    expect(mockApi.get).toHaveBeenCalledWith('/treasury/bank-flow', {
+      params: {},
+      _skipGlobal403Toast: true,
+    })
   })
 
   it('a fiókcsoport összesítőt a dedikált backend végpontról kéri', async () => {
@@ -56,7 +63,10 @@ describe('treasuryApi', () => {
     mockApi.get.mockResolvedValueOnce({ data: rows })
 
     await expect(treasuryApi.branchGroupSummary()).resolves.toBe(rows)
-    expect(mockApi.get).toHaveBeenCalledWith('/treasury/branch-group-summary', { params: {}, _skipGlobal403Toast: true })
+    expect(mockApi.get).toHaveBeenCalledWith('/treasury/branch-group-summary', {
+      params: {},
+      _skipGlobal403Toast: true,
+    })
   })
 
   it('a cégösszesítőt a dedikált backend végpontról kéri', async () => {
@@ -64,7 +74,10 @@ describe('treasuryApi', () => {
     mockApi.get.mockResolvedValueOnce({ data: rows })
 
     await expect(treasuryApi.companySummary()).resolves.toBe(rows)
-    expect(mockApi.get).toHaveBeenCalledWith('/treasury/company-summary', { params: {}, _skipGlobal403Toast: true })
+    expect(mockApi.get).toHaveBeenCalledWith('/treasury/company-summary', {
+      params: {},
+      _skipGlobal403Toast: true,
+    })
   })
 
   it('az értéktári alárendelt pénztár monitoringot az ErtektarController végpontról kéri', async () => {
@@ -79,7 +92,9 @@ describe('treasuryApi', () => {
     const report = { totals: { totalTransactions: 17, totalHufTurnover: 1700000 } }
     mockApi.get.mockResolvedValueOnce({ data: report })
 
-    await expect(treasuryApi.ertektarConsolidatedReport('2026-06-01', '2026-06-18')).resolves.toBe(report)
+    await expect(treasuryApi.ertektarConsolidatedReport('2026-06-01', '2026-06-18')).resolves.toBe(
+      report,
+    )
     expect(mockApi.get).toHaveBeenCalledWith('/ertektar/reports/consolidated', {
       params: { from: '2026-06-01', to: '2026-06-18' },
       _skipGlobal403Toast: true,

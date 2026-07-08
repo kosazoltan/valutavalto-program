@@ -1,8 +1,14 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Users, Plus, Edit, Trash2, Search, X, Save, Shield } from 'lucide-react'
-import { roleApi, Role, RoleCreateRequest, permissionApi, Permission } from '../../services/api/index'
+import {
+  roleApi,
+  Role,
+  RoleCreateRequest,
+  permissionApi,
+  Permission,
+} from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 
 export default function RolePage() {
@@ -20,77 +26,80 @@ export default function RolePage() {
     code: '',
     name: '',
     description: '',
-    permissionIds: []
+    permissionIds: [],
   })
-
 
   const filteredRoles = useMemo(() => {
     if (!searchTerm) return roles
     const term = searchTerm.toLowerCase()
-    return roles.filter(r =>
-      r.code.toLowerCase().includes(term) ||
-      r.name.toLowerCase().includes(term) ||
-      r.description?.toLowerCase().includes(term)
+    return roles.filter(
+      (r) =>
+        r.code.toLowerCase().includes(term) ||
+        r.name.toLowerCase().includes(term) ||
+        r.description?.toLowerCase().includes(term),
     )
   }, [roles, searchTerm])
 
-  const createDefaultRolesIfNeeded = useCallback(async (existingRoles: Role[] = []): Promise<Role[]> => {
-    const defaultRoles: RoleCreateRequest[] = [
-      {
-        code: 'ADMIN',
-        name: 'Admin',
-        description: 'Rendszergazda - teljes hozzáférés'
-      },
-      {
-        code: 'DEPOSITORY',
-        name: 'Értéktáros',
-        description: 'Értéktáros - értékek kezelése'
-      },
-      {
-        code: 'TERRITORIAL_MANAGER',
-        name: 'Területi vezető',
-        description: 'Területi vezető - terület irányítása'
-      },
-      {
-        code: 'CONTROLLER',
-        name: 'Kontroller',
-        description: 'Kontroller - ellenőrzési feladatok'
-      },
-      {
-        code: 'CASHIER',
-        name: 'Pénztáros',
-        description: 'Pénztáros - pénztári műveletek'
-      }
-    ]
+  const createDefaultRolesIfNeeded = useCallback(
+    async (existingRoles: Role[] = []): Promise<Role[]> => {
+      const defaultRoles: RoleCreateRequest[] = [
+        {
+          code: 'ADMIN',
+          name: 'Admin',
+          description: 'Rendszergazda - teljes hozzáférés',
+        },
+        {
+          code: 'DEPOSITORY',
+          name: 'Értéktáros',
+          description: 'Értéktáros - értékek kezelése',
+        },
+        {
+          code: 'TERRITORIAL_MANAGER',
+          name: 'Területi vezető',
+          description: 'Területi vezető - terület irányítása',
+        },
+        {
+          code: 'CONTROLLER',
+          name: 'Kontroller',
+          description: 'Kontroller - ellenőrzési feladatok',
+        },
+        {
+          code: 'CASHIER',
+          name: 'Pénztáros',
+          description: 'Pénztáros - pénztári műveletek',
+        },
+      ]
 
-    try {
-      let created = 0
-      
-      for (const roleData of defaultRoles) {
-        try {
-          // Ellenőrizzük, hogy már létezik-e a kóddal
-          const existingRole = existingRoles.find(r => r.code === roleData.code)
-          if (!existingRole) {
-            await roleApi.create(roleData)
-            created++
+      try {
+        let created = 0
+
+        for (const roleData of defaultRoles) {
+          try {
+            // Ellenőrizzük, hogy már létezik-e a kóddal
+            const existingRole = existingRoles.find((r) => r.code === roleData.code)
+            if (!existingRole) {
+              await roleApi.create(roleData)
+              created++
+            }
+          } catch (err) {
+            // Ha már létezik, akkor kihagyjuk (várható hiba)
+            console.debug('Szerepkör már létezik vagy nem hozható létre:', roleData.code, err)
           }
-        } catch (err) {
-          // Ha már létezik, akkor kihagyjuk (várható hiba)
-          console.debug('Szerepkör már létezik vagy nem hozható létre:', roleData.code, err)
         }
-      }
-      
-      if (created > 0) {
-        // Újratöltjük az adatokat
-        return await roleApi.list();
-      }
 
-      return existingRoles
-    } catch (err) {
-      logger.error('RolePage', 'Alapértelmezett szerepkörök létrehozása sikertelen:', err)
-      return existingRoles
-    }
-  }, [])
+        if (created > 0) {
+          // Újratöltjük az adatokat
+          return await roleApi.list()
+        }
+
+        return existingRoles
+      } catch (err) {
+        logger.error('RolePage', 'Alapértelmezett szerepkörök létrehozása sikertelen:', err)
+        return existingRoles
+      }
+    },
+    [],
+  )
 
   const loadData = useCallback(async () => {
     try {
@@ -98,7 +107,7 @@ export default function RolePage() {
       setError(null)
       const [rolesData, permissionsData] = await Promise.all([
         roleApi.list(),
-        permissionApi.getActive()
+        permissionApi.getActive(),
       ])
 
       // Ha nincs szerepkör, automatikusan létrehozzuk az alapértelmezetteket
@@ -134,7 +143,11 @@ export default function RolePage() {
   }, [loadData])
 
   const handleCreateDefaultRoles = async () => {
-    if (!confirm('Ez létrehozza az alapértelmezett munkaköröket (admin, értéktáros, területi vezető, kontroller, pénztáros). Folytassuk?')) {
+    if (
+      !confirm(
+        'Ez létrehozza az alapértelmezett munkaköröket (admin, értéktáros, területi vezető, kontroller, pénztáros). Folytassuk?',
+      )
+    ) {
       return
     }
 
@@ -144,11 +157,14 @@ export default function RolePage() {
       const updatedRoles = await createDefaultRolesIfNeeded(roles)
       setRoles(updatedRoles)
 
-      const created = updatedRoles.filter(r =>
-        ['ADMIN', 'DEPOSITORY', 'TERRITORIAL_MANAGER', 'CONTROLLER', 'CASHIER'].includes(r.code)
+      const created = updatedRoles.filter((r) =>
+        ['ADMIN', 'DEPOSITORY', 'TERRITORIAL_MANAGER', 'CONTROLLER', 'CASHIER'].includes(r.code),
       ).length
 
-      toast.success('Szerepkörök ellenőrizve', `Összesen ${created} alapértelmezett szerepkör elérhető.`)
+      toast.success(
+        'Szerepkörök ellenőrizve',
+        `Összesen ${created} alapértelmezett szerepkör elérhető.`,
+      )
     } catch (err) {
       logger.error('RolePage', 'Alapértelmezett szerepkörök létrehozási hiba:', err)
       setError('Hiba történt az alapértelmezett szerepkörök létrehozása során')
@@ -163,7 +179,7 @@ export default function RolePage() {
       code: '',
       name: '',
       description: '',
-      permissionIds: []
+      permissionIds: [],
     })
     setShowForm(true)
   }
@@ -172,13 +188,13 @@ export default function RolePage() {
     setEditingRole(role)
     // Get permission IDs from permission names
     const permissionIds = permissions
-      .filter(p => role.permissions?.includes(p.name))
-      .map(p => p.id)
+      .filter((p) => role.permissions?.includes(p.name))
+      .map((p) => p.id)
     setFormData({
       code: role.code,
       name: role.name,
       description: role.description || '',
-      permissionIds: permissionIds
+      permissionIds: permissionIds,
     })
     setShowForm(true)
   }
@@ -272,13 +288,16 @@ export default function RolePage() {
     }
   }
 
-  const groupedPermissions = permissions.reduce((acc, perm) => {
-    if (!acc[perm.module]) {
-      acc[perm.module] = []
-    }
-    acc[perm.module]?.push(perm)
-    return acc
-  }, {} as Record<string, Permission[]>)
+  const groupedPermissions = permissions.reduce(
+    (acc, perm) => {
+      if (!acc[perm.module]) {
+        acc[perm.module] = []
+      }
+      acc[perm.module]?.push(perm)
+      return acc
+    },
+    {} as Record<string, Permission[]>,
+  )
 
   if (loading) {
     return (
@@ -305,10 +324,7 @@ export default function RolePage() {
             <Plus size={16} />
             {t('settings.alapertelmezettMunkakorokLetrehozasa')}
           </button>
-          <button
-            onClick={handleCreate}
-            className="form-button-primary flex items-center gap-2"
-          >
+          <button onClick={handleCreate} className="form-button-primary flex items-center gap-2">
             <Plus size={16} />
             {t('settings.ujSzerepkor')}
           </button>
@@ -327,7 +343,10 @@ export default function RolePage() {
         <div>
           <label className="form-label">{t('common.search')}</label>
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            <Search
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={16}
+            />
             <input
               type="text"
               className="form-input pl-8"
@@ -382,7 +401,6 @@ export default function RolePage() {
                 />
               </div>
 
-
               <div>
                 <label className="form-label">{t('common.description')}</label>
                 <textarea
@@ -393,7 +411,6 @@ export default function RolePage() {
                   placeholder="Szerepkör leírása..."
                 />
               </div>
-
 
               <div className="flex justify-end gap-2 pt-4 border-t">
                 <button
@@ -425,7 +442,8 @@ export default function RolePage() {
           <div className="bg-white rounded-lg p-4 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">
-                {t('settings.jogosultsagokKezelese')}{selectedRole.name}
+                {t('settings.jogosultsagokKezelese')}
+                {selectedRole.name}
               </h2>
               <button
                 onClick={() => {
@@ -443,9 +461,10 @@ export default function RolePage() {
                 <div key={module} className="border rounded-lg p-4">
                   <h3 className="font-bold text-gray-700 mb-2">{module}</h3>
                   <div className="grid grid-cols-2 gap-2">
-                    {modulePermissions.map(permission => {
+                    {modulePermissions.map((permission) => {
                       // Backend returns permission names in the permissions array, not IDs
-                      const hasPermission = selectedRole.permissions?.includes(permission.name) || false
+                      const hasPermission =
+                        selectedRole.permissions?.includes(permission.name) || false
                       return (
                         <div
                           key={permission.id}
@@ -581,4 +600,3 @@ export default function RolePage() {
     </div>
   )
 }
-

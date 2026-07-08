@@ -72,13 +72,23 @@ vi.mock('../../utils/localQueue', () => ({
 vi.mock('../../components/auth/SupervisorPinModal', () => ({ default: () => null }))
 
 vi.mock('../../components/NumberInput', () => ({
-  NumberInput: ({ value, onChange, id, placeholder }: {
+  NumberInput: ({
+    value,
+    onChange,
+    id,
+    placeholder,
+  }: {
     value: string
     onChange: (v: string) => void
     id?: string
     placeholder?: string
   }) => (
-    <input id={id} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
+    <input
+      id={id}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
   ),
 }))
 
@@ -87,8 +97,24 @@ vi.mock('../../utils/electron', () => ({ isElectron: () => true }))
 vi.mock('../../components/ui/toaster', () => ({ toast: mocks.toast }))
 
 const BRANCHES = [
-  { id: 'b-own', code: 'BR076', name: 'Pécsi értéktár', isVault: true, branchTypeCode: 'VAULT', region: 'DD', vaultTerritoryId: 1 },
-  { id: 'b-target', code: 'BR001', name: 'Budapesti értéktár', isVault: true, branchTypeCode: 'VAULT', region: 'DD', vaultTerritoryId: 1 },
+  {
+    id: 'b-own',
+    code: 'BR076',
+    name: 'Pécsi értéktár',
+    isVault: true,
+    branchTypeCode: 'VAULT',
+    region: 'DD',
+    vaultTerritoryId: 1,
+  },
+  {
+    id: 'b-target',
+    code: 'BR001',
+    name: 'Budapesti értéktár',
+    isVault: true,
+    branchTypeCode: 'VAULT',
+    region: 'DD',
+    vaultTerritoryId: 1,
+  },
 ]
 
 const CURRENCIES = [
@@ -112,7 +138,9 @@ const CREATE_RESULT = {
 
 // A globális Window.electronAPI a teljes ElectronAPI felületet várja — a teszthez
 // csak a printReceipt kell, ezért unknown-on át szűkítünk.
-const electronWindow = window as unknown as { electronAPI?: { printReceipt?: (data: string) => Promise<boolean> } }
+const electronWindow = window as unknown as {
+  electronAPI?: { printReceipt?: (data: string) => Promise<boolean> }
+}
 
 /** Új kimenő átadás rögzítése a REST úton → siker-banner → Nyomtatás → modal nyílik. */
 async function createTransferAndOpenReceiptModal() {
@@ -128,7 +156,9 @@ async function createTransferAndOpenReceiptModal() {
   fireEvent.change(screen.getByLabelText('Cél iroda'), { target: { value: 'b-target' } })
   fireEvent.change(screen.getByLabelText('Valuta 1'), { target: { value: '1' } })
   fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '100' } })
-  fireEvent.change(screen.getByPlaceholderText('Szállító neve...'), { target: { value: 'Teszt Szállító Kft' } })
+  fireEvent.change(screen.getByPlaceholderText('Szállító neve...'), {
+    target: { value: 'Teszt Szállító Kft' },
+  })
   fireEvent.change(screen.getByPlaceholderText('Plombaszám...'), { target: { value: 'PL-12345' } })
   fireEvent.click(screen.getByText('Átadás létrehozása'))
 
@@ -165,10 +195,12 @@ describe('TransferPage — sikertelen nyomtatásnál a szállítólevél-modal n
     const printButton = await createTransferAndOpenReceiptModal()
 
     fireEvent.click(printButton)
-    await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith(
-      'Nyomtatás sikertelen',
-      'Ellenőrizze a nyomtatót (Beállítások > Nyomtatás).',
-    ))
+    await waitFor(() =>
+      expect(mocks.toast.error).toHaveBeenCalledWith(
+        'Nyomtatás sikertelen',
+        'Ellenőrizze a nyomtatót (Beállítások > Nyomtatás).',
+      ),
+    )
 
     // a 2s auto-close CSAK sikeres nyomtatásnál indul — hibánál a modal 2s után is nyitva van
     await new Promise((resolve) => setTimeout(resolve, 2200))
@@ -180,14 +212,15 @@ describe('TransferPage — sikertelen nyomtatásnál a szállítólevél-modal n
     const retryButton = retryButtons[retryButtons.length - 1]!
     expect(retryButton).toBeEnabled()
     fireEvent.click(retryButton)
-    await waitFor(() => expect(mocks.toast.success).toHaveBeenCalledWith(
-      'Nyomtatás elindítva',
-      'Bizonylat: AT105000042',
-    ))
-    await waitFor(
-      () => expect(screen.queryByText('Mégse (ESC)')).not.toBeInTheDocument(),
-      { timeout: 3000 },
+    await waitFor(() =>
+      expect(mocks.toast.success).toHaveBeenCalledWith(
+        'Nyomtatás elindítva',
+        'Bizonylat: AT105000042',
+      ),
     )
+    await waitFor(() => expect(screen.queryByText('Mégse (ESC)')).not.toBeInTheDocument(), {
+      timeout: 3000,
+    })
   }, 15000)
 
   it('printReceipt kivételt dob → error toast és a modal nyitva marad', async () => {
@@ -195,10 +228,12 @@ describe('TransferPage — sikertelen nyomtatásnál a szállítólevél-modal n
     const printButton = await createTransferAndOpenReceiptModal()
 
     fireEvent.click(printButton)
-    await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith(
-      'Nyomtatás sikertelen',
-      'A nyomtatási parancs nem futott le.',
-    ))
+    await waitFor(() =>
+      expect(mocks.toast.error).toHaveBeenCalledWith(
+        'Nyomtatás sikertelen',
+        'A nyomtatási parancs nem futott le.',
+      ),
+    )
 
     await new Promise((resolve) => setTimeout(resolve, 2200))
     expect(screen.getByText('Mégse (ESC)')).toBeInTheDocument()
@@ -209,10 +244,12 @@ describe('TransferPage — sikertelen nyomtatásnál a szállítólevél-modal n
     const printButton = await createTransferAndOpenReceiptModal()
 
     fireEvent.click(printButton)
-    await waitFor(() => expect(mocks.toast.warning).toHaveBeenCalledWith(
-      'Nyomtatás nem elérhető',
-      expect.stringContaining('Electron preload'),
-    ))
+    await waitFor(() =>
+      expect(mocks.toast.warning).toHaveBeenCalledWith(
+        'Nyomtatás nem elérhető',
+        expect.stringContaining('Electron preload'),
+      ),
+    )
 
     await new Promise((resolve) => setTimeout(resolve, 2200))
     expect(screen.getByText('Mégse (ESC)')).toBeInTheDocument()

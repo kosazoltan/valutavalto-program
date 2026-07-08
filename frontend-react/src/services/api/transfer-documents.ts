@@ -32,7 +32,9 @@ export interface TransferDocumentCreateRequest {
 }
 
 export const transferDocumentApi = {
-  list: async (params: { status?: string; courierId?: number } = {}): Promise<TransferDocument[]> => {
+  list: async (
+    params: { status?: string; courierId?: number } = {},
+  ): Promise<TransferDocument[]> => {
     const response = await api.get<TransferDocument[]>('/transfer-documents', { params })
     return response.data
   },
@@ -48,7 +50,11 @@ export const transferDocumentApi = {
     })
     return response.data
   },
-  pickup: async (id: string | number, courierId: number, courierPin?: string): Promise<TransferDocument> => {
+  pickup: async (
+    id: string | number,
+    courierId: number,
+    courierPin?: string,
+  ): Promise<TransferDocument> => {
     const response = await api.put<TransferDocument>(`/transfer-documents/${id}/pickup`, {
       courierId,
       courierPin: courierPin?.trim() || undefined,
@@ -60,7 +66,9 @@ export const transferDocumentApi = {
     return response.data
   },
   confirm: async (id: string | number, receiverId: number): Promise<TransferDocument> => {
-    const response = await api.put<TransferDocument>(`/transfer-documents/${id}/confirm`, { receiverId })
+    const response = await api.put<TransferDocument>(`/transfer-documents/${id}/confirm`, {
+      receiverId,
+    })
     return response.data
   },
 }

@@ -29,20 +29,33 @@ export default function NewVaultWorkerPage() {
     }
   }
 
-  useEffect(() => { void loadWorkers() }, [])
+  useEffect(() => {
+    void loadWorkers()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setSuccess(null)
-    if (!name.trim()) { setError('A név megadása kötelező.'); return }
-    if (password.length < 6) { setError('A jelszó legalább 6 karakter legyen.'); return }
-    if (password !== passwordConfirm) { setError('A két jelszó nem egyezik.'); return }
+    if (!name.trim()) {
+      setError('A név megadása kötelező.')
+      return
+    }
+    if (password.length < 6) {
+      setError('A jelszó legalább 6 karakter legyen.')
+      return
+    }
+    if (password !== passwordConfirm) {
+      setError('A két jelszó nem egyezik.')
+      return
+    }
     setSaving(true)
     try {
       const created = await vaultWorkerApi.create({ name: name.trim(), password, passwordConfirm })
       setSuccess(`Új munkatárs felvéve: ${created.name}. Mostantól kiválasztható a belépésnél.`)
-      setName(''); setPassword(''); setPasswordConfirm('')
+      setName('')
+      setPassword('')
+      setPasswordConfirm('')
       await loadWorkers()
     } catch (err) {
       setError(getErrorMessage(err))
@@ -63,33 +76,62 @@ export default function NewVaultWorkerPage() {
         megadott jelszavával fog tudni belépni (a közös Google-fiókos bejelentkezés után).
       </p>
 
-      <form onSubmit={handleSubmit} className="bg-form-bg border border-form-border p-4 rounded mb-6">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-form-bg border border-form-border p-4 rounded mb-6"
+      >
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3">{error}</div>
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3">
+            {error}
+          </div>
         )}
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 text-sm p-2 rounded mb-3">{success}</div>
+          <div className="bg-green-50 border border-green-200 text-green-700 text-sm p-2 rounded mb-3">
+            {success}
+          </div>
         )}
 
         <label className="block mb-3">
-          <span className="form-label">Munkatárs neve <span className="text-red-500">*</span></span>
-          <input type="text" className="form-input" maxLength={100} value={name}
-                 disabled={saving} placeholder="pl. Bali Henriett"
-                 onChange={(e) => setName(e.target.value)} />
+          <span className="form-label">
+            Munkatárs neve <span className="text-red-500">*</span>
+          </span>
+          <input
+            type="text"
+            className="form-input"
+            maxLength={100}
+            value={name}
+            disabled={saving}
+            placeholder="pl. Bali Henriett"
+            onChange={(e) => setName(e.target.value)}
+          />
         </label>
 
         <label className="block mb-3">
-          <span className="form-label">Jelszó <span className="text-red-500">*</span></span>
-          <input type="password" className="form-input" value={password}
-                 disabled={saving} placeholder="legalább 6 karakter"
-                 onChange={(e) => setPassword(e.target.value)} />
+          <span className="form-label">
+            Jelszó <span className="text-red-500">*</span>
+          </span>
+          <input
+            type="password"
+            className="form-input"
+            value={password}
+            disabled={saving}
+            placeholder="legalább 6 karakter"
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </label>
 
         <label className="block mb-4">
-          <span className="form-label">Jelszó megerősítése <span className="text-red-500">*</span></span>
-          <input type="password" className="form-input" value={passwordConfirm}
-                 disabled={saving} placeholder="írd be újra a jelszót"
-                 onChange={(e) => setPasswordConfirm(e.target.value)} />
+          <span className="form-label">
+            Jelszó megerősítése <span className="text-red-500">*</span>
+          </span>
+          <input
+            type="password"
+            className="form-input"
+            value={passwordConfirm}
+            disabled={saving}
+            placeholder="írd be újra a jelszót"
+            onChange={(e) => setPasswordConfirm(e.target.value)}
+          />
         </label>
 
         <div className="flex justify-end">
@@ -110,7 +152,9 @@ export default function NewVaultWorkerPage() {
       ) : (
         <ul className="text-sm border border-form-border rounded divide-y">
           {workers.map((w) => (
-            <li key={w.id} className="px-3 py-2">{w.name}</li>
+            <li key={w.id} className="px-3 py-2">
+              {w.name}
+            </li>
           ))}
         </ul>
       )}

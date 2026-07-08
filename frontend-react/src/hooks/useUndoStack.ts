@@ -25,21 +25,24 @@ export function useUndoStack<T>({ maxSize = 50 }: UseUndoStackOptions = {}) {
   const redoRef = useRef<UndoEntry<T>[]>([])
   const [version, setVersion] = useState(0)
 
-  const push = useCallback((entry: UndoEntry<T>) => {
-    undoRef.current.push(entry)
-    if (undoRef.current.length > maxSize) {
-      undoRef.current.shift()
-    }
-    // Any new change clears the redo stack
-    redoRef.current = []
-    setVersion(v => v + 1)
-  }, [maxSize])
+  const push = useCallback(
+    (entry: UndoEntry<T>) => {
+      undoRef.current.push(entry)
+      if (undoRef.current.length > maxSize) {
+        undoRef.current.shift()
+      }
+      // Any new change clears the redo stack
+      redoRef.current = []
+      setVersion((v) => v + 1)
+    },
+    [maxSize],
+  )
 
   const undo = useCallback((): T | null => {
     const entry = undoRef.current.pop()
     if (!entry) return null
     redoRef.current.push(entry)
-    setVersion(v => v + 1)
+    setVersion((v) => v + 1)
     return entry.prev
   }, [])
 
@@ -47,7 +50,7 @@ export function useUndoStack<T>({ maxSize = 50 }: UseUndoStackOptions = {}) {
     const entry = redoRef.current.pop()
     if (!entry) return null
     undoRef.current.push(entry)
-    setVersion(v => v + 1)
+    setVersion((v) => v + 1)
     return entry.next
   }, [])
 

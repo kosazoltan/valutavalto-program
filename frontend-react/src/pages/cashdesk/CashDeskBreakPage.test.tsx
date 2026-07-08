@@ -43,7 +43,9 @@ vi.mock('../../utils/logger', () => ({
 describe('CashDeskBreakPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.cashDeskList.mockResolvedValue([{ id: 'cashdesk-1', name: 'Szeged pénztár', isActive: true }])
+    mocks.cashDeskList.mockResolvedValue([
+      { id: 'cashdesk-1', name: 'Szeged pénztár', isActive: true },
+    ])
     mocks.breakList.mockResolvedValue([])
     mocks.getActive.mockResolvedValue({
       id: 'break-1',

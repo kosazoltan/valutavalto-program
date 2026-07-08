@@ -39,7 +39,7 @@ async function mockBreakApis(page: Page) {
     roles: ['ADMIN'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -62,27 +62,49 @@ async function mockBreakApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
-    }
-
-    if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
-    }
-
-    if (path.endsWith('/branches') && url.searchParams.get('activeOnly') === 'true' && method === 'GET') {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ id: 'cashdesk-1', code: 'SZEGED', name: 'Szeged pénztár', isActive: true }]),
+        body: JSON.stringify({ token }),
+      })
+    }
+
+    if (path.endsWith('/workers/me') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
+    }
+
+    if (
+      path.endsWith('/branches') &&
+      url.searchParams.get('activeOnly') === 'true' &&
+      method === 'GET'
+    ) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { id: 'cashdesk-1', code: 'SZEGED', name: 'Szeged pénztár', isActive: true },
+        ]),
       })
     }
 
     if (path.endsWith('/cash-desk-breaks') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     if (path.endsWith('/cash-desk-breaks/active/cashdesk-1') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(activeBreak) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(activeBreak),
+      })
     }
 
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
@@ -99,14 +121,17 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('pénztár szünet oldal mobil viewporton lekéri az aktív szünet endpointot', async ({ page }) => {
+test('pénztár szünet oldal mobil viewporton lekéri az aktív szünet endpointot', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockBreakApis(page)
   await login(page)
 
-  const activeRequest = page.waitForRequest(request =>
-    request.method() === 'GET'
-    && new URL(request.url()).pathname === '/api/v1/cash-desk-breaks/active/cashdesk-1'
+  const activeRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/v1/cash-desk-breaks/active/cashdesk-1',
   )
   await page.goto('/cashdesk/breaks', { waitUntil: 'domcontentloaded' })
   await activeRequest
@@ -115,8 +140,8 @@ test('pénztár szünet oldal mobil viewporton lekéri az aktív szünet endpoin
   await expect(page.getByText(/Típus:\s*LUNCH/)).toBeVisible()
   await expect(page.getByText(/Ok\s+Ebéd/)).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

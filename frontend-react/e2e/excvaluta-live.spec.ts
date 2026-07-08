@@ -23,7 +23,7 @@ function screenshotPath(name: string) {
 // ─────────────────────────────────────────────
 test('T01 — login oldal betölt, alapvető UI elemek láthatók', async ({ page }) => {
   const errors: string[] = []
-  page.on('console', msg => {
+  page.on('console', (msg) => {
     if (msg.type() === 'error') errors.push(msg.text())
   })
 
@@ -54,83 +54,119 @@ test('T01 — login oldal betölt, alapvető UI elemek láthatók', async ({ pag
   console.log(`Screenshot: ${ss}`)
 
   // The page must render something
-  const bodyText = await page.locator('body').innerText().catch(() => '')
+  const bodyText = await page
+    .locator('body')
+    .innerText()
+    .catch(() => '')
   expect(bodyText.length).toBeGreaterThan(0)
 })
 
 // ─────────────────────────────────────────────
 // TEST 2 — Auth wall detection
 // ─────────────────────────────────────────────
-test('T02 — auth wall: nincs token → login oldalra irányít', { tag: '@live-spa' }, async ({ page }) => {
-  // UPDATE 2026-04-24 (PR #137 frontend deploy): SPA a browseroldalon is fut.
-  // Ha stale placeholder return-ol, inkabb INFO log es continue.
-  // Clear storage to ensure unauthenticated state
-  await page.goto(BASE + '/login', { waitUntil: 'domcontentloaded', timeout: 20000 })
-  await page.evaluate(() => {
-    try { localStorage.clear() } catch { /* DOMException: storage disabled */ }
-    try { sessionStorage.clear() } catch { /* DOMException: storage disabled */ }
-  })
+test(
+  'T02 — auth wall: nincs token → login oldalra irányít',
+  { tag: '@live-spa' },
+  async ({ page }) => {
+    // UPDATE 2026-04-24 (PR #137 frontend deploy): SPA a browseroldalon is fut.
+    // Ha stale placeholder return-ol, inkabb INFO log es continue.
+    // Clear storage to ensure unauthenticated state
+    await page.goto(BASE + '/login', { waitUntil: 'domcontentloaded', timeout: 20000 })
+    await page.evaluate(() => {
+      try {
+        localStorage.clear()
+      } catch {
+        /* DOMException: storage disabled */
+      }
+      try {
+        sessionStorage.clear()
+      } catch {
+        /* DOMException: storage disabled */
+      }
+    })
 
-  // Try to access protected route
-  const response = await page.goto(BASE + '/transactions/new', { waitUntil: 'domcontentloaded', timeout: 20000 })
+    // Try to access protected route
+    const response = await page.goto(BASE + '/transactions/new', {
+      waitUntil: 'domcontentloaded',
+      timeout: 20000,
+    })
 
-  const ss = screenshotPath('T02-auth-wall')
-  await page.screenshot({ path: ss, fullPage: true })
+    const ss = screenshotPath('T02-auth-wall')
+    await page.screenshot({ path: ss, fullPage: true })
 
-  const finalUrl = page.url()
-  const status = response?.status() ?? 0
+    const finalUrl = page.url()
+    const status = response?.status() ?? 0
 
-  console.log(`Redirected to: ${finalUrl}`)
-  console.log(`HTTP status: ${status}`)
-  console.log(`Screenshot: ${ss}`)
+    console.log(`Redirected to: ${finalUrl}`)
+    console.log(`HTTP status: ${status}`)
+    console.log(`Screenshot: ${ss}`)
 
-  // SPA auth wall: wait for React hydration, then check for login form or redirect
-  await page.waitForTimeout(3000) // allow CSR hydration
-  const hydratedUrl = page.url()
+    // SPA auth wall: wait for React hydration, then check for login form or redirect
+    await page.waitForTimeout(3000) // allow CSR hydration
+    const hydratedUrl = page.url()
 
-  const authWallDetected =
-    hydratedUrl.includes('/login') ||
-    finalUrl.includes('/login') ||
-    status === 401 ||
-    status === 403 ||
-    // React SPA: might show login form even at /transactions/new after hydration
-    (await page.locator('input[type="password"]').isVisible({ timeout: 5000 }).catch(() => false))
+    const authWallDetected =
+      hydratedUrl.includes('/login') ||
+      finalUrl.includes('/login') ||
+      status === 401 ||
+      status === 403 ||
+      // React SPA: might show login form even at /transactions/new after hydration
+      (await page
+        .locator('input[type="password"]')
+        .isVisible({ timeout: 5000 })
+        .catch(() => false))
 
-  expect(authWallDetected, `Expected auth wall but got URL: ${hydratedUrl} (initial: ${finalUrl}) status: ${status}`).toBe(true)
-})
+    expect(
+      authWallDetected,
+      `Expected auth wall but got URL: ${hydratedUrl} (initial: ${finalUrl}) status: ${status}`,
+    ).toBe(true)
+  },
+)
 
 // ─────────────────────────────────────────────
 // TEST 3 — Login form elemek
 // ─────────────────────────────────────────────
-test('T03 — login form: username, password, submit gomb renderelődik', { tag: '@live-spa' }, async ({ page }) => {
-  // UPDATE 2026-04-24 (PR #137 frontend deploy): SPA a browseroldalon is fut.
-  // Playwright CSR hydration utan a login form elerheto.
-  await page.goto(BASE + '/login', { waitUntil: 'networkidle', timeout: 30000 })
+test(
+  'T03 — login form: username, password, submit gomb renderelődik',
+  { tag: '@live-spa' },
+  async ({ page }) => {
+    // UPDATE 2026-04-24 (PR #137 frontend deploy): SPA a browseroldalon is fut.
+    // Playwright CSR hydration utan a login form elerheto.
+    await page.goto(BASE + '/login', { waitUntil: 'networkidle', timeout: 30000 })
 
-  // Wait for React CSR hydration — SPA login form renders client-side
-  await page.waitForTimeout(3000)
+    // Wait for React CSR hydration — SPA login form renders client-side
+    await page.waitForTimeout(3000)
 
-  const ss = screenshotPath('T03-login-form')
-  await page.screenshot({ path: ss, fullPage: true })
+    const ss = screenshotPath('T03-login-form')
+    await page.screenshot({ path: ss, fullPage: true })
 
-  // Check for any text/username input — wait with timeout for CSR render
-  const usernameInput = page.locator('input').first()
-  const passwordInput = page.locator('input[type="password"]')
-  const submitButton = page.locator('button[type="submit"], button').filter({ hasText: /Bejelentkezés|Login|Belépés|Submit/i })
+    // Check for any text/username input — wait with timeout for CSR render
+    const usernameInput = page.locator('input').first()
+    const passwordInput = page.locator('input[type="password"]')
+    const submitButton = page
+      .locator('button[type="submit"], button')
+      .filter({ hasText: /Bejelentkezés|Login|Belépés|Submit/i })
 
-  const hasUsernameField = await usernameInput.isVisible({ timeout: 5000 }).catch(() => false)
-  const hasPwdField = await passwordInput.isVisible({ timeout: 5000 }).catch(() => false)
-  const hasSubmit = await submitButton.first().isVisible({ timeout: 5000 }).catch(() => false)
+    const hasUsernameField = await usernameInput.isVisible({ timeout: 5000 }).catch(() => false)
+    const hasPwdField = await passwordInput.isVisible({ timeout: 5000 }).catch(() => false)
+    const hasSubmit = await submitButton
+      .first()
+      .isVisible({ timeout: 5000 })
+      .catch(() => false)
 
-  console.log(`Username input visible: ${hasUsernameField}`)
-  console.log(`Pwd input visible: ${hasPwdField}`)
-  console.log(`Submit button visible: ${hasSubmit}`)
-  console.log(`Screenshot: ${ss}`)
-  console.log(`Input count: ${await page.locator('input').count()}`)
+    console.log(`Username input visible: ${hasUsernameField}`)
+    console.log(`Pwd input visible: ${hasPwdField}`)
+    console.log(`Submit button visible: ${hasSubmit}`)
+    console.log(`Screenshot: ${ss}`)
+    console.log(`Input count: ${await page.locator('input').count()}`)
 
-  // At minimum the page must have at least one input after hydration
-  expect(hasUsernameField || hasPwdField, 'No input fields found on login page after CSR hydration').toBe(true)
-})
+    // At minimum the page must have at least one input after hydration
+    expect(
+      hasUsernameField || hasPwdField,
+      'No input fields found on login page after CSR hydration',
+    ).toBe(true)
+  },
+)
 
 // ─────────────────────────────────────────────
 // TEST 4 — Login invalid credentials
@@ -179,7 +215,10 @@ test('T04 — hibás bejelentkezés → hibaüzenet vagy login marad', async ({ 
   await page.screenshot({ path: ss, fullPage: true })
 
   const finalUrl = page.url()
-  const hasError = await page.locator('[role="alert"], .error, [class*="error"], [class*="alert"]').isVisible().catch(() => false)
+  const hasError = await page
+    .locator('[role="alert"], .error, [class*="error"], [class*="alert"]')
+    .isVisible()
+    .catch(() => false)
   const stillOnLogin = finalUrl.includes('/login') || finalUrl === BASE + '/' || finalUrl === BASE
 
   console.log(`After invalid login URL: ${finalUrl}`)
@@ -187,21 +226,29 @@ test('T04 — hibás bejelentkezés → hibaüzenet vagy login marad', async ({ 
   console.log(`Still on login: ${stillOnLogin}`)
   console.log(`Screenshot: ${ss}`)
 
-  expect(hasError || stillOnLogin, `Expected error or stay on login but URL: ${finalUrl}`).toBe(true)
+  expect(hasError || stillOnLogin, `Expected error or stay on login but URL: ${finalUrl}`).toBe(
+    true,
+  )
 })
 
 // ─────────────────────────────────────────────
 // TEST 5 — Transactions/new betöltés (unauthenticated)
 // ─────────────────────────────────────────────
 test('T05 — /transactions/new: oldal válaszol (auth wall vagy redirect)', async ({ page }) => {
-  const response = await page.goto(BASE + '/transactions/new', { waitUntil: 'domcontentloaded', timeout: 20000 })
+  const response = await page.goto(BASE + '/transactions/new', {
+    waitUntil: 'domcontentloaded',
+    timeout: 20000,
+  })
 
   const ss = screenshotPath('T05-transactions-new')
   await page.screenshot({ path: ss, fullPage: true })
 
   const status = response?.status() ?? 0
   const finalUrl = page.url()
-  const bodyText = await page.locator('body').innerText().catch(() => '')
+  const bodyText = await page
+    .locator('body')
+    .innerText()
+    .catch(() => '')
 
   console.log(`URL: ${finalUrl}, Status: ${status}`)
   console.log(`Body length: ${bodyText.length}`)
@@ -217,14 +264,20 @@ test('T05 — /transactions/new: oldal válaszol (auth wall vagy redirect)', asy
 // TEST 6 — Transactions list betöltés (unauthenticated)
 // ─────────────────────────────────────────────
 test('T06 — /transactions: lista oldal válaszol', async ({ page }) => {
-  const response = await page.goto(BASE + '/transactions', { waitUntil: 'domcontentloaded', timeout: 20000 })
+  const response = await page.goto(BASE + '/transactions', {
+    waitUntil: 'domcontentloaded',
+    timeout: 20000,
+  })
 
   const ss = screenshotPath('T06-transactions-list')
   await page.screenshot({ path: ss, fullPage: true })
 
   const status = response?.status() ?? 0
   const finalUrl = page.url()
-  const bodyText = await page.locator('body').innerText().catch(() => '')
+  const bodyText = await page
+    .locator('body')
+    .innerText()
+    .catch(() => '')
 
   console.log(`URL: ${finalUrl}, Status: ${status}`)
   console.log(`Body length: ${bodyText.length}`)
@@ -238,14 +291,20 @@ test('T06 — /transactions: lista oldal válaszol', async ({ page }) => {
 // TEST 7 — Dashboard betöltés (unauthenticated)
 // ─────────────────────────────────────────────
 test('T07 — /central-workstation: auth wall vagy redirect login-ra', async ({ page }) => {
-  const response = await page.goto(BASE + '/central-workstation', { waitUntil: 'domcontentloaded', timeout: 20000 })
+  const response = await page.goto(BASE + '/central-workstation', {
+    waitUntil: 'domcontentloaded',
+    timeout: 20000,
+  })
 
   const ss = screenshotPath('T07-central-workstation-auth')
   await page.screenshot({ path: ss, fullPage: true })
 
   const status = response?.status() ?? 0
   const finalUrl = page.url()
-  const bodyText = await page.locator('body').innerText().catch(() => '')
+  const bodyText = await page
+    .locator('body')
+    .innerText()
+    .catch(() => '')
 
   console.log(`URL: ${finalUrl}, Status: ${status}`)
   console.log(`Screenshot: ${ss}`)
@@ -259,7 +318,7 @@ test('T07 — /central-workstation: auth wall vagy redirect login-ra', async ({ 
 // ─────────────────────────────────────────────
 test('T08 — HTTPS szerver elérhető, SSL érvényes', async ({ page }) => {
   let tlsError = false
-  page.on('pageerror', err => {
+  page.on('pageerror', (err) => {
     if (err.message.includes('SSL') || err.message.includes('certificate')) {
       tlsError = true
     }
@@ -279,7 +338,6 @@ test('T08 — HTTPS szerver elérhető, SSL érvényes', async ({ page }) => {
   console.log(`Screenshot: ${ss}`)
 })
 
-
 // ─────────────────────────────────────────────
 // TEST 9 — Authentikált login → dashboard (env var credentials)
 // ─────────────────────────────────────────────
@@ -289,7 +347,9 @@ test('T09 — authenticated login → dashboard/cashier accessible', async ({ pa
   const password = process.env.TEST_PASSWORD
 
   if (!companyCode || !workerCode || !password) {
-    console.log('SKIP T09: TEST_COMPANY_CODE / TEST_WORKER_CODE / TEST_PASSWORD env var-ok nincsenek beállítva')
+    console.log(
+      'SKIP T09: TEST_COMPANY_CODE / TEST_WORKER_CODE / TEST_PASSWORD env var-ok nincsenek beállítva',
+    )
     test.skip(true, 'Credentials env var hiányzik — CI-ben GitHub Secrets használandó')
     return
   }
@@ -306,15 +366,20 @@ test('T09 — authenticated login → dashboard/cashier accessible', async ({ pa
     return
   }
   // Sourcery PR #175: explicit ready signal helyett fixed waitForTimeout
-  await page.locator('input:not([type="hidden"])').first().waitFor({ state: 'visible', timeout: 10000 })
+  await page
+    .locator('input:not([type="hidden"])')
+    .first()
+    .waitFor({ state: 'visible', timeout: 10000 })
 
   // 2. Stabil selector-ok (Sourcery PR #175: DOM layout valtozasra robusztusabb)
-  const companyField = page.locator(
-    'input[name*="company" i], input[id*="company" i], input[placeholder*="company" i]'
-  ).first()
-  const workerField = page.locator(
-    'input[name*="worker" i], input[id*="worker" i], input[placeholder*="worker" i], input[placeholder*="user" i]'
-  ).first()
+  const companyField = page
+    .locator('input[name*="company" i], input[id*="company" i], input[placeholder*="company" i]')
+    .first()
+  const workerField = page
+    .locator(
+      'input[name*="worker" i], input[id*="worker" i], input[placeholder*="worker" i], input[placeholder*="user" i]',
+    )
+    .first()
   const passwordField = page.locator('input[type="password"]').first()
 
   const inputs = page.locator('input:not([type="hidden"])')
@@ -325,9 +390,11 @@ test('T09 — authenticated login → dashboard/cashier accessible', async ({ pa
     return
   }
 
-  if (await companyField.isVisible().catch(() => false)
-      && await workerField.isVisible().catch(() => false)
-      && await passwordField.isVisible().catch(() => false)) {
+  if (
+    (await companyField.isVisible().catch(() => false)) &&
+    (await workerField.isVisible().catch(() => false)) &&
+    (await passwordField.isVisible().catch(() => false))
+  ) {
     await companyField.fill(companyCode)
     await workerField.fill(workerCode)
     await passwordField.fill(password)
@@ -342,8 +409,14 @@ test('T09 — authenticated login → dashboard/cashier accessible', async ({ pa
   const submitBtn = page.locator('button[type="submit"]').first()
   await submitBtn.click()
   await Promise.race([
-    page.waitForURL(url => !url.toString().includes('/login'), { timeout: 15000 }).catch(() => null),
-    page.locator('[role="alert"], .error, [class*="error"]').first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => null),
+    page
+      .waitForURL((url) => !url.toString().includes('/login'), { timeout: 15000 })
+      .catch(() => null),
+    page
+      .locator('[role="alert"], .error, [class*="error"]')
+      .first()
+      .waitFor({ state: 'visible', timeout: 15000 })
+      .catch(() => null),
   ])
 
   const afterLoginUrl = page.url()
@@ -355,17 +428,30 @@ test('T09 — authenticated login → dashboard/cashier accessible', async ({ pa
 
   // 4. Assert: NOT on /login (successful login)
   const stillOnLogin = afterLoginUrl.includes('/login')
-  const hasErrorVisible = await page.locator('[role="alert"], .error').isVisible().catch(() => false)
+  const hasErrorVisible = await page
+    .locator('[role="alert"], .error')
+    .isVisible()
+    .catch(() => false)
 
   if (stillOnLogin) {
-    const bodyText = await page.locator('body').innerText().catch(() => '')
+    const bodyText = await page
+      .locator('body')
+      .innerText()
+      .catch(() => '')
     console.log(`Still on /login — first 500 chars body: ${bodyText.slice(0, 500)}`)
   }
 
-  expect(stillOnLogin, `Login failed (still on /login). Error visible: ${hasErrorVisible}. URL: ${afterLoginUrl}`).toBe(false)
+  expect(
+    stillOnLogin,
+    `Login failed (still on /login). Error visible: ${hasErrorVisible}. URL: ${afterLoginUrl}`,
+  ).toBe(false)
 
   // 5. Verify dashboard/cashier menu present
-  const menuVisible = await page.locator('nav, aside, [class*="sidebar" i]').first().isVisible({ timeout: 10000 }).catch(() => false)
+  const menuVisible = await page
+    .locator('nav, aside, [class*="sidebar" i]')
+    .first()
+    .isVisible({ timeout: 10000 })
+    .catch(() => false)
   expect(menuVisible, 'Sidebar/menu not visible after login').toBe(true)
 })
 

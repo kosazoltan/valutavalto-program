@@ -18,17 +18,11 @@
   "flows": [
     {
       "id": "buy",
-      "commands": [
-        "npm run acceptance:local:flows",
-        "npm run acceptance:local:postgres-seeded"
-      ],
+      "commands": ["npm run acceptance:local:flows", "npm run acceptance:local:postgres-seeded"],
       "evidenceRefs": [
         {
           "path": "backend/src/test/java/hu/puzzleir/valuta/integration/TransactionFlowTest.java",
-          "patterns": [
-            "testBuyFlow_withCustomer",
-            "TransactionType.BUY"
-          ]
+          "patterns": ["testBuyFlow_withCustomer", "TransactionType.BUY"]
         },
         {
           "path": "backend/src/test/java/hu/puzzleir/valuta/integration/SeededPostgresAcceptanceIT.java",
@@ -42,17 +36,11 @@
     },
     {
       "id": "sell",
-      "commands": [
-        "npm run acceptance:local:flows",
-        "npm run acceptance:local:postgres-seeded"
-      ],
+      "commands": ["npm run acceptance:local:flows", "npm run acceptance:local:postgres-seeded"],
       "evidenceRefs": [
         {
           "path": "backend/src/test/java/hu/puzzleir/valuta/integration/TransactionFlowTest.java",
-          "patterns": [
-            "testSellFlow_fullCycle",
-            "TransactionType.SELL"
-          ]
+          "patterns": ["testSellFlow_fullCycle", "TransactionType.SELL"]
         },
         {
           "path": "backend/src/test/java/hu/puzzleir/valuta/integration/SeededPostgresAcceptanceIT.java",
@@ -74,24 +62,15 @@
       "evidenceRefs": [
         {
           "path": "frontend-react/src/services/api/transactions.test.ts",
-          "patterns": [
-            "calls POST /transactions/conversion",
-            "/transactions/conversion"
-          ]
+          "patterns": ["calls POST /transactions/conversion", "/transactions/conversion"]
         },
         {
           "path": "penztar-client/electron/__tests__/printer.test.ts",
-          "patterns": [
-            "should show KONVERZI",
-            "type: 'conversion'"
-          ]
+          "patterns": ["should show KONVERZI", "type: 'conversion'"]
         },
         {
           "path": "penztar-client/electron/__tests__/sync-engine.test.ts",
-          "patterns": [
-            "should sync conversions after transactions",
-            "/transactions/conversion"
-          ]
+          "patterns": ["should sync conversions after transactions", "/transactions/conversion"]
         }
       ]
     },
@@ -158,10 +137,7 @@
       "evidenceRefs": [
         {
           "path": "backend/src/test/java/hu/puzzleir/valuta/service/TransactionReversalServiceTest.java",
-          "patterns": [
-            "testStornoFlow",
-            "TransactionType.REVERSAL"
-          ]
+          "patterns": ["testStornoFlow", "TransactionType.REVERSAL"]
         },
         {
           "path": "backend/src/test/java/hu/puzzleir/valuta/service/TransferServiceTest.java",
@@ -201,17 +177,11 @@
       "evidenceRefs": [
         {
           "path": "backend/src/test/java/hu/puzzleir/valuta/integration/ClosingFlowTest.java",
-          "patterns": [
-            "testClosingWizard_happyPath",
-            "testClosingWizard_complete"
-          ]
+          "patterns": ["testClosingWizard_happyPath", "testClosingWizard_complete"]
         },
         {
           "path": "backend/src/test/java/hu/puzzleir/valuta/service/CashRegisterServiceTest.java",
-          "patterns": [
-            "testCloseDay",
-            "DAY_CLOSE_COMMAND"
-          ]
+          "patterns": ["testCloseDay", "DAY_CLOSE_COMMAND"]
         },
         {
           "path": "backend/src/test/java/hu/puzzleir/valuta/integration/SeededPostgresAcceptanceIT.java",
@@ -233,9 +203,7 @@
     },
     {
       "id": "navCashRegister",
-      "commands": [
-        "npm run acceptance:local:backend"
-      ],
+      "commands": ["npm run acceptance:local:backend"],
       "evidenceRefs": [
         {
           "path": "backend/src/test/java/hu/puzzleir/valuta/service/CashRegisterServiceTest.java",
@@ -248,9 +216,7 @@
         },
         {
           "path": "backend/src/test/java/hu/puzzleir/valuta/controller/CashRegisterControllerTest.java",
-          "patterns": [
-            "executeCommand_returns502WhenEventContainsErrorStatus"
-          ]
+          "patterns": ["executeCommand_returns502WhenEventContainsErrorStatus"]
         }
       ]
     },
@@ -273,10 +239,7 @@
         },
         {
           "path": "frontend-react/src/pages/receipts/ReceiptPage.types.test.ts",
-          "patterns": [
-            "buildCancelledTransactionPrintData",
-            "CANCELLED_TRANSACTION"
-          ]
+          "patterns": ["buildCancelledTransactionPrintData", "CANCELLED_TRANSACTION"]
         }
       ]
     },
@@ -299,11 +262,7 @@
         },
         {
           "path": "penztar-client/electron/__tests__/sync-engine-network-disruption.test.ts",
-          "patterns": [
-            "markTransactionSynced",
-            "markConversionSynced",
-            "ECONNRESET"
-          ]
+          "patterns": ["markTransactionSynced", "markConversionSynced", "ECONNRESET"]
         }
       ]
     }

@@ -35,9 +35,7 @@ export function VoiceAssistantPanel() {
       aria-label="EBC Hangsegéd"
     >
       <div className="mb-1.5 flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-          EBC Hangsegéd
-        </h3>
+        <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">EBC Hangsegéd</h3>
         <span
           className={`inline-block h-2 w-2 rounded-full ${
             isActive ? 'bg-green-500' : 'bg-slate-400'

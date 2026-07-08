@@ -132,7 +132,10 @@ export const treasuryApi = {
     })
     return response.data
   },
-  ertektarConsolidatedReport: async (from?: string, to?: string): Promise<ErtektarConsolidatedReport> => {
+  ertektarConsolidatedReport: async (
+    from?: string,
+    to?: string,
+  ): Promise<ErtektarConsolidatedReport> => {
     const response = await api.get<ErtektarConsolidatedReport>('/ertektar/reports/consolidated', {
       params: {
         ...(from ? { from } : {}),

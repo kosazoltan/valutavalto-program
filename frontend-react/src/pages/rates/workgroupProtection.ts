@@ -117,6 +117,9 @@ export function validateWorkgroupProtection(
 }
 
 /** Csoport-címke képzése a backenddel egyezően: sorszám → "X-es csoport", egyébként "(KÓD) csoport". */
-export function workgroupProtectionLabel(legacyGroupNumber: number | null | undefined, code: string): string {
+export function workgroupProtectionLabel(
+  legacyGroupNumber: number | null | undefined,
+  code: string,
+): string {
   return legacyGroupNumber != null ? `${legacyGroupNumber}-es csoport` : `(${code}) csoport`
 }

@@ -127,8 +127,8 @@ export default function MfaEnrollmentPage() {
 
       <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
         <strong>Ajánlott:</strong> kapcsold be a kétfaktoros hitelesítést, hogy a bejelentkezésnél
-        egy Google Authenticator (vagy Microsoft Authenticator / Authy) által generált 6-jegyű
-        kód is kelljen. Ez különösen fontos vezetői / admin / compliance szerepkörnél.
+        egy Google Authenticator (vagy Microsoft Authenticator / Authy) által generált 6-jegyű kód
+        is kelljen. Ez különösen fontos vezetői / admin / compliance szerepkörnél.
       </div>
 
       {state === 'IDLE' && !enabled && (
@@ -152,8 +152,8 @@ export default function MfaEnrollmentPage() {
           <div className="p-3 rounded border border-amber-200 bg-amber-50">
             <p className="font-medium text-amber-800 mb-2">1. lépés — QR olvasás</p>
             <p className="text-sm text-amber-700 mb-3">
-              Nyisd meg a Google Authenticator (vagy Authy, Microsoft Authenticator) appot,
-              és olvasd be az alábbi QR kódot:
+              Nyisd meg a Google Authenticator (vagy Authy, Microsoft Authenticator) appot, és
+              olvasd be az alábbi QR kódot:
             </p>
             <img
               src={`data:image/png;base64,${enrollment.qrCodePngBase64}`}
@@ -162,7 +162,9 @@ export default function MfaEnrollmentPage() {
               style={{ width: '240px', height: '240px' }}
             />
             <details className="mt-3 text-xs">
-              <summary className="cursor-pointer text-amber-700">Manuálisan beírható secret</summary>
+              <summary className="cursor-pointer text-amber-700">
+                Manuálisan beírható secret
+              </summary>
               <code className="block mt-1 p-2 bg-amber-100 rounded font-mono text-amber-900 break-all">
                 {enrollment.secret}
               </code>
@@ -215,12 +217,15 @@ export default function MfaEnrollmentPage() {
           <div className="p-3 rounded border border-red-200 bg-red-50">
             <p className="font-medium text-red-800 mb-2">⚠️ Backup kódok — MENTSD EL!</p>
             <p className="text-sm text-red-700 mb-3">
-              Ezek a kódok EGYSZER használhatók, ha elveszted a telefonod. <strong>Most látod őket utoljára!</strong>
+              Ezek a kódok EGYSZER használhatók, ha elveszted a telefonod.{' '}
+              <strong>Most látod őket utoljára!</strong>
               Másold le egy biztonságos helyre (pl. jelszókezelő, papír széf, 1Password).
             </p>
             <div className="grid grid-cols-2 gap-1 font-mono text-sm bg-white p-2 rounded border border-red-300">
               {backupCodes.map((code) => (
-                <div key={code} className="text-red-900">{code}</div>
+                <div key={code} className="text-red-900">
+                  {code}
+                </div>
               ))}
             </div>
             <button
@@ -239,8 +244,8 @@ export default function MfaEnrollmentPage() {
       {state === 'ENROLLED' && !backupCodes && (
         <div className="p-3 rounded border border-green-200 bg-green-50">
           <p className="flex items-center gap-2 text-green-800">
-            <ShieldCheck size={18} />
-            A MFA aktív ezen a fiókon. Bejelentkezésnél a TOTP kód kötelező.
+            <ShieldCheck size={18} />A MFA aktív ezen a fiókon. Bejelentkezésnél a TOTP kód
+            kötelező.
           </p>
         </div>
       )}

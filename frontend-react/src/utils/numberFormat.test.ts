@@ -102,7 +102,7 @@ describe('formatCurrency', () => {
   })
 
   it('formats large currency value', () => {
-    const result = formatCurrency(1000000.00)
+    const result = formatCurrency(1000000.0)
     expect(result).toMatch(/1/)
   })
 })

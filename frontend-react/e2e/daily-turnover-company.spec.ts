@@ -29,7 +29,7 @@ async function mockApis(page: Page) {
     roles: ['admin'],
   })
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
@@ -52,11 +52,19 @@ async function mockApis(page: Page) {
     }
 
     if (path.endsWith('/auth/refresh-cookie') && method === 'POST') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token }) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token }),
+      })
     }
 
     if (path.endsWith('/workers/me') && method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(worker) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(worker),
+      })
     }
 
     if (path.endsWith('/features') && method === 'GET') {
@@ -90,7 +98,11 @@ async function mockApis(page: Page) {
     }
 
     if (method === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     }
 
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
@@ -107,7 +119,9 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('napi forgalom oldalon a cég időszak mód a /turnover/company backend szerződést hívja', async ({ page }) => {
+test('napi forgalom oldalon a cég időszak mód a /turnover/company backend szerződést hívja', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApis(page)
   await login(page)
@@ -119,12 +133,14 @@ test('napi forgalom oldalon a cég időszak mód a /turnover/company backend sze
   await page.getByLabel('Nap (tól)').fill('1')
   await page.getByLabel('Nap (ig)').fill('18')
 
-  const companyTurnoverRequest = page.waitForRequest(request => {
+  const companyTurnoverRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
-    return request.method() === 'GET'
-      && url.pathname === '/api/v1/turnover/company'
-      && url.searchParams.get('from') === '2026-06-01'
-      && url.searchParams.get('to') === '2026-06-18'
+    return (
+      request.method() === 'GET' &&
+      url.pathname === '/api/v1/turnover/company' &&
+      url.searchParams.get('from') === '2026-06-01' &&
+      url.searchParams.get('to') === '2026-06-18'
+    )
   })
   await page.getByRole('button', { name: /Időszak rendben/i }).click()
   await companyTurnoverRequest
@@ -133,8 +149,8 @@ test('napi forgalom oldalon a cég időszak mód a /turnover/company backend sze
   await expect(page.getByRole('cell', { name: 'EUR' })).toBeVisible()
   await expect(page.getByText('3 Ft', { exact: true })).toBeVisible()
 
-  const horizontalOverflow = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
 })

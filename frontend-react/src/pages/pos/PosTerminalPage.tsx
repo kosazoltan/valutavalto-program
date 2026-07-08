@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Activity, CreditCard, Eye, RefreshCw, Search } from 'lucide-react'
-import { posTerminalApi, type PosTerminal, type PosTerminalRuntimeStatus } from '../../services/api/index'
+import {
+  posTerminalApi,
+  type PosTerminal,
+  type PosTerminalRuntimeStatus,
+} from '../../services/api/index'
 import { safeArray } from '@/utils/safeArray'
 import { logger } from '../../utils/logger'
 import { toast } from '../../components/ui/toaster'
@@ -12,7 +16,9 @@ export default function PosTerminalPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [terminalStatuses, setTerminalStatuses] = useState<Record<string, PosTerminalRuntimeStatus>>({})
+  const [terminalStatuses, setTerminalStatuses] = useState<
+    Record<string, PosTerminalRuntimeStatus>
+  >({})
   const [statusLoading, setStatusLoading] = useState<Record<string, boolean>>({})
   const [selectedTerminal, setSelectedTerminal] = useState<PosTerminal | null>(null)
   const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
@@ -35,9 +41,11 @@ export default function PosTerminalPage() {
     void loadData()
   }, [loadData])
 
-  const filtered = safeArray<PosTerminal>(terminals).filter(t =>
-    !searchTerm || t.terminalId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.terminalName.toLowerCase().includes(searchTerm.toLowerCase())
+  const filtered = safeArray<PosTerminal>(terminals).filter(
+    (t) =>
+      !searchTerm ||
+      t.terminalId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.terminalName.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   const loadStatus = async (terminalId: string) => {
@@ -82,7 +90,10 @@ export default function PosTerminalPage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold flex items-center gap-2"><CreditCard />{t('pos.posTerminalok')}</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <CreditCard />
+          {t('pos.posTerminalok')}
+        </h1>
       </div>
 
       {/* Keresés */}
@@ -92,7 +103,7 @@ export default function PosTerminalPage() {
           className="form-input flex-1"
           placeholder="Keresés terminál ID vagy név alapján..."
           value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
         />
         <button onClick={() => void loadData()} className="form-button" title="Frissítés">
           <RefreshCw size={16} />
@@ -100,11 +111,16 @@ export default function PosTerminalPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
       )}
 
       {selectedTerminal && (
-        <section className="form-panel border-blue-200 bg-blue-50" data-testid="pos-terminal-detail-panel">
+        <section
+          className="form-panel border-blue-200 bg-blue-50"
+          data-testid="pos-terminal-detail-panel"
+        >
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
               <h2 className="text-base font-bold text-blue-950">{selectedTerminal.terminalName}</h2>
@@ -121,7 +137,9 @@ export default function PosTerminalPage() {
             </div>
             <div>
               <dt className="text-gray-500">{t('display.kapcsolat')}</dt>
-              <dd className="font-medium text-gray-900">{selectedTerminal.connectionType || 'SERIAL'}</dd>
+              <dd className="font-medium text-gray-900">
+                {selectedTerminal.connectionType || 'SERIAL'}
+              </dd>
             </div>
             <div>
               <dt className="text-gray-500">COM/IP</dt>
@@ -132,7 +150,9 @@ export default function PosTerminalPage() {
             <div>
               <dt className="text-gray-500">{t('customers.utolsoTranzakcio')}</dt>
               <dd className="font-medium text-gray-900">
-                {selectedTerminal.lastTransactionAt ? new Date(selectedTerminal.lastTransactionAt).toLocaleString('hu-HU') : '-'}
+                {selectedTerminal.lastTransactionAt
+                  ? new Date(selectedTerminal.lastTransactionAt).toLocaleString('hu-HU')
+                  : '-'}
               </dd>
             </div>
           </dl>
@@ -140,126 +160,153 @@ export default function PosTerminalPage() {
       )}
 
       {/* Terminálok lista */}
-      {loading ? <div>Betöltés...</div> : (
+      {loading ? (
+        <div>Betöltés...</div>
+      ) : (
         <div className="form-panel">
           {filtered.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">{t('pos.nincsPosTerminalKonfiguralva')}</div>
+            <div className="text-center text-gray-500 py-8">
+              {t('pos.nincsPosTerminalKonfiguralva')}
+            </div>
           ) : (
             <>
-            <div className="space-y-3 md:hidden">
-              {filtered.map(terminal => {
-                const runtimeStatus = terminalStatuses[terminal.terminalId]
-                return (
-                  <article key={terminal.id} className="rounded border border-gray-200 bg-white p-3 shadow-sm">
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-lg font-bold text-gray-900">{terminal.terminalName}</p>
-                        <p className="font-mono text-sm text-gray-500">{terminal.terminalId}</p>
-                      </div>
-                      <span className={`badge ${terminal.isActive ? 'badge-green' : 'badge-gray'}`}>
-                        {terminal.isActive ? 'Aktív' : 'Inaktív'}
-                      </span>
-                    </div>
-                    <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-                      <div>
-                        <dt className="text-gray-500">{t('commissions.fiok')}</dt>
-                        <dd className="text-gray-900">{terminal.branchName || '-'}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-gray-500">{t('display.kapcsolat')}</dt>
-                        <dd className="text-gray-900">{terminal.connectionType || 'SERIAL'} {terminal.comPort || ''}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-gray-500">Backend állapot</dt>
-                        <dd>{renderRuntimeStatus(terminal)}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-gray-500">{t('customers.utolsoTranzakcio')}</dt>
-                        <dd className="text-gray-900">{terminal.lastTransactionAt ? new Date(terminal.lastTransactionAt).toLocaleString('hu-HU') : '-'}</dd>
-                      </div>
-                      {runtimeStatus?.message && (
-                        <div className="col-span-2">
-                          <dt className="text-gray-500">Üzenet</dt>
-                          <dd className="text-gray-900">{runtimeStatus.message}</dd>
+              <div className="space-y-3 md:hidden">
+                {filtered.map((terminal) => {
+                  const runtimeStatus = terminalStatuses[terminal.terminalId]
+                  return (
+                    <article
+                      key={terminal.id}
+                      className="rounded border border-gray-200 bg-white p-3 shadow-sm"
+                    >
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-lg font-bold text-gray-900">
+                            {terminal.terminalName}
+                          </p>
+                          <p className="font-mono text-sm text-gray-500">{terminal.terminalId}</p>
                         </div>
-                      )}
-                    </dl>
-                    <button
-                      type="button"
-                      onClick={() => void loadStatus(terminal.terminalId)}
-                      disabled={Boolean(statusLoading[terminal.terminalId])}
-                      className="form-button mt-3 flex w-full items-center justify-center gap-2 disabled:opacity-60"
-                    >
-                      <Activity size={14} />
-                      {statusLoading[terminal.terminalId] ? 'Lekérdezés...' : 'Állapot lekérdezése'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void loadDetails(terminal.id)}
-                      disabled={detailLoadingId === terminal.id}
-                      className="form-button mt-2 flex w-full items-center justify-center gap-2 disabled:opacity-60"
-                    >
-                      <Eye size={14} />
-                      {detailLoadingId === terminal.id ? 'Betöltés...' : 'Részletek'}
-                    </button>
-                  </article>
-                )
-              })}
-            </div>
-
-            <div className="hidden overflow-x-auto md:block">
-            <table className="data-grid w-full">
-              <thead>
-                <tr>
-                  <th>{t('pos.terminalId2')}</th>
-                  <th>{t('display.megnevezes')}</th>
-                  <th>{t('commissions.fiok')}</th>
-                  <th>{t('display.kapcsolat')}</th>
-                  <th>{t('customers.utolsoTranzakcio')}</th>
-                  <th>{t('common.status')}</th>
-                  <th>Backend állapot</th>
-                  <th className="w-44">{t('common.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(terminal => (
-                  <tr key={terminal.id}>
-                    <td className="font-mono text-sm">{terminal.terminalId}</td>
-                    <td>{terminal.terminalName}</td>
-                    <td>{terminal.branchName || '-'}</td>
-                    <td className="text-sm">{terminal.connectionType || 'SERIAL'} {terminal.comPort || ''}</td>
-                    <td className="text-sm">{terminal.lastTransactionAt ? new Date(terminal.lastTransactionAt).toLocaleString('hu-HU') : '-'}</td>
-                    <td>
-                      <span className={`badge ${terminal.isActive ? 'badge-green' : 'badge-gray'}`}>
-                        {terminal.isActive ? 'Aktív' : 'Inaktív'}
-                      </span>
-                    </td>
-                    <td>{renderRuntimeStatus(terminal)}</td>
-                    <td>
-                      <div className="flex flex-wrap gap-2">
+                        <span
+                          className={`badge ${terminal.isActive ? 'badge-green' : 'badge-gray'}`}
+                        >
+                          {terminal.isActive ? 'Aktív' : 'Inaktív'}
+                        </span>
+                      </div>
+                      <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                        <div>
+                          <dt className="text-gray-500">{t('commissions.fiok')}</dt>
+                          <dd className="text-gray-900">{terminal.branchName || '-'}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-500">{t('display.kapcsolat')}</dt>
+                          <dd className="text-gray-900">
+                            {terminal.connectionType || 'SERIAL'} {terminal.comPort || ''}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-500">Backend állapot</dt>
+                          <dd>{renderRuntimeStatus(terminal)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-500">{t('customers.utolsoTranzakcio')}</dt>
+                          <dd className="text-gray-900">
+                            {terminal.lastTransactionAt
+                              ? new Date(terminal.lastTransactionAt).toLocaleString('hu-HU')
+                              : '-'}
+                          </dd>
+                        </div>
+                        {runtimeStatus?.message && (
+                          <div className="col-span-2">
+                            <dt className="text-gray-500">Üzenet</dt>
+                            <dd className="text-gray-900">{runtimeStatus.message}</dd>
+                          </div>
+                        )}
+                      </dl>
                       <button
                         type="button"
                         onClick={() => void loadStatus(terminal.terminalId)}
                         disabled={Boolean(statusLoading[terminal.terminalId])}
-                        className="form-button text-xs"
+                        className="form-button mt-3 flex w-full items-center justify-center gap-2 disabled:opacity-60"
                       >
-                        {statusLoading[terminal.terminalId] ? 'Lekérdezés...' : 'Állapot'}
+                        <Activity size={14} />
+                        {statusLoading[terminal.terminalId]
+                          ? 'Lekérdezés...'
+                          : 'Állapot lekérdezése'}
                       </button>
                       <button
                         type="button"
                         onClick={() => void loadDetails(terminal.id)}
                         disabled={detailLoadingId === terminal.id}
-                        className="form-button text-xs"
+                        className="form-button mt-2 flex w-full items-center justify-center gap-2 disabled:opacity-60"
                       >
+                        <Eye size={14} />
                         {detailLoadingId === terminal.id ? 'Betöltés...' : 'Részletek'}
                       </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
+                    </article>
+                  )
+                })}
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
+                <table className="data-grid w-full">
+                  <thead>
+                    <tr>
+                      <th>{t('pos.terminalId2')}</th>
+                      <th>{t('display.megnevezes')}</th>
+                      <th>{t('commissions.fiok')}</th>
+                      <th>{t('display.kapcsolat')}</th>
+                      <th>{t('customers.utolsoTranzakcio')}</th>
+                      <th>{t('common.status')}</th>
+                      <th>Backend állapot</th>
+                      <th className="w-44">{t('common.actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((terminal) => (
+                      <tr key={terminal.id}>
+                        <td className="font-mono text-sm">{terminal.terminalId}</td>
+                        <td>{terminal.terminalName}</td>
+                        <td>{terminal.branchName || '-'}</td>
+                        <td className="text-sm">
+                          {terminal.connectionType || 'SERIAL'} {terminal.comPort || ''}
+                        </td>
+                        <td className="text-sm">
+                          {terminal.lastTransactionAt
+                            ? new Date(terminal.lastTransactionAt).toLocaleString('hu-HU')
+                            : '-'}
+                        </td>
+                        <td>
+                          <span
+                            className={`badge ${terminal.isActive ? 'badge-green' : 'badge-gray'}`}
+                          >
+                            {terminal.isActive ? 'Aktív' : 'Inaktív'}
+                          </span>
+                        </td>
+                        <td>{renderRuntimeStatus(terminal)}</td>
+                        <td>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void loadStatus(terminal.terminalId)}
+                              disabled={Boolean(statusLoading[terminal.terminalId])}
+                              className="form-button text-xs"
+                            >
+                              {statusLoading[terminal.terminalId] ? 'Lekérdezés...' : 'Állapot'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void loadDetails(terminal.id)}
+                              disabled={detailLoadingId === terminal.id}
+                              className="form-button text-xs"
+                            >
+                              {detailLoadingId === terminal.id ? 'Betöltés...' : 'Részletek'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
         </div>

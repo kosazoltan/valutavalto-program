@@ -22,10 +22,10 @@ import type { AppMode } from '../types/appMode'
 import { isElectron as isElectronRuntime } from '../utils/electron'
 import { logger } from '../utils/logger'
 
-import { menuGroups } from "./menuGroups"
-import { isMenuGroupVisible, isMenuItemVisible, type MenuVisibilityContext } from "./menuVisibility"
-import { useFeatureFlags } from "../hooks/useFeatureFlags"
-import TransitBadge from "../components/TransitBadge"
+import { menuGroups } from './menuGroups'
+import { isMenuGroupVisible, isMenuItemVisible, type MenuVisibilityContext } from './menuVisibility'
+import { useFeatureFlags } from '../hooks/useFeatureFlags'
+import TransitBadge from '../components/TransitBadge'
 
 export function shouldRequireDailySession(appMode: AppMode): boolean {
   return appMode === CASHIER_APP_MODE
@@ -79,7 +79,12 @@ export default function MainLayout() {
 
   // RBAC-audit (2026-06-05): a menü-láthatóság tiszta logikája a menuVisibility modulban
   // (least-privilege full módban, lokál oversight-bypass, öröklés, csoport-ha-van-látható-item).
-  const menuVisibilityCtx: MenuVisibilityContext = { appMode, hasCanonicalRole, hasRole, featureFlags }
+  const menuVisibilityCtx: MenuVisibilityContext = {
+    appMode,
+    hasCanonicalRole,
+    hasRole,
+    featureFlags,
+  }
 
   const markSessionReadyWithoutDailyGate = useCallback(() => {
     setSessionInfo(null)
@@ -107,7 +112,9 @@ export default function MainLayout() {
         try {
           const current = await dailySessionApi.getCurrent()
           setSessionInfo(current)
-        } catch { /* session info nem kritikus */ }
+        } catch {
+          /* session info nem kritikus */
+        }
         setSessionReady(true)
         return
       }
@@ -148,7 +155,12 @@ export default function MainLayout() {
       () => authApi.logout(),
       logout,
       () => navigate('/login'),
-      (err) => logger.warn('MainLayout', 'Backend logout sikertelen, lokális kijelentkeztetés folytatódik', err),
+      (err) =>
+        logger.warn(
+          'MainLayout',
+          'Backend logout sikertelen, lokális kijelentkeztetés folytatódik',
+          err,
+        ),
     )
   }
 
@@ -165,44 +177,54 @@ export default function MainLayout() {
         <Navigate to="/cashdesk/day-open" replace />
       )}
 
-      {showSessionDialog && !sessionReady && sessionError && sessionError !== 'redirect-day-open' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-danger-100 rounded-xl flex items-center justify-center">
-                <Sun size={28} className="text-danger-600" />
+      {showSessionDialog &&
+        !sessionReady &&
+        sessionError &&
+        sessionError !== 'redirect-day-open' && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-danger-100 rounded-xl flex items-center justify-center">
+                  <Sun size={28} className="text-danger-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-secondary-900">
+                    {t('layout.dayOpenFailedTitle')}
+                  </h2>
+                  <p className="text-sm text-secondary-500">
+                    {new Date().toLocaleDateString('hu-HU', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      weekday: 'long',
+                    })}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-secondary-900">{t('layout.dayOpenFailedTitle')}</h2>
-                <p className="text-sm text-secondary-500">
-                  {new Date().toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
-                </p>
+              <div className="mb-4 p-3 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 text-sm">
+                {sessionError === 'serverUnreachable'
+                  ? t('layout.serverUnreachable')
+                  : sessionError}
               </div>
-            </div>
-            <div className="mb-4 p-3 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 text-sm">
-              {sessionError === 'serverUnreachable' ? t('layout.serverUnreachable') : sessionError}
-            </div>
-            <p className="text-secondary-600 mb-6 text-sm">
-              {t('layout.dayOpenFailedMessage')}
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={handleLogout}
-                className="flex-1 px-4 py-3 border border-secondary-300 text-secondary-700 rounded-lg hover:bg-secondary-50 transition-colors font-medium"
-              >
-                {t('layout.logoutButton')}
-              </button>
-              <button
-                onClick={handleRetryOpen}
-                className="flex-1 px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium flex items-center justify-center gap-2"
-              >
-                <Sun size={18} />
-                {t('layout.retryOpen')}
-              </button>
+              <p className="text-secondary-600 mb-6 text-sm">{t('layout.dayOpenFailedMessage')}</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleLogout}
+                  className="flex-1 px-4 py-3 border border-secondary-300 text-secondary-700 rounded-lg hover:bg-secondary-50 transition-colors font-medium"
+                >
+                  {t('layout.logoutButton')}
+                </button>
+                <button
+                  onClick={handleRetryOpen}
+                  className="flex-1 px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium flex items-center justify-center gap-2"
+                >
+                  <Sun size={18} />
+                  {t('layout.retryOpen')}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Loading spinner amíg a session check fut */}
       {sessionChecking && (
@@ -216,7 +238,9 @@ export default function MainLayout() {
       {/* MODERN Sidebar */}
       <aside
         className={`${
-          sidebarOpen ? 'w-full md:w-64' : 'h-12 w-full overflow-hidden md:h-auto md:w-16 md:overflow-visible'
+          sidebarOpen
+            ? 'w-full md:w-64'
+            : 'h-12 w-full overflow-hidden md:h-auto md:w-16 md:overflow-visible'
         } bg-secondary-900 text-white transition-all duration-300 ease-in-out flex flex-col shadow-xl`}
       >
         {/* Logo/Header */}
@@ -226,7 +250,9 @@ export default function MainLayout() {
             <div className="flex flex-col leading-tight">
               <span className="font-bold text-sm">{t('layout.appName')}</span>
               {/* FR-FM-01 (b5-fomenu hibalista): verziószám a fejlécen. */}
-              <span className="text-[10px] text-secondary-300 font-mono">v{import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__}</span>
+              <span className="text-[10px] text-secondary-300 font-mono">
+                v{import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__}
+              </span>
             </div>
           </div>
           <button
@@ -242,40 +268,42 @@ export default function MainLayout() {
           {menuGroups
             .filter((group) => isMenuGroupVisible(group, menuVisibilityCtx))
             .map((group) => (
-            <div key={group.label} className="mb-3">
-              {sidebarOpen && (
-                <div className="px-4 mb-1 text-[10px] font-semibold text-secondary-400 uppercase tracking-wider">
-                  {group.label}
-                </div>
-              )}
-              {group.items
-                .filter((item) => isMenuItemVisible(item, group, menuVisibilityCtx))
-                .map((item) => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  // v2.5.54 #11 + Codex #904: `end` CSAK a prefix-szülő útvonalakra (pl. /rates),
-                  // hogy ne ütközzön a /rates/history-val; a sima menüpontok szülő-highlightja megmarad.
-                  end={parentPrefixPaths.has(item.path)}
-                  onClick={closeMobileSidebar}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 px-4 py-1.5 text-xs font-medium transition-all duration-200 ${
-                      isActive 
-                        ? 'bg-primary-600 text-white border-l-4 border-accent-400' 
-                        : 'text-secondary-300 hover:bg-secondary-800 hover:text-white'
-                    }`
-                  }
-                >
-                  <item.icon size={16} className="shrink-0" />
-                  {sidebarOpen && <span className="truncate">{item.label}</span>}
-                </NavLink>
-              ))}
-            </div>
-          ))}
+              <div key={group.label} className="mb-3">
+                {sidebarOpen && (
+                  <div className="px-4 mb-1 text-[10px] font-semibold text-secondary-400 uppercase tracking-wider">
+                    {group.label}
+                  </div>
+                )}
+                {group.items
+                  .filter((item) => isMenuItemVisible(item, group, menuVisibilityCtx))
+                  .map((item) => (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      // v2.5.54 #11 + Codex #904: `end` CSAK a prefix-szülő útvonalakra (pl. /rates),
+                      // hogy ne ütközzön a /rates/history-val; a sima menüpontok szülő-highlightja megmarad.
+                      end={parentPrefixPaths.has(item.path)}
+                      onClick={closeMobileSidebar}
+                      className={({ isActive }) =>
+                        `flex items-center gap-2 px-4 py-1.5 text-xs font-medium transition-all duration-200 ${
+                          isActive
+                            ? 'bg-primary-600 text-white border-l-4 border-accent-400'
+                            : 'text-secondary-300 hover:bg-secondary-800 hover:text-white'
+                        }`
+                      }
+                    >
+                      <item.icon size={16} className="shrink-0" />
+                      {sidebarOpen && <span className="truncate">{item.label}</span>}
+                    </NavLink>
+                  ))}
+              </div>
+            ))}
         </nav>
 
         {/* User info & Logout */}
-        <div className={`${sidebarOpen ? 'block' : 'hidden md:block'} border-t border-secondary-700 p-2`}>
+        <div
+          className={`${sidebarOpen ? 'block' : 'hidden md:block'} border-t border-secondary-700 p-2`}
+        >
           {sidebarOpen && user && (
             <div className="mb-2 px-2 py-1.5 bg-secondary-800 rounded-lg">
               <div className="flex items-center gap-1.5">
@@ -306,11 +334,18 @@ export default function MainLayout() {
           <div className="flex min-w-0 flex-wrap items-center gap-3">
             <div className="text-xs">
               <span className="text-secondary-500">{t('layout.branchLabel')}</span>
-              <span className="ml-1 font-semibold text-secondary-900">{user?.branchName || t('layout.centralFallback')}</span>
+              <span className="ml-1 font-semibold text-secondary-900">
+                {user?.branchName || t('layout.centralFallback')}
+              </span>
             </div>
             <div className="h-4 w-px bg-secondary-200"></div>
             <div className="text-xs text-secondary-600">
-              {new Date().toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
+              {new Date().toLocaleDateString('hu-HU', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'short',
+              })}
             </div>
             {sessionInfo && (
               <>
@@ -322,7 +357,7 @@ export default function MainLayout() {
               </>
             )}
           </div>
-          
+
           <div className="flex min-w-0 flex-wrap items-center gap-4">
             {/* v2.1.4: Uton levo csomagok badge */}
             <TransitBadge />
@@ -332,7 +367,7 @@ export default function MainLayout() {
               <Bell size={16} className="text-secondary-600" />
               <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-danger-500 rounded-full"></span>
             </button>
-            
+
             {/* User Menu */}
             <div className="flex items-center gap-2 px-2 py-1 hover:bg-secondary-50 rounded-lg cursor-pointer transition-colors">
               <div className="w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-xs">
@@ -341,7 +376,9 @@ export default function MainLayout() {
               <div className="text-xs hidden sm:block leading-tight">
                 <div className="font-semibold text-secondary-900">{user?.fullName}</div>
                 {user?.workerCode && (
-                  <div className="text-[10px] text-secondary-500 font-mono">{t('layout.userIdPrefix', { code: user.workerCode })}</div>
+                  <div className="text-[10px] text-secondary-500 font-mono">
+                    {t('layout.userIdPrefix', { code: user.workerCode })}
+                  </div>
                 )}
               </div>
               <ChevronDown size={14} className="text-secondary-400" />
@@ -355,7 +392,8 @@ export default function MainLayout() {
               <ShieldAlert size={14} className="shrink-0 text-amber-700" />
               <span className="font-semibold">Tartalék webes szerverfelület</span>
               <span className="text-amber-800">
-                Elsődleges napi munkára a telepített pénztár, értéktár, RFM készítő és központi kliens használandó.
+                Elsődleges napi munkára a telepített pénztár, értéktár, RFM készítő és központi
+                kliens használandó.
               </span>
             </div>
           </div>
@@ -376,9 +414,13 @@ export default function MainLayout() {
               <span className="text-success-700 font-medium">{t('layout.online')}</span>
             </span>
             <span className="text-secondary-500">|</span>
-            <span className="text-secondary-600">{t('layout.lastSync', { time: new Date().toLocaleTimeString('hu-HU') })}</span>
+            <span className="text-secondary-600">
+              {t('layout.lastSync', { time: new Date().toLocaleTimeString('hu-HU') })}
+            </span>
           </div>
-          <span className="text-secondary-600 font-mono">{new Date().toLocaleTimeString('hu-HU')}</span>
+          <span className="text-secondary-600 font-mono">
+            {new Date().toLocaleTimeString('hu-HU')}
+          </span>
         </div>
       </main>
     </div>

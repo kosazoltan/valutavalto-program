@@ -61,11 +61,15 @@ describe('validateRateDirection (FR-RFM-25)', () => {
 
   it('NaN/Infinity értékek → nem validál (defenzív)', () => {
     expect(validateRateDirection([row({ settlement: NaN })])).toEqual([])
-    expect(validateRateDirection([row({ settlement: 400, sellRate: NaN, buyRate: Infinity })])).toEqual([])
+    expect(
+      validateRateDirection([row({ settlement: 400, sellRate: NaN, buyRate: Infinity })]),
+    ).toEqual([])
   })
 
   it('apró float-zaj (epsilon alatt) → nincs hamis riasztás', () => {
     // sellRate épp csak elszámoló alatt, de epsilon-on belül
-    expect(validateRateDirection([row({ sellRate: 400 - 1e-12, buyRate: 400 + 1e-12 })])).toEqual([])
+    expect(validateRateDirection([row({ sellRate: 400 - 1e-12, buyRate: 400 + 1e-12 })])).toEqual(
+      [],
+    )
   })
 })
