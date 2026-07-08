@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from '../../services/api/client'
 import { stornoApi, StornoApproval } from '../../services/api/index'
 import { logger } from '../../utils/logger'
+import { getErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Sztornó telefonos supervisor-PIN jóváhagyás modal (egyszemélyes iroda üzleti döntés,
@@ -66,7 +67,7 @@ export default function StornoPinApprovalModal({ open, currentWorkerId, approval
           ),
         )
       } catch (err) {
-        logger.error('StornoPinApprovalModal', 'Jóváhagyó-lista betöltési hiba:', err)
+        logger.error('StornoPinApprovalModal', 'Jóváhagyó-lista betöltési hiba:', getErrorMessage(err))
         setError('Nem sikerült betölteni a jóváhagyásra jogosult dolgozók listáját.')
       } finally {
         setLoading(false)
@@ -84,7 +85,7 @@ export default function StornoPinApprovalModal({ open, currentWorkerId, approval
       const approval = await stornoApi.approveByPin(approvalId, selectedId, submittedPin, true)
       onApproved(approval)
     } catch (err) {
-      logger.warn('StornoPinApprovalModal', 'PIN-jóváhagyás hiba:', err)
+      logger.warn('StornoPinApprovalModal', 'PIN-jóváhagyás hiba:', getErrorMessage(err))
       const errorBody = (err as { response?: { data?: { message?: string; error?: string } } }).response?.data
       setError(errorBody?.message ?? errorBody?.error ?? 'Hibás PIN vagy ideiglenes lockout')
       setPin('')

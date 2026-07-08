@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../../services/api/client'
 import { logger } from '../../utils/logger'
+import { getErrorMessage } from '../../utils/errorHandling'
 
 /**
  * P2-2 Supervisor PIN Modal — gyors-engedély 4-6 számjegyhez.
@@ -58,7 +59,7 @@ export default function SupervisorPinModal({ open, workerId, workerLabel, onSucc
         setPin('')
       }
     } catch (err) {
-      logger.warn('SupervisorPinModal', 'PIN verify hiba:', err)
+      logger.warn('SupervisorPinModal', 'PIN verify hiba:', getErrorMessage(err))
       // Axios error a backend 401-re — body-ban van az "error" mező
       const errorBody = (err as { response?: { data?: { error?: string } } }).response?.data
       setError(errorBody?.error ?? 'Hibás PIN vagy ideiglenes lockout')
