@@ -6,10 +6,15 @@ import hu.puzzleir.valuta.entity.DailyBalance;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.DailyBalanceRepository;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -41,7 +46,24 @@ class DailyBalanceReconciliationServiceTest {
     private AuditLogService auditLogService;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();
+    private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final LocalDate TEST_DATE = LocalDate.of(2026, 3, 16);
+
+    @BeforeEach
+    void setUpSecurityContext() {
+        SecurityContextHolder.clearContext();
+        Authentication auth = new TestingAuthenticationToken("daily-balance-test", null);
+        auth.setAuthenticated(true);
+        var details = mock(hu.puzzleir.valuta.security.WorkerAuthenticationDetails.class);
+        when(details.getCompanyId()).thenReturn(COMPANY_ID);
+        ((TestingAuthenticationToken) auth).setDetails(details);
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     // ============================================================
     // Segéd metódusok

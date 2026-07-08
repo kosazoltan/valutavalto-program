@@ -333,6 +333,99 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * FS-11 S1: cégszintű compliance tranzakció-kereső.
+     * Company-scope KÖTELEZŐ és fix; branch OPCIONÁLIS szűrő. CSAK financialEffective=true
+     * (a CONVERSION parent metadata-sor kimarad — nem duplázhat összeget).
+     * Hívó: ComplianceTransactionSearchService (companyId a SecurityContextből).
+     * currencyIds: SOHA nem üres lista — üres szűrőnél a service :currencyIdsEmpty=true-t
+     * és List.of(-1L) sentinelt ad át (Hibernate üres-IN elkerülése).
+     */
+    @Query(value = "SELECT t FROM Transaction t " +
+           "JOIN FETCH t.branch " +
+           "JOIN FETCH t.company " +
+           "LEFT JOIN FETCH t.currency " +
+           "LEFT JOIN FETCH t.worker " +
+           "LEFT JOIN FETCH t.originalTransaction " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.financialEffective = true " +
+           "AND (:branchId IS NULL OR t.branch.id = :branchId) " +
+           "AND (:startDate IS NULL OR t.transactionDate >= :startDate) " +
+           "AND (:endDate IS NULL OR t.transactionDate <= :endDate) " +
+           "AND (:type IS NULL OR t.transactionType = :type) " +
+           "AND (:minHufAmount IS NULL OR t.hufAmount >= :minHufAmount) " +
+           "AND (:maxHufAmount IS NULL OR t.hufAmount <= :maxHufAmount) " +
+           "AND (:currencyIdsEmpty = true OR t.currency.id IN :currencyIds) " +
+           "AND (:paymentMethod IS NULL OR t.paymentMethod = :paymentMethod) " +
+           "AND (:customRateOnly = false OR t.cashierCustomRate = true) " +
+           "AND (:kkDiscountOnly = false OR t.discountTypeCode <> 0 " +
+           "     OR (t.handlingFeeOverrideType IS NOT NULL " +
+           "         AND t.handlingFeeOverrideType <> hu.puzzleir.valuta.entity.HandlingFeeOverrideType.NONE)) " +
+           "AND (:onBehalfOfOtherOnly = false OR t.customerOnOwnBehalf = false) " +
+           "AND (:pepOnly = false OR t.customerIsPep = true) " +
+           "AND (:customerName IS NULL OR LOWER(t.customerName) LIKE LOWER(CONCAT('%', :customerName, '%'))) " +
+           "AND (:customerBirthDate IS NULL OR t.customerBirthDate = :customerBirthDate) " +
+           "AND (:customerNationality IS NULL OR LOWER(t.customerNationality) LIKE LOWER(CONCAT('%', :customerNationality, '%'))) " +
+           "AND (:customerDocumentNumber IS NULL OR LOWER(t.customerDocumentNumber) LIKE LOWER(CONCAT('%', :customerDocumentNumber, '%'))) " +
+           "AND (:legalEntityOnly = false OR t.isLegalEntityCustomer = true) " +
+           "AND (:legalEntityName IS NULL OR LOWER(t.legalEntityName) LIKE LOWER(CONCAT('%', :legalEntityName, '%'))) " +
+           "AND (:legalEntityTaxNumber IS NULL OR LOWER(t.legalEntityTaxNumber) LIKE LOWER(CONCAT('%', :legalEntityTaxNumber, '%'))) " +
+           "AND (:legalDeedNumber IS NULL OR LOWER(t.legalDeedNumber) LIKE LOWER(CONCAT('%', :legalDeedNumber, '%'))) " +
+           "AND (:legalEntitySeat IS NULL OR LOWER(t.legalEntitySeat) LIKE LOWER(CONCAT('%', :legalEntitySeat, '%'))) " +
+           "ORDER BY t.transactionDate DESC, t.transactionTime DESC",
+           countQuery = "SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.financialEffective = true " +
+           "AND (:branchId IS NULL OR t.branch.id = :branchId) " +
+           "AND (:startDate IS NULL OR t.transactionDate >= :startDate) " +
+           "AND (:endDate IS NULL OR t.transactionDate <= :endDate) " +
+           "AND (:type IS NULL OR t.transactionType = :type) " +
+           "AND (:minHufAmount IS NULL OR t.hufAmount >= :minHufAmount) " +
+           "AND (:maxHufAmount IS NULL OR t.hufAmount <= :maxHufAmount) " +
+           "AND (:currencyIdsEmpty = true OR t.currency.id IN :currencyIds) " +
+           "AND (:paymentMethod IS NULL OR t.paymentMethod = :paymentMethod) " +
+           "AND (:customRateOnly = false OR t.cashierCustomRate = true) " +
+           "AND (:kkDiscountOnly = false OR t.discountTypeCode <> 0 " +
+           "     OR (t.handlingFeeOverrideType IS NOT NULL " +
+           "         AND t.handlingFeeOverrideType <> hu.puzzleir.valuta.entity.HandlingFeeOverrideType.NONE)) " +
+           "AND (:onBehalfOfOtherOnly = false OR t.customerOnOwnBehalf = false) " +
+           "AND (:pepOnly = false OR t.customerIsPep = true) " +
+           "AND (:customerName IS NULL OR LOWER(t.customerName) LIKE LOWER(CONCAT('%', :customerName, '%'))) " +
+           "AND (:customerBirthDate IS NULL OR t.customerBirthDate = :customerBirthDate) " +
+           "AND (:customerNationality IS NULL OR LOWER(t.customerNationality) LIKE LOWER(CONCAT('%', :customerNationality, '%'))) " +
+           "AND (:customerDocumentNumber IS NULL OR LOWER(t.customerDocumentNumber) LIKE LOWER(CONCAT('%', :customerDocumentNumber, '%'))) " +
+           "AND (:legalEntityOnly = false OR t.isLegalEntityCustomer = true) " +
+           "AND (:legalEntityName IS NULL OR LOWER(t.legalEntityName) LIKE LOWER(CONCAT('%', :legalEntityName, '%'))) " +
+           "AND (:legalEntityTaxNumber IS NULL OR LOWER(t.legalEntityTaxNumber) LIKE LOWER(CONCAT('%', :legalEntityTaxNumber, '%'))) " +
+           "AND (:legalDeedNumber IS NULL OR LOWER(t.legalDeedNumber) LIKE LOWER(CONCAT('%', :legalDeedNumber, '%'))) " +
+           "AND (:legalEntitySeat IS NULL OR LOWER(t.legalEntitySeat) LIKE LOWER(CONCAT('%', :legalEntitySeat, '%')))")
+    Page<Transaction> searchComplianceTransactions(
+        @Param("companyId") UUID companyId,
+        @Param("branchId") UUID branchId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate,
+        @Param("type") TransactionType type,
+        @Param("minHufAmount") BigDecimal minHufAmount,
+        @Param("maxHufAmount") BigDecimal maxHufAmount,
+        @Param("currencyIdsEmpty") boolean currencyIdsEmpty,
+        @Param("currencyIds") List<Long> currencyIds,
+        @Param("paymentMethod") hu.puzzleir.valuta.entity.PaymentMethod paymentMethod,
+        @Param("customRateOnly") boolean customRateOnly,
+        @Param("kkDiscountOnly") boolean kkDiscountOnly,
+        @Param("onBehalfOfOtherOnly") boolean onBehalfOfOtherOnly,
+        @Param("pepOnly") boolean pepOnly,
+        @Param("customerName") String customerName,
+        @Param("customerBirthDate") LocalDate customerBirthDate,
+        @Param("customerNationality") String customerNationality,
+        @Param("customerDocumentNumber") String customerDocumentNumber,
+        @Param("legalEntityOnly") boolean legalEntityOnly,
+        @Param("legalEntityName") String legalEntityName,
+        @Param("legalEntityTaxNumber") String legalEntityTaxNumber,
+        @Param("legalDeedNumber") String legalDeedNumber,
+        @Param("legalEntitySeat") String legalEntitySeat,
+        Pageable pageable
+    );
+
+    /**
      * Ügyfél tranzakciói
      */
     @Query("SELECT t FROM Transaction t " +
