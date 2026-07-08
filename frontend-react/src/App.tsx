@@ -76,6 +76,7 @@ const RateCreationPage = lazy(() => import('./pages/rates/RateCreationPage'))
 const MainRateSheetPage = lazy(() => import('./pages/rates/MainRateSheetPage'))
 const CashDeskPage = lazy(() => import('./pages/cashdesk/CashDeskPage'))
 const DenominationPage = lazy(() => import('./pages/cashdesk/DenominationPage'))
+const DenominationImagesPage = lazy(() => import('./pages/cashier/DenominationImagesPage'))
 const DayOpenPage = lazy(() => import('./pages/cashdesk/DayOpenPage'))
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'))
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'))
@@ -631,6 +632,7 @@ export default function App() {
                 <Route path="/cashier" element={<CashierMainMenu />} />
                 <Route path="/transactions/cashier" element={<CashierTransactionPage />} />
                 <Route path="/closing/wizard" element={<ClosingWizardPage />} />
+                <Route path="/denomination-images" element={<DenominationImagesPage />} />
 
                 {/* Transactions */}
                 <Route path="/transactions" element={<TransactionListPage />} />
