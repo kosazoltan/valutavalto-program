@@ -134,8 +134,8 @@ describe('DocumentPairCapture', () => {
     await waitFor(() => expect(mocks.scanSaveDocument).toHaveBeenCalledTimes(2))
 
     // Upload
-    const uploadBtn = screen.getByRole('button', { name: /okmanyCaptureFeltoltes/i })
-    expect(uploadBtn).not.toBeDisabled()
+    const uploadBtn = await screen.findByRole('button', { name: /okmanyCaptureFeltoltes/i })
+    await waitFor(() => expect(uploadBtn).not.toBeDisabled())
     fireEvent.click(uploadBtn)
 
     await waitFor(() => {

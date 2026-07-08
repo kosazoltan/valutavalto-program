@@ -128,7 +128,7 @@ describe('ReceiptPage backend detail contract', () => {
   })
 
   it('zárási PDF letöltéskor a ReceiptController closing PDF wrapperét hívja', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<ReceiptPage />)
 
     await waitFor(() => {
