@@ -8,6 +8,12 @@ const mocks = vi.hoisted(() => ({
   search: vi.fn(),
   exportCsv: vi.fn(),
   exportXlsx: vi.fn(),
+  listTemplates: vi.fn(),
+  createTemplate: vi.fn(),
+  removeTemplate: vi.fn(),
+  createAudit: vi.fn(),
+  listAudit: vi.fn(),
+  downloadAuditPdf: vi.fn(),
   listBranches: vi.fn(),
   listCurrencies: vi.fn(),
   downloadBlob: vi.fn(),
@@ -21,6 +27,16 @@ vi.mock('../../services/api/complianceTransactions', () => ({
     search: mocks.search,
     exportCsv: mocks.exportCsv,
     exportXlsx: mocks.exportXlsx,
+  },
+  complianceSearchTemplatesApi: {
+    list: mocks.listTemplates,
+    create: mocks.createTemplate,
+    remove: mocks.removeTemplate,
+  },
+  complianceSearchAuditApi: {
+    create: mocks.createAudit,
+    list: mocks.listAudit,
+    downloadPdf: mocks.downloadAuditPdf,
   },
   TRANSACTION_TYPE_LABELS: { BUY: 'Vétel', SELL: 'Eladás', REVERSAL: 'Sztornó' },
   PAYMENT_METHOD_LABELS: { CASH: 'Készpénz', CARD: 'Bankkártya' },
@@ -99,6 +115,26 @@ beforeEach(() => {
   mocks.listCurrencies.mockResolvedValue([
     { id: 1, code: 'EUR', name: 'Euró', decimals: 2, active: true },
   ])
+  mocks.listTemplates.mockResolvedValue([])
+  mocks.createTemplate.mockResolvedValue({
+    id: 'tpl-1',
+    name: 'Havi PEP',
+    criteria: { startDate: '2026-07-01', pepOnly: true },
+    createdByWorkerCode: 'W001',
+    createdAt: '2026-07-09T10:00:00',
+  })
+  mocks.removeTemplate.mockResolvedValue(undefined)
+  mocks.createAudit.mockResolvedValue({
+    id: 'aud-1',
+    title: 'PEP keresés',
+    description: 'Leírás',
+    criteria: { pepOnly: true },
+    resultCount: 1,
+    createdByWorkerCode: 'W001',
+    createdAt: '2026-07-09T10:00:00',
+  })
+  mocks.listAudit.mockResolvedValue([])
+  mocks.downloadAuditPdf.mockResolvedValue(new Blob(['pdf'], { type: 'application/pdf' }))
   mocks.search.mockResolvedValue(paged([row()]))
   mocks.exportCsv.mockResolvedValue(new Blob(['csv'], { type: 'text/csv' }))
   mocks.exportXlsx.mockResolvedValue(
@@ -279,5 +315,168 @@ describe('ComplianceTransactionsPage', () => {
     expect(screen.getByTestId('filter-startDate')).toHaveValue('')
     expect(screen.getByTestId('tx-row-1')).toBeInTheDocument()
     expect(screen.getByTestId('export-csv')).toBeEnabled()
+  })
+
+  it('sablon mentése: aktív criteria-val POST', async () => {
+    const user = userEvent.setup()
+    render(<ComplianceTransactionsPage />)
+
+    await user.type(screen.getByTestId('filter-startDate'), '2026-07-01')
+    await user.click(screen.getByTestId('filter-pepOnly'))
+    await user.click(screen.getByTestId('search-button'))
+    await waitFor(() => {
+      expect(mocks.search).toHaveBeenCalledWith({ startDate: '2026-07-01', pepOnly: true }, 0, 50)
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Sablon mentése' }))
+    await user.type(screen.getByTestId('save-template'), 'Havi PEP')
+    await user.click(screen.getByTestId('confirm-save-template'))
+
+    await waitFor(() => {
+      expect(mocks.createTemplate).toHaveBeenCalledWith('Havi PEP', {
+        startDate: '2026-07-01',
+        pepOnly: true,
+      })
+    })
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('Sablon mentve')
+  })
+
+  it('sablon betöltése: form feltöltődik, keresés NEM indul', async () => {
+    const user = userEvent.setup()
+    mocks.listTemplates.mockResolvedValue([
+      {
+        id: 'tpl-1',
+        name: 'PEP sablon',
+        criteria: {
+          startDate: '2026-07-01',
+          endDate: null,
+          pepOnly: true,
+          customRateOnly: false,
+          customerName: null,
+        },
+        createdByWorkerCode: 'W001',
+        createdAt: '2026-07-09T10:00:00',
+      },
+    ])
+    render(<ComplianceTransactionsPage />)
+
+    await screen.findByRole('option', { name: 'PEP sablon' })
+    expect(mocks.search).not.toHaveBeenCalled()
+
+    await user.selectOptions(screen.getByTestId('template-select'), 'tpl-1')
+
+    expect(screen.getByTestId('filter-startDate')).toHaveValue('2026-07-01')
+    expect(screen.getByTestId('filter-endDate')).toHaveValue('')
+    expect(screen.getByTestId('filter-customerName')).toHaveValue('')
+    expect(screen.getByTestId('filter-pepOnly')).toBeChecked()
+    expect(screen.getByTestId('filter-customRateOnly')).not.toBeChecked()
+    expect(mocks.search).not.toHaveBeenCalled()
+  })
+
+  it('sablon törlés: remove + reload', async () => {
+    const user = userEvent.setup()
+    mocks.listTemplates
+      .mockResolvedValueOnce([
+        {
+          id: 'tpl-1',
+          name: 'PEP sablon',
+          criteria: { pepOnly: true },
+          createdByWorkerCode: 'W001',
+          createdAt: '2026-07-09T10:00:00',
+        },
+      ])
+      .mockResolvedValueOnce([])
+    render(<ComplianceTransactionsPage />)
+
+    await screen.findByRole('option', { name: 'PEP sablon' })
+    await user.selectOptions(screen.getByTestId('template-select'), 'tpl-1')
+    await user.click(screen.getByTestId('delete-template'))
+
+    await waitFor(() => expect(mocks.removeTemplate).toHaveBeenCalledWith('tpl-1'))
+    expect(mocks.listTemplates).toHaveBeenCalledTimes(2)
+  })
+
+  it('audit-mentés: modal, cím kötelező, create a legutóbbi keresés criteria-jával', async () => {
+    const user = userEvent.setup()
+    render(<ComplianceTransactionsPage />)
+
+    expect(screen.getByTestId('save-audit')).toBeDisabled()
+    await user.type(screen.getByTestId('filter-startDate'), '2026-07-01')
+    await user.click(screen.getByTestId('filter-pepOnly'))
+    await user.click(screen.getByTestId('search-button'))
+    await waitFor(() => {
+      expect(mocks.search).toHaveBeenCalledWith({ startDate: '2026-07-01', pepOnly: true }, 0, 50)
+    })
+
+    await user.click(screen.getByTestId('save-audit'))
+    expect(screen.getByRole('button', { name: 'Mentés' })).toBeDisabled()
+    await user.type(screen.getByTestId('audit-title'), 'PEP keresés')
+    await user.type(screen.getByTestId('audit-description'), 'Leírás')
+    await user.click(screen.getByRole('button', { name: 'Mentés' }))
+
+    await waitFor(() => {
+      expect(mocks.createAudit).toHaveBeenCalledWith('PEP keresés', 'Leírás', {
+        startDate: '2026-07-01',
+        pepOnly: true,
+      })
+    })
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('Keresés mentve az audit naplóba')
+  })
+
+  it('audit-lista: kinyitásra tölt, criteria lenyitható HU címkékkel', async () => {
+    const user = userEvent.setup()
+    mocks.listAudit.mockResolvedValue([
+      {
+        id: 'aud-1',
+        title: 'PEP keresés',
+        description: 'Leírás',
+        criteria: { pepOnly: true, type: 'BUY', currencyIds: [1] },
+        resultCount: 3,
+        createdByWorkerCode: 'W001',
+        createdAt: '2026-07-09T10:00:00',
+      },
+    ])
+    render(<ComplianceTransactionsPage />)
+
+    await user.click(screen.getByTestId('toggle-audit-list'))
+    expect(await screen.findByText('PEP keresés')).toBeInTheDocument()
+    expect(mocks.listAudit).toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByTestId('audit-criteria-aud-1'))
+
+    expect(screen.getAllByText('Csak PEP').length).toBeGreaterThan(1)
+    expect(screen.getByText('igen')).toBeInTheDocument()
+    expect(screen.getAllByText('Típus').length).toBeGreaterThan(1)
+    expect(screen.getAllByText('Vétel').length).toBeGreaterThan(1)
+    expect(screen.getByText('EUR')).toBeInTheDocument()
+  })
+
+  it('audit PDF: downloadPdf + downloadBlob a fix fájlnévvel', async () => {
+    const user = userEvent.setup()
+    const pdf = new Blob(['pdf'], { type: 'application/pdf' })
+    mocks.listAudit.mockResolvedValue([
+      {
+        id: 'aud-1',
+        title: 'PEP keresés',
+        description: null,
+        criteria: { pepOnly: true },
+        resultCount: 3,
+        createdByWorkerCode: 'W001',
+        createdAt: '2026-07-09T10:00:00',
+      },
+    ])
+    mocks.downloadAuditPdf.mockResolvedValue(pdf)
+    render(<ComplianceTransactionsPage />)
+
+    await user.click(screen.getByTestId('toggle-audit-list'))
+    await screen.findByText('PEP keresés')
+    await user.click(screen.getByTestId('audit-pdf-aud-1'))
+
+    await waitFor(() => expect(mocks.downloadAuditPdf).toHaveBeenCalledWith('aud-1'))
+    expect(mocks.downloadBlob).toHaveBeenCalledWith(
+      pdf,
+      'compliance_kereses_audit_aud-1.pdf',
+      'application/pdf',
+    )
   })
 })

@@ -15,11 +15,17 @@ vi.mock('./client', () => {
 import { api } from './client'
 import {
   buildCriteriaParams,
+  complianceSearchAuditApi,
+  complianceSearchTemplatesApi,
   complianceTransactionsApi,
   type ComplianceTransactionSearchCriteria,
 } from './complianceTransactions'
 
-const mockApi = api as unknown as { get: ReturnType<typeof vi.fn> }
+const mockApi = api as unknown as {
+  get: ReturnType<typeof vi.fn>
+  post: ReturnType<typeof vi.fn>
+  delete: ReturnType<typeof vi.fn>
+}
 
 beforeEach(() => vi.clearAllMocks())
 
@@ -121,6 +127,112 @@ describe('complianceTransactionsApi', () => {
         params: expect.objectContaining({ type: 'SELL' }),
       }),
     )
+    expect(result).toBe(blob)
+  })
+
+  it('template create: trim + kötelező név, criteria objektumként megy', async () => {
+    const template = {
+      id: 'tpl-1',
+      name: 'Havi PEP',
+      criteria: { startDate: '2026-07-01', pepOnly: true },
+      createdByWorkerCode: 'W001',
+      createdAt: '2026-07-09T10:00:00',
+    }
+    mockApi.post.mockResolvedValue({ data: template })
+
+    await expect(
+      complianceSearchTemplatesApi.create('   ', { startDate: '2026-07-01' }),
+    ).rejects.toThrow('A sablon neve kötelező')
+    expect(mockApi.post).not.toHaveBeenCalled()
+
+    const result = await complianceSearchTemplatesApi.create('  Havi PEP  ', {
+      startDate: '2026-07-01',
+      pepOnly: true,
+    })
+
+    expect(mockApi.post).toHaveBeenCalledWith('/compliance/search-templates', {
+      name: 'Havi PEP',
+      criteria: { startDate: '2026-07-01', pepOnly: true },
+    })
+    expect(result).toEqual(template)
+  })
+
+  it('template list/remove: megfelelő útvonalakat hív', async () => {
+    const templates = [
+      {
+        id: 'tpl-1',
+        name: 'Havi PEP',
+        criteria: { pepOnly: true },
+        createdByWorkerCode: null,
+        createdAt: '2026-07-09T10:00:00',
+      },
+    ]
+    mockApi.get.mockResolvedValue({ data: templates })
+
+    await expect(complianceSearchTemplatesApi.list()).resolves.toEqual(templates)
+    await complianceSearchTemplatesApi.remove('tpl-1')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/compliance/search-templates')
+    expect(mockApi.delete).toHaveBeenCalledWith('/compliance/search-templates/tpl-1')
+  })
+
+  it('audit create: body-alak, trim és üres description → null', async () => {
+    const audit = {
+      id: 'aud-1',
+      title: 'PEP keresés',
+      description: null,
+      criteria: { pepOnly: true },
+      resultCount: 3,
+      createdByWorkerCode: 'W001',
+      createdAt: '2026-07-09T10:00:00',
+    }
+    mockApi.post.mockResolvedValue({ data: audit })
+
+    await expect(complianceSearchAuditApi.create('   ', '', { pepOnly: true })).rejects.toThrow(
+      'A cím kötelező',
+    )
+    expect(mockApi.post).not.toHaveBeenCalled()
+
+    const result = await complianceSearchAuditApi.create('  PEP keresés  ', '   ', {
+      pepOnly: true,
+    })
+
+    expect(mockApi.post).toHaveBeenCalledWith('/compliance/search-audit', {
+      title: 'PEP keresés',
+      description: null,
+      criteria: { pepOnly: true },
+    })
+    expect(result).toEqual(audit)
+  })
+
+  it('audit list: /compliance/search-audit útvonal', async () => {
+    const audits = [
+      {
+        id: 'aud-1',
+        title: 'PEP keresés',
+        description: 'Leírás',
+        criteria: { pepOnly: true },
+        resultCount: 3,
+        createdByWorkerCode: 'W001',
+        createdAt: '2026-07-09T10:00:00',
+      },
+    ]
+    mockApi.get.mockResolvedValue({ data: audits })
+
+    await expect(complianceSearchAuditApi.list()).resolves.toEqual(audits)
+
+    expect(mockApi.get).toHaveBeenCalledWith('/compliance/search-audit')
+  })
+
+  it('audit downloadPdf: responseType blob + id-s útvonal', async () => {
+    const blob = new Blob(['pdf'], { type: 'application/pdf' })
+    mockApi.get.mockResolvedValue({ data: blob })
+
+    const result = await complianceSearchAuditApi.downloadPdf('aud-1')
+
+    expect(mockApi.get).toHaveBeenCalledWith('/compliance/search-audit/aud-1/pdf', {
+      responseType: 'blob',
+    })
     expect(result).toBe(blob)
   })
 })

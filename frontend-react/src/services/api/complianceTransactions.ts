@@ -116,6 +116,25 @@ export interface ComplianceTransactionRowDto {
   originalReceiptNumber: string | null
 }
 
+// FS-11 S2a/S2b válasz-DTO-k (criteria: backend Jackson-alak; primitív booleanok mindig jelen lehetnek).
+export interface ComplianceSearchTemplateDto {
+  id: string
+  name: string
+  criteria: ComplianceTransactionSearchCriteria & Record<string, unknown>
+  createdByWorkerCode: string | null
+  createdAt: string
+}
+
+export interface ComplianceSearchAuditDto {
+  id: string
+  title: string
+  description: string | null
+  criteria: ComplianceTransactionSearchCriteria & Record<string, unknown>
+  resultCount: number | null
+  createdByWorkerCode: string | null
+  createdAt: string
+}
+
 /**
  * Query-param builder. Kihagyja: undefined/null, '', false, üres tömb.
  * currencyIds → CSV ('1,2'): a Spring ConversionService List<Long>-ra köti,
@@ -171,6 +190,57 @@ export const complianceTransactionsApi = {
   exportXlsx: async (criteria: ComplianceTransactionSearchCriteria): Promise<Blob> => {
     const response = await api.get<Blob>('/compliance/transactions/export/xlsx', {
       params: buildCriteriaParams(criteria),
+      responseType: 'blob',
+    })
+    return response.data
+  },
+}
+
+export const complianceSearchTemplatesApi = {
+  list: async (): Promise<ComplianceSearchTemplateDto[]> => {
+    const response = await api.get<ComplianceSearchTemplateDto[]>('/compliance/search-templates')
+    return response.data
+  },
+
+  create: async (
+    name: string,
+    criteria: ComplianceTransactionSearchCriteria,
+  ): Promise<ComplianceSearchTemplateDto> => {
+    if (!name.trim()) throw new Error('A sablon neve kötelező')
+    const response = await api.post<ComplianceSearchTemplateDto>('/compliance/search-templates', {
+      name: name.trim(),
+      criteria,
+    })
+    return response.data
+  },
+
+  remove: async (id: string): Promise<void> => {
+    await api.delete(`/compliance/search-templates/${id}`)
+  },
+}
+
+export const complianceSearchAuditApi = {
+  create: async (
+    title: string,
+    description: string,
+    criteria: ComplianceTransactionSearchCriteria,
+  ): Promise<ComplianceSearchAuditDto> => {
+    if (!title.trim()) throw new Error('A cím kötelező')
+    const response = await api.post<ComplianceSearchAuditDto>('/compliance/search-audit', {
+      title: title.trim(),
+      description: description.trim() || null,
+      criteria,
+    })
+    return response.data
+  },
+
+  list: async (): Promise<ComplianceSearchAuditDto[]> => {
+    const response = await api.get<ComplianceSearchAuditDto[]>('/compliance/search-audit')
+    return response.data
+  },
+
+  downloadPdf: async (id: string): Promise<Blob> => {
+    const response = await api.get<Blob>(`/compliance/search-audit/${id}/pdf`, {
       responseType: 'blob',
     })
     return response.data

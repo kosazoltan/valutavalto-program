@@ -1,10 +1,14 @@
-import { type FormEvent, useCallback, useEffect, useState } from 'react'
+import { Fragment, type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Download, RefreshCw, Search } from 'lucide-react'
 import {
+  complianceSearchAuditApi,
+  complianceSearchTemplatesApi,
   complianceTransactionsApi,
   PAYMENT_METHOD_LABELS,
   TRANSACTION_TYPE_LABELS,
   type CompliancePaymentMethod,
+  type ComplianceSearchAuditDto,
+  type ComplianceSearchTemplateDto,
   type ComplianceTransactionRowDto,
   type ComplianceTransactionSearchCriteria,
   type ComplianceTransactionType,
@@ -19,6 +23,32 @@ import { formatDecimal, formatInteger } from '../../utils/numberFormat'
 import { downloadBlob } from '../../utils/downloadBlob'
 
 const PAGE_SIZE = 50
+const AUDIT_TITLE_MAX_LENGTH = 200
+const AUDIT_DESCRIPTION_MAX_LENGTH = 2000
+
+const CRITERIA_LABELS: Record<keyof ComplianceTransactionSearchCriteria, string> = {
+  branchId: 'Iroda',
+  startDate: 'Kezdő dátum',
+  endDate: 'Záró dátum',
+  type: 'Típus',
+  minHufAmount: 'Min. HUF',
+  maxHufAmount: 'Max. HUF',
+  currencyIds: 'Valuták',
+  paymentMethod: 'Fizetési mód',
+  customRateOnly: 'Csak egyedi árfolyam',
+  kkDiscountOnly: 'Csak KK-kedvezmény',
+  onBehalfOfOtherOnly: 'Csak más nevében',
+  pepOnly: 'Csak PEP',
+  customerName: 'Ügyfél neve',
+  customerBirthDate: 'Születési dátum',
+  customerNationality: 'Állampolgárság',
+  customerDocumentNumber: 'Okmányszám',
+  legalEntityOnly: 'Csak jogi személy',
+  legalEntityName: 'Jogi személy neve',
+  legalEntityTaxNumber: 'Adószám',
+  legalDeedNumber: 'Okirat száma',
+  legalEntitySeat: 'Székhely',
+}
 
 interface FilterFormState {
   branchId: string
@@ -99,6 +129,46 @@ function toCriteria(form: FilterFormState): ComplianceTransactionSearchCriteria 
   return criteria
 }
 
+function criteriaString(
+  criteria: ComplianceTransactionSearchCriteria & Record<string, unknown>,
+  key: keyof ComplianceTransactionSearchCriteria,
+): string {
+  const value = criteria[key]
+  return value == null ? '' : String(value)
+}
+
+function criteriaToForm(
+  criteria: ComplianceTransactionSearchCriteria & Record<string, unknown>,
+): FilterFormState {
+  return {
+    ...EMPTY_FILTERS,
+    branchId: criteriaString(criteria, 'branchId'),
+    startDate: criteriaString(criteria, 'startDate'),
+    endDate: criteriaString(criteria, 'endDate'),
+    type: (criteriaString(criteria, 'type') as FilterFormState['type']) || '',
+    minHufAmount: criteriaString(criteria, 'minHufAmount'),
+    maxHufAmount: criteriaString(criteria, 'maxHufAmount'),
+    currencyIds: Array.isArray(criteria.currencyIds)
+      ? criteria.currencyIds.map(Number).filter(Number.isFinite)
+      : [],
+    paymentMethod:
+      (criteriaString(criteria, 'paymentMethod') as FilterFormState['paymentMethod']) || '',
+    customRateOnly: criteria.customRateOnly === true,
+    kkDiscountOnly: criteria.kkDiscountOnly === true,
+    onBehalfOfOtherOnly: criteria.onBehalfOfOtherOnly === true,
+    pepOnly: criteria.pepOnly === true,
+    customerName: criteriaString(criteria, 'customerName'),
+    customerBirthDate: criteriaString(criteria, 'customerBirthDate'),
+    customerNationality: criteriaString(criteria, 'customerNationality'),
+    customerDocumentNumber: criteriaString(criteria, 'customerDocumentNumber'),
+    legalEntityOnly: criteria.legalEntityOnly === true,
+    legalEntityName: criteriaString(criteria, 'legalEntityName'),
+    legalEntityTaxNumber: criteriaString(criteria, 'legalEntityTaxNumber'),
+    legalDeedNumber: criteriaString(criteria, 'legalDeedNumber'),
+    legalEntitySeat: criteriaString(criteria, 'legalEntitySeat'),
+  }
+}
+
 function logAndToastError(title: string, action: string, err: unknown): void {
   const message = getErrorMessage(err)
   logger.error('ComplianceTransactionsPage', action, message)
@@ -120,6 +190,59 @@ function getTransactionLabel(type: string): string {
 function getPaymentMethodLabel(method: string | null): string {
   if (!method) return '—'
   return PAYMENT_METHOD_LABELS[method] ?? method
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('hu-HU')
+}
+
+function isCriteriaValueSet(value: unknown): boolean {
+  if (value == null || value === '' || value === false) return false
+  if (Array.isArray(value)) return value.length > 0
+  return true
+}
+
+function getCriteriaDisplayValue(
+  key: keyof ComplianceTransactionSearchCriteria,
+  value: unknown,
+  branches: BranchInfo[],
+  currencies: Currency[],
+): string {
+  if (typeof value === 'boolean') return value ? 'igen' : 'nem'
+  if (Array.isArray(value)) {
+    if (key === 'currencyIds') {
+      return value
+        .map((currencyId) => {
+          const currency = currencies.find((item) => String(item.id) === String(currencyId))
+          return currency?.code ?? String(currencyId)
+        })
+        .join(', ')
+    }
+    return value.map(String).join(', ')
+  }
+  if (key === 'branchId') {
+    const branch = branches.find((item) => String(item.id) === String(value))
+    return branch ? buildBranchLabel(branch) : String(value)
+  }
+  if (key === 'type' && typeof value === 'string') return getTransactionLabel(value)
+  if (key === 'paymentMethod' && typeof value === 'string') return getPaymentMethodLabel(value)
+  return String(value)
+}
+
+function getCriteriaDisplayEntries(
+  criteria: ComplianceTransactionSearchCriteria & Record<string, unknown>,
+  branches: BranchInfo[],
+  currencies: Currency[],
+): { key: string; label: string; value: string }[] {
+  return (Object.keys(CRITERIA_LABELS) as Array<keyof ComplianceTransactionSearchCriteria>)
+    .map((key) => ({ key, rawValue: criteria[key] }))
+    .filter(({ rawValue }) => isCriteriaValueSet(rawValue))
+    .map(({ key, rawValue }) => ({
+      key,
+      label: CRITERIA_LABELS[key],
+      value: getCriteriaDisplayValue(key, rawValue, branches, currencies),
+    }))
 }
 
 function flagBadges(row: ComplianceTransactionRowDto): string[] {
@@ -146,6 +269,22 @@ export default function ComplianceTransactionsPage() {
   const [loading, setLoading] = useState(false)
   const [masterLoading, setMasterLoading] = useState(false)
   const [exporting, setExporting] = useState<'csv' | 'xlsx' | null>(null)
+  const [templates, setTemplates] = useState<ComplianceSearchTemplateDto[]>([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState('')
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [templateName, setTemplateName] = useState('')
+  const [templateSaving, setTemplateSaving] = useState(false)
+  const [templateDeleting, setTemplateDeleting] = useState(false)
+  const [showAuditModal, setShowAuditModal] = useState(false)
+  const [auditTitle, setAuditTitle] = useState('')
+  const [auditDescription, setAuditDescription] = useState('')
+  const [auditSaving, setAuditSaving] = useState(false)
+  const [showAuditList, setShowAuditList] = useState(false)
+  const [auditListLoaded, setAuditListLoaded] = useState(false)
+  const [auditList, setAuditList] = useState<ComplianceSearchAuditDto[]>([])
+  const [auditListLoading, setAuditListLoading] = useState(false)
+  const [expandedAuditIds, setExpandedAuditIds] = useState<Set<string>>(() => new Set())
+  const [pdfDownloadingId, setPdfDownloadingId] = useState<string | null>(null)
 
   const loadMasterData = useCallback(async () => {
     setMasterLoading(true)
@@ -165,9 +304,35 @@ export default function ComplianceTransactionsPage() {
     }
   }, [])
 
+  const loadTemplates = useCallback(async () => {
+    try {
+      const templateList = await complianceSearchTemplatesApi.list()
+      setTemplates(safeArray<ComplianceSearchTemplateDto>(templateList))
+    } catch (err) {
+      logAndToastError('Sablon betöltési hiba', 'Sablonok betöltése sikertelen:', err)
+      setTemplates([])
+    }
+  }, [])
+
+  const loadAuditList = useCallback(async () => {
+    setAuditListLoading(true)
+    try {
+      const audits = await complianceSearchAuditApi.list()
+      setAuditList(safeArray<ComplianceSearchAuditDto>(audits))
+      setAuditListLoaded(true)
+    } catch (err) {
+      logAndToastError('Audit napló hiba', 'Audit napló betöltése sikertelen:', err)
+      setAuditList([])
+      setAuditListLoaded(false)
+    } finally {
+      setAuditListLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     void loadMasterData()
-  }, [loadMasterData])
+    void loadTemplates()
+  }, [loadMasterData, loadTemplates])
 
   const runSearch = useCallback(
     async (criteria: ComplianceTransactionSearchCriteria, targetPage: number) => {
@@ -230,7 +395,92 @@ export default function ComplianceTransactionsPage() {
     }
   }
 
+  const handleTemplateChange = (templateId: string) => {
+    setSelectedTemplateId(templateId)
+    const template = templates.find((item) => item.id === templateId)
+    if (template) setForm(criteriaToForm(template.criteria))
+  }
+
+  const handleSaveTemplate = async () => {
+    if (!activeCriteria || templateSaving) return
+    setTemplateSaving(true)
+    try {
+      const template = await complianceSearchTemplatesApi.create(templateName, activeCriteria)
+      toast.success('Sablon mentve')
+      setTemplateName('')
+      setShowTemplateModal(false)
+      await loadTemplates()
+      setSelectedTemplateId(template.id)
+    } catch (err) {
+      logAndToastError('Sablon mentési hiba', 'Sablon mentése sikertelen:', err)
+    } finally {
+      setTemplateSaving(false)
+    }
+  }
+
+  const handleDeleteTemplate = async () => {
+    if (!selectedTemplateId || templateDeleting) return
+    setTemplateDeleting(true)
+    try {
+      await complianceSearchTemplatesApi.remove(selectedTemplateId)
+      toast.success('Sablon törölve')
+      setSelectedTemplateId('')
+      await loadTemplates()
+    } catch (err) {
+      logAndToastError('Sablon törlési hiba', 'Sablon törlése sikertelen:', err)
+    } finally {
+      setTemplateDeleting(false)
+    }
+  }
+
+  const handleSaveAudit = async () => {
+    if (!activeCriteria || auditSaving || !auditTitle.trim()) return
+    setAuditSaving(true)
+    try {
+      await complianceSearchAuditApi.create(auditTitle, auditDescription, activeCriteria)
+      toast.success('Keresés mentve az audit naplóba')
+      setAuditTitle('')
+      setAuditDescription('')
+      setShowAuditModal(false)
+      await loadAuditList()
+    } catch (err) {
+      logAndToastError('Audit mentési hiba', 'Audit mentése sikertelen:', err)
+    } finally {
+      setAuditSaving(false)
+    }
+  }
+
+  const handleToggleAuditList = () => {
+    const nextShow = !showAuditList
+    setShowAuditList(nextShow)
+    if (nextShow && !auditListLoaded) void loadAuditList()
+  }
+
+  const toggleAuditCriteria = (id: string) => {
+    setExpandedAuditIds((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleAuditPdf = async (auditId: string) => {
+    if (pdfDownloadingId) return
+    setPdfDownloadingId(auditId)
+    try {
+      const data = await complianceSearchAuditApi.downloadPdf(auditId)
+      downloadBlob(data, `compliance_kereses_audit_${auditId}.pdf`, 'application/pdf')
+    } catch (err) {
+      logAndToastError('Audit PDF hiba', 'Audit PDF letöltése sikertelen:', err)
+    } finally {
+      setPdfDownloadingId(null)
+    }
+  }
+
   const exportDisabled = !activeCriteria || loading || exporting !== null
+  const templateActionDisabled = !activeCriteria || loading
+  const auditSaveDisabled = !activeCriteria || loading
 
   return (
     <div className="form-panel space-y-4">
@@ -258,6 +508,52 @@ export default function ComplianceTransactionsPage() {
         className="grid grid-cols-12 gap-3 rounded-md border border-gray-200 p-4"
         onSubmit={handleSearch}
       >
+        <div className="col-span-12 rounded border border-blue-100 bg-blue-50 p-3">
+          <div className="grid grid-cols-12 gap-3">
+            <div className="col-span-12 md:col-span-6">
+              <label className="form-label" htmlFor="template-select">
+                Mentett szűrő-sablon
+              </label>
+              <select
+                id="template-select"
+                data-testid="template-select"
+                className="form-input"
+                value={selectedTemplateId}
+                onChange={(event) => handleTemplateChange(event.target.value)}
+              >
+                <option value="">Válasszon sablont</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-span-12 flex flex-wrap items-end gap-2 md:col-span-6">
+              <button
+                type="button"
+                className="form-button"
+                onClick={() => setShowTemplateModal(true)}
+                disabled={templateActionDisabled}
+              >
+                Sablon mentése
+              </button>
+              <button
+                type="button"
+                data-testid="delete-template"
+                className="form-button"
+                onClick={() => void handleDeleteTemplate()}
+                disabled={!selectedTemplateId || templateDeleting}
+              >
+                {templateDeleting ? 'Törlés...' : 'Sablon törlése'}
+              </button>
+              <span className="text-xs text-blue-800">
+                Betöltéskor csak az űrlap töltődik, keresés nem indul.
+              </span>
+            </div>
+          </div>
+        </div>
+
         <fieldset className="col-span-12 grid grid-cols-12 gap-3 rounded border border-gray-100 p-3">
           <legend className="px-1 text-sm font-semibold text-gray-700">Tranzakció</legend>
           <div className="col-span-12 md:col-span-3">
@@ -595,6 +891,16 @@ export default function ComplianceTransactionsPage() {
           >
             <Download className="h-4 w-4" /> XLSX export
           </button>
+          <button
+            type="button"
+            data-testid="save-audit"
+            className="form-button"
+            title="A legutóbb futtatott keresést menti."
+            onClick={() => setShowAuditModal(true)}
+            disabled={auditSaveDisabled}
+          >
+            Mentés az audit naplóba
+          </button>
         </div>
       </form>
 
@@ -765,6 +1071,215 @@ export default function ComplianceTransactionsPage() {
           </button>
         </div>
       </div>
+
+      <section className="rounded-md border border-gray-200">
+        <button
+          type="button"
+          data-testid="toggle-audit-list"
+          className="flex w-full items-center justify-between px-4 py-3 text-left font-semibold text-gray-800"
+          onClick={handleToggleAuditList}
+        >
+          <span>Keresés-audit napló</span>
+          <span>{showAuditList ? 'Bezárás' : 'Megnyitás'}</span>
+        </button>
+        {showAuditList && (
+          <div className="border-t border-gray-200 p-4">
+            {auditListLoading ? (
+              <div className="py-4 text-center text-sm text-gray-500">Audit napló betöltése...</div>
+            ) : auditList.length === 0 ? (
+              <div className="py-4 text-center text-sm text-gray-500">Nincs mentett audit bejegyzés.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                        Időpont
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                        Cím
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                        Leírás
+                      </th>
+                      <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                        Találat
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                        Rögzítő
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                        Műveletek
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {auditList.map((audit) => {
+                      const expanded = expandedAuditIds.has(audit.id)
+                      const criteriaEntries = getCriteriaDisplayEntries(
+                        audit.criteria,
+                        branches,
+                        currencies,
+                      )
+                      return (
+                        <Fragment key={audit.id}>
+                          <tr>
+                            <td className="px-3 py-2 text-sm">{formatDateTime(audit.createdAt)}</td>
+                            <td className="px-3 py-2 text-sm font-medium">{audit.title}</td>
+                            <td className="px-3 py-2 text-sm">{audit.description ?? '—'}</td>
+                            <td className="px-3 py-2 text-right text-sm">
+                              {audit.resultCount == null ? '—' : formatInteger(audit.resultCount)}
+                            </td>
+                            <td className="px-3 py-2 text-sm font-mono">
+                              {audit.createdByWorkerCode ?? '—'}
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  data-testid={`audit-criteria-${audit.id}`}
+                                  className="form-button"
+                                  onClick={() => toggleAuditCriteria(audit.id)}
+                                >
+                                  Szűrők
+                                </button>
+                                <button
+                                  type="button"
+                                  data-testid={`audit-pdf-${audit.id}`}
+                                  className="form-button flex items-center gap-1"
+                                  onClick={() => void handleAuditPdf(audit.id)}
+                                  disabled={pdfDownloadingId !== null}
+                                >
+                                  <Download className="h-4 w-4" /> PDF
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          {expanded && (
+                            <tr>
+                              <td colSpan={6} className="bg-gray-50 px-3 py-3 text-sm">
+                                {criteriaEntries.length === 0 ? (
+                                  <span className="text-gray-500">Nincs rögzített szűrő.</span>
+                                ) : (
+                                  <dl className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                    {criteriaEntries.map((entry) => (
+                                      <div key={entry.key}>
+                                        <dt className="font-semibold text-gray-600">{entry.label}</dt>
+                                        <dd>{entry.value}</dd>
+                                      </div>
+                                    ))}
+                                  </dl>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {showTemplateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-md bg-white p-5 shadow-lg">
+            <h2 className="mb-3 text-lg font-semibold">Szűrő-sablon mentése</h2>
+            <label className="form-label" htmlFor="save-template">
+              Sablon neve
+            </label>
+            <input
+              id="save-template"
+              data-testid="save-template"
+              className="form-input"
+              value={templateName}
+              onChange={(event) => setTemplateName(event.target.value)}
+              maxLength={200}
+              autoFocus
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className="form-button"
+                onClick={() => {
+                  setTemplateName('')
+                  setShowTemplateModal(false)
+                }}
+                disabled={templateSaving}
+              >
+                Mégse
+              </button>
+              <button
+                type="button"
+                data-testid="confirm-save-template"
+                className="form-button-primary"
+                onClick={() => void handleSaveTemplate()}
+                disabled={!templateName.trim() || templateSaving}
+              >
+                {templateSaving ? 'Mentés...' : 'Mentés'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAuditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-md bg-white p-5 shadow-lg">
+            <h2 className="mb-3 text-lg font-semibold">Keresés mentése az audit naplóba</h2>
+            <label className="form-label" htmlFor="audit-title">
+              Cím
+            </label>
+            <input
+              id="audit-title"
+              data-testid="audit-title"
+              className="form-input"
+              value={auditTitle}
+              onChange={(event) => setAuditTitle(event.target.value)}
+              maxLength={AUDIT_TITLE_MAX_LENGTH}
+              required
+              autoFocus
+            />
+            <label className="form-label mt-3" htmlFor="audit-description">
+              Leírás
+            </label>
+            <textarea
+              id="audit-description"
+              data-testid="audit-description"
+              className="form-input min-h-28"
+              value={auditDescription}
+              onChange={(event) => setAuditDescription(event.target.value)}
+              maxLength={AUDIT_DESCRIPTION_MAX_LENGTH}
+            />
+            <p className="mt-2 text-xs text-gray-500">A legutóbb futtatott keresést menti.</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className="form-button"
+                onClick={() => {
+                  setAuditTitle('')
+                  setAuditDescription('')
+                  setShowAuditModal(false)
+                }}
+                disabled={auditSaving}
+              >
+                Mégse
+              </button>
+              <button
+                type="button"
+                className="form-button-primary"
+                onClick={() => void handleSaveAudit()}
+                disabled={!auditTitle.trim() || auditSaving}
+              >
+                {auditSaving ? 'Mentés...' : 'Mentés'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
