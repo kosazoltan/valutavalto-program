@@ -48,7 +48,8 @@ public class ConfigExportService {
     public ConfigBundleDto exportConfig(UUID branchId) {
         // IDOR guard: csak a saját cég branch-je exportálható (branchId user @PathVariable,
         // ADMIN-scope nem elég). Cross-tenant → ResourceNotFoundException.
-        if (!branchRepository.existsByIdAndCompanyId(branchId, SecurityUtils.getCurrentCompanyId())) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (!branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
             throw new ResourceNotFoundException("Fiók nem található: " + branchId);
         }
 
@@ -58,7 +59,8 @@ public class ConfigExportService {
         log.info("Konfiguráció export: branchId={}, branchCode={}", branchId, branch.getCode());
 
         // Rendszer paraméterek
-        Map<String, String> systemParams = systemParameterRepository.findAll().stream()
+        Map<String, String> systemParams = systemParameterRepository.findAllVisibleTo(companyId).stream()
+            .sorted(Comparator.comparing(sp -> sp.getCompanyId() != null ? 1 : 0))
             .collect(Collectors.toMap(
                 SystemParameter::getParameterKey,
                 sp -> sp.getParameterValue() != null ? sp.getParameterValue() : "",
@@ -128,7 +130,8 @@ public class ConfigExportService {
     public ImportResultDto importConfig(UUID branchId, ConfigBundleDto bundle) {
         // IDOR guard: csak a hívó cégének branch-jébe importálható konfiguráció.
         // A branchId user @PathVariable, az ADMIN-scope nem elég (cross-tenant).
-        if (!branchRepository.existsByIdAndCompanyId(branchId, SecurityUtils.getCurrentCompanyId())) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (!branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
             throw new ResourceNotFoundException("Fiók nem található: " + branchId);
         }
 
@@ -148,7 +151,9 @@ public class ConfigExportService {
         if (bundle.getSystemParams() != null) {
             for (Map.Entry<String, String> entry : bundle.getSystemParams().entrySet()) {
                 try {
-                    Optional<SystemParameter> existing = systemParameterRepository.findByParameterKey(entry.getKey());
+                    Optional<SystemParameter> existing = systemParameterRepository
+                        .findByParameterKeyAndCompanyId(entry.getKey(), companyId)
+                        .or(() -> systemParameterRepository.findByParameterKeyAndCompanyIdIsNull(entry.getKey()));
                     if (existing.isPresent()) {
                         existing.get().setParameterValue(entry.getValue());
                         systemParameterRepository.save(existing.get());

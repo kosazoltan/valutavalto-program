@@ -50,7 +50,7 @@ public class SupervisorService {
      */
     @Transactional(readOnly = true)
     public List<SystemParamDto> getSystemParams() {
-        return systemParameterRepository.findAll().stream()
+        return systemParameterRepository.findAllVisibleTo(SecurityUtils.getCurrentCompanyIdOrNull()).stream()
                 .map(SystemParamDto::from)
                 .collect(Collectors.toList());
     }

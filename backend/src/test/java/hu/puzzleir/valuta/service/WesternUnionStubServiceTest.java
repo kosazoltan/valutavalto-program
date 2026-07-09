@@ -51,7 +51,7 @@ class WesternUnionStubServiceTest {
     @DisplayName("INTERNAL provider esetén send az internal adapteren megy")
     void send_internalProvider() {
         when(internalAdapter.providerCode()).thenReturn("INTERNAL");
-        when(systemParameterRepository.findByParameterKey("WU_PROVIDER_MODE"))
+        when(systemParameterRepository.findByParameterKeyAndCompanyIdIsNull("WU_PROVIDER_MODE"))
                 .thenReturn(Optional.of(SystemParameter.builder().parameterValue("INTERNAL").build()));
 
         WuTransaction tx = WuTransaction.builder().id(UUID.randomUUID()).transactionType("SEND").build();
@@ -68,7 +68,7 @@ class WesternUnionStubServiceTest {
     void send_missingProviderConfigurationFailsClosed() {
         when(internalAdapter.providerCode()).thenReturn("INTERNAL");
         when(inactiveAdapter.providerCode()).thenReturn("INACTIVE");
-        when(systemParameterRepository.findByParameterKey("WU_PROVIDER_MODE"))
+        when(systemParameterRepository.findByParameterKeyAndCompanyIdIsNull("WU_PROVIDER_MODE"))
                 .thenReturn(Optional.empty());
         when(inactiveAdapter.send(any()))
                 .thenThrow(new BusinessException("inactive", "WU_PROVIDER_INACTIVE", HttpStatus.CONFLICT));
@@ -87,7 +87,7 @@ class WesternUnionStubServiceTest {
     void rates_inactiveProvider() {
         when(internalAdapter.providerCode()).thenReturn("INTERNAL");
         when(inactiveAdapter.providerCode()).thenReturn("INACTIVE");
-        when(systemParameterRepository.findByParameterKey("WU_PROVIDER_MODE"))
+        when(systemParameterRepository.findByParameterKeyAndCompanyIdIsNull("WU_PROVIDER_MODE"))
                 .thenReturn(Optional.of(SystemParameter.builder().parameterValue("INACTIVE").build()));
         when(inactiveAdapter.rates()).thenThrow(new BusinessException("inactive", "WU_PROVIDER_INACTIVE"));
 
@@ -103,7 +103,7 @@ class WesternUnionStubServiceTest {
     void unknownProvider_returnsControlledError() {
         when(internalAdapter.providerCode()).thenReturn("INTERNAL");
         when(inactiveAdapter.providerCode()).thenReturn("INACTIVE");
-        when(systemParameterRepository.findByParameterKey("WU_PROVIDER_MODE"))
+        when(systemParameterRepository.findByParameterKeyAndCompanyIdIsNull("WU_PROVIDER_MODE"))
                 .thenReturn(Optional.of(SystemParameter.builder().parameterValue("UNKNOWN").build()));
 
         assertThatThrownBy(() -> service.send(baseRequest()))
@@ -118,7 +118,7 @@ class WesternUnionStubServiceTest {
     @DisplayName("runtime exception esetén 502 + WU_PROVIDER_RUNTIME_ERROR")
     void runtimeException_wrappedToBadGateway() {
         when(internalAdapter.providerCode()).thenReturn("INTERNAL");
-        when(systemParameterRepository.findByParameterKey("WU_PROVIDER_MODE"))
+        when(systemParameterRepository.findByParameterKeyAndCompanyIdIsNull("WU_PROVIDER_MODE"))
                 .thenReturn(Optional.of(SystemParameter.builder().parameterValue("INTERNAL").build()));
         when(internalAdapter.send(any())).thenThrow(new IllegalStateException("boom"));
 

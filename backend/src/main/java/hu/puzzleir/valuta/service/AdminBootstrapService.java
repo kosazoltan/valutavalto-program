@@ -109,7 +109,7 @@ public class AdminBootstrapService {
      */
     @Transactional(readOnly = true)
     public boolean isBootstrapAlreadyCompleted() {
-        return systemParameterRepository.findByParameterKey(BOOTSTRAP_FLAG_KEY)
+        return systemParameterRepository.findByParameterKeyAndCompanyIdIsNull(BOOTSTRAP_FLAG_KEY)
                 .map(sp -> "true".equalsIgnoreCase(sp.getParameterValue())
                         && Boolean.TRUE.equals(sp.getIsActive()))
                 .orElse(false);
@@ -143,7 +143,7 @@ public class AdminBootstrapService {
     }
 
     private void setBootstrapCompletedFlag() {
-        Optional<SystemParameter> existing = systemParameterRepository.findByParameterKey(BOOTSTRAP_FLAG_KEY);
+        Optional<SystemParameter> existing = systemParameterRepository.findByParameterKeyAndCompanyIdIsNull(BOOTSTRAP_FLAG_KEY);
         SystemParameter flag = existing.orElseGet(() -> SystemParameter.builder()
                 .parameterKey(BOOTSTRAP_FLAG_KEY)
                 .parameterType(BOOTSTRAP_FLAG_TYPE)
