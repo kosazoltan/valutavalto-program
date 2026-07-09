@@ -1778,6 +1778,53 @@
         }
       }
     },
+    "/api/v1/income-source-docs/recipients": {
+      "get": {
+        "tags": ["income-source-doc-controller"],
+        "operationId": "getRecipients",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["income-source-doc-controller"],
+        "operationId": "putRecipients",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/handling-fee-config": {
       "get": {
         "tags": ["handling-fee-config-controller"],
@@ -2425,6 +2472,126 @@
         }
       }
     },
+    "/api/v1/currency-denomination-images/{id}/active": {
+      "put": {
+        "tags": ["currency-denomination-image-controller"],
+        "operationId": "setActive",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrencyDenominationImageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance-questions/{id}": {
+      "put": {
+        "tags": ["compliance-question-controller"],
+        "summary": "Compliance-kérdés módosítása",
+        "operationId": "update_12",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateComplianceQuestionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceQuestionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance-questions/{id}/active": {
+      "put": {
+        "tags": ["compliance-question-controller"],
+        "summary": "Compliance-kérdés aktiválása/inaktiválása (soft-disable)",
+        "operationId": "setActive_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetActiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceQuestionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/competitors/{id}": {
       "get": {
         "tags": ["competitor-controller"],
@@ -2455,7 +2622,7 @@
       },
       "put": {
         "tags": ["competitor-controller"],
-        "operationId": "update_12",
+        "operationId": "update_13",
         "parameters": [
           {
             "name": "id",
@@ -2541,7 +2708,7 @@
       },
       "put": {
         "tags": ["commission-rate-controller"],
-        "operationId": "update_13",
+        "operationId": "update_14",
         "parameters": [
           {
             "name": "id",
@@ -2760,7 +2927,7 @@
       },
       "put": {
         "tags": ["branch-group-controller"],
-        "operationId": "update_14",
+        "operationId": "update_15",
         "parameters": [
           {
             "name": "id",
@@ -3010,7 +3177,7 @@
       },
       "put": {
         "tags": ["bank-api-config-controller"],
-        "operationId": "update_15",
+        "operationId": "update_16",
         "parameters": [
           {
             "name": "providerName",
@@ -3075,7 +3242,7 @@
       },
       "put": {
         "tags": ["authorized-representative-controller"],
-        "operationId": "update_16",
+        "operationId": "update_17",
         "parameters": [
           {
             "name": "id",
@@ -6743,6 +6910,47 @@
         }
       }
     },
+    "/api/v1/scanned-documents/{id}/view-grant": {
+      "post": {
+        "tags": ["document-scanner-controller"],
+        "operationId": "issueViewGrant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/scanned-documents/upload": {
       "post": {
         "tags": ["document-scanner-controller"],
@@ -6762,6 +6970,47 @@
                   }
                 },
                 "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScannedDocumentDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scanned-documents/upload-pair": {
+      "post": {
+        "tags": ["document-scanner-controller"],
+        "operationId": "uploadDocumentPair",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "front": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "back": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/DocumentScanUploadRequest"
+                  }
+                },
+                "required": ["back", "front"]
               }
             }
           }
@@ -9561,6 +9810,35 @@
         }
       }
     },
+    "/api/v1/income-source-docs/email": {
+      "post": {
+        "tags": ["income-source-doc-controller"],
+        "operationId": "email",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncomeProofEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/hrk/receive": {
       "post": {
         "tags": ["hrk-controller"],
@@ -10429,7 +10707,7 @@
     "/api/v1/exchange-rate-display/{displayId}/update": {
       "post": {
         "tags": ["exchange-rate-display-controller"],
-        "operationId": "update_17",
+        "operationId": "update_18",
         "parameters": [
           {
             "name": "displayId",
@@ -13195,6 +13473,75 @@
         }
       }
     },
+    "/api/v1/currency-denomination-images/upload": {
+      "post": {
+        "tags": ["currency-denomination-image-controller"],
+        "operationId": "upload_1",
+        "parameters": [
+          {
+            "name": "currencyId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "faceValue",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "denominationType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "side",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrencyDenominationImageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/currencies": {
       "get": {
         "tags": ["currency-controller"],
@@ -13331,6 +13678,224 @@
         }
       }
     },
+    "/api/v1/compliance/search-templates": {
+      "get": {
+        "tags": ["compliance-search-template-controller"],
+        "summary": "Compliance szűrő-sablonok listája (criteria visszatöltéshez)",
+        "operationId": "list_18",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComplianceSearchTemplateDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["compliance-search-template-controller"],
+        "summary": "Compliance szűrő-sablon mentése (dátum nélkül, cégszinten közös)",
+        "operationId": "create_22",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateComplianceSearchTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceSearchTemplateDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance/search-audit": {
+      "get": {
+        "tags": ["compliance-search-audit-controller"],
+        "summary": "Keresés-audit napló listája (criteria lenyitáshoz, snapshot nélkül)",
+        "operationId": "list_19",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComplianceSearchAuditDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["compliance-search-audit-controller"],
+        "summary": "Keresés-eredmény mentése az audit naplóba (snapshot + cím + leírás)",
+        "operationId": "create_23",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateComplianceSearchAuditDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceSearchAuditDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance-questions": {
+      "get": {
+        "tags": ["compliance-question-controller"],
+        "summary": "Összes compliance-kérdés (inaktív is) — compliance-nézet",
+        "operationId": "list_20",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComplianceQuestionDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["compliance-question-controller"],
+        "summary": "Compliance-kérdés létrehozása",
+        "operationId": "create_24",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateComplianceQuestionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceQuestionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance-questions/{id}/answers": {
+      "get": {
+        "tags": ["compliance-question-controller"],
+        "summary": "A kérdésre érkezett válaszok — compliance-nézet",
+        "operationId": "getAnswers",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerQuestionAnswerDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["compliance-question-controller"],
+        "summary": "Ügyfél-válasz rögzítése a pénztárból (idempotens)",
+        "operationId": "submitAnswer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQuestionAnswerDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerQuestionAnswerDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/competitors": {
       "get": {
         "tags": ["competitor-controller"],
@@ -13353,7 +13918,7 @@
       },
       "post": {
         "tags": ["competitor-controller"],
-        "operationId": "create_22",
+        "operationId": "create_25",
         "requestBody": {
           "content": {
             "application/json": {
@@ -13402,7 +13967,7 @@
     "/api/v1/competitions": {
       "get": {
         "tags": ["competition-controller"],
-        "operationId": "list_18",
+        "operationId": "list_21",
         "responses": {
           "200": {
             "description": "OK",
@@ -13421,7 +13986,7 @@
       },
       "post": {
         "tags": ["competition-controller"],
-        "operationId": "create_23",
+        "operationId": "create_26",
         "requestBody": {
           "content": {
             "application/json": {
@@ -13606,7 +14171,7 @@
       },
       "post": {
         "tags": ["commission-rate-controller"],
-        "operationId": "create_24",
+        "operationId": "create_27",
         "requestBody": {
           "content": {
             "application/json": {
@@ -14042,7 +14607,7 @@
       },
       "post": {
         "tags": ["circular-controller"],
-        "operationId": "create_25",
+        "operationId": "create_28",
         "requestBody": {
           "content": {
             "application/json": {
@@ -15377,7 +15942,7 @@
     "/api/v1/branch-groups": {
       "get": {
         "tags": ["branch-group-controller"],
-        "operationId": "list_19",
+        "operationId": "list_22",
         "responses": {
           "200": {
             "description": "OK",
@@ -15396,7 +15961,7 @@
       },
       "post": {
         "tags": ["branch-group-controller"],
-        "operationId": "create_26",
+        "operationId": "create_29",
         "requestBody": {
           "content": {
             "application/json": {
@@ -15592,7 +16157,7 @@
     "/api/v1/banks": {
       "get": {
         "tags": ["bank-controller"],
-        "operationId": "list_20",
+        "operationId": "list_23",
         "parameters": [
           {
             "name": "q",
@@ -15621,7 +16186,7 @@
       },
       "post": {
         "tags": ["bank-controller"],
-        "operationId": "create_27",
+        "operationId": "create_30",
         "requestBody": {
           "content": {
             "application/json": {
@@ -15813,7 +16378,7 @@
     "/api/v1/bank-orders": {
       "get": {
         "tags": ["bank-order-controller"],
-        "operationId": "list_21",
+        "operationId": "list_24",
         "parameters": [
           {
             "name": "status",
@@ -15860,7 +16425,7 @@
       },
       "post": {
         "tags": ["bank-order-controller"],
-        "operationId": "create_28",
+        "operationId": "create_31",
         "requestBody": {
           "content": {
             "application/json": {
@@ -16098,7 +16663,7 @@
       },
       "post": {
         "tags": ["authorized-representative-controller"],
-        "operationId": "create_29",
+        "operationId": "create_32",
         "parameters": [
           {
             "name": "customerId",
@@ -16167,7 +16732,7 @@
       },
       "post": {
         "tags": ["authorization-controller"],
-        "operationId": "create_30",
+        "operationId": "create_33",
         "parameters": [
           {
             "name": "representativeId",
@@ -16847,7 +17412,7 @@
     "/api/v1/arfolyam-internet-links": {
       "get": {
         "tags": ["arfolyam-internet-link-controller"],
-        "operationId": "list_22",
+        "operationId": "list_25",
         "responses": {
           "200": {
             "description": "OK",
@@ -16866,7 +17431,7 @@
       },
       "post": {
         "tags": ["arfolyam-internet-link-controller"],
-        "operationId": "create_31",
+        "operationId": "create_34",
         "requestBody": {
           "content": {
             "application/json": {
@@ -17002,7 +17567,7 @@
     "/api/v1/anonymous-reports": {
       "get": {
         "tags": ["anonymous-report-controller"],
-        "operationId": "list_23",
+        "operationId": "list_26",
         "responses": {
           "200": {
             "description": "OK",
@@ -17021,7 +17586,7 @@
       },
       "post": {
         "tags": ["anonymous-report-controller"],
-        "operationId": "create_32",
+        "operationId": "create_35",
         "requestBody": {
           "content": {
             "application/json": {
@@ -17483,7 +18048,7 @@
     "/api/v1/currencies/{id}/active": {
       "patch": {
         "tags": ["currency-controller"],
-        "operationId": "setActive",
+        "operationId": "setActive_2",
         "parameters": [
           {
             "name": "id",
@@ -20449,6 +21014,82 @@
         }
       }
     },
+    "/api/v1/scanned-documents/{id}/image/{side}/thumbnail": {
+      "get": {
+        "tags": ["document-scanner-controller"],
+        "operationId": "getThumbnail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "side",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scanned-documents/{id}/image/{side}/full": {
+      "get": {
+        "tags": ["document-scanner-controller"],
+        "operationId": "getFullImage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "side",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/scanned-documents/transaction/{transactionId}": {
       "get": {
         "tags": ["document-scanner-controller"],
@@ -22310,7 +22951,7 @@
     "/api/v1/receipts": {
       "get": {
         "tags": ["receipt-controller"],
-        "operationId": "list_24",
+        "operationId": "list_27",
         "parameters": [
           {
             "name": "transactionId",
@@ -25001,6 +25642,51 @@
         }
       }
     },
+    "/api/v1/income-source-docs/required": {
+      "get": {
+        "tags": ["income-source-doc-controller"],
+        "operationId": "required",
+        "parameters": [
+          {
+            "name": "hufAmount",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "customerId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "currencyCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/hrk/monthly/summary": {
       "get": {
         "tags": ["HRK Havi Zárás"],
@@ -25125,7 +25811,7 @@
     "/api/v1/handover-sheets": {
       "get": {
         "tags": ["handover-sheet-controller"],
-        "operationId": "list_25",
+        "operationId": "list_28",
         "responses": {
           "200": {
             "description": "OK",
@@ -27057,7 +27743,7 @@
     "/api/v1/decade-reports": {
       "get": {
         "tags": ["decade-report-controller"],
-        "operationId": "list_26",
+        "operationId": "list_29",
         "parameters": [
           {
             "name": "branchId",
@@ -28333,6 +29019,98 @@
         }
       }
     },
+    "/api/v1/currency-denomination-images": {
+      "get": {
+        "tags": ["currency-denomination-image-controller"],
+        "operationId": "list_30",
+        "parameters": [
+          {
+            "name": "currencyId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CurrencyDenominationImageDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/currency-denomination-images/{id}/thumbnail": {
+      "get": {
+        "tags": ["currency-denomination-image-controller"],
+        "operationId": "getThumbnail_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/currency-denomination-images/{id}/image": {
+      "get": {
+        "tags": ["currency-denomination-image-controller"],
+        "operationId": "getImage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/currencies/{id}": {
       "get": {
         "tags": ["currency-controller"],
@@ -28603,6 +29381,201 @@
                   "type": "object",
                   "additionalProperties": {
                     "$ref": "#/components/schemas/ConfigBundleDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance/transactions": {
+      "get": {
+        "tags": ["compliance-transaction-controller"],
+        "summary": "Compliance tranzakció-kereső (cégszintű, lapozott)",
+        "operationId": "search_2",
+        "parameters": [
+          {
+            "name": "criteria",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ComplianceTransactionSearchCriteria"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageComplianceTransactionRowDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance/transactions/export/xlsx": {
+      "get": {
+        "tags": ["compliance-transaction-controller"],
+        "summary": "Compliance tranzakció-lista XLSX export",
+        "operationId": "exportXlsx",
+        "parameters": [
+          {
+            "name": "criteria",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ComplianceTransactionSearchCriteria"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance/transactions/export/csv": {
+      "get": {
+        "tags": ["compliance-transaction-controller"],
+        "summary": "Compliance tranzakció-lista CSV export (UTF-8 BOM, ;)",
+        "operationId": "exportCsv_1",
+        "parameters": [
+          {
+            "name": "criteria",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ComplianceTransactionSearchCriteria"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance/search-audit/{id}/pdf": {
+      "get": {
+        "tags": ["compliance-search-audit-controller"],
+        "summary": "Audit-bejegyzés PDF-je a tárolt snapshotból (lekérdező + dátum a fejlécben)",
+        "operationId": "pdf",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance-questions/answers/by-customer/{customerId}": {
+      "get": {
+        "tags": ["compliance-question-controller"],
+        "summary": "Egy ügyfél összes válasza — compliance-nézet",
+        "operationId": "getAnswersForCustomer",
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerQuestionAnswerDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance-questions/active": {
+      "get": {
+        "tags": ["compliance-question-controller"],
+        "summary": "Aktív kérdések — pénztár sync-fetch",
+        "operationId": "listActive_7",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComplianceQuestionDto"
                   }
                 }
               }
@@ -29193,7 +30166,7 @@
       "get": {
         "tags": ["circular-controller"],
         "summary": "Körlevél keresés iktatószám alapján",
-        "operationId": "search_2",
+        "operationId": "search_3",
         "parameters": [
           {
             "name": "q",
@@ -30630,7 +31603,7 @@
     "/api/v1/branch-groups/active": {
       "get": {
         "tags": ["branch-group-controller"],
-        "operationId": "listActive_7",
+        "operationId": "listActive_8",
         "responses": {
           "200": {
             "description": "OK",
@@ -30900,7 +31873,7 @@
     "/api/v1/bank-api-config": {
       "get": {
         "tags": ["bank-api-config-controller"],
-        "operationId": "list_27",
+        "operationId": "list_31",
         "responses": {
           "200": {
             "description": "OK",
@@ -31275,7 +32248,7 @@
       "get": {
         "tags": ["Admin"],
         "summary": "Audit napló CSV export",
-        "operationId": "exportCsv_1",
+        "operationId": "exportCsv_2",
         "parameters": [
           {
             "name": "dateFrom",
@@ -32296,6 +33269,29 @@
         }
       }
     },
+    "/api/v1/compliance/search-templates/{id}": {
+      "delete": {
+        "tags": ["compliance-search-template-controller"],
+        "summary": "Compliance szűrő-sablon törlése",
+        "operationId": "delete_17",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/banks/{id}": {
       "delete": {
         "tags": ["bank-controller"],
@@ -32321,7 +33317,7 @@
     "/api/v1/arfolyam-internet-links/{id}": {
       "delete": {
         "tags": ["arfolyam-internet-link-controller"],
-        "operationId": "delete_17",
+        "operationId": "delete_18",
         "parameters": [
           {
             "name": "id",
@@ -33182,6 +34178,10 @@
           },
           "parameterKey": {
             "type": "string"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
           },
           "parameterValue": {
             "type": "string"
@@ -35322,6 +36322,105 @@
           }
         }
       },
+      "CurrencyDenominationImageDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currencyId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "faceValue": {
+            "type": "number"
+          },
+          "denominationType": {
+            "type": "string"
+          },
+          "side": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "fileSizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "UpdateComplianceQuestionDto": {
+        "type": "object",
+        "properties": {
+          "questionText": {
+            "type": "string"
+          },
+          "questionType": {
+            "type": "string",
+            "enum": ["YES_NO", "FREE_TEXT"]
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ComplianceQuestionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionText": {
+            "type": "string"
+          },
+          "questionType": {
+            "type": "string",
+            "enum": ["YES_NO", "FREE_TEXT"]
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "createdByWorkerCode": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SetActiveRequest": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": ["active"]
+      },
       "Competitor": {
         "type": "object",
         "properties": {
@@ -37023,13 +38122,13 @@
             "type": "string",
             "format": "uuid"
           },
-          "companyId": {
-            "type": "string",
-            "format": "uuid"
-          },
           "territoryId": {
             "type": "integer",
             "format": "int32"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -39249,6 +40348,12 @@
           "validUntil": {
             "type": "string",
             "format": "date"
+          },
+          "hasFrontImage": {
+            "type": "boolean"
+          },
+          "hasBackImage": {
+            "type": "boolean"
           }
         }
       },
@@ -41137,6 +42242,29 @@
           }
         },
         "required": ["amount", "branchId", "currencyId"]
+      },
+      "IncomeProofEmailRequest": {
+        "type": "object",
+        "properties": {
+          "imageBase64": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mimeType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "transactionRef": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "hufAmount": {
+            "type": "number"
+          }
+        },
+        "required": ["imageBase64", "mimeType"]
       },
       "CreateHrkTransactionDto": {
         "type": "object",
@@ -44123,6 +45251,242 @@
           }
         }
       },
+      "ComplianceTransactionSearchCriteria": {
+        "type": "object",
+        "properties": {
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "BUY",
+              "SELL",
+              "REVERSAL",
+              "PARTIAL_REFUND",
+              "CONVERSION",
+              "TRANSFER_OUT",
+              "TRANSFER_IN",
+              "WESTERN_UNION_SEND",
+              "WESTERN_UNION_RECEIVE",
+              "MONEYGRAM_SEND",
+              "MONEYGRAM_RECEIVE",
+              "VIGNETTE",
+              "PHONE_TOPUP",
+              "OTHER"
+            ]
+          },
+          "minHufAmount": {
+            "type": "number"
+          },
+          "maxHufAmount": {
+            "type": "number"
+          },
+          "currencyIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": ["CASH", "CARD"]
+          },
+          "customRateOnly": {
+            "type": "boolean"
+          },
+          "kkDiscountOnly": {
+            "type": "boolean"
+          },
+          "onBehalfOfOtherOnly": {
+            "type": "boolean"
+          },
+          "pepOnly": {
+            "type": "boolean"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "customerBirthDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "customerNationality": {
+            "type": "string"
+          },
+          "customerDocumentNumber": {
+            "type": "string"
+          },
+          "legalEntityOnly": {
+            "type": "boolean"
+          },
+          "legalEntityName": {
+            "type": "string"
+          },
+          "legalEntityTaxNumber": {
+            "type": "string"
+          },
+          "legalDeedNumber": {
+            "type": "string"
+          },
+          "legalEntitySeat": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateComplianceSearchTemplateDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "criteria": {
+            "$ref": "#/components/schemas/ComplianceTransactionSearchCriteria"
+          }
+        }
+      },
+      "ComplianceSearchTemplateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "criteria": {
+            "$ref": "#/components/schemas/ComplianceTransactionSearchCriteria"
+          },
+          "createdByWorkerCode": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateComplianceSearchAuditDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "criteria": {
+            "$ref": "#/components/schemas/ComplianceTransactionSearchCriteria"
+          }
+        }
+      },
+      "ComplianceSearchAuditDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "criteria": {
+            "$ref": "#/components/schemas/ComplianceTransactionSearchCriteria"
+          },
+          "resultCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdByWorkerCode": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateComplianceQuestionDto": {
+        "type": "object",
+        "properties": {
+          "questionText": {
+            "type": "string",
+            "minLength": 1
+          },
+          "questionType": {
+            "type": "string",
+            "enum": ["YES_NO", "FREE_TEXT"]
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": ["questionText", "questionType"]
+      },
+      "CreateQuestionAnswerDto": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "transactionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "answerText": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["answerText", "customerId"]
+      },
+      "CustomerQuestionAnswerDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "transactionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "answerText": {
+            "type": "string"
+          },
+          "answeredByWorkerCode": {
+            "type": "string"
+          },
+          "answeredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "CompetitorRateEntryDto": {
         "type": "object",
         "properties": {
@@ -46574,19 +47938,6 @@
           }
         }
       },
-      "SetActiveRequest": {
-        "type": "object",
-        "properties": {
-          "active": {
-            "type": "boolean"
-          },
-          "note": {
-            "type": "string",
-            "maxLength": 500,
-            "minLength": 0
-          }
-        }
-      },
       "UpdateIsVaultRequest": {
         "type": "object",
         "properties": {
@@ -46619,13 +47970,13 @@
       "PageWorkerAttendanceDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -46672,16 +48023,16 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "paged": {
-            "type": "boolean"
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
           },
           "pageNumber": {
             "type": "integer",
             "format": "int32"
           },
-          "pageSize": {
-            "type": "integer",
-            "format": "int32"
+          "paged": {
+            "type": "boolean"
           },
           "unpaged": {
             "type": "boolean"
@@ -46705,13 +48056,13 @@
       "PageWuTransactionDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -47344,13 +48695,13 @@
       "PageTransferDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -47390,13 +48741,13 @@
       "PageTransactionDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -47500,13 +48851,13 @@
       "PageTradeDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -47599,13 +48950,13 @@
       "PageSyncLogDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -47878,13 +49229,13 @@
       "PageShipmentRequestResponseDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -48268,10 +49619,10 @@
           "dailyChange": {
             "type": "number"
           },
-          "lowBalance": {
+          "highBalance": {
             "type": "boolean"
           },
-          "highBalance": {
+          "lowBalance": {
             "type": "boolean"
           }
         }
@@ -49568,11 +50919,11 @@
             "type": "string",
             "format": "date-time"
           },
-          "bankSellRate": {
+          "bankBuyRate": {
             "type": "number",
             "deprecated": true
           },
-          "bankBuyRate": {
+          "bankSellRate": {
             "type": "number",
             "deprecated": true
           }
@@ -49900,13 +51251,13 @@
       "PagePoliceRequestDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -49946,13 +51297,13 @@
       "PageNavClosingDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -50133,13 +51484,13 @@
       "PageMnbReportDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -50412,13 +51763,13 @@
       "PageAuditLog": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -50596,13 +51947,13 @@
       "PageInventoryMovementDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -51443,13 +52794,13 @@
       "PageClientErrorLog": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -51657,13 +53008,13 @@
       "PageDecadeReportDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -51703,13 +53054,13 @@
       "PageDataImportJobDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -51988,6 +53339,173 @@
           "rank": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "ComplianceTransactionRowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "receiptNumber": {
+            "type": "string"
+          },
+          "transactionType": {
+            "type": "string",
+            "enum": [
+              "BUY",
+              "SELL",
+              "REVERSAL",
+              "PARTIAL_REFUND",
+              "CONVERSION",
+              "TRANSFER_OUT",
+              "TRANSFER_IN",
+              "WESTERN_UNION_SEND",
+              "WESTERN_UNION_RECEIVE",
+              "MONEYGRAM_SEND",
+              "MONEYGRAM_RECEIVE",
+              "VIGNETTE",
+              "PHONE_TOPUP",
+              "OTHER"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PENDING", "COMPLETED", "REVERSED", "FAILED", "CANCELLED", "ARCHIVED"]
+          },
+          "transactionDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "transactionTime": {
+            "type": "string"
+          },
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "branchName": {
+            "type": "string"
+          },
+          "branchCode": {
+            "type": "string"
+          },
+          "currencyId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "currencyAmount": {
+            "type": "number"
+          },
+          "exchangeRate": {
+            "type": "number"
+          },
+          "hufAmount": {
+            "type": "number"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": ["CASH", "CARD"]
+          },
+          "cashierCustomRate": {
+            "type": "boolean"
+          },
+          "kkDiscount": {
+            "type": "boolean"
+          },
+          "customerIsPep": {
+            "type": "boolean"
+          },
+          "customerOnOwnBehalf": {
+            "type": "boolean"
+          },
+          "amlSuspicious": {
+            "type": "boolean"
+          },
+          "customerId": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "customerBirthDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "customerNationality": {
+            "type": "string"
+          },
+          "customerDocumentNumber": {
+            "type": "string"
+          },
+          "isLegalEntityCustomer": {
+            "type": "boolean"
+          },
+          "legalEntityName": {
+            "type": "string"
+          },
+          "legalEntityTaxNumber": {
+            "type": "string"
+          },
+          "workerCode": {
+            "type": "string"
+          },
+          "workerName": {
+            "type": "string"
+          },
+          "originalReceiptNumber": {
+            "type": "string"
+          }
+        }
+      },
+      "PageComplianceTransactionRowDto": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComplianceTransactionRowDto"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "empty": {
+            "type": "boolean"
           }
         }
       },
@@ -52703,13 +54221,13 @@
       "PageBankOrderDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -52749,13 +54267,13 @@
       "PageBackupRecordResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -52847,13 +54365,13 @@
       "PageAuditLogEntryDto": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",

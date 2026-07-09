@@ -468,6 +468,22 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/income-source-docs/recipients': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['getRecipients']
+    put: operations['putRecipients']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/handling-fee-config': {
     parameters: {
       query?: never
@@ -644,6 +660,56 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/currency-denomination-images/{id}/active': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put: operations['setActive']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/compliance-questions/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /** Compliance-kérdés módosítása */
+    put: operations['update_12']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/compliance-questions/{id}/active': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /** Compliance-kérdés aktiválása/inaktiválása (soft-disable) */
+    put: operations['setActive_1']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/competitors/{id}': {
     parameters: {
       query?: never
@@ -652,7 +718,7 @@ export interface paths {
       cookie?: never
     }
     get: operations['getById_8']
-    put: operations['update_12']
+    put: operations['update_13']
     post?: never
     delete: operations['delete_11']
     options?: never
@@ -668,7 +734,7 @@ export interface paths {
       cookie?: never
     }
     get: operations['getById_9']
-    put: operations['update_13']
+    put: operations['update_14']
     post?: never
     delete: operations['delete_12']
     options?: never
@@ -716,7 +782,7 @@ export interface paths {
       cookie?: never
     }
     get: operations['getById_10']
-    put: operations['update_14']
+    put: operations['update_15']
     post?: never
     delete: operations['delete_13']
     options?: never
@@ -780,7 +846,7 @@ export interface paths {
       cookie?: never
     }
     get: operations['get']
-    put: operations['update_15']
+    put: operations['update_16']
     post?: never
     delete?: never
     options?: never
@@ -796,7 +862,7 @@ export interface paths {
       cookie?: never
     }
     get: operations['findById_1']
-    put: operations['update_16']
+    put: operations['update_17']
     post?: never
     delete: operations['delete_14']
     options?: never
@@ -2378,6 +2444,22 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/scanned-documents/{id}/view-grant': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['issueViewGrant']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/scanned-documents/upload': {
     parameters: {
       query?: never
@@ -2388,6 +2470,22 @@ export interface paths {
     get?: never
     put?: never
     post: operations['uploadDocument']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/scanned-documents/upload-pair': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['uploadDocumentPair']
     delete?: never
     options?: never
     head?: never
@@ -3693,6 +3791,22 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/income-source-docs/email': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['email']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/hrk/receive': {
     parameters: {
       query?: never
@@ -4087,7 +4201,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    post: operations['update_17']
+    post: operations['update_18']
     delete?: never
     options?: never
     head?: never
@@ -5284,6 +5398,22 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/currency-denomination-images/upload': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['upload_1']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/currencies': {
     parameters: {
       query?: never
@@ -5332,6 +5462,78 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/compliance/search-templates': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Compliance szűrő-sablonok listája (criteria visszatöltéshez) */
+    get: operations['list_18']
+    put?: never
+    /** Compliance szűrő-sablon mentése (dátum nélkül, cégszinten közös) */
+    post: operations['create_22']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/compliance/search-audit': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Keresés-audit napló listája (criteria lenyitáshoz, snapshot nélkül) */
+    get: operations['list_19']
+    put?: never
+    /** Keresés-eredmény mentése az audit naplóba (snapshot + cím + leírás) */
+    post: operations['create_23']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/compliance-questions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Összes compliance-kérdés (inaktív is) — compliance-nézet */
+    get: operations['list_20']
+    put?: never
+    /** Compliance-kérdés létrehozása */
+    post: operations['create_24']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/compliance-questions/{id}/answers': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** A kérdésre érkezett válaszok — compliance-nézet */
+    get: operations['getAnswers']
+    put?: never
+    /** Ügyfél-válasz rögzítése a pénztárból (idempotens) */
+    post: operations['submitAnswer']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/competitors': {
     parameters: {
       query?: never
@@ -5341,7 +5543,7 @@ export interface paths {
     }
     get: operations['getAll_2']
     put?: never
-    post: operations['create_22']
+    post: operations['create_25']
     delete?: never
     options?: never
     head?: never
@@ -5371,9 +5573,9 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_18']
+    get: operations['list_21']
     put?: never
-    post: operations['create_23']
+    post: operations['create_26']
     delete?: never
     options?: never
     head?: never
@@ -5453,7 +5655,7 @@ export interface paths {
     }
     get: operations['getAll_3']
     put?: never
-    post: operations['create_24']
+    post: operations['create_27']
     delete?: never
     options?: never
     head?: never
@@ -5629,7 +5831,7 @@ export interface paths {
     }
     get: operations['findAll_1']
     put?: never
-    post: operations['create_25']
+    post: operations['create_28']
     delete?: never
     options?: never
     head?: never
@@ -6225,9 +6427,9 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_19']
+    get: operations['list_22']
     put?: never
-    post: operations['create_26']
+    post: operations['create_29']
     delete?: never
     options?: never
     head?: never
@@ -6305,9 +6507,9 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_20']
+    get: operations['list_23']
     put?: never
-    post: operations['create_27']
+    post: operations['create_30']
     delete?: never
     options?: never
     head?: never
@@ -6369,9 +6571,9 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_21']
+    get: operations['list_24']
     put?: never
-    post: operations['create_28']
+    post: operations['create_31']
     delete?: never
     options?: never
     head?: never
@@ -6483,7 +6685,7 @@ export interface paths {
     }
     get: operations['findAll_2']
     put?: never
-    post: operations['create_29']
+    post: operations['create_32']
     delete?: never
     options?: never
     head?: never
@@ -6499,7 +6701,7 @@ export interface paths {
     }
     get: operations['findByRepresentative']
     put?: never
-    post: operations['create_30']
+    post: operations['create_33']
     delete?: never
     options?: never
     head?: never
@@ -6833,9 +7035,9 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_22']
+    get: operations['list_25']
     put?: never
-    post: operations['create_31']
+    post: operations['create_34']
     delete?: never
     options?: never
     head?: never
@@ -6897,9 +7099,9 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_23']
+    get: operations['list_26']
     put?: never
-    post: operations['create_32']
+    post: operations['create_35']
     delete?: never
     options?: never
     head?: never
@@ -7111,7 +7313,7 @@ export interface paths {
     delete?: never
     options?: never
     head?: never
-    patch: operations['setActive']
+    patch: operations['setActive_2']
     trace?: never
   }
   '/api/v1/branches/{id}/is-vault': {
@@ -8658,6 +8860,38 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/scanned-documents/{id}/image/{side}/thumbnail': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['getThumbnail']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/scanned-documents/{id}/image/{side}/full': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['getFullImage']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/scanned-documents/transaction/{transactionId}': {
     parameters: {
       query?: never
@@ -9434,7 +9668,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_24']
+    get: operations['list_27']
     put?: never
     post?: never
     delete?: never
@@ -10756,6 +10990,22 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/income-source-docs/required': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['required']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/hrk/monthly/summary': {
     parameters: {
       query?: never
@@ -10847,7 +11097,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_25']
+    get: operations['list_28']
     put?: never
     post?: never
     delete?: never
@@ -11871,7 +12121,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_26']
+    get: operations['list_29']
     put?: never
     post?: never
     delete?: never
@@ -12472,6 +12722,54 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/currency-denomination-images': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['list_30']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/currency-denomination-images/{id}/thumbnail': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['getThumbnail_1']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/currency-denomination-images/{id}/image': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['getImage']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/currencies/{id}': {
     parameters: {
       query?: never
@@ -12608,6 +12906,108 @@ export interface paths {
       cookie?: never
     }
     get: operations['exportAll']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/compliance/transactions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Compliance tranzakció-kereső (cégszintű, lapozott) */
+    get: operations['search_2']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/compliance/transactions/export/xlsx': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Compliance tranzakció-lista XLSX export */
+    get: operations['exportXlsx']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/compliance/transactions/export/csv': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Compliance tranzakció-lista CSV export (UTF-8 BOM, ;) */
+    get: operations['exportCsv_1']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/compliance/search-audit/{id}/pdf': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Audit-bejegyzés PDF-je a tárolt snapshotból (lekérdező + dátum a fejlécben) */
+    get: operations['pdf']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/compliance-questions/answers/by-customer/{customerId}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Egy ügyfél összes válasza — compliance-nézet */
+    get: operations['getAnswersForCustomer']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/compliance-questions/active': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Aktív kérdések — pénztár sync-fetch */
+    get: operations['listActive_7']
     put?: never
     post?: never
     delete?: never
@@ -12931,7 +13331,7 @@ export interface paths {
       cookie?: never
     }
     /** Körlevél keresés iktatószám alapján */
-    get: operations['search_2']
+    get: operations['search_3']
     put?: never
     post?: never
     delete?: never
@@ -13754,7 +14154,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['listActive_7']
+    get: operations['listActive_8']
     put?: never
     post?: never
     delete?: never
@@ -13882,7 +14282,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_27']
+    get: operations['list_31']
     put?: never
     post?: never
     delete?: never
@@ -14031,7 +14431,7 @@ export interface paths {
       cookie?: never
     }
     /** Audit napló CSV export */
-    get: operations['exportCsv_1']
+    get: operations['exportCsv_2']
     put?: never
     post?: never
     delete?: never
@@ -14522,6 +14922,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/compliance/search-templates/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /** Compliance szűrő-sablon törlése */
+    delete: operations['delete_17']
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/banks/{id}': {
     parameters: {
       query?: never
@@ -14548,7 +14965,7 @@ export interface paths {
     get?: never
     put?: never
     post?: never
-    delete: operations['delete_17']
+    delete: operations['delete_18']
     options?: never
     head?: never
     patch?: never
@@ -14883,6 +15300,8 @@ export interface components {
       /** Format: uuid */
       id?: string
       parameterKey?: string
+      /** Format: uuid */
+      companyId?: string
       parameterValue?: string
       parameterType?: string
       category?: string
@@ -15717,6 +16136,48 @@ export interface components {
       /** Format: date-time */
       updatedAt?: string
     }
+    CurrencyDenominationImageDto: {
+      /** Format: uuid */
+      id?: string
+      /** Format: int64 */
+      currencyId?: number
+      faceValue?: number
+      denominationType?: string
+      side?: string
+      mimeType?: string
+      /** Format: int64 */
+      fileSizeBytes?: number
+      active?: boolean
+      /** Format: date-time */
+      createdAt?: string
+      /** Format: date-time */
+      updatedAt?: string
+    }
+    UpdateComplianceQuestionDto: {
+      questionText?: string
+      /** @enum {string} */
+      questionType?: 'YES_NO' | 'FREE_TEXT'
+      /** Format: int32 */
+      displayOrder?: number
+    }
+    ComplianceQuestionDto: {
+      /** Format: uuid */
+      id?: string
+      questionText?: string
+      /** @enum {string} */
+      questionType?: 'YES_NO' | 'FREE_TEXT'
+      /** Format: int32 */
+      displayOrder?: number
+      active?: boolean
+      createdByWorkerCode?: string
+      /** Format: date-time */
+      createdAt?: string
+      /** Format: date-time */
+      updatedAt?: string
+    }
+    SetActiveRequest: {
+      active: boolean
+    }
     Competitor: {
       /** Format: uuid */
       id?: string
@@ -16382,10 +16843,10 @@ export interface components {
       version?: number
       /** Format: uuid */
       branchId?: string
-      /** Format: uuid */
-      companyId?: string
       /** Format: int32 */
       territoryId?: number
+      /** Format: uuid */
+      companyId?: string
     }
     CountItemRequest: {
       /** Format: int32 */
@@ -17173,6 +17634,8 @@ export interface components {
       notes?: string
       /** Format: date */
       validUntil?: string
+      hasFrontImage?: boolean
+      hasBackImage?: boolean
     }
     SanctionScreeningRequest: {
       name: string
@@ -17860,6 +18323,13 @@ export interface components {
       currencyId: number
       amount: number
       notes?: string
+    }
+    IncomeProofEmailRequest: {
+      imageBase64: string
+      mimeType: string
+      transactionRef?: string
+      customerName?: string
+      hufAmount?: number
     }
     CreateHrkTransactionDto: {
       currencyCode: string
@@ -18981,6 +19451,107 @@ export interface components {
       warnings?: string[]
       errors?: string[]
     }
+    ComplianceTransactionSearchCriteria: {
+      /** Format: uuid */
+      branchId?: string
+      /** Format: date */
+      startDate?: string
+      /** Format: date */
+      endDate?: string
+      /** @enum {string} */
+      type?:
+        | 'BUY'
+        | 'SELL'
+        | 'REVERSAL'
+        | 'PARTIAL_REFUND'
+        | 'CONVERSION'
+        | 'TRANSFER_OUT'
+        | 'TRANSFER_IN'
+        | 'WESTERN_UNION_SEND'
+        | 'WESTERN_UNION_RECEIVE'
+        | 'MONEYGRAM_SEND'
+        | 'MONEYGRAM_RECEIVE'
+        | 'VIGNETTE'
+        | 'PHONE_TOPUP'
+        | 'OTHER'
+      minHufAmount?: number
+      maxHufAmount?: number
+      currencyIds?: number[]
+      /** @enum {string} */
+      paymentMethod?: 'CASH' | 'CARD'
+      customRateOnly?: boolean
+      kkDiscountOnly?: boolean
+      onBehalfOfOtherOnly?: boolean
+      pepOnly?: boolean
+      customerName?: string
+      /** Format: date */
+      customerBirthDate?: string
+      customerNationality?: string
+      customerDocumentNumber?: string
+      legalEntityOnly?: boolean
+      legalEntityName?: string
+      legalEntityTaxNumber?: string
+      legalDeedNumber?: string
+      legalEntitySeat?: string
+    }
+    CreateComplianceSearchTemplateDto: {
+      name?: string
+      criteria?: components['schemas']['ComplianceTransactionSearchCriteria']
+    }
+    ComplianceSearchTemplateDto: {
+      /** Format: uuid */
+      id?: string
+      name?: string
+      criteria?: components['schemas']['ComplianceTransactionSearchCriteria']
+      createdByWorkerCode?: string
+      /** Format: date-time */
+      createdAt?: string
+    }
+    CreateComplianceSearchAuditDto: {
+      title?: string
+      description?: string
+      criteria?: components['schemas']['ComplianceTransactionSearchCriteria']
+    }
+    ComplianceSearchAuditDto: {
+      /** Format: uuid */
+      id?: string
+      title?: string
+      description?: string
+      criteria?: components['schemas']['ComplianceTransactionSearchCriteria']
+      /** Format: int32 */
+      resultCount?: number
+      createdByWorkerCode?: string
+      /** Format: date-time */
+      createdAt?: string
+    }
+    CreateComplianceQuestionDto: {
+      questionText: string
+      /** @enum {string} */
+      questionType: 'YES_NO' | 'FREE_TEXT'
+      /** Format: int32 */
+      displayOrder?: number
+    }
+    CreateQuestionAnswerDto: {
+      /** Format: int64 */
+      customerId: number
+      /** Format: int64 */
+      transactionId?: number
+      answerText: string
+    }
+    CustomerQuestionAnswerDto: {
+      /** Format: uuid */
+      id?: string
+      /** Format: uuid */
+      questionId?: string
+      /** Format: int64 */
+      customerId?: number
+      /** Format: int64 */
+      transactionId?: number
+      answerText?: string
+      answeredByWorkerCode?: string
+      /** Format: date-time */
+      answeredAt?: string
+    }
     CompetitorRateEntryDto: {
       /** Format: uuid */
       competitorId: string
@@ -19908,10 +20479,6 @@ export interface components {
       /** Format: int64 */
       version?: number
     }
-    SetActiveRequest: {
-      active?: boolean
-      note?: string
-    }
     UpdateIsVaultRequest: {
       isVault?: boolean
     }
@@ -19923,10 +20490,10 @@ export interface components {
       sort?: string[]
     }
     PageWorkerAttendanceDto: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['WorkerAttendanceDto'][]
@@ -19944,11 +20511,11 @@ export interface components {
       /** Format: int64 */
       offset?: number
       sort?: components['schemas']['SortObject']
-      paged?: boolean
-      /** Format: int32 */
-      pageNumber?: number
       /** Format: int32 */
       pageSize?: number
+      /** Format: int32 */
+      pageNumber?: number
+      paged?: boolean
       unpaged?: boolean
     }
     SortObject: {
@@ -19957,10 +20524,10 @@ export interface components {
       unsorted?: boolean
     }
     PageWuTransactionDto: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['WuTransactionDto'][]
@@ -20196,10 +20763,10 @@ export interface components {
       bankFlowLines?: components['schemas']['TrbBankFlowLineDto'][]
     }
     PageTransferDto: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['TransferDto'][]
@@ -20214,10 +20781,10 @@ export interface components {
       empty?: boolean
     }
     PageTransactionDto: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['TransactionDto'][]
@@ -20260,10 +20827,10 @@ export interface components {
       minAmountHuf?: number
     }
     PageTradeDto: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['TradeDto'][]
@@ -20301,10 +20868,10 @@ export interface components {
       }
     }
     PageSyncLogDto: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['SyncLogDto'][]
@@ -20407,10 +20974,10 @@ export interface components {
       ecommerce?: number
     }
     PageShipmentRequestResponseDto: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['ShipmentRequestResponseDto'][]
@@ -20564,8 +21131,8 @@ export interface components {
       /** Format: date-time */
       updatedAt?: string
       dailyChange?: number
-      lowBalance?: boolean
       highBalance?: boolean
+      lowBalance?: boolean
     }
     DailyClosingReport: {
       /** Format: date */
@@ -21052,9 +21619,9 @@ export interface components {
       /** Format: date-time */
       lastUpdated?: string
       /** @deprecated */
-      bankSellRate?: number
-      /** @deprecated */
       bankBuyRate?: number
+      /** @deprecated */
+      bankSellRate?: number
     }
     CompetitorRateDTO: {
       /** Format: uuid */
@@ -21178,10 +21745,10 @@ export interface components {
       updatedAt?: string
     }
     PagePoliceRequestDto: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['PoliceRequestDto'][]
@@ -21196,10 +21763,10 @@ export interface components {
       empty?: boolean
     }
     PageNavClosingDto: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['NavClosingDto'][]
@@ -21269,10 +21836,10 @@ export interface components {
       openAlerts?: number
     }
     PageMnbReportDto: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['MnbReportDto'][]
@@ -21371,10 +21938,10 @@ export interface components {
       workerRole?: string
     }
     PageAuditLog: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['AuditLog'][]
@@ -21442,10 +22009,10 @@ export interface components {
       isVault?: boolean
     }
     PageInventoryMovementDto: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['InventoryMovementDto'][]
@@ -21764,10 +22331,10 @@ export interface components {
       userAgent?: string
     }
     PageClientErrorLog: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['ClientErrorLog'][]
@@ -21845,10 +22412,10 @@ export interface components {
       denominations?: components['schemas']['Denomination'][]
     }
     PageDecadeReportDto: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['DecadeReportDto'][]
@@ -21863,10 +22430,10 @@ export interface components {
       empty?: boolean
     }
     PageDataImportJobDto: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['DataImportJobDto'][]
@@ -21976,6 +22543,79 @@ export interface components {
       totalVolumeHuf?: number
       /** Format: int32 */
       rank?: number
+    }
+    ComplianceTransactionRowDto: {
+      /** Format: int64 */
+      id?: number
+      receiptNumber?: string
+      /** @enum {string} */
+      transactionType?:
+        | 'BUY'
+        | 'SELL'
+        | 'REVERSAL'
+        | 'PARTIAL_REFUND'
+        | 'CONVERSION'
+        | 'TRANSFER_OUT'
+        | 'TRANSFER_IN'
+        | 'WESTERN_UNION_SEND'
+        | 'WESTERN_UNION_RECEIVE'
+        | 'MONEYGRAM_SEND'
+        | 'MONEYGRAM_RECEIVE'
+        | 'VIGNETTE'
+        | 'PHONE_TOPUP'
+        | 'OTHER'
+      /** @enum {string} */
+      status?: 'PENDING' | 'COMPLETED' | 'REVERSED' | 'FAILED' | 'CANCELLED' | 'ARCHIVED'
+      /** Format: date */
+      transactionDate?: string
+      transactionTime?: string
+      /** Format: uuid */
+      branchId?: string
+      branchName?: string
+      branchCode?: string
+      /** Format: int64 */
+      currencyId?: number
+      currencyCode?: string
+      currencyAmount?: number
+      exchangeRate?: number
+      hufAmount?: number
+      /** @enum {string} */
+      paymentMethod?: 'CASH' | 'CARD'
+      cashierCustomRate?: boolean
+      kkDiscount?: boolean
+      customerIsPep?: boolean
+      customerOnOwnBehalf?: boolean
+      amlSuspicious?: boolean
+      customerId?: string
+      customerName?: string
+      /** Format: date */
+      customerBirthDate?: string
+      customerNationality?: string
+      customerDocumentNumber?: string
+      isLegalEntityCustomer?: boolean
+      legalEntityName?: string
+      legalEntityTaxNumber?: string
+      workerCode?: string
+      workerName?: string
+      originalReceiptNumber?: string
+    }
+    PageComplianceTransactionRowDto: {
+      /** Format: int64 */
+      totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
+      /** Format: int32 */
+      size?: number
+      content?: components['schemas']['ComplianceTransactionRowDto'][]
+      /** Format: int32 */
+      number?: number
+      sort?: components['schemas']['SortObject']
+      first?: boolean
+      last?: boolean
+      /** Format: int32 */
+      numberOfElements?: number
+      pageable?: components['schemas']['PageableObject']
+      empty?: boolean
     }
     CompetitorTodayRateDto: {
       /** Format: int64 */
@@ -22255,10 +22895,10 @@ export interface components {
       fixedCounterparties?: components['schemas']['BranchDto'][]
     }
     PageBankOrderDto: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['BankOrderDto'][]
@@ -22273,10 +22913,10 @@ export interface components {
       empty?: boolean
     }
     PageBackupRecordResponse: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['BackupRecordResponse'][]
@@ -22310,10 +22950,10 @@ export interface components {
       createdAt?: string
     }
     PageAuditLogEntryDto: {
-      /** Format: int32 */
-      totalPages?: number
       /** Format: int64 */
       totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['AuditLogEntryDto'][]
@@ -23825,6 +24465,56 @@ export interface operations {
       }
     }
   }
+  getRecipients: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': {
+            [key: string]: unknown
+          }
+        }
+      }
+    }
+  }
+  putRecipients: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': {
+          [key: string]: unknown
+        }
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': {
+            [key: string]: unknown
+          }
+        }
+      }
+    }
+  }
   getConfig_2: {
     parameters: {
       query?: never
@@ -24332,6 +25022,86 @@ export interface operations {
       }
     }
   }
+  setActive: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': {
+          [key: string]: unknown
+        }
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['CurrencyDenominationImageDto']
+        }
+      }
+    }
+  }
+  update_12: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpdateComplianceQuestionDto']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['ComplianceQuestionDto']
+        }
+      }
+    }
+  }
+  setActive_1: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SetActiveRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['ComplianceQuestionDto']
+        }
+      }
+    }
+  }
   getById_8: {
     parameters: {
       query?: never
@@ -24354,7 +25124,7 @@ export interface operations {
       }
     }
   }
-  update_12: {
+  update_13: {
     parameters: {
       query?: never
       header?: never
@@ -24422,7 +25192,7 @@ export interface operations {
       }
     }
   }
-  update_13: {
+  update_14: {
     parameters: {
       query?: never
       header?: never
@@ -24583,7 +25353,7 @@ export interface operations {
       }
     }
   }
-  update_14: {
+  update_15: {
     parameters: {
       query?: never
       header?: never
@@ -24768,7 +25538,7 @@ export interface operations {
       }
     }
   }
-  update_15: {
+  update_16: {
     parameters: {
       query?: never
       header?: never
@@ -24816,7 +25586,7 @@ export interface operations {
       }
     }
   }
-  update_16: {
+  update_17: {
     parameters: {
       query?: never
       header?: never
@@ -27598,6 +28368,36 @@ export interface operations {
       }
     }
   }
+  issueViewGrant: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': {
+          [key: string]: unknown
+        }
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': {
+            [key: string]: unknown
+          }
+        }
+      }
+    }
+  }
   uploadDocument: {
     parameters: {
       query?: never
@@ -27610,6 +28410,36 @@ export interface operations {
         'multipart/form-data': {
           /** Format: binary */
           file: string
+          request?: components['schemas']['DocumentScanUploadRequest']
+        }
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['ScannedDocumentDto']
+        }
+      }
+    }
+  }
+  uploadDocumentPair: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: {
+      content: {
+        'multipart/form-data': {
+          /** Format: binary */
+          front: string
+          /** Format: binary */
+          back: string
           request?: components['schemas']['DocumentScanUploadRequest']
         }
       }
@@ -29813,6 +30643,32 @@ export interface operations {
       }
     }
   }
+  email: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['IncomeProofEmailRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': {
+            [key: string]: unknown
+          }
+        }
+      }
+    }
+  }
   receive_2: {
     parameters: {
       query?: never
@@ -30487,7 +31343,7 @@ export interface operations {
       }
     }
   }
-  update_17: {
+  update_18: {
     parameters: {
       query?: never
       header?: never
@@ -32618,6 +33474,38 @@ export interface operations {
       }
     }
   }
+  upload_1: {
+    parameters: {
+      query: {
+        currencyId: number
+        faceValue: number
+        denominationType: string
+        side: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: {
+      content: {
+        'multipart/form-data': {
+          /** Format: binary */
+          file: string
+        }
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['CurrencyDenominationImageDto']
+        }
+      }
+    }
+  }
   getAllActiveCurrencies: {
     parameters: {
       query?: never
@@ -32712,6 +33600,186 @@ export interface operations {
       }
     }
   }
+  list_18: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['ComplianceSearchTemplateDto'][]
+        }
+      }
+    }
+  }
+  create_22: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateComplianceSearchTemplateDto']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['ComplianceSearchTemplateDto']
+        }
+      }
+    }
+  }
+  list_19: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['ComplianceSearchAuditDto'][]
+        }
+      }
+    }
+  }
+  create_23: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateComplianceSearchAuditDto']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['ComplianceSearchAuditDto']
+        }
+      }
+    }
+  }
+  list_20: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['ComplianceQuestionDto'][]
+        }
+      }
+    }
+  }
+  create_24: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateComplianceQuestionDto']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['ComplianceQuestionDto']
+        }
+      }
+    }
+  }
+  getAnswers: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['CustomerQuestionAnswerDto'][]
+        }
+      }
+    }
+  }
+  submitAnswer: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateQuestionAnswerDto']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['CustomerQuestionAnswerDto']
+        }
+      }
+    }
+  }
   getAll_2: {
     parameters: {
       query?: never
@@ -32732,7 +33800,7 @@ export interface operations {
       }
     }
   }
-  create_22: {
+  create_25: {
     parameters: {
       query?: never
       header?: never
@@ -32778,7 +33846,7 @@ export interface operations {
       }
     }
   }
-  list_18: {
+  list_21: {
     parameters: {
       query?: never
       header?: never
@@ -32798,7 +33866,7 @@ export interface operations {
       }
     }
   }
-  create_23: {
+  create_26: {
     parameters: {
       query?: never
       header?: never
@@ -32932,7 +34000,7 @@ export interface operations {
       }
     }
   }
-  create_24: {
+  create_27: {
     parameters: {
       query?: never
       header?: never
@@ -33251,7 +34319,7 @@ export interface operations {
       }
     }
   }
-  create_25: {
+  create_28: {
     parameters: {
       query?: never
       header?: never
@@ -34177,7 +35245,7 @@ export interface operations {
       }
     }
   }
-  list_19: {
+  list_22: {
     parameters: {
       query?: never
       header?: never
@@ -34197,7 +35265,7 @@ export interface operations {
       }
     }
   }
-  create_26: {
+  create_29: {
     parameters: {
       query?: never
       header?: never
@@ -34363,7 +35431,7 @@ export interface operations {
       }
     }
   }
-  list_20: {
+  list_23: {
     parameters: {
       query?: {
         q?: string
@@ -34385,7 +35453,7 @@ export interface operations {
       }
     }
   }
-  create_27: {
+  create_30: {
     parameters: {
       query?: never
       header?: never
@@ -34487,7 +35555,7 @@ export interface operations {
       }
     }
   }
-  list_21: {
+  list_24: {
     parameters: {
       query?: {
         status?: 'PENDING' | 'APPROVED' | 'EXECUTED' | 'CANCELLED'
@@ -34511,7 +35579,7 @@ export interface operations {
       }
     }
   }
-  create_28: {
+  create_31: {
     parameters: {
       query?: never
       header?: never
@@ -34699,7 +35767,7 @@ export interface operations {
       }
     }
   }
-  create_29: {
+  create_32: {
     parameters: {
       query: {
         customerId: number
@@ -34747,7 +35815,7 @@ export interface operations {
       }
     }
   }
-  create_30: {
+  create_33: {
     parameters: {
       query?: {
         workerId?: number
@@ -35251,7 +36319,7 @@ export interface operations {
       }
     }
   }
-  list_22: {
+  list_25: {
     parameters: {
       query?: never
       header?: never
@@ -35271,7 +36339,7 @@ export interface operations {
       }
     }
   }
-  create_31: {
+  create_34: {
     parameters: {
       query?: never
       header?: never
@@ -35389,7 +36457,7 @@ export interface operations {
       }
     }
   }
-  list_23: {
+  list_26: {
     parameters: {
       query?: never
       header?: never
@@ -35409,7 +36477,7 @@ export interface operations {
       }
     }
   }
-  create_32: {
+  create_35: {
     parameters: {
       query?: never
       header?: never
@@ -35773,7 +36841,7 @@ export interface operations {
       }
     }
   }
-  setActive: {
+  setActive_2: {
     parameters: {
       query?: never
       header?: never
@@ -37925,6 +38993,52 @@ export interface operations {
       }
     }
   }
+  getThumbnail: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+        side: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': string
+        }
+      }
+    }
+  }
+  getFullImage: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+        side: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': string
+        }
+      }
+    }
+  }
   getTransactionDocuments: {
     parameters: {
       query?: never
@@ -39049,7 +40163,7 @@ export interface operations {
       }
     }
   }
-  list_24: {
+  list_27: {
     parameters: {
       query?: {
         transactionId?: string
@@ -40885,6 +41999,32 @@ export interface operations {
       }
     }
   }
+  required: {
+    parameters: {
+      query: {
+        hufAmount: number
+        customerId?: string
+        currencyCode?: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': {
+            [key: string]: unknown
+          }
+        }
+      }
+    }
+  }
   getSummary: {
     parameters: {
       query: {
@@ -40995,7 +42135,7 @@ export interface operations {
       }
     }
   }
-  list_25: {
+  list_28: {
     parameters: {
       query?: never
       header?: never
@@ -42414,7 +43554,7 @@ export interface operations {
       }
     }
   }
-  list_26: {
+  list_29: {
     parameters: {
       query: {
         branchId: string
@@ -43263,6 +44403,72 @@ export interface operations {
       }
     }
   }
+  list_30: {
+    parameters: {
+      query?: {
+        currencyId?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['CurrencyDenominationImageDto'][]
+        }
+      }
+    }
+  }
+  getThumbnail_1: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': string
+        }
+      }
+    }
+  }
+  getImage: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': string
+        }
+      }
+    }
+  }
   getCurrencyById: {
     parameters: {
       query?: never
@@ -43458,6 +44664,138 @@ export interface operations {
           '*/*': {
             [key: string]: components['schemas']['ConfigBundleDto']
           }
+        }
+      }
+    }
+  }
+  search_2: {
+    parameters: {
+      query: {
+        criteria: components['schemas']['ComplianceTransactionSearchCriteria']
+        page?: number
+        size?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['PageComplianceTransactionRowDto']
+        }
+      }
+    }
+  }
+  exportXlsx: {
+    parameters: {
+      query: {
+        criteria: components['schemas']['ComplianceTransactionSearchCriteria']
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': string
+        }
+      }
+    }
+  }
+  exportCsv_1: {
+    parameters: {
+      query: {
+        criteria: components['schemas']['ComplianceTransactionSearchCriteria']
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': string
+        }
+      }
+    }
+  }
+  pdf: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': string
+        }
+      }
+    }
+  }
+  getAnswersForCustomer: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        customerId: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['CustomerQuestionAnswerDto'][]
+        }
+      }
+    }
+  }
+  listActive_7: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['ComplianceQuestionDto'][]
         }
       }
     }
@@ -43885,7 +45223,7 @@ export interface operations {
       }
     }
   }
-  search_2: {
+  search_3: {
     parameters: {
       query: {
         q: string
@@ -44997,7 +46335,7 @@ export interface operations {
       }
     }
   }
-  listActive_7: {
+  listActive_8: {
     parameters: {
       query?: never
       header?: never
@@ -45176,7 +46514,7 @@ export interface operations {
       }
     }
   }
-  list_27: {
+  list_31: {
     parameters: {
       query?: never
       header?: never
@@ -45386,7 +46724,7 @@ export interface operations {
       }
     }
   }
-  exportCsv_1: {
+  exportCsv_2: {
     parameters: {
       query?: {
         dateFrom?: string
@@ -46073,6 +47411,26 @@ export interface operations {
       }
     }
   }
+  delete_17: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+    }
+  }
   deactivate_1: {
     parameters: {
       query?: never
@@ -46093,7 +47451,7 @@ export interface operations {
       }
     }
   }
-  delete_17: {
+  delete_18: {
     parameters: {
       query?: never
       header?: never

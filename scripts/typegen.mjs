@@ -103,6 +103,18 @@ async function generate() {
     )
     child.on('error', fail)
   })
+
+  const prettier = spawn('npx', ['prettier', '--write', OUTPUT_FILE, specFile], {
+    stdio: 'inherit',
+    shell: true,
+    cwd: ROOT,
+  })
+  await new Promise((done, fail) => {
+    prettier.on('exit', (code) =>
+      code === 0 ? done() : fail(new Error(`prettier exit ${code}`)),
+    )
+    prettier.on('error', fail)
+  })
   console.log(`[typegen] OK: ${OUTPUT_FILE}`)
 }
 
