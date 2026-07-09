@@ -89,7 +89,7 @@ class AdminBootstrapServiceTest {
     @Test
     @DisplayName("Happy path: létező worker frissítése ADMIN role-ra + jelszó csere + flag")
     void happyPath_existingWorker() {
-        when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
+        when(systemParameterRepository.findByParameterKeyAndCompanyIdIsNull(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
                 .thenReturn(Optional.empty());
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(ebcCompany));
 
@@ -133,7 +133,7 @@ class AdminBootstrapServiceTest {
     @Test
     @DisplayName("Worker nem létezik: újat hoz létre az első aktív branch-hez")
     void happyPath_newWorker() {
-        when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
+        when(systemParameterRepository.findByParameterKeyAndCompanyIdIsNull(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
                 .thenReturn(Optional.empty());
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(ebcCompany));
         when(workerRepository.findByCompanyIdAndCodeIgnoreCase(ebcCompany.getId(), "ADMIN"))
@@ -168,7 +168,7 @@ class AdminBootstrapServiceTest {
                 .parameterValue("true")
                 .isActive(true)
                 .build();
-        when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
+        when(systemParameterRepository.findByParameterKeyAndCompanyIdIsNull(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
                 .thenReturn(Optional.of(completedFlag));
 
         assertThatThrownBy(() -> service.bootstrapAdmin(validRequest()))
@@ -187,7 +187,7 @@ class AdminBootstrapServiceTest {
     @Test
     @DisplayName("Ismeretlen cégkód -> ValidationException")
     void rejectsUnknownCompany() {
-        when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
+        when(systemParameterRepository.findByParameterKeyAndCompanyIdIsNull(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
                 .thenReturn(Optional.empty());
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.empty());
         when(companyRepository.findByCodeIgnoreCase("EBC")).thenReturn(Optional.empty());
@@ -200,7 +200,7 @@ class AdminBootstrapServiceTest {
     @Test
     @DisplayName("Nincs branch a cégnél -> ValidationException")
     void rejectsCompanyWithoutBranches() {
-        when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
+        when(systemParameterRepository.findByParameterKeyAndCompanyIdIsNull(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
                 .thenReturn(Optional.empty());
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(ebcCompany));
         when(workerRepository.findByCompanyIdAndCodeIgnoreCase(ebcCompany.getId(), "ADMIN"))
@@ -216,7 +216,7 @@ class AdminBootstrapServiceTest {
     @Test
     @DisplayName("isBootstrapAlreadyCompleted — false ha nincs flag vagy inaktív")
     void bootstrapStatus_checks() {
-        when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
+        when(systemParameterRepository.findByParameterKeyAndCompanyIdIsNull(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
                 .thenReturn(Optional.empty());
         assertThat(service.isBootstrapAlreadyCompleted()).isFalse();
 
@@ -225,7 +225,7 @@ class AdminBootstrapServiceTest {
                 .parameterValue("true")
                 .isActive(false)
                 .build();
-        when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
+        when(systemParameterRepository.findByParameterKeyAndCompanyIdIsNull(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
                 .thenReturn(Optional.of(inactive));
         assertThat(service.isBootstrapAlreadyCompleted()).isFalse();
 
@@ -234,7 +234,7 @@ class AdminBootstrapServiceTest {
                 .parameterValue("true")
                 .isActive(true)
                 .build();
-        when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
+        when(systemParameterRepository.findByParameterKeyAndCompanyIdIsNull(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
                 .thenReturn(Optional.of(active));
         assertThat(service.isBootstrapAlreadyCompleted()).isTrue();
 
@@ -243,7 +243,7 @@ class AdminBootstrapServiceTest {
                 .parameterValue("false")
                 .isActive(true)
                 .build();
-        when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
+        when(systemParameterRepository.findByParameterKeyAndCompanyIdIsNull(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
                 .thenReturn(Optional.of(falseValue));
         assertThat(service.isBootstrapAlreadyCompleted()).isFalse();
     }
@@ -251,7 +251,7 @@ class AdminBootstrapServiceTest {
     @Test
     @DisplayName("Email opcionális — ha null, a meglévő email marad")
     void optionalEmail_preservesExisting() {
-        when(systemParameterRepository.findByParameterKey(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
+        when(systemParameterRepository.findByParameterKeyAndCompanyIdIsNull(AdminBootstrapService.BOOTSTRAP_FLAG_KEY))
                 .thenReturn(Optional.empty());
         when(companyRepository.findByCode("EBC")).thenReturn(Optional.of(ebcCompany));
 

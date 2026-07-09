@@ -70,7 +70,7 @@ public class InternalWesternUnionAdapter implements WesternUnionProviderAdapter 
     }
 
     private BigDecimal readRate(String key, String fallback) {
-        return systemParameterRepository.findByParameterKey(key)
+        return systemParameterRepository.findByParameterKeyAndCompanyIdIsNull(key)
                 .map(SystemParameter::getParameterValue)
                 .map(v -> {
                     try {

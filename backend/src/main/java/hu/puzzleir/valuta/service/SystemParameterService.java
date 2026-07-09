@@ -21,9 +21,9 @@ public class SystemParameterService {
 
     private final SystemParameterRepository repo;
 
-    public List<SystemParameter> listAll() { return repo.findAll(); }
-    public List<SystemParameter> listActive() { return repo.findByIsActiveTrue(); }
-    public List<SystemParameter> listByCategory(String cat) { return repo.findByCategory(cat); }
+    public List<SystemParameter> listAll() { return repo.findAllVisibleTo(SecurityUtils.getCurrentCompanyIdOrNull()); }
+    public List<SystemParameter> listActive() { return repo.findActiveVisibleTo(SecurityUtils.getCurrentCompanyIdOrNull()); }
+    public List<SystemParameter> listByCategory(String cat) { return repo.findByCategoryVisibleTo(cat, SecurityUtils.getCurrentCompanyIdOrNull()); }
 
     /**
      * TD7: effektív paraméter-lookup. Cég-kontextusban először a cég-specifikus sor

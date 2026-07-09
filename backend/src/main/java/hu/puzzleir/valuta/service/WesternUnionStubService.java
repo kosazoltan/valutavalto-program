@@ -60,7 +60,7 @@ public class WesternUnionStubService {
     }
 
     private String resolveProviderCode() {
-        return systemParameterRepository.findByParameterKey("WU_PROVIDER_MODE")
+        return systemParameterRepository.findByParameterKeyAndCompanyIdIsNull("WU_PROVIDER_MODE")
                 .map(SystemParameter::getParameterValue)
                 .map(v -> v.toUpperCase(Locale.ROOT).trim())
                 .filter(v -> !v.isBlank())

@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -59,7 +60,6 @@ class SystemParameterServiceTest {
 
             assertThat(service.getValue(KEY)).isEqualTo("500000");
             verify(repo, never()).findByParameterKeyAndCompanyIdIsNull(anyString());
-            verify(repo, never()).findByParameterKey(anyString());
         }
     }
 
@@ -134,8 +134,43 @@ class SystemParameterServiceTest {
 
         assertThat(saved.getParameterValue()).isEqualTo("2000000");
         assertThat(saved.getCompanyId()).isNull();
-        verify(repo, never()).findByParameterKey(anyString());
         verify(repo, never()).findByParameterKeyAndCompanyId(anyString(), any());
+    }
+
+    @Test
+    @DisplayName("listAll — csak a globál + aktuális cég paramétereit kéri")
+    void listAll_usesVisibleToCurrentCompany() {
+        SystemParameter companyParam = param("company", COMPANY_A);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findAllVisibleTo(COMPANY_A)).thenReturn(List.of(companyParam));
+
+            assertThat(service.listAll()).containsExactly(companyParam);
+        }
+    }
+
+    @Test
+    @DisplayName("listActive — csak a globál + aktuális cég aktív paramétereit kéri")
+    void listActive_usesVisibleToCurrentCompany() {
+        SystemParameter companyParam = param("company", COMPANY_A);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findActiveVisibleTo(COMPANY_A)).thenReturn(List.of(companyParam));
+
+            assertThat(service.listActive()).containsExactly(companyParam);
+        }
+    }
+
+    @Test
+    @DisplayName("listByCategory — csak a globál + aktuális cég adott kategóriájú paramétereit kéri")
+    void listByCategory_usesVisibleToCurrentCompany() {
+        SystemParameter companyParam = param("company", COMPANY_A);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findByCategoryVisibleTo("TRANSACTION", COMPANY_A)).thenReturn(List.of(companyParam));
+
+            assertThat(service.listByCategory("TRANSACTION")).containsExactly(companyParam);
+        }
     }
 
     @Test
