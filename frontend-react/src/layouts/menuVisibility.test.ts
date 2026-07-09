@@ -233,6 +233,12 @@ describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-h
     ).toEqual(['belso_ellenor', 'foertektar', 'ugyvezeto'])
   })
 
+  it('FK-028: /mnb-settlement-rates → item-szintű [belso_ellenor, foertektar, ugyvezeto]', () => {
+    expect(
+      [...(effectiveCanonicalRolesForPath(menuGroups, '/mnb-settlement-rates') ?? [])].sort(),
+    ).toEqual(['belso_ellenor', 'foertektar', 'ugyvezeto'])
+  })
+
   // Fail-safe: a MenuRoleGate fail-open, ha az útvonalnak nincs menü-szerepköre. Ez a teszt
   // garantálja, hogy MINDEN App.tsx-ben MenuRoleGate-tel védett admin-route-nak van definiált
   // (nem undefined, nem üres) szerepkör-megszorítása — különben a route csendben védtelen lenne.
@@ -254,6 +260,7 @@ describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-h
       '/police-requests',
       '/seal-tracking',
       '/admin/branches',
+      '/mnb-settlement-rates',
     ]
     for (const path of gatedPaths) {
       const roles = effectiveCanonicalRolesForPath(menuGroups, path)

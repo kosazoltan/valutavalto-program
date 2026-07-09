@@ -404,6 +404,38 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/mnb-settlement-rates': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['list']
+    put: operations['update_10']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/mnb-settlement-rates/publish': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put: operations['publish']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/machine-config/{workstationCode}': {
     parameters: {
       query?: never
@@ -572,7 +604,7 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    put: operations['update_10']
+    put: operations['update_11']
     post?: never
     delete: operations['delete_9']
     options?: never
@@ -652,7 +684,7 @@ export interface paths {
       cookie?: never
     }
     get: operations['getById_7']
-    put: operations['update_11']
+    put: operations['update_12']
     post?: never
     delete: operations['delete_10']
     options?: never
@@ -685,7 +717,7 @@ export interface paths {
     }
     get?: never
     /** Compliance-kérdés módosítása */
-    put: operations['update_12']
+    put: operations['update_13']
     post?: never
     delete?: never
     options?: never
@@ -718,7 +750,7 @@ export interface paths {
       cookie?: never
     }
     get: operations['getById_8']
-    put: operations['update_13']
+    put: operations['update_14']
     post?: never
     delete: operations['delete_11']
     options?: never
@@ -734,7 +766,7 @@ export interface paths {
       cookie?: never
     }
     get: operations['getById_9']
-    put: operations['update_14']
+    put: operations['update_15']
     post?: never
     delete: operations['delete_12']
     options?: never
@@ -782,7 +814,7 @@ export interface paths {
       cookie?: never
     }
     get: operations['getById_10']
-    put: operations['update_15']
+    put: operations['update_16']
     post?: never
     delete: operations['delete_13']
     options?: never
@@ -846,7 +878,7 @@ export interface paths {
       cookie?: never
     }
     get: operations['get']
-    put: operations['update_16']
+    put: operations['update_17']
     post?: never
     delete?: never
     options?: never
@@ -862,7 +894,7 @@ export interface paths {
       cookie?: never
     }
     get: operations['findById_1']
-    put: operations['update_17']
+    put: operations['update_18']
     post?: never
     delete: operations['delete_14']
     options?: never
@@ -941,7 +973,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list']
+    get: operations['list_1']
     put?: never
     post: operations['create']
     delete?: never
@@ -957,7 +989,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_1']
+    get: operations['list_2']
     put?: never
     post: operations['create_1']
     delete?: never
@@ -1279,7 +1311,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_2']
+    get: operations['list_3']
     put?: never
     post: operations['create_2']
     delete?: never
@@ -1295,7 +1327,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_3']
+    get: operations['list_4']
     put?: never
     post: operations['createSession']
     delete?: never
@@ -1423,7 +1455,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_4']
+    get: operations['list_5']
     put?: never
     post: operations['create_4']
     delete?: never
@@ -1439,7 +1471,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_5']
+    get: operations['list_6']
     put?: never
     post: operations['create_5']
     delete?: never
@@ -1647,7 +1679,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_6']
+    get: operations['list_7']
     put?: never
     post: operations['create_7']
     delete?: never
@@ -1807,7 +1839,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_7']
+    get: operations['list_8']
     put?: never
     post: operations['create_9']
     delete?: never
@@ -1839,7 +1871,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_8']
+    get: operations['list_9']
     put?: never
     post: operations['create_10']
     delete?: never
@@ -2547,7 +2579,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_9']
+    get: operations['list_10']
     put?: never
     post: operations['create_12']
     delete?: never
@@ -3126,7 +3158,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_10']
+    get: operations['list_11']
     put?: never
     post: operations['create_14']
     delete?: never
@@ -3158,7 +3190,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_11']
+    get: operations['list_12']
     put?: never
     post: operations['create_15']
     delete?: never
@@ -3174,7 +3206,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_12']
+    get: operations['list_13']
     put?: never
     post: operations['create_16']
     delete?: never
@@ -3190,7 +3222,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_13']
+    get: operations['list_14']
     put?: never
     post: operations['create_17']
     delete?: never
@@ -3238,7 +3270,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_14']
+    get: operations['list_15']
     put?: never
     post: operations['send']
     delete?: never
@@ -4201,7 +4233,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    post: operations['update_18']
+    post: operations['update_19']
     delete?: never
     options?: never
     head?: never
@@ -4631,7 +4663,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_15']
+    get: operations['list_16']
     put?: never
     post: operations['create_19']
     delete?: never
@@ -4647,7 +4679,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_16']
+    get: operations['list_17']
     put?: never
     post: operations['upload']
     delete?: never
@@ -4663,7 +4695,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_17']
+    get: operations['list_18']
     put?: never
     post: operations['create_20']
     delete?: never
@@ -5470,7 +5502,7 @@ export interface paths {
       cookie?: never
     }
     /** Compliance szűrő-sablonok listája (criteria visszatöltéshez) */
-    get: operations['list_18']
+    get: operations['list_19']
     put?: never
     /** Compliance szűrő-sablon mentése (dátum nélkül, cégszinten közös) */
     post: operations['create_22']
@@ -5488,7 +5520,7 @@ export interface paths {
       cookie?: never
     }
     /** Keresés-audit napló listája (criteria lenyitáshoz, snapshot nélkül) */
-    get: operations['list_19']
+    get: operations['list_20']
     put?: never
     /** Keresés-eredmény mentése az audit naplóba (snapshot + cím + leírás) */
     post: operations['create_23']
@@ -5506,7 +5538,7 @@ export interface paths {
       cookie?: never
     }
     /** Összes compliance-kérdés (inaktív is) — compliance-nézet */
-    get: operations['list_20']
+    get: operations['list_21']
     put?: never
     /** Compliance-kérdés létrehozása */
     post: operations['create_24']
@@ -5573,7 +5605,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_21']
+    get: operations['list_22']
     put?: never
     post: operations['create_26']
     delete?: never
@@ -6427,7 +6459,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_22']
+    get: operations['list_23']
     put?: never
     post: operations['create_29']
     delete?: never
@@ -6507,7 +6539,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_23']
+    get: operations['list_24']
     put?: never
     post: operations['create_30']
     delete?: never
@@ -6571,7 +6603,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_24']
+    get: operations['list_25']
     put?: never
     post: operations['create_31']
     delete?: never
@@ -7035,7 +7067,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_25']
+    get: operations['list_26']
     put?: never
     post: operations['create_34']
     delete?: never
@@ -7099,7 +7131,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_26']
+    get: operations['list_27']
     put?: never
     post: operations['create_35']
     delete?: never
@@ -9668,7 +9700,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_27']
+    get: operations['list_28']
     put?: never
     post?: never
     delete?: never
@@ -10622,6 +10654,22 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/mnb-settlement-rates/mnb-query': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['mnbQuery']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/mfa/status': {
     parameters: {
       query?: never
@@ -11097,7 +11145,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_28']
+    get: operations['list_29']
     put?: never
     post?: never
     delete?: never
@@ -12121,7 +12169,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_29']
+    get: operations['list_30']
     put?: never
     post?: never
     delete?: never
@@ -12729,7 +12777,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_30']
+    get: operations['list_31']
     put?: never
     post?: never
     delete?: never
@@ -14282,7 +14330,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_31']
+    get: operations['list_32']
     put?: never
     post?: never
     delete?: never
@@ -15619,6 +15667,20 @@ export interface components {
       /** Format: date-time */
       updatedAt?: string
     }
+    Item: {
+      currencyCode: string
+      officialRate: number
+    }
+    MnbSettlementRateUpdateRequest: {
+      items: components['schemas']['Item'][]
+    }
+    MnbSettlementRateDto: {
+      currencyCode?: string
+      currencyName?: string
+      officialRate?: number
+      /** Format: date-time */
+      availableToOfficesAt?: string
+    }
     MachineConfigUpdateRequest: {
       configJson?: string
       dailyReportPassword?: string
@@ -16842,11 +16904,11 @@ export interface components {
       /** Format: int64 */
       version?: number
       /** Format: uuid */
-      branchId?: string
+      companyId?: string
       /** Format: int32 */
       territoryId?: number
       /** Format: uuid */
-      companyId?: string
+      branchId?: string
     }
     CountItemRequest: {
       /** Format: int32 */
@@ -21130,8 +21192,8 @@ export interface components {
       version?: number
       /** Format: date-time */
       updatedAt?: string
-      dailyChange?: number
       highBalance?: boolean
+      dailyChange?: number
       lowBalance?: boolean
     }
     DailyClosingReport: {
@@ -21616,12 +21678,12 @@ export interface components {
       /** Format: date-time */
       validFrom?: string
       source?: string
-      /** Format: date-time */
-      lastUpdated?: string
       /** @deprecated */
       bankBuyRate?: number
       /** @deprecated */
       bankSellRate?: number
+      /** Format: date-time */
+      lastUpdated?: string
     }
     CompetitorRateDTO: {
       /** Format: uuid */
@@ -21896,6 +21958,10 @@ export interface components {
       /** Format: int32 */
       totalTransactions?: number
       currencyLines?: components['schemas']['MnbCurrencyLineDto'][]
+    }
+    MnbQueryRateDto: {
+      currencyCode?: string
+      officialRate?: number
     }
     MfaStatusResponse: {
       enabled?: boolean
@@ -24297,6 +24363,74 @@ export interface operations {
       }
     }
   }
+  list: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['MnbSettlementRateDto'][]
+        }
+      }
+    }
+  }
+  update_10: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MnbSettlementRateUpdateRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['MnbSettlementRateDto'][]
+        }
+      }
+    }
+  }
+  publish: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MnbSettlementRateUpdateRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['MnbSettlementRateDto'][]
+        }
+      }
+    }
+  }
   getConfig: {
     parameters: {
       query?: never
@@ -24765,7 +24899,7 @@ export interface operations {
       }
     }
   }
-  update_10: {
+  update_11: {
     parameters: {
       query?: never
       header?: never
@@ -24976,7 +25110,7 @@ export interface operations {
       }
     }
   }
-  update_11: {
+  update_12: {
     parameters: {
       query?: never
       header?: never
@@ -25050,7 +25184,7 @@ export interface operations {
       }
     }
   }
-  update_12: {
+  update_13: {
     parameters: {
       query?: never
       header?: never
@@ -25124,7 +25258,7 @@ export interface operations {
       }
     }
   }
-  update_13: {
+  update_14: {
     parameters: {
       query?: never
       header?: never
@@ -25192,7 +25326,7 @@ export interface operations {
       }
     }
   }
-  update_14: {
+  update_15: {
     parameters: {
       query?: never
       header?: never
@@ -25353,7 +25487,7 @@ export interface operations {
       }
     }
   }
-  update_15: {
+  update_16: {
     parameters: {
       query?: never
       header?: never
@@ -25538,7 +25672,7 @@ export interface operations {
       }
     }
   }
-  update_16: {
+  update_17: {
     parameters: {
       query?: never
       header?: never
@@ -25586,7 +25720,7 @@ export interface operations {
       }
     }
   }
-  update_17: {
+  update_18: {
     parameters: {
       query?: never
       header?: never
@@ -25774,7 +25908,7 @@ export interface operations {
       }
     }
   }
-  list: {
+  list_1: {
     parameters: {
       query?: {
         q?: string
@@ -25820,7 +25954,7 @@ export interface operations {
       }
     }
   }
-  list_1: {
+  list_2: {
     parameters: {
       query?: never
       header?: never
@@ -26354,7 +26488,7 @@ export interface operations {
       }
     }
   }
-  list_2: {
+  list_3: {
     parameters: {
       query?: never
       header?: never
@@ -26398,7 +26532,7 @@ export interface operations {
       }
     }
   }
-  list_3: {
+  list_4: {
     parameters: {
       query?: never
       header?: never
@@ -26636,7 +26770,7 @@ export interface operations {
       }
     }
   }
-  list_4: {
+  list_5: {
     parameters: {
       query?: never
       header?: never
@@ -26680,7 +26814,7 @@ export interface operations {
       }
     }
   }
-  list_5: {
+  list_6: {
     parameters: {
       query?: never
       header?: never
@@ -27042,7 +27176,7 @@ export interface operations {
       }
     }
   }
-  list_6: {
+  list_7: {
     parameters: {
       query?: {
         status?: 'PENDING' | 'PICKED_UP' | 'DELIVERED' | 'CONFIRMED'
@@ -27329,7 +27463,7 @@ export interface operations {
       }
     }
   }
-  list_7: {
+  list_8: {
     parameters: {
       query?: never
       header?: never
@@ -27399,7 +27533,7 @@ export interface operations {
       }
     }
   }
-  list_8: {
+  list_9: {
     parameters: {
       query?: never
       header?: never
@@ -28535,7 +28669,7 @@ export interface operations {
       }
     }
   }
-  list_9: {
+  list_10: {
     parameters: {
       query?: never
       header?: never
@@ -29547,7 +29681,7 @@ export interface operations {
       }
     }
   }
-  list_10: {
+  list_11: {
     parameters: {
       query?: never
       header?: never
@@ -29615,7 +29749,7 @@ export interface operations {
       }
     }
   }
-  list_11: {
+  list_12: {
     parameters: {
       query: {
         branchId: string
@@ -29663,7 +29797,7 @@ export interface operations {
       }
     }
   }
-  list_12: {
+  list_13: {
     parameters: {
       query?: never
       header?: never
@@ -29707,7 +29841,7 @@ export interface operations {
       }
     }
   }
-  list_13: {
+  list_14: {
     parameters: {
       query?: never
       header?: never
@@ -29819,7 +29953,7 @@ export interface operations {
       }
     }
   }
-  list_14: {
+  list_15: {
     parameters: {
       query?: never
       header?: never
@@ -31343,7 +31477,7 @@ export interface operations {
       }
     }
   }
-  update_18: {
+  update_19: {
     parameters: {
       query?: never
       header?: never
@@ -32245,7 +32379,7 @@ export interface operations {
       }
     }
   }
-  list_15: {
+  list_16: {
     parameters: {
       query?: never
       header?: never
@@ -32291,7 +32425,7 @@ export interface operations {
       }
     }
   }
-  list_16: {
+  list_17: {
     parameters: {
       query?: {
         entityType?: string
@@ -32344,7 +32478,7 @@ export interface operations {
       }
     }
   }
-  list_17: {
+  list_18: {
     parameters: {
       query?: {
         openOnly?: boolean
@@ -33600,7 +33734,7 @@ export interface operations {
       }
     }
   }
-  list_18: {
+  list_19: {
     parameters: {
       query?: never
       header?: never
@@ -33644,7 +33778,7 @@ export interface operations {
       }
     }
   }
-  list_19: {
+  list_20: {
     parameters: {
       query?: never
       header?: never
@@ -33688,7 +33822,7 @@ export interface operations {
       }
     }
   }
-  list_20: {
+  list_21: {
     parameters: {
       query?: never
       header?: never
@@ -33846,7 +33980,7 @@ export interface operations {
       }
     }
   }
-  list_21: {
+  list_22: {
     parameters: {
       query?: never
       header?: never
@@ -35245,7 +35379,7 @@ export interface operations {
       }
     }
   }
-  list_22: {
+  list_23: {
     parameters: {
       query?: never
       header?: never
@@ -35431,7 +35565,7 @@ export interface operations {
       }
     }
   }
-  list_23: {
+  list_24: {
     parameters: {
       query?: {
         q?: string
@@ -35555,7 +35689,7 @@ export interface operations {
       }
     }
   }
-  list_24: {
+  list_25: {
     parameters: {
       query?: {
         status?: 'PENDING' | 'APPROVED' | 'EXECUTED' | 'CANCELLED'
@@ -36319,7 +36453,7 @@ export interface operations {
       }
     }
   }
-  list_25: {
+  list_26: {
     parameters: {
       query?: never
       header?: never
@@ -36457,7 +36591,7 @@ export interface operations {
       }
     }
   }
-  list_26: {
+  list_27: {
     parameters: {
       query?: never
       header?: never
@@ -40163,7 +40297,7 @@ export interface operations {
       }
     }
   }
-  list_27: {
+  list_28: {
     parameters: {
       query?: {
         transactionId?: string
@@ -41492,6 +41626,26 @@ export interface operations {
       }
     }
   }
+  mnbQuery: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['MnbQueryRateDto'][]
+        }
+      }
+    }
+  }
   status: {
     parameters: {
       query?: never
@@ -42135,7 +42289,7 @@ export interface operations {
       }
     }
   }
-  list_28: {
+  list_29: {
     parameters: {
       query?: never
       header?: never
@@ -43554,7 +43708,7 @@ export interface operations {
       }
     }
   }
-  list_29: {
+  list_30: {
     parameters: {
       query: {
         branchId: string
@@ -44403,7 +44557,7 @@ export interface operations {
       }
     }
   }
-  list_30: {
+  list_31: {
     parameters: {
       query?: {
         currencyId?: number
@@ -46514,7 +46668,7 @@ export interface operations {
       }
     }
   }
-  list_31: {
+  list_32: {
     parameters: {
       query?: never
       header?: never

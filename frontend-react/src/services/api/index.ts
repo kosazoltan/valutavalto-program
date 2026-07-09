@@ -21,6 +21,7 @@ export * from './trades'
 export * from './hrk'
 export * from './competitor-rates'
 export * from './incomeSourceDocs'
+export * from './mnbSettlementRates'
 
 export { publicApi } from './public'
 export type {

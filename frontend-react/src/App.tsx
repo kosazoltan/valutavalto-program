@@ -42,6 +42,7 @@ const CentralWorkstationPage = lazy(() => import('./pages/central/CentralWorksta
 const ClosingControlPage = lazy(() => import('./pages/central/ClosingControlPage'))
 const ReceivedDataOverviewPage = lazy(() => import('./pages/central/ReceivedDataOverviewPage'))
 const CentralVaultDashboard = lazy(() => import('./pages/foertektar/CentralVaultDashboard'))
+const MnbSettlementRatePage = lazy(() => import('./pages/foertektar/MnbSettlementRatePage'))
 const RateMasterWorkflowPage = lazy(() => import('./pages/rate-management/RateMasterWorkflowPage'))
 const MnbReportsPage = lazy(() => import('./pages/mnb/MnbReportsPage'))
 const CashierKpiPage = lazy(() => import('./pages/statistics/CashierKpiPage'))
@@ -591,6 +592,14 @@ export default function App() {
                   }
                 />
                 <Route path="/foertektar" element={<CentralVaultDashboard />} />
+                <Route
+                  path="/mnb-settlement-rates"
+                  element={
+                    <MenuRoleGate path="/mnb-settlement-rates">
+                      <MnbSettlementRatePage />
+                    </MenuRoleGate>
+                  }
+                />
                 <Route path="/rate-management/workflow" element={<RateMasterWorkflowPage />} />
                 <Route path="/mnb/reports" element={<MnbReportsPage />} />
                 <Route path="/statistics/cashier-kpi" element={<CashierKpiPage />} />

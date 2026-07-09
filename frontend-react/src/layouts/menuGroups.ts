@@ -92,6 +92,12 @@ export const menuGroups: MenuGroup[] = [
       { path: '/cashier-stocks', label: 'Országos készlet', icon: Wallet },
       { path: '/stock-snapshot', label: 'Készlet-snapshot', icon: FileText },
       { path: '/vault-stocktake', label: 'Értéktár leltár', icon: Package },
+      {
+        path: '/mnb-settlement-rates',
+        label: 'MNB árfolyamok rögzítése',
+        icon: TrendingUp,
+        canonicalRoles: ['foertektar', 'belso_ellenor', 'ugyvezeto'],
+      },
       { path: '/bank-orders', label: 'Banki rendelések', icon: Building2 },
       // Bali Henriett 2. pont (2026-05-27, Copilot #891): a főértéktárosnak is
       // elérhetőnek kell lennie (endpoint engedi FOERTEKTAR + UGYVEZETO + ADMIN-t).
