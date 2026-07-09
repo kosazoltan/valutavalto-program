@@ -21,7 +21,7 @@ afterEach(() => {
 })
 
 describe('downloadBlob', () => {
-  it('createObjectURL → <a download> click → revokeObjectURL', () => {
+  it('createObjectURL → <a download> click → revokeObjectURL', async () => {
     const clickedAnchor: { current: HTMLAnchorElement | null } = { current: null }
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
       this: HTMLAnchorElement,
@@ -37,6 +37,8 @@ describe('downloadBlob', () => {
     expect(clickedAnchor.current?.download).toBe('riport.csv')
     expect(clickedAnchor.current?.href).toBe('blob:mock')
     expect(clickedAnchor.current?.isConnected).toBe(false)
+    expect(revokeObjectURL).not.toHaveBeenCalled()
+    await new Promise((resolve) => setTimeout(resolve, 0))
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock')
   })
 })

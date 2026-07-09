@@ -204,6 +204,52 @@ describe('ComplianceTransactionsPage', () => {
     )
   })
 
+  it('bukott keresés nem promótálja az activeCriteria-t', async () => {
+    const user = userEvent.setup()
+    mocks.search
+      .mockResolvedValueOnce(paged([row()]))
+      .mockRejectedValueOnce(new Error('keresés bukott'))
+    render(<ComplianceTransactionsPage />)
+
+    await user.type(screen.getByTestId('filter-startDate'), '2026-07-01')
+    await user.click(screen.getByTestId('search-button'))
+    await waitFor(() => {
+      expect(mocks.search).toHaveBeenCalledWith({ startDate: '2026-07-01' }, 0, 50)
+    })
+
+    await user.type(screen.getByTestId('filter-endDate'), '2026-07-08')
+    await user.click(screen.getByTestId('search-button'))
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith('Keresési hiba', 'keresés bukott')
+    })
+    await user.click(screen.getByTestId('export-csv'))
+
+    await waitFor(() => {
+      expect(mocks.exportCsv).toHaveBeenCalledWith({ startDate: '2026-07-01' })
+    })
+  })
+
+  it('első bukott keresés után az export disabled marad', async () => {
+    const user = userEvent.setup()
+    mocks.search.mockRejectedValueOnce(new Error('első hiba'))
+    render(<ComplianceTransactionsPage />)
+
+    expect(screen.getByTestId('export-csv')).toBeDisabled()
+    expect(screen.getByTestId('save-audit')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Sablon mentése' })).toBeDisabled()
+
+    await user.type(screen.getByTestId('filter-startDate'), '2026-07-01')
+    await user.click(screen.getByTestId('search-button'))
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith('Keresési hiba', 'első hiba')
+    })
+    expect(screen.getByTestId('export-csv')).toBeDisabled()
+    expect(screen.getByTestId('save-audit')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Sablon mentése' })).toBeDisabled()
+  })
+
   it('lapozás: Következő az activeCriteria-val és page+1-gyel', async () => {
     const user = userEvent.setup()
     mocks.search.mockResolvedValue(paged([row()], 3, 120))
@@ -289,6 +335,31 @@ describe('ComplianceTransactionsPage', () => {
       'exporthiba',
     )
     expect(mocks.downloadBlob).not.toHaveBeenCalled()
+  })
+
+  it('export hiba: Blob-hibatestből olvasott üzenetet mutat', async () => {
+    const user = userEvent.setup()
+    mocks.exportCsv.mockRejectedValue({
+      response: {
+        data: new window.Blob([JSON.stringify({ message: 'Blob export üzenet' })], {
+          type: 'application/json',
+        }),
+      },
+    })
+    render(<ComplianceTransactionsPage />)
+
+    await user.click(screen.getByTestId('search-button'))
+    await screen.findByTestId('tx-row-1')
+    await user.click(screen.getByTestId('export-csv'))
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith('Export sikertelen', 'Blob export üzenet')
+    })
+    expect(mocks.loggerError).toHaveBeenCalledWith(
+      'ComplianceTransactionsPage',
+      'Export sikertelen:',
+      'Blob export üzenet',
+    )
   })
 
   it('üres találat: Nincs a szűrőknek megfelelő tranzakció', async () => {
@@ -477,6 +548,42 @@ describe('ComplianceTransactionsPage', () => {
       pdf,
       'compliance_kereses_audit_aud-1.pdf',
       'application/pdf',
+    )
+  })
+
+  it('audit PDF hiba: Blob-hibatestből olvasott üzenetet mutat', async () => {
+    const user = userEvent.setup()
+    mocks.listAudit.mockResolvedValue([
+      {
+        id: 'aud-1',
+        title: 'PEP keresés',
+        description: null,
+        criteria: { pepOnly: true },
+        resultCount: 3,
+        createdByWorkerCode: 'W001',
+        createdAt: '2026-07-09T10:00:00',
+      },
+    ])
+    mocks.downloadAuditPdf.mockRejectedValue({
+      response: {
+        data: new window.Blob([JSON.stringify({ message: 'Blob PDF üzenet' })], {
+          type: 'application/json',
+        }),
+      },
+    })
+    render(<ComplianceTransactionsPage />)
+
+    await user.click(screen.getByTestId('toggle-audit-list'))
+    await screen.findByText('PEP keresés')
+    await user.click(screen.getByTestId('audit-pdf-aud-1'))
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith('Audit PDF hiba', 'Blob PDF üzenet')
+    })
+    expect(mocks.loggerError).toHaveBeenCalledWith(
+      'ComplianceTransactionsPage',
+      'Audit PDF letöltése sikertelen:',
+      'Blob PDF üzenet',
     )
   })
 })
