@@ -362,15 +362,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "         AND t.handlingFeeOverrideType <> hu.puzzleir.valuta.entity.HandlingFeeOverrideType.NONE)) " +
            "AND (:onBehalfOfOtherOnly = false OR t.customerOnOwnBehalf = false) " +
            "AND (:pepOnly = false OR t.customerIsPep = true) " +
-           "AND (:customerName IS NULL OR LOWER(t.customerName) LIKE LOWER(CONCAT('%', :customerName, '%'))) " +
+           "AND (:customerName IS NULL OR LOWER(t.customerName) LIKE LOWER(CONCAT('%', CAST(:customerName AS string), '%'))) " +
            "AND (:customerBirthDate IS NULL OR t.customerBirthDate = :customerBirthDate) " +
-           "AND (:customerNationality IS NULL OR LOWER(t.customerNationality) LIKE LOWER(CONCAT('%', :customerNationality, '%'))) " +
-           "AND (:customerDocumentNumber IS NULL OR LOWER(t.customerDocumentNumber) LIKE LOWER(CONCAT('%', :customerDocumentNumber, '%'))) " +
+           "AND (:customerNationality IS NULL OR LOWER(t.customerNationality) LIKE LOWER(CONCAT('%', CAST(:customerNationality AS string), '%'))) " +
+           "AND (:customerDocumentNumber IS NULL OR LOWER(t.customerDocumentNumber) LIKE LOWER(CONCAT('%', CAST(:customerDocumentNumber AS string), '%'))) " +
            "AND (:legalEntityOnly = false OR t.isLegalEntityCustomer = true) " +
-           "AND (:legalEntityName IS NULL OR LOWER(t.legalEntityName) LIKE LOWER(CONCAT('%', :legalEntityName, '%'))) " +
-           "AND (:legalEntityTaxNumber IS NULL OR LOWER(t.legalEntityTaxNumber) LIKE LOWER(CONCAT('%', :legalEntityTaxNumber, '%'))) " +
-           "AND (:legalDeedNumber IS NULL OR LOWER(t.legalDeedNumber) LIKE LOWER(CONCAT('%', :legalDeedNumber, '%'))) " +
-           "AND (:legalEntitySeat IS NULL OR LOWER(t.legalEntitySeat) LIKE LOWER(CONCAT('%', :legalEntitySeat, '%'))) " +
+           "AND (:legalEntityName IS NULL OR LOWER(t.legalEntityName) LIKE LOWER(CONCAT('%', CAST(:legalEntityName AS string), '%'))) " +
+           "AND (:legalEntityTaxNumber IS NULL OR LOWER(t.legalEntityTaxNumber) LIKE LOWER(CONCAT('%', CAST(:legalEntityTaxNumber AS string), '%'))) " +
+           "AND (:legalDeedNumber IS NULL OR LOWER(t.legalDeedNumber) LIKE LOWER(CONCAT('%', CAST(:legalDeedNumber AS string), '%'))) " +
+           "AND (:legalEntitySeat IS NULL OR LOWER(t.legalEntitySeat) LIKE LOWER(CONCAT('%', CAST(:legalEntitySeat AS string), '%'))) " +
            "ORDER BY t.transactionDate DESC, t.transactionTime DESC",
            countQuery = "SELECT COUNT(t) FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
@@ -389,15 +389,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "         AND t.handlingFeeOverrideType <> hu.puzzleir.valuta.entity.HandlingFeeOverrideType.NONE)) " +
            "AND (:onBehalfOfOtherOnly = false OR t.customerOnOwnBehalf = false) " +
            "AND (:pepOnly = false OR t.customerIsPep = true) " +
-           "AND (:customerName IS NULL OR LOWER(t.customerName) LIKE LOWER(CONCAT('%', :customerName, '%'))) " +
+           "AND (:customerName IS NULL OR LOWER(t.customerName) LIKE LOWER(CONCAT('%', CAST(:customerName AS string), '%'))) " +
            "AND (:customerBirthDate IS NULL OR t.customerBirthDate = :customerBirthDate) " +
-           "AND (:customerNationality IS NULL OR LOWER(t.customerNationality) LIKE LOWER(CONCAT('%', :customerNationality, '%'))) " +
-           "AND (:customerDocumentNumber IS NULL OR LOWER(t.customerDocumentNumber) LIKE LOWER(CONCAT('%', :customerDocumentNumber, '%'))) " +
+           "AND (:customerNationality IS NULL OR LOWER(t.customerNationality) LIKE LOWER(CONCAT('%', CAST(:customerNationality AS string), '%'))) " +
+           "AND (:customerDocumentNumber IS NULL OR LOWER(t.customerDocumentNumber) LIKE LOWER(CONCAT('%', CAST(:customerDocumentNumber AS string), '%'))) " +
            "AND (:legalEntityOnly = false OR t.isLegalEntityCustomer = true) " +
-           "AND (:legalEntityName IS NULL OR LOWER(t.legalEntityName) LIKE LOWER(CONCAT('%', :legalEntityName, '%'))) " +
-           "AND (:legalEntityTaxNumber IS NULL OR LOWER(t.legalEntityTaxNumber) LIKE LOWER(CONCAT('%', :legalEntityTaxNumber, '%'))) " +
-           "AND (:legalDeedNumber IS NULL OR LOWER(t.legalDeedNumber) LIKE LOWER(CONCAT('%', :legalDeedNumber, '%'))) " +
-           "AND (:legalEntitySeat IS NULL OR LOWER(t.legalEntitySeat) LIKE LOWER(CONCAT('%', :legalEntitySeat, '%')))")
+           "AND (:legalEntityName IS NULL OR LOWER(t.legalEntityName) LIKE LOWER(CONCAT('%', CAST(:legalEntityName AS string), '%'))) " +
+           "AND (:legalEntityTaxNumber IS NULL OR LOWER(t.legalEntityTaxNumber) LIKE LOWER(CONCAT('%', CAST(:legalEntityTaxNumber AS string), '%'))) " +
+           "AND (:legalDeedNumber IS NULL OR LOWER(t.legalDeedNumber) LIKE LOWER(CONCAT('%', CAST(:legalDeedNumber AS string), '%'))) " +
+           "AND (:legalEntitySeat IS NULL OR LOWER(t.legalEntitySeat) LIKE LOWER(CONCAT('%', CAST(:legalEntitySeat AS string), '%')))")
     Page<Transaction> searchComplianceTransactions(
         @Param("companyId") UUID companyId,
         @Param("branchId") UUID branchId,
