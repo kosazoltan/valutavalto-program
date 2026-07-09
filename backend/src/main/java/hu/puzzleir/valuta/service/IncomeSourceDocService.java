@@ -31,7 +31,7 @@ import java.util.regex.Pattern;
 @Slf4j
 public class IncomeSourceDocService {
 
-    public static final String RECIPIENTS_PARAM_PREFIX = "INCOME_PROOF_DOC_RECIPIENTS.";
+    public static final String RECIPIENTS_PARAM_KEY = "INCOME_PROOF_DOC_RECIPIENTS";
     private static final Set<String> ALLOWED_MIME = Set.of("image/jpeg", "image/png", "application/pdf");
     private static final Pattern EMAIL_RX = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
@@ -115,7 +115,7 @@ public class IncomeSourceDocService {
     }
 
     private List<String> resolveRecipients(UUID companyId) {
-        String raw = systemParameterService.getValue(RECIPIENTS_PARAM_PREFIX + companyId, "");
+        String raw = systemParameterService.getCompanyValue(RECIPIENTS_PARAM_KEY, companyId, "");
         List<String> list = Arrays.stream(raw.split(","))
                 .map(String::trim).filter(s -> !s.isEmpty()).toList();
         if (list.isEmpty()) {

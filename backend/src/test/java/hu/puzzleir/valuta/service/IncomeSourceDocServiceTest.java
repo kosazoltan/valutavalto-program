@@ -75,8 +75,8 @@ class IncomeSourceDocServiceTest {
     }
 
     private void stubRecipients(String raw) {
-        when(systemParameterService.getValue(
-                eq(IncomeSourceDocService.RECIPIENTS_PARAM_PREFIX + COMPANY_ID), anyString()))
+        when(systemParameterService.getCompanyValue(
+                eq(IncomeSourceDocService.RECIPIENTS_PARAM_KEY), eq(COMPANY_ID), anyString()))
                 .thenReturn(raw);
     }
 
@@ -105,8 +105,8 @@ class IncomeSourceDocServiceTest {
             // audit EMAILED hívatás — üzenet NEM tartalmazhat base64 részletet
             verify(auditLogService).log(eq("INCOME_PROOF_DOC_EMAILED"), anyString(), eq("TX-001"));
             // címzettek feloldása egyetlen systemParameter hívás (verifyNoMoreInteractions előtt)
-            verify(systemParameterService).getValue(
-                    eq(IncomeSourceDocService.RECIPIENTS_PARAM_PREFIX + COMPANY_ID), anyString());
+            verify(systemParameterService).getCompanyValue(
+                    eq(IncomeSourceDocService.RECIPIENTS_PARAM_KEY), eq(COMPANY_ID), anyString());
             // zero extra collaborators
             verifyNoMoreInteractions(systemParameterService, auditLogService, amlService,
                     valueBandService);

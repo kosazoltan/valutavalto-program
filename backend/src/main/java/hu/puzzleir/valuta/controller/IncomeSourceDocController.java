@@ -62,8 +62,8 @@ public class IncomeSourceDocController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> getRecipients() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        String raw = systemParameterService.getValue(
-                IncomeSourceDocService.RECIPIENTS_PARAM_PREFIX + companyId, "");
+        String raw = systemParameterService.getCompanyValue(
+                IncomeSourceDocService.RECIPIENTS_PARAM_KEY, companyId, "");
         List<String> list = Arrays.stream(raw.split(","))
                 .map(String::trim).filter(s -> !s.isEmpty()).toList();
         return ResponseEntity.ok(Map.of("recipients", list));
@@ -94,8 +94,8 @@ public class IncomeSourceDocController {
                 throw new ValidationException("Érvénytelen címzett email: " + email);
             }
         }
-        systemParameterService.upsert(
-                IncomeSourceDocService.RECIPIENTS_PARAM_PREFIX + companyId,
+        systemParameterService.upsertCompanyValue(
+                IncomeSourceDocService.RECIPIENTS_PARAM_KEY, companyId,
                 String.join(",", list), "COMPLIANCE",
                 "FS-7 jövedelemforrás-igazolás compliance címzettek");
         auditLogService.log("INCOME_PROOF_DOC_RECIPIENTS_UPDATED",
