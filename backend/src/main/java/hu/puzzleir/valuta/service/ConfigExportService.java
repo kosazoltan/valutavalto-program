@@ -151,15 +151,31 @@ public class ConfigExportService {
         if (bundle.getSystemParams() != null) {
             for (Map.Entry<String, String> entry : bundle.getSystemParams().entrySet()) {
                 try {
-                    Optional<SystemParameter> existing = systemParameterRepository
-                        .findByParameterKeyAndCompanyId(entry.getKey(), companyId)
-                        .or(() -> systemParameterRepository.findByParameterKeyAndCompanyIdIsNull(entry.getKey()));
-                    if (existing.isPresent()) {
-                        existing.get().setParameterValue(entry.getValue());
-                        systemParameterRepository.save(existing.get());
+                    Optional<SystemParameter> scoped = systemParameterRepository
+                        .findByParameterKeyAndCompanyId(entry.getKey(), companyId);
+                    if (scoped.isPresent()) {
+                        scoped.get().setParameterValue(entry.getValue());
+                        systemParameterRepository.save(scoped.get());
                         sysParamCount++;
                     } else {
-                        warnings.add("Ismeretlen rendszer paraméter, kihagyva: " + entry.getKey());
+                        Optional<SystemParameter> global = systemParameterRepository
+                            .findByParameterKeyAndCompanyIdIsNull(entry.getKey());
+                        if (global.isPresent()) {
+                            SystemParameter globalParameter = global.get();
+                            SystemParameter override = SystemParameter.builder()
+                                .parameterKey(globalParameter.getParameterKey())
+                                .companyId(companyId)
+                                .parameterValue(entry.getValue())
+                                .parameterType(globalParameter.getParameterType())
+                                .category(globalParameter.getCategory())
+                                .description(globalParameter.getDescription())
+                                .isActive(globalParameter.getIsActive())
+                                .build();
+                            systemParameterRepository.save(override);
+                            sysParamCount++;
+                        } else {
+                            warnings.add("Ismeretlen rendszer paraméter, kihagyva: " + entry.getKey());
+                        }
                     }
                 } catch (Exception e) {
                     errors.add("Hiba rendszer paraméter importnál (" + entry.getKey() + "): " + e.getMessage());
