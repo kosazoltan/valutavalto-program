@@ -4,6 +4,7 @@ import {
   ApplicationError,
   handleApiError,
   getErrorMessage,
+  getBlobErrorMessage,
   humanizeError,
   humanizeIpcError,
   isNetworkError,
@@ -231,6 +232,36 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage(axErr)).toBe(
       'A telepites mar lezarult — a jelenlegi vagy kezdo dolgozoi jelszo kotelezo az uj jelszo beallitasahoz.',
     )
+  })
+})
+
+// ─────────────────────────── getBlobErrorMessage ───────────────────────────
+
+describe('getBlobErrorMessage', () => {
+  it('extracts JSON message from blob response data', async () => {
+    const message = await getBlobErrorMessage({
+      response: {
+        data: new Blob([JSON.stringify({ message: 'Blob hibaüzenet' })], {
+          type: 'application/json',
+        }),
+      },
+    })
+
+    expect(message).toBe('Blob hibaüzenet')
+  })
+
+  it('accepts cross-realm blob-like response data', async () => {
+    const message = await getBlobErrorMessage({
+      response: {
+        data: { text: async () => JSON.stringify({ message: 'Másik realm Blob üzenet' }) },
+      },
+    })
+
+    expect(message).toBe('Másik realm Blob üzenet')
+  })
+
+  it('falls back to getErrorMessage for non-blob errors', async () => {
+    await expect(getBlobErrorMessage(new Error('sima hiba'))).resolves.toBe('sima hiba')
   })
 })
 

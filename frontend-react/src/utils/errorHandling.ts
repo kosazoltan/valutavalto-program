@@ -92,6 +92,37 @@ export function getErrorMessage(error: unknown): string {
   return appError.message
 }
 
+type TextReadableBody = { text: () => Promise<string> }
+
+function hasTextReader(data: unknown): data is TextReadableBody {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    typeof (data as { text?: unknown }).text === 'function'
+  )
+}
+
+function isNativeBlob(data: unknown): data is Blob {
+  return typeof Blob !== 'undefined' && data instanceof Blob
+}
+
+function isBlobErrorBody(data: unknown): data is Blob | TextReadableBody {
+  return isNativeBlob(data) || hasTextReader(data)
+}
+
+function readBlobErrorBodyText(data: unknown): Promise<string> {
+  if (hasTextReader(data)) return data.text()
+  if (typeof FileReader !== 'undefined' && isNativeBlob(data)) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '')
+      reader.onerror = () => reject(reader.error ?? new Error('Blob olvasása sikertelen'))
+      reader.readAsText(data)
+    })
+  }
+  return Promise.reject(new Error('Blob olvasása sikertelen'))
+}
+
 /**
  * Hibaüzenet kinyerése blob-válaszú (`responseType: 'blob'`) kérésből.
  *
@@ -102,9 +133,9 @@ export function getErrorMessage(error: unknown): string {
  */
 export async function getBlobErrorMessage(error: unknown): Promise<string> {
   const data = (error as { response?: { data?: unknown } })?.response?.data
-  if (data instanceof Blob) {
+  if (isBlobErrorBody(data)) {
     try {
-      const text = await data.text()
+      const text = await readBlobErrorBodyText(data)
       try {
         const json = JSON.parse(text) as { message?: unknown }
         if (typeof json?.message === 'string') return json.message

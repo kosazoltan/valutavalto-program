@@ -16,7 +16,7 @@ import {
 import { branchApi, type BranchInfo } from '../../services/api/settings'
 import { currencyApi, type Currency } from '../../services/api/exchange-rates'
 import { toast } from '../../components/ui/toaster'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
 import { formatDecimal, formatInteger } from '../../utils/numberFormat'
@@ -171,6 +171,12 @@ function criteriaToForm(
 
 function logAndToastError(title: string, action: string, err: unknown): void {
   const message = getErrorMessage(err)
+  logger.error('ComplianceTransactionsPage', action, message)
+  toast.error(title, message)
+}
+
+async function logAndToastBlobError(title: string, action: string, err: unknown): Promise<void> {
+  const message = await getBlobErrorMessage(err)
   logger.error('ComplianceTransactionsPage', action, message)
   toast.error(title, message)
 }
@@ -343,6 +349,7 @@ export default function ComplianceTransactionsPage() {
         setTotalPages(result.totalPages ?? 0)
         setTotalElements(result.totalElements ?? 0)
         setPage(targetPage)
+        setActiveCriteria(criteria)
       } catch (err) {
         logAndToastError('Keresési hiba', 'Keresés sikertelen:', err)
         setRows([])
@@ -362,7 +369,6 @@ export default function ComplianceTransactionsPage() {
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const criteria = toCriteria(form)
-    setActiveCriteria(criteria)
     void runSearch(criteria, 0)
   }
 
@@ -389,7 +395,7 @@ export default function ComplianceTransactionsPage() {
       }
       toast.success('Export letöltve')
     } catch (err) {
-      logAndToastError('Export sikertelen', 'Export sikertelen:', err)
+      await logAndToastBlobError('Export sikertelen', 'Export sikertelen:', err)
     } finally {
       setExporting(null)
     }
@@ -472,7 +478,7 @@ export default function ComplianceTransactionsPage() {
       const data = await complianceSearchAuditApi.downloadPdf(auditId)
       downloadBlob(data, `compliance_kereses_audit_${auditId}.pdf`, 'application/pdf')
     } catch (err) {
-      logAndToastError('Audit PDF hiba', 'Audit PDF letöltése sikertelen:', err)
+      await logAndToastBlobError('Audit PDF hiba', 'Audit PDF letöltése sikertelen:', err)
     } finally {
       setPdfDownloadingId(null)
     }
