@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.entity.CashBalance;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -48,6 +49,22 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
     @Query("SELECT cb FROM CashBalance cb WHERE cb.branch.id = :branchId AND cb.currency.id = :currencyId")
     Optional<CashBalance> findByBranchIdAndCurrencyIdForUpdate(
             @Param("branchId") UUID branchId, @Param("currencyId") Long currencyId);
+
+    /**
+     * INVSTOCK-ROLLBACK fix: race-mentes sor-garantálás. Az ON CONFLICT DO NOTHING
+     * kiváltja a korábbi saveAndFlush + DIVE-catch mintát, így a tranzakció nem lesz
+     * rollback-only; a hívó ezután lockolt újraolvasással könyvel a garantált sorra.
+     */
+    @Modifying
+    @Query(value = """
+            INSERT INTO cash_balance
+                (company_id, branch_id, currency_id, current_balance, opening_balance, created_at, version)
+            VALUES (:companyId, :branchId, :currencyId, 0, 0, NOW(), 0)
+            ON CONFLICT (branch_id, currency_id) DO NOTHING
+            """, nativeQuery = true)
+    int insertIfAbsent(@Param("companyId") UUID companyId,
+                       @Param("branchId") UUID branchId,
+                       @Param("currencyId") Long currencyId);
 
     /**
      * Összes egyenleg egy fiókhoz (JOIN FETCH a lazy proxy hiba elkerüléséhez)

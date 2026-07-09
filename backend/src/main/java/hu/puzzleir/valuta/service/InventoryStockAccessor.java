@@ -8,7 +8,6 @@ import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -72,25 +71,14 @@ public class InventoryStockAccessor {
             if (delta.signum() < 0) {
                 throw insufficientVaultStock(currency, BigDecimal.ZERO, delta.abs());
             }
-            stock = CurrencyStock.builder()
-                    .company(branch.getCompany())
-                    .entityType(ENTITY_TYPE_VAULT)
-                    .entityId(entityId)
-                    .currencyCode(currency.getCode())
-                    .quantity(BigDecimal.ZERO)
-                    .weightedAvgCost(BigDecimal.ZERO)
-                    .build();
-            applyVaultDelta(stock, currency, delta);
-            try {
-                currencyStockRepository.saveAndFlush(stock);
-            } catch (DataIntegrityViolationException race) {
-                CurrencyStock locked = currencyStockRepository
-                        .findForUpdate(companyId, ENTITY_TYPE_VAULT, entityId, currency.getCode())
-                        .orElseThrow(() -> race);
-                applyVaultDelta(locked, currency, delta);
-                currencyStockRepository.save(locked);
-            }
-            return;
+            // INVSTOCK-ROLLBACK fix: race-mentes sor-garantálás ON CONFLICT-tal (nincs
+            // flush-DIVE → nincs rollback-only tx), majd pesszimista zárolt újraolvasás.
+            currencyStockRepository.insertIfAbsent(
+                    companyId, ENTITY_TYPE_VAULT, entityId, currency.getCode());
+            stock = currencyStockRepository
+                    .findForUpdate(companyId, ENTITY_TYPE_VAULT, entityId, currency.getCode())
+                    .orElseThrow(() -> new IllegalStateException(
+                            "currency_stock sor nem található közvetlenül a sor-garantálás után"));
         }
 
         applyVaultDelta(stock, currency, delta);

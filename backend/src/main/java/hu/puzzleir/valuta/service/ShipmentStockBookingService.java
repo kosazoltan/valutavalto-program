@@ -2,7 +2,6 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.CashBalance;
-import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.CurrencyStock;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
@@ -16,7 +15,6 @@ import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -261,34 +259,27 @@ public class ShipmentStockBookingService {
     }
 
     /**
-     * VAULT IN-bevételezés constraint-safe get-or-create-tel (GLM-review #9 — race-mentesítés).
-     * A {@code findForUpdate} csak LÉTEZŐ sort zárol, ezért ha a sor még nincs, két párhuzamos első
-     * bevételezés versenghet. A friss sort {@code saveAndFlush}-sal írjuk: ha közben a másik szál már
-     * beszúrta (UNIQUE constraint a company+entity_type+entity_id+currency_code-on),
-     * {@link DataIntegrityViolationException}-t kapunk, és ekkor ÚJRA, immár {@code FOR UPDATE} zárral
-     * olvassuk a most már létező sort, és azon vételezünk — így sem duplikált sor, sem elveszett írás.
+     * VAULT IN-bevételezés ON CONFLICT sor-garantálással és lockolt újraolvasással.
+     * A korábbi saveAndFlush + DIVE-catch minta valós PG-n rollback-only tranzakciót okozott;
+     * az insertIfAbsent kivétel nélkül garantálja a sort, majd a tényleges könyvelés a zárolt soron fut.
      */
     private void receiveVaultStock(UUID companyId, String entityId, String currencyCode,
                                    ShipmentRequestItem item, BigDecimal amount, String action) {
-        CurrencyStock existing = currencyStockRepository
+        CurrencyStock stock = currencyStockRepository
                 .findForUpdate(companyId, ENTITY_TYPE_VAULT, entityId, currencyCode).orElse(null);
-        if (existing != null) {
-            existing.receiveStock(amount, resolveReceiveWac(existing, item, amount, action));
-            currencyStockRepository.save(existing);
-            return;
-        }
-        CurrencyStock fresh = newVaultStock(companyId, entityId, currencyCode);
-        fresh.receiveStock(amount, resolveReceiveWac(fresh, item, amount, action));
-        try {
-            currencyStockRepository.saveAndFlush(fresh);
-        } catch (DataIntegrityViolationException race) {
-            // párhuzamos szál már beszúrta — most már létezik, lockoltan olvassuk és arra vételezünk
-            CurrencyStock locked = currencyStockRepository
+        if (stock == null) {
+            // INVSTOCK-ROLLBACK fix (a GLM-review #9 saveAndFlush+DIVE-catch mintát váltja):
+            // valós PG-n a flush-DIVE a tx-et rollback-only-ra jelölte, a javító save a
+            // commitnál UnexpectedRollbackException-nel elveszett. Az ON CONFLICT DO NOTHING
+            // sor-garantálással a kivétel létre sem jön; a sort zárolt újraolvasás adja.
+            currencyStockRepository.insertIfAbsent(companyId, ENTITY_TYPE_VAULT, entityId, currencyCode);
+            stock = currencyStockRepository
                     .findForUpdate(companyId, ENTITY_TYPE_VAULT, entityId, currencyCode)
-                    .orElseThrow(() -> race);
-            locked.receiveStock(amount, resolveReceiveWac(locked, item, amount, action));
-            currencyStockRepository.save(locked);
+                    .orElseThrow(() -> new IllegalStateException(
+                            "currency_stock sor nem található közvetlenül a sor-garantálás után"));
         }
+        stock.receiveStock(amount, resolveReceiveWac(stock, item, amount, action));
+        currencyStockRepository.save(stock);
     }
 
     /** CASHIER oldal: cash_balance (branch_id + currency_id). */
@@ -315,31 +306,21 @@ public class ShipmentStockBookingService {
     }
 
     /**
-     * CASHIER IN-bevételezés constraint-safe get-or-create-tel (GLM-review #9 — race-mentesítés,
-     * a {@link #receiveVaultStock} cash-oldali párja). A {@code findByBranchIdAndCurrencyIdForUpdate}
-     * csak LÉTEZŐ sort zárol; ha a sor még nincs, a friss balance-t {@code saveAndFlush}-sal írjuk, és
-     * a párhuzamos első bevételezés okozta UNIQUE-ütközést ({@code uk_cash_balance(branch_id,
-     * currency_id)}) elkapva ÚJRA, immár {@code FOR UPDATE} zárral olvassuk a most már létező sort.
+     * CASHIER IN-bevételezés ON CONFLICT sor-garantálással és lockolt újraolvasással
+     * (a {@link #receiveVaultStock} cash-oldali párja).
      */
     private void receiveCashBalance(Branch branch, UUID companyId, Long currencyId, BigDecimal amount) {
-        CashBalance existing = cashBalanceRepository
+        CashBalance locked = cashBalanceRepository
                 .findByBranchIdAndCurrencyIdForUpdate(branch.getId(), currencyId).orElse(null);
-        if (existing != null) {
-            existing.addBalance(amount);
-            cashBalanceRepository.save(existing);
-            return;
-        }
-        CashBalance fresh = newCashBalance(branch, companyId, currencyId);
-        fresh.addBalance(amount);
-        try {
-            cashBalanceRepository.saveAndFlush(fresh);
-        } catch (DataIntegrityViolationException race) {
-            CashBalance locked = cashBalanceRepository
+        if (locked == null) {
+            cashBalanceRepository.insertIfAbsent(companyId, branch.getId(), currencyId);
+            locked = cashBalanceRepository
                     .findByBranchIdAndCurrencyIdForUpdate(branch.getId(), currencyId)
-                    .orElseThrow(() -> race);
-            locked.addBalance(amount);
-            cashBalanceRepository.save(locked);
+                    .orElseThrow(() -> new IllegalStateException(
+                            "cash_balance sor nem található közvetlenül a sor-garantálás után"));
         }
+        locked.addBalance(amount);
+        cashBalanceRepository.save(locked);
     }
 
     private Branch loadBranch(UUID branchId, UUID companyId) {
@@ -356,19 +337,6 @@ public class ShipmentStockBookingService {
         Currency currency = currencyRepository.findById(currencyId)
                 .orElseThrow(() -> new ValidationException("Ismeretlen valuta: currencyId=" + currencyId));
         return currency.getCode();
-    }
-
-    /** Friss (transient) VAULT készlet-sor builder — a hívó receiveVaultStock perzisztálja. */
-    private CurrencyStock newVaultStock(UUID companyId, String entityId, String currencyCode) {
-        return CurrencyStock.builder()
-                .company(Company.builder().id(companyId).build())
-                .entityType(ENTITY_TYPE_VAULT)
-                .entityId(entityId)
-                .currencyCode(currencyCode)
-                .quantity(BigDecimal.ZERO)
-                .weightedAvgCost(BigDecimal.ZERO)
-                .lastUpdated(LocalDateTime.now())
-                .build();
     }
 
     /**
@@ -424,21 +392,6 @@ public class ShipmentStockBookingService {
                         ShipmentRequestItem::getCurrencyId,
                         java.util.Comparator.nullsFirst(java.util.Comparator.naturalOrder())))
                 .toList();
-    }
-
-    /** Friss (transient) cash_balance builder — a hívó receiveCashBalance perzisztálja. */
-    private CashBalance newCashBalance(Branch branch, UUID companyId, Long currencyId) {
-        // Copilot review (PR #1243): a currencyId-t a hívó útvonal (resolveCurrencyCode) MÁR
-        // validálta/lekérte ennél a tételnél, ezért itt elég egy JPA reference (lazy proxy) — nincs
-        // felesleges második SELECT; a nemlétező valuta a resolveCurrencyCode-ban bukik, nem ide jut el.
-        Currency currency = currencyRepository.getReferenceById(currencyId);
-        return CashBalance.builder()
-                .company(Company.builder().id(companyId).build())
-                .branch(branch)
-                .currency(currency)
-                .currentBalance(BigDecimal.ZERO)
-                .openingBalance(BigDecimal.ZERO)
-                .build();
     }
 
     /**
