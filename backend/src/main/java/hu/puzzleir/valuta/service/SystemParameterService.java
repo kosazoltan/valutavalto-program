@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.SystemParameter;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.SystemParameterRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -74,6 +75,20 @@ public class SystemParameterService {
         }
     }
 
+    /**
+     * Cég-KIZÁRÓLAGOS olvasás — tenant-titok (pl. compliance címzettek).
+     * SOHA nem esik vissza globális sorra; null companyId (nincs kontextus) → default.
+     */
+    public String getCompanyValue(String key, UUID companyId, String defaultValue) {
+        if (companyId == null) {
+            return defaultValue;
+        }
+        return repo.findByParameterKeyAndCompanyId(key, companyId)
+                .map(SystemParameter::getParameterValue)
+                .filter(v -> v != null && !v.isBlank())
+                .orElse(defaultValue);
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public SystemParameter upsert(String key, String value, String category, String description) {
         return repo.findByParameterKeyAndCompanyIdIsNull(key)
@@ -83,6 +98,24 @@ public class SystemParameterService {
                     return repo.save(p);
                 })
                 .orElseGet(() -> create(key, value, "STRING", category, description));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public SystemParameter upsertCompanyValue(String key, UUID companyId, String value,
+                                              String category, String description) {
+        if (companyId == null) {
+            throw new ValidationException("companyId kötelező a cég-scope-olt paraméterhez!");
+        }
+        return repo.findByParameterKeyAndCompanyId(key, companyId)
+                .map(p -> {
+                    p.setParameterValue(value);
+                    if (description != null) p.setDescription(description);
+                    return repo.save(p);
+                })
+                .orElseGet(() -> repo.save(SystemParameter.builder()
+                        .parameterKey(key).parameterValue(value).parameterType("STRING")
+                        .category(category).description(description)
+                        .companyId(companyId).isActive(true).build()));
     }
 
     @Transactional(rollbackFor = Exception.class)

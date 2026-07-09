@@ -107,8 +107,8 @@ class IncomeSourceDocControllerTest {
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(resp.getBody()).containsEntry("count", 2);
             // key derived from SecurityContext companyId, NOT from body
-            verify(systemParameterService).upsert(
-                    eq(IncomeSourceDocService.RECIPIENTS_PARAM_PREFIX + COMPANY_ID),
+            verify(systemParameterService).upsertCompanyValue(
+                    eq(IncomeSourceDocService.RECIPIENTS_PARAM_KEY), eq(COMPANY_ID),
                     eq("a@x.local,b@x.local"), eq("COMPLIANCE"), anyString());
             // audit fires with count (never addresses)
             verify(auditLogService).log(eq("INCOME_PROOF_DOC_RECIPIENTS_UPDATED"),
@@ -120,8 +120,8 @@ class IncomeSourceDocControllerTest {
     void getRecipients_returnsCompanyScopedList() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
-            when(systemParameterService.getValue(
-                    eq(IncomeSourceDocService.RECIPIENTS_PARAM_PREFIX + COMPANY_ID), anyString()))
+            when(systemParameterService.getCompanyValue(
+                    eq(IncomeSourceDocService.RECIPIENTS_PARAM_KEY), eq(COMPANY_ID), anyString()))
                     .thenReturn("compliance@valuta.local, audit@valuta.local");
 
             ResponseEntity<Map<String, Object>> resp = controller.getRecipients();
@@ -130,8 +130,8 @@ class IncomeSourceDocControllerTest {
             @SuppressWarnings("unchecked")
             List<String> list = (List<String>) resp.getBody().get("recipients");
             assertThat(list).containsExactly("compliance@valuta.local", "audit@valuta.local");
-            verify(systemParameterService).getValue(
-                    eq(IncomeSourceDocService.RECIPIENTS_PARAM_PREFIX + COMPANY_ID), anyString());
+            verify(systemParameterService).getCompanyValue(
+                    eq(IncomeSourceDocService.RECIPIENTS_PARAM_KEY), eq(COMPANY_ID), anyString());
         }
     }
 }

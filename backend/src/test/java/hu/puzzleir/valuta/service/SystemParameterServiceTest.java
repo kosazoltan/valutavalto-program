@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.SystemParameter;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.SystemParameterRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.DisplayName;
@@ -149,5 +150,74 @@ class SystemParameterServiceTest {
 
         assertThat(saved.getParameterValue()).isEqualTo("42");
         assertThat(saved.getCompanyId()).isNull();
+    }
+
+    @Test
+    @DisplayName("getCompanyValue — létező cég-sor értékét adja")
+    void getCompanyValue_returnsCompanyScopedValue() {
+        when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+                .thenReturn(Optional.of(param("company-secret", COMPANY_A)));
+
+        assertThat(service.getCompanyValue(KEY, COMPANY_A, "def")).isEqualTo("company-secret");
+        verify(repo, never()).findByParameterKeyAndCompanyIdIsNull(anyString());
+    }
+
+    @Test
+    @DisplayName("getCompanyValue — nincs cég-sor → default, globális fallback nélkül")
+    void getCompanyValue_missingCompanyScopedValueReturnsDefaultWithoutGlobalFallback() {
+        when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+                .thenReturn(Optional.empty());
+
+        assertThat(service.getCompanyValue(KEY, COMPANY_A, "def")).isEqualTo("def");
+        verify(repo, never()).findByParameterKeyAndCompanyIdIsNull(anyString());
+    }
+
+    @Test
+    @DisplayName("getCompanyValue — null companyId → default és repo-hívás nélkül fail-closed")
+    void getCompanyValue_nullCompanyIdReturnsDefaultWithoutRepoCall() {
+        assertThat(service.getCompanyValue(KEY, null, "def")).isEqualTo("def");
+        verifyNoInteractions(repo);
+    }
+
+    @Test
+    @DisplayName("upsertCompanyValue — létező cég-sor frissül és megtartja a companyId-t")
+    void upsertCompanyValue_updatesExistingCompanyScopedRow() {
+        SystemParameter existing = param("old", COMPANY_A);
+        when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+                .thenReturn(Optional.of(existing));
+        when(repo.save(any(SystemParameter.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        SystemParameter saved = service.upsertCompanyValue(KEY, COMPANY_A, "new", "TRANSACTION", "desc");
+
+        assertThat(saved.getParameterValue()).isEqualTo("new");
+        assertThat(saved.getCompanyId()).isEqualTo(COMPANY_A);
+        assertThat(saved.getDescription()).isEqualTo("desc");
+    }
+
+    @Test
+    @DisplayName("upsertCompanyValue — hiányzó cég-sor létrejön companyId-val")
+    void upsertCompanyValue_createsCompanyScopedRowWhenMissing() {
+        when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+                .thenReturn(Optional.empty());
+        when(repo.save(any(SystemParameter.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        SystemParameter saved = service.upsertCompanyValue(KEY, COMPANY_A, "new", "COMPLIANCE", "desc");
+
+        assertThat(saved.getParameterKey()).isEqualTo(KEY);
+        assertThat(saved.getParameterValue()).isEqualTo("new");
+        assertThat(saved.getParameterType()).isEqualTo("STRING");
+        assertThat(saved.getCategory()).isEqualTo("COMPLIANCE");
+        assertThat(saved.getCompanyId()).isEqualTo(COMPANY_A);
+        assertThat(saved.getIsActive()).isTrue();
+    }
+
+    @Test
+    @DisplayName("upsertCompanyValue — null companyId ValidationException")
+    void upsertCompanyValue_nullCompanyIdThrowsValidationException() {
+        assertThatThrownBy(() -> service.upsertCompanyValue(KEY, null, "new", "COMPLIANCE", "desc"))
+                .isInstanceOf(ValidationException.class);
+        verifyNoInteractions(repo);
     }
 }
