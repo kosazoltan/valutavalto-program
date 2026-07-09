@@ -14,9 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -26,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
@@ -159,26 +156,30 @@ class InventoryStockAccessorTest {
     }
 
     @Test
-    @DisplayName("vault ág: hiányzó pozitív stock sort saveAndFlush-sal hoz létre")
-    void adjust_vaultCreatesMissingPositiveStockWithSaveAndFlush() {
+    @DisplayName("vault ág: hiányzó pozitív stock sort insertIfAbsent + lockolt újraolvasással hoz létre")
+    void adjust_vaultCreatesMissingPositiveStockViaInsertIfAbsent() {
+        CurrencyStock freshRow = CurrencyStock.builder()
+                .company(company)
+                .entityType("VAULT")
+                .entityId("12")
+                .currencyCode("EUR")
+                .quantity(BigDecimal.ZERO)
+                .weightedAvgCost(BigDecimal.ZERO)
+                .build();
         when(currencyStockRepository.findForUpdate(COMPANY_ID, "VAULT", "12", "EUR"))
-                .thenReturn(Optional.empty());
+                .thenReturn(Optional.empty(), Optional.of(freshRow));
 
         accessor.adjust(vaultBranch, eur, new BigDecimal("125.00"));
 
-        ArgumentCaptor<CurrencyStock> captor = ArgumentCaptor.forClass(CurrencyStock.class);
-        verify(currencyStockRepository).saveAndFlush(captor.capture());
-        assertThat(captor.getValue().getCompany()).isSameAs(company);
-        assertThat(captor.getValue().getEntityType()).isEqualTo("VAULT");
-        assertThat(captor.getValue().getEntityId()).isEqualTo("12");
-        assertThat(captor.getValue().getCurrencyCode()).isEqualTo("EUR");
-        assertThat(captor.getValue().getQuantity()).isEqualByComparingTo("125.00");
-        assertThat(captor.getValue().getWeightedAvgCost()).isEqualByComparingTo(BigDecimal.ZERO);
+        verify(currencyStockRepository).insertIfAbsent(COMPANY_ID, "VAULT", "12", "EUR");
+        assertThat(freshRow.getQuantity()).isEqualByComparingTo("125.00");
+        assertThat(freshRow.getWeightedAvgCost()).isEqualByComparingTo(BigDecimal.ZERO);
+        verify(currencyStockRepository).save(freshRow);
     }
 
     @Test
-    @DisplayName("vault ág: párhuzamos első insert unique ütközés után lockolt újraolvasással retry-ol")
-    void adjust_vaultRetriesAfterConcurrentFirstInsertRace() {
+    @DisplayName("vault ág: párhuzamos első insert nyertes sorára könyvel lockolt újraolvasás után")
+    void adjust_vaultBooksOnConcurrentWinnerRow() {
         CurrencyStock locked = CurrencyStock.builder()
                 .company(company)
                 .entityType("VAULT")
@@ -189,13 +190,14 @@ class InventoryStockAccessorTest {
                 .build();
         when(currencyStockRepository.findForUpdate(COMPANY_ID, "VAULT", "12", "EUR"))
                 .thenReturn(Optional.empty(), Optional.of(locked));
-        when(currencyStockRepository.saveAndFlush(any(CurrencyStock.class)))
-                .thenThrow(new DataIntegrityViolationException("duplicate currency_stock"));
+        when(currencyStockRepository.insertIfAbsent(COMPANY_ID, "VAULT", "12", "EUR"))
+                .thenReturn(0);
 
         accessor.adjust(vaultBranch, eur, new BigDecimal("125.00"));
 
         assertThat(locked.getQuantity()).isEqualByComparingTo("325.00");
         assertThat(locked.getWeightedAvgCost()).isEqualByComparingTo("397.2500");
+        verify(currencyStockRepository).insertIfAbsent(COMPANY_ID, "VAULT", "12", "EUR");
         verify(currencyStockRepository).save(locked);
     }
 

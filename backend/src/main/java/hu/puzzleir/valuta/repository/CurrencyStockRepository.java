@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.repository;
 import hu.puzzleir.valuta.entity.CurrencyStock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -27,6 +28,27 @@ public interface CurrencyStockRepository extends JpaRepository<CurrencyStock, Lo
             @Param("entityType") String entityType,
             @Param("entityId") String entityId,
             @Param("currencyCode") String currencyCode);
+
+    /**
+     * INVSTOCK-ROLLBACK fix: race-mentes sor-garantálás. A get-or-create korábbi
+     * saveAndFlush + DIVE-catch mintája valós PG-n a tranzakciót rollback-only-ra
+     * jelölte (a javító save a commitnál UnexpectedRollbackException-nel veszett el).
+     * Az ON CONFLICT DO NOTHING-gal a kivétel létre sem jön; konkurens uncommitted
+     * beszúrásnál a hívó a unique-indexen vár, majd no-op — a sort ezután a
+     * findForUpdate zárolja. Oszloplistás konfliktus-cél (a V58 auto-nevű UNIQUE és a
+     * teszt-séma Hibernate-neve eltér).
+     */
+    @Modifying
+    @Query(value = """
+            INSERT INTO currency_stock
+                (company_id, entity_type, entity_id, currency_code, quantity, weighted_avg_cost, last_updated)
+            VALUES (:companyId, :entityType, :entityId, :currencyCode, 0, 0, NOW())
+            ON CONFLICT (company_id, entity_type, entity_id, currency_code) DO NOTHING
+            """, nativeQuery = true)
+    int insertIfAbsent(@Param("companyId") UUID companyId,
+                       @Param("entityType") String entityType,
+                       @Param("entityId") String entityId,
+                       @Param("currencyCode") String currencyCode);
 
     List<CurrencyStock> findByEntityTypeAndEntityId(String entityType, String entityId);
 
