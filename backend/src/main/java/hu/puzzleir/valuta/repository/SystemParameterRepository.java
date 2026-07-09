@@ -14,8 +14,11 @@ import java.util.UUID;
 public interface SystemParameterRepository extends JpaRepository<SystemParameter, UUID> {
     Optional<SystemParameter> findByParameterKeyAndCompanyId(String key, UUID companyId);
     Optional<SystemParameter> findByParameterKeyAndCompanyIdIsNull(String key);
-    List<SystemParameter> findByIsActiveTrue();
-    List<SystemParameter> findByCategory(String category);
+
+    /** Id-alapú lookup tenant-láthatósággal: globál (companyId IS NULL) vagy a saját cég sora.
+     *  companyId=null (nincs kontextus) → csak globál sor látható (fail-closed). */
+    @Query("SELECT p FROM SystemParameter p WHERE p.id = :id AND (p.companyId IS NULL OR p.companyId = :companyId)")
+    Optional<SystemParameter> findVisibleById(@Param("id") UUID id, @Param("companyId") UUID companyId);
 
     /** Globál + a megadott cég sorai. companyId=null → csak globálok (fail-closed). */
     @Query("SELECT p FROM SystemParameter p WHERE p.companyId IS NULL OR p.companyId = :companyId")

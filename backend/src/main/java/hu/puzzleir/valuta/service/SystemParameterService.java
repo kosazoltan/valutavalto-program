@@ -142,10 +142,10 @@ public class SystemParameterService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void delete(UUID id) { repo.deleteById(id); }
+    public void delete(UUID id) { repo.delete(findOrThrow(id)); }
 
     private SystemParameter findOrThrow(UUID id) {
-        return repo.findById(id)
+        return repo.findVisibleById(id, SecurityUtils.getCurrentCompanyIdOrNull())
                 .orElseThrow(() -> new ResourceNotFoundException("Paraméter nem található: " + id));
     }
 }
