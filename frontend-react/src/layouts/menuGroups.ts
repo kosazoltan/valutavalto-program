@@ -272,6 +272,7 @@ export const menuGroups: MenuGroup[] = [
       { path: '/seal-tracking', label: 'Plomba nyilvántartás', icon: Shield },
       { path: '/compliance', label: 'Compliance Dashboard', icon: ClipboardCheck },
       { path: '/compliance/questions', label: 'Compliance kérdések', icon: ClipboardCheck },
+      { path: '/compliance/transactions', label: 'Compliance tranzakciók', icon: ArrowLeftRight },
     ],
   },
   {

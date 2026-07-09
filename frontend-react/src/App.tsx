@@ -55,6 +55,7 @@ const VaultStocktakeDetailPage = lazy(
 const ComplianceDashboardPage = lazy(() => import('./pages/compliance/ComplianceDashboardPage'))
 const DocumentShortagePage = lazy(() => import('./pages/compliance/DocumentShortagePage'))
 const ComplianceQuestionsPage = lazy(() => import('./pages/compliance/ComplianceQuestionsPage'))
+const ComplianceTransactionsPage = lazy(() => import('./pages/compliance/ComplianceTransactionsPage'))
 const TransactionPage = lazy(() => import('./pages/transactions/TransactionPage'))
 const TransactionListPage = lazy(() => import('./pages/transactions/TransactionListPage'))
 const ConversionPage = lazy(() => import('./pages/transactions/ConversionPage'))
@@ -633,6 +634,14 @@ export default function App() {
                   element={
                     <MenuRoleGate path="/compliance/questions">
                       <ComplianceQuestionsPage />
+                    </MenuRoleGate>
+                  }
+                />
+                <Route
+                  path="/compliance/transactions"
+                  element={
+                    <MenuRoleGate path="/compliance/transactions">
+                      <ComplianceTransactionsPage />
                     </MenuRoleGate>
                   }
                 />
