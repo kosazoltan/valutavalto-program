@@ -9,6 +9,7 @@ import { api } from '../../services/api/client'
 import { roundHuf } from '../../utils/rounding'
 import { toast } from '../../components/ui/toaster'
 import { saveAndSyncPendingBuySell } from '../../utils/electronTransactions'
+import { logger } from '../../utils/logger'
 import ReceiptPrint from '../../components/ReceiptPrint'
 import AmlApproverModal, { toApprovalCustomer } from '../../components/auth/AmlApproverModal'
 import { useAuthStore } from '../../stores/authStore'
@@ -282,7 +283,7 @@ export default function TransactionPage() {
         })
         toast.info('Megszakított bizonylat rögzítve', `Bizonylat: ${receipt.receiptNumber}`)
       } catch (error) {
-        console.warn('Cancelled transaction receipt could not be recorded', error)
+        logger.warn('TransactionPage', 'Cancelled transaction receipt could not be recorded', error)
         toast.warning(
           'Megszakítás lokálisan elvetve',
           'A megszakított bizonylat szerveroldali rögzítése nem sikerült. Ellenőrizze a kapcsolatot.',
@@ -366,7 +367,7 @@ export default function TransactionPage() {
           return
         }
       } catch (err) {
-        console.warn('TransactionPage AML approval pre-check hiba (nem blokkolo):', err)
+        logger.warn('TransactionPage', 'AML approval pre-check hiba (nem blokkoló)', err)
       } finally {
         amlPrecheckInFlightRef.current = false
       }

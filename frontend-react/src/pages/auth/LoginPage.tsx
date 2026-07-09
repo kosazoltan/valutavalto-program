@@ -163,7 +163,7 @@ export default function LoginPage() {
       }
     } catch (err) {
       setWorkersError('A dolgozo-lista lekerese nem sikerult a szerverrol. Kezi bevitel.')
-      console.warn('[LoginPage] publicApi.getWorkersByBranch failed:', err)
+      logger.warn('LoginPage', 'publicApi.getWorkersByBranch failed', err)
     } finally {
       setWorkersLoading(false)
     }
