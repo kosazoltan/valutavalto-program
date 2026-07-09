@@ -26,6 +26,10 @@ function tomorrowIso(): string {
   return d.toISOString().slice(0, 10)
 }
 
+function defaultForm(): ValueBandConfigRequest {
+  return { ...DEFAULT_FORM, effectiveFrom: tomorrowIso() }
+}
+
 function formatHuf(value: number): string {
   return `${value.toLocaleString('hu-HU').replace(/\s/g, ' ')} Ft`
 }
@@ -46,10 +50,8 @@ function extractErrorMessage(err: unknown): string {
 
 export default function ValueBandSettingsPage() {
   const [rows, setRows] = useState<ValueBandConfig[]>([])
-  const [form, setForm] = useState<ValueBandConfigRequest>({
-    ...DEFAULT_FORM,
-    effectiveFrom: tomorrowIso(),
-  })
+  const [form, setForm] = useState<ValueBandConfigRequest>(defaultForm)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -104,7 +106,23 @@ export default function ValueBandSettingsPage() {
     return null
   }
 
-  const handleCreate = async () => {
+  const resetForm = () => {
+    setEditingId(null)
+    setForm(defaultForm())
+  }
+
+  const handleEdit = (row: ValueBandConfig) => {
+    setEditingId(row.id)
+    setForm({
+      simplifiedIdentificationLimitHuf: row.simplifiedIdentificationLimitHuf,
+      identificationLimitHuf: row.identificationLimitHuf,
+      incomeProofLimitHuf: row.incomeProofLimitHuf,
+      rollingWindowDays: row.rollingWindowDays,
+      effectiveFrom: row.effectiveFrom,
+    })
+  }
+
+  const handleSave = async () => {
     const error = validateForm()
     if (error) {
       toast.error('Validációs hiba', error)
@@ -112,13 +130,34 @@ export default function ValueBandSettingsPage() {
     }
     setSaving(true)
     try {
-      await valueBandApi.create(form)
-      toast.success('Mentve', 'Új AML értéksáv-konfiguráció létrehozva')
-      setForm({ ...DEFAULT_FORM, effectiveFrom: tomorrowIso() })
+      if (editingId) {
+        await valueBandApi.update(editingId, form)
+        toast.success('Mentve', 'AML értéksáv-konfiguráció módosítva')
+      } else {
+        await valueBandApi.create(form)
+        toast.success('Mentve', 'Új AML értéksáv-konfiguráció létrehozva')
+      }
+      resetForm()
       await loadRows()
     } catch (err) {
       logger.error('ValueBandSettingsPage', 'Mentés sikertelen:', err)
       toast.error('Mentés sikertelen', extractErrorMessage(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Biztosan törli a jövőbeli sávot?')) return
+    setSaving(true)
+    try {
+      await valueBandApi.remove(id)
+      toast.success('Törölve', 'Jövőbeli AML értéksáv-konfiguráció törölve')
+      if (editingId === id) resetForm()
+      await loadRows()
+    } catch (err) {
+      logger.error('ValueBandSettingsPage', 'Törlés sikertelen:', err)
+      toast.error('Törlés sikertelen', extractErrorMessage(err))
     } finally {
       setSaving(false)
     }
@@ -177,12 +216,19 @@ export default function ValueBandSettingsPage() {
                   <td className="p-2">
                     {editable && (
                       <div className="flex gap-2">
-                        <button className="form-button flex items-center gap-1" type="button">
+                        <button
+                          className="form-button flex items-center gap-1"
+                          disabled={saving}
+                          type="button"
+                          onClick={() => handleEdit(row)}
+                        >
                           <Edit2 size={12} /> Szerkesztés
                         </button>
                         <button
                           className="form-button text-red-600 flex items-center gap-1"
+                          disabled={saving}
                           type="button"
+                          onClick={() => void handleDelete(row.id)}
                         >
                           <Trash2 size={12} /> Törlés
                         </button>
@@ -198,7 +244,8 @@ export default function ValueBandSettingsPage() {
 
       <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
         <h3 className="font-semibold flex items-center gap-2">
-          <Plus size={16} /> Új sáv-konfiguráció
+          {editingId ? <Edit2 size={16} /> : <Plus size={16} />}
+          {editingId ? 'Sáv-konfiguráció szerkesztése' : 'Új sáv-konfiguráció'}
         </h3>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
           <label className="space-y-1">
@@ -257,13 +304,19 @@ export default function ValueBandSettingsPage() {
             />
           </label>
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          {editingId && (
+            <button className="form-button" disabled={saving} onClick={resetForm} type="button">
+              Mégse
+            </button>
+          )}
           <button
             className="form-button-primary"
             disabled={saving}
-            onClick={() => void handleCreate()}
+            onClick={() => void handleSave()}
+            type="button"
           >
-            {saving ? 'Mentés...' : 'Új sáv mentése'}
+            {saving ? 'Mentés...' : editingId ? 'Módosítás mentése' : 'Új sáv mentése'}
           </button>
         </div>
       </div>
