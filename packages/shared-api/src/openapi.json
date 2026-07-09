@@ -1574,6 +1574,87 @@
         }
       }
     },
+    "/api/v1/mnb-settlement-rates": {
+      "get": {
+        "tags": ["mnb-settlement-rate-controller"],
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MnbSettlementRateDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["mnb-settlement-rate-controller"],
+        "operationId": "update_10",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MnbSettlementRateUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MnbSettlementRateDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mnb-settlement-rates/publish": {
+      "put": {
+        "tags": ["mnb-settlement-rate-controller"],
+        "operationId": "publish",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MnbSettlementRateUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MnbSettlementRateDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/machine-config/{workstationCode}": {
       "get": {
         "tags": ["machine-config-controller"],
@@ -2135,7 +2216,7 @@
     "/api/v1/email/accounts/{id}": {
       "put": {
         "tags": ["email-account-controller"],
-        "operationId": "update_10",
+        "operationId": "update_11",
         "parameters": [
           {
             "name": "id",
@@ -2416,7 +2497,7 @@
       },
       "put": {
         "tags": ["currency-group-controller"],
-        "operationId": "update_11",
+        "operationId": "update_12",
         "parameters": [
           {
             "name": "id",
@@ -2516,7 +2597,7 @@
       "put": {
         "tags": ["compliance-question-controller"],
         "summary": "Compliance-kérdés módosítása",
-        "operationId": "update_12",
+        "operationId": "update_13",
         "parameters": [
           {
             "name": "id",
@@ -2622,7 +2703,7 @@
       },
       "put": {
         "tags": ["competitor-controller"],
-        "operationId": "update_13",
+        "operationId": "update_14",
         "parameters": [
           {
             "name": "id",
@@ -2708,7 +2789,7 @@
       },
       "put": {
         "tags": ["commission-rate-controller"],
-        "operationId": "update_14",
+        "operationId": "update_15",
         "parameters": [
           {
             "name": "id",
@@ -2927,7 +3008,7 @@
       },
       "put": {
         "tags": ["branch-group-controller"],
-        "operationId": "update_15",
+        "operationId": "update_16",
         "parameters": [
           {
             "name": "id",
@@ -3177,7 +3258,7 @@
       },
       "put": {
         "tags": ["bank-api-config-controller"],
-        "operationId": "update_16",
+        "operationId": "update_17",
         "parameters": [
           {
             "name": "providerName",
@@ -3242,7 +3323,7 @@
       },
       "put": {
         "tags": ["authorized-representative-controller"],
-        "operationId": "update_17",
+        "operationId": "update_18",
         "parameters": [
           {
             "name": "id",
@@ -3488,7 +3569,7 @@
     "/api/v1/wu-partner-companies": {
       "get": {
         "tags": ["wu-partner-company-controller"],
-        "operationId": "list",
+        "operationId": "list_1",
         "parameters": [
           {
             "name": "q",
@@ -3545,7 +3626,7 @@
     "/api/v1/workstations": {
       "get": {
         "tags": ["workstation-controller"],
-        "operationId": "list_1",
+        "operationId": "list_2",
         "responses": {
           "200": {
             "description": "OK",
@@ -4224,7 +4305,7 @@
     "/api/v1/vault-workers": {
       "get": {
         "tags": ["vault-worker-controller"],
-        "operationId": "list_2",
+        "operationId": "list_3",
         "responses": {
           "200": {
             "description": "OK",
@@ -4271,7 +4352,7 @@
     "/api/v1/vault-stocktake": {
       "get": {
         "tags": ["vault-stocktake-controller"],
-        "operationId": "list_3",
+        "operationId": "list_4",
         "responses": {
           "200": {
             "description": "OK",
@@ -4600,7 +4681,7 @@
     "/api/v1/value-bands": {
       "get": {
         "tags": ["value-band-controller"],
-        "operationId": "list_4",
+        "operationId": "list_5",
         "responses": {
           "200": {
             "description": "OK",
@@ -4647,7 +4728,7 @@
     "/api/v1/users": {
       "get": {
         "tags": ["user-controller"],
-        "operationId": "list_5",
+        "operationId": "list_6",
         "responses": {
           "200": {
             "description": "OK",
@@ -5140,7 +5221,7 @@
     "/api/v1/transfer-documents": {
       "get": {
         "tags": ["transfer-document-controller"],
-        "operationId": "list_6",
+        "operationId": "list_7",
         "parameters": [
           {
             "name": "status",
@@ -5520,7 +5601,7 @@
     "/api/v1/territories": {
       "get": {
         "tags": ["vault-territory-controller"],
-        "operationId": "list_7",
+        "operationId": "list_8",
         "responses": {
           "200": {
             "description": "OK",
@@ -5598,7 +5679,7 @@
     "/api/v1/system-parameters": {
       "get": {
         "tags": ["system-parameter-controller"],
-        "operationId": "list_8",
+        "operationId": "list_9",
         "responses": {
           "200": {
             "description": "OK",
@@ -7143,7 +7224,7 @@
     "/api/v1/roles": {
       "get": {
         "tags": ["role-controller"],
-        "operationId": "list_9",
+        "operationId": "list_10",
         "responses": {
           "200": {
             "description": "OK",
@@ -8444,7 +8525,7 @@
     "/api/v1/permissions": {
       "get": {
         "tags": ["permission-controller"],
-        "operationId": "list_10",
+        "operationId": "list_11",
         "responses": {
           "200": {
             "description": "OK",
@@ -8521,7 +8602,7 @@
     "/api/v1/packaging": {
       "get": {
         "tags": ["packaging-controller"],
-        "operationId": "list_11",
+        "operationId": "list_12",
         "parameters": [
           {
             "name": "branchId",
@@ -8597,7 +8678,7 @@
     "/api/v1/own-companies": {
       "get": {
         "tags": ["own-company-controller"],
-        "operationId": "list_12",
+        "operationId": "list_13",
         "responses": {
           "200": {
             "description": "OK",
@@ -8644,7 +8725,7 @@
     "/api/v1/organizations": {
       "get": {
         "tags": ["organization-controller"],
-        "operationId": "list_13",
+        "operationId": "list_14",
         "responses": {
           "200": {
             "description": "OK",
@@ -8778,7 +8859,7 @@
     "/api/v1/notifications": {
       "get": {
         "tags": ["notification-controller"],
-        "operationId": "list_14",
+        "operationId": "list_15",
         "responses": {
           "200": {
             "description": "OK",
@@ -10707,7 +10788,7 @@
     "/api/v1/exchange-rate-display/{displayId}/update": {
       "post": {
         "tags": ["exchange-rate-display-controller"],
-        "operationId": "update_18",
+        "operationId": "update_19",
         "parameters": [
           {
             "name": "displayId",
@@ -11908,7 +11989,7 @@
     "/api/v1/email/accounts": {
       "get": {
         "tags": ["email-account-controller"],
-        "operationId": "list_15",
+        "operationId": "list_16",
         "responses": {
           "200": {
             "description": "OK",
@@ -11958,7 +12039,7 @@
     "/api/v1/documents": {
       "get": {
         "tags": ["document-storage-controller"],
-        "operationId": "list_16",
+        "operationId": "list_17",
         "parameters": [
           {
             "name": "entityType",
@@ -12049,7 +12130,7 @@
     "/api/v1/document-shortages": {
       "get": {
         "tags": ["document-shortage-controller"],
-        "operationId": "list_17",
+        "operationId": "list_18",
         "parameters": [
           {
             "name": "openOnly",
@@ -13682,7 +13763,7 @@
       "get": {
         "tags": ["compliance-search-template-controller"],
         "summary": "Compliance szűrő-sablonok listája (criteria visszatöltéshez)",
-        "operationId": "list_18",
+        "operationId": "list_19",
         "responses": {
           "200": {
             "description": "OK",
@@ -13731,7 +13812,7 @@
       "get": {
         "tags": ["compliance-search-audit-controller"],
         "summary": "Keresés-audit napló listája (criteria lenyitáshoz, snapshot nélkül)",
-        "operationId": "list_19",
+        "operationId": "list_20",
         "responses": {
           "200": {
             "description": "OK",
@@ -13780,7 +13861,7 @@
       "get": {
         "tags": ["compliance-question-controller"],
         "summary": "Összes compliance-kérdés (inaktív is) — compliance-nézet",
-        "operationId": "list_20",
+        "operationId": "list_21",
         "responses": {
           "200": {
             "description": "OK",
@@ -13967,7 +14048,7 @@
     "/api/v1/competitions": {
       "get": {
         "tags": ["competition-controller"],
-        "operationId": "list_21",
+        "operationId": "list_22",
         "responses": {
           "200": {
             "description": "OK",
@@ -15942,7 +16023,7 @@
     "/api/v1/branch-groups": {
       "get": {
         "tags": ["branch-group-controller"],
-        "operationId": "list_22",
+        "operationId": "list_23",
         "responses": {
           "200": {
             "description": "OK",
@@ -16157,7 +16238,7 @@
     "/api/v1/banks": {
       "get": {
         "tags": ["bank-controller"],
-        "operationId": "list_23",
+        "operationId": "list_24",
         "parameters": [
           {
             "name": "q",
@@ -16378,7 +16459,7 @@
     "/api/v1/bank-orders": {
       "get": {
         "tags": ["bank-order-controller"],
-        "operationId": "list_24",
+        "operationId": "list_25",
         "parameters": [
           {
             "name": "status",
@@ -17412,7 +17493,7 @@
     "/api/v1/arfolyam-internet-links": {
       "get": {
         "tags": ["arfolyam-internet-link-controller"],
-        "operationId": "list_25",
+        "operationId": "list_26",
         "responses": {
           "200": {
             "description": "OK",
@@ -17567,7 +17648,7 @@
     "/api/v1/anonymous-reports": {
       "get": {
         "tags": ["anonymous-report-controller"],
-        "operationId": "list_26",
+        "operationId": "list_27",
         "responses": {
           "200": {
             "description": "OK",
@@ -22951,7 +23032,7 @@
     "/api/v1/receipts": {
       "get": {
         "tags": ["receipt-controller"],
-        "operationId": "list_27",
+        "operationId": "list_28",
         "parameters": [
           {
             "name": "transactionId",
@@ -24869,6 +24950,27 @@
         }
       }
     },
+    "/api/v1/mnb-settlement-rates/mnb-query": {
+      "get": {
+        "tags": ["mnb-settlement-rate-controller"],
+        "operationId": "mnbQuery",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MnbQueryRateDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/mfa/status": {
       "get": {
         "tags": ["mfa-controller"],
@@ -25811,7 +25913,7 @@
     "/api/v1/handover-sheets": {
       "get": {
         "tags": ["handover-sheet-controller"],
-        "operationId": "list_28",
+        "operationId": "list_29",
         "responses": {
           "200": {
             "description": "OK",
@@ -27743,7 +27845,7 @@
     "/api/v1/decade-reports": {
       "get": {
         "tags": ["decade-report-controller"],
-        "operationId": "list_29",
+        "operationId": "list_30",
         "parameters": [
           {
             "name": "branchId",
@@ -29022,7 +29124,7 @@
     "/api/v1/currency-denomination-images": {
       "get": {
         "tags": ["currency-denomination-image-controller"],
-        "operationId": "list_30",
+        "operationId": "list_31",
         "parameters": [
           {
             "name": "currencyId",
@@ -31873,7 +31975,7 @@
     "/api/v1/bank-api-config": {
       "get": {
         "tags": ["bank-api-config-controller"],
-        "operationId": "list_31",
+        "operationId": "list_32",
         "responses": {
           "200": {
             "description": "OK",
@@ -34980,6 +35082,50 @@
             "format": "date-time"
           },
           "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Item": {
+        "type": "object",
+        "properties": {
+          "currencyCode": {
+            "type": "string",
+            "maxLength": 3,
+            "minLength": 3
+          },
+          "officialRate": {
+            "type": "number"
+          }
+        },
+        "required": ["currencyCode", "officialRate"]
+      },
+      "MnbSettlementRateUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "MnbSettlementRateDto": {
+        "type": "object",
+        "properties": {
+          "currencyCode": {
+            "type": "string"
+          },
+          "currencyName": {
+            "type": "string"
+          },
+          "officialRate": {
+            "type": "number"
+          },
+          "availableToOfficesAt": {
             "type": "string",
             "format": "date-time"
           }
@@ -38118,7 +38264,7 @@
             "type": "integer",
             "format": "int64"
           },
-          "branchId": {
+          "companyId": {
             "type": "string",
             "format": "uuid"
           },
@@ -38126,7 +38272,7 @@
             "type": "integer",
             "format": "int32"
           },
-          "companyId": {
+          "branchId": {
             "type": "string",
             "format": "uuid"
           }
@@ -49616,11 +49762,11 @@
             "type": "string",
             "format": "date-time"
           },
-          "dailyChange": {
-            "type": "number"
-          },
           "highBalance": {
             "type": "boolean"
+          },
+          "dailyChange": {
+            "type": "number"
           },
           "lowBalance": {
             "type": "boolean"
@@ -50915,10 +51061,6 @@
           "source": {
             "type": "string"
           },
-          "lastUpdated": {
-            "type": "string",
-            "format": "date-time"
-          },
           "bankBuyRate": {
             "type": "number",
             "deprecated": true
@@ -50926,6 +51068,10 @@
           "bankSellRate": {
             "type": "number",
             "deprecated": true
+          },
+          "lastUpdated": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -51649,6 +51795,17 @@
             "items": {
               "$ref": "#/components/schemas/MnbCurrencyLineDto"
             }
+          }
+        }
+      },
+      "MnbQueryRateDto": {
+        "type": "object",
+        "properties": {
+          "currencyCode": {
+            "type": "string"
+          },
+          "officialRate": {
+            "type": "number"
           }
         }
       },
