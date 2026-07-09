@@ -69,4 +69,29 @@ describe('SupervisorPinSettingsPanel', () => {
     expect(mocks.setPin).not.toHaveBeenCalled()
     expect(screen.getByText('A supervisor PIN 4-6 számjegy legyen.')).toBeInTheDocument()
   })
+
+  it('PIN-set hiba: a logolt argumentumok nem tartalmazzák a PIN-t/jelszót', async () => {
+    const user = userEvent.setup()
+    mocks.setPin.mockRejectedValue(
+      Object.assign(new Error('Request failed with status code 401'), {
+        isAxiosError: true,
+        config: {
+          url: '/supervisor-pin/set',
+          data: JSON.stringify({ currentPassword: 'Titok-1', pin: '445566' }),
+        },
+        response: { status: 401 },
+      }),
+    )
+    render(<SupervisorPinSettingsPanel />)
+
+    await user.type(screen.getByLabelText('Jelenlegi jelszó'), 'Titok-1')
+    await user.type(screen.getByLabelText('Új PIN'), '445566')
+    await user.type(screen.getByLabelText('PIN ismét'), '445566')
+    await user.click(screen.getByRole('button', { name: 'PIN beállítása' }))
+
+    await waitFor(() => expect(mocks.loggerError).toHaveBeenCalled())
+    const logged = JSON.stringify(mocks.loggerError.mock.calls)
+    expect(logged).not.toContain('445566')
+    expect(logged).not.toContain('Titok-1')
+  })
 })

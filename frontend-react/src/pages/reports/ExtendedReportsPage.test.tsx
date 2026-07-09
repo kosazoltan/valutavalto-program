@@ -327,4 +327,25 @@ describe('ExtendedReportsPage CSV backend contract', () => {
       expect(URL.createObjectURL).toHaveBeenCalled()
     })
   })
+
+  it('PDF export hiba: Blob-hibatestből olvasott üzenetet mutat', async () => {
+    const user = userEvent.setup()
+    mocks.exportDailyClosingPdf.mockRejectedValue({
+      response: {
+        data: new window.Blob([JSON.stringify({ message: 'PDF export szerverhiba' })], {
+          type: 'application/json',
+        }),
+      },
+    })
+    render(<ExtendedReportsPage />)
+
+    await user.selectOptions(screen.getByRole('combobox'), 'daily-full')
+    await user.type(screen.getByTestId('daily-report-branch-id'), 'branch-1')
+    await user.type(screen.getByTestId('daily-report-date'), '2026-06-18')
+    await user.click(screen.getByRole('button', { name: /PDF export/i }))
+
+    await waitFor(() => {
+      expect(mocks.toast.error).toHaveBeenCalledWith('Export hiba', 'PDF export szerverhiba')
+    })
+  })
 })

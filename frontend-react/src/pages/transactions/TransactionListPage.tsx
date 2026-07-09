@@ -24,6 +24,8 @@ import type { PagedResponse } from '../../services/api/client'
 import { toast } from '../../components/ui/toaster'
 import { isElectron, getElectronAPI } from '../../utils/electron'
 import { useTranslation } from 'react-i18next'
+import { downloadBlob } from '../../utils/downloadBlob'
+import { getBlobErrorMessage } from '../../utils/errorHandling'
 
 const PAGE_SIZE = 25
 const PENDING_TX_ID_OFFSET = 1_000_000
@@ -58,17 +60,6 @@ function formatNumber(n: number | null | undefined, decimals = 2): string {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })
-}
-
-function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
 }
 
 export default function TransactionListPage() {
@@ -249,8 +240,7 @@ export default function TransactionListPage() {
       downloadBlob(blob, `bizonylat-${tx.id}.pdf`)
       toast.success('Bizonylat PDF letöltése elindítva')
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Nem sikerült a bizonylat PDF letöltése'
-      toast.error(msg)
+      toast.error('Nem sikerült a bizonylat PDF letöltése', await getBlobErrorMessage(err))
     }
   }
 
@@ -261,8 +251,7 @@ export default function TransactionListPage() {
       downloadBlob(blob, `bizonylat-${tx.id}.bin`)
       toast.success('ESC/POS bizonylat letöltése elindítva')
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Nem sikerült az ESC/POS bizonylat letöltése'
-      toast.error(msg)
+      toast.error('Nem sikerült az ESC/POS bizonylat letöltése', await getBlobErrorMessage(err))
     }
   }
 

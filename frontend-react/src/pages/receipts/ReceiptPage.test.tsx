@@ -151,4 +151,32 @@ describe('ReceiptPage backend detail contract', () => {
       expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:closing-pdf')
     })
   })
+
+  it('zárási PDF letöltési hiba: Blob-hibatestből olvasott üzenetet mutat', async () => {
+    const user = userEvent.setup({ delay: null })
+    mocks.receiptDownloadClosingPdf.mockRejectedValue({
+      response: {
+        data: new window.Blob([JSON.stringify({ message: 'Zárás PDF szerverhiba' })], {
+          type: 'application/json',
+        }),
+      },
+    })
+    render(<ReceiptPage />)
+
+    await waitFor(() => {
+      expect(mocks.receiptList).toHaveBeenCalled()
+    })
+
+    const closingIdInput = await screen.findByLabelText('Zárás azonosító')
+    await user.type(closingIdInput, 'closing-1')
+    await waitFor(() => expect(closingIdInput).toHaveValue('closing-1'))
+    await user.click(await screen.findByTestId('receipt-closing-pdf-download'))
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        'Nem sikerült a zárási bizonylat PDF letöltése',
+        'Zárás PDF szerverhiba',
+      )
+    })
+  })
 })

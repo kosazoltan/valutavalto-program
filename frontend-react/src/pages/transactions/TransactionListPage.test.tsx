@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   transactionApiGetDaily: vi.fn(),
   receiptDownloadTransactionPdf: vi.fn(),
   receiptDownloadTransactionEscPos: vi.fn(),
+  toastError: vi.fn(),
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -40,6 +41,13 @@ vi.mock('../../services/api/transactions', async () => {
     },
   }
 })
+
+vi.mock('../../components/ui/toaster', () => ({
+  toast: {
+    error: mocks.toastError,
+    success: vi.fn(),
+  },
+}))
 
 const mockTransactions: Transaction[] = [
   {
@@ -353,6 +361,31 @@ describe('TransactionListPage', () => {
     await waitFor(() => {
       expect(mocks.receiptDownloadTransactionPdf).toHaveBeenCalledWith(1)
       expect(URL.createObjectURL).toHaveBeenCalled()
+    })
+  })
+
+  it('bizonylat PDF letöltési hiba: Blob-hibatestből olvasott üzenetet mutat', async () => {
+    mocks.receiptDownloadTransactionPdf.mockRejectedValue({
+      response: {
+        data: new window.Blob([JSON.stringify({ message: 'Bizonylat PDF szerverhiba' })], {
+          type: 'application/json',
+        }),
+      },
+    })
+    renderTransactionListPage()
+    const user = userEvent.setup()
+
+    await waitFor(() => {
+      expect(screen.getByText('Kiss János')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByTestId('receipt-pdf-tx-1'))
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        'Nem sikerült a bizonylat PDF letöltése',
+        'Bizonylat PDF szerverhiba',
+      )
     })
   })
 

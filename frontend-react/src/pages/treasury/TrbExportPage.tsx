@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { FileText, FileSpreadsheet, Calendar, RefreshCw } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
+import { downloadBlob } from '../../utils/downloadBlob'
 import { useTranslation } from 'react-i18next'
 
 interface TrbBankFlowLine {
@@ -80,13 +81,7 @@ export default function TrbExportPage() {
         format === 'txt'
           ? 'text/plain'
           : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      const blob = new Blob([res.data], { type: mime })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `trb-export-${date}.${ext}`
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob(res.data as BlobPart, `trb-export-${date}.${ext}`, mime)
     } catch (err) {
       logger.error('TrbExportPage', `${format} download failed`, err)
     }

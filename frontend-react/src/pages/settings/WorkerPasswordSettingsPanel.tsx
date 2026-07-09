@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { LockKeyhole, Loader2, UserRound } from 'lucide-react'
 import { userApi, type UserDetail } from '../../services/api/index'
 import { logger } from '../../utils/logger'
+import { getErrorMessage } from '../../utils/errorHandling'
 
 export default function WorkerPasswordSettingsPanel() {
   const [oldPassword, setOldPassword] = useState('')
@@ -58,7 +59,7 @@ export default function WorkerPasswordSettingsPanel() {
       setNewPassword('')
       setNewPasswordConfirm('')
     } catch (err) {
-      logger.error('WorkerPasswordSettingsPanel', 'Saját user jelszóváltás sikertelen', err)
+      logger.error('WorkerPasswordSettingsPanel', 'Saját user jelszóváltás sikertelen', getErrorMessage(err))
       setError('Saját jelszó módosítása sikertelen.')
     } finally {
       setSaving(false)

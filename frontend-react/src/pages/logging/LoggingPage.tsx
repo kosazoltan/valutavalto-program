@@ -4,6 +4,7 @@ import { loggingApi, AuditLog } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 export default function LoggingPage() {
   const { t } = useTranslation()
@@ -48,11 +49,7 @@ export default function LoggingPage() {
   const handleExport = async () => {
     try {
       const blob = await loggingApi.exportToCsv(fromDate || undefined, toDate || undefined)
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `logs-${logType}-${new Date().toISOString()}.csv`
-      a.click()
+      downloadBlob(blob, `logs-${logType}-${new Date().toISOString()}.csv`)
     } catch (error) {
       logger.error('LoggingPage', 'Hiba az exportálásnál:', error)
       toast.error('Exportálási hiba', 'Hiba történt az exportálás során')

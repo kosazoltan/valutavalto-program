@@ -3,7 +3,8 @@ import { Camera, RefreshCw, AlertTriangle, Download } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 /**
  * FK-003/004 — Készlet pillanatkép (főértéktári élő készlet + napi forgalom).
@@ -164,11 +165,6 @@ export default function StockSnapshotPage() {
     try {
       setError(null)
       const r = await api.get('/stock-snapshot/excel', { responseType: 'blob' })
-      const blob = new Blob([r.data as BlobPart], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
       // Spec fájlnév: Keszlet_pillanatkep_YYYYMMDD_HHMMSS.xlsx. A timestampet dátum-komponensekből
       // építjük — NEM regex-szel, mert a `[...]` mintát a Tailwind arbitrary-property class-nak
       // hinné és érvénytelen CSS-t generálna (lightningcss build-törés).
@@ -179,15 +175,14 @@ export default function StockSnapshotPage() {
       const ts =
         `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_` +
         `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
-      a.href = url
-      a.download = `Keszlet_pillanatkep_${ts}.xlsx`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
+      downloadBlob(
+        r.data as BlobPart,
+        `Keszlet_pillanatkep_${ts}.xlsx`,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      )
     } catch (err) {
       logger.error('StockSnapshotPage', 'Excel letöltés hiba:', err)
-      setError(getErrorMessage(err))
+      setError(await getBlobErrorMessage(err))
     }
   }
 

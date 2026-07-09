@@ -11,7 +11,8 @@ import {
   Download,
 } from 'lucide-react'
 import { receiptApi, Receipt } from '../../services/api/index'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
+import { downloadBlob } from '../../utils/downloadBlob'
 import { toast } from '../../components/ui/toaster'
 import { useAuthStore } from '../../stores/authStore'
 import ReceiptPreviewModal from '../../components/electron/ReceiptPreviewModal'
@@ -95,17 +96,6 @@ export const formatHuf = (hufAmount?: number | null): string =>
   typeof hufAmount === 'number' && Number.isFinite(hufAmount)
     ? HUF_FORMATTER.format(hufAmount)
     : '—'
-
-function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
-}
 
 type CancelledReceiptContent = {
   receiptNumber?: unknown
@@ -517,7 +507,7 @@ export default function ReceiptPage() {
       downloadBlob(blob, `zaras-${closingId}.pdf`)
       toast.success('Zárási bizonylat PDF letöltése elindítva')
     } catch (err) {
-      toast.error('Nem sikerült a zárási bizonylat PDF letöltése', getErrorMessage(err))
+      toast.error('Nem sikerült a zárási bizonylat PDF letöltése', await getBlobErrorMessage(err))
       logger.error('ReceiptPage', 'Failed to download closing PDF:', err)
     } finally {
       setClosingPdfLoading(false)

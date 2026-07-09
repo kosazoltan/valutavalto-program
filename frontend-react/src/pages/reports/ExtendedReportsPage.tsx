@@ -4,17 +4,8 @@ import { reportApi, reportExtendedApi } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
-}
+import { downloadBlob } from '../../utils/downloadBlob'
+import { getBlobErrorMessage } from '../../utils/errorHandling'
 
 export default function ExtendedReportsPage() {
   const { t } = useTranslation()
@@ -161,7 +152,7 @@ export default function ExtendedReportsPage() {
       }
     } catch (error) {
       logger.error('ExtendedReportsPage', 'CSV export hiba:', error)
-      toast.error('Export hiba', 'Hiba történt a CSV export során')
+      toast.error('Export hiba', await getBlobErrorMessage(error))
     } finally {
       setExporting(false)
     }
@@ -181,7 +172,7 @@ export default function ExtendedReportsPage() {
       toast.success('PDF export elkészült')
     } catch (error) {
       logger.error('ExtendedReportsPage', 'PDF export hiba:', error)
-      toast.error('Export hiba', 'Hiba történt a PDF export során')
+      toast.error('Export hiba', await getBlobErrorMessage(error))
     } finally {
       setExporting(false)
     }

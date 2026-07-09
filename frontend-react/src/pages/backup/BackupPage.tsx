@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { Database, Search, RefreshCw, AlertTriangle, Download, RotateCcw, Plus } from 'lucide-react'
 import { api, configExportApi } from '../../services/api/index'
 import { logger } from '../../utils/logger'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 interface BackupItem {
   id: string | number
@@ -14,18 +15,6 @@ interface BackupItem {
   sizeBytes?: string
   status?: string
   createdByName?: string
-}
-
-function downloadJsonFile(filename: string, data: unknown) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = window.URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  window.URL.revokeObjectURL(url)
 }
 
 export default function BackupPage() {
@@ -74,16 +63,9 @@ export default function BackupPage() {
       setBusyAction(`download:${backupId}`)
       setError(null)
       const response = await api.get<Blob>(`/backup/${backupId}/download`, { responseType: 'blob' })
-      const url = window.URL.createObjectURL(response.data)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `backup_${backupId}.sql`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
+      downloadBlob(response.data, `backup_${backupId}.sql`)
     } catch (err) {
-      const msg = getErrorMessage(err)
+      const msg = await getBlobErrorMessage(err)
       logger.error('BackupPage', 'Mentés letöltési hiba:', err)
       setError(msg)
     } finally {
@@ -125,7 +107,7 @@ export default function BackupPage() {
       setBusyAction('config-export-branch')
       setError(null)
       const bundle = await configExportApi.exportBranch(branchId)
-      downloadJsonFile(`config_${bundle.branchCode || branchId}.json`, bundle)
+      downloadBlob(JSON.stringify(bundle, null, 2), `config_${bundle.branchCode || branchId}.json`, 'application/json')
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('BackupPage', 'Konfiguráció export hiba:', err)
@@ -140,7 +122,7 @@ export default function BackupPage() {
       setBusyAction('config-export-all')
       setError(null)
       const bundles = await configExportApi.exportAll()
-      downloadJsonFile(`config_all_${new Date().toISOString().slice(0, 10)}.json`, bundles)
+      downloadBlob(JSON.stringify(bundles, null, 2), `config_all_${new Date().toISOString().slice(0, 10)}.json`, 'application/json')
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('BackupPage', 'Összes konfiguráció export hiba:', err)

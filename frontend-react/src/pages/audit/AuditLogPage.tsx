@@ -4,6 +4,7 @@ import { auditLogApi } from '../../services/api/index'
 import type { AuditLog } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 /**
  * AuditLogPage — érzékeny műveletek audit naplója.
@@ -121,14 +122,7 @@ export default function AuditLogPage() {
       const from = fromDate ? `${fromDate}T00:00:00` : undefined
       const to = toDate ? `${toDate}T23:59:59` : undefined
       const blob = await auditLogApi.exportCsv(from, to)
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = 'audit_export.csv'
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
+      downloadBlob(blob, 'audit_export.csv')
     } catch (error) {
       logger.error('AuditLogPage', 'Hiba az audit export során:', error)
     } finally {

@@ -13,6 +13,8 @@ import {
 import { mnbReportsApi, type MnbReport, type MnbReportStatus } from '../../services/api/mnbReports'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import { downloadBlob } from '../../utils/downloadBlob'
+import { getBlobErrorMessage } from '../../utils/errorHandling'
 
 const STATUS_LABELS: Record<MnbReportStatus, string> = {
   DRAFT: 'Vázlat',
@@ -108,14 +110,9 @@ export default function MnbReportsPage() {
     setBusyId(r.id)
     try {
       const blob = await mnbReportsApi.downloadXml(r.id)
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `mnb-report-${getReportFileDate(r)}.xml`
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob(blob, `mnb-report-${getReportFileDate(r)}.xml`)
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e))
+      setErr(await getBlobErrorMessage(e))
     } finally {
       setBusyId(null)
     }

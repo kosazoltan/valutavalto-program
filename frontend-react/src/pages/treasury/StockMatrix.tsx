@@ -15,6 +15,7 @@ import { TableSkeleton } from './LoadingSkeleton'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 /** Branch aggregated data for the matrix */
 interface BranchRow {
@@ -132,13 +133,11 @@ export default function StockMatrix() {
       String(b.totalHuf),
     ])
     const csv = [header, ...rows].map((r) => r.join(';')).join('\n')
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `keszlet-matrix-${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(
+      '\ufeff' + csv,
+      `keszlet-matrix-${new Date().toISOString().slice(0, 10)}.csv`,
+      'text/csv;charset=utf-8',
+    )
   }, [displayBranches, displayCurrencies])
 
   useHotkeys('e', () => handleExport(), { enableOnFormTags: false })

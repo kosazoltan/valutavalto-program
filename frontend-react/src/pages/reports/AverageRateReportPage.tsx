@@ -7,8 +7,9 @@ import type {
   BranchInfo,
 } from '../../services/api/index'
 import { logger } from '../../utils/logger'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 /**
  * FK-027 — Átlag árfolyam riport (legacy ATLAGARF / Atlagarfolyam.xls parity).
@@ -104,17 +105,10 @@ export default function AverageRateReportPage() {
     setError(null)
     try {
       const blob = await averageRateApi.exportExcel(from, to)
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `atlag_arfolyam_${from}_${to}.xlsx`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
+      downloadBlob(blob, `atlag_arfolyam_${from}_${to}.xlsx`)
     } catch (err) {
       logger.error('AverageRateReportPage', 'Excel export hiba:', err)
-      setError(getErrorMessage(err))
+      setError(await getBlobErrorMessage(err))
     } finally {
       setExporting(false)
     }

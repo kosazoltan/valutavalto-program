@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { KeyRound, Trash2 } from 'lucide-react'
 import { supervisorPinApi } from '../../services/api/settings'
 import { logger } from '../../utils/logger'
+import { getErrorMessage } from '../../utils/errorHandling'
 
 const PIN_PATTERN = /^\d{4,6}$/
 
@@ -42,7 +43,7 @@ export default function SupervisorPinSettingsPanel() {
       setPin('')
       setPinConfirm('')
     } catch (err) {
-      logger.error('SupervisorPinSettingsPanel', 'Supervisor PIN beállítás sikertelen', err)
+      logger.error('SupervisorPinSettingsPanel', 'Supervisor PIN beállítás sikertelen', getErrorMessage(err))
       setError('Supervisor PIN beállítása sikertelen.')
     } finally {
       setSaving(false)
@@ -61,7 +62,7 @@ export default function SupervisorPinSettingsPanel() {
       setPin('')
       setPinConfirm('')
     } catch (err) {
-      logger.error('SupervisorPinSettingsPanel', 'Supervisor PIN törlés sikertelen', err)
+      logger.error('SupervisorPinSettingsPanel', 'Supervisor PIN törlés sikertelen', getErrorMessage(err))
       setError('Supervisor PIN törlése sikertelen.')
     } finally {
       setClearing(false)

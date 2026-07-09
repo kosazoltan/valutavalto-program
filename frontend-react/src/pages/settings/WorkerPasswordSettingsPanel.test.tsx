@@ -79,4 +79,29 @@ describe('WorkerPasswordSettingsPanel', () => {
     expect(mocks.updatePassword).not.toHaveBeenCalled()
     expect(screen.getByText('Az új jelszó 8-128 karakter legyen.')).toBeInTheDocument()
   })
+
+  it('jelszóváltási hiba: a logolt argumentumok nem tartalmazzák az új jelszót', async () => {
+    const user = userEvent.setup()
+    mocks.updatePassword.mockRejectedValue(
+      Object.assign(new Error('Request failed with status code 401'), {
+        isAxiosError: true,
+        config: {
+          url: '/users/me/password',
+          data: JSON.stringify({ oldPassword: 'Regi-Jelszo-1', newPassword: 'Uj-Jelszo-9' }),
+        },
+        response: { status: 401 },
+      }),
+    )
+    render(<WorkerPasswordSettingsPanel />)
+
+    await user.type(screen.getByLabelText('Jelenlegi jelszó'), 'Regi-Jelszo-1')
+    await user.type(screen.getByLabelText('Új jelszó'), 'Uj-Jelszo-9')
+    await user.type(screen.getByLabelText('Új jelszó ismét'), 'Uj-Jelszo-9')
+    await user.click(screen.getByRole('button', { name: 'Jelszó módosítása' }))
+
+    await waitFor(() => expect(mocks.loggerError).toHaveBeenCalled())
+    const logged = JSON.stringify(mocks.loggerError.mock.calls)
+    expect(logged).not.toContain('Uj-Jelszo-9')
+    expect(logged).not.toContain('Regi-Jelszo-1')
+  })
 })
