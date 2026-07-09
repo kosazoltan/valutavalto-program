@@ -5,6 +5,7 @@ import { centralReportApi } from '../../services/api/index'
 import { localIsoDate } from '../../utils/dateFormat'
 import { logger } from '../../utils/logger'
 import { getBlobErrorMessage } from '../../utils/errorHandling'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 /**
  * Központi konszolidált riportok (napi / heti / havi CSV) — cég-szintű összesítő.
@@ -51,14 +52,7 @@ export default function CentralReportsPage() {
         blob = await centralReportApi.monthly(month)
         filename = `havi_riport_${month}.csv`
       }
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
+      downloadBlob(blob, filename)
     } catch (err) {
       logger.error('CentralReportsPage', 'CSV letöltés hiba:', err)
       setError(await getBlobErrorMessage(err))

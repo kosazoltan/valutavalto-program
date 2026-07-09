@@ -27,6 +27,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '@/utils/safeArray'
 import { useTranslation } from 'react-i18next'
 import DocumentImagePair from '../../components/documents/DocumentImagePair'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 const FILE_TYPE_ICONS: Record<string, typeof File> = {
   pdf: FileText,
@@ -259,12 +260,7 @@ export default function DocumentStoragePage() {
     try {
       setError(null)
       const blob = await documentStorageApi.download(id)
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = fileName
-      a.click()
-      window.URL.revokeObjectURL(url)
+      downloadBlob(blob, fileName)
     } catch (err) {
       logger.error('DocumentStoragePage', 'Letöltési hiba:', err)
       setError('Hiba a letöltésnél')

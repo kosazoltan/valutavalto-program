@@ -41,4 +41,16 @@ describe('downloadBlob', () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock')
   })
+
+  it('kész Blob + elhagyott mimeType: a blob változatlanul megy tovább', async () => {
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const pdf = new Blob(['x'], { type: 'application/pdf' })
+
+    downloadBlob(pdf, 'a.pdf')
+
+    expect(createObjectURL).toHaveBeenCalledWith(pdf)
+    expect(clickSpy).toHaveBeenCalledTimes(1)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock')
+  })
 })

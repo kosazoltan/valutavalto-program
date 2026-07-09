@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { Download, AlertTriangle } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { getBlobErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
 import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 /**
  * Fix #146 live UI test: a korabbi page a nemletezo GET /booking-export-ot
@@ -76,18 +77,10 @@ export default function BookingExportPage() {
                 params: { branchId, ...params },
                 responseType: 'blob',
               })
-      const blob = new Blob([response.data as BlobPart], { type: 'text/csv;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
+      downloadBlob(response.data as BlobPart, filename, 'text/csv;charset=utf-8')
       setInfo('Letoltes: ' + filename)
     } catch (err) {
-      const msg = getErrorMessage(err)
+      const msg = await getBlobErrorMessage(err)
       logger.error('BookingExportPage', 'Export error: ' + path, err)
       setError(msg)
     } finally {

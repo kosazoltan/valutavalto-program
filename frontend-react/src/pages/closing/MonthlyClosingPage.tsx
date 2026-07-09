@@ -12,9 +12,10 @@ import {
 import { useTranslation } from 'react-i18next'
 import { api, monthlyClosingApi, type MonthlyClosingSummary } from '../../services/api/index'
 import { logger } from '../../utils/logger'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useAuthStore } from '../../stores/authStore'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 // FK-040 (2026-06-22): a HRK (horvát kuna) pénztár-bank készletmozgás 2025-01-01 óta
 // nem forgalmazott — a havi zárásban sem számolni, sem nyilvántartani nem kell vele.
@@ -96,16 +97,9 @@ export default function MonthlyClosingPage() {
       const response = await api.get<Blob>(`/closing/monthly/${branchId}/${yearMonth}/pdf`, {
         responseType: 'blob',
       })
-      const url = URL.createObjectURL(response.data)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `havi-zaras-${yearMonth}.pdf`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
+      downloadBlob(response.data, `havi-zaras-${yearMonth}.pdf`)
     } catch (err) {
-      const msg = getErrorMessage(err)
+      const msg = await getBlobErrorMessage(err)
       logger.error('MonthlyClosingPage', 'PDF letöltési hiba:', err)
       setError(msg)
     }

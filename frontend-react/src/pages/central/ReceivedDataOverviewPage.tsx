@@ -18,6 +18,7 @@ import {
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 type ReconFilter = 'all' | 'match' | 'mismatch'
 
@@ -119,15 +120,11 @@ export default function ReceivedDataOverviewPage() {
         .map((value) => `"${value.replace(/"/g, '""')}"`)
         .join(';'),
     )
-    const blob = new Blob([[header.join(';'), ...lines].join('\n')], {
-      type: 'text/csv;charset=utf-8',
-    })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `egyeztetes-${startDate}_${endDate}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(
+      [header.join(';'), ...lines].join('\n'),
+      `egyeztetes-${startDate}_${endDate}.csv`,
+      'text/csv;charset=utf-8',
+    )
   }
 
   return (

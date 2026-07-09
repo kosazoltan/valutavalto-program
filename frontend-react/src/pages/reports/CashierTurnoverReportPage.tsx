@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { api, reportApi } from '../../services/api/index'
 import type { WorkerMaster, WorkerPerformanceReport } from '../../services/api/index'
 import { logger } from '../../utils/logger'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 /**
  * Pénztáros forgalmi riport — kiadott / eladott valuták worker bontásban.
@@ -159,18 +160,10 @@ export default function CashierTurnoverReportPage() {
         params: { startDate: from, endDate: to },
         responseType: 'blob',
       })
-      const blob = new Blob([r.data as BlobPart], { type: 'text/csv; charset=UTF-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `penztaros-teljesitmeny-${workerFilter}-${from}-${to}.csv`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
+      downloadBlob(r.data as BlobPart, `penztaros-teljesitmeny-${workerFilter}-${from}-${to}.csv`, 'text/csv; charset=UTF-8')
     } catch (err) {
       logger.error('CashierTurnoverReportPage', 'CSV export hiba:', err)
-      setError(getErrorMessage(err))
+      setError(await getBlobErrorMessage(err))
     }
   }, [workerFilter, from, to, t])
 

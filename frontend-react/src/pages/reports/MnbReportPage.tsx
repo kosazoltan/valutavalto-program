@@ -15,7 +15,8 @@ import {
   type MnbReport,
 } from '../../services/api/mnbReports'
 import { logger } from '../../utils/logger'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
+import { downloadBlob } from '../../utils/downloadBlob'
 import { safeArray } from '../../utils/safeArray'
 import { asArray } from '../../utils/asArray'
 import { useTranslation } from 'react-i18next'
@@ -34,15 +35,6 @@ function toMonth(date: string) {
 
 function formatNumber(value: number | undefined) {
   return typeof value === 'number' ? value.toLocaleString('hu-HU') : '-'
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
 }
 
 export default function MnbReportPage() {
@@ -127,7 +119,7 @@ export default function MnbReportPage() {
       const blob = await mnbReportsApi.downloadDailyXml(reportDate)
       downloadBlob(blob, `mnb_daily_${reportDate}.xml`)
     } catch (err) {
-      const msg = getErrorMessage(err)
+      const msg = await getBlobErrorMessage(err)
       logger.error('MnbReportPage', 'MNB napi XML letöltési hiba:', err)
       setError(msg)
     } finally {

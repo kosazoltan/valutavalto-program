@@ -6,6 +6,7 @@ import type { BranchInfo } from '../../services/api/index'
 import { localIsoDate } from '../../utils/dateFormat'
 import { logger } from '../../utils/logger'
 import { getBlobErrorMessage } from '../../utils/errorHandling'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 /**
  * Napkönyv (napi forgalmi napló) PDF letöltő oldal — legacy NAPKONYV parity.
@@ -47,14 +48,7 @@ export default function DailyJournalPage() {
     setError(null)
     try {
       const blob = await dailyJournalApi.downloadPdf(branchId, date)
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `napkonyv-${date}-${branchId.slice(0, 8)}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
+      downloadBlob(blob, `napkonyv-${date}-${branchId.slice(0, 8)}.pdf`)
     } catch (err) {
       logger.error('DailyJournalPage', 'Napkönyv letöltés hiba:', err)
       setError(await getBlobErrorMessage(err))

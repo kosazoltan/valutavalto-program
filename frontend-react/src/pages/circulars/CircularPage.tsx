@@ -3,8 +3,9 @@ import { CheckCircle2, Download, Megaphone, Plus, Search, Upload, X } from 'luci
 import { api } from '@/services/api/index'
 import { safeArray } from '@/utils/safeArray'
 import { toast } from '../../components/ui/toaster'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { getElectronAPI } from '../../utils/electron'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 interface Circular {
   id: number
@@ -383,16 +384,9 @@ export default function CircularPage() {
         responseType: 'blob',
       })
       const blob = response.data
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = circular.attachmentFilename ?? `korlevel-${circular.id}`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
+      downloadBlob(blob, circular.attachmentFilename ?? `korlevel-${circular.id}`)
     } catch (err) {
-      toast.error('Csatolmány letöltési hiba', getErrorMessage(err))
+      toast.error('Csatolmány letöltési hiba', await getBlobErrorMessage(err))
     }
   }, [])
 

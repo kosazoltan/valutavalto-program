@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { api, branchApi } from '../../services/api/index'
 import type { BranchInfo } from '../../services/api/index'
 import { logger } from '../../utils/logger'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 /**
  * Kezelési díj dekád riport.
@@ -191,18 +192,10 @@ export default function HandlingFeeDecadePage() {
         params: { startDate: from, endDate: to },
         responseType: 'blob',
       })
-      const blob = new Blob([r.data as BlobPart], { type: 'text/csv; charset=UTF-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `kezelesi-dij-${from}-${to}.csv`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
+      downloadBlob(r.data as BlobPart, `kezelesi-dij-${from}-${to}.csv`, 'text/csv; charset=UTF-8')
     } catch (err) {
       logger.error('HandlingFeeDecadePage', 'CSV export hiba:', err)
-      setError(getErrorMessage(err))
+      setError(await getBlobErrorMessage(err))
     }
   }, [from, to])
 

@@ -16,9 +16,10 @@ import {
   Copy,
 } from 'lucide-react'
 import { api } from '../../services/api/index'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useAuthStore } from '../../stores/authStore'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 interface OccHealth {
   id: number
@@ -355,18 +356,9 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
       const response = await api.get<Blob>('/employees/occupational-health/export', {
         responseType: 'blob',
       })
-      const url = URL.createObjectURL(
-        new Blob([response.data], { type: 'text/csv;charset=utf-8;' }),
-      )
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', 'uzemorvosi_vizsgalatok.csv')
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      downloadBlob(response.data, 'uzemorvosi_vizsgalatok.csv', 'text/csv;charset=utf-8;')
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(await getBlobErrorMessage(err))
     }
   }
 
@@ -374,18 +366,9 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
     try {
       setError(null)
       const response = await api.get<Blob>('/employees/vacations/export', { responseType: 'blob' })
-      const url = URL.createObjectURL(
-        new Blob([response.data], { type: 'text/csv;charset=utf-8;' }),
-      )
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', 'szabadsagok.csv')
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      downloadBlob(response.data, 'szabadsagok.csv', 'text/csv;charset=utf-8;')
     } catch (err) {
-      setError(getErrorMessage(err))
+      setError(await getBlobErrorMessage(err))
     }
   }
 

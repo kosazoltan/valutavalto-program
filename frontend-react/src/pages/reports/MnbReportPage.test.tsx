@@ -125,4 +125,23 @@ describe('MnbReportPage backend contract', () => {
       expect(URL.createObjectURL).toHaveBeenCalled()
     })
   })
+
+  it('napi XML letöltési hiba: Blob-hibatestből olvasott üzenetet mutat', async () => {
+    const user = userEvent.setup()
+    mocks.downloadDailyXml.mockRejectedValue({
+      response: {
+        data: new window.Blob([JSON.stringify({ message: 'MNB XML szerverhiba' })], {
+          type: 'application/json',
+        }),
+      },
+    })
+    render(<MnbReportPage />)
+
+    await screen.findByText('2026-06-18')
+    await user.clear(screen.getByLabelText('MNB ellenőrzési nap'))
+    await user.type(screen.getByLabelText('MNB ellenőrzési nap'), '2026-06-18')
+    await user.click(screen.getByRole('button', { name: /Napi XML/i }))
+
+    expect(await screen.findByText('MNB XML szerverhiba')).toBeInTheDocument()
+  })
 })

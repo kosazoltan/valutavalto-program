@@ -4,6 +4,7 @@ import { customerApi, type Customer } from '@/services/api/transactions'
 import { useAuthStore } from '@/stores/authStore'
 import { safeArray } from '@/utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import { downloadBlob } from '../../utils/downloadBlob'
 
 // A backend ReservationDto részleges leképezése (a UI által használt mezők) —
 // backend/.../dto/reservation/ReservationDto.java.
@@ -122,14 +123,7 @@ export default function ReservationPage() {
     async (id: number, refund: boolean): Promise<boolean> => {
       try {
         const blob = await reservationsApi.receipt(id, refund)
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `foglalo-${refund ? 'visszafizetes' : 'atvetel'}-${id}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        URL.revokeObjectURL(url)
+        downloadBlob(blob, `foglalo-${refund ? 'visszafizetes' : 'atvetel'}-${id}.pdf`)
         return true
       } catch {
         // A hiba-visszajelzést a backend toast adja; a hívó dönt a retry-útról.
