@@ -255,4 +255,144 @@ class SystemParameterServiceTest {
                 .isInstanceOf(ValidationException.class);
         verifyNoInteractions(repo);
     }
+
+    // ── SYSPARAM-IDOR-UPDATE-BYID: by-id mutációk tenant-láthatósága ──
+
+    @Test
+    @DisplayName("update — másik cég scoped sora id-ról → RNF, nincs save (IDOR-védelem)")
+    void update_crossTenantRowById_throwsRnfWithoutSave() {
+        UUID foreignId = UUID.randomUUID();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(foreignId, COMPANY_A)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.update(foreignId, "hacked", null))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("Paraméter nem található: " + foreignId);
+            verify(repo).findVisibleById(foreignId, COMPANY_A);
+            verify(repo, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("toggleActive — másik cég scoped sora id-ról → RNF, nincs save")
+    void toggleActive_crossTenantRowById_throwsRnfWithoutSave() {
+        UUID foreignId = UUID.randomUUID();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(foreignId, COMPANY_A)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.toggleActive(foreignId))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("Paraméter nem található: " + foreignId);
+            verify(repo).findVisibleById(foreignId, COMPANY_A);
+            verify(repo, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("delete — másik cég scoped sora id-ról → RNF, se delete se deleteById")
+    void delete_crossTenantRowById_throwsRnfWithoutDelete() {
+        UUID foreignId = UUID.randomUUID();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(foreignId, COMPANY_A)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.delete(foreignId))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("Paraméter nem található: " + foreignId);
+            verify(repo).findVisibleById(foreignId, COMPANY_A);
+            verify(repo, never()).delete(any(SystemParameter.class));
+            verify(repo, never()).deleteById(any());
+        }
+    }
+
+    @Test
+    @DisplayName("update — saját cég sora id-ról frissül")
+    void update_ownCompanyRowById_succeeds() {
+        SystemParameter own = param("old", COMPANY_A);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(own.getId(), COMPANY_A)).thenReturn(Optional.of(own));
+            when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            SystemParameter saved = service.update(own.getId(), "new", "desc");
+
+            assertThat(saved.getParameterValue()).isEqualTo("new");
+            assertThat(saved.getDescription()).isEqualTo("desc");
+            assertThat(saved.getCompanyId()).isEqualTo(COMPANY_A);
+        }
+    }
+
+    @Test
+    @DisplayName("toggleActive — saját cég sora id-ról átbillen")
+    void toggleActive_ownCompanyRowById_flips() {
+        SystemParameter own = param("v", COMPANY_A); // isActive=true a helperből
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(own.getId(), COMPANY_A)).thenReturn(Optional.of(own));
+            when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            assertThat(service.toggleActive(own.getId()).getIsActive()).isFalse();
+        }
+    }
+
+    @Test
+    @DisplayName("delete — saját cég sora id-ról: repo.delete(entity), sosem deleteById")
+    void delete_ownCompanyRowById_deletesEntity() {
+        SystemParameter own = param("v", COMPANY_A);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(own.getId(), COMPANY_A)).thenReturn(Optional.of(own));
+
+            service.delete(own.getId());
+
+            verify(repo).delete(own);
+            verify(repo, never()).deleteById(any());
+        }
+    }
+
+    @Test
+    @DisplayName("update — globál sor (companyId=null) cég-adminnak is frissíthető")
+    void update_globalRowById_succeedsForCompanyAdmin() {
+        SystemParameter global = param("old", null);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(global.getId(), COMPANY_A)).thenReturn(Optional.of(global));
+            when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            SystemParameter saved = service.update(global.getId(), "new", null);
+
+            assertThat(saved.getParameterValue()).isEqualTo("new");
+            assertThat(saved.getCompanyId()).isNull();
+        }
+    }
+
+    @Test
+    @DisplayName("toggleActive — globál sor cég-adminnak is billenthető")
+    void toggleActive_globalRowById_flipsForCompanyAdmin() {
+        SystemParameter global = param("v", null);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(global.getId(), COMPANY_A)).thenReturn(Optional.of(global));
+            when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            assertThat(service.toggleActive(global.getId()).getIsActive()).isFalse();
+        }
+    }
+
+    @Test
+    @DisplayName("delete — globál sor cég-adminnak is törölhető: repo.delete(entity)")
+    void delete_globalRowById_deletesEntity() {
+        SystemParameter global = param("v", null);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(global.getId(), COMPANY_A)).thenReturn(Optional.of(global));
+
+            service.delete(global.getId());
+
+            verify(repo).delete(global);
+            verify(repo, never()).deleteById(any());
+        }
+    }
 }
