@@ -141,6 +141,27 @@ class CameraControllerSecurityTest {
     }
 
     @Test
+    void getCameraStatus_exposesFrozenState() {
+        LocalDateTime lastFresh = LocalDateTime.of(2026, 7, 10, 9, 58, 0);
+        when(recordingService.getActiveCameraIds()).thenReturn(Set.of("cam-own"));
+        when(recordingService.isFrozen("cam-own")).thenReturn(true);
+        when(recordingService.getLastFreshFrameAt("cam-own")).thenReturn(lastFresh);
+        when(cameraConfigRepository.findByBranchIdAndEnabled(OWN_BRANCH_ID, true)).thenReturn(List.of(
+                CameraConfig.builder().branchId(OWN_BRANCH_ID).cameraId("cam-own").enabled(true).build()
+        ));
+        when(branchRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of(branch(OWN_BRANCH_ID, COMPANY_ID)));
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+
+            var response = controller.getCameraStatus();
+            assertNotNull(response.getBody());
+            assertTrue(response.getBody().get(0).isFrozen());
+            assertEquals(lastFresh, response.getBody().get(0).getLastFreshFrameAt());
+        }
+    }
+
+    @Test
     void getLiveFrame_rejectsForeignCamera() {
         when(branchRepository.findByCompanyId(COMPANY_ID)).thenReturn(List.of(branch(OWN_BRANCH_ID, COMPANY_ID)));
         when(cameraConfigRepository.findByBranchIdAndEnabled(OWN_BRANCH_ID, true)).thenReturn(List.of(
