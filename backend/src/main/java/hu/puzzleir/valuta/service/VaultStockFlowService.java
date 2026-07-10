@@ -302,7 +302,7 @@ public class VaultStockFlowService {
         UUID branchId = branch.getId();
         Long currencyId = currency.getId();
 
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(branchId, currencyId)
+        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(branchId, currencyId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "cash_balance nem talalhato (branch=" + branchCode + ", currency=" + currencyCode
                                 + ") - V112 ota minden branch-nek inicializalva kell lennie"));
@@ -332,7 +332,7 @@ public class VaultStockFlowService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Company nem talalhato: " + companyId));
 
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(branchId, currencyId)
+        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(branchId, currencyId, companyId)
                 .orElseGet(() -> CashBalance.builder()
                         .company(company)
                         .branch(branch)

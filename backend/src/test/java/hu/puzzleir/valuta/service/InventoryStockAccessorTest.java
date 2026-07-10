@@ -23,6 +23,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
 
@@ -81,7 +82,7 @@ class InventoryStockAccessorTest {
                 .currency(eur)
                 .currentBalance(new BigDecimal("1500.00"))
                 .build();
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(CASHIER_BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(CASHIER_BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance));
 
         assertThat(accessor.getBalance(cashierBranch, eur)).isEqualByComparingTo("1500.00");
@@ -124,7 +125,7 @@ class InventoryStockAccessorTest {
                 .currency(eur)
                 .currentBalance(new BigDecimal("1000.00"))
                 .build();
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(CASHIER_BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(CASHIER_BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance));
 
         accessor.adjust(cashierBranch, eur, new BigDecimal("125.00"));
@@ -132,6 +133,18 @@ class InventoryStockAccessorTest {
 
         assertThat(balance.getCurrentBalance()).isEqualByComparingTo("1100.00");
         verify(cashBalanceRepository, times(2)).save(balance);
+    }
+
+
+    @Test
+    @DisplayName("nem-vault ág: hiányzó company a branch-en → fail-closed ValidationException, repo-hívás nélkül")
+    void adjust_nonVaultWithoutCompanyFailsClosed() {
+        cashierBranch.setCompany(null);
+
+        assertThatThrownBy(() -> accessor.adjust(cashierBranch, eur, new BigDecimal("10.00")))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Hiányzó cégazonosító");
+        verifyNoInteractions(cashBalanceRepository);
     }
 
     @Test

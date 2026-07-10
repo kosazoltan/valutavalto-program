@@ -41,6 +41,7 @@ class CashBalanceServiceTest {
     @InjectMocks private CashBalanceService service;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();
+    private static final UUID COMPANY_ID = UUID.randomUUID();
 
     @Test
     @DisplayName("validateSufficientBalance — elegendo keszlet")
@@ -53,7 +54,8 @@ class CashBalanceServiceTest {
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
-            when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 4L))
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, 4L, COMPANY_ID))
                     .thenReturn(Optional.of(balance));
 
             assertThatCode(() -> service.validateSufficientBalance(4L, new BigDecimal("3000")))
@@ -72,12 +74,33 @@ class CashBalanceServiceTest {
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
-            when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 4L))
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, 4L, COMPANY_ID))
                     .thenReturn(Optional.of(balance));
 
             assertThatThrownBy(() -> service.validateSufficientBalance(4L, new BigDecimal("500")))
                     .isInstanceOf(ValidationException.class)
                     .hasMessageContaining("Nincs elegendő");
+        }
+    }
+
+
+    @Test
+    @DisplayName("validateSufficientBalance — cross-tenant: a JWT-companyId-szűrt lookup üres → fail-closed ResourceNotFoundException")
+    void testValidateSufficientBalance_crossTenantRowUnreachable() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            // A (branch, currency) sor létezik az adatbázisban, de MÁS cég alatt —
+            // a tenant-szűrt query ezért üres.
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, 4L, COMPANY_ID))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.validateSufficientBalance(4L, new BigDecimal("500")))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Kassza egyenleg nem található");
+            verify(cashBalanceRepository).findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, 4L, COMPANY_ID);
+            verify(cashBalanceRepository, never()).save(any());
         }
     }
 
@@ -301,10 +324,11 @@ class CashBalanceServiceTest {
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             su.when(SecurityUtils::isManagerOrAbove).thenReturn(true);
             su.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
             su.when(SecurityUtils::getCurrentWorkerCode).thenReturn("MGR001");
-            when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 4L))
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, 4L, COMPANY_ID))
                     .thenReturn(Optional.of(balance));
             when(cashBalanceRepository.save(any(CashBalance.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -341,10 +365,11 @@ class CashBalanceServiceTest {
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             su.when(SecurityUtils::isManagerOrAbove).thenReturn(true);
             su.when(SecurityUtils::getCurrentWorkerId).thenReturn(43L);
             su.when(SecurityUtils::getCurrentWorkerCode).thenReturn("MGR002");
-            when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 4L))
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, 4L, COMPANY_ID))
                     .thenReturn(Optional.of(balance));
             when(cashBalanceRepository.save(any(CashBalance.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -380,8 +405,9 @@ class CashBalanceServiceTest {
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             su.when(SecurityUtils::isManagerOrAbove).thenReturn(true);
-            when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 4L))
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, 4L, COMPANY_ID))
                     .thenReturn(Optional.of(balance));
 
             var req = CashBalanceService.AdjustBalanceRequest.builder()
@@ -400,8 +426,9 @@ class CashBalanceServiceTest {
     void adjustBalance_notFound_throws() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             su.when(SecurityUtils::isManagerOrAbove).thenReturn(true);
-            when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 9L))
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, 9L, COMPANY_ID))
                     .thenReturn(Optional.empty());
 
             var req = CashBalanceService.AdjustBalanceRequest.builder()
@@ -435,8 +462,9 @@ class CashBalanceServiceTest {
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             su.when(SecurityUtils::isManagerOrAbove).thenReturn(true);
-            when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 4L))
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, 4L, COMPANY_ID))
                     .thenReturn(Optional.of(balance));
             when(cashBalanceRepository.save(any(CashBalance.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -459,8 +487,9 @@ class CashBalanceServiceTest {
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             su.when(SecurityUtils::isManagerOrAbove).thenReturn(true);
-            when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 4L))
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, 4L, COMPANY_ID))
                     .thenReturn(Optional.of(balance));
             when(cashBalanceRepository.save(any(CashBalance.class))).thenAnswer(i -> i.getArgument(0));
 

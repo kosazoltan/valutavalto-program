@@ -139,7 +139,7 @@ class InventoryServiceTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(currencyRepository.findById(CURRENCY_ID)).thenReturn(Optional.of(eurCurrency));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance));
         when(exchangeRateRepository.findLatestMidRateByCurrencyCode(any(), eq("EUR")))
                 .thenReturn(Optional.of(new BigDecimal("390")));
@@ -177,7 +177,7 @@ class InventoryServiceTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(currencyRepository.findById(CURRENCY_ID)).thenReturn(Optional.of(eurCurrency));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance));
 
         // Act & Assert
@@ -208,7 +208,7 @@ class InventoryServiceTest {
 
         when(movementRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(movement));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance));
         when(movementRepository.save(any(InventoryMovement.class))).thenReturn(movement);
 
@@ -239,7 +239,7 @@ class InventoryServiceTest {
 
         when(movementRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(movement));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance));
 
         ArgumentCaptor<InventoryMovement> captor = ArgumentCaptor.forClass(InventoryMovement.class);
@@ -332,7 +332,7 @@ class InventoryServiceTest {
         when(branchRepository.findById(BRANCH_ID_2)).thenReturn(Optional.of(branch2));
         when(currencyRepository.findById(CURRENCY_ID)).thenReturn(Optional.of(eurCurrency));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(sourceBalance));
 
         // Act & Assert
@@ -362,7 +362,7 @@ class InventoryServiceTest {
         when(branchRepository.findById(BRANCH_ID_2)).thenReturn(Optional.of(branch2));
         when(currencyRepository.findById(CURRENCY_ID)).thenReturn(Optional.of(eurCurrency));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(sourceBalance));
         when(exchangeRateRepository.findLatestMidRateByCurrencyCode(any(), eq("EUR")))
                 .thenReturn(Optional.of(new BigDecimal("390")));
@@ -436,7 +436,7 @@ class InventoryServiceTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(currencyRepository.findById(CURRENCY_ID)).thenReturn(Optional.of(eurCurrency));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance));
         when(exchangeRateRepository.findLatestMidRateByCurrencyCode(any(), eq("EUR")))
                 .thenReturn(Optional.of(new BigDecimal("390")));
@@ -475,7 +475,7 @@ class InventoryServiceTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(currencyRepository.findById(CURRENCY_ID)).thenReturn(Optional.of(eurCurrency));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance));
         when(exchangeRateRepository.findLatestMidRateByCurrencyCode(any(), eq("EUR")))
                 .thenReturn(Optional.empty());
@@ -513,7 +513,7 @@ class InventoryServiceTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(currencyRepository.findById(2L)).thenReturn(Optional.of(hufCurrency));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, 2L))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, 2L, COMPANY_ID))
                 .thenReturn(Optional.of(balance));
         when(movementRepository.findMaxReferenceNumber(anyString())).thenReturn(0L);
 
@@ -547,7 +547,7 @@ class InventoryServiceTest {
                 .branch(branch).currency(eurCurrency).currentBalance(new BigDecimal("5000")).build();
         when(movementRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(movement));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance));
         when(movementRepository.save(any(InventoryMovement.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -577,7 +577,7 @@ class InventoryServiceTest {
                 .branch(branch).currency(eurCurrency).currentBalance(new BigDecimal("5000")).build();
         when(movementRepository.findByIdForUpdate(6L)).thenReturn(Optional.of(movement));
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance));
         when(movementRepository.save(any(InventoryMovement.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -610,7 +610,7 @@ class InventoryServiceTest {
         when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
         when(stockAccessor.getBalance(branch, eurCurrency)).thenReturn(new BigDecimal("5000"));
         when(stockAccessor.isVaultContext(branch)).thenReturn(false);
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance));
         when(exchangeRateRepository.findLatestMidRateByCurrencyCode(any(), eq("EUR")))
                 .thenReturn(Optional.of(new BigDecimal("390")));

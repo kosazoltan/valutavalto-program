@@ -394,7 +394,8 @@ public class InventoryService {
         if (vaultContext) {
             return branch.getId().toString();
         }
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(branch.getId(), currency.getId())
+        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(
+                        branch.getId(), currency.getId(), branch.getCompany().getId())
                 .orElseThrow(() -> new ValidationException(
                         "Nincs kassza egyenleg ehhez a valutához: " + currency.getCode()));
         return balance.getId().toString();
@@ -869,13 +870,6 @@ public class InventoryService {
         return amount.multiply(midRate.get()).setScale(0, RoundingMode.HALF_UP);
     }
 
-    private void updateCashBalance(UUID branchId, Long currencyId, BigDecimal amount, boolean isIncoming) {
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(branchId, currencyId)
-                .orElseThrow(() -> new ValidationException(
-                        "Kassza egyenleg nem található: branchId=" + branchId + ", currencyId=" + currencyId));
-        balance.updateBalance(amount.setScale(4, RoundingMode.HALF_UP), isIncoming);
-        cashBalanceRepository.save(balance);
-    }
 
     private String generateReferenceNumber() {
         String prefix = "INV-" + LocalDate.now().format(REF_DATE_FORMAT) + "-";

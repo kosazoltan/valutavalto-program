@@ -20,9 +20,18 @@ import java.util.UUID;
 public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> {
 
     /**
-     * Egyenleg keresése fiók és valuta alapján
+     * Egyenleg keresése fiók, valuta ÉS cég alapján — defense-in-depth tenant-scope.
+     *
+     * 2026-07-10 (GLM-review lelet, INVSTOCK-kör): a korábbi findByBranchIdAndCurrencyId
+     * companyId-predikátum nélkül futott. Nem volt direkt IDOR (a branchId minden hívónál
+     * JWT-ből vagy company-validált Branch entityből jött), de pénz-út lekérdezés a repo
+     * konvenciója szerint nem élhet tenant-szűrés nélkül — a companyId így elírt/rosszul
+     * megbízott branchId esetén is üres találatot (fail-closed) kényszerít.
+     * A companyId forrása hívóhely-függő: JWT (SecurityUtils.getCurrentCompanyId) a
+     * request-scoped hívóknál, validált Branch.company a startup/entity-alapúaknál.
      */
-    Optional<CashBalance> findByBranchIdAndCurrencyId(UUID branchId, Long currencyId);
+    Optional<CashBalance> findByBranchIdAndCurrencyIdAndCompanyId(
+            UUID branchId, Long currencyId, UUID companyId);
 
     /**
      * Egyenleg keresése fiók és valuta alapján — JOIN FETCH a lazy branch/currency proxy ellen.

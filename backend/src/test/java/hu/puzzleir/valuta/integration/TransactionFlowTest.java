@@ -222,11 +222,11 @@ class TransactionFlowTest {
                 when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
 
                 // K__szlet ellen_'rz__s -  EUR __s HUF k__l__n (read + pessimistic lock)
-                when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, EUR_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(eurBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
                         .thenReturn(Optional.of(eurBalance));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, HUF_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, HUF_ID, COMPANY_ID))
                         .thenReturn(Optional.of(hufBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
                         .thenReturn(Optional.of(eurBalance));
@@ -308,7 +308,7 @@ class TransactionFlowTest {
                 // __res k__szlet
                 CashBalance emptyBalance = new CashBalance();
                 emptyBalance.setCurrentBalance(new BigDecimal("10"));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, EUR_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(emptyBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
                         .thenReturn(Optional.of(emptyBalance));
@@ -346,11 +346,11 @@ class TransactionFlowTest {
                 when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
                 when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eurCurrency));
                 when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
-                when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, EUR_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(eurBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
                         .thenReturn(Optional.of(eurBalance));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, HUF_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, HUF_ID, COMPANY_ID))
                         .thenReturn(Optional.of(hufBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, HUF_ID))
                         .thenReturn(Optional.of(hufBalance));
@@ -429,11 +429,11 @@ class TransactionFlowTest {
                 when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
                 when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eurCurrency));
                 when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
-                when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, EUR_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(eurBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
                         .thenReturn(Optional.of(eurBalance));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, HUF_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, HUF_ID, COMPANY_ID))
                         .thenReturn(Optional.of(hufBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, HUF_ID))
                         .thenReturn(Optional.of(hufBalance));
@@ -536,11 +536,11 @@ class TransactionFlowTest {
                 when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
                 when(transactionRepository.findMaxReceiptNumber(eq(BRANCH_ID), any(), anyString()))
                         .thenReturn(Optional.empty());
-                when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, EUR_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(eurBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
                         .thenReturn(Optional.of(eurBalance));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_ID, HUF_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, HUF_ID, COMPANY_ID))
                         .thenReturn(Optional.of(hufBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, HUF_ID))
                         .thenReturn(Optional.of(hufBalance));

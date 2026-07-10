@@ -102,12 +102,13 @@ class InventoryStockAccessorKktgSeparationTest {
     @DisplayName("KKTG: pénztár getBalance nem olvas currency_stock repository-t")
     void getBalance_cashierNeverTouchesCurrencyStockRepository() {
         CashBalance balance = cashBalance("1500.00");
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(CASHIER_BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(CASHIER_BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance));
 
         assertThat(accessor.getBalance(cashierBranch, eur)).isEqualByComparingTo("1500.00");
 
-        verify(cashBalanceRepository).findByBranchIdAndCurrencyId(CASHIER_BRANCH_ID, CURRENCY_ID);
+        verify(cashBalanceRepository).findByBranchIdAndCurrencyIdAndCompanyId(
+                CASHIER_BRANCH_ID, CURRENCY_ID, COMPANY_ID);
         verifyNoInteractions(currencyStockRepository);
     }
 
@@ -115,7 +116,7 @@ class InventoryStockAccessorKktgSeparationTest {
     @DisplayName("KKTG: pénztár adjust nem ír currency_stock repository-t")
     void adjust_cashierNeverTouchesCurrencyStockRepository() {
         CashBalance balance = cashBalance("1000.00");
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(CASHIER_BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(CASHIER_BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance));
 
         accessor.adjust(cashierBranch, eur, new BigDecimal("-75.00"));
@@ -132,7 +133,7 @@ class InventoryStockAccessorKktgSeparationTest {
         CashBalance cashierBalance = cashBalance("500.00");
         when(currencyStockRepository.findForUpdate(COMPANY_ID, "VAULT", "12", "EUR"))
                 .thenReturn(Optional.of(vaultStock));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(CASHIER_BRANCH_ID, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(CASHIER_BRANCH_ID, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(cashierBalance));
 
         accessor.adjust(vaultBranch, eur, new BigDecimal("200.00"));

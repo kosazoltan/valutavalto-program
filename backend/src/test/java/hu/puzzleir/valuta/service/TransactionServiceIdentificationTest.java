@@ -141,7 +141,7 @@ class TransactionServiceIdentificationTest {
         // Készlet elegendő
         CashBalance cashBalance = new CashBalance();
         cashBalance.setCurrentBalance(new BigDecimal("10000"));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(eq(BRANCH_ID), eq(2L)))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(eq(BRANCH_ID), eq(2L), any()))
                 .thenReturn(Optional.of(cashBalance));
 
         // Bizonylat szám
