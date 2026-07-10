@@ -121,6 +121,7 @@ public class StockSnapshotExcelService {
             workbook.write(baos);
             return baos.toByteArray();
         } catch (IOException e) {
+            log.error("Készlet-snapshot Excel generálás sikertelen", e);
             throw new BusinessException("Failed to generate Excel workbook", "EXCEL_GENERATION_FAILED");
         }
     }

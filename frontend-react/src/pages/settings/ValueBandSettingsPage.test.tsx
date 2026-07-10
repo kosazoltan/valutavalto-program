@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { AxiosError } from 'axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ValueBandSettingsPage from './ValueBandSettingsPage'
 
@@ -98,6 +99,29 @@ describe('ValueBandSettingsPage', () => {
         rollingWindowDays: 8,
         effectiveFrom: '2099-02-01',
       })
+    })
+  })
+
+  it('mentési hiba esetén a szerver üzenetét mutatja toastban', async () => {
+    const user = userEvent.setup()
+    const err = new AxiosError('Request failed with status code 400')
+    // @ts-expect-error teszt-fixture: csak a handler által olvasott response mező kell
+    err.response = {
+      status: 400,
+      data: { message: 'Erre a napra már létezik értéksáv-konfiguráció: 2099-02-01' },
+    }
+    mocks.create.mockRejectedValueOnce(err)
+
+    render(<ValueBandSettingsPage />)
+
+    await screen.findByText('AML értéksávok')
+    await user.click(screen.getByRole('button', { name: /Új sáv mentése/i }))
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        'Mentés sikertelen',
+        'Erre a napra már létezik értéksáv-konfiguráció: 2099-02-01',
+      )
     })
   })
 

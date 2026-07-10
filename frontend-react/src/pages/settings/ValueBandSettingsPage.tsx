@@ -7,6 +7,7 @@ import {
 } from '../../services/api/settings'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
+import { getErrorMessage } from '../../utils/errorHandling'
 
 const DEFAULT_FORM: ValueBandConfigRequest = {
   simplifiedIdentificationLimitHuf: 100000,
@@ -42,12 +43,6 @@ function statusFor(
   return row.effectiveFrom > todayIso() ? 'JÖVŐBELI' : 'LEJÁRT'
 }
 
-function extractErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message
-  if (typeof err === 'string') return err
-  return 'Ismeretlen hiba'
-}
-
 export default function ValueBandSettingsPage() {
   const [rows, setRows] = useState<ValueBandConfig[]>([])
   const [form, setForm] = useState<ValueBandConfigRequest>(defaultForm)
@@ -62,7 +57,7 @@ export default function ValueBandSettingsPage() {
       setRows([...list].sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom)))
     } catch (err) {
       logger.error('ValueBandSettingsPage', 'Értéksávok betöltése sikertelen:', err)
-      toast.error('Betöltési hiba', extractErrorMessage(err))
+      toast.error('Betöltési hiba', getErrorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -141,7 +136,7 @@ export default function ValueBandSettingsPage() {
       await loadRows()
     } catch (err) {
       logger.error('ValueBandSettingsPage', 'Mentés sikertelen:', err)
-      toast.error('Mentés sikertelen', extractErrorMessage(err))
+      toast.error('Mentés sikertelen', getErrorMessage(err))
     } finally {
       setSaving(false)
     }
@@ -157,7 +152,7 @@ export default function ValueBandSettingsPage() {
       await loadRows()
     } catch (err) {
       logger.error('ValueBandSettingsPage', 'Törlés sikertelen:', err)
-      toast.error('Törlés sikertelen', extractErrorMessage(err))
+      toast.error('Törlés sikertelen', getErrorMessage(err))
     } finally {
       setSaving(false)
     }
