@@ -23,6 +23,7 @@ vi.mock('../../components/ui/toaster', () => ({
 vi.mock('../../utils/logger', () => ({
   logger: {
     error: vi.fn(),
+    warn: vi.fn(),
   },
 }))
 
@@ -119,5 +120,28 @@ describe('CameraStatusPage backend kapcsolatok', () => {
 
     await waitFor(() => expect(screen.getByTestId('camera-pending-uploads')).toHaveTextContent('7'))
     expect(screen.queryByTestId('camera-frozen-badge-cam1')).not.toBeInTheDocument()
+  })
+
+  it('nyugodt információs állapotot mutat, ha a kamera admin endpointok ki vannak kapcsolva', async () => {
+    mockApi.get.mockImplementation((url: string) => {
+      if (url === '/camera/admin/storage-stats') {
+        return Promise.reject(new Error('camera subsystem disabled'))
+      }
+      if (url === '/camera/admin/upload-status') {
+        return Promise.reject(new Error('camera subsystem disabled'))
+      }
+      if (url === '/camera/status') {
+        return Promise.resolve({ data: [{ cameraId: 'cam1', recording: true, connected: true }] })
+      }
+      return Promise.resolve({ data: {} })
+    })
+
+    render(<CameraStatusPage />)
+
+    expect(
+      await screen.findByText('A kamera-alrendszer nincs engedélyezve ezen a szerveren.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId('camera-pending-uploads')).not.toBeInTheDocument()
+    expect(mockApi.get).not.toHaveBeenCalledWith('/camera/status')
   })
 })

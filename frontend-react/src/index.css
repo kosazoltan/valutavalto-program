@@ -84,6 +84,14 @@
     @apply flex items-center justify-center gap-2;
   }
 
+  .form-button-secondary {
+    @apply h-8 px-3 py-1.5 border border-secondary-300 bg-secondary-50 text-secondary-700 text-xs font-medium rounded-md;
+    @apply hover:bg-secondary-100 hover:border-secondary-400 hover:shadow-sm;
+    @apply active:bg-secondary-200 active:scale-[0.98];
+    @apply transition-all duration-200 cursor-pointer;
+    @apply flex items-center justify-center gap-2;
+  }
+
   .form-button-success {
     @apply h-8 px-3 py-1.5 bg-success-600 text-white text-xs font-medium rounded-md border-0;
     @apply hover:bg-success-700 hover:shadow-md;
