@@ -5,10 +5,12 @@ import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerBranchAccess;
 import hu.puzzleir.valuta.entity.WorkerBranchAccess.WorkerBranchAccessId;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.WorkerBranchAccessRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
@@ -26,6 +29,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -260,14 +264,18 @@ class WorkerBranchAccessServiceTest {
                 .workerId(WORKER_ID).branchId(BRANCH_ID).build();
         WorkerBranchAccess b = WorkerBranchAccess.builder()
                 .workerId(WORKER_ID).branchId(OTHER_BRANCH_ID).build();
-        when(repo.findAllByWorkerIdOrderByGrantedAtAsc(WORKER_ID))
-                .thenReturn(List.of(a, b));
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_A);
+            when(workerRepo.findById(WORKER_ID)).thenReturn(Optional.of(workerCompanyA));
+            when(repo.findAllByWorkerIdOrderByGrantedAtAsc(WORKER_ID))
+                    .thenReturn(List.of(a, b));
 
-        List<WorkerBranchAccess> result = service.listBranches(WORKER_ID);
+            List<WorkerBranchAccess> result = service.listBranches(WORKER_ID);
 
-        assertThat(result).hasSize(2);
-        assertThat(result).extracting(WorkerBranchAccess::getBranchId)
-                .containsExactly(BRANCH_ID, OTHER_BRANCH_ID);
+            assertThat(result).hasSize(2);
+            assertThat(result).extracting(WorkerBranchAccess::getBranchId)
+                    .containsExactly(BRANCH_ID, OTHER_BRANCH_ID);
+        }
     }
 
     @Test
@@ -275,12 +283,98 @@ class WorkerBranchAccessServiceTest {
     void listWorkers_forwardsToRepo() {
         WorkerBranchAccess a = WorkerBranchAccess.builder()
                 .workerId(WORKER_ID).branchId(BRANCH_ID).build();
-        when(repo.findAllByBranchIdOrderByGrantedAtAsc(BRANCH_ID))
-                .thenReturn(List.of(a));
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_A);
+            when(branchRepo.findById(BRANCH_ID)).thenReturn(Optional.of(branchCompanyA));
+            when(repo.findAllByBranchIdOrderByGrantedAtAsc(BRANCH_ID))
+                    .thenReturn(List.of(a));
 
-        List<WorkerBranchAccess> result = service.listWorkers(BRANCH_ID);
+            List<WorkerBranchAccess> result = service.listWorkers(BRANCH_ID);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getWorkerId()).isEqualTo(WORKER_ID);
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getWorkerId()).isEqualTo(WORKER_ID);
+        }
+    }
+
+    @Test
+    @DisplayName("listWorkers() cross-tenant branch -> ResourceNotFoundException (existence-masked)")
+    void listWorkers_rejectsCrossTenantBranch() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_A);
+            when(branchRepo.findById(OTHER_BRANCH_ID)).thenReturn(Optional.of(branchCompanyB));
+
+            assertThatThrownBy(() -> service.listWorkers(OTHER_BRANCH_ID))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Iroda nem található");
+
+            verify(repo, never()).findAllByBranchIdOrderByGrantedAtAsc(any());
+        }
+    }
+
+    @Test
+    @DisplayName("listWorkers() nem létező branch -> ResourceNotFoundException (nem üres lista)")
+    void listWorkers_rejectsMissingBranch() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_A);
+            when(branchRepo.findById(BRANCH_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.listWorkers(BRANCH_ID))
+                    .isInstanceOf(ResourceNotFoundException.class);
+
+            verify(repo, never()).findAllByBranchIdOrderByGrantedAtAsc(any());
+        }
+    }
+
+    @Test
+    @DisplayName("listWorkers() company nélküli branch -> ResourceNotFoundException")
+    void listWorkers_rejectsBranchWithoutCompany() {
+        Branch branchWithoutCompany = Branch.builder()
+                .id(BRANCH_ID)
+                .code("BR017")
+                .build();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_A);
+            when(branchRepo.findById(BRANCH_ID)).thenReturn(Optional.of(branchWithoutCompany));
+
+            assertThatThrownBy(() -> service.listWorkers(BRANCH_ID))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Iroda nem található");
+
+            verify(repo, never()).findAllByBranchIdOrderByGrantedAtAsc(any());
+        }
+    }
+
+    @Test
+    @DisplayName("listBranches() cross-tenant worker -> ResourceNotFoundException")
+    void listBranches_rejectsCrossTenantWorker() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_B);
+            when(workerRepo.findById(WORKER_ID)).thenReturn(Optional.of(workerCompanyA));
+
+            assertThatThrownBy(() -> service.listBranches(WORKER_ID))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Munkatárs nem található");
+
+            verify(repo, never()).findAllByWorkerIdOrderByGrantedAtAsc(any());
+        }
+    }
+
+    @Test
+    @DisplayName("listBranches() company nélküli worker -> ResourceNotFoundException")
+    void listBranches_rejectsWorkerWithoutCompany() {
+        Worker workerWithoutCompany = Worker.builder()
+                .id(WORKER_ID)
+                .code("P001")
+                .build();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_A);
+            when(workerRepo.findById(WORKER_ID)).thenReturn(Optional.of(workerWithoutCompany));
+
+            assertThatThrownBy(() -> service.listBranches(WORKER_ID))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Munkatárs nem található");
+
+            verify(repo, never()).findAllByWorkerIdOrderByGrantedAtAsc(any());
+        }
     }
 }

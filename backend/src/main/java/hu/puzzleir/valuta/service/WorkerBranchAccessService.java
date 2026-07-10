@@ -3,10 +3,12 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerBranchAccess;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.WorkerBranchAccessRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -177,17 +179,45 @@ public class WorkerBranchAccessService {
 
     /**
      * Admin UI: list all branches a worker has access to.
+     *
+     * <p>Tenant-guard (defense-in-depth, a grantAccess Codex P1 #326 mintája):
+     * csak a bejelentkezett cég saját workerére hívható. Nem létező vagy más
+     * cégbeli worker → ResourceNotFoundException (existence-masking).
      */
     @Transactional(readOnly = true)
     public List<WorkerBranchAccess> listBranches(Long workerId) {
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        Worker worker = workerRepo.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Munkatárs nem található: " + workerId));
+        if (worker.getCompany() == null
+                || !currentCompanyId.equals(worker.getCompany().getId())) {
+            log.warn("[BRANCH_ACCESS] cross-tenant listBranches denied: workerId={} company={}",
+                    workerId, currentCompanyId);
+            throw new ResourceNotFoundException("Munkatárs nem található: " + workerId);
+        }
         return repo.findAllByWorkerIdOrderByGrantedAtAsc(workerId);
     }
 
     /**
      * Admin UI: list all workers with access to a branch.
+     *
+     * <p>Tenant-guard: csak a bejelentkezett cég saját branch-ére hívható.
+     * Nem létező vagy más cégbeli branch → ResourceNotFoundException
+     * (existence-masking, WesternUnionService.verifyBranchOwnership precedens).
      */
     @Transactional(readOnly = true)
     public List<WorkerBranchAccess> listWorkers(UUID branchId) {
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        Branch branch = branchRepo.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Iroda nem található: " + branchId));
+        if (branch.getCompany() == null
+                || !currentCompanyId.equals(branch.getCompany().getId())) {
+            log.warn("[BRANCH_ACCESS] cross-tenant listWorkers denied: branchId={} company={}",
+                    branchId, currentCompanyId);
+            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
+        }
         return repo.findAllByBranchIdOrderByGrantedAtAsc(branchId);
     }
 }
