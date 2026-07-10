@@ -4,6 +4,7 @@ import { bankOrdersApi } from './bankOrders'
 import { diagnosticsApi } from './diagnostics'
 import { decadeReportApi } from './decade-reports'
 import { complianceTransactionsApi } from './complianceTransactions'
+import { suspiciousCustomersApi } from './suspiciousCustomers'
 
 // Regresszió: a Spring Page<T>-et adó végpontoknak `_preservePaged: true`-t KELL
 // küldeniük, különben a client.ts axios-interceptor content-tömbbé bontja a választ,
@@ -69,6 +70,24 @@ describe('paginált végpontok _preservePaged regressziója', () => {
     const result = await complianceTransactionsApi.search({}, 0, 50)
     expect(mockApi.get).toHaveBeenCalledWith(
       '/compliance/transactions',
+      expect.objectContaining({ _preservePaged: true }),
+    )
+    expect(result.content).toHaveLength(1)
+  })
+
+  it('suspiciousCustomersApi.search — _preservePaged:true (különben a gyanús ügyfél lista mindig üres)', async () => {
+    const paged = {
+      content: [{ customerId: 'C-1' }],
+      totalElements: 1,
+      totalPages: 1,
+      size: 50,
+      number: 0,
+    }
+    mockApi.get.mockResolvedValue({ data: paged })
+
+    const result = await suspiciousCustomersApi.search({}, 0, 50)
+    expect(mockApi.get).toHaveBeenCalledWith(
+      '/compliance/suspicious-customers',
       expect.objectContaining({ _preservePaged: true }),
     )
     expect(result.content).toHaveLength(1)
