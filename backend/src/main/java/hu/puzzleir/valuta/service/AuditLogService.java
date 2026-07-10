@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.dto.audit.AuditLogEntryDto;
 import hu.puzzleir.valuta.dto.audit.AuditSearchCriteria;
 import hu.puzzleir.valuta.entity.AuditLog;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.AuditLogRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,8 @@ import java.util.UUID;
 @Slf4j
 public class AuditLogService {
 
+    private static final String NO_AUTH_MESSAGE = "Nincs bejelentkezett felhasználó!";
+
     private final AuditLogRepository auditLogRepository;
 
     /** Resolve current company ID from security context (nullable for system/background tasks). */
@@ -32,6 +35,12 @@ public class AuditLogService {
         try {
             return SecurityUtils.getCurrentCompanyId();
         } catch (Exception e) {
+            if (e instanceof ValidationException && NO_AUTH_MESSAGE.equals(e.getMessage())) {
+                log.debug("AuditLog companyId nélkül: nincs bejelentkezett felhasználó");
+            } else {
+                log.warn("AuditLogService companyId feloldás sikertelen: {}: {}",
+                        e.getClass().getSimpleName(), e.getMessage());
+            }
             return null;
         }
     }
