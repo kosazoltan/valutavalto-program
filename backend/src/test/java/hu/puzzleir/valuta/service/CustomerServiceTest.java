@@ -66,6 +66,29 @@ class CustomerServiceTest {
     }
 
     @Test
+    @DisplayName("createCustomer — inaktív ügyfél kódját nem osztja ki újra")
+    void createCustomer_inactiveCustomerCodeCollision_usesNextCode() {
+        Company company = Company.builder().id(COMPANY_ID).build();
+        CustomerService.CreateCustomerRequest request = new CustomerService.CreateCustomerRequest();
+        request.setName("Uj Ugyfel");
+        request.setDocumentNumber("NEW-001");
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+            when(customerRepository.findByDocumentNumberAndCompanyId("NEW-001", COMPANY_ID))
+                    .thenReturn(Optional.empty());
+            when(customerRepository.findMaxCustomerCodeSuffix()).thenReturn(1);
+            when(customerVersionService.currentChangeSource()).thenReturn(DataChangeSource.CASHIER);
+            when(customerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            Customer result = service.createCustomer(request);
+
+            assertThat(result.getCustomerCode()).isEqualTo("C000002");
+        }
+    }
+
+    @Test
     @DisplayName("createCustomer — jogi személy TEÁOR kód perzisztálódik (G27)")
     void testCreateCustomer_teaorCode() {
         Company company = Company.builder().id(COMPANY_ID).build();

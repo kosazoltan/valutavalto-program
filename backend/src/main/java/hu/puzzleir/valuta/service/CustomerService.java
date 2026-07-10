@@ -65,7 +65,7 @@ public class CustomerService {
 
         Customer customer = Customer.builder()
                 .company(company)
-                .customerCode(generateCustomerCode(companyId))
+                .customerCode(generateCustomerCode())
                 .name(request.getName())
                 .birthName(request.getBirthName())
                 .motherName(request.getMotherName())
@@ -393,10 +393,10 @@ public class CustomerService {
     /**
      * Ügyfél kód generálása
      */
-    private String generateCustomerCode(UUID companyId) {
-        // Egyszerű szekvenciális kód: C + 6 számjegy
-        long count = customerRepository.findByCompanyIdAndActiveTrue(companyId).size() + 1;
-        return String.format("C%06d", count);
+    private String generateCustomerCode() {
+        // A customer_code globálisan egyedi; inaktív ügyfél kódját sem oszthatjuk ki újra.
+        long nextSuffix = customerRepository.findMaxCustomerCodeSuffix() + 1L;
+        return String.format("C%06d", nextSuffix);
     }
 
     // ============ REQUEST DTO-k ============
