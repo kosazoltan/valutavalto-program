@@ -96,7 +96,7 @@ class DailyClosingServiceExtendedTest {
         when(denominationBalanceRepository.existsByBranchIdAndDate(any(), any())).thenReturn(true);
         when(denominationBalanceRepository.sumDenominatedAmount(any(), any(), any()))
             .thenReturn(new BigDecimal("100000"));
-        when(cashBalanceRepository.sumCurrentBalanceHuf(any()))
+        when(cashBalanceRepository.sumCurrentBalanceHufByBranchIdAndCompanyId(any(), any()))
             .thenReturn(new BigDecimal("100000"));
         when(transactionRepository.sumDailyHandlingFees(any(), any()))
             .thenReturn(BigDecimal.ZERO);

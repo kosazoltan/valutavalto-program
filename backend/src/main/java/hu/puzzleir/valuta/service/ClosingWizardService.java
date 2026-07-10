@@ -400,7 +400,8 @@ public class ClosingWizardService {
      */
     @Transactional(readOnly = true)
     public List<Map<String, Object>> calculateDifferences(UUID branchId, Map<String, BigDecimal> physicalCounts) {
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
         List<Map<String, Object>> differences = new ArrayList<>();
 
         for (CashBalance cb : balances) {
@@ -456,7 +457,7 @@ public class ClosingWizardService {
         }
 
         // Készlet állapot
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
         List<Map<String, Object>> inventorySnapshot = new ArrayList<>();
         for (CashBalance cb : balances) {
             inventorySnapshot.add(Map.of(
@@ -521,7 +522,8 @@ public class ClosingWizardService {
         LocalDate closingDate = wizard.getClosingDate() != null ? wizard.getClosingDate() : LocalDate.now();
 
         // G3 (FR-13): eltérés-magyarázat gate a véglegesítés előtt.
-        java.math.BigDecimal discrepancy = computeCashDiscrepancy(wizard.getBranch() != null ? wizard.getBranch().getId() : null, closingDate);
+        java.math.BigDecimal discrepancy = computeCashDiscrepancy(SecurityUtils.getCurrentCompanyId(),
+                wizard.getBranch() != null ? wizard.getBranch().getId() : null, closingDate);
         wizard.setDiscrepancyAmount(discrepancy);
         if (discrepancyExplanation != null && !discrepancyExplanation.isBlank()) {
             wizard.setDiscrepancyExplanation(discrepancyExplanation.trim());
@@ -570,12 +572,12 @@ public class ClosingWizardService {
      * zárás napjára. {@code null} csak akkor, ha a branchId null; a repó query-k
      * COALESCE-olnak 0-ra, így hiányzó adatnál az eltérés 0 (toleranciaon belül).
      */
-    private java.math.BigDecimal computeCashDiscrepancy(UUID branchId, LocalDate date) {
+    private java.math.BigDecimal computeCashDiscrepancy(UUID companyId, UUID branchId, LocalDate date) {
         if (branchId == null) {
             return null;
         }
         java.math.BigDecimal denominated = denominationBalanceRepository.sumDenominatedAmount(branchId, date, "EVENING");
-        java.math.BigDecimal expected = cashBalanceRepository.sumCurrentBalanceHuf(branchId);
+        java.math.BigDecimal expected = cashBalanceRepository.sumCurrentBalanceHufByBranchIdAndCompanyId(branchId, companyId);
         if (denominated == null || expected == null) {
             return null;
         }

@@ -94,7 +94,7 @@ class SyncServiceTest {
     private Branch createBranch() {
         Branch b = new Branch();
         Company c = new Company();
-        c.setId(UUID.randomUUID());
+        c.setId(COMPANY_ID);
         b.setId(BRANCH_ID);
         b.setCode("B01");
         b.setName("Teszt Iroda");
@@ -122,7 +122,7 @@ class SyncServiceTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(exchangeRateRepository.findAllActiveRates(any(UUID.class), eq(BRANCH_ID))).thenReturn(createRates(15));
         when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID), any())).thenReturn(Collections.emptyList());
-        when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(Collections.emptyList());
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Collections.emptyList());
         when(dailySessionRepository.findOpenSessionsByBranch(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID))).thenReturn(Collections.emptyList());
         when(syncLogRepository.save(any(SyncLog.class))).thenAnswer(inv -> {
             SyncLog s = inv.getArgument(0);
@@ -151,7 +151,7 @@ class SyncServiceTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(exchangeRateRepository.findAllActiveRates(any(UUID.class), eq(BRANCH_ID))).thenReturn(Collections.emptyList());
         when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID), any())).thenReturn(Collections.nCopies(50, new hu.puzzleir.valuta.entity.Transaction()));
-        when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(Collections.emptyList());
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Collections.emptyList());
         when(dailySessionRepository.findOpenSessionsByBranch(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID))).thenReturn(Collections.emptyList());
         when(syncLogRepository.save(any(SyncLog.class))).thenAnswer(inv -> {
             SyncLog s = inv.getArgument(0);
@@ -179,7 +179,7 @@ class SyncServiceTest {
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(exchangeRateRepository.findAllActiveRates(any(UUID.class), eq(BRANCH_ID))).thenReturn(createRates(15));
         when(transactionRepository.findActiveByBranchAndDate(eq(BRANCH_ID), any())).thenReturn(Collections.nCopies(50, new hu.puzzleir.valuta.entity.Transaction()));
-        when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(Collections.nCopies(25, new CashBalance()));
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Collections.nCopies(25, new CashBalance()));
         when(dailySessionRepository.findOpenSessionsByBranch(org.mockito.ArgumentMatchers.eq(COMPANY_ID), org.mockito.ArgumentMatchers.eq(BRANCH_ID))).thenReturn(Collections.emptyList());
         when(syncLogRepository.save(any(SyncLog.class))).thenAnswer(inv -> {
             SyncLog s = inv.getArgument(0);

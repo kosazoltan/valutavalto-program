@@ -117,7 +117,7 @@ public class DailyClosingService {
         List<ClosingStepResult> stepResults = new ArrayList<>();
 
         stepResults.add(runStep(1, "MTCN szam ellenorzes", () -> checkMtcnNumbers(branchId, closingDate)));
-        stepResults.add(runStep(2, "Esti penztarallag cimletezese", () -> checkEveningDenomination(branchId, closingDate)));
+        stepResults.add(runStep(2, "Esti penztarallag cimletezese", () -> checkEveningDenomination(companyId, branchId, closingDate)));
         stepResults.add(runStep(3, "Kezelesi dij cimletezese", () -> checkHandlingFeeDenomination(branchId, closingDate)));
         stepResults.add(runStep(4, "Western Union cimletezese", () -> checkWesternUnionDenomination(branchId, closingDate)));
         stepResults.add(runStep(5, "AFA cimletezese", () -> checkVatDenomination(branchId, closingDate)));
@@ -191,7 +191,7 @@ public class DailyClosingService {
     public StepCheckResult executeStepCheck(int stepNumber, UUID branchId, LocalDate closingDate) {
         return switch (stepNumber) {
             case 1 -> checkMtcnNumbers(branchId, closingDate);
-            case 2 -> checkEveningDenomination(branchId, closingDate);
+            case 2 -> checkEveningDenomination(SecurityUtils.getCurrentCompanyId(), branchId, closingDate);
             case 3 -> checkHandlingFeeDenomination(branchId, closingDate);
             case 4 -> checkWesternUnionDenomination(branchId, closingDate);
             case 5 -> checkVatDenomination(branchId, closingDate);
@@ -232,7 +232,7 @@ public class DailyClosingService {
      * 2. Esti penztar cimletezese.
      * Legacy: cimletsorszam=1, cimletctrlrutin - osszeveti a valos penzt a szamitott keszlettel.
      */
-    private StepCheckResult checkEveningDenomination(UUID branchId, LocalDate date) {
+    private StepCheckResult checkEveningDenomination(UUID companyId, UUID branchId, LocalDate date) {
         // Ellenorzi hogy a cimletezett osszeg egyezik-e a szamitott keszlettel
         boolean hasDenomination = denominationBalanceRepository
             .existsByBranchIdAndDate(branchId, date);
@@ -245,7 +245,7 @@ public class DailyClosingService {
         BigDecimal denominatedTotal = denominationBalanceRepository
             .sumDenominatedAmount(branchId, date, "EVENING");
         BigDecimal expectedTotal = cashBalanceRepository
-            .sumCurrentBalanceHuf(branchId);
+            .sumCurrentBalanceHufByBranchIdAndCompanyId(branchId, companyId);
 
         if (denominatedTotal == null || expectedTotal == null) {
             return StepCheckResult.failed("Nem lehet ellenorizni a cimletezest (hianyznak adatok)");

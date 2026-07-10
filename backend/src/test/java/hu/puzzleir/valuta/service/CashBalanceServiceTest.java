@@ -112,7 +112,8 @@ class CashBalanceServiceTest {
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
-            when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(List.of(b1, b2));
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(List.of(b1, b2));
 
             List<CashBalance> result = service.getCurrentBranchBalances();
             assertThat(result).hasSize(2);
@@ -124,13 +125,30 @@ class CashBalanceServiceTest {
     void testGetBalanceByCurrency_notFound() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             // #865: getBalanceByCurrency a WithDetails JOIN FETCH variánst használja
             // (lazy branch/currency proxy elkerülése a controller DTO-mappinghez).
-            when(cashBalanceRepository.findByBranchIdAndCurrencyIdWithDetails(BRANCH_ID, 999L))
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdWithDetails(BRANCH_ID, 999L, COMPANY_ID))
                     .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.getBalanceByCurrency(999L))
                     .isInstanceOf(ResourceNotFoundException.class);
+        }
+    }
+
+    @Test
+    @DisplayName("getBalanceByCurrency — cross-tenant: companyId-szűrt WithDetails üres → fail-closed ResourceNotFoundException")
+    void testGetBalanceByCurrency_crossTenantRowUnreachable() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdWithDetails(BRANCH_ID, 4L, COMPANY_ID))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.getBalanceByCurrency(4L))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Kassza egyenleg nem található");
+            verify(cashBalanceRepository, never()).save(any());
         }
     }
 
@@ -517,7 +535,8 @@ class CashBalanceServiceTest {
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
-            when(cashBalanceRepository.findByBranchId(BRANCH_ID))
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID))
                     .thenReturn(List.of(hufB, eurLow, usdHigh));
 
             var summary = service.getBranchSummary();
@@ -545,7 +564,7 @@ class CashBalanceServiceTest {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
-            when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(List.of(eurB));
+            when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, companyId)).thenReturn(List.of(eurB));
             when(exchangeRateRepository.findLatestRate(companyId, 4L, BRANCH_ID))
                     .thenReturn(Optional.of(er));
 
@@ -573,7 +592,7 @@ class CashBalanceServiceTest {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
-            when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(List.of(eurB));
+            when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, companyId)).thenReturn(List.of(eurB));
             when(exchangeRateRepository.findLatestRate(companyId, 4L, BRANCH_ID))
                     .thenReturn(Optional.empty());
 
@@ -644,7 +663,8 @@ class CashBalanceServiceTest {
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
-            when(cashBalanceRepository.findByBranchIdAndCurrencyIdWithDetails(BRANCH_ID, 4L))
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdWithDetails(BRANCH_ID, 4L, COMPANY_ID))
                     .thenReturn(Optional.of(balance));
 
             CashBalance result = service.getBalanceByCurrency(4L);

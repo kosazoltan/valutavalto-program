@@ -55,7 +55,7 @@ public class DailyReportGenerator {
         Map<String, ReportService.CurrencyTurnover> currencyTurnovers = ReportService.calculateCurrencyTurnovers(transactions);
 
         // Kassza egyenlegek
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
 
         // Cimletezés (HUF)
         Currency huf = currencyRepository.findByCode("HUF").orElse(null);
@@ -116,8 +116,9 @@ public class DailyReportGenerator {
      */
     public ReportService.CashStatusReport generateCashStatusReport() {
         UUID branchId = SecurityUtils.getCurrentBranchId();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
 
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
         List<Denomination> denominations = denominationRepository.findByBranchId(branchId);
 
         BigDecimal totalHuf = balances.stream()

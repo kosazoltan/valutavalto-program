@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
@@ -138,7 +139,12 @@ public class DataCollectionService {
             }
 
             // 2. Készlet állapot rögzítése
-            List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+            Company branchCompany = branch.getCompany();
+            if (branchCompany == null || branchCompany.getId() == null) {
+                throw new ValidationException("Iroda cég-hozzárendelés hiányzik: " + branchId);
+            }
+            List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(
+                branchId, branchCompany.getId());
             for (CashBalance cb : balances) {
                 if (cb.getCurrency() == null) continue;
 

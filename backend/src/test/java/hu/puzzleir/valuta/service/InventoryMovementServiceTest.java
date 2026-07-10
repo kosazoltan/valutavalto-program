@@ -78,7 +78,7 @@ class InventoryMovementServiceTest {
         assertThatThrownBy(() -> service.getDailyBalance(FOREIGN_BRANCH, "EUR", LocalDate.now()))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Iroda nem található");
-        verify(cashBalanceRepository, never()).findByBranchId(any());
+        verify(cashBalanceRepository, never()).findByBranchIdAndCompanyId(any(), any());
         verify(movementRepository, never()).search(any(), any(), any(), any(), any(), any(), any());
     }
 
@@ -103,7 +103,7 @@ class InventoryMovementServiceTest {
         eur.setId(1L);
         eur.setCode("EUR");
         CashBalance cb = CashBalance.builder().currency(eur).currentBalance(new BigDecimal("1000")).build();
-        when(cashBalanceRepository.findByBranchId(OWN_BRANCH)).thenReturn(List.of(cb));
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(OWN_BRANCH, COMPANY_ID)).thenReturn(List.of(cb));
 
         InventoryBalanceDto result = service.getDailyBalance(OWN_BRANCH, "EUR", LocalDate.now());
 
