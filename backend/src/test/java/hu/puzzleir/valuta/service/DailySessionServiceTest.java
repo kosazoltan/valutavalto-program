@@ -222,7 +222,8 @@ class DailySessionServiceTest {
                 .sessionDate(LocalDate.now())
                 .reversalCount(2)
                 .build();
-        when(dailySessionRepository.findByBranchIdAndSessionDateForUpdate(eq(branchId), eq(LocalDate.now())))
+        when(dailySessionRepository.findByBranchIdAndSessionDateAndCompanyIdForUpdate(
+                eq(branchId), eq(LocalDate.now()), eq(companyId)))
                 .thenReturn(Optional.of(locked));
 
         assertEquals(2, service.getDailyReversalCountForUpdate());
@@ -233,11 +234,29 @@ class DailySessionServiceTest {
     void getDailyReversalCountForUpdate_noSession_throws() {
         // A validateOpenSession elvileg garantalja a nyitott sort, de a lockolo uton az ures
         // talalat invarians-sertes -> dobni kell, NEM 0-t adni (kulonben a plafon csendben kikerul).
-        when(dailySessionRepository.findByBranchIdAndSessionDateForUpdate(eq(branchId), eq(LocalDate.now())))
+        when(dailySessionRepository.findByBranchIdAndSessionDateAndCompanyIdForUpdate(
+                eq(branchId), eq(LocalDate.now()), eq(companyId)))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getDailyReversalCountForUpdate())
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("munkamenet");
+    }
+
+    @Test
+    @DisplayName("getDailyReversalCountForUpdate - mas ceg daily_session sora nem eleg, fail-closed ValidationException")
+    void getDailyReversalCountForUpdate_crossTenantSessionExcluded_throws() {
+        UUID otherCompanyId = UUID.randomUUID();
+        // A lockolo repo-query companyId-vel szurt: ugyanazon branch+nap mas ceg sora nem talalat.
+        when(dailySessionRepository.findByBranchIdAndSessionDateAndCompanyIdForUpdate(
+                eq(branchId), eq(LocalDate.now()), eq(companyId)))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getDailyReversalCountForUpdate())
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Nincs nyitott napi munkamenet");
+
+        verify(dailySessionRepository, never()).findByBranchIdAndSessionDateAndCompanyIdForUpdate(
+                eq(branchId), eq(LocalDate.now()), eq(otherCompanyId));
     }
 }

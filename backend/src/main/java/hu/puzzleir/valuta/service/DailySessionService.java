@@ -273,10 +273,11 @@ public class DailySessionService {
      * toleráns marad (0-t ad), mert ott nincs invariáns-kockázat.
      */
     public int getDailyReversalCountForUpdate() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
         LocalDate today = LocalDate.now();
 
-        return dailySessionRepository.findByBranchIdAndSessionDateForUpdate(branchId, today)
+        return dailySessionRepository.findByBranchIdAndSessionDateAndCompanyIdForUpdate(branchId, today, companyId)
                 .map(DailySession::getReversalCount)
                 .orElseThrow(() -> new ValidationException(
                         "Nincs nyitott napi munkamenet a sztorno-plafon ellenorzesehez!"));
