@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class ReportExtendedService {
     private final CashBalanceRepository cashBalanceRepository;
     private final TransferRepository transferRepository;
     private final DenominationRepository denominationRepository;
+    private final BranchRepository branchRepository;
 
     // ============ NULL-SAFE HELPER METHODS ============
 
@@ -51,11 +53,27 @@ public class ReportExtendedService {
         return value != null ? value.name() : "UNKNOWN";
     }
 
+    /**
+     * Multi-tenant IDOR-guard (precedens: BanknoteInventoryService.requireOwnBranch).
+     * null → JWT-branch fallback (pénztári fő útvonal, DB-hívás nélkül);
+     * nem-null user-input → a hívó cégéhez tartozás validálása, különben fail-closed
+     * 404 (a branch létezése sem szivárog ki). Minden hívó user-kontextusban fut
+     * (ReportExtendedController, @PreAuthorize SUPERVISOR/MANAGER/ADMIN).
+     */
+    private UUID resolveEffectiveBranch(UUID requestedBranchId) {
+        if (requestedBranchId == null) {
+            return SecurityUtils.getCurrentBranchId();
+        }
+        if (!branchRepository.existsByIdAndCompanyId(requestedBranchId, SecurityUtils.getCurrentCompanyId())) {
+            throw new ResourceNotFoundException("Branch nem található: " + requestedBranchId);
+        }
+        return requestedBranchId;
+    }
+
     // ============ TRANSACTION LIST ============
 
     public Map<String, Object> getTransactionList(UUID branchId, LocalDate startDate, LocalDate endDate) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-        UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        UUID effectiveBranch = resolveEffectiveBranch(branchId);
         LocalDate start = startDate != null ? startDate : LocalDate.now();
         LocalDate end = endDate != null ? endDate : LocalDate.now();
 
@@ -110,7 +128,7 @@ public class ReportExtendedService {
     // ============ RECEIPT LIST ============
 
     public Map<String, Object> getReceiptList(UUID branchId, LocalDate startDate, LocalDate endDate) {
-        UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        UUID effectiveBranch = resolveEffectiveBranch(branchId);
         LocalDate start = startDate != null ? startDate : LocalDate.now();
         LocalDate end = endDate != null ? endDate : LocalDate.now();
 
@@ -154,7 +172,7 @@ public class ReportExtendedService {
     // ============ FEE SUMMARY ============
 
     public Map<String, Object> getFeeSummary(UUID branchId, LocalDate startDate, LocalDate endDate) {
-        UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        UUID effectiveBranch = resolveEffectiveBranch(branchId);
         LocalDate start = startDate != null ? startDate : LocalDate.now();
         LocalDate end = endDate != null ? endDate : LocalDate.now();
 
@@ -197,7 +215,7 @@ public class ReportExtendedService {
     // ============ MONTHLY INVENTORY ============
 
     public Map<String, Object> getMonthlyInventory(int year, int month, UUID branchId) {
-        UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        UUID effectiveBranch = resolveEffectiveBranch(branchId);
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 
         List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(effectiveBranch, companyId);
@@ -229,7 +247,7 @@ public class ReportExtendedService {
     // ============ MONTHLY TURNOVER ============
 
     public Map<String, Object> getMonthlyTurnover(int year, int month, UUID branchId) {
-        UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        UUID effectiveBranch = resolveEffectiveBranch(branchId);
         LocalDate start = LocalDate.of(year, month, 1);
         LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
 
@@ -279,7 +297,7 @@ public class ReportExtendedService {
     // ============ MONTHLY TRANSFERS ============
 
     public Map<String, Object> getMonthlyTransfers(int year, int month, UUID branchId) {
-        UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        UUID effectiveBranch = resolveEffectiveBranch(branchId);
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 
         // Transfers: find outgoing and incoming
@@ -324,7 +342,7 @@ public class ReportExtendedService {
     // ============ HANDLING COST ============
 
     public Map<String, Object> getHandlingCost(UUID branchId, LocalDate startDate, LocalDate endDate) {
-        UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        UUID effectiveBranch = resolveEffectiveBranch(branchId);
         LocalDate start = startDate != null ? startDate : LocalDate.now();
         LocalDate end = endDate != null ? endDate : LocalDate.now();
 
@@ -361,7 +379,7 @@ public class ReportExtendedService {
     // ============ DAILY CASH DESK ============
 
     public Map<String, Object> getDailyCashDesk(UUID cashDeskId, LocalDate date) {
-        UUID effectiveBranch = cashDeskId != null ? cashDeskId : SecurityUtils.getCurrentBranchId();
+        UUID effectiveBranch = resolveEffectiveBranch(cashDeskId);
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         LocalDate reportDate = date != null ? date : LocalDate.now();
 
@@ -406,7 +424,7 @@ public class ReportExtendedService {
     // ============ CURRENT CASH DESK STATUS ============
 
     public Map<String, Object> getCurrentCashDeskStatus(UUID cashDeskId) {
-        UUID effectiveBranch = cashDeskId != null ? cashDeskId : SecurityUtils.getCurrentBranchId();
+        UUID effectiveBranch = resolveEffectiveBranch(cashDeskId);
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 
         List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(effectiveBranch, companyId);
@@ -441,7 +459,7 @@ public class ReportExtendedService {
     // ============ SUSPICIOUS TRANSACTIONS ============
 
     public List<Map<String, Object>> getSuspiciousTransactions(UUID branchId, LocalDate startDate, LocalDate endDate) {
-        UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        UUID effectiveBranch = resolveEffectiveBranch(branchId);
         LocalDate start = startDate != null ? startDate : LocalDate.now().minusDays(30);
         LocalDate end = endDate != null ? endDate : LocalDate.now();
 
@@ -476,7 +494,7 @@ public class ReportExtendedService {
     // ============ CARD TRANSACTION FEES ============
 
     public Map<String, Object> getCardTransactionFees(UUID branchId, LocalDate startDate, LocalDate endDate) {
-        UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        UUID effectiveBranch = resolveEffectiveBranch(branchId);
         LocalDate start = startDate != null ? startDate : LocalDate.now();
         LocalDate end = endDate != null ? endDate : LocalDate.now();
 
