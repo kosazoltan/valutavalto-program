@@ -192,7 +192,7 @@ class TransactionServiceBusinessLogicTest {
 
         assertThatCode(() -> transactionService.executeSell(request)).doesNotThrowAnyException();
 
-        verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyId(any(), any());
+        verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdAndCompanyId(any(), any(), any());
         verify(cashBalanceRepository, atLeastOnce()).findByBranchIdAndCurrencyIdForUpdate(eq(BRANCH_ID), eq(EUR_ID));
     }
 

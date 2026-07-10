@@ -1,5 +1,9 @@
 package hu.puzzleir.valuta.service;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import hu.puzzleir.valuta.entity.AuditLog;
 import hu.puzzleir.valuta.repository.AuditLogRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -9,13 +13,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,7 +28,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith({MockitoExtension.class, OutputCaptureExtension.class})
+@ExtendWith(MockitoExtension.class)
 class AuditLogServiceTest {
 
     private static final String WARN_PREFIX = "AuditLogService companyId feloldás sikertelen";
@@ -32,29 +37,45 @@ class AuditLogServiceTest {
     private AuditLogRepository auditLogRepository;
 
     private AuditLogService service;
+    private Logger auditLogLogger;
+    private Level previousLogLevel;
+    private ListAppender<ILoggingEvent> logAppender;
 
     @BeforeEach
     void setUp() {
         when(auditLogRepository.findLastEntryHashForUpdate()).thenReturn(Optional.empty());
         service = new AuditLogService(auditLogRepository);
+        auditLogLogger = (Logger) LoggerFactory.getLogger(AuditLogService.class);
+        previousLogLevel = auditLogLogger.getLevel();
+        auditLogLogger.setLevel(Level.DEBUG);
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        auditLogLogger.addAppender(logAppender);
     }
 
     @AfterEach
     void tearDown() {
+        if (auditLogLogger != null && logAppender != null) {
+            auditLogLogger.detachAppender(logAppender);
+            logAppender.stop();
+        }
+        if (auditLogLogger != null) {
+            auditLogLogger.setLevel(previousLogLevel);
+        }
         SecurityContextHolder.clearContext();
     }
 
     @Test
-    void log_withoutAuthContextKeepsNullCompanyIdAndDoesNotWarn(CapturedOutput output) {
+    void log_withoutAuthContextKeepsNullCompanyIdAndDoesNotWarn() {
         service.log("ACTION", "message", "entity-1");
 
         AuditLog saved = savedAuditLog();
         assertNull(saved.getCompanyId());
-        assertFalse(output.toString().contains(WARN_PREFIX));
+        assertFalse(warnEventsWithPrefix().stream().anyMatch(event -> event.getFormattedMessage().contains(WARN_PREFIX)));
     }
 
     @Test
-    void log_unexpectedSecurityFailureWarnsButKeepsSchedulerCompatibleNullCompanyId(CapturedOutput output) {
+    void log_unexpectedSecurityFailureWarnsButKeepsSchedulerCompatibleNullCompanyId() {
         Authentication auth = mock(Authentication.class);
         when(auth.getDetails()).thenThrow(new IllegalStateException("broken details"));
         SecurityContextHolder.getContext().setAuthentication(auth);
@@ -63,10 +84,19 @@ class AuditLogServiceTest {
 
         AuditLog saved = savedAuditLog();
         assertNull(saved.getCompanyId());
-        String logs = output.toString();
+        List<ILoggingEvent> warnEvents = warnEventsWithPrefix();
+        assertEquals(1, warnEvents.size());
+        String logs = warnEvents.getFirst().getFormattedMessage();
         assertTrue(logs.contains(WARN_PREFIX));
         assertTrue(logs.contains("IllegalStateException"));
         assertTrue(logs.contains("broken details"));
+    }
+
+    private List<ILoggingEvent> warnEventsWithPrefix() {
+        return logAppender.list.stream()
+                .filter(event -> Level.WARN.equals(event.getLevel()))
+                .filter(event -> event.getFormattedMessage().contains(WARN_PREFIX))
+                .toList();
     }
 
     private AuditLog savedAuditLog() {

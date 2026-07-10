@@ -115,8 +115,8 @@ class VaultStockFlowServiceTest {
         when(branchRepository.findByCompanyIdAndCode(COMPANY_ID, "BR017")).thenReturn(Optional.of(sourceBranch));
         when(branchRepository.findByCompanyIdAndCode(COMPANY_ID, "BR035")).thenReturn(Optional.of(targetBranch));
         when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eurCurrency));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_SOURCE_ID, 978L)).thenReturn(Optional.of(sourceBalance));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_TARGET_ID, 978L)).thenReturn(Optional.of(targetBalance));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_SOURCE_ID, 978L, COMPANY_ID)).thenReturn(Optional.of(sourceBalance));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_TARGET_ID, 978L, COMPANY_ID)).thenReturn(Optional.of(targetBalance));
         when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(Company.builder().id(COMPANY_ID).build()));
 
         service.applyTransfer(COMPANY_ID, "BR017", "BR035", "EUR", new BigDecimal("50.00"));
@@ -151,7 +151,7 @@ class VaultStockFlowServiceTest {
         when(branchRepository.findByCompanyIdAndCode(COMPANY_ID, "BR017")).thenReturn(Optional.of(sourceBranch));
         when(branchRepository.findByCompanyIdAndCode(COMPANY_ID, "BR_MISSING")).thenReturn(Optional.empty());
         when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eurCurrency));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_SOURCE_ID, 978L)).thenReturn(Optional.of(sourceBalance));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_SOURCE_ID, 978L, COMPANY_ID)).thenReturn(Optional.of(sourceBalance));
 
         assertThatThrownBy(() -> service.applyTransfer(COMPANY_ID, "BR017", "BR_MISSING", "EUR", new BigDecimal("50.00")))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -180,7 +180,7 @@ class VaultStockFlowServiceTest {
     void applyTransfer_missingSourceBalance_throwsResourceNotFound() {
         when(branchRepository.findByCompanyIdAndCode(COMPANY_ID, "BR017")).thenReturn(Optional.of(sourceBranch));
         when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eurCurrency));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_SOURCE_ID, 978L)).thenReturn(Optional.empty());
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_SOURCE_ID, 978L, COMPANY_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.applyTransfer(COMPANY_ID, "BR017", "BR035", "EUR", new BigDecimal("50.00")))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -197,7 +197,7 @@ class VaultStockFlowServiceTest {
         when(vaultTerritoryRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of(territory));
         when(branchRepository.findByCompanyIdAndCode(COMPANY_ID, "BR017")).thenReturn(Optional.of(sourceBranch));
         when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eurCurrency));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_SOURCE_ID, 978L)).thenReturn(Optional.of(sourceBalance));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_SOURCE_ID, 978L, COMPANY_ID)).thenReturn(Optional.of(sourceBalance));
         when(currencyStockRepository.findForUpdate(COMPANY_ID, "VAULT", TERRITORY_ID.toString(), "EUR"))
                 .thenReturn(Optional.empty());
         when(currencyStockRepository.save(any(CurrencyStock.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -249,7 +249,7 @@ class VaultStockFlowServiceTest {
                 .thenReturn(Optional.of(vaultStock));
         when(branchRepository.findByCompanyIdAndCode(COMPANY_ID, "BR035")).thenReturn(Optional.of(targetBranch));
         when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eurCurrency));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(BRANCH_TARGET_ID, 978L)).thenReturn(Optional.of(targetBalance));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_TARGET_ID, 978L, COMPANY_ID)).thenReturn(Optional.of(targetBalance));
         when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
 
         // FR-3: aktív tranzakcióban a publish CSAK afterCommit-kor megy ki (rollbacknál NEM).

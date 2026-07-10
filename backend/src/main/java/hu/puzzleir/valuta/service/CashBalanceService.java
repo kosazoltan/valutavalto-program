@@ -201,7 +201,8 @@ public class CashBalanceService {
 
         for (Currency currency : currencies) {
             // Ellenőrzés, hogy nincs-e már
-            if (cashBalanceRepository.findByBranchIdAndCurrencyId(branchId, currency.getId()).isEmpty()) {
+            if (cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(
+                    branchId, currency.getId(), company.getId()).isEmpty()) {
                 CashBalance balance = CashBalance.builder()
                         .company(company)
                         .branch(branch)
@@ -267,7 +268,9 @@ public class CashBalanceService {
      */
     public void validateSufficientBalance(Long currencyId, BigDecimal amount) {
         UUID branchId = SecurityUtils.getCurrentBranchId();
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(branchId, currencyId)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        CashBalance balance = cashBalanceRepository
+                .findByBranchIdAndCurrencyIdAndCompanyId(branchId, currencyId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Kassza egyenleg nem található"));
 
         if (balance.getCurrentBalance().compareTo(amount) < 0) {
@@ -292,7 +295,9 @@ public class CashBalanceService {
             throw new ValidationException("Egyenleg módosításhoz manager jogosultság szükséges!");
         }
 
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(branchId, request.getCurrencyId())
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        CashBalance balance = cashBalanceRepository
+                .findByBranchIdAndCurrencyIdAndCompanyId(branchId, request.getCurrencyId(), companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Kassza egyenleg nem található"));
 
         BigDecimal oldBalance = balance.getCurrentBalance();
@@ -368,7 +373,9 @@ public class CashBalanceService {
             throw new ValidationException("Limit beállításhoz manager jogosultság szükséges!");
         }
 
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyId(branchId, request.getCurrencyId())
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        CashBalance balance = cashBalanceRepository
+                .findByBranchIdAndCurrencyIdAndCompanyId(branchId, request.getCurrencyId(), companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Kassza egyenleg nem található"));
 
         if (request.getMinBalance() != null) {

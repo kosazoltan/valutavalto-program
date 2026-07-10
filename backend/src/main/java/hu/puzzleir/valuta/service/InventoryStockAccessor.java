@@ -48,7 +48,9 @@ public class InventoryStockAccessor {
     }
 
     private CashBalance findCashBalance(Branch branch, Currency currency) {
-        return cashBalanceRepository.findByBranchIdAndCurrencyId(branch.getId(), currency.getId())
+        UUID companyId = requireCompanyId(branch);
+        return cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(
+                        branch.getId(), currency.getId(), companyId)
                 .orElseThrow(() -> new ValidationException(
                         "Nincs kassza egyenleg ehhez a valutához: " + currency.getCode()));
     }

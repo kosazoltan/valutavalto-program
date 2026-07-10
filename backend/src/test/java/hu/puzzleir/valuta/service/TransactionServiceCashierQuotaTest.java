@@ -138,7 +138,7 @@ class TransactionServiceCashierQuotaTest {
         // Készlet elegendő — HUF kasszára is 2 millió kell mert buy esetén 500k+ kifizetés
         CashBalance cashBalance = new CashBalance();
         cashBalance.setCurrentBalance(new BigDecimal("2000000"));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyId(eq(BRANCH_ID), any())).thenReturn(Optional.of(cashBalance));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(eq(BRANCH_ID), any(), any())).thenReturn(Optional.of(cashBalance));
         when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(BRANCH_ID), any())).thenReturn(Optional.of(cashBalance));
 
         // Bizonylat szám
