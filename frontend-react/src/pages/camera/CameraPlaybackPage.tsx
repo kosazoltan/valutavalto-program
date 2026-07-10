@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Search, PlayCircle, Calendar, FileVideo } from 'lucide-react'
 import { api, branchApi, type BranchInfo } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import CameraReviewPanel from './CameraReviewPanel'
 
 const isElectron = () => !!window.electronAPI
 
@@ -45,6 +46,23 @@ interface CameraTransactionLink {
   frameOffsetSeconds?: number | null
 }
 
+interface ReviewOverviewRow {
+  branchId: string
+  branchCode?: string | null
+  branchName?: string | null
+  date: string
+  recordingCount: number
+  markCount: number
+  reviewed: boolean
+  problematic: boolean
+}
+
+interface ServerDateSearch {
+  branchId: string
+  startDate: string
+  endDate: string
+}
+
 export default function CameraPlaybackPage() {
   const { t } = useTranslation()
   const [branchId, setBranchId] = useState('')
@@ -60,6 +78,11 @@ export default function CameraPlaybackPage() {
   const [accessLogs, setAccessLogs] = useState<CameraAccessLog[]>([])
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [selectedCameraId, setSelectedCameraId] = useState('ALL')
+  const [lastServerDateSearch, setLastServerDateSearch] = useState<ServerDateSearch | null>(null)
+  const [reviewOnlyProblematic, setReviewOnlyProblematic] = useState(false)
+  const [reviewOverviewRows, setReviewOverviewRows] = useState<ReviewOverviewRow[]>([])
+  const [reviewOverviewLoading, setReviewOverviewLoading] = useState(false)
 
   useEffect(() => {
     if (isElectron()) return
@@ -69,9 +92,12 @@ export default function CameraPlaybackPage() {
       .catch((err) => logger.error('CameraPlaybackPage', 'Iroda lista betöltése sikertelen:', err))
   }, [])
 
-  const searchByDate = async () => {
-    if (!startDate || !endDate) return
-    if (!isElectron() && !branchId) return
+  const searchByDate = async (override?: ServerDateSearch) => {
+    const searchBranchId = override?.branchId ?? branchId
+    const searchStartDate = override?.startDate ?? startDate
+    const searchEndDate = override?.endDate ?? endDate
+    if (!searchStartDate || !searchEndDate) return
+    if (!isElectron() && !searchBranchId) return
     setLoading(true)
     setSelectedVideo(null)
     setSelectedRecording(null)
@@ -80,18 +106,28 @@ export default function CameraPlaybackPage() {
     try {
       if (isElectron() && window.electronAPI?.cameraLocalRecordingsByDate) {
         // Electron: lokális fájlrendszerben keres
-        const results = await window.electronAPI.cameraLocalRecordingsByDate(startDate, endDate)
+        const results = await window.electronAPI.cameraLocalRecordingsByDate(
+          searchStartDate,
+          searchEndDate,
+        )
         setLocalRecordings(results)
         setServerRecordings([])
+        setLastServerDateSearch(null)
       } else {
         const params = new URLSearchParams({
-          branchId,
-          start: startDate + 'T00:00:00',
-          end: endDate + 'T23:59:59',
+          branchId: searchBranchId,
+          start: searchStartDate + 'T00:00:00',
+          end: searchEndDate + 'T23:59:59',
         })
         const res = await api.get(`/camera/recordings?${params}`)
-        setServerRecordings(res.data)
+        setServerRecordings(res.data ?? [])
         setLocalRecordings([])
+        setSelectedCameraId('ALL')
+        setLastServerDateSearch({
+          branchId: searchBranchId,
+          startDate: searchStartDate,
+          endDate: searchEndDate,
+        })
       }
     } catch (err) {
       logger.error('CameraPlaybackPage', 'Keresés sikertelen:', err)
@@ -133,6 +169,7 @@ export default function CameraPlaybackPage() {
     setAccessLogs([])
     setServerRecordings([])
     setLocalRecordings([])
+    setLastServerDateSearch(null)
     try {
       const res = await api.get<CameraTransactionLink[]>(
         `/camera/recordings/by-receipt/${encodeURIComponent(value)}`,
@@ -155,6 +192,7 @@ export default function CameraPlaybackPage() {
     setAccessLogs([])
     setServerRecordings([])
     setLocalRecordings([])
+    setLastServerDateSearch(null)
     try {
       const res = await api.get<CameraTransactionLink[]>(
         `/camera/recordings/by-transaction/${encodeURIComponent(value)}`,
@@ -180,6 +218,33 @@ export default function CameraPlaybackPage() {
     }
   }
 
+  const loadReviewOverview = async () => {
+    if (isElectron() || !startDate || !endDate) return
+    setReviewOverviewLoading(true)
+    try {
+      const params = new URLSearchParams({
+        start: startDate,
+        end: endDate,
+        onlyProblematic: String(reviewOnlyProblematic),
+      })
+      if (branchId) params.set('branchId', branchId)
+      const res = await api.get<ReviewOverviewRow[]>(`/camera/review/overview?${params}`)
+      setReviewOverviewRows(res.data ?? [])
+    } catch (err) {
+      logger.error('CameraPlaybackPage', 'Átnézendő felvételek betöltése sikertelen:', err)
+      setReviewOverviewRows([])
+    } finally {
+      setReviewOverviewLoading(false)
+    }
+  }
+
+  const openOverviewRow = (row: ReviewOverviewRow) => {
+    setBranchId(row.branchId)
+    setStartDate(row.date)
+    setEndDate(row.date)
+    void searchByDate({ branchId: row.branchId, startDate: row.date, endDate: row.date })
+  }
+
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return '-'
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
@@ -193,6 +258,22 @@ export default function CameraPlaybackPage() {
 
   const hasResults =
     localRecordings.length > 0 || serverRecordings.length > 0 || transactionLinks.length > 0
+
+  const distinctCameraIds = useMemo(
+    () => Array.from(new Set(serverRecordings.map((rec) => rec.cameraId).filter(Boolean))).sort(),
+    [serverRecordings],
+  )
+
+  const filteredServerRecordings = useMemo(() => {
+    if (selectedCameraId === 'ALL') return serverRecordings
+    return serverRecordings.filter((rec) => rec.cameraId === selectedCameraId)
+  }, [selectedCameraId, serverRecordings])
+
+  const showReviewPanel =
+    !isElectron() &&
+    lastServerDateSearch != null &&
+    lastServerDateSearch.startDate === lastServerDateSearch.endDate &&
+    serverRecordings.length > 0
 
   return (
     <div className="space-y-3">
@@ -257,7 +338,7 @@ export default function CameraPlaybackPage() {
             </div>
             <button
               className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              onClick={searchByDate}
+              onClick={() => void searchByDate()}
               disabled={loading || !startDate || !endDate || (!isElectron() && !branchId)}
             >
               <Search className="h-4 w-4 mr-2" />
@@ -266,6 +347,82 @@ export default function CameraPlaybackPage() {
           </div>
         </div>
       </div>
+
+      {!isElectron() && (
+        <div className="rounded-lg border bg-card shadow-sm">
+          <div className="p-4 pb-2">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              {t('camera.attekintendoFelvetelek')}
+            </h3>
+          </div>
+          <div className="space-y-3 p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={reviewOnlyProblematic}
+                  onChange={(event) => setReviewOnlyProblematic(event.target.checked)}
+                  data-testid="review-overview-only-problematic"
+                />
+                {t('camera.csakProblemas')}
+              </label>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                onClick={() => void loadReviewOverview()}
+                disabled={reviewOverviewLoading || !startDate || !endDate}
+                data-testid="review-overview-fetch"
+              >
+                {t('camera.attekintendoFelvetelek')}
+              </button>
+            </div>
+            {reviewOverviewRows.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="text-xs text-muted-foreground">
+                    <tr>
+                      <th className="px-2 py-1">{t('camera.iroda')}</th>
+                      <th className="px-2 py-1">{t('common.date')}</th>
+                      <th className="px-2 py-1">{t('camera.felvetelek')}</th>
+                      <th className="px-2 py-1">{t('camera.megjelolesek')}</th>
+                      <th className="px-2 py-1">{t('camera.atnezve')}</th>
+                      <th className="px-2 py-1">{t('camera.problemasEset')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reviewOverviewRows.map((row) => (
+                      <tr key={`${row.branchId}-${row.date}`}>
+                        <td className="px-2 py-1">
+                          <button
+                            type="button"
+                            className="text-left font-medium hover:underline"
+                            onClick={() => openOverviewRow(row)}
+                            data-testid={`review-overview-row-${row.branchId}-${row.date}`}
+                          >
+                            {row.branchCode ?? row.branchId} {row.branchName ?? ''}
+                          </button>
+                        </td>
+                        <td className="px-2 py-1">{row.date}</td>
+                        <td className="px-2 py-1">{row.recordingCount}</td>
+                        <td className="px-2 py-1">{row.markCount}</td>
+                        <td className="px-2 py-1">{row.reviewed ? '✓' : '-'}</td>
+                        <td className="px-2 py-1">
+                          {row.problematic && (
+                            <span className="rounded-full border border-red-200 bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                              {t('camera.problemasEset')}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {!isElectron() && (
         <div className="rounded-lg border bg-card shadow-sm">
@@ -388,12 +545,39 @@ export default function CameraPlaybackPage() {
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <FileVideo className="h-5 w-5" />
               {t('camera.szerverenTaroltFelvetelek')}
-              {serverRecordings.length})
+              {filteredServerRecordings.length})
             </h3>
           </div>
           <div className="p-4">
+            {distinctCameraIds.length > 0 && (
+              <div className="mb-3 flex flex-wrap items-center gap-2" aria-label={t('camera.kameraValaszto')}>
+                <button
+                  type="button"
+                  className={`rounded-md border px-3 py-1 text-sm ${
+                    selectedCameraId === 'ALL' ? 'bg-primary text-primary-foreground' : 'bg-card'
+                  }`}
+                  onClick={() => setSelectedCameraId('ALL')}
+                  data-testid="camera-switch-ALL"
+                >
+                  {t('camera.mindKamera')}
+                </button>
+                {distinctCameraIds.map((cameraId) => (
+                  <button
+                    key={cameraId}
+                    type="button"
+                    className={`rounded-md border px-3 py-1 text-sm ${
+                      selectedCameraId === cameraId ? 'bg-primary text-primary-foreground' : 'bg-card'
+                    }`}
+                    onClick={() => setSelectedCameraId(cameraId)}
+                    data-testid={`camera-switch-${cameraId}`}
+                  >
+                    {cameraId}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="space-y-2">
-              {serverRecordings.map((rec) => (
+              {filteredServerRecordings.map((rec) => (
                 <button
                   key={rec.id}
                   type="button"
@@ -429,6 +613,14 @@ export default function CameraPlaybackPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showReviewPanel && lastServerDateSearch && (
+        <CameraReviewPanel
+          branchId={lastServerDateSearch.branchId}
+          date={lastServerDateSearch.startDate}
+          cameraIds={distinctCameraIds}
+        />
       )}
 
       {transactionLinks.length > 0 && (

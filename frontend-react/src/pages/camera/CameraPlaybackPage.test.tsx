@@ -23,6 +23,22 @@ vi.mock('../../utils/logger', () => ({
   },
 }))
 
+vi.mock('./CameraReviewPanel', () => ({
+  default: ({
+    branchId,
+    date,
+    cameraIds,
+  }: {
+    branchId: string
+    date: string
+    cameraIds: string[]
+  }) => (
+    <div data-testid="camera-review-panel">
+      {branchId}:{date}:{cameraIds.join(',')}
+    </div>
+  ),
+}))
+
 const mockApi = api as unknown as {
   get: ReturnType<typeof vi.fn>
 }
@@ -44,16 +60,40 @@ const recording = {
   linkedTransactions: 1,
 }
 
+const recording2 = {
+  ...recording,
+  id: 'rec-2',
+  cameraId: 'CAM-02',
+  linkedTransactions: 0,
+}
+
 describe('CameraPlaybackPage backend kapcsolatok', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockBranchApi.listActive.mockResolvedValue([
       { id: '11111111-1111-1111-1111-111111111111', code: 'BUD01', name: 'Budapest 01' },
+      { id: '22222222-2222-2222-2222-222222222222', code: 'BUD02', name: 'Budapest 02' },
     ])
     mockApi.get.mockImplementation((url: string) => {
       if (url.startsWith('/camera/recordings?')) {
         return Promise.resolve({
-          data: [recording],
+          data: [recording, recording2],
+        })
+      }
+      if (url.startsWith('/camera/review/overview?')) {
+        return Promise.resolve({
+          data: [
+            {
+              branchId: '22222222-2222-2222-2222-222222222222',
+              branchCode: 'BUD02',
+              branchName: 'Budapest 02',
+              date: '2026-06-19',
+              recordingCount: 2,
+              markCount: 1,
+              reviewed: false,
+              problematic: true,
+            },
+          ],
         })
       }
       if (url === '/camera/recordings/rec-1') {
@@ -156,5 +196,90 @@ describe('CameraPlaybackPage backend kapcsolatok', () => {
     expect(
       await screen.findByTestId('camera-linked-recording-link-transaction-1'),
     ).toBeInTheDocument()
+  })
+})
+
+
+describe('CameraPlaybackPage FS-14 review integráció', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockBranchApi.listActive.mockResolvedValue([
+      { id: '11111111-1111-1111-1111-111111111111', code: 'BUD01', name: 'Budapest 01' },
+      { id: '22222222-2222-2222-2222-222222222222', code: 'BUD02', name: 'Budapest 02' },
+    ])
+    mockApi.get.mockImplementation((url: string) => {
+      if (url.startsWith('/camera/recordings?')) {
+        return Promise.resolve({ data: [recording, recording2] })
+      }
+      if (url.startsWith('/camera/review/overview?')) {
+        return Promise.resolve({
+          data: [
+            {
+              branchId: '22222222-2222-2222-2222-222222222222',
+              branchCode: 'BUD02',
+              branchName: 'Budapest 02',
+              date: '2026-06-19',
+              recordingCount: 2,
+              markCount: 1,
+              reviewed: false,
+              problematic: true,
+            },
+          ],
+        })
+      }
+      return Promise.resolve({ data: [] })
+    })
+  })
+
+  it('kamera-váltóval kamerára szűri a szerver oldali felvételeket', async () => {
+    const user = userEvent.setup()
+    render(<CameraPlaybackPage />)
+
+    await user.selectOptions(
+      await screen.findByTestId('camera-playback-branch'),
+      '11111111-1111-1111-1111-111111111111',
+    )
+    await user.type(screen.getByLabelText('common.startDate'), '2026-06-18')
+    await user.type(screen.getByLabelText('camera.zaroDatum'), '2026-06-18')
+    await user.click(screen.getByRole('button', { name: /common.search/i }))
+
+    expect(await screen.findByTestId('camera-server-recording-rec-1')).toBeInTheDocument()
+    expect(screen.getByTestId('camera-server-recording-rec-2')).toBeInTheDocument()
+
+    await user.click(screen.getByTestId('camera-switch-CAM-02'))
+
+    expect(screen.queryByTestId('camera-server-recording-rec-1')).not.toBeInTheDocument()
+    expect(screen.getByTestId('camera-server-recording-rec-2')).toBeInTheDocument()
+  })
+
+  it('overview problémás-szűrővel kérdez, majd sor-kattintás részletkeresést indít', async () => {
+    const user = userEvent.setup()
+    render(<CameraPlaybackPage />)
+
+    await user.type(screen.getByLabelText('common.startDate'), '2026-06-18')
+    await user.type(screen.getByLabelText('camera.zaroDatum'), '2026-06-20')
+    await user.click(screen.getByTestId('review-overview-only-problematic'))
+    await user.click(screen.getByTestId('review-overview-fetch'))
+
+    await waitFor(() => {
+      const overviewCall = mockApi.get.mock.calls.find(([url]) =>
+        String(url).startsWith('/camera/review/overview?'),
+      )
+      expect(overviewCall?.[0]).toContain('onlyProblematic=true')
+    })
+
+    await user.click(
+      await screen.findByTestId(
+        'review-overview-row-22222222-2222-2222-2222-222222222222-2026-06-19',
+      ),
+    )
+
+    await waitFor(() => {
+      const recordingCall = mockApi.get.mock.calls.find(([url]) =>
+        String(url).includes('branchId=22222222-2222-2222-2222-222222222222'),
+      )
+      expect(recordingCall?.[0]).toContain('start=2026-06-19T00%3A00%3A00')
+      expect(recordingCall?.[0]).toContain('end=2026-06-19T23%3A59%3A59')
+    })
   })
 })
