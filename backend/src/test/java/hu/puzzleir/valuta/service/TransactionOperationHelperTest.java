@@ -8,11 +8,13 @@ import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
+import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -100,19 +102,22 @@ class TransactionOperationHelperTest {
                 .currentBalance(new BigDecimal("10000.00"))
                 .build();
 
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, 978L))
-                .thenReturn(Optional.of(balance));
-        when(branchRepository.findById(branchId)).thenReturn(Optional.of(vaultBranch));
-        when(currencyRepository.findById(978L)).thenReturn(Optional.of(eur));
-        doThrow(new ValidationException("Nincs elegendő értéktári EUR készlet"))
-                .when(vaultStockFlowService).validateVaultStockCoverage(vaultBranch, "EUR", new BigDecimal("5000.00"));
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(company.getId());
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(branchId, 978L, company.getId()))
+                    .thenReturn(Optional.of(balance));
+            when(branchRepository.findById(branchId)).thenReturn(Optional.of(vaultBranch));
+            when(currencyRepository.findById(978L)).thenReturn(Optional.of(eur));
+            doThrow(new ValidationException("Nincs elegendő értéktári EUR készlet"))
+                    .when(vaultStockFlowService).validateVaultStockCoverage(vaultBranch, "EUR", new BigDecimal("5000.00"));
 
-        ValidationException ex = assertThrows(ValidationException.class,
-                () -> helper.updateCashBalance(branchId, 978L, new BigDecimal("-5000.00"), false));
+            ValidationException ex = assertThrows(ValidationException.class,
+                    () -> helper.updateCashBalance(branchId, 978L, new BigDecimal("-5000.00"), false));
 
-        assertTrue(ex.getMessage().contains("értéktári EUR készlet"), ex.getMessage());
-        assertTrue(balance.getCurrentBalance().compareTo(new BigDecimal("10000.00")) == 0);
-        verify(cashBalanceRepository, never()).save(any());
+            assertTrue(ex.getMessage().contains("értéktári EUR készlet"), ex.getMessage());
+            assertTrue(balance.getCurrentBalance().compareTo(new BigDecimal("10000.00")) == 0);
+            verify(cashBalanceRepository, never()).save(any());
+        }
     }
 
     @Test
@@ -134,16 +139,48 @@ class TransactionOperationHelperTest {
                 .currentBalance(new BigDecimal("10000.00"))
                 .build();
 
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, 978L))
-                .thenReturn(Optional.of(balance));
-        when(branchRepository.findById(branchId)).thenReturn(Optional.of(vaultBranch));
-        when(currencyRepository.findById(978L)).thenReturn(Optional.of(eur));
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(company.getId());
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(branchId, 978L, company.getId()))
+                    .thenReturn(Optional.of(balance));
+            when(branchRepository.findById(branchId)).thenReturn(Optional.of(vaultBranch));
+            when(currencyRepository.findById(978L)).thenReturn(Optional.of(eur));
 
-        helper.updateCashBalance(branchId, 978L, new BigDecimal("-5000.00"), false);
+            helper.updateCashBalance(branchId, 978L, new BigDecimal("-5000.00"), false);
 
-        assertTrue(balance.getCurrentBalance().compareTo(new BigDecimal("5000.00")) == 0);
-        verify(cashBalanceRepository).save(balance);
-        verify(vaultStockFlowService).validateVaultStockCoverage(vaultBranch, "EUR", new BigDecimal("5000.00"));
-        verify(vaultStockFlowService).applyGenericVaultStock(vaultBranch, "EUR", new BigDecimal("5000.00"), false);
+            assertTrue(balance.getCurrentBalance().compareTo(new BigDecimal("5000.00")) == 0);
+            verify(cashBalanceRepository).findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(branchId, 978L, company.getId());
+            verify(cashBalanceRepository).save(balance);
+            verify(vaultStockFlowService).validateVaultStockCoverage(vaultBranch, "EUR", new BigDecimal("5000.00"));
+            verify(vaultStockFlowService).applyGenericVaultStock(vaultBranch, "EUR", new BigDecimal("5000.00"), false);
+        }
+    }
+
+    @Test
+    @DisplayName("tenant-scope: updateCashBalance a JWT-companyId-val hívja a lock-lekérdezést")
+    void updateCashBalance_usesJwtCompanyScopedLockQuery() {
+        UUID branchId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+        Company company = Company.builder().id(companyId).build();
+        Branch branch = Branch.builder().id(branchId).code("BR001").company(company).build();
+        Currency eur = Currency.builder().id(978L).code("EUR").build();
+        CashBalance balance = CashBalance.builder()
+                .branch(branch)
+                .currency(eur)
+                .currentBalance(new BigDecimal("10000.00"))
+                .build();
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(branchId, 978L, companyId))
+                    .thenReturn(Optional.of(balance));
+            when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+            when(currencyRepository.findById(978L)).thenReturn(Optional.of(eur));
+
+            helper.updateCashBalance(branchId, 978L, new BigDecimal("100.00"), true);
+
+            verify(cashBalanceRepository).findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(branchId, 978L, companyId);
+            verify(cashBalanceRepository).save(balance);
+        }
     }
 }

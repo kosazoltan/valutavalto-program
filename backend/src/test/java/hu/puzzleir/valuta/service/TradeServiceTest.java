@@ -204,9 +204,9 @@ class TradeServiceTest {
             when(tradeRepository.findById(tradeId)).thenReturn(Optional.of(trade));
             when(tradeRepository.save(any(Trade.class))).thenAnswer(inv -> inv.getArgument(0));
             when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eur));
-            when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(FROM_BRANCH_ID, 1L))
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(FROM_BRANCH_ID, 1L, COMPANY_ID))
                     .thenReturn(Optional.of(createBalance(from, eur, "1000")));
-            when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(TO_BRANCH_ID, 1L))
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(TO_BRANCH_ID, 1L, COMPANY_ID))
                     .thenReturn(Optional.of(createBalance(to, eur, "100")));
 
             TradeDto result = service.completeTrade(tradeId);

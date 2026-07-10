@@ -47,7 +47,7 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
      * Ez a query a daily_session SORÁT lockolja (SELECT ... FOR UPDATE) a plafon-ellenőrzés ELŐTT, így
      * a párhuzamos sztornó a lock mögött sorba áll: a count olvasása+növelése ugyanabban a
      * write-tranzakcióban szerializálódik. JOIN FETCH NÉLKÜL (vö. {@code CashBalanceRepository
-     * .findByBranchIdAndCurrencyIdForUpdate}) — a FOR UPDATE PostgreSQL-en nem alkalmazható outer join
+     * .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate}) — a FOR UPDATE PostgreSQL-en nem alkalmazható outer join
      * nullable oldalára; a hívó csak a {@code reversalCount} primitív mezőt olvassa (nincs lazy access).
      */
     // TENANT-NOTE: szándékosan companyId-szűrés NÉLKÜL (lock-query) — a hívó a branchId-t

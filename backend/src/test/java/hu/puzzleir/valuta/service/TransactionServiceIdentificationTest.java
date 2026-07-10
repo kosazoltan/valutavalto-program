@@ -158,8 +158,8 @@ class TransactionServiceIdentificationTest {
         // Transaction save visszaad egy dummy-t
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        // Cash balance frissítés mock (findByBranchIdAndCurrencyIdForUpdate)
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(BRANCH_ID), any()))
+        // Cash balance frissítés mock (findByBranchIdAndCurrencyIdAndCompanyIdForUpdate)
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(BRANCH_ID), any(), any()))
                 .thenReturn(Optional.of(cashBalance));
     }
 

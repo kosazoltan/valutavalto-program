@@ -291,7 +291,7 @@ public class ShipmentStockBookingService {
             receiveCashBalance(branch, companyId, currencyId, amount);
         } else {
             CashBalance balance = cashBalanceRepository
-                    .findByBranchIdAndCurrencyIdForUpdate(branch.getId(), currencyId)
+                    .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(branch.getId(), currencyId, companyId)
                     .orElseThrow(() -> insufficientStock(req, branch, item, currencyCode, amount, BigDecimal.ZERO));
             // FR-8: explicit elő-check VV-VALID-003 (422) — NEM a beépített subtractBalance
             // InsufficientBalanceException-ére (az 400-at adna, a spec 422-t kér).
@@ -311,11 +311,11 @@ public class ShipmentStockBookingService {
      */
     private void receiveCashBalance(Branch branch, UUID companyId, Long currencyId, BigDecimal amount) {
         CashBalance locked = cashBalanceRepository
-                .findByBranchIdAndCurrencyIdForUpdate(branch.getId(), currencyId).orElse(null);
+                .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(branch.getId(), currencyId, companyId).orElse(null);
         if (locked == null) {
             cashBalanceRepository.insertIfAbsent(companyId, branch.getId(), currencyId);
             locked = cashBalanceRepository
-                    .findByBranchIdAndCurrencyIdForUpdate(branch.getId(), currencyId)
+                    .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(branch.getId(), currencyId, companyId)
                     .orElseThrow(() -> new IllegalStateException(
                             "cash_balance sor nem található közvetlenül a sor-garantálás után"));
         }

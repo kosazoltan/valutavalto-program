@@ -51,7 +51,7 @@ public final class CashLockOrdering {
      * A megadott valuta-sorokat NOVEKVO currencyId sorrendben elo-lockolja a megadott iroda kasszajaban.
      *
      * @param branchId    az iroda azonositoja
-     * @param rowLock     a tenyleges sor-lock muvelet (pl. {@code cashBalanceRepository::findByBranchIdAndCurrencyIdForUpdate}
+     * @param rowLock     a tenyleges sor-lock muvelet (pl. {@code cashBalanceRepository::findByBranchIdAndCurrencyIdAndCompanyIdForUpdate}
      *                    vagy {@code helper::lockCashBalance}); a (branchId, currencyId) paron PESSIMISTIC_WRITE lockot vesz
      * @param currencyIds a lockolando valuta-azonositok (a {@code null}-okat es a duplikatumokat figyelmen kivul hagyja)
      */

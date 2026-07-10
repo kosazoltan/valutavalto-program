@@ -224,13 +224,13 @@ class TransactionFlowTest {
                 // K__szlet ellen_'rz__s -  EUR __s HUF k__l__n (read + pessimistic lock)
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(eurBalance));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(eurBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, HUF_ID, COMPANY_ID))
                         .thenReturn(Optional.of(hufBalance));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(eurBalance));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, HUF_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, HUF_ID, COMPANY_ID))
                         .thenReturn(Optional.of(hufBalance));
 
                 // Receipt number
@@ -310,7 +310,7 @@ class TransactionFlowTest {
                 emptyBalance.setCurrentBalance(new BigDecimal("10"));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(emptyBalance));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(emptyBalance));
 
                 TransactionService.SellRequest request = TransactionService.SellRequest.builder()
@@ -348,11 +348,11 @@ class TransactionFlowTest {
                 when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(eurBalance));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(eurBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, HUF_ID, COMPANY_ID))
                         .thenReturn(Optional.of(hufBalance));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, HUF_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, HUF_ID, COMPANY_ID))
                         .thenReturn(Optional.of(hufBalance));
                 when(transactionRepository.findMaxReceiptNumber(eq(BRANCH_ID), any(), anyString()))
                         .thenReturn(Optional.empty());
@@ -431,11 +431,11 @@ class TransactionFlowTest {
                 when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(eurBalance));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(eurBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, HUF_ID, COMPANY_ID))
                         .thenReturn(Optional.of(hufBalance));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, HUF_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, HUF_ID, COMPANY_ID))
                         .thenReturn(Optional.of(hufBalance));
                 when(transactionRepository.findMaxReceiptNumber(eq(BRANCH_ID), any(), anyString()))
                         .thenReturn(Optional.empty());
@@ -538,11 +538,11 @@ class TransactionFlowTest {
                         .thenReturn(Optional.empty());
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(eurBalance));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(eurBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, HUF_ID, COMPANY_ID))
                         .thenReturn(Optional.of(hufBalance));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, HUF_ID))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, HUF_ID, COMPANY_ID))
                         .thenReturn(Optional.of(hufBalance));
                 when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
                     Transaction t = inv.getArgument(0);

@@ -238,7 +238,9 @@ public class TransactionOperationHelper {
      * Valuta keszlet ellenorzese.
      */
     public void validateCurrencyStock(UUID branchId, Long currencyId, BigDecimal amount) {
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, currencyId)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        CashBalance balance = cashBalanceRepository
+                .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(branchId, currencyId, companyId)
                 .orElse(null);
 
         if (balance == null || balance.getCurrentBalance().compareTo(amount) < 0) {
@@ -256,8 +258,10 @@ public class TransactionOperationHelper {
      * Kassza frissitese.
      */
     public void updateCashBalance(UUID branchId, Long currencyId, BigDecimal amount, boolean isIncoming) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         // Pessimistic lock hasznalata race condition elkerulesere
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, currencyId)
+        CashBalance balance = cashBalanceRepository
+                .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(branchId, currencyId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Kassza egyenleg nem talalhato"));
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem talalhato"));
@@ -289,10 +293,12 @@ public class TransactionOperationHelper {
      * adatbazis-deadlockot okozhatna. Ezert a sztorno a daily_session lock ELOTT EZZEL elo-lockolja a
      * majdan modositando cash_balance sorokat (azonos currencyId -> HUF sorrendben), igy a GLOBALIS
      * lock-sorrend mindenhol cash_balance -> daily_session. A kesobbi updateCashBalance ugyanezt a sort
-     * mar lockoltan kapja (no-op re-lock), majd mutalja.
+     * mar lockoltan kapja (no-op re-lock), majd mutalja. A sor-lock a hivo JWT-cegere szurt;
+     * minden helper-hivo request-scoped (Conversion/MultiLine/Reversal).
      */
     public void lockCashBalance(UUID branchId, Long currencyId) {
-        cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, currencyId)
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(branchId, currencyId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Kassza egyenleg nem talalhato"));
     }
 

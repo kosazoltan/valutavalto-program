@@ -331,14 +331,15 @@ public class TransactionService {
         // paroson. A lenti validateCurrencyStock/updateCashBalance ugyanezeket a sorokat mar lockoltan
         // kapja (no-op re-lock). Lasd: CashLockOrdering.
         CashLockOrdering.lockInAscendingCurrencyOrder(branchId,
-                cashBalanceRepository::findByBranchIdAndCurrencyIdForUpdate,
+                (bid, cid) -> cashBalanceRepository
+                        .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(bid, cid, companyId),
                 getHufCurrencyId(), currency.getId());
 
         // 2026-05-15 user-direktíva: BUY ágon a pénztár HUF készletet ellenőrizni KELL
         // (vételnél a cég HUF-ot fizet ki az ügyfélnek). Korábban csak SELL ágon volt
         // készlet-ellenőrzés (foreign currency), ezért negatív HUF egyenlegre is
         // engedett tranzakciót — ez TILOS mind a pénztárban, mind az értéktárban.
-        validateCurrencyStock(branchId, getHufCurrencyId(), payableAmount);
+        validateCurrencyStock(branchId, getHufCurrencyId(), payableAmount, companyId);
 
         // 2026-05-13 v2.5.49+ (Codex P1 #562/#564): pénztárosi sáv napi kvóta backend enforcement + normalizálás
         boolean buyCashierCustomRate = validateAndNormalizeCashierCustomRateQuota(
@@ -454,8 +455,8 @@ public class TransactionService {
         flagHighRiskAfterBooking(request.getCustomerId());
 
         // Kassza frissítése - HUF csökken, valuta nő
-        updateCashBalance(branchId, currency.getId(), request.getCurrencyAmount(), true);  // valuta +
-        updateCashBalance(branchId, getHufCurrencyId(), payableAmount.negate(), false);    // HUF -
+        updateCashBalance(branchId, currency.getId(), request.getCurrencyAmount(), true, companyId);  // valuta +
+        updateCashBalance(branchId, getHufCurrencyId(), payableAmount.negate(), false, companyId);    // HUF -
 
         // Napi statisztika frissítése
         dailySessionService.updateSessionStats(
@@ -522,11 +523,12 @@ public class TransactionService {
         // validateCurrencyStock(currency)), majd a vegen a HUF-ot — ez a BUY-jal (HUF-first)
         // keresztezve AB-BA deadlockot okozhatott. Lasd: CashLockOrdering.
         CashLockOrdering.lockInAscendingCurrencyOrder(branchId,
-                cashBalanceRepository::findByBranchIdAndCurrencyIdForUpdate,
+                (bid, cid) -> cashBalanceRepository
+                        .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(bid, cid, companyId),
                 getHufCurrencyId(), currency.getId());
 
         // Készlet ellenőrzése
-        validateCurrencyStock(branchId, currency.getId(), request.getCurrencyAmount());
+        validateCurrencyStock(branchId, currency.getId(), request.getCurrencyAmount(), companyId);
 
         // Kezelési díj szerver oldali számítás (kliens értékét felülírjuk)
         BigDecimal handlingFeeBase = handlingFeeCalculator.calculate(
@@ -681,8 +683,8 @@ public class TransactionService {
         flagHighRiskAfterBooking(request.getCustomerId());
 
         // Kassza frissítése - HUF nő, valuta csökken
-        updateCashBalance(branchId, currency.getId(), request.getCurrencyAmount().negate(), false); // valuta -
-        updateCashBalance(branchId, getHufCurrencyId(), payableAmount, true);                       // HUF +
+        updateCashBalance(branchId, currency.getId(), request.getCurrencyAmount().negate(), false, companyId); // valuta -
+        updateCashBalance(branchId, getHufCurrencyId(), payableAmount, true, companyId);                       // HUF +
 
         // A6 / b8 FR-8: realizált profit best-effort rögzítése a tranzakció COMMITJA UTÁN
         // (flag-gated, cold-start-safe, read-only a készleten → nincs havi-zárás/cash_balance
@@ -1199,8 +1201,8 @@ public class TransactionService {
                 customerActorMotherName, customerActorDocumentNumber, customerActorAddress, operation);
     }
 
-    private void validateCurrencyStock(UUID branchId, Long currencyId, BigDecimal amount) {
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, currencyId)
+    private void validateCurrencyStock(UUID branchId, Long currencyId, BigDecimal amount, UUID companyId) {
+        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(branchId, currencyId, companyId)
                 .orElse(null);
 
         if (balance == null || balance.getCurrentBalance().compareTo(amount) < 0) {
@@ -1223,9 +1225,9 @@ public class TransactionService {
         vaultStockFlowService.validateVaultStockCoverage(branch, currency.getCode(), amount);
     }
 
-    private void updateCashBalance(UUID branchId, Long currencyId, BigDecimal amount, boolean isIncoming) {
+    private void updateCashBalance(UUID branchId, Long currencyId, BigDecimal amount, boolean isIncoming, UUID companyId) {
         // Pessimistic lock használata race condition elkerülésére
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, currencyId)
+        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(branchId, currencyId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Kassza egyenleg nem található"));
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található"));

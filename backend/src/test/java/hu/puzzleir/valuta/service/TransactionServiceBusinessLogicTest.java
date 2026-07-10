@@ -148,11 +148,11 @@ class TransactionServiceBusinessLogicTest {
                 .thenReturn("R-001", "R-002", "R-003", "R-004");
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, EUR_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance(branch, eur, "1000")));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, USD_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, USD_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance(branch, usd, "1000")));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, HUF_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, HUF_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance(branch, huf, "1000000")));
 
         AmlService.AmlBasicCheckResult amlOk = AmlService.AmlBasicCheckResult.builder()
@@ -193,7 +193,7 @@ class TransactionServiceBusinessLogicTest {
         assertThatCode(() -> transactionService.executeSell(request)).doesNotThrowAnyException();
 
         verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdAndCompanyId(any(), any(), any());
-        verify(cashBalanceRepository, atLeastOnce()).findByBranchIdAndCurrencyIdForUpdate(eq(BRANCH_ID), eq(EUR_ID));
+        verify(cashBalanceRepository, atLeastOnce()).findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(BRANCH_ID), eq(EUR_ID), eq(COMPANY_ID));
     }
 
     @Test
@@ -210,10 +210,10 @@ class TransactionServiceBusinessLogicTest {
 
         // A determinisztikus globalis cash-lock sorrend: a legkisebb currencyId (HUF=1) ELSO lockolasa
         // megelozi a deviza (EUR=2) elso lockolasat. A cash-sor PESSIMISTIC_WRITE lockot a
-        // findByBranchIdAndCurrencyIdForUpdate veszi — a hivasi sorrendet captor-ral rogzitjuk.
+        // findByBranchIdAndCurrencyIdAndCompanyIdForUpdate veszi — a hivasi sorrendet captor-ral rogzitjuk.
         ArgumentCaptor<Long> lockOrder = ArgumentCaptor.forClass(Long.class);
         verify(cashBalanceRepository, atLeastOnce())
-                .findByBranchIdAndCurrencyIdForUpdate(eq(BRANCH_ID), lockOrder.capture());
+                .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(BRANCH_ID), lockOrder.capture(), eq(COMPANY_ID));
         assertThat(lockOrder.getAllValues().indexOf(HUF_ID))
                 .isLessThan(lockOrder.getAllValues().indexOf(EUR_ID));
     }
@@ -232,7 +232,7 @@ class TransactionServiceBusinessLogicTest {
 
         ArgumentCaptor<Long> lockOrder = ArgumentCaptor.forClass(Long.class);
         verify(cashBalanceRepository, atLeastOnce())
-                .findByBranchIdAndCurrencyIdForUpdate(eq(BRANCH_ID), lockOrder.capture());
+                .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(BRANCH_ID), lockOrder.capture(), eq(COMPANY_ID));
         assertThat(lockOrder.getAllValues().indexOf(HUF_ID))
                 .isLessThan(lockOrder.getAllValues().indexOf(EUR_ID));
     }

@@ -123,7 +123,7 @@ class TransferServiceVaultCoverageTest {
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-001");
         when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(fromId), anyLong()))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(fromId), anyLong(), eq(company.getId())))
                 .thenReturn(Optional.of(fromBalance));
 
         CreateTransferDto dto = new CreateTransferDto();

@@ -498,8 +498,10 @@ public class TransferService {
                         transfer.getToBranch().getId(), cid));
             }
         }
+        UUID cbCompanyId = requireBranchCompanyId(transfer.getFromBranch());
         hu.puzzleir.valuta.util.CashLockOrdering.lockBranchCurrencyPairsInGlobalOrder(
-                (bid, c) -> cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(bid, c),
+                (bid, c) -> cashBalanceRepository
+                        .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(bid, c, cbCompanyId),
                 lockKeys.toArray(new hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey[0]));
 
         switch (direction) {
@@ -633,8 +635,10 @@ public class TransferService {
                         transfer.getToBranch().getId(), cid));
             }
         }
+        UUID cbCompanyId = requireBranchCompanyId(transfer.getFromBranch());
         hu.puzzleir.valuta.util.CashLockOrdering.lockBranchCurrencyPairsInGlobalOrder(
-                (bid, c) -> cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(bid, c),
+                (bid, c) -> cashBalanceRepository
+                        .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(bid, c, cbCompanyId),
                 lockKeys.toArray(new hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey[0]));
 
         final boolean multiLine = transfer.getLines() != null && !transfer.getLines().isEmpty();
@@ -832,12 +836,22 @@ public class TransferService {
 
     // --- Cash balance updates with pessimistic locking ---
 
+    /** Fail-closed cég-feloldás a kassza-műveletekhez (defense-in-depth, #1389 follow-up). */
+    private static UUID requireBranchCompanyId(Branch branch) {
+        if (branch.getCompany() == null || branch.getCompany().getId() == null) {
+            throw new ValidationException(
+                    "Hiányzó cégazonosító a kassza-művelethez: " + branch.getCode());
+        }
+        return branch.getCompany().getId();
+    }
+
     /**
      * Kassza egyenleg csökkentése PESSIMISTIC LOCK-kal.
      */
     private void decreaseCashBalance(Branch branch, Currency currency, BigDecimal amount) {
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(
-                branch.getId(), currency.getId())
+        UUID companyId = requireBranchCompanyId(branch);
+        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(
+                branch.getId(), currency.getId(), companyId)
                 .orElseThrow(() -> new ValidationException(
                         String.format("Kassza egyenleg nem található: %s / %s",
                                 branch.getCode(), currency.getCode())));
@@ -867,8 +881,9 @@ public class TransferService {
      * Kassza egyenleg növelése PESSIMISTIC LOCK-kal.
      */
     private void increaseCashBalance(Branch branch, Currency currency, BigDecimal amount) {
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(
-                branch.getId(), currency.getId())
+        UUID companyId = requireBranchCompanyId(branch);
+        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(
+                branch.getId(), currency.getId(), companyId)
                 .orElseThrow(() -> new ValidationException(
                         String.format("Kassza egyenleg nem található: %s / %s",
                                 branch.getCode(), currency.getCode())));

@@ -131,9 +131,9 @@ class PepSourceOfFundsTest {
             when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-001");
             when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, EUR_ID, COMPANY_ID))
                     .thenReturn(Optional.of(balance(branch, eur, "1000")));
-            when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, HUF_ID))
+            when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, HUF_ID, COMPANY_ID))
                     .thenReturn(Optional.of(balance(branch, huf, "10000000")));
 
             AmlService.AmlBasicCheckResult amlOk = AmlService.AmlBasicCheckResult.builder()

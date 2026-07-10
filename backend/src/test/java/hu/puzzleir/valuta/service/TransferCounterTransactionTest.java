@@ -145,18 +145,18 @@ class TransferCounterTransactionTest {
 
         // Küldő kassza csökkent. 2x find: (1) cross-branch + cash-first elo-lock (CashLockOrdering, #952),
         // (2) decreaseCashBalance no-op re-lock + mutacio (ugyanaz a sor).
-        verify(cashBalanceRepository, times(2)).findByBranchIdAndCurrencyIdForUpdate(FROM_BRANCH_ID, CURRENCY_ID);
+        verify(cashBalanceRepository, times(2)).findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(FROM_BRANCH_ID, CURRENCY_ID, COMPANY_ID);
         assertThat(fromBalance.getCurrentBalance()).isEqualByComparingTo(new BigDecimal("9500.00"));
 
         // CASH-FIRST (#952): a cash_balance elo-lock a bizonylatszam-generalas (receipt_sequence
         // per-branch PESSIMISTIC lock) ELOTT tortenik -> minden penzmozgato ut cash->receipt sorrendben
         // halad, nincs cash<->receipt_sequence deadlock-axis.
         InOrder cashBeforeReceipt = inOrder(cashBalanceRepository, receiptSequenceService);
-        cashBeforeReceipt.verify(cashBalanceRepository).findByBranchIdAndCurrencyIdForUpdate(FROM_BRANCH_ID, CURRENCY_ID);
+        cashBeforeReceipt.verify(cashBalanceRepository).findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(FROM_BRANCH_ID, CURRENCY_ID, COMPANY_ID);
         cashBeforeReceipt.verify(receiptSequenceService).generateReceiptNumber(eq(FROM_BRANCH_ID), any());
 
         // Fogadó kassza NEM módosult (F mód single-branch → a fogadó sort nem is elo-lockoljuk)
-        verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdForUpdate(eq(TO_BRANCH_ID), anyLong());
+        verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(TO_BRANCH_ID), anyLong(), any());
 
         // Audit log
         verify(auditLogService).log(eq("TRANSFER_CREATED"), anyString(), any(Long.class));
@@ -229,7 +229,7 @@ class TransferCounterTransactionTest {
         assertThat(fromBalance.getCurrentBalance()).isEqualByComparingTo(new BigDecimal("10500.00"));
 
         // Küldő (toBranch) kassza NEM módosult
-        verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdForUpdate(eq(TO_BRANCH_ID), anyLong());
+        verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(TO_BRANCH_ID), anyLong(), any());
     }
 
     // === UF mód tesztek ===
@@ -461,7 +461,7 @@ class TransferCounterTransactionTest {
     }
 
     private void setupCashBalanceMock(UUID branchId, CashBalance balance) {
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(branchId, CURRENCY_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(branchId, CURRENCY_ID, COMPANY_ID))
                 .thenReturn(Optional.of(balance));
     }
 }

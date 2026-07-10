@@ -76,6 +76,9 @@ class ReservationServiceTest {
         Branch b = new Branch();
         b.setId(id);
         b.setName("Test iroda");
+        Company company = new Company();
+        company.setId(COMPANY_ID);
+        b.setCompany(company);
         return b;
     }
 
@@ -150,7 +153,7 @@ class ReservationServiceTest {
         Currency huf = hufCurrency();
         CashBalance hufBal = hufBalance(new BigDecimal("100000"));
         when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(huf));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(BRANCH_ID), eq(huf.getId())))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(BRANCH_ID), eq(huf.getId()), eq(COMPANY_ID)))
                 .thenReturn(Optional.of(hufBal));
         when(cashBalanceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(reservationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -182,7 +185,7 @@ class ReservationServiceTest {
 
         // HUF currency lekérdezés NEM fut le (remaining <= 0)
         verify(currencyRepository, never()).findByCode("HUF");
-        verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdForUpdate(any(), any());
+        verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(any(), any(), any());
     }
 
     // ========== T3: fulfillReservation sets status FULFILLED ==========
@@ -334,9 +337,9 @@ class ReservationServiceTest {
 
         CashBalance eurBal = new CashBalance(); eurBal.setCurrentBalance(new BigDecimal("1000"));
         CashBalance usdBal = new CashBalance(); usdBal.setCurrentBalance(new BigDecimal("500"));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, 1L))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, 1L, COMPANY_ID))
                 .thenReturn(Optional.of(eurBal));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, 2L))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, 2L, COMPANY_ID))
                 .thenReturn(Optional.of(usdBal));
         when(cashBalanceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(reservationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -455,11 +458,11 @@ class ReservationServiceTest {
         when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(hufCurrency()));
         // EUR készlet (van elég: 1000 >= 100)
         CashBalance eurBalance = cashBalanceWith(new BigDecimal("1000"));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, 200L))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, 200L, COMPANY_ID))
                 .thenReturn(Optional.of(eurBalance));
         // HUF kassza (addHufBalance — ide kerül a befizetett 5% letét)
         CashBalance hufKassza = cashBalanceWith(new BigDecimal("0"));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, 100L))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, 100L, COMPANY_ID))
                 .thenReturn(Optional.of(hufKassza));
         // save: id beállítása + visszaadás (az audit log getId()-t hív)
         when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> {
@@ -485,7 +488,7 @@ class ReservationServiceTest {
         // sorrend -> nincs cash<->cash AB-BA deadlock. Az ELSO KET lock a pre-lock: HUF(100) majd EUR(200).
         org.mockito.ArgumentCaptor<Long> cidCaptor = org.mockito.ArgumentCaptor.forClass(Long.class);
         verify(cashBalanceRepository, atLeast(2))
-                .findByBranchIdAndCurrencyIdForUpdate(eq(BRANCH_ID), cidCaptor.capture());
+                .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(BRANCH_ID), cidCaptor.capture(), eq(COMPANY_ID));
         assertThat(cidCaptor.getAllValues().subList(0, 2)).containsExactly(100L, 200L);
     }
 }

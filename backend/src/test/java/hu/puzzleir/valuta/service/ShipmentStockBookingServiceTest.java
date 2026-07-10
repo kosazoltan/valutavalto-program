@@ -115,7 +115,7 @@ class ShipmentStockBookingServiceTest {
 
         when(branchRepository.findByIdAndCompanyId(fromId, companyId)).thenReturn(Optional.of(from));
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(currency("EUR")));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(fromId, 4L))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(fromId, 4L, companyId))
                 .thenReturn(Optional.of(balance));
         when(cashBalanceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -166,7 +166,7 @@ class ShipmentStockBookingServiceTest {
 
         when(branchRepository.findByIdAndCompanyId(fromId, companyId)).thenReturn(Optional.of(from));
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(currency("EUR")));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(fromId, 4L))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(fromId, 4L, companyId))
                 .thenReturn(Optional.of(balance));
 
         try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
@@ -215,7 +215,7 @@ class ShipmentStockBookingServiceTest {
 
         when(branchRepository.findByIdAndCompanyId(toId, companyId)).thenReturn(Optional.of(to));
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(currency("EUR")));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(toId, 4L))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(toId, 4L, companyId))
                 .thenReturn(Optional.of(balance));
         when(cashBalanceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -410,7 +410,7 @@ class ShipmentStockBookingServiceTest {
 
         when(branchRepository.findByIdAndCompanyId(fromId, companyId)).thenReturn(Optional.of(from));
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(currency("EUR")));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(fromId, 4L))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(fromId, 4L, companyId))
                 .thenReturn(Optional.of(balance));
         when(cashBalanceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -418,7 +418,7 @@ class ShipmentStockBookingServiceTest {
             sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
             service.bookStockOut(req, companyId);
         }
-        verify(cashBalanceRepository).findByBranchIdAndCurrencyIdForUpdate(fromId, 4L);
+        verify(cashBalanceRepository).findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(fromId, 4L, companyId);
     }
 
     // ===================== #7 FR-9 audit-esemény minden készletmozgásra =====================
@@ -457,7 +457,7 @@ class ShipmentStockBookingServiceTest {
 
         when(branchRepository.findByIdAndCompanyId(toId, companyId)).thenReturn(Optional.of(to));
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(currency("EUR")));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(toId, 4L))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(toId, 4L, companyId))
                 .thenReturn(Optional.of(balance));
         when(cashBalanceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -488,7 +488,7 @@ class ShipmentStockBookingServiceTest {
         when(branchRepository.findByIdAndCompanyId(cashierId, companyId)).thenReturn(Optional.of(cashier));
         when(branchRepository.findByIdAndCompanyId(vaultId, companyId)).thenReturn(Optional.of(vault));
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(currency("USD")));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(cashierId, 4L))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(cashierId, 4L, companyId))
                 .thenReturn(Optional.of(cashierBalance));
         when(currencyStockRepository.findForUpdate(companyId, "VAULT", "5", "USD"))
                 .thenReturn(Optional.of(vaultStock));
