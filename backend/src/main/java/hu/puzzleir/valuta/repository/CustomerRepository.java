@@ -78,6 +78,14 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
      */
     List<Customer> findByCompanyIdAndActiveTrue(UUID companyId);
 
+    /**
+     * A customer_code globálisan egyedi (idx_customer_code_unique), ezért az új kód
+     * sorszámát az összes ügyfélből kell képezni, aktív és inaktív sorokkal együtt.
+     */
+    @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(c.customerCode, 2) AS integer)), 0) " +
+            "FROM Customer c WHERE c.customerCode LIKE 'C______'")
+    int findMaxCustomerCodeSuffix();
+
     /** FS-3 (D2): átnézésre váró ügyfelek — companyId-szűrt (invariáns #1). */
     List<Customer> findByCompanyIdAndReviewStatusOrderByUpdatedAtDesc(UUID companyId, ReviewStatus reviewStatus);
 
