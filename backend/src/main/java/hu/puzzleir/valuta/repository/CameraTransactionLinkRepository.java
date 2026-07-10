@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,4 +24,14 @@ public interface CameraTransactionLinkRepository extends JpaRepository<CameraTra
     List<CameraTransactionLink> findByTransactionId(Long transactionId);
 
     List<CameraTransactionLink> findByRecordingId(UUID recordingId);
+
+    @Query("select l from CameraTransactionLink l "
+            + "join Branch b on b.id = l.recording.branchId and b.company.id = :companyId "
+            + "where l.recording.branchId = :branchId "
+            + "and l.transactionTime >= :start and l.transactionTime < :end order by l.transactionTime asc")
+    List<CameraTransactionLink> findByBranchAndTimeRange(
+            @Param("branchId") UUID branchId,
+            @Param("companyId") UUID companyId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
 }
