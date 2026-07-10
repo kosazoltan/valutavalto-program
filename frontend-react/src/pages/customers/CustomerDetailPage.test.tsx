@@ -31,6 +31,11 @@ const mocks = vi.hoisted(() => ({
     customerRisk: vi.fn(),
     structuringCheck: vi.fn(),
   },
+  documentScannerApi: {
+    getCustomerDocuments: vi.fn(),
+  },
+  persistToken: vi.fn(),
+  clearPersistedToken: vi.fn(),
 }))
 
 vi.mock('../../services/api/transactions', () => ({
@@ -40,6 +45,12 @@ vi.mock('../../services/api/transactions', () => ({
 
 vi.mock('../../services/api/aml', () => ({
   amlApi: mocks.amlApi,
+}))
+
+vi.mock('../../services/api/index', () => ({
+  documentScannerApi: mocks.documentScannerApi,
+  persistToken: mocks.persistToken,
+  clearPersistedToken: mocks.clearPersistedToken,
 }))
 
 const BASE_CUSTOMER = {
@@ -129,6 +140,9 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
       customerId: '42',
       structuringDetected: false,
     })
+    mocks.documentScannerApi.getCustomerDocuments.mockResolvedValue([])
+    mocks.persistToken.mockResolvedValue(undefined)
+    mocks.clearPersistedToken.mockResolvedValue(undefined)
     mocks.customerApi.getVersions.mockResolvedValue([])
     mocks.customerApi.getVersion.mockResolvedValue({
       versionNo: 1,
@@ -285,8 +299,8 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
     expect(mocks.customerControlApi.getScreeningLog).toHaveBeenCalledWith(42)
     expect(mocks.amlApi.customerRisk).toHaveBeenCalledWith('42')
     expect(mocks.amlApi.structuringCheck).toHaveBeenCalledWith('42')
-    expect(screen.getByTestId('customer-annual-total')).toHaveTextContent('12 500 000 Ft')
-    expect(screen.getByTestId('customer-aml-risk')).toHaveTextContent('Magas')
+    expect(await screen.findByTestId('customer-annual-total')).toHaveTextContent('12 500 000 Ft')
+    expect(await screen.findByTestId('customer-aml-risk')).toHaveTextContent('Magas')
     expect(screen.getByText('Fokozott figyelés')).toBeInTheDocument()
     expect(screen.getByText('Gyanú-bejelentés teszt')).toBeInTheDocument()
     expect(screen.getByText('Igen')).toBeInTheDocument()
@@ -321,8 +335,9 @@ describe('CustomerDetailPage — EDD-badge + Pmt.30.§ jelölés', () => {
     await waitFor(() => expect(mocks.customerApi.getStats).toHaveBeenCalledWith(42))
     expect(mocks.customerApi.getHistory).toHaveBeenCalledWith(42, undefined)
     expect(await screen.findByTestId('customer-backend-stats')).toHaveTextContent('1 250 000 Ft')
-    expect(screen.getByTestId('customer-history-stats')).toHaveTextContent('850 000 Ft')
-    expect(screen.getByTestId('customer-history-stats')).toHaveTextContent('USD')
+    const historyStats = await screen.findByTestId('customer-history-stats')
+    expect(historyStats).toHaveTextContent('850 000 Ft')
+    expect(historyStats).toHaveTextContent('USD')
 
     fireEvent.change(screen.getByTestId('customer-history-from'), {
       target: { value: '2026-06-10' },

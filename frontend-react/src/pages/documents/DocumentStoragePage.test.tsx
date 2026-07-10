@@ -151,7 +151,7 @@ describe('DocumentStoragePage backend contract', () => {
     })
 
     await user.click(
-      within(screen.getByTestId('scanned-documents-panel')).getByRole('button', {
+      within(await screen.findByTestId('scanned-documents-panel')).getByRole('button', {
         name: /Törlés/i,
       }),
     )

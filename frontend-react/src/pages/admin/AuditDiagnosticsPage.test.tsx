@@ -111,7 +111,7 @@ describe('AuditDiagnosticsPage', () => {
     expect(mocks.recentErrors).toHaveBeenCalledWith(100)
     expect(mocks.errorCodes).toHaveBeenCalled()
     expect(mocks.diagnosticsHealth).toHaveBeenCalled()
-    const healthPanel = screen.getByTestId('diagnostics-health-panel')
+    const healthPanel = await screen.findByTestId('diagnostics-health-panel')
     expect(within(healthPanel).getByText('Diagnostics ingest')).toBeInTheDocument()
     expect(within(healthPanel).getByText('DB-ben rögzített klienshibák')).toBeInTheDocument()
     expect(within(healthPanel).getByText('12')).toBeInTheDocument()

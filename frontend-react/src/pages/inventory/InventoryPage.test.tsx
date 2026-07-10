@@ -335,7 +335,7 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
       _skipGlobal403Toast: true,
     })
     expect(screen.getByText('Készletmátrix')).toBeInTheDocument()
-    expect(screen.getByTestId('inventory-operation-panel')).toBeInTheDocument()
+    expect(await screen.findByTestId('inventory-operation-panel')).toBeInTheDocument()
     await waitFor(() =>
       expect(screen.getByLabelText('Deviza kiválasztása')).toHaveTextContent('EUR – Euró'),
     )
