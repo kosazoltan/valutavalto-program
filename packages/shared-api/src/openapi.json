@@ -29600,6 +29600,158 @@
         }
       }
     },
+    "/api/v1/compliance/suspicious-customers": {
+      "get": {
+        "tags": ["suspicious-customer-controller"],
+        "summary": "Gyanús ügyfelek (3 minta, cégszintű, lapozott)",
+        "operationId": "search_3",
+        "parameters": [
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "byTransactionCount",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          {
+            "name": "minTransactionCount",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "byTotalValue",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          {
+            "name": "minTotalHuf",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "byBranchCount",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          {
+            "name": "minBranchCount",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageSuspiciousCustomerDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance/suspicious-customers/export/xlsx": {
+      "get": {
+        "tags": ["suspicious-customer-controller"],
+        "summary": "Hatályos értéksávot elért ügyfelek XLSX exportja",
+        "operationId": "exportXlsx_1",
+        "parameters": [
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/compliance/search-audit/{id}/pdf": {
       "get": {
         "tags": ["compliance-search-audit-controller"],
@@ -30268,7 +30420,7 @@
       "get": {
         "tags": ["circular-controller"],
         "summary": "Körlevél keresés iktatószám alapján",
-        "operationId": "search_3",
+        "operationId": "search_4",
         "parameters": [
           {
             "name": "q",
@@ -38264,6 +38416,10 @@
             "type": "integer",
             "format": "int64"
           },
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "companyId": {
             "type": "string",
             "format": "uuid"
@@ -38271,10 +38427,6 @@
           "territoryId": {
             "type": "integer",
             "format": "int32"
-          },
-          "branchId": {
-            "type": "string",
-            "format": "uuid"
           }
         }
       },
@@ -48169,16 +48321,16 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "pageSize": {
-            "type": "integer",
-            "format": "int32"
+          "paged": {
+            "type": "boolean"
           },
           "pageNumber": {
             "type": "integer",
             "format": "int32"
           },
-          "paged": {
-            "type": "boolean"
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
           },
           "unpaged": {
             "type": "boolean"
@@ -49762,14 +49914,14 @@
             "type": "string",
             "format": "date-time"
           },
+          "lowBalance": {
+            "type": "boolean"
+          },
           "highBalance": {
             "type": "boolean"
           },
           "dailyChange": {
             "type": "number"
-          },
-          "lowBalance": {
-            "type": "boolean"
           }
         }
       },
@@ -51061,17 +51213,17 @@
           "source": {
             "type": "string"
           },
-          "bankBuyRate": {
-            "type": "number",
-            "deprecated": true
+          "lastUpdated": {
+            "type": "string",
+            "format": "date-time"
           },
           "bankSellRate": {
             "type": "number",
             "deprecated": true
           },
-          "lastUpdated": {
-            "type": "string",
-            "format": "date-time"
+          "bankBuyRate": {
+            "type": "number",
+            "deprecated": true
           }
         }
       },
@@ -53666,6 +53818,83 @@
           }
         }
       },
+      "PageSuspiciousCustomerDto": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SuspiciousCustomerDto"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SuspiciousCustomerDto": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "transactionCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalHufAmount": {
+            "type": "number"
+          },
+          "branchCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "highTransactionCount": {
+            "type": "boolean"
+          },
+          "highTotalValue": {
+            "type": "boolean"
+          },
+          "manyBranches": {
+            "type": "boolean"
+          }
+        }
+      },
       "CompetitorTodayRateDto": {
         "type": "object",
         "properties": {
@@ -54192,10 +54421,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "highBalance": {
+          "lowBalance": {
             "type": "boolean"
           },
-          "lowBalance": {
+          "highBalance": {
             "type": "boolean"
           }
         }

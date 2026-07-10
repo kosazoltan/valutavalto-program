@@ -13013,6 +13013,40 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/compliance/suspicious-customers': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Gyanús ügyfelek (3 minta, cégszintű, lapozott) */
+    get: operations['search_3']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/compliance/suspicious-customers/export/xlsx': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Hatályos értéksávot elért ügyfelek XLSX exportja */
+    get: operations['exportXlsx_1']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/compliance/search-audit/{id}/pdf': {
     parameters: {
       query?: never
@@ -13379,7 +13413,7 @@ export interface paths {
       cookie?: never
     }
     /** Körlevél keresés iktatószám alapján */
-    get: operations['search_3']
+    get: operations['search_4']
     put?: never
     post?: never
     delete?: never
@@ -16904,11 +16938,11 @@ export interface components {
       /** Format: int64 */
       version?: number
       /** Format: uuid */
+      branchId?: string
+      /** Format: uuid */
       companyId?: string
       /** Format: int32 */
       territoryId?: number
-      /** Format: uuid */
-      branchId?: string
     }
     CountItemRequest: {
       /** Format: int32 */
@@ -20573,11 +20607,11 @@ export interface components {
       /** Format: int64 */
       offset?: number
       sort?: components['schemas']['SortObject']
-      /** Format: int32 */
-      pageSize?: number
+      paged?: boolean
       /** Format: int32 */
       pageNumber?: number
-      paged?: boolean
+      /** Format: int32 */
+      pageSize?: number
       unpaged?: boolean
     }
     SortObject: {
@@ -21192,9 +21226,9 @@ export interface components {
       version?: number
       /** Format: date-time */
       updatedAt?: string
+      lowBalance?: boolean
       highBalance?: boolean
       dailyChange?: number
-      lowBalance?: boolean
     }
     DailyClosingReport: {
       /** Format: date */
@@ -21678,12 +21712,12 @@ export interface components {
       /** Format: date-time */
       validFrom?: string
       source?: string
-      /** @deprecated */
-      bankBuyRate?: number
-      /** @deprecated */
-      bankSellRate?: number
       /** Format: date-time */
       lastUpdated?: string
+      /** @deprecated */
+      bankSellRate?: number
+      /** @deprecated */
+      bankBuyRate?: number
     }
     CompetitorRateDTO: {
       /** Format: uuid */
@@ -22683,6 +22717,36 @@ export interface components {
       pageable?: components['schemas']['PageableObject']
       empty?: boolean
     }
+    PageSuspiciousCustomerDto: {
+      /** Format: int64 */
+      totalElements?: number
+      /** Format: int32 */
+      totalPages?: number
+      /** Format: int32 */
+      size?: number
+      content?: components['schemas']['SuspiciousCustomerDto'][]
+      /** Format: int32 */
+      number?: number
+      sort?: components['schemas']['SortObject']
+      first?: boolean
+      last?: boolean
+      /** Format: int32 */
+      numberOfElements?: number
+      pageable?: components['schemas']['PageableObject']
+      empty?: boolean
+    }
+    SuspiciousCustomerDto: {
+      customerId?: string
+      customerName?: string
+      /** Format: int64 */
+      transactionCount?: number
+      totalHufAmount?: number
+      /** Format: int64 */
+      branchCount?: number
+      highTransactionCount?: boolean
+      highTotalValue?: boolean
+      manyBranches?: boolean
+    }
     CompetitorTodayRateDto: {
       /** Format: int64 */
       currencyId?: number
@@ -22884,8 +22948,8 @@ export interface components {
       maxBalance?: number
       /** Format: date-time */
       lastTransactionAt?: string
-      highBalance?: boolean
       lowBalance?: boolean
+      highBalance?: boolean
     }
     DetailedCashPosition: {
       /** Format: uuid */
@@ -44890,6 +44954,60 @@ export interface operations {
       }
     }
   }
+  search_3: {
+    parameters: {
+      query?: {
+        startDate?: string
+        endDate?: string
+        byTransactionCount?: boolean
+        minTransactionCount?: number
+        byTotalValue?: boolean
+        minTotalHuf?: number
+        byBranchCount?: boolean
+        minBranchCount?: number
+        page?: number
+        size?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['PageSuspiciousCustomerDto']
+        }
+      }
+    }
+  }
+  exportXlsx_1: {
+    parameters: {
+      query?: {
+        startDate?: string
+        endDate?: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': string
+        }
+      }
+    }
+  }
   pdf: {
     parameters: {
       query?: never
@@ -45377,7 +45495,7 @@ export interface operations {
       }
     }
   }
-  search_3: {
+  search_4: {
     parameters: {
       query: {
         q: string

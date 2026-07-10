@@ -628,6 +628,37 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * FS-12: gyanús ügyfél aggregátumok — 3 minta (tranzakciószám / össz-érték /
+     * váltópont-szám) OR-kapcsolattal, bekapcsolható feltételenként.
+     * Halmaz-kontraktus a findRollingWindowAuditCandidates mintája szerint.
+     */
+    @Query("SELECT t.customerId, MAX(t.customerName), COUNT(t), " +
+           "COALESCE(SUM(t.hufAmount), 0), COUNT(DISTINCT t.branch.id) " +
+           "FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.transactionDate BETWEEN :startDate AND :endDate " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
+           "AND t.customerId IS NOT NULL " +
+           "AND t.customerId <> '' " +
+           "GROUP BY t.customerId " +
+           "HAVING ((:byTransactionCount = true AND COUNT(t) >= :minTransactionCount) " +
+           "     OR (:byTotalValue = true AND COALESCE(SUM(t.hufAmount), 0) >= :minTotalHuf) " +
+           "     OR (:byBranchCount = true AND COUNT(DISTINCT t.branch.id) >= :minBranchCount)) " +
+           "ORDER BY SUM(t.hufAmount) DESC")
+    java.util.List<Object[]> findSuspiciousCustomerAggregates(
+        @Param("companyId") UUID companyId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate,
+        @Param("byTransactionCount") boolean byTransactionCount,
+        @Param("minTransactionCount") long minTransactionCount,
+        @Param("byTotalValue") boolean byTotalValue,
+        @Param("minTotalHuf") BigDecimal minTotalHuf,
+        @Param("byBranchCount") boolean byBranchCount,
+        @Param("minBranchCount") long minBranchCount
+    );
+
+    /**
      * Éves maximum tranzakció összeg.
      * Legacy: EVIMAX mező
      */

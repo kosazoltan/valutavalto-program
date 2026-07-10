@@ -10,6 +10,7 @@ import {
 import { logger } from '../../utils/logger'
 import { localIsoDate } from '../../utils/dateFormat'
 import { useTranslation } from 'react-i18next'
+import SuspiciousCustomersPanel from './SuspiciousCustomersPanel'
 
 // ============================================================================
 
@@ -414,6 +415,8 @@ export default function ComplianceDashboardPage() {
               </div>
             )}
           </div>
+
+          <SuspiciousCustomersPanel />
 
           {/* Napi osszesito */}
           {summary && (
