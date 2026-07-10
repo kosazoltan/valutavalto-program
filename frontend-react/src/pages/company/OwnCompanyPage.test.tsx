@@ -68,8 +68,9 @@ describe('OwnCompanyPage admin backend details', () => {
     render(<OwnCompanyPage />)
 
     await waitFor(() => expect(mocks.adminCompanyGetDetails).toHaveBeenCalledWith('company-1'))
-    expect(screen.getByTestId('company-admin-stats-company-1')).toHaveTextContent('7 aktív fiók')
-    expect(screen.getByTestId('company-admin-stats-company-1')).toHaveTextContent('42 dolgozó')
+    const adminStats = await screen.findByTestId('company-admin-stats-company-1')
+    expect(adminStats).toHaveTextContent('7 aktív fiók')
+    expect(adminStats).toHaveTextContent('42 dolgozó')
   })
 
   it('szerkesztéskor a CompanyAdminController cég update végpontját is meghívja', async () => {

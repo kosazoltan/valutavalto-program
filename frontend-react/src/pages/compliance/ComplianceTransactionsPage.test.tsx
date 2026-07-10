@@ -384,7 +384,7 @@ describe('ComplianceTransactionsPage', () => {
     await user.click(screen.getByRole('button', { name: 'Szűrők törlése' }))
 
     expect(screen.getByTestId('filter-startDate')).toHaveValue('')
-    expect(screen.getByTestId('tx-row-1')).toBeInTheDocument()
+    expect(await screen.findByTestId('tx-row-1')).toBeInTheDocument()
     expect(screen.getByTestId('export-csv')).toBeEnabled()
   })
 
