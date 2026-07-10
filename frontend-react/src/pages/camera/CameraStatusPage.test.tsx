@@ -49,6 +49,26 @@ describe('CameraStatusPage backend kapcsolatok', () => {
       if (url === '/camera/admin/upload-status') {
         return Promise.resolve({ data: { pendingUploads: 7 } })
       }
+      if (url === '/camera/status') {
+        return Promise.resolve({
+          data: [
+            {
+              cameraId: 'cam1',
+              recording: true,
+              connected: true,
+              frozen: true,
+              lastFreshFrameAt: '2026-07-10T09:58:00',
+            },
+            {
+              cameraId: 'cam2',
+              recording: true,
+              connected: true,
+              frozen: false,
+              lastFreshFrameAt: '2026-07-10T10:00:00',
+            },
+          ],
+        })
+      }
       return Promise.resolve({ data: {} })
     })
   })
@@ -63,5 +83,41 @@ describe('CameraStatusPage backend kapcsolatok', () => {
 
     expect(screen.getByText('12')).toBeInTheDocument()
     expect(screen.getByTestId('camera-pending-uploads')).toHaveTextContent('7')
+  })
+
+  it('befagyott kamerát piros badge-dzsel jelzi, ép kamerát nem', async () => {
+    render(<CameraStatusPage />)
+
+    const badge = await screen.findByTestId('camera-frozen-badge-cam1')
+    expect(badge).toHaveTextContent('camera.befagyott')
+    expect(screen.queryByTestId('camera-frozen-badge-cam2')).not.toBeInTheDocument()
+  })
+
+  it('a kamera státusz fetch hibája nem töri el a tárolási státusz oldalt', async () => {
+    mockApi.get.mockImplementation((url: string) => {
+      if (url === '/camera/admin/storage-stats') {
+        return Promise.resolve({
+          data: {
+            totalUsageBytes: 1024 * 1024 * 500,
+            availableSpaceBytes: 1024 * 1024 * 1500,
+            totalRecordings: 12,
+            oldestDate: '2026-06-01',
+            newestDate: '2026-06-18',
+          },
+        })
+      }
+      if (url === '/camera/admin/upload-status') {
+        return Promise.resolve({ data: { pendingUploads: 7 } })
+      }
+      if (url === '/camera/status') {
+        return Promise.reject(new Error('camera disabled'))
+      }
+      return Promise.resolve({ data: {} })
+    })
+
+    render(<CameraStatusPage />)
+
+    await waitFor(() => expect(screen.getByTestId('camera-pending-uploads')).toHaveTextContent('7'))
+    expect(screen.queryByTestId('camera-frozen-badge-cam1')).not.toBeInTheDocument()
   })
 })

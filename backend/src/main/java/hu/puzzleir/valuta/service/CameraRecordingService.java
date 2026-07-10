@@ -23,6 +23,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,8 +46,16 @@ public class CameraRecordingService {
 
     private final Map<String, Webcam> activeWebcams = new ConcurrentHashMap<>();
     private final Map<String, CameraRecording> activeRecordings = new ConcurrentHashMap<>();
+    private final Map<String, FreezeState> freezeStates = new ConcurrentHashMap<>();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private ExecutorService executorService;
+
+    /** Kameránkénti freeze-állapot. Írás: csak a kamera-szál; olvasás: HTTP-szál. */
+    static final class FreezeState {
+        volatile boolean frozen = false;
+        volatile LocalDateTime lastFreshFrameAt;
+        byte[] lastFrame;
+    }
 
     /**
      * Start recording on application startup if enabled.
@@ -123,6 +132,7 @@ public class CameraRecordingService {
             }
         }
         activeWebcams.clear();
+        freezeStates.clear();
 
         if (executorService != null) {
             executorService.shutdownNow();
@@ -153,11 +163,13 @@ public class CameraRecordingService {
 
                 // Capture frame
                 BufferedImage image = webcam.getImage();
+                byte[] jpegData = null;
                 if (image != null) {
-                    byte[] jpegData = storageService.encodeJpeg(image);
+                    jpegData = storageService.encodeJpeg(image);
                     Path segmentFile = Path.of(recording.getLocalFilePath());
                     storageService.appendFrame(segmentFile, jpegData);
                 }
+                evaluateFrameFreshness(cameraId, jpegData, LocalDateTime.now());
 
                 Thread.sleep(frameIntervalMs);
             } catch (InterruptedException e) {
@@ -173,6 +185,43 @@ public class CameraRecordingService {
         }
 
         log.info("Capture loop leallt: {}", cameraId);
+    }
+
+    /**
+     * Stale-frame (befagyott kamera) detektálás — legacy Camera.exe parity.
+     * Friss = nem-null ÉS byte-tartalma eltér az előző frame-től.
+     */
+    void evaluateFrameFreshness(String cameraId, byte[] jpegData, LocalDateTime now) {
+        if (cameraId == null || now == null) {
+            return;
+        }
+        FreezeState state = freezeStates.computeIfAbsent(cameraId, id -> {
+            FreezeState s = new FreezeState();
+            s.lastFreshFrameAt = now;
+            return s;
+        });
+
+        boolean fresh = jpegData != null
+                && (state.lastFrame == null || !Arrays.equals(jpegData, state.lastFrame));
+        if (jpegData != null) {
+            state.lastFrame = jpegData;
+        }
+
+        if (fresh) {
+            state.lastFreshFrameAt = now;
+            if (state.frozen) {
+                state.frozen = false;
+                log.info("Kamera helyreállt: {} (friss kép érkezett)", cameraId);
+            }
+            return;
+        }
+
+        long staleSeconds = Duration.between(state.lastFreshFrameAt, now).getSeconds();
+        if (!state.frozen && staleSeconds >= cameraProperties.getFreezeDetectSeconds()) {
+            state.frozen = true;
+            log.error("Befagyott kamera: {} (utolsó friss kép: {}, {} mp)",
+                    cameraId, state.lastFreshFrameAt, staleSeconds);
+        }
     }
 
     /**
@@ -303,6 +352,22 @@ public class CameraRecordingService {
      */
     public boolean isRecording(String cameraId) {
         return activeWebcams.containsKey(cameraId) && activeWebcams.get(cameraId).isOpen();
+    }
+
+    public boolean isFrozen(String cameraId) {
+        if (cameraId == null) {
+            return false;
+        }
+        FreezeState state = freezeStates.get(cameraId);
+        return state != null && state.frozen;
+    }
+
+    public LocalDateTime getLastFreshFrameAt(String cameraId) {
+        if (cameraId == null) {
+            return null;
+        }
+        FreezeState state = freezeStates.get(cameraId);
+        return state != null ? state.lastFreshFrameAt : null;
     }
 
     /**

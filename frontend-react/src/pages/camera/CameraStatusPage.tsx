@@ -19,10 +19,20 @@ interface UploadStatus {
   pendingUploads: number
 }
 
+interface CameraStatusItem {
+  cameraId: string
+  cameraName?: string
+  recording: boolean
+  connected: boolean
+  frozen?: boolean
+  lastFreshFrameAt?: string | null
+}
+
 export default function CameraStatusPage() {
   const { t } = useTranslation()
   const [stats, setStats] = useState<StorageStats | null>(null)
   const [uploadStatus, setUploadStatus] = useState<UploadStatus | null>(null)
+  const [cameras, setCameras] = useState<CameraStatusItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -37,6 +47,7 @@ export default function CameraStatusPage() {
         const localStats = await window.electronAPI.cameraLocalStorageStats()
         setStats(localStats)
         setUploadStatus(null)
+        setCameras([])
       } else {
         // Böngésző: szerver API
         const [statsResult, uploadResult] = await Promise.all([
@@ -45,6 +56,12 @@ export default function CameraStatusPage() {
         ])
         setStats(statsResult.data)
         setUploadStatus(uploadResult.data)
+        try {
+          const cameraResult = await api.get<CameraStatusItem[]>('/camera/status')
+          setCameras(Array.isArray(cameraResult.data) ? cameraResult.data : [])
+        } catch {
+          setCameras([])
+        }
       }
     } catch (err) {
       logger.error('CameraStatusPage', 'Státusz lekérés sikertelen:', err)
@@ -115,6 +132,38 @@ export default function CameraStatusPage() {
         <p>Betöltés...</p>
       ) : (
         <>
+          {cameras.length > 0 && (
+            <div className="rounded-lg border bg-card shadow-sm">
+              <div className="p-4 pb-2">
+                <h3 className="text-lg font-semibold">{t('camera.kamerak')}</h3>
+              </div>
+              <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+                {cameras.map((cam) => (
+                  <div key={cam.cameraId} className="rounded-lg border p-3">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">{cam.cameraName || cam.cameraId}</p>
+                      {cam.frozen ? (
+                        <span
+                          data-testid={`camera-frozen-badge-${cam.cameraId}`}
+                          className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white"
+                        >
+                          {t('camera.befagyott')}
+                        </span>
+                      ) : (
+                        <span className="h-2 w-2 rounded-full bg-green-500" />
+                      )}
+                    </div>
+                    {cam.frozen && cam.lastFreshFrameAt && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t('camera.utolsoFrissKep')}: {cam.lastFreshFrameAt.replace('T', ' ')}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="p-4">

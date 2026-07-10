@@ -80,6 +80,8 @@ public class CameraController {
                     .recording(recordingService.isRecording(cameraId))
                     .connected(true)
                     .currentSegmentFile(null)
+                    .frozen(recordingService.isFrozen(cameraId))
+                    .lastFreshFrameAt(recordingService.getLastFreshFrameAt(cameraId))
                     .build());
         }
 
