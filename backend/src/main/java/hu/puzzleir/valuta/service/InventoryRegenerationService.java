@@ -44,7 +44,8 @@ public class InventoryRegenerationService {
     public RegenerationResultDto regenerate(UUID branchId, Long workerId) {
         // IDOR guard: a branchId user @RequestParam (SUPERVISOR+), ezért a hívó cégének tulajdonát
         // ellenőrizzük. Cross-tenant → ResourceNotFoundException. (A workerId self/token-bound, az nem itt scope-olt.)
-        if (!branchRepository.existsByIdAndCompanyId(branchId, SecurityUtils.getCurrentCompanyId())) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (!branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
             throw new ResourceNotFoundException("Iroda nem található: " + branchId);
         }
 
@@ -55,7 +56,7 @@ public class InventoryRegenerationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található: " + workerId));
 
         // Jelenlegi készletek
-        List<CashBalance> currentBalances = cashBalanceRepository.findByBranchId(branchId);
+        List<CashBalance> currentBalances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
         Map<String, BigDecimal> currentMap = new HashMap<>();
         for (CashBalance cb : currentBalances) {
             currentMap.put(cb.getCurrency().getCode(), cb.getCurrentBalance());

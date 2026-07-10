@@ -59,7 +59,8 @@ public class CashBalanceService {
     @Transactional(readOnly = true)
     public List<CashBalance> getCurrentBranchBalances() {
         UUID branchId = SecurityUtils.getCurrentBranchId();
-        return cashBalanceRepository.findByBranchId(branchId);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        return cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
     }
 
     /**
@@ -68,9 +69,10 @@ public class CashBalanceService {
     @Transactional(readOnly = true)
     public CashBalance getBalanceByCurrency(Long currencyId) {
         UUID branchId = SecurityUtils.getCurrentBranchId();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         // #865: WithDetails JOIN FETCH — a controller a session lezárása UTÁN mappel DTO-ra (OSIV=false),
         // ezért a branch+currency proxynak betöltve kell lennie, különben LazyInit 500.
-        return cashBalanceRepository.findByBranchIdAndCurrencyIdWithDetails(branchId, currencyId)
+        return cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdWithDetails(branchId, currencyId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                     "Kassza egyenleg nem található ehhez a valutához"));
     }
@@ -421,7 +423,8 @@ public class CashBalanceService {
     @Transactional(readOnly = true)
     public BranchBalanceSummary getBranchSummary() {
         UUID branchId = SecurityUtils.getCurrentBranchId();
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
 
         BigDecimal totalHuf = BigDecimal.ZERO;
         int lowAlerts = 0;
@@ -458,7 +461,7 @@ public class CashBalanceService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
         List<CashPositionItem> items = new ArrayList<>();
 
         BigDecimal totalHufValue = BigDecimal.ZERO;

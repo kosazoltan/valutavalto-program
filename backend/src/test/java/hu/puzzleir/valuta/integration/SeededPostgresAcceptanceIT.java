@@ -155,9 +155,9 @@ class SeededPostgresAcceptanceIT {
                     seed.company().getId(), seed.branch().getId(), businessDate, TransactionType.SELL))
                     .isEqualByComparingTo("16000.00");
 
-            assertThat(cashBalanceRepository.findByBranchIdAndCurrencyCode(seed.branch().getId(), "HUF").orElseThrow()
+            assertThat(cashBalanceRepository.findByBranchIdAndCurrencyCodeAndCompanyId(seed.branch().getId(), "HUF", seed.company().getId()).orElseThrow()
                     .getCurrentBalance()).isEqualByComparingTo("9977000.00");
-            assertThat(cashBalanceRepository.findByBranchIdAndCurrencyCode(seed.branch().getId(), "EUR").orElseThrow()
+            assertThat(cashBalanceRepository.findByBranchIdAndCurrencyCodeAndCompanyId(seed.branch().getId(), "EUR", seed.company().getId()).orElseThrow()
                     .getCurrentBalance()).isEqualByComparingTo("5060.00");
             assertThat(dailySessionRepository.findOpenSessionByBranchAndDate(
                     seed.company().getId(), seed.branch().getId(), businessDate))

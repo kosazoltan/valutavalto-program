@@ -102,7 +102,7 @@ class DailyBalanceReconciliationServiceTest {
         // Számított záró: 1000, tényleges: 950 → diff = 50
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
             .thenReturn(List.of(makeDailyBalance("EUR", new BigDecimal("1000.00"))));
-        when(cashBalanceRepository.findAllByBranchId(BRANCH_ID))
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID))
             .thenReturn(List.of(makeCashBalance("EUR", new BigDecimal("950.00"))));
 
         List<DailyBalanceReconciliationService.ReconciliationAlert> alerts =
@@ -128,8 +128,23 @@ class DailyBalanceReconciliationServiceTest {
         // Eltérés: 0.005 < 0.01 tűréshatár
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
             .thenReturn(List.of(makeDailyBalance("EUR", new BigDecimal("1000.005"))));
-        when(cashBalanceRepository.findAllByBranchId(BRANCH_ID))
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID))
             .thenReturn(List.of(makeCashBalance("EUR", new BigDecimal("1000.00"))));
+
+        List<DailyBalanceReconciliationService.ReconciliationAlert> alerts =
+            service.reconcile(BRANCH_ID, TEST_DATE);
+
+        assertThat(alerts).isEmpty();
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    @DisplayName("reconcile — cross-tenant: companyId-szűrt balance-lista üres → nincs alert, nincs audit")
+    void reconcile_crossTenantEmptyBalances_noAlertNoAudit() {
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(COMPANY_ID, BRANCH_ID, TEST_DATE))
+            .thenReturn(List.of(makeDailyBalance("EUR", new BigDecimal("100.00"))));
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID))
+            .thenReturn(List.of());
 
         List<DailyBalanceReconciliationService.ReconciliationAlert> alerts =
             service.reconcile(BRANCH_ID, TEST_DATE);
@@ -143,7 +158,7 @@ class DailyBalanceReconciliationServiceTest {
     void testReconcile_calculatedGreaterThanActual_isOverage() {
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
             .thenReturn(List.of(makeDailyBalance("USD", new BigDecimal("500.00"))));
-        when(cashBalanceRepository.findAllByBranchId(BRANCH_ID))
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID))
             .thenReturn(List.of(makeCashBalance("USD", new BigDecimal("400.00"))));
 
         List<DailyBalanceReconciliationService.ReconciliationAlert> alerts =
@@ -160,7 +175,7 @@ class DailyBalanceReconciliationServiceTest {
     void testReconcile_calculatedLessThanActual_isShortage() {
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq(BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
             .thenReturn(List.of(makeDailyBalance("GBP", new BigDecimal("300.00"))));
-        when(cashBalanceRepository.findAllByBranchId(BRANCH_ID))
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID))
             .thenReturn(List.of(makeCashBalance("GBP", new BigDecimal("350.00"))));
 
         List<DailyBalanceReconciliationService.ReconciliationAlert> alerts =
@@ -195,7 +210,7 @@ class DailyBalanceReconciliationServiceTest {
                 makeDailyBalance("EUR", new BigDecimal("1000.00")),
                 makeDailyBalance("USD", new BigDecimal("500.00"))
             ));
-        when(cashBalanceRepository.findAllByBranchId(BRANCH_ID))
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID))
             .thenReturn(List.of(
                 makeCashBalance("EUR", new BigDecimal("1000.00")),  // egyezik
                 makeCashBalance("USD", new BigDecimal("450.00"))    // eltér: 50

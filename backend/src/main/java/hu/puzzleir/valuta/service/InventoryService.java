@@ -625,7 +625,7 @@ public class InventoryService {
     public List<CashBalance> getCurrentStock(UUID branchId) {
         Branch branch = findBranch(branchId.toString());
         assertBranchAllowedForCurrentTerritory(branch, null, "INVENTORY_STOCK_READ");
-        return cashBalanceRepository.findByBranchId(branchId);
+        return cashBalanceRepository.findByBranchIdAndCompanyId(branchId, branch.getCompany().getId());
     }
 
     /**

@@ -123,7 +123,7 @@ class DailySessionServiceTest {
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
         when(workerRepository.findById(workerId)).thenReturn(Optional.of(worker));
-        when(cashBalanceRepository.findByBranchId(branchId)).thenReturn(List.of(brokenBalance));
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId)).thenReturn(List.of(brokenBalance));
         when(dailySessionRepository.save(any(DailySession.class))).thenReturn(savedSession);
         when(cashBalanceRepository.save(any(CashBalance.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -166,7 +166,7 @@ class DailySessionServiceTest {
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
         when(workerRepository.findById(workerId)).thenReturn(Optional.of(worker));
         // Uj branch: cash_balance meg ures
-        when(cashBalanceRepository.findByBranchId(branchId)).thenReturn(List.of());
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId)).thenReturn(List.of());
         when(dailySessionRepository.save(any(DailySession.class))).thenReturn(savedSession);
 
         DailySession result = service.openDay();

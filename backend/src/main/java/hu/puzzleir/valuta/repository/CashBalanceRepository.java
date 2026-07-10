@@ -41,14 +41,17 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
      * controller a session lezárása UTÁN (OSIV=false) hívta a CashBalanceMapper.toDto-t →
      * LazyInitializationException (Branch proxy, no session) → HTTP 500. A lista-végpontok
      * (findByBranchId/findByCompanyId) már JOIN FETCH-elnek; ez a single-balance párjuk.
+     * 2026-07-10 (4. kör, CASHBAL-BRANCH-SCOPED): companyId-predikátum — defense-in-depth tenant-scope.
      */
     @Query("SELECT cb FROM CashBalance cb " +
            "JOIN FETCH cb.branch " +
            "JOIN FETCH cb.currency " +
            "JOIN FETCH cb.company " +
-           "WHERE cb.branch.id = :branchId AND cb.currency.id = :currencyId")
-    Optional<CashBalance> findByBranchIdAndCurrencyIdWithDetails(
-            @Param("branchId") UUID branchId, @Param("currencyId") Long currencyId);
+           "WHERE cb.branch.id = :branchId AND cb.currency.id = :currencyId " +
+           "AND cb.company.id = :companyId")
+    Optional<CashBalance> findByBranchIdAndCurrencyIdAndCompanyIdWithDetails(
+            @Param("branchId") UUID branchId, @Param("currencyId") Long currencyId,
+            @Param("companyId") UUID companyId);
 
     /**
      * Egyenleg keresése PESSIMISTIC_WRITE lockkal (race condition védelem) — cég-szűrt.
@@ -84,24 +87,29 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
                        @Param("currencyId") Long currencyId);
 
     /**
-     * Összes egyenleg egy fiókhoz (JOIN FETCH a lazy proxy hiba elkerüléséhez)
+     * Összes egyenleg egy fiókhoz (JOIN FETCH a lazy proxy hiba elkerüléséhez).
+     * 2026-07-10 (4. kör, CASHBAL-BRANCH-SCOPED): companyId-predikátum — defense-in-depth tenant-scope.
      */
     @Query("SELECT cb FROM CashBalance cb " +
            "JOIN FETCH cb.branch " +
            "JOIN FETCH cb.currency " +
            "JOIN FETCH cb.company " +
-           "WHERE cb.branch.id = :branchId " +
+           "WHERE cb.branch.id = :branchId AND cb.company.id = :companyId " +
            "ORDER BY cb.currency.displayOrder")
-    List<CashBalance> findByBranchId(@Param("branchId") UUID branchId);
+    List<CashBalance> findByBranchIdAndCompanyId(
+            @Param("branchId") UUID branchId, @Param("companyId") UUID companyId);
 
     /**
      * Issue #110 / Sourcery feedback: létezik-e cash_balance erre a branch-re?
      *
      * Könnyebb query — csak COUNT, nem lekéri az összes rekordot.
      * Használat: SessionOpenService lazy-init check.
+     * 2026-07-10 (4. kör, CASHBAL-BRANCH-SCOPED): companyId-predikátum — defense-in-depth tenant-scope.
      */
-    @Query("SELECT CASE WHEN COUNT(cb) > 0 THEN true ELSE false END FROM CashBalance cb WHERE cb.branch.id = :branchId")
-    boolean existsByBranchId(@Param("branchId") UUID branchId);
+    @Query("SELECT CASE WHEN COUNT(cb) > 0 THEN true ELSE false END FROM CashBalance cb " +
+           "WHERE cb.branch.id = :branchId AND cb.company.id = :companyId")
+    boolean existsByBranchIdAndCompanyId(
+            @Param("branchId") UUID branchId, @Param("companyId") UUID companyId);
 
     /**
      * Összes egyenleg egy céghez (JOIN FETCH a lazy proxy hiba elkerüléséhez)
@@ -179,24 +187,23 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
 
     /**
      * Iroda osszes HUF egyenlege (napzaras ellenorzeshez).
+     * 2026-07-10 (4. kör, CASHBAL-BRANCH-SCOPED): companyId-predikátum — defense-in-depth tenant-scope.
      */
     @Query("SELECT COALESCE(SUM(cb.currentBalance), 0) FROM CashBalance cb " +
-           "WHERE cb.branch.id = :branchId AND cb.currency.code = 'HUF'")
-    java.math.BigDecimal sumCurrentBalanceHuf(@Param("branchId") UUID branchId);
+           "WHERE cb.branch.id = :branchId AND cb.currency.code = 'HUF' " +
+           "AND cb.company.id = :companyId")
+    java.math.BigDecimal sumCurrentBalanceHufByBranchIdAndCompanyId(
+            @Param("branchId") UUID branchId, @Param("companyId") UUID companyId);
 
     /**
      * Egyenleg keresése fiók és valuta kód szerint (egyeztetéshez).
+     * 2026-07-10 (4. kör, CASHBAL-BRANCH-SCOPED): companyId-predikátum — defense-in-depth tenant-scope.
      */
     @Query("SELECT cb FROM CashBalance cb " +
-           "WHERE cb.branch.id = :branchId AND cb.currency.code = :currencyCode")
-    Optional<CashBalance> findByBranchIdAndCurrencyCode(
+           "WHERE cb.branch.id = :branchId AND cb.currency.code = :currencyCode " +
+           "AND cb.company.id = :companyId")
+    Optional<CashBalance> findByBranchIdAndCurrencyCodeAndCompanyId(
         @Param("branchId") UUID branchId,
-        @Param("currencyCode") String currencyCode);
-
-    /**
-     * Összes egyenleg egy fiókhoz a napi egyeztetéshez (currency code-dal).
-     */
-    @Query("SELECT cb FROM CashBalance cb " +
-           "WHERE cb.branch.id = :branchId")
-    List<CashBalance> findAllByBranchId(@Param("branchId") UUID branchId);
+        @Param("currencyCode") String currencyCode,
+        @Param("companyId") UUID companyId);
 }

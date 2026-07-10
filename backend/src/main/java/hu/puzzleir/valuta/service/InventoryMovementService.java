@@ -106,7 +106,7 @@ public class InventoryMovementService {
 
         // Aktuális egyenleg a CashBalance-ből
         BigDecimal currentBalance = BigDecimal.ZERO;
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
         for (CashBalance cb : balances) {
             if (currency == null || cb.getCurrency().getCode().equalsIgnoreCase(currency)) {
                 currentBalance = currentBalance.add(cb.getCurrentBalance());

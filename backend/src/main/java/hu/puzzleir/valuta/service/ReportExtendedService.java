@@ -198,8 +198,9 @@ public class ReportExtendedService {
 
     public Map<String, Object> getMonthlyInventory(int year, int month, UUID branchId) {
         UUID effectiveBranch = branchId != null ? branchId : SecurityUtils.getCurrentBranchId();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
 
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(effectiveBranch);
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(effectiveBranch, companyId);
         List<Denomination> denominations = denominationRepository.findByBranchId(effectiveBranch);
 
         List<Map<String, Object>> balanceList = balances.stream().map(cb -> {
@@ -361,10 +362,11 @@ public class ReportExtendedService {
 
     public Map<String, Object> getDailyCashDesk(UUID cashDeskId, LocalDate date) {
         UUID effectiveBranch = cashDeskId != null ? cashDeskId : SecurityUtils.getCurrentBranchId();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
         LocalDate reportDate = date != null ? date : LocalDate.now();
 
         List<Transaction> transactions = transactionRepository.findActiveByBranchAndDate(effectiveBranch, reportDate);
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(effectiveBranch);
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(effectiveBranch, companyId);
 
         BigDecimal totalBuy = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.BUY)
@@ -405,8 +407,9 @@ public class ReportExtendedService {
 
     public Map<String, Object> getCurrentCashDeskStatus(UUID cashDeskId) {
         UUID effectiveBranch = cashDeskId != null ? cashDeskId : SecurityUtils.getCurrentBranchId();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
 
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(effectiveBranch);
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(effectiveBranch, companyId);
         List<Denomination> denominations = denominationRepository.findByBranchId(effectiveBranch);
 
         List<Map<String, Object>> balanceList = balances.stream().map(cb -> {

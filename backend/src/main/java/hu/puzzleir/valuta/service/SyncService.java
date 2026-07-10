@@ -131,7 +131,7 @@ public class SyncService {
         UUID companyId = findBranchInCurrentCompany(branchId).getCompany().getId();
         int rates = countCurrentRates(branchId);
         int transactions = transactionRepository.findActiveByBranchAndDate(branchId, LocalDate.now()).size();
-        int inventory = cashBalanceRepository.findByBranchId(branchId).size();
+        int inventory = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId).size();
         int closing = dailySessionRepository.findOpenSessionsByBranch(companyId, branchId).size();
 
         String safeBranchCode = fileTransportService.sanitizePathSegment(branchCode, "branchCode");

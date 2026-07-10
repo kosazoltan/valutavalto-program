@@ -74,7 +74,7 @@ public class SessionOpenService {
         // egy cash_balance rekordot sem, inicializálunk. Idempotens + safe.
         // Ez kezeli a régi (pre-Issue #110) branch-ek production-ba deployment-jét.
         // Sourcery PR #112: existsByBranchId (COUNT query) — nem kell az összes balance-t lekérni.
-        if (!cashBalanceRepository.existsByBranchId(branchId)) {
+        if (!cashBalanceRepository.existsByBranchIdAndCompanyId(branchId, companyId)) {
             log.warn("Branch {} nem rendelkezik cash_balance rekorddal — auto-init (Issue #110 fallback)",
                     branchId);
             try {
@@ -130,7 +130,7 @@ public class SessionOpenService {
                 DailySession saved = dailySessionRepository.save(existingSession);
 
                 // Null-safe kassza egyenleg nyitás — #4 fix
-                updateCashBalancesForOpening(branchId);
+                updateCashBalancesForOpening(companyId, branchId);
 
                 log.info("Pénztár újranyitás (REOPEN): iroda={}, pénztáros={}, dátum={}",
                         branch.getName(), worker.getName(), today);
@@ -144,7 +144,7 @@ public class SessionOpenService {
                         .sessionDate(today)
                         .status(saved.getStatus().name())
                         .openedAt(saved.getOpenedAt())
-                        .openingBalances(calculateOpeningBalances(branchId))
+                        .openingBalances(calculateOpeningBalances(branchId, companyId))
                         .warnings(validateSessionOpen(branchId))
                         .build();
             }
@@ -154,7 +154,7 @@ public class SessionOpenService {
         }
 
         // Nyitó készlet: előző záró készlet átvétele
-        Map<String, BigDecimal> openingBalances = calculateOpeningBalances(branchId);
+        Map<String, BigDecimal> openingBalances = calculateOpeningBalances(branchId, companyId);
 
         // HUF nyitó egyenleg
         BigDecimal openingHuf = openingBalances.getOrDefault("HUF", BigDecimal.ZERO);
@@ -173,7 +173,7 @@ public class SessionOpenService {
         DailySession saved = dailySessionRepository.save(session);
 
         // Kassza egyenlegek napi nyitás beállítása — null-safe
-        updateCashBalancesForOpening(branchId);
+        updateCashBalancesForOpening(companyId, branchId);
 
         log.info("Pénztárnyitás: iroda={}, pénztáros={}, dátum={}, nyitó HUF={}",
                 branch.getName(), worker.getName(), today, openingHuf);
@@ -207,11 +207,12 @@ public class SessionOpenService {
         // szerint multi-tenant. Cross-tenant session → ugyanaz a ResourceNotFoundException,
         // mint a nem létezőnél (nincs id-enumeráció oldalcsatorna). A LAZY company/branch
         // a readOnly tranzakción belül dereferálható (OSIV=off).
-        if (!session.getBranch().getCompany().getId().equals(SecurityUtils.getCurrentCompanyId())) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        if (!session.getBranch().getCompany().getId().equals(companyId)) {
             throw new ResourceNotFoundException("Munkamenet nem található: " + sessionId);
         }
 
-        return calculateOpeningBalances(session.getBranch().getId());
+        return calculateOpeningBalances(session.getBranch().getId(), companyId);
     }
 
     /**
@@ -246,7 +247,7 @@ public class SessionOpenService {
         });
 
         // Készlet ellenőrzés - alacsony egyenleg
-        List<CashBalance> lowBalances = cashBalanceRepository.findByBranchId(branchId).stream()
+        List<CashBalance> lowBalances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId).stream()
                 .filter(CashBalance::isLowBalance)
                 .toList();
         if (!lowBalances.isEmpty()) {
@@ -264,8 +265,8 @@ public class SessionOpenService {
      * Kassza egyenlegek null-safe frissítése nyitáskor.
      * DailySessionService-ből átemelt logika a DRY és null-safety érdekében (#3, #4 fix).
      */
-    private void updateCashBalancesForOpening(UUID branchId) {
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+    private void updateCashBalancesForOpening(UUID companyId, UUID branchId) {
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
         for (CashBalance balance : balances) {
             if (balance.getCurrentBalance() == null) {
                 String currencyCode = balance.getCurrency() != null ? balance.getCurrency().getCode() : "UNKNOWN";
@@ -284,8 +285,8 @@ public class SessionOpenService {
         }
     }
 
-    private Map<String, BigDecimal> calculateOpeningBalances(UUID branchId) {
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+    private Map<String, BigDecimal> calculateOpeningBalances(UUID branchId, UUID companyId) {
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
         Map<String, BigDecimal> result = new LinkedHashMap<>();
 
         for (CashBalance cb : balances) {

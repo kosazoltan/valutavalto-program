@@ -60,7 +60,7 @@ public class DailyBalanceReconciliationService {
         }
 
         // CashBalance indexelés valuta kód szerint
-        List<CashBalance> cashBalances = cashBalanceRepository.findAllByBranchId(branchId);
+        List<CashBalance> cashBalances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
         Map<String, BigDecimal> actualByCode = cashBalances.stream()
             .filter(cb -> cb.getCurrency() != null && cb.getCurrency().getCode() != null)
             .collect(Collectors.toMap(

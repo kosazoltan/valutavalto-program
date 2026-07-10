@@ -104,7 +104,7 @@ public class DailySessionService {
                 DailySession saved = dailySessionRepository.save(existing);
 
                 // Kassza egyenlegek napi nyitás
-                updateCashBalancesForOpening(branchId);
+                updateCashBalancesForOpening(companyId, branchId);
 
                 log.info("Napi újranyitás (REOPEN): {} - {} - pénztáros: {}",
                         existing.getBranch().getName(), today, worker.getName());
@@ -150,7 +150,7 @@ public class DailySessionService {
         DailySession saved = dailySessionRepository.save(session);
 
         // Kassza egyenlegek napi nyitása
-        updateCashBalancesForOpening(branchId);
+        updateCashBalancesForOpening(companyId, branchId);
 
         log.info("Napi nyitás: {} - {} - nyitó egyenleg: {} HUF",
                 branch.getName(), today, openingBalance);
@@ -181,7 +181,7 @@ public class DailySessionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
 
         // Záró egyenleg számítása
-        BigDecimal closingBalance = calculateClosingBalance(branchId);
+        BigDecimal closingBalance = calculateClosingBalance(companyId, branchId);
 
         // Zárás
         session.setStatus(DailySessionStatus.CLOSED);
@@ -296,7 +296,7 @@ public class DailySessionService {
 
         session.setStatus(DailySessionStatus.CLOSED);
         session.setClosedAt(LocalDateTime.now());
-        session.setClosingBalanceHuf(calculateClosingBalance(branchId));
+        session.setClosingBalanceHuf(calculateClosingBalance(companyId, branchId));
 
         dailySessionRepository.save(session);
         log.info("Napi munkamenet lezarva: datum={}, iroda={}", closingDate, branchId);
@@ -317,7 +317,7 @@ public class DailySessionService {
         }
 
         // Fallback: aktualis kasszaegyenlegbol szamolunk.
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
         // Csak HUF egyenleg (currency_id = 1 feltételezve, vagy code = 'HUF')
         return balances.stream()
                 .filter(this::isHufBalance)
@@ -332,8 +332,8 @@ public class DailySessionService {
      * A záró egyenleg a HUF kassza aktuális egyenlege, ami tartalmazza a nap folyamán
      * végrehajtott összes tranzakció (vétel, eladás, kezelési díjak stb.) hatását.
      */
-    private BigDecimal calculateClosingBalance(UUID branchId) {
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+    private BigDecimal calculateClosingBalance(UUID companyId, UUID branchId) {
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
         return balances.stream()
                 .filter(this::isHufBalance)
                 .map(cb -> cb.getCurrentBalance() != null ? cb.getCurrentBalance() : BigDecimal.ZERO)
@@ -348,11 +348,11 @@ public class DailySessionService {
      * minden aktiv currency-re letrehozza a 0-s balance rekordokat.
      * Igy a tranzakcio-sync nem esik el 404-gyel.
      */
-    private void updateCashBalancesForOpening(UUID branchId) {
+    private void updateCashBalancesForOpening(UUID companyId, UUID branchId) {
         // Issue #110: idempotens auto-init
         cashBalanceService.initializeBranchBalances(branchId);
 
-        List<CashBalance> balances = cashBalanceRepository.findByBranchId(branchId);
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
         for (CashBalance balance : balances) {
             if (balance.getCurrentBalance() == null) {
                 String currencyCode = balance.getCurrency() != null ? balance.getCurrency().getCode() : "UNKNOWN";

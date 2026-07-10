@@ -226,7 +226,7 @@ class ClosingFlowTest {
             hufBal.setCurrency(huf);
             hufBal.setCurrentBalance(new BigDecimal("2000000"));
 
-            when(cashBalanceRepository.findByBranchId(BRANCH_ID)).thenReturn(List.of(eurBal, hufBal));
+            when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(List.of(eurBal, hufBal));
 
             Map<String, BigDecimal> physicalCounts = Map.of(
                     "EUR", new BigDecimal("4990"),
