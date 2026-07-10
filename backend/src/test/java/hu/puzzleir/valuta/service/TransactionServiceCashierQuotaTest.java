@@ -139,7 +139,7 @@ class TransactionServiceCashierQuotaTest {
         CashBalance cashBalance = new CashBalance();
         cashBalance.setCurrentBalance(new BigDecimal("2000000"));
         when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(eq(BRANCH_ID), any(), any())).thenReturn(Optional.of(cashBalance));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(BRANCH_ID), any())).thenReturn(Optional.of(cashBalance));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(BRANCH_ID), any(), any())).thenReturn(Optional.of(cashBalance));
 
         // Bizonylat szám
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("V001-00001");

@@ -51,13 +51,21 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
             @Param("branchId") UUID branchId, @Param("currencyId") Long currencyId);
 
     /**
-     * Egyenleg keresése PESSIMISTIC_WRITE lockkal (race condition védelem).
+     * Egyenleg keresése PESSIMISTIC_WRITE lockkal (race condition védelem) — cég-szűrt.
      * CRITICAL FIX: Párhuzamos készletmódosítás megakadályozása.
+     *
+     * 2026-07-10 (#1389 follow-up): companyId-predikátum — pénz-út lock-lekérdezés nem élhet
+     * tenant-szűrés nélkül (defense-in-depth; cross-tenant sor üres találat → fail-closed).
+     * A lock-akvirálási SORRENDET a CashLockOrdering determinálja, a predikátum azt nem érinti.
+     * A companyId forrása hívóhely-függő: JWT a request-scoped hívóknál, entity-derived a
+     * scheduler/entity-alapúaknál (pl. ReservationService.restoreCurrencyStock).
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT cb FROM CashBalance cb WHERE cb.branch.id = :branchId AND cb.currency.id = :currencyId")
-    Optional<CashBalance> findByBranchIdAndCurrencyIdForUpdate(
-            @Param("branchId") UUID branchId, @Param("currencyId") Long currencyId);
+    @Query("SELECT cb FROM CashBalance cb WHERE cb.branch.id = :branchId " +
+           "AND cb.currency.id = :currencyId AND cb.company.id = :companyId")
+    Optional<CashBalance> findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(
+            @Param("branchId") UUID branchId, @Param("currencyId") Long currencyId,
+            @Param("companyId") UUID companyId);
 
     /**
      * INVSTOCK-ROLLBACK fix: race-mentes sor-garantálás. Az ON CONFLICT DO NOTHING

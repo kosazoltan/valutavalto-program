@@ -122,8 +122,8 @@ class TransactionServiceCameraLinkingTest {
         hufBalance.setCurrency(huf);
         hufBalance.setCurrentBalance(new BigDecimal("1000000"));
 
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID)).thenReturn(Optional.of(eurBalance));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, HUF_ID)).thenReturn(Optional.of(hufBalance));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, EUR_ID, COMPANY_ID)).thenReturn(Optional.of(eurBalance));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, HUF_ID, COMPANY_ID)).thenReturn(Optional.of(hufBalance));
         when(cashBalanceRepository.save(any(CashBalance.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AmlService.AmlBasicCheckResult amlResult = mock(AmlService.AmlBasicCheckResult.class);

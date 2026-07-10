@@ -210,20 +210,22 @@ public class TradeService {
     private void moveTradeInventory(Trade trade) {
         Currency currency = currencyRepository.findByCode(trade.getCurrencyCode())
                 .orElseThrow(() -> new ResourceNotFoundException("Valuta nem található: " + trade.getCurrencyCode()));
+        // JWT-scoped lookup: defense-in-depth a validateTradeAccess company-guardja mellett.
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
 
         // CROSS-BRANCH LOCK-ORDERING (deadlock-megelozes): a trade a forras- ES a cel-iroda azonos
         // valuta cash_balance sorat lockolja EGY tranzakcioban. Ezeket GLOBALISAN egyseges
         // (branchId, currencyId) sorrendben elo-lockoljuk, mielott olvasnank/mutalnank — kulonben egy
         // parhuzamos, FORDITOTT iranyu Trade(B->A) az ellentetes sorrend miatt AB-BA adatbazis-deadlockot
         // okozna. A nem letezo cel-sor lockolasa no-op (azt a lenti orElseGet hozza letre); a lenti
-        // findByBranchIdAndCurrencyIdForUpdate ugyanezeket a sorokat mar lockoltan kapja. Lasd: CashLockOrdering.
+        // findByBranchIdAndCurrencyIdAndCompanyIdForUpdate ugyanezeket a sorokat mar lockoltan kapja. Lasd: CashLockOrdering.
         CashLockOrdering.lockBranchCurrencyPairsInGlobalOrder(
-                (bid, cid) -> cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(bid, cid),
+                (bid, cid) -> cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(bid, cid, companyId),
                 new CashLockOrdering.BranchCurrencyKey(trade.getFromBranch().getId(), currency.getId()),
                 new CashLockOrdering.BranchCurrencyKey(trade.getToBranch().getId(), currency.getId()));
 
-        CashBalance sourceBalance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(
-                        trade.getFromBranch().getId(), currency.getId())
+        CashBalance sourceBalance = cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(
+                        trade.getFromBranch().getId(), currency.getId(), companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Forrás kassza egyenleg nem található"));
 
         if (sourceBalance.getCurrentBalance() == null
@@ -231,8 +233,8 @@ public class TradeService {
             throw new ValidationException("Nincs elegendő készlet a trade teljesítéséhez!");
         }
 
-        CashBalance targetBalance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(
-                        trade.getToBranch().getId(), currency.getId())
+        CashBalance targetBalance = cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(
+                        trade.getToBranch().getId(), currency.getId(), companyId)
                 .orElseGet(() -> CashBalance.builder()
                         .company(trade.getToBranch().getCompany())
                         .branch(trade.getToBranch())

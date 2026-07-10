@@ -86,7 +86,7 @@ class TransferServiceTest {
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-001");
         when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(fromId), anyLong()))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(fromId), anyLong(), eq(company.getId())))
                 .thenAnswer(inv -> Optional.of(CashBalance.builder().currentBalance(new BigDecimal("1000000")).build()));
 
         // (1) valuta átadás (F, EUR) → AT-000001
@@ -114,6 +114,40 @@ class TransferServiceTest {
                 .map(hu.puzzleir.valuta.entity.Transfer::getTransferNumber).toList();
 
         org.assertj.core.api.Assertions.assertThat(numbers).containsExactly("AT-000001", "FF-000001");
+    }
+
+    @Test
+    @DisplayName("cross-tenant védelem: a cégszűrt ForUpdate-lookup üres → fail-closed, nincs kassza-mentés")
+    void testCreate_crossTenantBalanceUnreachable_failsClosed() {
+        UUID fromId = UUID.randomUUID();
+        UUID toId = UUID.randomUUID();
+        Company company = Company.builder().id(UUID.randomUUID()).build();
+        Branch fromBranch = Branch.builder().id(fromId).code("BR020").company(company).build();
+        Branch toBranch = Branch.builder().id(toId).code("BR099").company(company).build();
+        Worker worker = Worker.builder().id(1L).branch(fromBranch).build();
+        Currency eur = Currency.builder().id(4L).code("EUR").name("Euró").build();
+
+        when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
+        when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
+        when(branchRepository.existsByIdAndCompanyId(eq(toId), eq(company.getId()))).thenReturn(true);
+        when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
+        when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L);
+        when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        // A (branch, currency) sor MÁS cég alatt él — a tenant-szűrt lock-lookup üres.
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(
+                eq(fromId), anyLong(), eq(company.getId()))).thenReturn(Optional.empty());
+
+        CreateTransferDto dto = new CreateTransferDto();
+        dto.setToBranchId(toId.toString());
+        dto.setCurrencyId(4L);
+        dto.setAmount(new BigDecimal("100"));
+        dto.setTransferType("CURRENCY");
+        dto.setDirection("F");
+
+        assertThatThrownBy(() -> service.create(dto, 1L))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Kassza egyenleg nem található");
+        verify(cashBalanceRepository, never()).save(any());
     }
 
     @Test
@@ -226,7 +260,7 @@ class TransferServiceTest {
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-001");
         when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        lenient().when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(any(), anyLong()))
+        lenient().when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(any(), anyLong(), eq(company.getId())))
                 .thenAnswer(inv -> Optional.of(CashBalance.builder().currentBalance(new BigDecimal("1000000")).build()));
 
         // (1) ERB deviza átadás (F, EUR) → AT-000001, típus=ERB
@@ -278,7 +312,7 @@ class TransferServiceTest {
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-001");
         when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(fromId), anyLong()))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(fromId), anyLong(), eq(company.getId())))
                 .thenAnswer(inv -> Optional.of(CashBalance.builder().currentBalance(new BigDecimal("1000000")).build()));
 
         CreateTransferDto dto = new CreateTransferDto();
@@ -302,10 +336,10 @@ class TransferServiceTest {
         // F mód: minden valuta-sor csökkenti a feladó kasszáját → per-currency lock-lekérés.
         // 2x: (1) cross-branch + cash-first elo-lock (CashLockOrdering, #952), (2) decreaseCashBalance
         // no-op re-lock + mutacio — ugyanaz a sor, ket SELECT ... FOR UPDATE.
-        verify(cashBalanceRepository, times(2)).findByBranchIdAndCurrencyIdForUpdate(fromId, 4L);
-        verify(cashBalanceRepository, times(2)).findByBranchIdAndCurrencyIdForUpdate(fromId, 5L);
+        verify(cashBalanceRepository, times(2)).findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(fromId, 4L, company.getId());
+        verify(cashBalanceRepository, times(2)).findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(fromId, 5L, company.getId());
         // EUR-ra NEM a fogadó (toId) kasszáját mozgatjuk create-kor F módban (single-branch → nincs elo-lock sem)
-        verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdForUpdate(toId, 4L);
+        verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(toId), eq(4L), any());
     }
 
     @Test
@@ -385,7 +419,7 @@ class TransferServiceTest {
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-001");
         when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(fromId), anyLong()))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(fromId), anyLong(), eq(company.getId())))
                 .thenAnswer(inv -> Optional.of(CashBalance.builder().currentBalance(new BigDecimal("100000000")).build()));
 
         CreateTransferDto dto = new CreateTransferDto();
@@ -457,7 +491,7 @@ class TransferServiceTest {
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-001");
         when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(fromId), anyLong()))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(fromId), anyLong(), eq(company.getId())))
                 .thenAnswer(inv -> Optional.of(CashBalance.builder().currentBalance(new BigDecimal("100000")).build()));
 
         CreateTransferDto dto = new CreateTransferDto();
@@ -514,8 +548,8 @@ class TransferServiceTest {
         when(workerRepository.findById(1L)).thenReturn(Optional.of(Worker.builder().id(1L).name("Teszt").build()));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-SZ-1");
         when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(fromId), anyLong())).thenReturn(Optional.of(fromBal));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(toId), anyLong())).thenReturn(Optional.of(toBal));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(fromId), anyLong(), eq(companyId))).thenReturn(Optional.of(fromBal));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(toId), anyLong(), eq(companyId))).thenReturn(Optional.of(toBal));
 
         try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
@@ -550,8 +584,8 @@ class TransferServiceTest {
         when(workerRepository.findById(1L)).thenReturn(Optional.of(Worker.builder().id(1L).name("Teszt").build()));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-SZ-1");
         when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(fromId), anyLong())).thenReturn(Optional.of(fromBal));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(toId), anyLong())).thenReturn(Optional.of(toBal));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(fromId), anyLong(), eq(companyId))).thenReturn(Optional.of(fromBal));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(toId), anyLong(), eq(companyId))).thenReturn(Optional.of(toBal));
 
         try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
@@ -579,7 +613,7 @@ class TransferServiceTest {
         when(workerRepository.findById(1L)).thenReturn(Optional.of(Worker.builder().id(1L).name("Teszt").build()));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-SZ-1");
         when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(eq(fromId), anyLong())).thenReturn(Optional.of(fromBal));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(eq(fromId), anyLong(), eq(companyId))).thenReturn(Optional.of(fromBal));
 
         try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
@@ -608,7 +642,7 @@ class TransferServiceTest {
                     .hasMessageContaining("indoklása kötelező");
 
             verify(workerRepository, never()).findById(anyLong());
-            verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdForUpdate(any(), anyLong());
+            verify(cashBalanceRepository, never()).findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(any(), anyLong(), any());
             verify(transferRepository, never()).save(any());
         }
     }

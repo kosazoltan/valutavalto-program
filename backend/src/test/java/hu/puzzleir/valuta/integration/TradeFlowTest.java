@@ -129,9 +129,9 @@ class TradeFlowTest {
                 eur.setCode("EUR");
                 when(tradeRepository.findById(tradeId)).thenReturn(Optional.of(acceptedEntity));
                 when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eur));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(FROM_BRANCH_ID, 1L))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(FROM_BRANCH_ID, 1L, COMPANY_ID))
                     .thenReturn(Optional.of(createBalance(fromBranch, eur, "10000")));
-                when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(TO_BRANCH_ID, 1L))
+                when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(TO_BRANCH_ID, 1L, COMPANY_ID))
                     .thenReturn(Optional.of(createBalance(toBranch, eur, "0")));
 
                 TradeDto completed = tradeService.completeTrade(tradeId);

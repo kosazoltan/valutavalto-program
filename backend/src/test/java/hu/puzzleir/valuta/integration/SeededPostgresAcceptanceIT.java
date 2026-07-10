@@ -114,10 +114,8 @@ class SeededPostgresAcceptanceIT {
                     .createdAt(LocalDateTime.now())
                     .build());
 
-            CashBalance hufBalance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(
-                    seed.branch().getId(), seed.huf().getId()).orElseThrow();
-            CashBalance eurBalance = cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(
-                    seed.branch().getId(), seed.eur().getId()).orElseThrow();
+            CashBalance hufBalance = cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(seed.branch().getId(), seed.huf().getId(), seed.company().getId()).orElseThrow();
+            CashBalance eurBalance = cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(seed.branch().getId(), seed.eur().getId(), seed.company().getId()).orElseThrow();
 
             hufBalance.subtractBalance(new BigDecimal("39000.00"));
             eurBalance.addBalance(new BigDecimal("100.00"));

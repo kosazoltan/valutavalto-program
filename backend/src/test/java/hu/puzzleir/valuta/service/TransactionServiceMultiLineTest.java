@@ -230,11 +230,11 @@ class TransactionServiceMultiLineTest {
         usdBalance.setCompany(company);
         usdBalance.setCurrency(usdCurrency);
 
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, HUF_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, HUF_ID, COMPANY_ID))
                 .thenReturn(Optional.of(hufBalance));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, EUR_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, EUR_ID, COMPANY_ID))
                 .thenReturn(Optional.of(eurBalance));
-        when(cashBalanceRepository.findByBranchIdAndCurrencyIdForUpdate(BRANCH_ID, USD_ID))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, USD_ID, COMPANY_ID))
                 .thenReturn(Optional.of(usdBalance));
 
         // Transaction save mock — id-t allitunk
