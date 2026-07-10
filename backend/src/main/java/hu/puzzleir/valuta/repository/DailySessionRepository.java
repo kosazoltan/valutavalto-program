@@ -50,14 +50,16 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
      * .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate}) — a FOR UPDATE PostgreSQL-en nem alkalmazható outer join
      * nullable oldalára; a hívó csak a {@code reversalCount} primitív mezőt olvassa (nincs lazy access).
      */
-    // TENANT-NOTE: szándékosan companyId-szűrés NÉLKÜL (lock-query) — a hívó a branchId-t
-    // SecurityUtils.getCurrentBranchId()-ból veszi (DailySessionService.getDailyReversalCountForUpdate).
+    // TENANT-NOTE: a lock-query is companyId-szűrt; a hívó JWT-ből adja a branchId-t és companyId-t.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT ds FROM DailySession ds " +
-           "WHERE ds.branch.id = :branchId AND ds.sessionDate = :sessionDate")
-    Optional<DailySession> findByBranchIdAndSessionDateForUpdate(
+           "WHERE ds.branch.id = :branchId " +
+           "AND ds.sessionDate = :sessionDate " +
+           "AND ds.company.id = :companyId")
+    Optional<DailySession> findByBranchIdAndSessionDateAndCompanyIdForUpdate(
             @Param("branchId") UUID branchId,
-            @Param("sessionDate") LocalDate sessionDate);
+            @Param("sessionDate") LocalDate sessionDate,
+            @Param("companyId") UUID companyId);
 
     /**
      * Napi session részletekkel (lazy proxy hiba elkerüléséhez DTO map előtt).
