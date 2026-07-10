@@ -33,6 +33,7 @@ export default function CameraStatusPage() {
   const [stats, setStats] = useState<StorageStats | null>(null)
   const [uploadStatus, setUploadStatus] = useState<UploadStatus | null>(null)
   const [cameras, setCameras] = useState<CameraStatusItem[]>([])
+  const [cameraSubsystemDisabled, setCameraSubsystemDisabled] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -48,14 +49,25 @@ export default function CameraStatusPage() {
         setStats(localStats)
         setUploadStatus(null)
         setCameras([])
+        setCameraSubsystemDisabled(false)
       } else {
         // Böngésző: szerver API
-        const [statsResult, uploadResult] = await Promise.all([
-          api.get('/camera/admin/storage-stats'),
-          api.get<UploadStatus>('/camera/admin/upload-status'),
-        ])
-        setStats(statsResult.data)
-        setUploadStatus(uploadResult.data)
+        try {
+          const [statsResult, uploadResult] = await Promise.all([
+            api.get('/camera/admin/storage-stats'),
+            api.get<UploadStatus>('/camera/admin/upload-status'),
+          ])
+          setStats(statsResult.data)
+          setUploadStatus(uploadResult.data)
+          setCameraSubsystemDisabled(false)
+        } catch (err) {
+          logger.warn('CameraStatusPage', 'Kamera admin státusz nem elérhető:', err)
+          setStats(null)
+          setUploadStatus(null)
+          setCameras([])
+          setCameraSubsystemDisabled(true)
+          return
+        }
         try {
           const cameraResult = await api.get<CameraStatusItem[]>('/camera/status')
           setCameras(Array.isArray(cameraResult.data) ? cameraResult.data : [])
@@ -164,69 +176,77 @@ export default function CameraStatusPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="rounded-lg border bg-card shadow-sm">
-              <div className="p-4">
-                <p className="text-sm text-muted-foreground">{t('camera.felvetelek')}</p>
-                <p className="text-3xl font-bold">{stats?.totalRecordings ?? 0}</p>
-              </div>
+          {cameraSubsystemDisabled ? (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+              A kamera-alrendszer nincs engedélyezve ezen a szerveren.
             </div>
-            <div className="rounded-lg border bg-card shadow-sm">
-              <div className="p-4">
-                <p className="text-sm text-muted-foreground">{t('camera.tarhelyhasznalat')}</p>
-                <p className="text-3xl font-bold">
-                  {stats ? formatSize(stats.totalUsageBytes) : '-'}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {stats ? formatSize(stats.availableSpaceBytes) : '-'} {t('common.szabad')}
-                </p>
-              </div>
-            </div>
-            <div className="rounded-lg border bg-card shadow-sm">
-              <div className="p-4">
-                <p className="text-sm text-muted-foreground">{t('common.period')}</p>
-                <p className="text-lg font-bold">
-                  {stats?.oldestDate ?? '-'} -- {stats?.newestDate ?? '-'}
-                </p>
-              </div>
-            </div>
-            <div className="rounded-lg border bg-card shadow-sm">
-              <div className="p-4">
-                <p className="text-sm text-muted-foreground">{t('camera.feltoltesreVar')}</p>
-                <p className="text-3xl font-bold" data-testid="camera-pending-uploads">
-                  {uploadStatus?.pendingUploads ?? 0}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t('camera.szerverOldaliUploadSor')}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {stats && (
-            <div className="rounded-lg border bg-card shadow-sm">
-              <div className="p-4 pb-2">
-                <h3 className="text-lg font-semibold">{t('camera.tarhelyhasznalat')}</h3>
-              </div>
-              <div className="p-4">
-                <div className="w-full bg-muted rounded-full h-4 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      usagePercent > 90
-                        ? 'bg-red-500'
-                        : usagePercent > 70
-                          ? 'bg-yellow-500'
-                          : 'bg-green-500'
-                    }`}
-                    style={{ width: `${Math.min(usagePercent, 100)}%` }}
-                  />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="rounded-lg border bg-card shadow-sm">
+                  <div className="p-4">
+                    <p className="text-sm text-muted-foreground">{t('camera.felvetelek')}</p>
+                    <p className="text-3xl font-bold">{stats?.totalRecordings ?? 0}</p>
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {usagePercent.toFixed(1)}
-                  {t('camera.hasznalat')}
-                </p>
+                <div className="rounded-lg border bg-card shadow-sm">
+                  <div className="p-4">
+                    <p className="text-sm text-muted-foreground">{t('camera.tarhelyhasznalat')}</p>
+                    <p className="text-3xl font-bold">
+                      {stats ? formatSize(stats.totalUsageBytes) : '-'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats ? formatSize(stats.availableSpaceBytes) : '-'} {t('common.szabad')}
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-card shadow-sm">
+                  <div className="p-4">
+                    <p className="text-sm text-muted-foreground">{t('common.period')}</p>
+                    <p className="text-lg font-bold">
+                      {stats?.oldestDate ?? '-'} -- {stats?.newestDate ?? '-'}
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-card shadow-sm">
+                  <div className="p-4">
+                    <p className="text-sm text-muted-foreground">{t('camera.feltoltesreVar')}</p>
+                    <p className="text-3xl font-bold" data-testid="camera-pending-uploads">
+                      {uploadStatus?.pendingUploads ?? 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('camera.szerverOldaliUploadSor')}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
+
+              {stats && (
+                <div className="rounded-lg border bg-card shadow-sm">
+                  <div className="p-4 pb-2">
+                    <h3 className="text-lg font-semibold">{t('camera.tarhelyhasznalat')}</h3>
+                  </div>
+                  <div className="p-4">
+                    <div className="w-full bg-muted rounded-full h-4 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          usagePercent > 90
+                            ? 'bg-red-500'
+                            : usagePercent > 70
+                              ? 'bg-yellow-500'
+                              : 'bg-green-500'
+                        }`}
+                        style={{ width: `${Math.min(usagePercent, 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {usagePercent.toFixed(1)}
+                      {t('camera.hasznalat')}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </>
       )}
