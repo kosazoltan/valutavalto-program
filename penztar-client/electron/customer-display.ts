@@ -10,6 +10,7 @@
  */
 
 import { BrowserWindow, screen } from 'electron';
+import { createBeforeInputHandler } from './input-guard';
 
 export interface CustomerDisplayPayload {
   transactionType?: 'BUY' | 'SELL' | 'CONVERSION' | 'STORNO';
@@ -67,6 +68,10 @@ export function createCustomerDisplay(
   // A renderer customer-display útvonalra navigál (HashRouter-kompatibilis URL)
   const url = `${rendererUrl}#/customer-display`;
   void displayWindow.loadURL(url);
+
+  // Böngésző-print (Ctrl+P) tiltása az ügyfélkijelzőn is — ugyanaz az input-őr,
+  // mint a fő ablakon (DevTools-toggle nélkül).
+  displayWindow.webContents.on('before-input-event', createBeforeInputHandler());
 
   displayWindow.on('closed', () => {
     displayWindow = null;
