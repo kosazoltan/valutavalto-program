@@ -914,6 +914,41 @@ export interface DariusMonthlyDto {
   totalTransactionCount: number
   dailyReports: DariusDailyReport[]
 }
+
+export type DariusFixingRequestStatus = 'DRAFT' | 'APPROVED' | 'INCLUDED' | 'CANCELLED'
+
+export interface DariusBankBranch {
+  id: string
+  bankBranchCode: string
+  name: string
+  active: boolean
+}
+
+export interface DariusFixingRequestLine {
+  currencyCode: string
+  deliveredAmount: number
+  collectedAmount: number
+}
+
+export interface DariusFixingRequestCreate {
+  bankBranchId: string
+  requestDate: string
+  note: string
+  lines: DariusFixingRequestLine[]
+}
+
+export interface DariusFixingRequest extends DariusFixingRequestCreate {
+  id: string
+  bankBranchCode: string
+  bankBranchName: string
+  status: DariusFixingRequestStatus
+  createdBy: string
+  createdAt: string
+  approvedBy?: string
+  approvedAt?: string
+  includedAt?: string
+}
+
 export const dariusApi = {
   generate: (date: string) => api.post<DariusDailyReport>(`/darius/generate?date=${date}`),
   approve: (id: string) => api.post<DariusDailyReport>(`/darius/${id}/approve`),
@@ -935,4 +970,20 @@ export const dariusApi = {
     api.get<Blob>(`/darius/import-file?date=${date}&erteknap=${erteknap}`, {
       responseType: 'blob',
     }),
+}
+
+export const dariusFixingApi = {
+  bankBranches: (includeInactive = false) =>
+    api.get<DariusBankBranch[]>(`/darius/bank-branches?includeInactive=${includeInactive}`),
+  createBankBranch: (body: { bankBranchCode: string; name: string }) =>
+    api.post<DariusBankBranch>('/darius/bank-branches', body),
+  deactivateBankBranch: (id: string) =>
+    api.post<DariusBankBranch>(`/darius/bank-branches/${id}/deactivate`),
+  list: (date: string) => api.get<DariusFixingRequest[]>(`/darius/fixing-requests?date=${date}`),
+  create: (body: DariusFixingRequestCreate) =>
+    api.post<DariusFixingRequest>('/darius/fixing-requests', body),
+  updateLines: (id: string, body: DariusFixingRequestCreate) =>
+    api.put<DariusFixingRequest>(`/darius/fixing-requests/${id}`, body),
+  approve: (id: string) => api.post<DariusFixingRequest>(`/darius/fixing-requests/${id}/approve`),
+  cancel: (id: string) => api.post<DariusFixingRequest>(`/darius/fixing-requests/${id}/cancel`),
 }

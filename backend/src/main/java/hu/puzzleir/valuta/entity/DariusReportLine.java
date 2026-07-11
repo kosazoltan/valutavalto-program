@@ -15,7 +15,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "darius_report_line", indexes = {
     @Index(name = "idx_darius_line_report", columnList = "report_id"),
-    @Index(name = "idx_darius_line_branch", columnList = "branch_id")
+    @Index(name = "idx_darius_line_branch", columnList = "branch_id"),
+    @Index(name = "ix_darius_line_company_report", columnList = "company_id, report_id")
 })
 @Getter
 @Setter
@@ -27,6 +28,10 @@ public class DariusReportLine {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    /** Tenant defense-in-depth (V356): a sor maga is hordozza a company_id-t. */
+    @Column(name = "company_id", nullable = false)
+    private UUID companyId;
 
     /** Szülő jelentés */
     @ManyToOne(fetch = FetchType.LAZY)

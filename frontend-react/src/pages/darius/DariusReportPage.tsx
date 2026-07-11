@@ -15,9 +15,18 @@ import { downloadBlob } from '../../utils/downloadBlob'
 import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { localIsoDate } from '../../utils/dateFormat'
+import { filenameFromContentDisposition } from '../../utils/contentDisposition'
 import { useTranslation } from 'react-i18next'
+import DariusFixingPanel from './DariusFixingPanel'
 
-type Tab = 'daily' | 'monthly' | 'missing'
+type Tab = 'daily' | 'monthly' | 'missing' | 'fixing'
+
+const TAB_LABELS: Record<Tab, string> = {
+  daily: 'Napi',
+  monthly: 'Havi összesítő',
+  missing: 'Hiányzó napok',
+  fixing: 'Fixing igények',
+}
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
   DRAFT: { label: 'Vázlat', color: 'bg-gray-100 text-gray-700', icon: Clock },
@@ -56,6 +65,7 @@ export default function DariusReportPage() {
   const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [generateDate, setGenerateDate] = useState(localIsoDate())
+  const [erteknap, setErteknap] = useState(0)
   const [ackReference, setAckReference] = useState('')
   const [ackSaving, setAckSaving] = useState(false)
 
@@ -139,8 +149,11 @@ export default function DariusReportPage() {
     setImportDownloading(true)
     setError('')
     try {
-      const res = await dariusApi.downloadImportFile(generateDate)
-      downloadBlob(res.data, `raiffeisen_import_${generateDate}.imp`)
+      const res = await dariusApi.downloadImportFile(generateDate, erteknap)
+      const serverName = filenameFromContentDisposition(
+        res.headers?.['content-disposition'] as string | undefined,
+      )
+      downloadBlob(res.data, serverName ?? `raiffeisen_import_${generateDate}.imp`)
     } catch (err) {
       setError(await getBlobErrorMessage(err))
     } finally {
@@ -254,13 +267,13 @@ export default function DariusReportPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b">
-        {(['daily', 'monthly', 'missing'] as Tab[]).map((t) => (
+        {(Object.keys(TAB_LABELS) as Tab[]).map((tabKey) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px ${tab === t ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            key={tabKey}
+            onClick={() => setTab(tabKey)}
+            className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px ${tab === tabKey ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
-            {t === 'daily' ? 'Napi' : t === 'monthly' ? 'Havi összesítő' : 'Hiányzó napok'}
+            {TAB_LABELS[tabKey]}
           </button>
         ))}
       </div>
@@ -312,6 +325,20 @@ export default function DariusReportPage() {
             <FileSpreadsheet size={14} />
             {t('darius.generalas')}
           </button>
+          <label className="flex items-center gap-1 text-sm text-gray-600">
+            Értéknap (T+N)
+            <input
+              type="number"
+              min={-200}
+              max={200}
+              value={erteknap}
+              onChange={(e) =>
+                setErteknap(Math.max(-200, Math.min(200, Number(e.target.value) || 0)))
+              }
+              className="w-20 border rounded px-2 py-1"
+              aria-label="Értéknap (T+N)"
+            />
+          </label>
           <button
             type="button"
             onClick={handleDownloadImportFile}
@@ -594,6 +621,8 @@ export default function DariusReportPage() {
           )}
         </div>
       )}
+
+      {tab === 'fixing' && <DariusFixingPanel date={generateDate} />}
     </div>
   )
 }

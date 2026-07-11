@@ -195,6 +195,10 @@ jobs:
               chown root:${{ env.VPS_USER_OWNER }} "$ENV_FILE" || true
               chmod 640 "$ENV_FILE" || true
             fi
+            # FS-15 (2026-07-11): PV-kód jelenlét-smoke. Nem blokkoló; a runtime fail-closed véd.
+            if ! grep -qE '^DARIUS_PV_CODES=.+$' "$ENV_FILE"; then
+              echo "::warning::DARIUS_PV_CODES hianyzik a $ENV_FILE fajlbol — a Raiffeisen importfajl-export fail-closed tiltva."
+            fi
             echo "=== Restarting ${{ env.SERVICE_NAME }} ==="
             systemctl restart ${{ env.SERVICE_NAME }}
             sleep 15

@@ -2,6 +2,8 @@ package hu.puzzleir.valuta.service.darius;
 
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.BranchBlock;
+import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.FixingBlock;
+import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.FixingRow;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.StockRow;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.TurnoverRow;
 import org.springframework.stereotype.Component;
@@ -24,6 +26,10 @@ public class DariusImportFileSerializer {
         appendLine(output, "TNAP\t" + model.tnap());
         appendLine(output, "PV_AZONOSITO\t" + model.pvCode());
 
+        model.fixingBlocks().stream()
+                .sorted(Comparator.comparing(FixingBlock::bankfiokAzonosito))
+                .forEach(block -> appendFixing(output, block));
+
         model.branches().stream()
                 .sorted(Comparator.comparing(
                         branch -> new BigInteger(branch.uzlethelyisegAzonosito())))
@@ -31,6 +37,17 @@ public class DariusImportFileSerializer {
 
         appendLine(output, "END");
         return output.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private void appendFixing(StringBuilder output, FixingBlock block) {
+        appendLine(output, "JELENTES UZLETKOTES");
+        appendLine(output, "BANKFIOK_AZONOSITO\t" + block.bankfiokAzonosito());
+        block.rows().stream()
+                .sorted(Comparator.comparing(FixingRow::currencyCode))
+                .forEach(row -> appendLine(output, row.currencyCode()
+                        + "\t" + formatInteger(row.deliveredAmount())
+                        + "\t" + formatInteger(row.collectedAmount())));
+        appendLine(output, "JELENTES END");
     }
 
     private void appendBranch(StringBuilder output, BranchBlock branch) {

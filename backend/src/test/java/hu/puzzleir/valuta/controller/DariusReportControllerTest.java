@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.darius.DariusDailyReportDto;
 import hu.puzzleir.valuta.dto.darius.DariusImportFile;
+import hu.puzzleir.valuta.dto.darius.DariusImportReadinessDto;
 import hu.puzzleir.valuta.entity.DariusReportStatus;
 import hu.puzzleir.valuta.service.DariusReportService;
 import hu.puzzleir.valuta.service.darius.DariusImportFileService;
@@ -43,6 +44,33 @@ class DariusReportControllerTest {
                 .isEqualTo("attachment; filename=\"raiffeisen_import_BEST_2026-07-01.imp\"");
         assertThat(response.getBody()).isEqualTo(content);
         verify(dariusImportFileService).generateImportFile(date, erteknap);
+    }
+
+    @Test
+    void importReadinessReturnsTenantScopedServiceResult() {
+        DariusImportReadinessDto readiness =
+                new DariusImportReadinessDto("BEST", true, 2, List.of(), 0, false);
+        when(dariusImportFileService.importReadiness()).thenReturn(readiness);
+
+        ResponseEntity<DariusImportReadinessDto> response = controller.importReadiness();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isSameAs(readiness);
+        verify(dariusImportFileService).importReadiness();
+    }
+
+    @Test
+    void importReadinessUsesSameAuthorizationAsImportFileDownload() throws NoSuchMethodException {
+        var downloadAuthorization = DariusReportController.class
+                .getMethod("downloadImportFile", LocalDate.class, int.class)
+                .getAnnotation(org.springframework.security.access.prepost.PreAuthorize.class);
+        var readinessAuthorization = DariusReportController.class
+                .getMethod("importReadiness")
+                .getAnnotation(org.springframework.security.access.prepost.PreAuthorize.class);
+
+        assertThat(downloadAuthorization).isNotNull();
+        assertThat(readinessAuthorization).isNotNull();
+        assertThat(readinessAuthorization.value()).isEqualTo(downloadAuthorization.value());
     }
 
     @Test

@@ -21,6 +21,11 @@ public interface CurrencyRepository extends JpaRepository<Currency, Long> {
     Optional<Currency> findByCode(String code);
 
     /**
+     * Aktív valuta keresése kód alapján.
+     */
+    Optional<Currency> findByCodeAndActiveTrue(String code);
+
+    /**
      * Kód létezik-e
      */
     boolean existsByCode(String code);

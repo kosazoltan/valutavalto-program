@@ -16,6 +16,8 @@ import java.util.UUID;
 @Repository
 public interface DariusDailyReportRepository extends JpaRepository<DariusDailyReport, UUID> {
 
+    Optional<DariusDailyReport> findByIdAndCompanyId(UUID id, UUID companyId);
+
     Optional<DariusDailyReport> findByCompanyIdAndReportDate(UUID companyId, LocalDate reportDate);
 
     List<DariusDailyReport> findByCompanyIdAndReportDateBetweenOrderByReportDateDesc(
@@ -28,11 +30,14 @@ public interface DariusDailyReportRepository extends JpaRepository<DariusDailyRe
      * Retry-re váró jelentések (FAILED státusz, retry limit nem elérve, idő lejárt).
      */
     @Query("SELECT d FROM DariusDailyReport d " +
-           "WHERE d.status = 'FAILED' " +
+           "WHERE d.companyId = :companyId " +
+           "AND d.status = 'FAILED' " +
            "AND d.retryCount < d.maxRetries " +
            "AND (d.nextRetryAt IS NULL OR d.nextRetryAt <= :now) " +
            "ORDER BY d.reportDate ASC")
-    List<DariusDailyReport> findRetryable(@Param("now") LocalDateTime now);
+    List<DariusDailyReport> findRetryable(
+        @Param("companyId") UUID companyId,
+        @Param("now") LocalDateTime now);
 
     /**
      * Hiányzó napok: nincs jelentés a megadott időszakban.

@@ -10,9 +10,7 @@ import java.util.UUID;
 @Repository
 public interface DariusReportLineRepository extends JpaRepository<DariusReportLine, UUID> {
 
-    List<DariusReportLine> findByReportIdOrderByCurrencyCode(UUID reportId);
+    List<DariusReportLine> findByCompanyIdAndReportIdOrderByCurrencyCodeAsc(UUID companyId, UUID reportId);
 
-    List<DariusReportLine> findByReportIdAndBranchId(UUID reportId, UUID branchId);
-
-    void deleteByReportId(UUID reportId);
+    void deleteByCompanyIdAndReportId(UUID companyId, UUID reportId);
 }
