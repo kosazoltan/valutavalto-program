@@ -63,12 +63,37 @@ MUTATION_PATTERNS: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(?:^|[\s;])[0-9]*>>?(?!&)\s*(?!/dev/null)\S", re.MULTILINE),
         "file write redirection",
     ),
+    (
+        re.compile(
+            r"(?:\||&&|;|\$\(|`|\bxargs\s+(?:-[\w-]+\s+)*)\s*"
+            r"(?:sudo\s+(?:-u\s+\S+\s+)?)?"
+            r"(?:rm|mv|cp|chmod|chown|ln|touch|mktemp|truncate|dd|tee|shred|unlink)\b",
+        ),
+        "pipeline-embedded filesystem mutation",
+    ),
+    (
+        re.compile(r"\bfind\b[^\n]*\s-(?:delete|exec|execdir|ok|okdir)\b"),
+        "find with delete/exec action",
+    ),
+    (
+        re.compile(r"\b(?:apt|apt-get|dpkg|snap|yum|dnf)\b"),
+        "package manager action",
+    ),
+    (re.compile(r"\bjournalctl\b[^\n]*--vacuum"), "journal vacuum"),
+    (
+        re.compile(
+            r"\b(?:cat|strings|od|xxd|base64|less|more)\b"
+            r"[^\n]*(?:\$TARGET_DIR|/opt/valutavalto)"
+        ),
+        "target file content exposure",
+    ),
 ]
 
 # Raw recovery stdout must never reach a ::warning:: annotation. Matches
 # $REC_OUT, ${REC_OUT}, ${REC_OUT:-<empty>}; does NOT match derived
 # variables such as $REC_OUT_STATE / ${REC_OUT_STATE}.
 FAILED_WARNING_MARKER = "::warning::Scaleway PG probe FAILED"
+DISK_WARNING_MARKER = "::warning::Scaleway disk inventory FAILED"
 RAW_REC_OUT_PATTERN = re.compile(
     r"\$REC_OUT\b|\$\{REC_OUT(?![A-Za-z0-9_])[^}]*\}"
 )
@@ -98,6 +123,40 @@ REQUIRED_NEEDLES: dict[str, str] = {
     ),
     "head -c 600": "stderr byte cap missing",
     "<REDACTED": "stderr redaction missing",
+}
+
+DISK_REQUIRED_NEEDLES: dict[str, str] = {
+    "TARGET_DIR=/opt/valutavalto/backend/target": "target dir binding missing",
+    'df -B1 / "$TARGET_DIR" 2>&1': (
+        "byte df for / and target fs missing or errors discarded"
+    ),
+    'df -i / "$TARGET_DIR" 2>&1': (
+        "inode df for / and target fs missing or errors discarded"
+    ),
+    '"$TARGET_DIR" /var/log /var/lib/postgresql/16/main': (
+        "footprint directory set missing"
+    ),
+    "du -x -B1 --max-depth=1": "bounded du inventory missing",
+    "valuta-backend-*.jar": "release jar inventory missing",
+    "*.incoming": "incoming artifact inventory missing",
+    "shopt -s lastpipe": "count pipelines do not preserve read results",
+    "find \"$TARGET_DIR\" -maxdepth 1 -type f -name 'valuta-backend-*.jar' | wc -l | read -r JAR_COUNT": (
+        "JAR count probe missing or find stderr is not observable"
+    ),
+    "find \"$TARGET_DIR\" -maxdepth 1 -type f -name '*.incoming' | wc -l | read -r INCOMING_COUNT": (
+        "incoming count probe missing or find stderr is not observable"
+    ),
+    'readlink "$TARGET_DIR/valuta-backend-current.jar"': (
+        "active symlink readlink missing"
+    ),
+    "${LINK_TARGET:-<nincs symlink>}": (
+        "missing symlink is not rendered as <nincs symlink>"
+    ),
+    'if [ "$DISK_FAIL" -eq 0 ]': (
+        "OK verdict must require zero disk probe failures"
+    ),
+    "DISK_INVENTORY_STATUS=OK": "disk OK verdict missing",
+    "DISK_INVENTORY_STATUS=FAILED": "disk FAILED verdict missing",
 }
 
 
@@ -165,6 +224,9 @@ def audit_probe(run_text: str) -> list[str]:
     for needle, message in REQUIRED_NEEDLES.items():
         _require(issues, needle in body, f"probe: {message}")
 
+    for needle, message in DISK_REQUIRED_NEEDLES.items():
+        _require(issues, needle in body, f"probe: {message}")
+
     for pattern, label in MUTATION_PATTERNS:
         match = pattern.search(body)
         if match is not None:
@@ -184,6 +246,46 @@ def audit_probe(run_text: str) -> list[str]:
             issues,
             RAW_REC_OUT_PATTERN.search(line) is None,
             f"probe: warning line leaks raw recovery stdout: {line.strip()}",
+        )
+
+    _require(
+        issues,
+        any(DISK_WARNING_MARKER in line for line in body.splitlines()),
+        "probe: disk FAILED path does not annotate the run",
+    )
+
+    du_token = re.compile(r"(?:^|[\s;|&(])du\s")
+    find_token = re.compile(r"(?:^|[\s;|&($])find\s")
+    for line in body.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#") or stripped.startswith("echo "):
+            continue
+        if du_token.search(line):
+            _require(
+                issues,
+                "--max-depth=1" in line and " -x " in line and "| head -n" in line,
+                f"probe: unbounded du invocation: {stripped}",
+            )
+        if find_token.search(line):
+            _require(
+                issues,
+                "-maxdepth 1" in line,
+                f"probe: unbounded find invocation: {stripped}",
+            )
+
+    for count_variable, label in (
+        ("JAR_COUNT", "JAR"),
+        ("INCOMING_COUNT", "incoming"),
+    ):
+        _require(
+            issues,
+            re.search(
+                rf"\|\s*read -r {count_variable}\s*\n\s*"
+                r'\[ "\$\{PIPESTATUS\[0\]\}" -ne 0 \] && DISK_FAIL=1',
+                body,
+            )
+            is not None,
+            f"probe: {label} count find failure is not checked immediately",
         )
 
     _require(
@@ -243,6 +345,16 @@ def audit_workflow(document: dict[str, Any], raw_text: str) -> list[str]:
                     continue
                 name = str(step.get("name", ""))
                 run = str(step.get("run", ""))
+                if name not in ("Set up SSH", PROBE_STEP):
+                    issues.append(f"workflow: unexpected step: {name or '<unnamed>'}")
+                if name != "Set up SSH":
+                    for pattern, label in MUTATION_PATTERNS:
+                        match = pattern.search(run)
+                        if match is not None:
+                            offending = run[match.start() :].splitlines()[0].strip()
+                            issues.append(
+                                f"workflow step {name!r}: {label}: {offending}"
+                            )
                 if "SCALEWAY_SSH_PRIVATE_KEY" in run and name != "Set up SSH":
                     issues.append(
                         "secret hygiene: private key referenced in unexpected step: "
@@ -300,6 +412,61 @@ def _self_test(run_text: str) -> list[str]:
                 'echo "::warning::Scaleway PG probe FAILED: '
                 'psql exit=$PSQL_EXIT, recovery stdout=${REC_OUT:-<empty>}"',
             ),
+        ),
+        (
+            "disk: injected rm -rf",
+            _insert_before_terminator(run_text, 'rm -rf "$TARGET_DIR"'),
+        ),
+        (
+            "disk: find -delete",
+            _insert_before_terminator(
+                run_text,
+                "find \"$TARGET_DIR\" -maxdepth 1 -name '*.incoming' -delete",
+            ),
+        ),
+        (
+            "disk: pipeline-embedded rm via xargs",
+            _insert_before_terminator(
+                run_text,
+                "find \"$TARGET_DIR\" -maxdepth 1 -name '*.incoming' "
+                "2>/dev/null | xargs rm -f",
+            ),
+        ),
+        (
+            "disk: unbounded du",
+            run_text.replace(
+                'du -x -B1 --max-depth=1 "$DIR" 2>&1 | sort -rn | head -n 15',
+                'du -x -B1 "$DIR" 2>&1 | sort -rn',
+                1,
+            ),
+        ),
+        (
+            "disk: missing JAR count find guard",
+            re.sub(
+                r"(\|\s*read -r JAR_COUNT\s*\n)\s*"
+                r'\[ "\$\{PIPESTATUS\[0\]\}" -ne 0 \] && DISK_FAIL=1\s*\n',
+                r"\1",
+                run_text,
+                count=1,
+            ),
+        ),
+        (
+            "disk: missing incoming count find guard",
+            re.sub(
+                r"(\|\s*read -r INCOMING_COUNT\s*\n)\s*"
+                r'\[ "\$\{PIPESTATUS\[0\]\}" -ne 0 \] && DISK_FAIL=1\s*\n',
+                r"\1",
+                run_text,
+                count=1,
+            ),
+        ),
+        (
+            "disk: missing FAILED verdict",
+            run_text.replace("DISK_INVENTORY_STATUS=FAILED", "", 1),
+        ),
+        (
+            "disk: secret content exposure",
+            _insert_before_terminator(run_text, 'cat "$TARGET_DIR/../.env"'),
         ),
     ]
 
