@@ -23,9 +23,34 @@ jobs:
           echo "  timer active: $(systemctl is-active primary-watchdog.timer)"
           echo "  service result: $(systemctl show primary-watchdog.service -p Result --value)"
           echo "  last run exit: $(systemctl show primary-watchdog.service -p ExecMainStatus --value)"
-          echo "  state file: $(cat /var/lib/primary-watchdog/state 2>/dev/null | tr '\n' ' ')"
+          WD_STATE=$(cat /var/lib/primary-watchdog/state 2>/dev/null | tr '\n' ' ')
+          echo "  state file: ${WD_STATE:-<empty>}"
           echo ""
-          echo "=== standby PG (must be in recovery = standby, not promoted) ==="
-          sudo -u postgres psql -tAc "SELECT 'pg_is_in_recovery='||pg_is_in_recovery()" 2>/dev/null
+          echo "=== postgres unit + cluster leltar (read-only) ==="
+          echo "  unit postgresql (generikus): $(systemctl is-active postgresql 2>&1)"
+          echo "  unit postgresql@16-main:     $(systemctl is-active postgresql@16-main 2>&1)"
+          echo "  pg_lsclusters:"
+          pg_lsclusters 2>&1 | sed 's/^/    /'
+          echo "  socket dir: $(ls -l /var/run/postgresql 2>&1 | tr '\n' '; ')"
+          echo ""
+          echo "=== standby PG recovery proba (recovery=t kell standby-hoz) ==="
+          sudo -u postgres pg_isready -q
+          READY_EXIT=$?
+          echo "  pg_isready exit: $READY_EXIT"
+          PROBE_RAW=$(sudo -u postgres psql -tAc "SELECT 'pg_is_in_recovery='||pg_is_in_recovery()" 2>&1)
+          PSQL_EXIT=$?
+          REC_OUT=$(printf '%s\n' "$PROBE_RAW" | grep '^pg_is_in_recovery=')
+          PSQL_STDERR=$(printf '%s\n' "$PROBE_RAW" | grep -v '^pg_is_in_recovery=')
+          SAFE_STDERR=$(printf '%s\n' "$PSQL_STDERR" | sed -E -e 's#postgres(ql)?://[^[:space:]]+#<REDACTED-CONN>#g' -e 's#(password|passwd|Password|PASSWORD|PGPASSWORD)[=: ][^[:space:]]*#\1=<REDACTED>#g' | head -c 600)
+          if [ -n "$REC_OUT" ]; then REC_OUT_STATE="present"; else REC_OUT_STATE="empty"; fi
+          echo "  psql exit: $PSQL_EXIT"
+          echo "  recovery stdout: ${REC_OUT:-<empty>}"
+          echo "  psql stderr (sanitized, max 600 byte): ${SAFE_STDERR:-<none>}"
+          if [ "$PSQL_EXIT" -eq 0 ] && [ -n "$REC_OUT" ]; then
+            echo "PG_PROBE_STATUS=OK"
+          else
+            echo "PG_PROBE_STATUS=FAILED"
+            echo "::warning::Scaleway PG probe FAILED: psql exit=$PSQL_EXIT, recovery stdout=$REC_OUT_STATE — reszletek a sanitized stderr sorban"
+          fi
           echo "=== Kesz ==="
           ENDSSH
