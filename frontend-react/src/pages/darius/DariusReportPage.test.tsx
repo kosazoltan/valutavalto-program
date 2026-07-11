@@ -14,10 +14,16 @@ const mocks = vi.hoisted(() => ({
   retryFailed: vi.fn(),
   getById: vi.fn(),
   getByDate: vi.fn(),
+  downloadImportFile: vi.fn(),
+  downloadBlob: vi.fn(),
 }))
 
 vi.mock('../../services/api/index', () => ({
   dariusApi: mocks,
+}))
+
+vi.mock('../../utils/downloadBlob', () => ({
+  downloadBlob: mocks.downloadBlob,
 }))
 
 vi.mock('react-i18next', () => ({
@@ -71,6 +77,7 @@ describe('DariusReportPage backend contract', () => {
     mocks.retryFailed.mockResolvedValue({ data: [] })
     mocks.getById.mockResolvedValue({ data: dailyReport })
     mocks.getByDate.mockResolvedValue({ data: dailyReport })
+    mocks.downloadImportFile.mockResolvedValue({ data: new Blob(['import-adat']) })
   })
 
   it('napi lekérdezéskor a backend by-date reprezentációját jeleníti meg', async () => {
@@ -132,5 +139,42 @@ describe('DariusReportPage backend contract', () => {
     await waitFor(() => {
       expect(mocks.acknowledge).toHaveBeenCalledWith('darius-1', 'ACK-2026-0001')
     })
+  })
+
+  it('a kiválasztott dátummal letölti a Raiffeisen importfájlt', async () => {
+    const user = userEvent.setup()
+    render(<DariusReportPage />)
+
+    expect(screen.getByRole('button', { name: 'Import fájl letöltése (.imp)' })).toBeInTheDocument()
+
+    const dateInputs = await screen.findAllByDisplayValue(/\d{4}-\d{2}-\d{2}/)
+    await user.clear(dateInputs[2]!)
+    await user.type(dateInputs[2]!, '2026-07-01')
+    await user.click(screen.getByRole('button', { name: 'Import fájl letöltése (.imp)' }))
+
+    await waitFor(() => {
+      expect(mocks.downloadImportFile).toHaveBeenCalledWith('2026-07-01')
+      expect(mocks.downloadBlob).toHaveBeenCalledWith(
+        expect.any(Blob),
+        'raiffeisen_import_2026-07-01.imp',
+      )
+    })
+  })
+
+  it('megjeleníti a blob hibaválasz szerverüzenetét', async () => {
+    const user = userEvent.setup()
+    mocks.downloadImportFile.mockRejectedValue({
+      response: {
+        data: {
+          text: async () => JSON.stringify({ message: 'Hiányzik a PV azonosító.' }),
+        },
+      },
+    })
+    render(<DariusReportPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Import fájl letöltése (.imp)' }))
+
+    expect(await screen.findByText('Hiányzik a PV azonosító.')).toBeInTheDocument()
+    expect(mocks.downloadBlob).not.toHaveBeenCalled()
   })
 })

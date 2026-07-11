@@ -5,6 +5,9 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Configuration
 @ConfigurationProperties(prefix = "integration.transport")
 @Getter
@@ -28,5 +31,8 @@ public class IntegrationTransportProperties {
     @Getter @Setter
     public static class Darius {
         private String outboxDir = "darius-outbox";
+
+        /** FS-15: cégkód (Company.code) → banki PV_AZONOSITO. Hiánya export-tiltás. */
+        private Map<String, String> pvCodes = new HashMap<>();
     }
 }

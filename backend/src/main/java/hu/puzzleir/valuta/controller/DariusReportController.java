@@ -1,12 +1,16 @@
 package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.darius.DariusDailyReportDto;
+import hu.puzzleir.valuta.dto.darius.DariusImportFile;
 import hu.puzzleir.valuta.dto.darius.DariusMonthlyDto;
 import hu.puzzleir.valuta.entity.DariusReportStatus;
 import hu.puzzleir.valuta.service.DariusReportService;
+import hu.puzzleir.valuta.service.darius.DariusImportFileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +31,7 @@ import java.util.UUID;
 public class DariusReportController {
 
     private final DariusReportService dariusReportService;
+    private final DariusImportFileService dariusImportFileService;
 
     // === Generálás ===
 
@@ -99,6 +104,20 @@ public class DariusReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return ResponseEntity.ok(dariusReportService.getReportsByDateRange(startDate, endDate));
+    }
+
+    // === FS-15: Raiffeisen importfájl-letöltés ===
+
+    @GetMapping("/import-file")
+    @PreAuthorize("hasAnyAuthority('DARIUS_REPORT_RUN', 'MAIN_TREASURY', 'SYSTEM_ADMIN')")
+    public ResponseEntity<byte[]> downloadImportFile(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "0") int erteknap) {
+        DariusImportFile file = dariusImportFileService.generateImportFile(date, erteknap);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.fileName() + "\"")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(file.content());
     }
 
     // === Havi összesítő ===
