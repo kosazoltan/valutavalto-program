@@ -478,14 +478,156 @@ jobs:
           chmod 600 ~/.ssh/scaleway_key
           ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
 
+      # 2026-07-11 (run 29158727601): a standby diskje betelt, ezert az scp
+      # "write remote: Failure" hibaval leallt. Az upload elotti preflight csak
+      # recovery-ben levo standby-t takarit, megtartja a current targetet es a
+      # legujabb rollback JAR-okat, majd byte- es inode-szinten ellenorzi a helyet.
+      - name: Standby preflight — recovery guard + prune + disk check
+        run: |
+          set -euo pipefail
+          JAR=$(ls ./deploy-artifacts/valuta-backend-*.jar 2>/dev/null | grep -v SNAPSHOT | tail -1 || true)
+          if [ -z "$JAR" ] || [ ! -f "$JAR" ]; then
+            echo "::error::Standby preflight: lokalis JAR nem talalhato"
+            exit 1
+          fi
+          JAR_NAME=$(basename "$JAR")
+          JAR_BYTES=$(stat -c%s "$JAR")
+          if [ -z "$JAR_NAME" ] || [ "$JAR_NAME" = "${{ env.JAR_SYMLINK }}" ] \
+             || ! [[ "$JAR_BYTES" =~ ^[0-9]+$ ]] || [ "$JAR_BYTES" -le 0 ]; then
+            echo "::error::Standby preflight: ervenytelen JAR (name='$JAR_NAME', bytes='${JAR_BYTES:-}')"
+            exit 1
+          fi
+          echo "Preflight: $JAR_NAME ($JAR_BYTES bytes)"
+          ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
+              "root@${{ secrets.SCALEWAY_SERVER_IP }}" \
+              bash -s -- "$JAR_NAME" "$JAR_BYTES" << 'ENDSSH'
+            set -euo pipefail
+            JAR_NAME="$1"
+            JAR_BYTES="$2"
+            TARGET=${{ env.VPS_DEPLOY_PATH }}/target
+
+            # Fail-closed split-brain guard: semmilyen fajlrendszer-mutacio nem
+            # tortenhet, amig a tavoli PostgreSQL recovery allapota nem pontosan t.
+            IN_REC=$(sudo -u postgres psql -tAc "SELECT pg_is_in_recovery();" 2>/dev/null || echo "x")
+            if [ "$IN_REC" != "t" ]; then
+              echo "::error::Standby preflight ABORT: pg_is_in_recovery()='$IN_REC' (nem 't') — lehet aktiv primary, semmihez nem nyulunk"
+              exit 1
+            fi
+
+            CURRENT=$(readlink -f "$TARGET/${{ env.JAR_SYMLINK }}" 2>/dev/null || true)
+            FINAL="$TARGET/$JAR_NAME"
+            INCOMING="$TARGET/$JAR_NAME.incoming"
+
+            # Elozo, megszakadt feltoltes csak regularis, nem-symlink fajl lehet.
+            if [ -e "$INCOMING" ] || [ -L "$INCOMING" ]; then
+              if [ -f "$INCOMING" ] && [ ! -L "$INCOMING" ]; then
+                echo "Stale incoming torlese: $INCOMING"
+                rm -f "$TARGET/$JAR_NAME.incoming"
+              else
+                echo "::error::Standby preflight: az incoming utvonal nem regularis fajl: $INCOMING"
+                exit 1
+              fi
+            fi
+
+            # Azonos verzio ujradeploynal a futo JVM current inode-jat megorizzuk;
+            # mas, azonos nevu regularis celfajlt az atomikus finalize elott torlunk.
+            if { [ -e "$FINAL" ] || [ -L "$FINAL" ]; } && [ "$FINAL" != "$CURRENT" ]; then
+              if [ -f "$FINAL" ] && [ ! -L "$FINAL" ]; then
+                echo "Regi celfajl torlese: $FINAL"
+                rm -f "$FINAL"
+              else
+                echo "::error::Standby preflight: a vegleges JAR-utvonal nem regularis fajl: $FINAL"
+                exit 1
+              fi
+            fi
+
+            # Determinisztikus rollback-prune: current target + a verzio szerint
+            # legujabb KEEP_N regularis JAR mindig megmarad. Symlinket nem torlunk.
+            KEEP_N=2
+            mapfile -t JARS < <(
+              find "$TARGET" -maxdepth 1 -type f -name 'valuta-backend-*.jar' -print \
+                | grep -v current \
+                | sort -V
+            )
+            JAR_COUNT=${#JARS[@]}
+            PRUNE_COUNT=$(( JAR_COUNT > KEEP_N ? JAR_COUNT - KEEP_N : 0 ))
+            for ((I=0; I<PRUNE_COUNT; I++)); do
+              FILE=${JARS[$I]}
+              if [ -f "$FILE" ] && [ ! -L "$FILE" ] && [ "$FILE" != "$CURRENT" ]; then
+                echo "Prune: $FILE"
+                rm -f "$FILE"
+              fi
+            done
+
+            echo "=== df -h ($TARGET) ==="
+            df -h "$TARGET"
+            echo "=== df -i ($TARGET) ==="
+            df -i "$TARGET"
+            if ! AVAIL_BYTES=$(df -B1 --output=avail "$TARGET" | tail -1 | tr -d '[:space:]'); then
+              echo "::error::Standby preflight: a szabad kapacitas nem merheto"
+              exit 1
+            fi
+            if ! [[ "$AVAIL_BYTES" =~ ^[0-9]+$ ]]; then
+              echo "::error::Standby preflight: ervenytelen szabadkapacitas-ertek: '$AVAIL_BYTES'"
+              exit 1
+            fi
+            NEED_BYTES=$(( JAR_BYTES * 2 ))
+            echo "Szabad: $AVAIL_BYTES B | szukseges (2x JAR): $NEED_BYTES B"
+            if [ "$AVAIL_BYTES" -lt "$NEED_BYTES" ]; then
+              echo "::error::Standby diszk-preflight FAILED: $AVAIL_BYTES B szabad < $NEED_BYTES B szukseges ($JAR_NAME merete $JAR_BYTES B)"
+              exit 1
+            fi
+            echo "=== Preflight OK ==="
+          ENDSSH
+
       - name: Upload JAR to standby
         run: |
-          JAR=$(ls ./deploy-artifacts/valuta-backend-*.jar | grep -v SNAPSHOT | tail -1)
+          set -euo pipefail
+          JAR=$(ls ./deploy-artifacts/valuta-backend-*.jar 2>/dev/null | grep -v SNAPSHOT | tail -1 || true)
+          if [ -z "$JAR" ] || [ ! -f "$JAR" ]; then
+            echo "::error::Standby upload: lokalis JAR nem talalhato"
+            exit 1
+          fi
           JAR_NAME=$(basename "$JAR")
-          echo "Uploading $JAR_NAME to standby ..."
+          JAR_BYTES=$(stat -c%s "$JAR")
+          if [ -z "$JAR_NAME" ] || [ "$JAR_NAME" = "${{ env.JAR_SYMLINK }}" ] \
+             || ! [[ "$JAR_BYTES" =~ ^[0-9]+$ ]] || [ "$JAR_BYTES" -le 0 ]; then
+            echo "::error::Standby upload: ervenytelen JAR (name='$JAR_NAME', bytes='${JAR_BYTES:-}')"
+            exit 1
+          fi
+          echo "Uploading $JAR_NAME.incoming to standby ..."
           scp -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
               "$JAR" \
-              "root@${{ secrets.SCALEWAY_SERVER_IP }}:${{ env.VPS_DEPLOY_PATH }}/target/$JAR_NAME"
+              "root@${{ secrets.SCALEWAY_SERVER_IP }}:${{ env.VPS_DEPLOY_PATH }}/target/$JAR_NAME.incoming"
+          ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
+              "root@${{ secrets.SCALEWAY_SERVER_IP }}" \
+              bash -s -- "$JAR_NAME" "$JAR_BYTES" << 'ENDSSH'
+            set -euo pipefail
+            JAR_NAME="$1"
+            JAR_BYTES="$2"
+            TARGET=${{ env.VPS_DEPLOY_PATH }}/target
+            INCOMING="$TARGET/$JAR_NAME.incoming"
+            FINAL="$TARGET/$JAR_NAME"
+
+            # A preflight es az SCP kozotti promote-race ellen finalize elott is
+            # fail-closed recovery guard fut. A post-upload swap guard valtozatlan.
+            IN_REC=$(sudo -u postgres psql -tAc "SELECT pg_is_in_recovery();" 2>/dev/null || echo "x")
+            if [ "$IN_REC" != "t" ]; then
+              echo "::error::Standby finalize ABORT: pg_is_in_recovery()='$IN_REC' (nem 't'); az incoming fajl nem lesz aktivalva"
+              exit 1
+            fi
+            if [ ! -f "$INCOMING" ] || [ -L "$INCOMING" ]; then
+              echo "::error::Standby finalize: az incoming JAR hianyzik vagy nem regularis fajl: $INCOMING"
+              exit 1
+            fi
+            REMOTE_BYTES=$(stat -c%s "$INCOMING")
+            if [ "$REMOTE_BYTES" != "$JAR_BYTES" ]; then
+              echo "::error::Standby finalize: merethiba, remote=$REMOTE_BYTES B, local=$JAR_BYTES B ($JAR_NAME)"
+              exit 1
+            fi
+            echo "Meretellenorzes OK: $REMOTE_BYTES B; atomikus finalize: $INCOMING -> $FINAL"
+            mv -f "$INCOMING" "$FINAL"
+          ENDSSH
 
       - name: Swap symlink + restart (warm, read-only) + health
         run: |
