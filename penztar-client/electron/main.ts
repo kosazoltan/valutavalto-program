@@ -3,8 +3,19 @@
 import('dotenv/config').catch(() => {
   /* production: dotenv not available, safe to skip */
 });
-import { app, BrowserWindow, ipcMain, dialog, protocol, net, safeStorage, session } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  dialog,
+  protocol,
+  net,
+  safeStorage,
+  session,
+  Menu,
+} from 'electron';
 import { initAutoUpdate } from './auto-update';
+import { createBeforeInputHandler } from './input-guard';
 import { release as getOsRelease } from 'node:os';
 
 // Windows 11 Insider (26200+) sandbox compatibility fix — CONDITIONAL
@@ -342,12 +353,12 @@ function createWindow(): void {
     );
   });
 
-  // F12 → DevTools bármikor (hibakereséshez)
-  mainWindow.webContents.on('before-input-event', (_event, input) => {
-    if (input.key === 'F12' && input.type === 'keyDown') {
-      mainWindow?.webContents.toggleDevTools();
-    }
-  });
+  // F12 → DevTools (hibakereséshez); Ctrl+P/Cmd+P → böngésző-print TILTVA:
+  // bizonylat kizárólag a saját printReceipt (silent) úton nyomtatható.
+  mainWindow.webContents.on(
+    'before-input-event',
+    createBeforeInputHandler({ toggleDevTools: () => mainWindow?.webContents.toggleDevTools() }),
+  );
 
   // Security: blokkolja az ismeretlen URL-ekre való navigálást (XSS/phishing védelem)
   mainWindow.webContents.on('will-navigate', (event, url) => {
@@ -1550,6 +1561,13 @@ app.whenReady().then(async () => {
         );
       }
     }
+  }
+
+  // Default app-menü eltávolítása production-ben: a rejtett menü accelerator-ai
+  // (Ctrl+R state-vesztő reload, Ctrl+Shift+I, F11, zoom) éles pénztár-kliensben
+  // nem élhetnek. Dev-ben marad (Ctrl+R / Ctrl+Shift+I a fejlesztői workflow része).
+  if (!isDev) {
+    Menu.setApplicationMenu(null);
   }
 
   createWindow();
