@@ -1,0 +1,196 @@
+name: Scaleway Disk Cleanup
+
+on:
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: 'false = dry-run (default, csak listaz); true = tenyleges torles'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-hetzner-production
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SCALEWAY_SSH_PRIVATE_KEY }}" > ~/.ssh/scaleway_key
+          chmod 600 ~/.ssh/scaleway_key
+          ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Guarded standby disk cleanup
+        run: |
+          set -euo pipefail
+          EXECUTE='${{ inputs.execute }}'
+          if [ "$EXECUTE" != "true" ] && [ "$EXECUTE" != "false" ]; then
+            echo "::error::Ervenytelen execute input: '$EXECUTE'"
+            exit 1
+          fi
+          ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
+            -o ConnectTimeout=15 \
+            root@${{ secrets.SCALEWAY_SERVER_IP }} bash -s -- "$EXECUTE" << 'ENDSSH'
+          set -euo pipefail
+          EXECUTE="$1"
+          if [ "$EXECUTE" != "true" ] && [ "$EXECUTE" != "false" ]; then
+            echo "::error::Cleanup ABORT: ervenytelen execute flag '$EXECUTE'"
+            echo "CLEANUP_STATUS=FAILED"
+            exit 1
+          fi
+          TARGET_DIR=/opt/valutavalto/backend/target
+          SYMLINK_PATH="$TARGET_DIR/valuta-backend-current.jar"
+          PGDATA_DIR=/var/lib/postgresql/16/main
+          KEEP_RECENT=3
+          MIN_FREE_BYTES=2147483648
+          CURRENT_MIN_BYTES=52428800
+          JOURNAL_VACUUM_SIZE=200M
+
+          echo "=== df elotte (byte) ==="
+          df -B1 "$TARGET_DIR"
+
+          echo "=== anti-primary guard (fail-closed) ==="
+          READY_EXIT=0
+          sudo -u postgres pg_isready -q || READY_EXIT=$?
+          echo "guard: pg_isready exit=$READY_EXIT"
+          if [ "$READY_EXIT" -eq 0 ]; then
+            IN_REC=$(sudo -u postgres psql -tAc "SELECT pg_is_in_recovery();" 2>/dev/null || echo "x")
+            echo "guard: pg_is_in_recovery()='$IN_REC'"
+            if [ "$IN_REC" != "t" ]; then
+              echo "::error::Cleanup ABORT: PG fut es NEM recovery-ben ('$IN_REC') — lehet aktiv/promote-olt primary; semmi nem valtozott"
+              echo "CLEANUP_STATUS=FAILED"
+              exit 1
+            fi
+          else
+            if [ ! -e "$PGDATA_DIR/standby.signal" ]; then
+              echo "::error::Cleanup ABORT: PG nem elerheto ES standby.signal hianyzik — lehet leallt PRIMARY; semmi nem valtozott"
+              echo "CLEANUP_STATUS=FAILED"
+              exit 1
+            fi
+            echo "guard: PG down + standby.signal jelen — a host standby-nak konfiguralt"
+          fi
+
+          echo "=== KEEP set ==="
+          CURRENT=$(readlink -f "$SYMLINK_PATH" 2>/dev/null || true)
+          if [ -z "$CURRENT" ] || [ ! -f "$CURRENT" ]; then
+            echo "::error::Cleanup ABORT: a current symlink nem oldodik fel regularis fajlra"
+            echo "CLEANUP_STATUS=FAILED"
+            exit 1
+          fi
+          CURRENT_BYTES=$(stat -c%s "$CURRENT")
+          if [ "$CURRENT_BYTES" -lt "$CURRENT_MIN_BYTES" ]; then
+            echo "::error::Cleanup ABORT: a current JAR gyanusan kicsi ($CURRENT_BYTES B < $CURRENT_MIN_BYTES B)"
+            echo "CLEANUP_STATUS=FAILED"
+            exit 1
+          fi
+          MIN_VALID_BYTES=$(( CURRENT_BYTES * 3 / 4 ))
+          echo "current: $CURRENT ($CURRENT_BYTES B); ervenyessegi kuszob: $MIN_VALID_BYTES B"
+
+          mapfile -t ALL_JARS < <(
+            find "$TARGET_DIR" -maxdepth 1 -type f -name 'valuta-backend-*.jar' -print \
+              | grep -v current \
+              | sort -V
+          )
+          CANDIDATES=()
+          KEPT=0
+          for (( I=${#ALL_JARS[@]}-1; I>=0; I-- )); do
+            FILE=${ALL_JARS[$I]}
+            BYTES=$(stat -c%s "$FILE")
+            if [ "$FILE" = "$CURRENT" ]; then
+              echo "KEEP (current target): $FILE"
+              continue
+            fi
+            if [ "$BYTES" -lt "$MIN_VALID_BYTES" ]; then
+              echo "CANDIDATE (csonka, $BYTES B): $FILE"
+              CANDIDATES+=("$FILE")
+              continue
+            fi
+            if [ "$KEPT" -lt "$KEEP_RECENT" ]; then
+              KEPT=$(( KEPT + 1 ))
+              echo "KEEP (rollback #$KEPT): $FILE"
+              continue
+            fi
+            CANDIDATES+=("$FILE")
+          done
+          mapfile -t INCOMINGS < <(
+            find "$TARGET_DIR" -maxdepth 1 -type f -name '*.incoming' -print | sort
+          )
+          for FILE in ${INCOMINGS[@]+"${INCOMINGS[@]}"}; do
+            echo "CANDIDATE (incoming): $FILE"
+            CANDIDATES+=("$FILE")
+          done
+
+          echo "=== torles (${#CANDIDATES[@]} jelolt) ==="
+          TOTAL_FREED=0
+          for FILE in ${CANDIDATES[@]+"${CANDIDATES[@]}"}; do
+            case "$FILE" in
+              "$TARGET_DIR"/*) : ;;
+              *)
+                echo "::error::Cleanup ABORT: jelolt a TARGET_DIR-en kivul: $FILE"
+                echo "CLEANUP_STATUS=FAILED"
+                exit 1
+                ;;
+            esac
+            case "$FILE" in
+              *../*|*/..*)
+                echo "::error::Cleanup ABORT: gyanus utvonal (..): $FILE"
+                echo "CLEANUP_STATUS=FAILED"
+                exit 1
+                ;;
+            esac
+            if [ -L "$FILE" ] || [ ! -f "$FILE" ]; then
+              echo "SKIP (nem regularis fajl): $FILE"
+              continue
+            fi
+            if [ "$FILE" = "$CURRENT" ] || [ "$FILE" = "$SYMLINK_PATH" ]; then
+              echo "SKIP (vedett): $FILE"
+              continue
+            fi
+            BYTES=$(stat -c%s "$FILE")
+            if [ "$EXECUTE" = "true" ]; then
+              rm -f -- "$FILE"
+              echo "DELETED: $BYTES $FILE"
+            else
+              echo "WOULD-DELETE: $BYTES $FILE"
+            fi
+            TOTAL_FREED=$(( TOTAL_FREED + BYTES ))
+          done
+          echo "FREED_BYTES=$TOTAL_FREED"
+
+          echo "=== journal ==="
+          journalctl --disk-usage || true
+          if [ "$EXECUTE" = "true" ]; then
+            journalctl --vacuum-size="$JOURNAL_VACUUM_SIZE"
+          else
+            echo "WOULD-RUN: journalctl --vacuum-size 200M-re szukites"
+          fi
+
+          echo "=== df utana (byte) ==="
+          df -B1 "$TARGET_DIR"
+          if [ "$EXECUTE" = "true" ]; then
+            AVAIL_BYTES=$(df -B1 --output=avail "$TARGET_DIR" | tail -1 | tr -d '[:space:]')
+            if ! [[ "$AVAIL_BYTES" =~ ^[0-9]+$ ]]; then
+              echo "::error::Cleanup: a szabad kapacitas nem merheto ('$AVAIL_BYTES')"
+              echo "CLEANUP_STATUS=FAILED"
+              exit 1
+            fi
+            echo "szabad: $AVAIL_BYTES B | kapu: $MIN_FREE_BYTES B"
+            if [ "$AVAIL_BYTES" -lt "$MIN_FREE_BYTES" ]; then
+              echo "::error::Free-space gate FAILED: $AVAIL_BYTES B < $MIN_FREE_BYTES B — tovabbi kezi takaritas kell"
+              echo "CLEANUP_STATUS=FAILED"
+              exit 1
+            fi
+            echo "CLEANUP_STATUS=OK"
+          else
+            echo "CLEANUP_STATUS=DRYRUN"
+          fi
+          echo "=== Kesz ==="
+          ENDSSH
