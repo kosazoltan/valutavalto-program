@@ -11,7 +11,8 @@ import {
   Calendar,
 } from 'lucide-react'
 import { dariusApi, DariusDailyReport, DariusMonthlyDto } from '../../services/api/index'
-import { getErrorMessage } from '../../utils/errorHandling'
+import { downloadBlob } from '../../utils/downloadBlob'
+import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { localIsoDate } from '../../utils/dateFormat'
 import { useTranslation } from 'react-i18next'
@@ -51,6 +52,7 @@ export default function DariusReportPage() {
   const [missingDates, setMissingDates] = useState<string[]>([])
   const [selected, setSelected] = useState<DariusDailyReport | null>(null)
   const [loading, setLoading] = useState(false)
+  const [importDownloading, setImportDownloading] = useState(false)
   const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [generateDate, setGenerateDate] = useState(localIsoDate())
@@ -130,6 +132,19 @@ export default function DariusReportPage() {
       setError(getErrorMessage(err))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDownloadImportFile = async () => {
+    setImportDownloading(true)
+    setError('')
+    try {
+      const res = await dariusApi.downloadImportFile(generateDate)
+      downloadBlob(res.data, `raiffeisen_import_${generateDate}.imp`)
+    } catch (err) {
+      setError(await getBlobErrorMessage(err))
+    } finally {
+      setImportDownloading(false)
     }
   }
 
@@ -296,6 +311,15 @@ export default function DariusReportPage() {
           >
             <FileSpreadsheet size={14} />
             {t('darius.generalas')}
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadImportFile}
+            disabled={loading || importDownloading}
+            className="btn-secondary text-sm flex items-center gap-1"
+          >
+            <FileSpreadsheet size={14} />
+            {importDownloading ? 'Import fájl letöltése...' : 'Import fájl letöltése (.imp)'}
           </button>
         </div>
       </div>

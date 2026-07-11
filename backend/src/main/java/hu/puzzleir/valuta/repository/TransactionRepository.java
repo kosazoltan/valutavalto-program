@@ -1300,6 +1300,25 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * FS-15: valuta + típus + fizetési mód bontás a Darius importfájlhoz.
+     * NULL payment_method = legacy CASH sor — a hívó normalizálja.
+     */
+    @Query("SELECT t.currency.code, t.transactionType, t.paymentMethod, " +
+           "SUM(t.currencyAmount), SUM(t.hufAmount), SUM(t.handlingFee) " +
+           "FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
+           "AND t.status NOT IN ('REVERSED', 'CANCELLED') " +
+           "AND t.financialEffective = true " +
+           "GROUP BY t.currency.code, t.transactionType, t.paymentMethod " +
+           "ORDER BY t.currency.code, t.transactionType")
+    List<Object[]> groupByCurrencyTypeAndPaymentMethodForBranch(
+        @Param("branchId") UUID branchId,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo
+    );
+
+    /**
      * FK-045 FR-4/FR-9: valuta + típus szerinti bontás egy ÉRTÉKTÁRI TERÜLET (vault_territory)
      * összes pénztárára. A {@link #groupByCurrencyAndTypeForBranch} territory-szintű párja: a
      * branch.id helyett a branch.vaultTerritoryId == :territoryId AND branch.company.id == :companyId

@@ -931,4 +931,8 @@ export const dariusApi = {
     api.get<DariusMonthlyDto>(`/darius/monthly?year=${year}&month=${month}`),
   getMissingDates: (from: string, to: string) =>
     api.get<string[]>(`/darius/missing-dates?startDate=${from}&endDate=${to}`),
+  downloadImportFile: (date: string, erteknap = 0) =>
+    api.get<Blob>(`/darius/import-file?date=${date}&erteknap=${erteknap}`, {
+      responseType: 'blob',
+    }),
 }
