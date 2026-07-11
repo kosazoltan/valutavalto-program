@@ -52,5 +52,40 @@ jobs:
             echo "PG_PROBE_STATUS=FAILED"
             echo "::warning::Scaleway PG probe FAILED: psql exit=$PSQL_EXIT, recovery stdout=$REC_OUT_STATE — reszletek a sanitized stderr sorban"
           fi
+          echo ""
+          echo "=== disk/inode leltar (read-only) ==="
+          TARGET_DIR=/opt/valutavalto/backend/target
+          DISK_FAIL=0
+          echo "--- df -B1 (byte): / es target fs ---"
+          df -B1 / "$TARGET_DIR" 2>&1 | sed 's/^/    /'
+          [ "${PIPESTATUS[0]}" -ne 0 ] && DISK_FAIL=1
+          echo "--- df -i (inode): / es target fs ---"
+          df -i / "$TARGET_DIR" 2>&1 | sed 's/^/    /'
+          [ "${PIPESTATUS[0]}" -ne 0 ] && DISK_FAIL=1
+          for DIR in "$TARGET_DIR" /var/log /var/lib/postgresql/16/main; do
+            echo "--- footprint: $DIR (top szint, max 15, meret szerint csokkeno) ---"
+            du -x -B1 --max-depth=1 "$DIR" 2>&1 | sort -rn | head -n 15 | sed 's/^/    /'
+            [ "${PIPESTATUS[0]}" -ne 0 ] && DISK_FAIL=1
+          done
+          echo "--- release JAR leltar: $TARGET_DIR (max 40) ---"
+          find "$TARGET_DIR" -maxdepth 1 -name 'valuta-backend-*.jar' -printf '%y %s %TY-%Tm-%Td %p\n' 2>&1 | sort -k2,2rn | head -n 40 | sed 's/^/    /'
+          [ "${PIPESTATUS[0]}" -ne 0 ] && DISK_FAIL=1
+          echo "--- .incoming leltar: $TARGET_DIR (max 20) ---"
+          find "$TARGET_DIR" -maxdepth 1 -name '*.incoming' -printf '%y %s %TY-%Tm-%Td %p\n' 2>&1 | sort -k2,2rn | head -n 20 | sed 's/^/    /'
+          [ "${PIPESTATUS[0]}" -ne 0 ] && DISK_FAIL=1
+          shopt -s lastpipe
+          find "$TARGET_DIR" -maxdepth 1 -type f -name 'valuta-backend-*.jar' | wc -l | read -r JAR_COUNT
+          [ "${PIPESTATUS[0]}" -ne 0 ] && DISK_FAIL=1
+          find "$TARGET_DIR" -maxdepth 1 -type f -name '*.incoming' | wc -l | read -r INCOMING_COUNT
+          [ "${PIPESTATUS[0]}" -ne 0 ] && DISK_FAIL=1
+          echo "  jar db (regularis): ${JAR_COUNT:-?}, incoming db: ${INCOMING_COUNT:-?}"
+          LINK_TARGET=$(readlink "$TARGET_DIR/valuta-backend-current.jar" 2>/dev/null)
+          echo "  aktiv symlink: valuta-backend-current.jar -> ${LINK_TARGET:-<nincs symlink>}"
+          if [ "$DISK_FAIL" -eq 0 ]; then
+            echo "DISK_INVENTORY_STATUS=OK"
+          else
+            echo "DISK_INVENTORY_STATUS=FAILED"
+            echo "::warning::Scaleway disk inventory FAILED: legalabb egy read-only proba hibara futott — reszletek a step logban"
+          fi
           echo "=== Kesz ==="
           ENDSSH
