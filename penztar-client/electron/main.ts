@@ -385,18 +385,15 @@ function createWindow(): void {
 ipcMain.handle('print-receipt', async (_event, dataJson: string): Promise<boolean> => {
   try {
     const data = JSON.parse(dataJson) as PrintReceiptData;
-    const printerName = getConfig(PRINTER_CONFIG_KEY) ?? undefined;
-    const serialPort = getConfig(SERIAL_PORT_CONFIG_KEY) ?? undefined;
-    // v2.3.35 (B18 audit fix): Verbose config logging to diagnose silent print failures.
-    // Korabban a felhasznalo nem latta, hogy a print-config hianyos volt — most az
-    // electron-log fajl-ban explicit szerepel.
+    const printerName = getConfig(PRINTER_CONFIG_KEY)?.trim() || undefined;
+    const serialPort = getConfig(SERIAL_PORT_CONFIG_KEY)?.trim() || undefined;
     if (!printerName && !serialPort) {
-      console.warn(
-        '[IPC] print-receipt: NEM konfigurált sem PRINTER_CONFIG_KEY (printer.deviceName), ' +
-          'sem SERIAL_PORT_CONFIG_KEY (printer.serialPort) — Electron default printer fallback aktiv. ' +
-          'Beallitasok > Nyomtatas → konfiguraljon nyomtatot, ha az alapertelmezett rendszer nyomtato ' +
-          'nem elerheto.',
+      console.error(
+        `[IPC][FAIL-CLOSED] print-receipt megtagadva receiptNumber=${data.receiptNumber}: ` +
+          'sem printer.deviceName, sem printer.serialPort ' +
+          'nincs konfigurálva. Windows default printer fallback TILTVA (PDF-mentés veszély).',
       );
+      return false;
     }
     return await printReceipt(data, printerName, serialPort);
   } catch (err) {

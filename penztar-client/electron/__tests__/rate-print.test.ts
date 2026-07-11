@@ -1,5 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+const { getConfigMock, defaultGetConfig } = vi.hoisted(() => {
+  const defaultGetConfig = (key: string): string | null => {
+    if (key === 'server_url') return 'https://backend.test/api/v1';
+    if (key === 'auth_token') return 'token-abc';
+    if (key === 'branch_code') return 'BR001';
+    if (key === 'worker_name') return 'Teszt Pénztáros';
+    if (key === 'company_type') return 'BEST_CHANGE';
+    if (key === 'printer.deviceName') return 'EPSON TM-T88V';
+    return null;
+  };
+  return { getConfigMock: vi.fn(defaultGetConfig), defaultGetConfig };
+});
+
 vi.mock('electron', () => ({
   safeStorage: {
     isEncryptionAvailable: vi.fn(() => false),
@@ -12,14 +25,7 @@ const dbExec = vi.fn(() => []);
 const db = { run: dbRun, exec: dbExec };
 
 vi.mock('../sqlite', () => ({
-  getConfig: vi.fn((key: string) => {
-    if (key === 'server_url') return 'https://backend.test/api/v1';
-    if (key === 'auth_token') return 'token-abc';
-    if (key === 'branch_code') return 'BR001';
-    if (key === 'worker_name') return 'Teszt Pénztáros';
-    if (key === 'company_type') return 'BEST_CHANGE';
-    return null;
-  }),
+  getConfig: getConfigMock,
   setConfig: vi.fn(),
   deleteConfig: vi.fn(),
   getDb: vi.fn(() => db),
@@ -54,14 +60,17 @@ vi.mock('../sqlite', () => ({
 
 vi.mock('../printer', () => ({
   printReceipt: vi.fn(),
+  PRINTER_CONFIG_KEY: 'printer.deviceName',
+  SERIAL_PORT_CONFIG_KEY: 'printer.serialPort',
 }));
 
 import { SyncEngine } from '../sync-engine';
 import { printReceipt } from '../printer';
-import { deleteConfig } from '../sqlite';
+import { deleteConfig, getConfig } from '../sqlite';
 
 const mockedPrintReceipt = vi.mocked(printReceipt);
 const mockedDeleteConfig = vi.mocked(deleteConfig);
+const mockedGetConfig = vi.mocked(getConfig);
 
 const obligation = {
   distributionId: 'dist-1',
@@ -108,6 +117,7 @@ describe('SyncEngine — rate print obligations', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedGetConfig.mockImplementation(defaultGetConfig);
     dbExec.mockReturnValue([]);
     engine = new SyncEngine();
   });
@@ -138,6 +148,8 @@ describe('SyncEngine — rate print obligations', () => {
         rate: 401.2,
         receiptNumber: 'RATE-master-1-v3',
       }),
+      'EPSON TM-T88V',
+      undefined,
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
@@ -162,6 +174,26 @@ describe('SyncEngine — rate print obligations', () => {
     expect(dbRun).not.toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO rate_print_outbox'),
       expect.any(Array),
+    );
+  });
+
+  it('üres printer configot hiányzóként ad át, így a print világos fail-closed okkal pending marad', async () => {
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'printer.deviceName') return '   ';
+      if (key === 'printer.serialPort') return '\t';
+      return defaultGetConfig(key);
+    });
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse([obligation]));
+    vi.stubGlobal('fetch', fetchMock);
+    mockedPrintReceipt.mockResolvedValue(false);
+
+    await engine.syncRatePrintObligations();
+
+    expect(mockedPrintReceipt).toHaveBeenCalledWith(expect.anything(), undefined, undefined);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('/acknowledge'),
+      expect.anything(),
     );
   });
 
