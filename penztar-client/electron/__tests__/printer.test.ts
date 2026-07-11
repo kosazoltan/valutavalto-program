@@ -8,6 +8,27 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { BrowserWindow } from 'electron';
 
+const { printMock, getPrintersMock, logErrorMock } = vi.hoisted(() => ({
+  printMock: vi.fn((_opts: unknown, cb: (success: boolean, reason?: string) => void) => cb(true)),
+  logErrorMock: vi.fn(),
+  getPrintersMock: vi.fn().mockResolvedValue([
+    {
+      name: 'EPSON TM-T88V',
+      displayName: 'EPSON TM-T88V',
+      description: '',
+      status: 0,
+      isDefault: false,
+    },
+    {
+      name: 'Microsoft Print to PDF',
+      displayName: 'Microsoft Print to PDF',
+      description: '',
+      status: 0,
+      isDefault: true,
+    },
+  ]),
+}));
+
 // Mock electron before importing printer.
 // FONTOS: `function` kell (nem arrow), mert a printer `new BrowserWindow(...)`-t hív,
 // és az arrow function nem konstruktor (Vitest: "is not a constructor" → silent false).
@@ -16,7 +37,8 @@ vi.mock('electron', () => ({
     return {
       loadURL: vi.fn().mockResolvedValue(undefined),
       webContents: {
-        print: vi.fn((_opts: unknown, cb: (success: boolean, reason?: string) => void) => cb(true)),
+        print: printMock,
+        getPrintersAsync: getPrintersMock,
       },
       isDestroyed: vi.fn(() => false),
       close: vi.fn(),
@@ -29,7 +51,7 @@ vi.mock('electron-log/main', () => ({
   default: {
     info: vi.fn(),
     warn: vi.fn(),
-    error: vi.fn(),
+    error: logErrorMock,
   },
 }));
 
@@ -43,6 +65,7 @@ import { printReceiptToSerial } from '../serial-printer';
 import {
   generateReceiptContent,
   generateReceiptHtml,
+  isVirtualPrinterName,
   printReceipt,
   type PrintReceiptData,
   type ClosingPrintData,
@@ -540,9 +563,12 @@ describe('printer — generateReceiptContent (ESC/POS)', () => {
 
 describe('printer — printReceipt', () => {
   it('should return boolean result', async () => {
-    // printToThermalUsb returns false (stub), then printViaElectron is called
+    (BrowserWindow as unknown as Mock).mockClear();
+    printMock.mockClear();
     const result = await printReceipt(baseData);
-    expect(typeof result).toBe('boolean');
+    expect(result).toBe(false);
+    expect(BrowserWindow).not.toHaveBeenCalled();
+    expect(printMock).not.toHaveBeenCalled();
   });
 
   it('should accept optional printerName', async () => {
@@ -551,37 +577,171 @@ describe('printer — printReceipt', () => {
   });
 });
 
+describe('printer — FAIL-CLOSED (default printer/PDF fallback tiltás)', () => {
+  beforeEach(() => {
+    (BrowserWindow as unknown as Mock).mockClear();
+    printMock.mockClear();
+    getPrintersMock.mockClear();
+    logErrorMock.mockClear();
+    (printReceiptToSerial as Mock).mockReset().mockResolvedValue(false);
+  });
+
+  it('konfiguráció nélkül megtagadja a nyomtatást az ablak létrehozása előtt', async () => {
+    const result = await printReceipt(baseData);
+
+    expect(result).toBe(false);
+    expect(BrowserWindow).not.toHaveBeenCalled();
+    expect(printMock).not.toHaveBeenCalled();
+    expect(logErrorMock).toHaveBeenCalledWith(
+      '[PRINTER][FAIL-CLOSED] NO_PRINTER_CONFIGURED receiptNumber=BC-2026-001 ' +
+        'printedCopies=0 copies=1: nincs printer.deviceName, a soros út nincs konfigurálva. ' +
+        'Nyomtatás megtagadva; konfiguráljon valós nyomtatót (Beállítások > Nyomtatás / set-config).',
+    );
+  });
+
+  it('virtuális PDF nyomtatót elutasít', async () => {
+    const result = await printReceipt(baseData, 'Microsoft Print to PDF');
+
+    expect(result).toBe(false);
+    expect(printMock).not.toHaveBeenCalled();
+    expect(logErrorMock).toHaveBeenCalledWith(
+      '[PRINTER][FAIL-CLOSED] VIRTUAL_PRINTER_REJECTED receiptNumber=BC-2026-001 ' +
+        'printedCopies=0 copies=1 printerName="Microsoft Print to PDF": virtuális ' +
+        '(fájlba nyomtató) eszköz — bizonylat nem mehet PDF-be/fájlba.',
+    );
+  });
+
+  it('nem létező nyomtatót elutasít', async () => {
+    const result = await printReceipt(baseData, 'Nemletezo Nyomtato');
+
+    expect(result).toBe(false);
+    expect(printMock).not.toHaveBeenCalled();
+    expect(logErrorMock).toHaveBeenCalledWith(
+      '[PRINTER][FAIL-CLOSED] PRINTER_NOT_FOUND receiptNumber=BC-2026-001 ' +
+        'printedCopies=0 copies=1 printerName="Nemletezo Nyomtato": nincs a rendszer ' +
+        'nyomtatói között — nyomtatás megtagadva.',
+    );
+  });
+
+  it('valid fizikai nyomtatóra silent módban, explicit deviceName-mel nyomtat', async () => {
+    const result = await printReceipt(baseData, 'EPSON TM-T88V');
+
+    expect(result).toBe(true);
+    expect(printMock.mock.calls[0][0]).toMatchObject({
+      silent: true,
+      deviceName: 'EPSON TM-T88V',
+    });
+  });
+
+  it('serial-only siker esetén nem indít Electron nyomtatást', async () => {
+    (printReceiptToSerial as Mock).mockResolvedValue(true);
+
+    const result = await printReceipt(baseData, undefined, 'COM3');
+
+    expect(result).toBe(true);
+    expect(BrowserWindow).not.toHaveBeenCalled();
+  });
+
+  it('serial hiba és deviceName hiány esetén nincs default printer fallback', async () => {
+    const result = await printReceipt(baseData, undefined, 'COM3');
+
+    expect(result).toBe(false);
+    expect(printMock).not.toHaveBeenCalled();
+    expect(logErrorMock).toHaveBeenCalledWith(
+      '[PRINTER][FAIL-CLOSED] NO_PRINTER_CONFIGURED receiptNumber=BC-2026-001 ' +
+        'printedCopies=0 copies=1: nincs printer.deviceName, a soros út sikertelen ' +
+        '(0/1 példány kész). Nyomtatás megtagadva; konfiguráljon valós nyomtatót ' +
+        '(Beállítások > Nyomtatás / set-config).',
+    );
+  });
+
+  it('részleges soros nyomtatás után a fail-closed log a kész és kért példányszámot is tartalmazza', async () => {
+    (printReceiptToSerial as Mock).mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    const result = await printReceipt(
+      {
+        ...baseData,
+        type: 'transfer',
+        transferDocType: 'handover',
+        currencyCode: 'HUF',
+      },
+      undefined,
+      'COM3',
+    );
+
+    expect(result).toBe(false);
+    expect(logErrorMock).toHaveBeenCalledWith(
+      '[PRINTER][FAIL-CLOSED] NO_PRINTER_CONFIGURED receiptNumber=BC-2026-001 ' +
+        'printedCopies=1 copies=2: nincs printer.deviceName, a soros út sikertelen ' +
+        '(1/2 példány kész). Nyomtatás megtagadva; konfiguráljon valós nyomtatót ' +
+        '(Beállítások > Nyomtatás / set-config).',
+    );
+  });
+
+  it('serial hiba után valid deviceName-mel Electron úton nyomtat', async () => {
+    const result = await printReceipt(baseData, 'EPSON TM-T88V', 'COM3');
+
+    expect(result).toBe(true);
+    expect(printMock).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    'Microsoft XPS Document Writer',
+    'OneNote (Desktop)',
+    'Foxit PDF Printer',
+    'Fax',
+    'Send To File',
+  ])('virtuális eszköznévként felismeri: %s', (printerName) => {
+    expect(isVirtualPrinterName(printerName)).toBe(true);
+  });
+
+  it.each(['EPSON TM-T88V', 'Star TSP100', 'Send To Hub'])(
+    'fizikai eszköznévként engedi: %s',
+    (printerName) => {
+      expect(isVirtualPrinterName(printerName)).toBe(false);
+    },
+  );
+});
+
 describe('printer — fejléc-javítás FR-7: HUF transfer dupla példány', () => {
   beforeEach(() => {
     (BrowserWindow as unknown as Mock).mockClear();
   });
 
   it('HUF valutanemű transfer bizonylat KÉT példányban nyomtat', async () => {
-    const result = await printReceipt({
-      ...baseData,
-      type: 'transfer',
-      transferDocType: 'handover',
-      currencyCode: 'HUF',
-      transferTarget: 'SZG-02',
-    });
+    const result = await printReceipt(
+      {
+        ...baseData,
+        type: 'transfer',
+        transferDocType: 'handover',
+        currencyCode: 'HUF',
+        transferTarget: 'SZG-02',
+      },
+      'EPSON TM-T88V',
+    );
     expect(result).toBe(true);
     expect((BrowserWindow as unknown as Mock).mock.calls.length).toBe(2);
   });
 
   it('deviza (EUR) transfer bizonylat EGY példányban nyomtat', async () => {
-    const result = await printReceipt({
-      ...baseData,
-      type: 'transfer',
-      transferDocType: 'receipt',
-      currencyCode: 'EUR',
-      transferTarget: 'SZG-02',
-    });
+    const result = await printReceipt(
+      {
+        ...baseData,
+        type: 'transfer',
+        transferDocType: 'receipt',
+        currencyCode: 'EUR',
+        transferTarget: 'SZG-02',
+      },
+      'EPSON TM-T88V',
+    );
     expect(result).toBe(true);
     expect((BrowserWindow as unknown as Mock).mock.calls.length).toBe(1);
   });
 
   it('nem-transfer (sell) HUF-os bizonylat EGY példányban nyomtat (a dupla szabály csak transferre vonatkozik)', async () => {
-    const result = await printReceipt({ ...baseData, type: 'sell', currencyCode: 'HUF' });
+    const result = await printReceipt(
+      { ...baseData, type: 'sell', currencyCode: 'HUF' },
+      'EPSON TM-T88V',
+    );
     expect(result).toBe(true);
     expect((BrowserWindow as unknown as Mock).mock.calls.length).toBe(1);
   });
@@ -596,7 +756,7 @@ describe('printer — fejléc-javítás FR-7: HUF transfer dupla példány', () 
         currencyCode: 'HUF',
         transferTarget: 'SZG-02',
       },
-      undefined,
+      'EPSON TM-T88V',
       'COM3',
     );
     expect(result).toBe(true);

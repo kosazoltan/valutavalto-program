@@ -1579,6 +1579,15 @@ export const PRINTER_CONFIG_KEY = 'printer.deviceName';
 /** Soros (COM) port konfig kulcs — ha be van állítva, a blokknyomtató soros porton nyomtat. */
 export const SERIAL_PORT_CONFIG_KEY = 'printer.serialPort';
 
+/** Virtuális (fájlba nyomtató) eszközök tiltólistája — FAIL-CLOSED (2026-07-11).
+ * PDF/XPS/OneNote/Fax/print-to-file család: bizonylat SOHA nem mehet fájlba. */
+export const VIRTUAL_PRINTER_NAME_PATTERN =
+  /pdf|xps|onenote|fax|print to file|send to file|document writer/i;
+
+export function isVirtualPrinterName(name: string): boolean {
+  return VIRTUAL_PRINTER_NAME_PATTERN.test(name);
+}
+
 /**
  * Soros blokknyomtató küldés (Star SP500 vagy kompatibilis).
  * Ha van konfigurált COM port, közvetlenül soros portra küldi az ESC/POS adatot.
@@ -1603,10 +1612,14 @@ async function printToSerialPrinter(data: PrintReceiptData, serialPort?: string)
  * nyomtató-driverén keresztül kinyomtatja.
  *
  * @param html - A bizonylat HTML tartalma
- * @param printerName - Opcionális nyomtató név; ha nincs megadva, az alapértelmezett nyomtatót használja
+ * @param printerName - Kötelező, explicit fizikai nyomtatónév; rendszer-default fallback nincs
  * @returns true ha a nyomtatás sikerült
  */
-async function printViaElectron(html: string, printerName?: string): Promise<boolean> {
+async function printViaElectron(
+  html: string,
+  printerName: string,
+  receiptContext: { receiptNumber: string; printedCopies: number; copies: number },
+): Promise<boolean> {
   let printWindow: BrowserWindow | null = null;
 
   try {
@@ -1621,6 +1634,26 @@ async function printViaElectron(html: string, printerName?: string): Promise<boo
       },
     });
 
+    // Defense-in-depth: csak a rendszer által enumerált, nem virtuális eszköz engedélyezett.
+    const printers = await printWindow.webContents.getPrintersAsync();
+    const target = printers.find((printer) => printer.name === printerName);
+    if (!target) {
+      log.error(
+        `[PRINTER][FAIL-CLOSED] PRINTER_NOT_FOUND receiptNumber=${receiptContext.receiptNumber} ` +
+          `printedCopies=${receiptContext.printedCopies} copies=${receiptContext.copies} ` +
+          `printerName="${printerName}": nincs a rendszer nyomtatói között — nyomtatás megtagadva.`,
+      );
+      return false;
+    }
+    if (isVirtualPrinterName(target.name) || isVirtualPrinterName(target.displayName ?? '')) {
+      log.error(
+        `[PRINTER][FAIL-CLOSED] VIRTUAL_PRINTER_REJECTED receiptNumber=${receiptContext.receiptNumber} ` +
+          `printedCopies=${receiptContext.printedCopies} copies=${receiptContext.copies} ` +
+          `printerName="${printerName}": virtuális (fájlba nyomtató) eszköz — bizonylat nem mehet PDF-be/fájlba.`,
+      );
+      return false;
+    }
+
     // HTML tartalom betöltése data URL-ként
     await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
@@ -1630,12 +1663,8 @@ async function printViaElectron(html: string, printerName?: string): Promise<boo
       printBackground: true,
       margins: { marginType: 'none' },
       pageSize: { width: 80000, height: 297000 }, // 80mm x 297mm mikronban
+      deviceName: printerName,
     };
-
-    // Ha van megadott nyomtató név, azt használjuk
-    if (printerName) {
-      printOptions.deviceName = printerName;
-    }
 
     // Nyomtatás végrehajtása
     const success = await new Promise<boolean>((resolve) => {
@@ -1668,14 +1697,16 @@ async function printViaElectron(html: string, printerName?: string): Promise<boo
  *
  * Nyomtatási sorrend:
  *   1. Ha USB hőnyomtató konfigurálva van → ESC/POS közvetlen nyomtatás
- *   2. Egyébként → Electron webContents.print() rendszer nyomtatón keresztül
+ *   2. Egyébként → explicit, validált fizikai nyomtatón Electron webContents.print()
+ *   3. Explicit printerName és serialPort nélkül fail-closed; nincs rendszer-default fallback
  *
  * Hibajelzések:
  *   - Nyomtató offline / nem elérhető → false visszatérés, log üzenet
  *   - Papír kifogyott → a rendszer driver kezeli, false visszatérés
  *
  * @param data - A bizonylat adatai
- * @param printerName - Opcionális nyomtató név felülírás
+ * @param printerName - Explicit fizikai nyomtató név; Electron úthoz kötelező
+ * @param serialPort - Opcionális soros nyomtatóport
  * @returns true ha a nyomtatás sikeresen elindult
  */
 export async function printReceipt(
@@ -1716,12 +1747,28 @@ export async function printReceipt(
       );
     }
 
-    // 2. Fallback: Electron rendszer nyomtató (HTML alapú) — csak a hiányzó példányokra
+    // FAIL-CLOSED (2026-07-11): explicit fizikai deviceName nélkül NINCS Electron út —
+    // a Windows default printer (tipikusan Microsoft Print to PDF) fallback tiltott.
+    if (!printerName) {
+      log.error(
+        `[PRINTER][FAIL-CLOSED] NO_PRINTER_CONFIGURED receiptNumber=${data.receiptNumber} ` +
+          `printedCopies=${printedCopies} copies=${copies}: ` +
+          `nincs printer.deviceName, a soros út ${serialPort ? `sikertelen (${printedCopies}/${copies} példány kész)` : 'nincs konfigurálva'}. ` +
+          'Nyomtatás megtagadva; konfiguráljon valós nyomtatót (Beállítások > Nyomtatás / set-config).',
+      );
+      return false;
+    }
+
+    // 2. Fallback: explicit Electron nyomtató (HTML alapú) — csak a hiányzó példányokra
     log.info('[PRINTER] Electron print fallback...');
     const html = await generateReceiptHtml(data);
     let electronSuccess = true;
     for (let copy = printedCopies + 1; copy <= copies; copy++) {
-      const ok = await printViaElectron(html, printerName);
+      const ok = await printViaElectron(html, printerName, {
+        receiptNumber: data.receiptNumber,
+        printedCopies: copy - 1,
+        copies,
+      });
       if (!ok) {
         electronSuccess = false;
         break;

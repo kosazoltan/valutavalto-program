@@ -67,7 +67,12 @@ import {
   normalizeSetupAppMode,
   preferredRoleCodesForAppMode,
 } from './setup-app-mode-roles';
-import { printReceipt, type PrintReceiptData } from './printer';
+import {
+  printReceipt,
+  PRINTER_CONFIG_KEY,
+  SERIAL_PORT_CONFIG_KEY,
+  type PrintReceiptData,
+} from './printer';
 
 // --- Típusok ---
 
@@ -2076,7 +2081,13 @@ export class SyncEngine {
       if (!Array.isArray(obligations) || obligations.length === 0) return;
 
       for (const obligation of obligations) {
-        const printed = await printReceipt(this.buildRateChangePrintData(obligation));
+        const printerName = getConfig(PRINTER_CONFIG_KEY)?.trim() || undefined;
+        const serialPort = getConfig(SERIAL_PORT_CONFIG_KEY)?.trim() || undefined;
+        const printed = await printReceipt(
+          this.buildRateChangePrintData(obligation),
+          printerName,
+          serialPort,
+        );
         if (!printed) {
           log.warn(
             `[SyncEngine] Rate-print nyomtatás sikertelen, nincs ACK: ${obligation.distributionId}`,
