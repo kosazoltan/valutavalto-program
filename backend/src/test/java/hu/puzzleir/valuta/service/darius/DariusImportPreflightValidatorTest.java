@@ -2,6 +2,8 @@ package hu.puzzleir.valuta.service.darius;
 
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.BranchBlock;
+import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.FixingBlock;
+import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.FixingRow;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.StockRow;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.TurnoverRow;
 import hu.puzzleir.valuta.entity.ShiftedCalendarDay;
@@ -69,6 +71,7 @@ class DariusImportPreflightValidatorTest {
         DariusImportFileModel duplicateBranches = new DariusImportFileModel(
                 BUSINESS_DAY,
                 "108114",
+                List.of(),
                 List.of(
                         branch("276", false, 0),
                         branch("276", true, 1),
@@ -212,7 +215,50 @@ class DariusImportPreflightValidatorTest {
                 List.of(turnover("EUR", "1", "0", "0", "0", "0", "0", "0")));
 
         assertError(model("108114", BUSINESS_DAY, noSnapshot), "276", "nincs címlet-snapshot");
-        assertError(new DariusImportFileModel(BUSINESS_DAY, "108114", List.of()), "GLOBAL", "nincs jelenthető adat");
+        assertError(new DariusImportFileModel(BUSINESS_DAY, "108114", List.of(), List.of()),
+                "GLOBAL", "nincs jelenthető adat");
+    }
+
+    @Test
+    void rejectsNullAndDuplicateFixingBlocks() {
+        DariusImportFileModel nullBlocks = new DariusImportFileModel(
+                BUSINESS_DAY, "108114", null, List.of(branch("276", false, 0)));
+        DariusImportFileModel duplicateBlocks = new DariusImportFileModel(
+                BUSINESS_DAY,
+                "108114",
+                List.of(
+                        fixing("7001", fixingRow("EUR", "1", "0")),
+                        fixing("7001", fixingRow("USD", "0", "1"))),
+                List.of(branch("276", false, 0)));
+
+        assertError(nullBlocks, "GLOBAL", "fixing");
+        assertError(duplicateBlocks, "GLOBAL", "duplikált", "7001");
+    }
+
+    @Test
+    void validatesFixingCodeRowsAmountsAndDuplicateCurrencies() {
+        DariusImportFileModel invalid = new DariusImportFileModel(
+                BUSINESS_DAY,
+                "108114",
+                List.of(
+                        fixing("70\t01", fixingRow("EUR", "1", "0")),
+                        fixing("7002"),
+                        fixing("7003",
+                                fixingRow("eur", "-1", "1.5"),
+                                fixingRow("USD", "0", "0"),
+                                fixingRow("USD", "2", "0"))),
+                List.of(branch("276", false, 0)));
+
+        List<String> errors = validator.validate(invalid);
+
+        assertThat(errors).anyMatch(error -> error.contains("FIXING:70") && error.contains("TAB"));
+        assertThat(errors).anyMatch(error -> error.contains("FIXING:7002") && error.contains("üres"));
+        assertThat(errors).anyMatch(error -> error.contains("FIXING:7003") && error.contains("ISO"));
+        assertThat(errors).anyMatch(error -> error.contains("FIXING:7003") && error.contains("negatív"));
+        assertThat(errors).anyMatch(error -> error.contains("FIXING:7003") && error.contains("egész"));
+        assertThat(errors).anyMatch(error -> error.contains("FIXING:7003") && error.contains("legalább az egyik"));
+        assertThat(errors).anyMatch(error -> error.contains("FIXING:7003") && error.contains("duplikált")
+                && error.contains("USD"));
     }
 
     @Test
@@ -242,7 +288,15 @@ class DariusImportPreflightValidatorTest {
     }
 
     private static DariusImportFileModel model(String pvCode, LocalDate tnap, BranchBlock branch) {
-        return new DariusImportFileModel(tnap, pvCode, List.of(branch));
+        return new DariusImportFileModel(tnap, pvCode, List.of(), List.of(branch));
+    }
+
+    private static FixingBlock fixing(String code, FixingRow... rows) {
+        return new FixingBlock(code, List.of(rows));
+    }
+
+    private static FixingRow fixingRow(String currency, String delivered, String collected) {
+        return new FixingRow(currency, new BigDecimal(delivered), new BigDecimal(collected));
     }
 
     private static BranchBlock branch(String bankCode, boolean hasPos, int erteknap) {

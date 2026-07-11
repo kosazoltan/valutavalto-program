@@ -7,7 +7,7 @@
       "name": "PuzzleIR",
       "email": "info@puzzleir.hu"
     },
-    "version": "2.28.29"
+    "version": "2.28.32"
   },
   "servers": [
     {
@@ -2346,6 +2346,84 @@
                   "items": {
                     "$ref": "#/components/schemas/DenominationDto"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/darius/fixing-requests/{id}": {
+      "put": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "updateLines",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DariusFixingRequestCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DariusFixingRequestDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/darius/fixing-requests/{id}": {
+      "put": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "updateLines_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DariusFixingRequestCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DariusFixingRequestDto"
                 }
               }
             }
@@ -13035,6 +13113,412 @@
         }
       }
     },
+    "/api/v1/darius/fixing-requests/{id}/cancel": {
+      "post": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "cancel_4",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DariusFixingRequestDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/darius/fixing-requests/{id}/cancel": {
+      "post": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "cancel_5",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DariusFixingRequestDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/darius/fixing-requests/{id}/approve": {
+      "post": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "approve_5",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DariusFixingRequestDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/darius/fixing-requests/{id}/approve": {
+      "post": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "approve_6",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DariusFixingRequestDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/darius/fixing-requests": {
+      "get": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "list_19",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DariusFixingRequestDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "create_21",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DariusFixingRequestCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DariusFixingRequestDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/darius/fixing-requests": {
+      "get": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "list_20",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DariusFixingRequestDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "create_22",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DariusFixingRequestCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DariusFixingRequestDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/darius/bank-branches/{id}/deactivate": {
+      "post": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "deactivateBankBranch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DariusBankBranchDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/darius/bank-branches/{id}/deactivate": {
+      "post": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "deactivateBankBranch_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DariusBankBranchDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/darius/bank-branches": {
+      "get": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "bankBranches",
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DariusBankBranchDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "createBankBranch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DariusBankBranchCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DariusBankBranchDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/darius/bank-branches": {
+      "get": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "bankBranches_1",
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DariusBankBranchDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["darius-fixing-request-controller"],
+        "operationId": "createBankBranch_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DariusBankBranchCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DariusBankBranchDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/daily-sessions/{sessionId}/close": {
       "post": {
         "tags": ["daily-session-controller"],
@@ -13529,7 +14013,7 @@
       },
       "post": {
         "tags": ["currency-group-controller"],
-        "operationId": "create_21",
+        "operationId": "create_23",
         "requestBody": {
           "content": {
             "application/json": {
@@ -13763,7 +14247,7 @@
       "get": {
         "tags": ["compliance-search-template-controller"],
         "summary": "Compliance szűrő-sablonok listája (criteria visszatöltéshez)",
-        "operationId": "list_19",
+        "operationId": "list_21",
         "responses": {
           "200": {
             "description": "OK",
@@ -13783,7 +14267,7 @@
       "post": {
         "tags": ["compliance-search-template-controller"],
         "summary": "Compliance szűrő-sablon mentése (dátum nélkül, cégszinten közös)",
-        "operationId": "create_22",
+        "operationId": "create_24",
         "requestBody": {
           "content": {
             "application/json": {
@@ -13812,7 +14296,7 @@
       "get": {
         "tags": ["compliance-search-audit-controller"],
         "summary": "Keresés-audit napló listája (criteria lenyitáshoz, snapshot nélkül)",
-        "operationId": "list_20",
+        "operationId": "list_22",
         "responses": {
           "200": {
             "description": "OK",
@@ -13832,7 +14316,7 @@
       "post": {
         "tags": ["compliance-search-audit-controller"],
         "summary": "Keresés-eredmény mentése az audit naplóba (snapshot + cím + leírás)",
-        "operationId": "create_23",
+        "operationId": "create_25",
         "requestBody": {
           "content": {
             "application/json": {
@@ -13861,7 +14345,7 @@
       "get": {
         "tags": ["compliance-question-controller"],
         "summary": "Összes compliance-kérdés (inaktív is) — compliance-nézet",
-        "operationId": "list_21",
+        "operationId": "list_23",
         "responses": {
           "200": {
             "description": "OK",
@@ -13881,7 +14365,7 @@
       "post": {
         "tags": ["compliance-question-controller"],
         "summary": "Compliance-kérdés létrehozása",
-        "operationId": "create_24",
+        "operationId": "create_26",
         "requestBody": {
           "content": {
             "application/json": {
@@ -13999,7 +14483,7 @@
       },
       "post": {
         "tags": ["competitor-controller"],
-        "operationId": "create_25",
+        "operationId": "create_27",
         "requestBody": {
           "content": {
             "application/json": {
@@ -14048,7 +14532,7 @@
     "/api/v1/competitions": {
       "get": {
         "tags": ["competition-controller"],
-        "operationId": "list_22",
+        "operationId": "list_24",
         "responses": {
           "200": {
             "description": "OK",
@@ -14067,7 +14551,7 @@
       },
       "post": {
         "tags": ["competition-controller"],
-        "operationId": "create_26",
+        "operationId": "create_28",
         "requestBody": {
           "content": {
             "application/json": {
@@ -14127,7 +14611,7 @@
     "/api/v1/commissions/{id}/approve": {
       "post": {
         "tags": ["commission-calculation-controller"],
-        "operationId": "approve_5",
+        "operationId": "approve_7",
         "parameters": [
           {
             "name": "id",
@@ -14252,7 +14736,7 @@
       },
       "post": {
         "tags": ["commission-rate-controller"],
-        "operationId": "create_27",
+        "operationId": "create_29",
         "requestBody": {
           "content": {
             "application/json": {
@@ -14554,7 +15038,7 @@
     "/api/v1/closing-wizard/{wizardId}/cancel": {
       "post": {
         "tags": ["closing-wizard-controller"],
-        "operationId": "cancel_4",
+        "operationId": "cancel_6",
         "parameters": [
           {
             "name": "wizardId",
@@ -14688,7 +15172,7 @@
       },
       "post": {
         "tags": ["circular-controller"],
-        "operationId": "create_28",
+        "operationId": "create_30",
         "requestBody": {
           "content": {
             "application/json": {
@@ -15572,7 +16056,7 @@
     "/api/v1/camera/export/{requestId}/approve": {
       "post": {
         "tags": ["camera-export-controller"],
-        "operationId": "approve_6",
+        "operationId": "approve_8",
         "parameters": [
           {
             "name": "requestId",
@@ -15601,7 +16085,7 @@
     "/api/camera/export/{requestId}/approve": {
       "post": {
         "tags": ["camera-export-controller"],
-        "operationId": "approve_7",
+        "operationId": "approve_9",
         "parameters": [
           {
             "name": "requestId",
@@ -16023,7 +16507,7 @@
     "/api/v1/branch-groups": {
       "get": {
         "tags": ["branch-group-controller"],
-        "operationId": "list_23",
+        "operationId": "list_25",
         "responses": {
           "200": {
             "description": "OK",
@@ -16042,7 +16526,7 @@
       },
       "post": {
         "tags": ["branch-group-controller"],
-        "operationId": "create_29",
+        "operationId": "create_31",
         "requestBody": {
           "content": {
             "application/json": {
@@ -16238,7 +16722,7 @@
     "/api/v1/banks": {
       "get": {
         "tags": ["bank-controller"],
-        "operationId": "list_24",
+        "operationId": "list_26",
         "parameters": [
           {
             "name": "q",
@@ -16267,7 +16751,7 @@
       },
       "post": {
         "tags": ["bank-controller"],
-        "operationId": "create_30",
+        "operationId": "create_32",
         "requestBody": {
           "content": {
             "application/json": {
@@ -16459,7 +16943,7 @@
     "/api/v1/bank-orders": {
       "get": {
         "tags": ["bank-order-controller"],
-        "operationId": "list_25",
+        "operationId": "list_27",
         "parameters": [
           {
             "name": "status",
@@ -16506,7 +16990,7 @@
       },
       "post": {
         "tags": ["bank-order-controller"],
-        "operationId": "create_31",
+        "operationId": "create_33",
         "requestBody": {
           "content": {
             "application/json": {
@@ -16575,7 +17059,7 @@
     "/api/v1/bank-orders/{id}/cancel": {
       "post": {
         "tags": ["bank-order-controller"],
-        "operationId": "cancel_5",
+        "operationId": "cancel_7",
         "parameters": [
           {
             "name": "id",
@@ -16617,7 +17101,7 @@
     "/api/v1/bank-orders/{id}/approve": {
       "post": {
         "tags": ["bank-order-controller"],
-        "operationId": "approve_8",
+        "operationId": "approve_10",
         "parameters": [
           {
             "name": "id",
@@ -16744,7 +17228,7 @@
       },
       "post": {
         "tags": ["authorized-representative-controller"],
-        "operationId": "create_32",
+        "operationId": "create_34",
         "parameters": [
           {
             "name": "customerId",
@@ -16813,7 +17297,7 @@
       },
       "post": {
         "tags": ["authorization-controller"],
-        "operationId": "create_33",
+        "operationId": "create_35",
         "parameters": [
           {
             "name": "representativeId",
@@ -17493,7 +17977,7 @@
     "/api/v1/arfolyam-internet-links": {
       "get": {
         "tags": ["arfolyam-internet-link-controller"],
-        "operationId": "list_26",
+        "operationId": "list_28",
         "responses": {
           "200": {
             "description": "OK",
@@ -17512,7 +17996,7 @@
       },
       "post": {
         "tags": ["arfolyam-internet-link-controller"],
-        "operationId": "create_34",
+        "operationId": "create_36",
         "requestBody": {
           "content": {
             "application/json": {
@@ -17648,7 +18132,7 @@
     "/api/v1/anonymous-reports": {
       "get": {
         "tags": ["anonymous-report-controller"],
-        "operationId": "list_27",
+        "operationId": "list_29",
         "responses": {
           "200": {
             "description": "OK",
@@ -17667,7 +18151,7 @@
       },
       "post": {
         "tags": ["anonymous-report-controller"],
-        "operationId": "create_35",
+        "operationId": "create_37",
         "requestBody": {
           "content": {
             "application/json": {
@@ -23032,7 +23516,7 @@
     "/api/v1/receipts": {
       "get": {
         "tags": ["receipt-controller"],
-        "operationId": "list_28",
+        "operationId": "list_30",
         "parameters": [
           {
             "name": "transactionId",
@@ -25913,7 +26397,7 @@
     "/api/v1/handover-sheets": {
       "get": {
         "tags": ["handover-sheet-controller"],
-        "operationId": "list_29",
+        "operationId": "list_31",
         "responses": {
           "200": {
             "description": "OK",
@@ -27845,7 +28329,7 @@
     "/api/v1/decade-reports": {
       "get": {
         "tags": ["decade-report-controller"],
-        "operationId": "list_30",
+        "operationId": "list_32",
         "parameters": [
           {
             "name": "branchId",
@@ -28309,6 +28793,122 @@
                     "type": "string",
                     "format": "date"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/darius/import-readiness": {
+      "get": {
+        "tags": ["darius-report-controller"],
+        "operationId": "importReadiness",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DariusImportReadinessDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/darius/import-readiness": {
+      "get": {
+        "tags": ["darius-report-controller"],
+        "operationId": "importReadiness_1",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DariusImportReadinessDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/darius/import-file": {
+      "get": {
+        "tags": ["darius-report-controller"],
+        "operationId": "downloadImportFile",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "erteknap",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/darius/import-file": {
+      "get": {
+        "tags": ["darius-report-controller"],
+        "operationId": "downloadImportFile_1",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "erteknap",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
                 }
               }
             }
@@ -29124,7 +29724,7 @@
     "/api/v1/currency-denomination-images": {
       "get": {
         "tags": ["currency-denomination-image-controller"],
-        "operationId": "list_31",
+        "operationId": "list_33",
         "parameters": [
           {
             "name": "currencyId",
@@ -32127,7 +32727,7 @@
     "/api/v1/bank-api-config": {
       "get": {
         "tags": ["bank-api-config-controller"],
-        "operationId": "list_32",
+        "operationId": "list_34",
         "responses": {
           "200": {
             "description": "OK",
@@ -33294,7 +33894,7 @@
     "/api/v1/trades/{id}": {
       "delete": {
         "tags": ["trade-controller"],
-        "operationId": "cancel_6",
+        "operationId": "cancel_8",
         "parameters": [
           {
             "name": "id",
@@ -33367,7 +33967,7 @@
     "/api/v1/hrk/{id}": {
       "delete": {
         "tags": ["hrk-controller"],
-        "operationId": "cancel_7",
+        "operationId": "cancel_9",
         "parameters": [
           {
             "name": "id",
@@ -36260,6 +36860,95 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "DariusFixingRequestCreateDto": {
+        "type": "object",
+        "properties": {
+          "bankBranchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "note": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DariusFixingRequestLineDto"
+            }
+          }
+        }
+      },
+      "DariusFixingRequestLineDto": {
+        "type": "object",
+        "properties": {
+          "currencyCode": {
+            "type": "string"
+          },
+          "deliveredAmount": {
+            "type": "number"
+          },
+          "collectedAmount": {
+            "type": "number"
+          }
+        }
+      },
+      "DariusFixingRequestDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bankBranchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bankBranchCode": {
+            "type": "string"
+          },
+          "bankBranchName": {
+            "type": "string"
+          },
+          "requestDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "approvedBy": {
+            "type": "string"
+          },
+          "approvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "includedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DariusFixingRequestLineDto"
+            }
           }
         }
       },
@@ -45012,6 +45701,35 @@
           }
         }
       },
+      "DariusBankBranchDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bankBranchCode": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DariusBankBranchCreateDto": {
+        "type": "object",
+        "properties": {
+          "bankBranchCode": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "DailySessionDto": {
         "type": "object",
         "properties": {
@@ -48321,16 +49039,16 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "paged": {
-            "type": "boolean"
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
           },
           "pageNumber": {
             "type": "integer",
             "format": "int32"
           },
-          "pageSize": {
-            "type": "integer",
-            "format": "int32"
+          "paged": {
+            "type": "boolean"
           },
           "unpaged": {
             "type": "boolean"
@@ -51213,17 +51931,17 @@
           "source": {
             "type": "string"
           },
-          "lastUpdated": {
-            "type": "string",
-            "format": "date-time"
+          "bankBuyRate": {
+            "type": "number",
+            "deprecated": true
           },
           "bankSellRate": {
             "type": "number",
             "deprecated": true
           },
-          "bankBuyRate": {
-            "type": "number",
-            "deprecated": true
+          "lastUpdated": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -53536,6 +54254,37 @@
             "items": {
               "$ref": "#/components/schemas/DariusDailyReportDto"
             }
+          }
+        }
+      },
+      "DariusImportReadinessDto": {
+        "type": "object",
+        "properties": {
+          "companyCode": {
+            "type": "string"
+          },
+          "pvCodeConfigured": {
+            "type": "boolean"
+          },
+          "activeBranchCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "branchesWithInvalidBankCode": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "activeBankBranchCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fixingConfigured": {
+            "type": "boolean"
+          },
+          "ready": {
+            "type": "boolean"
           }
         }
       },

@@ -77,7 +77,18 @@ describe('DariusReportPage backend contract', () => {
     mocks.retryFailed.mockResolvedValue({ data: [] })
     mocks.getById.mockResolvedValue({ data: dailyReport })
     mocks.getByDate.mockResolvedValue({ data: dailyReport })
-    mocks.downloadImportFile.mockResolvedValue({ data: new Blob(['import-adat']) })
+    mocks.downloadImportFile.mockResolvedValue({
+      data: new Blob(['import-adat']),
+      headers: {
+        'content-disposition': 'attachment; filename="raiffeisen_import_BEST_2026-07-01.imp"',
+      },
+    })
+  })
+
+  it('megjeleníti a Fixing igények fület', async () => {
+    render(<DariusReportPage />)
+
+    expect(await screen.findByRole('button', { name: 'Fixing igények' })).toBeInTheDocument()
   })
 
   it('napi lekérdezéskor a backend by-date reprezentációját jeleníti meg', async () => {
@@ -153,7 +164,47 @@ describe('DariusReportPage backend contract', () => {
     await user.click(screen.getByRole('button', { name: 'Import fájl letöltése (.imp)' }))
 
     await waitFor(() => {
-      expect(mocks.downloadImportFile).toHaveBeenCalledWith('2026-07-01')
+      expect(mocks.downloadImportFile).toHaveBeenCalledWith('2026-07-01', 0)
+      expect(mocks.downloadBlob).toHaveBeenCalledWith(
+        expect.any(Blob),
+        'raiffeisen_import_BEST_2026-07-01.imp',
+      )
+    })
+  })
+
+  it('a megadott értéknappal kéri le az importfájlt', async () => {
+    const user = userEvent.setup()
+    render(<DariusReportPage />)
+
+    const erteknapInput = screen.getByRole('spinbutton', { name: 'Értéknap (T+N)' })
+    expect(erteknapInput).toHaveAttribute('min', '-200')
+    expect(erteknapInput).toHaveAttribute('max', '200')
+    await user.clear(erteknapInput)
+    await user.type(erteknapInput, '1')
+    const dateInputs = await screen.findAllByDisplayValue(/\d{4}-\d{2}-\d{2}/)
+    await user.clear(dateInputs[2]!)
+    await user.type(dateInputs[2]!, '2026-07-01')
+    await user.click(screen.getByRole('button', { name: 'Import fájl letöltése (.imp)' }))
+
+    await waitFor(() => {
+      expect(mocks.downloadImportFile).toHaveBeenCalledWith('2026-07-01', 1)
+    })
+  })
+
+  it('Content-Disposition nélkül biztonságos alapértelmezett fájlnevet használ', async () => {
+    const user = userEvent.setup()
+    mocks.downloadImportFile.mockResolvedValue({
+      data: new Blob(['import-adat']),
+      headers: {},
+    })
+    render(<DariusReportPage />)
+
+    const dateInputs = await screen.findAllByDisplayValue(/\d{4}-\d{2}-\d{2}/)
+    await user.clear(dateInputs[2]!)
+    await user.type(dateInputs[2]!, '2026-07-01')
+    await user.click(screen.getByRole('button', { name: 'Import fájl letöltése (.imp)' }))
+
+    await waitFor(() => {
       expect(mocks.downloadBlob).toHaveBeenCalledWith(
         expect.any(Blob),
         'raiffeisen_import_2026-07-01.imp',

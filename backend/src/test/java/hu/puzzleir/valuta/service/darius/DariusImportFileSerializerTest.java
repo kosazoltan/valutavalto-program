@@ -2,6 +2,8 @@ package hu.puzzleir.valuta.service.darius;
 
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.BranchBlock;
+import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.FixingBlock;
+import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.FixingRow;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.StockRow;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.TurnoverRow;
 import org.junit.jupiter.api.Test;
@@ -32,7 +34,7 @@ class DariusImportFileSerializerTest {
                         turnover("HUF", "0", "0", "5000", "20000", "100", "25", "30"),
                         turnover("EUR", "200", "100", "50", "12.50", "0", "0", "0")));
         DariusImportFileModel model = new DariusImportFileModel(
-                LocalDate.of(2026, 7, 1), "108114", List.of(branch));
+                LocalDate.of(2026, 7, 1), "108114", List.of(), List.of(branch));
 
         byte[] bytes = serializer.serialize(model);
 
@@ -109,15 +111,71 @@ class DariusImportFileSerializerTest {
         BranchBlock low = branch("276");
 
         String content = new String(serializer.serialize(new DariusImportFileModel(
-                LocalDate.of(2026, 7, 1), "108114", List.of(high, low))), StandardCharsets.UTF_8);
+                LocalDate.of(2026, 7, 1), "108114", List.of(), List.of(high, low))), StandardCharsets.UTF_8);
 
         assertThat(content.indexOf("UZLETHELYISEG_AZONOSITO\t276"))
                 .isLessThan(content.indexOf("UZLETHELYISEG_AZONOSITO\t1000"));
     }
 
+    @Test
+    void emitsFixingBlocksAfterHeaderBeforeStockBlocks() {
+        FixingBlock high = new FixingBlock("7002", List.of(new FixingRow(
+                "USD", BigDecimal.ZERO, new BigDecimal("20000"))));
+        FixingBlock low = new FixingBlock("7001", List.of(new FixingRow(
+                "EUR", new BigDecimal("50000"), BigDecimal.ZERO)));
+
+        String content = new String(serializer.serialize(new DariusImportFileModel(
+                LocalDate.of(2026, 7, 1),
+                "108114",
+                List.of(high, low),
+                List.of(branch("276")))), StandardCharsets.UTF_8);
+
+        String crlf = new String(new char[]{13, 10});
+        String expectedPrefix = String.join(crlf,
+                "BEGIN",
+                "TNAP\t2026-07-01",
+                "PV_AZONOSITO\t108114",
+                "JELENTES UZLETKOTES",
+                "BANKFIOK_AZONOSITO\t7001",
+                "EUR\t50000\t0",
+                "JELENTES END",
+                "JELENTES UZLETKOTES",
+                "BANKFIOK_AZONOSITO\t7002",
+                "USD\t0\t20000",
+                "JELENTES END",
+                "JELENTES PENZTARALLOMANY") + crlf;
+        assertThat(content).startsWith(expectedPrefix);
+    }
+
+    @Test
+    void emitsFixingRowsSortedByCurrencyAsIntegers() {
+        FixingBlock block = new FixingBlock("7001", List.of(
+                new FixingRow("USD", BigDecimal.ZERO, new BigDecimal("20000.00")),
+                new FixingRow("EUR", new BigDecimal("50000.00"), BigDecimal.ZERO)));
+
+        String content = new String(serializer.serialize(new DariusImportFileModel(
+                LocalDate.of(2026, 7, 1),
+                "108114",
+                List.of(block),
+                List.of(branch("276")))), StandardCharsets.UTF_8);
+
+        String crlf = new String(new char[]{13, 10});
+        assertThat(content).contains("BANKFIOK_AZONOSITO\t7001" + crlf
+                + "EUR\t50000\t0" + crlf
+                + "USD\t0\t20000" + crlf
+                + "JELENTES END" + crlf);
+    }
+
+    @Test
+    void omitsFixingSectionEntirelyWhenNoBlocks() {
+        String content = serialize(branch("276"));
+
+        assertThat(content).doesNotContain("JELENTES UZLETKOTES");
+    }
+
     private String serialize(BranchBlock branch) {
         return new String(serializer.serialize(new DariusImportFileModel(
-                LocalDate.of(2026, 7, 1), "108114", List.of(branch))), StandardCharsets.UTF_8);
+                LocalDate.of(2026, 7, 1), "108114", List.of(), List.of(branch))), StandardCharsets.UTF_8);
     }
 
     private static BranchBlock branch(String bankCode) {

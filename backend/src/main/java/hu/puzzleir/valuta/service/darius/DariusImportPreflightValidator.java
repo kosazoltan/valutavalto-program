@@ -2,6 +2,8 @@ package hu.puzzleir.valuta.service.darius;
 
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.BranchBlock;
+import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.FixingBlock;
+import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.FixingRow;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.StockRow;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.TurnoverRow;
 import hu.puzzleir.valuta.entity.ShiftedCalendarDay;
@@ -72,6 +74,14 @@ public class DariusImportPreflightValidator {
                 errors.add(global("a TNAP csak banki munkanap lehet"));
             }
         }
+        if (model.fixingBlocks() == null) {
+            errors.add(global("hiányzik a fixing blokklista"));
+        } else {
+            validateUniqueFixingIdentifiers(model.fixingBlocks(), errors);
+            for (FixingBlock block : model.fixingBlocks()) {
+                validateFixingBlock(block, errors);
+            }
+        }
         if (model.branches() == null || model.branches().isEmpty()) {
             errors.add(global("nincs jelenthető adat egyetlen aktív irodához sem"));
             return errors;
@@ -82,6 +92,59 @@ public class DariusImportPreflightValidator {
             validateBranch(branch, errors);
         }
         return errors;
+    }
+
+    private void validateUniqueFixingIdentifiers(List<FixingBlock> blocks, List<String> errors) {
+        Set<String> seen = new HashSet<>();
+        Set<String> duplicates = new LinkedHashSet<>();
+        for (FixingBlock block : blocks) {
+            if (block != null && !seen.add(block.bankfiokAzonosito())) {
+                duplicates.add(String.valueOf(block.bankfiokAzonosito()));
+            }
+        }
+        if (!duplicates.isEmpty()) {
+            errors.add(global("duplikált BANKFIOK_AZONOSITO: " + String.join(", ", duplicates)));
+        }
+    }
+
+    private void validateFixingBlock(FixingBlock block, List<String> errors) {
+        if (block == null) {
+            errors.add(global("hiányzó UZLETKOTES blokk"));
+            return;
+        }
+        String code = block.bankfiokAzonosito();
+        String fixingScope = "FIXING:" + String.valueOf(code);
+        if (code == null || code.isBlank() || code.chars().anyMatch(Character::isWhitespace)) {
+            errors.add(error(fixingScope,
+                    "a BANKFIOK_AZONOSITO nem lehet üres, whitespace-os vagy TAB-os"));
+        }
+        if (block.rows() == null || block.rows().isEmpty()) {
+            errors.add(error(fixingScope, "üres az UZLETKOTES sorlista"));
+            return;
+        }
+
+        Set<String> seenCurrencies = new HashSet<>();
+        Set<String> duplicateCurrencies = new LinkedHashSet<>();
+        for (FixingRow row : block.rows()) {
+            if (row == null) {
+                errors.add(error(fixingScope, "hiányzó UZLETKOTES adatsor"));
+                continue;
+            }
+            validateCurrencyCode(fixingScope, row.currencyCode(), errors);
+            validateNonNegativeInteger(fixingScope, "beszállított összeg", row.deliveredAmount(), errors);
+            validateNonNegativeInteger(fixingScope, "elvitt összeg", row.collectedAmount(), errors);
+            if (isZero(row.deliveredAmount()) && isZero(row.collectedAmount())) {
+                errors.add(error(fixingScope, "legalább az egyik összegnek pozitívnak kell lennie"));
+            }
+            if (!seenCurrencies.add(row.currencyCode())) {
+                duplicateCurrencies.add(String.valueOf(row.currencyCode()));
+            }
+        }
+        if (!duplicateCurrencies.isEmpty()) {
+            errors.add(error(fixingScope,
+                    "duplikált valutakód az UZLETKOTES blokkban: "
+                            + String.join(", ", duplicateCurrencies)));
+        }
     }
 
     private void validateUniqueBranchIdentifiers(List<BranchBlock> branches, List<String> errors) {
@@ -318,6 +381,10 @@ public class DariusImportPreflightValidator {
 
     private boolean positive(BigDecimal value) {
         return value != null && value.signum() > 0;
+    }
+
+    private boolean isZero(BigDecimal value) {
+        return value != null && value.signum() == 0;
     }
 
     private boolean nonZero(BigDecimal value) {

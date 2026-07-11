@@ -1,7 +1,14 @@
 package hu.puzzleir.valuta.config;
 
+import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
+import org.springframework.mock.web.MockFilterChain;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+
+import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -47,5 +54,18 @@ class ProductionCorsFilterTest {
     @DisplayName("case-insensitive illesztés")
     void testCaseInsensitive() {
         assertThat(filter.matchesPattern("HTTPS://EXCVALUTA.COM", "https://excvaluta.com")).isTrue();
+    }
+
+    @Test
+    @DisplayName("engedélyezett origin számára olvashatóvá teszi a Content-Disposition headert")
+    void exposesContentDispositionForAllowedOrigin() throws ServletException, IOException {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/darius/import-file");
+        request.addHeader(HttpHeaders.ORIGIN, "https://excvaluta.com");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, new MockFilterChain());
+
+        assertThat(response.getHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS))
+                .isEqualTo(HttpHeaders.CONTENT_DISPOSITION);
     }
 }

@@ -34,5 +34,8 @@ public class IntegrationTransportProperties {
 
         /** FS-15: cégkód (Company.code) → banki PV_AZONOSITO. Hiánya export-tiltás. */
         private Map<String, String> pvCodes = new HashMap<>();
+
+        /** FS-15 prod-provisioning: vesszővel elválasztott cégkód=PV_AZONOSITO párok. */
+        private String pvCodesEnv;
     }
 }

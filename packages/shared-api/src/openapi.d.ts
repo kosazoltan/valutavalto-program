@@ -644,6 +644,38 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/darius/fixing-requests/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put: operations['updateLines']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/darius/fixing-requests/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put: operations['updateLines_1']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/daily-checklist/{checklistId}/items/{itemNumber}': {
     parameters: {
       query?: never
@@ -5174,6 +5206,166 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/darius/fixing-requests/{id}/cancel': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['cancel_4']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/darius/fixing-requests/{id}/cancel': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['cancel_5']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/darius/fixing-requests/{id}/approve': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['approve_5']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/darius/fixing-requests/{id}/approve': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['approve_6']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/darius/fixing-requests': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['list_19']
+    put?: never
+    post: operations['create_21']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/darius/fixing-requests': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['list_20']
+    put?: never
+    post: operations['create_22']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/darius/bank-branches/{id}/deactivate': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['deactivateBankBranch']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/darius/bank-branches/{id}/deactivate': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['deactivateBankBranch_1']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/darius/bank-branches': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['bankBranches']
+    put?: never
+    post: operations['createBankBranch']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/darius/bank-branches': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['bankBranches_1']
+    put?: never
+    post: operations['createBankBranch_1']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/daily-sessions/{sessionId}/close': {
     parameters: {
       query?: never
@@ -5423,7 +5615,7 @@ export interface paths {
     }
     get: operations['getAll_1']
     put?: never
-    post: operations['create_21']
+    post: operations['create_23']
     delete?: never
     options?: never
     head?: never
@@ -5502,10 +5694,10 @@ export interface paths {
       cookie?: never
     }
     /** Compliance szűrő-sablonok listája (criteria visszatöltéshez) */
-    get: operations['list_19']
+    get: operations['list_21']
     put?: never
     /** Compliance szűrő-sablon mentése (dátum nélkül, cégszinten közös) */
-    post: operations['create_22']
+    post: operations['create_24']
     delete?: never
     options?: never
     head?: never
@@ -5520,10 +5712,10 @@ export interface paths {
       cookie?: never
     }
     /** Keresés-audit napló listája (criteria lenyitáshoz, snapshot nélkül) */
-    get: operations['list_20']
+    get: operations['list_22']
     put?: never
     /** Keresés-eredmény mentése az audit naplóba (snapshot + cím + leírás) */
-    post: operations['create_23']
+    post: operations['create_25']
     delete?: never
     options?: never
     head?: never
@@ -5538,10 +5730,10 @@ export interface paths {
       cookie?: never
     }
     /** Összes compliance-kérdés (inaktív is) — compliance-nézet */
-    get: operations['list_21']
+    get: operations['list_23']
     put?: never
     /** Compliance-kérdés létrehozása */
-    post: operations['create_24']
+    post: operations['create_26']
     delete?: never
     options?: never
     head?: never
@@ -5575,7 +5767,7 @@ export interface paths {
     }
     get: operations['getAll_2']
     put?: never
-    post: operations['create_25']
+    post: operations['create_27']
     delete?: never
     options?: never
     head?: never
@@ -5605,9 +5797,9 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_22']
+    get: operations['list_24']
     put?: never
-    post: operations['create_26']
+    post: operations['create_28']
     delete?: never
     options?: never
     head?: never
@@ -5639,7 +5831,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    post: operations['approve_5']
+    post: operations['approve_7']
     delete?: never
     options?: never
     head?: never
@@ -5687,7 +5879,7 @@ export interface paths {
     }
     get: operations['getAll_3']
     put?: never
-    post: operations['create_27']
+    post: operations['create_29']
     delete?: never
     options?: never
     head?: never
@@ -5799,7 +5991,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    post: operations['cancel_4']
+    post: operations['cancel_6']
     delete?: never
     options?: never
     head?: never
@@ -5863,7 +6055,7 @@ export interface paths {
     }
     get: operations['findAll_1']
     put?: never
-    post: operations['create_28']
+    post: operations['create_30']
     delete?: never
     options?: never
     head?: never
@@ -6301,7 +6493,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    post: operations['approve_6']
+    post: operations['approve_8']
     delete?: never
     options?: never
     head?: never
@@ -6317,7 +6509,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    post: operations['approve_7']
+    post: operations['approve_9']
     delete?: never
     options?: never
     head?: never
@@ -6459,9 +6651,9 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_23']
+    get: operations['list_25']
     put?: never
-    post: operations['create_29']
+    post: operations['create_31']
     delete?: never
     options?: never
     head?: never
@@ -6539,9 +6731,9 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_24']
+    get: operations['list_26']
     put?: never
-    post: operations['create_30']
+    post: operations['create_32']
     delete?: never
     options?: never
     head?: never
@@ -6603,9 +6795,9 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_25']
+    get: operations['list_27']
     put?: never
-    post: operations['create_31']
+    post: operations['create_33']
     delete?: never
     options?: never
     head?: never
@@ -6637,7 +6829,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    post: operations['cancel_5']
+    post: operations['cancel_7']
     delete?: never
     options?: never
     head?: never
@@ -6653,7 +6845,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    post: operations['approve_8']
+    post: operations['approve_10']
     delete?: never
     options?: never
     head?: never
@@ -6717,7 +6909,7 @@ export interface paths {
     }
     get: operations['findAll_2']
     put?: never
-    post: operations['create_32']
+    post: operations['create_34']
     delete?: never
     options?: never
     head?: never
@@ -6733,7 +6925,7 @@ export interface paths {
     }
     get: operations['findByRepresentative']
     put?: never
-    post: operations['create_33']
+    post: operations['create_35']
     delete?: never
     options?: never
     head?: never
@@ -7067,9 +7259,9 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_26']
+    get: operations['list_28']
     put?: never
-    post: operations['create_34']
+    post: operations['create_36']
     delete?: never
     options?: never
     head?: never
@@ -7131,9 +7323,9 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_27']
+    get: operations['list_29']
     put?: never
-    post: operations['create_35']
+    post: operations['create_37']
     delete?: never
     options?: never
     head?: never
@@ -9700,7 +9892,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_28']
+    get: operations['list_30']
     put?: never
     post?: never
     delete?: never
@@ -11145,7 +11337,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_29']
+    get: operations['list_31']
     put?: never
     post?: never
     delete?: never
@@ -12169,7 +12361,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_30']
+    get: operations['list_32']
     put?: never
     post?: never
     delete?: never
@@ -12346,6 +12538,70 @@ export interface paths {
       cookie?: never
     }
     get: operations['getMissingDates_1']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/darius/import-readiness': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['importReadiness']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/darius/import-readiness': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['importReadiness_1']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/darius/import-file': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['downloadImportFile']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/darius/import-file': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['downloadImportFile_1']
     put?: never
     post?: never
     delete?: never
@@ -12777,7 +13033,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_31']
+    get: operations['list_33']
     put?: never
     post?: never
     delete?: never
@@ -14364,7 +14620,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['list_32']
+    get: operations['list_34']
     put?: never
     post?: never
     delete?: never
@@ -14870,7 +15126,7 @@ export interface paths {
     get?: never
     put?: never
     post?: never
-    delete: operations['cancel_6']
+    delete: operations['cancel_8']
     options?: never
     head?: never
     patch?: never
@@ -14918,7 +15174,7 @@ export interface paths {
     get?: never
     put?: never
     post?: never
-    delete: operations['cancel_7']
+    delete: operations['cancel_9']
     options?: never
     head?: never
     patch?: never
@@ -16091,6 +16347,40 @@ export interface components {
       active?: boolean
       /** Format: date-time */
       updatedAt?: string
+    }
+    DariusFixingRequestCreateDto: {
+      /** Format: uuid */
+      bankBranchId?: string
+      /** Format: date */
+      requestDate?: string
+      note?: string
+      lines?: components['schemas']['DariusFixingRequestLineDto'][]
+    }
+    DariusFixingRequestLineDto: {
+      currencyCode?: string
+      deliveredAmount?: number
+      collectedAmount?: number
+    }
+    DariusFixingRequestDto: {
+      /** Format: uuid */
+      id?: string
+      /** Format: uuid */
+      bankBranchId?: string
+      bankBranchCode?: string
+      bankBranchName?: string
+      /** Format: date */
+      requestDate?: string
+      status?: string
+      note?: string
+      createdBy?: string
+      /** Format: date-time */
+      createdAt?: string
+      approvedBy?: string
+      /** Format: date-time */
+      approvedAt?: string
+      /** Format: date-time */
+      includedAt?: string
+      lines?: components['schemas']['DariusFixingRequestLineDto'][]
     }
     CheckItemRequest: {
       checked?: boolean
@@ -19345,6 +19635,17 @@ export interface components {
       avgSellRate?: number
       handlingFeeHuf?: number
     }
+    DariusBankBranchDto: {
+      /** Format: uuid */
+      id?: string
+      bankBranchCode?: string
+      name?: string
+      active?: boolean
+    }
+    DariusBankBranchCreateDto: {
+      bankBranchCode?: string
+      name?: string
+    }
     DailySessionDto: {
       /** Format: int64 */
       id?: number
@@ -20607,11 +20908,11 @@ export interface components {
       /** Format: int64 */
       offset?: number
       sort?: components['schemas']['SortObject']
-      paged?: boolean
-      /** Format: int32 */
-      pageNumber?: number
       /** Format: int32 */
       pageSize?: number
+      /** Format: int32 */
+      pageNumber?: number
+      paged?: boolean
       unpaged?: boolean
     }
     SortObject: {
@@ -21712,12 +22013,12 @@ export interface components {
       /** Format: date-time */
       validFrom?: string
       source?: string
-      /** Format: date-time */
-      lastUpdated?: string
-      /** @deprecated */
-      bankSellRate?: number
       /** @deprecated */
       bankBuyRate?: number
+      /** @deprecated */
+      bankSellRate?: number
+      /** Format: date-time */
+      lastUpdated?: string
     }
     CompetitorRateDTO: {
       /** Format: uuid */
@@ -22597,6 +22898,17 @@ export interface components {
       /** Format: int32 */
       totalTransactionCount?: number
       dailyReports?: components['schemas']['DariusDailyReportDto'][]
+    }
+    DariusImportReadinessDto: {
+      companyCode?: string
+      pvCodeConfigured?: boolean
+      /** Format: int32 */
+      activeBranchCount?: number
+      branchesWithInvalidBankCode?: string[]
+      /** Format: int32 */
+      activeBankBranchCount?: number
+      fixingConfigured?: boolean
+      ready?: boolean
     }
     DailyClosingValidation: {
       /** Format: date */
@@ -25073,6 +25385,58 @@ export interface operations {
         }
         content: {
           '*/*': components['schemas']['DenominationDto'][]
+        }
+      }
+    }
+  }
+  updateLines: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DariusFixingRequestCreateDto']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusFixingRequestDto']
+        }
+      }
+    }
+  }
+  updateLines_1: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DariusFixingRequestCreateDto']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusFixingRequestDto']
         }
       }
     }
@@ -33263,6 +33627,322 @@ export interface operations {
       }
     }
   }
+  cancel_4: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusFixingRequestDto']
+        }
+      }
+    }
+  }
+  cancel_5: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusFixingRequestDto']
+        }
+      }
+    }
+  }
+  approve_5: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusFixingRequestDto']
+        }
+      }
+    }
+  }
+  approve_6: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusFixingRequestDto']
+        }
+      }
+    }
+  }
+  list_19: {
+    parameters: {
+      query: {
+        date: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusFixingRequestDto'][]
+        }
+      }
+    }
+  }
+  create_21: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DariusFixingRequestCreateDto']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusFixingRequestDto']
+        }
+      }
+    }
+  }
+  list_20: {
+    parameters: {
+      query: {
+        date: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusFixingRequestDto'][]
+        }
+      }
+    }
+  }
+  create_22: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DariusFixingRequestCreateDto']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusFixingRequestDto']
+        }
+      }
+    }
+  }
+  deactivateBankBranch: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusBankBranchDto']
+        }
+      }
+    }
+  }
+  deactivateBankBranch_1: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusBankBranchDto']
+        }
+      }
+    }
+  }
+  bankBranches: {
+    parameters: {
+      query?: {
+        includeInactive?: boolean
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusBankBranchDto'][]
+        }
+      }
+    }
+  }
+  createBankBranch: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DariusBankBranchCreateDto']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusBankBranchDto']
+        }
+      }
+    }
+  }
+  bankBranches_1: {
+    parameters: {
+      query?: {
+        includeInactive?: boolean
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusBankBranchDto'][]
+        }
+      }
+    }
+  }
+  createBankBranch_1: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DariusBankBranchCreateDto']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusBankBranchDto']
+        }
+      }
+    }
+  }
   closeDayById: {
     parameters: {
       query?: {
@@ -33648,7 +34328,7 @@ export interface operations {
       }
     }
   }
-  create_21: {
+  create_23: {
     parameters: {
       query?: never
       header?: never
@@ -33798,7 +34478,7 @@ export interface operations {
       }
     }
   }
-  list_19: {
+  list_21: {
     parameters: {
       query?: never
       header?: never
@@ -33818,7 +34498,7 @@ export interface operations {
       }
     }
   }
-  create_22: {
+  create_24: {
     parameters: {
       query?: never
       header?: never
@@ -33842,7 +34522,7 @@ export interface operations {
       }
     }
   }
-  list_20: {
+  list_22: {
     parameters: {
       query?: never
       header?: never
@@ -33862,7 +34542,7 @@ export interface operations {
       }
     }
   }
-  create_23: {
+  create_25: {
     parameters: {
       query?: never
       header?: never
@@ -33886,7 +34566,7 @@ export interface operations {
       }
     }
   }
-  list_21: {
+  list_23: {
     parameters: {
       query?: never
       header?: never
@@ -33906,7 +34586,7 @@ export interface operations {
       }
     }
   }
-  create_24: {
+  create_26: {
     parameters: {
       query?: never
       header?: never
@@ -33998,7 +34678,7 @@ export interface operations {
       }
     }
   }
-  create_25: {
+  create_27: {
     parameters: {
       query?: never
       header?: never
@@ -34044,7 +34724,7 @@ export interface operations {
       }
     }
   }
-  list_22: {
+  list_24: {
     parameters: {
       query?: never
       header?: never
@@ -34064,7 +34744,7 @@ export interface operations {
       }
     }
   }
-  create_26: {
+  create_28: {
     parameters: {
       query?: never
       header?: never
@@ -34110,7 +34790,7 @@ export interface operations {
       }
     }
   }
-  approve_5: {
+  approve_7: {
     parameters: {
       query?: never
       header?: never
@@ -34198,7 +34878,7 @@ export interface operations {
       }
     }
   }
-  create_27: {
+  create_29: {
     parameters: {
       query?: never
       header?: never
@@ -34406,7 +35086,7 @@ export interface operations {
       }
     }
   }
-  cancel_4: {
+  cancel_6: {
     parameters: {
       query?: never
       header?: never
@@ -34517,7 +35197,7 @@ export interface operations {
       }
     }
   }
-  create_28: {
+  create_30: {
     parameters: {
       query?: never
       header?: never
@@ -35171,7 +35851,7 @@ export interface operations {
       }
     }
   }
-  approve_6: {
+  approve_8: {
     parameters: {
       query?: never
       header?: never
@@ -35193,7 +35873,7 @@ export interface operations {
       }
     }
   }
-  approve_7: {
+  approve_9: {
     parameters: {
       query?: never
       header?: never
@@ -35443,7 +36123,7 @@ export interface operations {
       }
     }
   }
-  list_23: {
+  list_25: {
     parameters: {
       query?: never
       header?: never
@@ -35463,7 +36143,7 @@ export interface operations {
       }
     }
   }
-  create_29: {
+  create_31: {
     parameters: {
       query?: never
       header?: never
@@ -35629,7 +36309,7 @@ export interface operations {
       }
     }
   }
-  list_24: {
+  list_26: {
     parameters: {
       query?: {
         q?: string
@@ -35651,7 +36331,7 @@ export interface operations {
       }
     }
   }
-  create_30: {
+  create_32: {
     parameters: {
       query?: never
       header?: never
@@ -35753,7 +36433,7 @@ export interface operations {
       }
     }
   }
-  list_25: {
+  list_27: {
     parameters: {
       query?: {
         status?: 'PENDING' | 'APPROVED' | 'EXECUTED' | 'CANCELLED'
@@ -35777,7 +36457,7 @@ export interface operations {
       }
     }
   }
-  create_31: {
+  create_33: {
     parameters: {
       query?: never
       header?: never
@@ -35829,7 +36509,7 @@ export interface operations {
       }
     }
   }
-  cancel_5: {
+  cancel_7: {
     parameters: {
       query?: never
       header?: never
@@ -35857,7 +36537,7 @@ export interface operations {
       }
     }
   }
-  approve_8: {
+  approve_10: {
     parameters: {
       query?: never
       header?: never
@@ -35965,7 +36645,7 @@ export interface operations {
       }
     }
   }
-  create_32: {
+  create_34: {
     parameters: {
       query: {
         customerId: number
@@ -36013,7 +36693,7 @@ export interface operations {
       }
     }
   }
-  create_33: {
+  create_35: {
     parameters: {
       query?: {
         workerId?: number
@@ -36517,7 +37197,7 @@ export interface operations {
       }
     }
   }
-  list_26: {
+  list_28: {
     parameters: {
       query?: never
       header?: never
@@ -36537,7 +37217,7 @@ export interface operations {
       }
     }
   }
-  create_34: {
+  create_36: {
     parameters: {
       query?: never
       header?: never
@@ -36655,7 +37335,7 @@ export interface operations {
       }
     }
   }
-  list_27: {
+  list_29: {
     parameters: {
       query?: never
       header?: never
@@ -36675,7 +37355,7 @@ export interface operations {
       }
     }
   }
-  create_35: {
+  create_37: {
     parameters: {
       query?: never
       header?: never
@@ -40361,7 +41041,7 @@ export interface operations {
       }
     }
   }
-  list_28: {
+  list_30: {
     parameters: {
       query?: {
         transactionId?: string
@@ -42353,7 +43033,7 @@ export interface operations {
       }
     }
   }
-  list_29: {
+  list_31: {
     parameters: {
       query?: never
       header?: never
@@ -43772,7 +44452,7 @@ export interface operations {
       }
     }
   }
-  list_30: {
+  list_32: {
     parameters: {
       query: {
         branchId: string
@@ -44044,6 +44724,92 @@ export interface operations {
         }
         content: {
           '*/*': string[]
+        }
+      }
+    }
+  }
+  importReadiness: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusImportReadinessDto']
+        }
+      }
+    }
+  }
+  importReadiness_1: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DariusImportReadinessDto']
+        }
+      }
+    }
+  }
+  downloadImportFile: {
+    parameters: {
+      query: {
+        date: string
+        erteknap?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': string
+        }
+      }
+    }
+  }
+  downloadImportFile_1: {
+    parameters: {
+      query: {
+        date: string
+        erteknap?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': string
         }
       }
     }
@@ -44621,7 +45387,7 @@ export interface operations {
       }
     }
   }
-  list_31: {
+  list_33: {
     parameters: {
       query?: {
         currencyId?: number
@@ -46786,7 +47552,7 @@ export interface operations {
       }
     }
   }
-  list_32: {
+  list_34: {
     parameters: {
       query?: never
       header?: never
@@ -47498,7 +48264,7 @@ export interface operations {
       }
     }
   }
-  cancel_6: {
+  cancel_8: {
     parameters: {
       query?: never
       header?: never
@@ -47560,7 +48326,7 @@ export interface operations {
       }
     }
   }
-  cancel_7: {
+  cancel_9: {
     parameters: {
       query?: never
       header?: never

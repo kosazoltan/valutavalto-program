@@ -75,7 +75,7 @@ public class DariusReportService {
                     String.format("A %s napi Darius jelentés már beküldve (%s), nem módosítható!", date, existingStatus));
             }
             // DRAFT/GENERATED/FAILED: felülírjuk
-            lineRepository.deleteByReportId(existing.get().getId());
+            lineRepository.deleteByCompanyIdAndReportId(companyId, existing.get().getId());
         }
 
         // Report entity
@@ -180,7 +180,8 @@ public class DariusReportService {
      */
     @Transactional(rollbackFor = Exception.class)
     public DariusDailyReportDto approveReport(UUID reportId) {
-        DariusDailyReport report = findReport(reportId);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        DariusDailyReport report = findReport(reportId, companyId);
 
         if (report.getStatus() != DariusReportStatus.GENERATED) {
             throw new ValidationException(
@@ -215,7 +216,8 @@ public class DariusReportService {
      */
     @Transactional(rollbackFor = Exception.class)
     public DariusDailyReportDto submitReport(UUID reportId) {
-        DariusDailyReport report = findReport(reportId);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        DariusDailyReport report = findReport(reportId, companyId);
 
         if (report.getStatus() != DariusReportStatus.GENERATED &&
             report.getStatus() != DariusReportStatus.FAILED) {
@@ -299,12 +301,14 @@ public class DariusReportService {
     // === 4. RETRY ===
 
     /**
-     * Automatikus retry: újraküldi a FAILED státuszú, retry limiten belüli jelentéseket.
-     * Scheduled job-ból hívandó (pl. @Scheduled minden 15 percben).
+     * A bejelentkezett cég FAILED státuszú, retry limiten belüli jelentéseit küldi újra.
+     * Jelenleg autentikált controller-endpoint hívja. Scheduler esetén cégenkénti
+     * iteráció és explicit company-scope szükséges.
      */
     @Transactional(rollbackFor = Exception.class)
     public List<DariusDailyReportDto> retryFailedReports() {
-        List<DariusDailyReport> retryable = reportRepository.findRetryable(LocalDateTime.now());
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<DariusDailyReport> retryable = reportRepository.findRetryable(companyId, LocalDateTime.now());
 
         if (retryable.isEmpty()) {
             return Collections.emptyList();
@@ -324,7 +328,8 @@ public class DariusReportService {
      */
     @Transactional(rollbackFor = Exception.class)
     public DariusDailyReportDto acknowledgeReport(UUID reportId, String ackReference) {
-        DariusDailyReport report = findReport(reportId);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        DariusDailyReport report = findReport(reportId, companyId);
 
         if (report.getStatus() != DariusReportStatus.SUBMITTED) {
             throw new ValidationException("Acknowledgment csak SUBMITTED státuszú jelentésre lehetséges!");
@@ -350,8 +355,10 @@ public class DariusReportService {
 
     @Transactional(readOnly = true)
     public DariusDailyReportDto getReport(UUID reportId) {
-        DariusDailyReport report = findReport(reportId);
-        List<DariusReportLine> lines = lineRepository.findByReportIdOrderByCurrencyCode(reportId);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        DariusDailyReport report = findReport(reportId, companyId);
+        List<DariusReportLine> lines =
+            lineRepository.findByCompanyIdAndReportIdOrderByCurrencyCodeAsc(companyId, reportId);
         return toDto(report, lines);
     }
 
@@ -360,7 +367,8 @@ public class DariusReportService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         DariusDailyReport report = reportRepository.findByCompanyIdAndReportDate(companyId, date)
             .orElseThrow(() -> new ResourceNotFoundException("Nincs Darius jelentés erre a napra: " + date));
-        List<DariusReportLine> lines = lineRepository.findByReportIdOrderByCurrencyCode(report.getId());
+        List<DariusReportLine> lines =
+            lineRepository.findByCompanyIdAndReportIdOrderByCurrencyCodeAsc(companyId, report.getId());
         return toDto(report, lines);
     }
 
@@ -441,8 +449,8 @@ public class DariusReportService {
 
     // === HELPERS ===
 
-    private DariusDailyReport findReport(UUID reportId) {
-        return reportRepository.findById(reportId)
+    private DariusDailyReport findReport(UUID reportId, UUID companyId) {
+        return reportRepository.findByIdAndCompanyId(reportId, companyId)
             .orElseThrow(() -> new ResourceNotFoundException("Darius jelentés nem található: " + reportId));
     }
 
@@ -453,6 +461,7 @@ public class DariusReportService {
             .findFirst()
             .orElseGet(() -> {
                 DariusReportLine newLine = DariusReportLine.builder()
+                    .companyId(report.getCompanyId())
                     .report(report)
                     .branchId(branch.getId())
                     .branchCode(branch.getCode())

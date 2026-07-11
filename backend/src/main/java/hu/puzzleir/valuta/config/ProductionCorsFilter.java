@@ -88,6 +88,7 @@ public class ProductionCorsFilter extends OncePerRequestFilter {
 
         // Always use fixed whitelist — never reflect request headers
         response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, String.join(", ", DEFAULT_ALLOWED_HEADERS));
+        response.setHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, HttpHeaders.CONTENT_DISPOSITION);
         response.setHeader(HttpHeaders.ACCESS_CONTROL_MAX_AGE, "3600");
 
         if (HttpMethod.OPTIONS.matches(request.getMethod())) {

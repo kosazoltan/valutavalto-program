@@ -5,7 +5,20 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
-public record DariusImportFileModel(LocalDate tnap, String pvCode, List<BranchBlock> branches) {
+public record DariusImportFileModel(
+        LocalDate tnap,
+        String pvCode,
+        List<FixingBlock> fixingBlocks,
+        List<BranchBlock> branches) {
+
+    public record FixingBlock(String bankfiokAzonosito, List<FixingRow> rows) {
+    }
+
+    public record FixingRow(
+            String currencyCode,
+            BigDecimal deliveredAmount,
+            BigDecimal collectedAmount) {
+    }
 
     public record BranchBlock(
             String uzlethelyisegAzonosito,
