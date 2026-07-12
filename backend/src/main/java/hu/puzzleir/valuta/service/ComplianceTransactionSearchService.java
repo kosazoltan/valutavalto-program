@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.entity.HandlingFeeOverrideType;
 import hu.puzzleir.valuta.entity.Transaction;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.BusinessException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -32,12 +33,26 @@ public class ComplianceTransactionSearchService {
 
     static final int EXPORT_MAX_ROWS = 10_000;
     private static final List<Long> CURRENCY_SENTINEL = List.of(-1L);
+    private static final List<String> RELATED_SENTINEL = List.of("-");
 
     private final TransactionRepository transactionRepository;
 
     public Page<ComplianceTransactionRowDto> search(ComplianceTransactionSearchCriteria criteria, Pageable pageable) {
         ComplianceTransactionSearchCriteria c = criteria == null ? new ComplianceTransactionSearchCriteria() : criteria;
         UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Integer relatedMinCount = c.getRelatedMinCount();
+        if (relatedMinCount != null && relatedMinCount <= 0) {
+            throw new ValidationException("A minimum összefüggő tranzakciószámnak pozitívnak kell lennie!");
+        }
+        boolean relatedIdsEmpty = relatedMinCount == null;
+        List<String> relatedCustomerIds = RELATED_SENTINEL;
+        if (relatedMinCount != null) {
+            relatedCustomerIds = transactionRepository.findRelatedCustomerIdsWithMinTransactionCount(
+                    companyId, c.getStartDate(), c.getEndDate(), relatedMinCount);
+            if (relatedCustomerIds.isEmpty()) {
+                return Page.empty(pageable);
+            }
+        }
         boolean currencyIdsEmpty = c.getCurrencyIds() == null || c.getCurrencyIds().isEmpty();
         Page<Transaction> page = transactionRepository.searchComplianceTransactions(
                 companyId, c.getBranchId(), c.getStartDate(), c.getEndDate(), c.getType(),
@@ -48,7 +63,7 @@ public class ComplianceTransactionSearchService {
                 normalize(c.getCustomerDocumentNumber()), c.isLegalEntityOnly(), normalize(c.getLegalEntityName()),
                 normalize(c.getLegalEntityTaxNumber()), normalize(c.getLegalDeedNumber()), normalize(c.getLegalEntitySeat()),
                 normalize(c.getBeneficialOwnerName()), normalize(c.getCustomerCountry()),
-                normalize(c.getCustomerBirthName()), pageable);
+                normalize(c.getCustomerBirthName()), relatedIdsEmpty, relatedCustomerIds, pageable);
         return page.map(this::toRowDto);
     }
 

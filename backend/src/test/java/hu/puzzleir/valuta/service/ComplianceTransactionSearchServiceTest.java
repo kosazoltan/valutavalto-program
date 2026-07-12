@@ -12,6 +12,7 @@ import hu.puzzleir.valuta.entity.TransactionStatus;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.BusinessException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,7 +44,9 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -82,14 +85,14 @@ class ComplianceTransactionSearchServiceTest {
     void searchUsesCompanyIdFromSecurityContext() {
         when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
 
         service.search(new ComplianceTransactionSearchCriteria(), PageRequest.of(0, 10));
 
         verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
                 eq(true), eq(List.of(-1L)), isNull(), eq(false), eq(false), eq(false), eq(false), isNull(), isNull(), isNull(),
-                isNull(), eq(false), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
+                isNull(), eq(false), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(true), any(), any());
     }
 
     @Test
@@ -97,7 +100,7 @@ class ComplianceTransactionSearchServiceTest {
     void currencyIdsEmptyUsesSentinelOtherwiseOriginalList() {
         when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
 
         service.search(new ComplianceTransactionSearchCriteria(), PageRequest.of(0, 10));
@@ -107,10 +110,10 @@ class ComplianceTransactionSearchServiceTest {
 
         verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 eq(true), eq(List.of(-1L)), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any());
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), eq(true), any(), any());
         verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 eq(false), eq(List.of(1L, 2L)), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any());
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), eq(true), any(), any());
     }
 
     @Test
@@ -118,7 +121,7 @@ class ComplianceTransactionSearchServiceTest {
     void stringFiltersAreTrimmedAndBlankBecomesNull() {
         when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
         ComplianceTransactionSearchCriteria criteria = new ComplianceTransactionSearchCriteria();
         criteria.setCustomerName("  kovács  ");
@@ -130,7 +133,7 @@ class ComplianceTransactionSearchServiceTest {
         ArgumentCaptor<String> customerName = ArgumentCaptor.forClass(String.class);
         verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), customerName.capture(), any(), isNull(),
-                isNull(), anyBoolean(), any(), any(), any(), any(), isNull(), isNull(), isNull(), any());
+                isNull(), anyBoolean(), any(), any(), any(), any(), isNull(), isNull(), isNull(), eq(true), any(), any());
         assertThat(customerName.getValue()).isEqualTo("kovács");
     }
 
@@ -139,7 +142,7 @@ class ComplianceTransactionSearchServiceTest {
     void beneficialOwnerNameFilterIsTrimmedAndBlankBecomesNull() {
         when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
         ComplianceTransactionSearchCriteria criteria = new ComplianceTransactionSearchCriteria();
         criteria.setBeneficialOwnerName("  Kovács Tulaj Béla  ");
@@ -149,7 +152,8 @@ class ComplianceTransactionSearchServiceTest {
         ArgumentCaptor<String> beneficialOwnerName = ArgumentCaptor.forClass(String.class);
         verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), isNull(), any(), isNull(),
-                isNull(), anyBoolean(), isNull(), isNull(), isNull(), isNull(), beneficialOwnerName.capture(), isNull(), isNull(), any());
+                isNull(), anyBoolean(), isNull(), isNull(), isNull(), isNull(), beneficialOwnerName.capture(), isNull(), isNull(),
+                eq(true), any(), any());
         assertThat(beneficialOwnerName.getValue()).isEqualTo("Kovács Tulaj Béla");
 
         ComplianceTransactionSearchCriteria blank = new ComplianceTransactionSearchCriteria();
@@ -158,7 +162,8 @@ class ComplianceTransactionSearchServiceTest {
 
         verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), isNull(), any(), isNull(),
-                isNull(), anyBoolean(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
+                isNull(), anyBoolean(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                eq(true), any(), any());
     }
 
     @Test
@@ -166,7 +171,7 @@ class ComplianceTransactionSearchServiceTest {
     void customerMasterFiltersAreNormalized() {
         when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
         ComplianceTransactionSearchCriteria criteria = new ComplianceTransactionSearchCriteria();
         criteria.setCustomerCountry("  Irán  ");
@@ -176,7 +181,88 @@ class ComplianceTransactionSearchServiceTest {
 
         verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), isNull(), eq("Irán"), isNull(), any());
+                any(), anyBoolean(), any(), any(), any(), any(), isNull(), eq("Irán"), isNull(), eq(true), any(), any());
+    }
+
+    @Test
+    @DisplayName("FS11-DEF-RELATED: null küszöbnél az aggregátum nem fut")
+    void relatedMinCountNullSkipsAggregate() {
+        when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
+                anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.search(new ComplianceTransactionSearchCriteria(), PageRequest.of(0, 10));
+
+        verify(transactionRepository, never()).findRelatedCustomerIdsWithMinTransactionCount(any(), any(), any(), any(Long.class));
+        verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
+                anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), eq(true), any(), any());
+    }
+
+    @Test
+    @DisplayName("FS11-DEF-RELATED: pozitív küszöbnél az aggregált ügyfélazonosítók a fő keresőbe kerülnek")
+    void relatedMinCountFetchesIdsAndPassesThem() {
+        ComplianceTransactionSearchCriteria criteria = new ComplianceTransactionSearchCriteria();
+        criteria.setRelatedMinCount(3);
+        when(transactionRepository.findRelatedCustomerIdsWithMinTransactionCount(COMPANY_ID, null, null, 3L))
+                .thenReturn(List.of("C1", "C2"));
+        when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
+                anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), eq(false), eq(List.of("C1", "C2")), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.search(criteria, PageRequest.of(0, 10));
+
+        verify(transactionRepository).findRelatedCustomerIdsWithMinTransactionCount(COMPANY_ID, null, null, 3L);
+        verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
+                anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), eq(false), eq(List.of("C1", "C2")), any());
+    }
+
+    @Test
+    @DisplayName("FS11-DEF-RELATED: üres aggregátum rövidre zárja a fő keresőt")
+    void relatedMinCountEmptyAggregateShortCircuits() {
+        ComplianceTransactionSearchCriteria criteria = new ComplianceTransactionSearchCriteria();
+        criteria.setRelatedMinCount(3);
+        when(transactionRepository.findRelatedCustomerIdsWithMinTransactionCount(COMPANY_ID, null, null, 3L))
+                .thenReturn(List.of());
+
+        Page<ComplianceTransactionRowDto> result = service.search(criteria, PageRequest.of(0, 10));
+
+        assertThat(result.getTotalElements()).isZero();
+        verify(transactionRepository, never()).searchComplianceTransactions(any(), any(), any(), any(), any(), any(), any(),
+                anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any());
+    }
+
+    @Test
+    @DisplayName("FS11-DEF-RELATED: a nem pozitív küszöb validációs hiba repository-hívás nélkül")
+    void relatedMinCountNonPositiveThrowsValidation() {
+        ComplianceTransactionSearchCriteria zero = new ComplianceTransactionSearchCriteria();
+        zero.setRelatedMinCount(0);
+        ComplianceTransactionSearchCriteria negative = new ComplianceTransactionSearchCriteria();
+        negative.setRelatedMinCount(-2);
+
+        assertThatThrownBy(() -> service.search(zero, PageRequest.of(0, 10)))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.search(negative, PageRequest.of(0, 10)))
+                .isInstanceOf(ValidationException.class);
+        verifyNoInteractions(transactionRepository);
+    }
+
+    @Test
+    @DisplayName("FS11-DEF-RELATED: üres aggregátumnál az export üres listát ad")
+    void searchForExportWithEmptyRelatedSetReturnsEmptyList() {
+        ComplianceTransactionSearchCriteria criteria = new ComplianceTransactionSearchCriteria();
+        criteria.setRelatedMinCount(2);
+        when(transactionRepository.findRelatedCustomerIdsWithMinTransactionCount(COMPANY_ID, null, null, 2L))
+                .thenReturn(List.of());
+
+        assertThat(service.searchForExport(criteria)).isEmpty();
+        verify(transactionRepository, never()).searchComplianceTransactions(any(), any(), any(), any(), any(), any(), any(),
+                anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any());
     }
 
     @Test
@@ -192,7 +278,7 @@ class ComplianceTransactionSearchServiceTest {
         noDiscount.setOriginalTransaction(null);
         when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(discountCode, override, noDiscount)));
 
         Page<ComplianceTransactionRowDto> result = service.search(new ComplianceTransactionSearchCriteria(), PageRequest.of(0, 10));
@@ -220,7 +306,7 @@ class ComplianceTransactionSearchServiceTest {
     void searchForExportEnforcesMaxRows() {
         when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(transaction("FS11-EXPORT-OK")), PageRequest.of(0, 10_000), 10_000))
                 .thenReturn(new PageImpl<>(List.of(transaction("FS11-EXPORT-TOO-LARGE")), PageRequest.of(0, 10_000), 10_001));
 

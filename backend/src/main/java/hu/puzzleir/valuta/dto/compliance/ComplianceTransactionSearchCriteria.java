@@ -41,4 +41,5 @@ public class ComplianceTransactionSearchCriteria {
     private String beneficialOwnerName;
     private String customerCountry;
     private String customerBirthName;
+    private Integer relatedMinCount;
 }

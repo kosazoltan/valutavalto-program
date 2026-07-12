@@ -345,6 +345,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * bizonylatnál a mellék-sor valutája is találjon). {@code beneficialOwnerName} EXISTS-alapú
      * részszöveg-szűrés a {@code transaction_beneficial_owner} altáblára (case-insensitive,
      * companyId-szűrt — cross-tenant tulajdonos-sor SOHA nem hozhat találatot).</p>
+     * <p>FS11-DEF slice 4: {@code relatedCustomerIds} a service által előszámolt
+     * min-count ügyfél-halmaz; SOHA nem üres lista. Inaktív szűrőnél
+     * {@code relatedIdsEmpty=true} és sentinel lista kerül átadásra.</p>
      */
     @Query(value = "SELECT t FROM Transaction t " +
            "JOIN FETCH t.branch " +
@@ -390,6 +393,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "     WHERE c2.company.id = :companyId AND c2.customerCode = t.customerId " +
            "     AND t.customerId <> '' " +
            "     AND LOWER(c2.birthName) LIKE LOWER(CONCAT('%', CAST(:customerBirthName AS string), '%')))) " +
+           "AND (:relatedIdsEmpty = true OR t.customerId IN :relatedCustomerIds) " +
            "ORDER BY t.transactionDate DESC, t.transactionTime DESC",
            countQuery = "SELECT COUNT(t) FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
@@ -429,7 +433,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND (:customerBirthName IS NULL OR EXISTS (SELECT 1 FROM Customer c2 " +
            "     WHERE c2.company.id = :companyId AND c2.customerCode = t.customerId " +
            "     AND t.customerId <> '' " +
-           "     AND LOWER(c2.birthName) LIKE LOWER(CONCAT('%', CAST(:customerBirthName AS string), '%'))))")
+           "     AND LOWER(c2.birthName) LIKE LOWER(CONCAT('%', CAST(:customerBirthName AS string), '%')))) " +
+           "AND (:relatedIdsEmpty = true OR t.customerId IN :relatedCustomerIds)")
     Page<Transaction> searchComplianceTransactions(
         @Param("companyId") UUID companyId,
         @Param("branchId") UUID branchId,
@@ -457,6 +462,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("beneficialOwnerName") String beneficialOwnerName,
         @Param("customerCountry") String customerCountry,
         @Param("customerBirthName") String customerBirthName,
+        @Param("relatedIdsEmpty") boolean relatedIdsEmpty,
+        @Param("relatedCustomerIds") List<String> relatedCustomerIds,
         Pageable pageable
     );
 
@@ -691,6 +698,29 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("minTotalHuf") BigDecimal minTotalHuf,
         @Param("byBranchCount") boolean byBranchCount,
         @Param("minBranchCount") long minBranchCount
+    );
+
+    /**
+     * FS11-DEF-RELATED: azon ügyfelek (customerId) listája, akiknek az időszakban
+     * legalább :minCount darab COMPLETED + financialEffective tranzakciójuk volt a cégnél.
+     * Halmaz-kontraktus a findRollingWindowAuditCandidates mintája szerint; a compliance
+     * kereső IN-szűrője fogyasztja (ComplianceTransactionSearchService). Null dátum = nyitott határ.
+     */
+    @Query("SELECT t.customerId FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.customerId IS NOT NULL " +
+           "AND t.customerId <> '' " +
+           "AND (CAST(:startDate AS date) IS NULL OR t.transactionDate >= :startDate) " +
+           "AND (CAST(:endDate AS date) IS NULL OR t.transactionDate <= :endDate) " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
+           "GROUP BY t.customerId " +
+           "HAVING COUNT(t) >= :minCount")
+    List<String> findRelatedCustomerIdsWithMinTransactionCount(
+        @Param("companyId") UUID companyId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate,
+        @Param("minCount") long minCount
     );
 
     /**
