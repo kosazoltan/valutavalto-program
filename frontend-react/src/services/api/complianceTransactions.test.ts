@@ -80,6 +80,18 @@ describe('complianceTransactionsApi', () => {
     })
   })
 
+  it('buildCriteriaParams: customerCountry és customerBirthName átengedve és trimmelve', () => {
+    expect(
+      buildCriteriaParams({
+        customerCountry: '  Irán  ',
+        customerBirthName: '  Kovács Született Anna  ',
+      }),
+    ).toEqual({
+      customerCountry: 'Irán',
+      customerBirthName: 'Kovács Született Anna',
+    })
+  })
+
   it('search: _preservePaged + page/size stringként', async () => {
     const paged = { content: [{ id: 1 }], totalElements: 1, totalPages: 1, size: 50, number: 0 }
     mockApi.get.mockResolvedValue({ data: paged })

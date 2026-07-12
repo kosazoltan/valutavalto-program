@@ -190,6 +190,24 @@ describe('ComplianceTransactionsPage', () => {
     })
   })
 
+  it('keresés: customerCountry és customerBirthName mező megjelenik a criteria-ban', async () => {
+    const user = userEvent.setup()
+    mocks.search.mockResolvedValue(paged([]))
+    render(<ComplianceTransactionsPage />)
+
+    await user.type(screen.getByTestId('filter-customerCountry'), 'Irán')
+    await user.type(screen.getByTestId('filter-customerBirthName'), 'Kovács Született Anna')
+    await user.click(screen.getByTestId('search-button'))
+
+    await waitFor(() => {
+      expect(mocks.search).toHaveBeenCalledWith(
+        { customerCountry: 'Irán', customerBirthName: 'Kovács Született Anna' },
+        0,
+        50,
+      )
+    })
+  })
+
   it('találat renderelés: HU címkék + formázott számok', async () => {
     const user = userEvent.setup()
     render(<ComplianceTransactionsPage />)
