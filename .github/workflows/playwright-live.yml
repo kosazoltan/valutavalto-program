@@ -95,7 +95,9 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: playwright-report-live-${{ github.run_id }}
-          path: frontend-react/playwright-report-live/
+          path: |
+            frontend-react/playwright-report-live/
+            frontend-react/playwright-json-live/
           retention-days: 14
 
       - name: Upload screenshots (on failure)

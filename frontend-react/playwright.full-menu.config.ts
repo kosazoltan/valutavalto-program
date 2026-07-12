@@ -9,7 +9,11 @@ export default defineConfig({
   testMatch: '**/excvaluta-full-menu.spec.ts',
   fullyParallel: false,
   retries: 0,
-  reporter: [['list']],
+  reporter: [
+    ['list'],
+    // Tier-0 gépi feldolgozás (t0-live-e2e.py): a T20 eredménye is JSON-ba.
+    ['json', { outputFile: 'playwright-json-live/report-full-menu.json' }],
+  ],
   use: {
     baseURL: 'https://excvaluta.com',
     trace: 'retain-on-failure',
