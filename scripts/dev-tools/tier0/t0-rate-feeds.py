@@ -124,6 +124,10 @@ def get_preflight_summary():
             summary_path = m.group(1).strip()
     if not summary_path:
         return None, "live", "summary.json ut nem talalhato a preflight stdout-jaban"
+    # DS F-004 fix (2026-07-12): a preflight relativ utat is adhat — a REPO-hoz
+    # oldjuk fel (a script cwd-je cron alatt nem a repo-gyoker!).
+    if not os.path.isabs(summary_path):
+        summary_path = str(REPO / summary_path)
     try:
         with open(summary_path, "r", encoding="utf-8", errors="replace") as f:
             return json.load(f), "live", None

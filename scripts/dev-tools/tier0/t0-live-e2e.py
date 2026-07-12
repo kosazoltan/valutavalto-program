@@ -87,8 +87,11 @@ def _tool_error(want_json: bool, script: str, msg: str) -> int:
 
 
 def _denied(p: Path) -> bool:
-    s = str(p).replace("\\", "/")
-    return any(d in s for d in DENYLIST)
+    # GLM F-003 fix (2026-07-12): a ".env" SUBSTRING-match tul szeles volt
+    # (pl. ".env-helpers.json"-t is tiltana) -> nev-alapu .env* glob a kontraktus.
+    if p.name.startswith(".env"):
+        return True
+    return "backend_deployment/" in str(p).replace("\\", "/")
 
 
 def _iter_specs(node: dict):
