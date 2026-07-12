@@ -303,7 +303,8 @@ class ComplianceTransactionSearchRepositoryTest {
                 currencyIdsEmpty, currencyIds, paymentMethod, customRateOnly, kkDiscountOnly,
                 onBehalfOfOtherOnly, pepOnly, customerName, customerBirthDate, customerNationality,
                 customerDocumentNumber, legalEntityOnly, legalEntityName, legalEntityTaxNumber,
-                legalDeedNumber, legalEntitySeat, null, null, null, pageable);
+                legalDeedNumber, legalEntitySeat, null, null, null,
+                true, List.of("-"), pageable);
     }
 
     private Tenant seedTenant(String prefix, LocalDateTime now) {

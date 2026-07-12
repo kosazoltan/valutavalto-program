@@ -208,6 +208,77 @@ class TransactionRepositoryComplianceSearchIT {
         assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("FS11-DEF-RELATED: min-count aggregátum ügyfelenként számol, cross-tenant izolált")
+    void relatedAggregateCountsPerCustomerAndIsTenantScoped() {
+        LocalDateTime now = LocalDateTime.now();
+        Tenant own = seedTenant("DEFRELA", now);
+        Tenant foreign = seedTenant("DEFRELB", now);
+        Currency eur = findOrCreateCurrency("EUR", "Euro", "EUR", 2, 1, now);
+        LocalDate day = LocalDate.of(2026, 7, 11);
+
+        saveTxWithCustomer(own, "DEF-REL-A1", day, LocalTime.of(9, 0), eur, "RELC1");
+        saveTxWithCustomer(own, "DEF-REL-A2", day, LocalTime.of(10, 0), eur, "RELC1");
+        saveTxWithCustomer(own, "DEF-REL-A3", day, LocalTime.of(11, 0), eur, "RELC1");
+        saveTxWithCustomer(own, "DEF-REL-B1", day, LocalTime.of(12, 0), eur, "RELC2");
+        saveTxWithCustomer(foreign, "DEF-REL-F1", day, LocalTime.of(13, 0), eur, "RELC1");
+        saveTxWithCustomer(foreign, "DEF-REL-F2", day, LocalTime.of(14, 0), eur, "RELC1");
+        transactionRepository.flush();
+
+        List<String> ids = transactionRepository.findRelatedCustomerIdsWithMinTransactionCount(
+                own.company().getId(), null, null, 2L);
+
+        assertThat(ids).containsExactly("RELC1");
+    }
+
+    @Test
+    @DisplayName("FS11-DEF-RELATED: az aggregátum a keresési időszakon belül számol")
+    void relatedAggregateRespectsDateWindow() {
+        LocalDateTime now = LocalDateTime.now();
+        Tenant own = seedTenant("DEFRELC", now);
+        Currency eur = findOrCreateCurrency("EUR", "Euro", "EUR", 2, 1, now);
+        LocalDate day = LocalDate.of(2026, 7, 11);
+
+        saveTxWithCustomer(own, "DEF-REL-W1", day, LocalTime.of(9, 0), eur, "RELC3");
+        saveTxWithCustomer(own, "DEF-REL-W2", day, LocalTime.of(10, 0), eur, "RELC3");
+        saveTxWithCustomer(own, "DEF-REL-W3", day.plusDays(10), LocalTime.of(11, 0), eur, "RELC3");
+        transactionRepository.flush();
+
+        assertThat(transactionRepository.findRelatedCustomerIdsWithMinTransactionCount(
+                own.company().getId(), day, day, 3L)).isEmpty();
+        assertThat(transactionRepository.findRelatedCustomerIdsWithMinTransactionCount(
+                own.company().getId(), day, day.plusDays(10), 3L)).containsExactly("RELC3");
+    }
+
+    @Test
+    @DisplayName("FS11-DEF-RELATED: a fő kereső IN-szűrője csak a megadott ügyfelek sorait adja, cross-tenant 0")
+    void relatedCustomerIdsFilterNarrowsMainSearch() {
+        LocalDateTime now = LocalDateTime.now();
+        Tenant own = seedTenant("DEFRELD", now);
+        Tenant foreign = seedTenant("DEFRELE", now);
+        Currency eur = findOrCreateCurrency("EUR", "Euro", "EUR", 2, 1, now);
+        LocalDate day = LocalDate.of(2026, 7, 11);
+
+        saveTxWithCustomer(own, "DEF-REL-M1", day, LocalTime.of(9, 0), eur, "RELC4");
+        saveTxWithCustomer(own, "DEF-REL-M2", day, LocalTime.of(10, 0), eur, "RELC4");
+        saveTxWithCustomer(own, "DEF-REL-OTHER", day, LocalTime.of(11, 0), eur, "RELC5");
+        saveTxWithCustomer(foreign, "DEF-REL-FOREIGN", day, LocalTime.of(12, 0), eur, "RELC4");
+        transactionRepository.flush();
+
+        Page<Transaction> result = searchWithRelated(own, List.of("RELC4"), PageRequest.of(0, 20));
+
+        assertThat(result.getContent()).extracting(Transaction::getReceiptNumber)
+                .containsExactly("DEF-REL-M2", "DEF-REL-M1");
+        assertThat(result.getTotalElements()).isEqualTo(2);
+    }
+
+    private Transaction saveTxWithCustomer(Tenant tenant, String receipt, LocalDate day,
+            LocalTime time, Currency currency, String customerId) {
+        Transaction tx = transaction(tenant, receipt, day, time, currency, "Related Ugyfel");
+        tx.setCustomerId(customerId);
+        return transactionRepository.save(tx);
+    }
+
     private static Customer customer(
             Company company, String code, String name, String country, String birthName) {
         return Customer.builder()
@@ -273,7 +344,7 @@ class TransactionRepositoryComplianceSearchIT {
                 tenant.company().getId(), null, null, null, null, null, null,
                 true, List.of(-1L), (PaymentMethod) null, false, false, false, false,
                 customerName, null, null, null, false, null, null, null, null,
-                null, null, null, pageable);
+                null, null, null, true, List.of("-"), pageable);
     }
 
     private Page<Transaction> searchWithOwner(Tenant tenant, String ownerName, org.springframework.data.domain.Pageable pageable) {
@@ -281,7 +352,7 @@ class TransactionRepositoryComplianceSearchIT {
                 tenant.company().getId(), null, null, null, null, null, null,
                 true, List.of(-1L), (PaymentMethod) null, false, false, false, false,
                 null, null, null, null, false, null, null, null, null,
-                ownerName, null, null, pageable);
+                ownerName, null, null, true, List.of("-"), pageable);
     }
 
     private Page<Transaction> searchWithCurrencies(Tenant tenant, List<Long> currencyIds, org.springframework.data.domain.Pageable pageable) {
@@ -289,7 +360,7 @@ class TransactionRepositoryComplianceSearchIT {
                 tenant.company().getId(), null, null, null, null, null, null,
                 false, currencyIds, (PaymentMethod) null, false, false, false, false,
                 null, null, null, null, false, null, null, null, null,
-                null, null, null, pageable);
+                null, null, null, true, List.of("-"), pageable);
     }
 
     private Page<Transaction> searchWithCountry(Tenant tenant, String country, org.springframework.data.domain.Pageable pageable) {
@@ -297,7 +368,7 @@ class TransactionRepositoryComplianceSearchIT {
                 tenant.company().getId(), null, null, null, null, null, null,
                 true, List.of(-1L), (PaymentMethod) null, false, false, false, false,
                 null, null, null, null, false, null, null, null, null,
-                null, country, null, pageable);
+                null, country, null, true, List.of("-"), pageable);
     }
 
     private Page<Transaction> searchWithBirthName(Tenant tenant, String birthName, org.springframework.data.domain.Pageable pageable) {
@@ -305,7 +376,16 @@ class TransactionRepositoryComplianceSearchIT {
                 tenant.company().getId(), null, null, null, null, null, null,
                 true, List.of(-1L), (PaymentMethod) null, false, false, false, false,
                 null, null, null, null, false, null, null, null, null,
-                null, null, birthName, pageable);
+                null, null, birthName, true, List.of("-"), pageable);
+    }
+
+    private Page<Transaction> searchWithRelated(Tenant tenant, List<String> relatedIds,
+            org.springframework.data.domain.Pageable pageable) {
+        return transactionRepository.searchComplianceTransactions(
+                tenant.company().getId(), null, null, null, null, null, null,
+                true, List.of(-1L), (PaymentMethod) null, false, false, false, false,
+                null, null, null, null, false, null, null, null, null,
+                null, null, null, false, relatedIds, pageable);
     }
 
     private Tenant seedTenant(String prefix, LocalDateTime now) {
