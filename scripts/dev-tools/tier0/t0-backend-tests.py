@@ -62,13 +62,27 @@ def collect_xml_files():
     return files
 
 
+def safe_parse(path):
+    """Sourcery-triazs (PR #1419, 2026-07-12): a bemenet SAJAT build-artifact
+    (surefire/jacoco), nem idegen input, es a tier0-kontraktus stdlib-only
+    (defusedxml nem opcio). Az egyetlen valos stdlib-vektor az entity-expanzio
+    (billion laughs) -- <!ENTITY deklaracios fajlt nem parsolunk. A jacoco
+    legitim <!DOCTYPE ... "report.dtd">-jet ez NEM erinti (kulso DTD-t az
+    ElementTree amugy sem tolt le)."""
+    with open(path, "rb") as fh:
+        head = fh.read(4096)
+    if b"<!ENTITY" in head:
+        raise ET.ParseError("ENTITY-deklaracio a fajlban -- biztonsagi okbol kihagyva")
+    return ET.parse(path).getroot()
+
+
 def parse_reports(files):
     totals = {"tests": 0, "failures": 0, "errors": 0, "skipped": 0}
     slow_raw, first_failure, corrupt = [], None, []
 
     for f in files:
         try:
-            root = ET.parse(f).getroot()
+            root = safe_parse(f)
         except ET.ParseError as exc:
             corrupt.append(f"{f.name}: {exc}")
             continue
@@ -104,7 +118,7 @@ def parse_jacoco():
     if not path.is_file():
         return None, f"nincs jacoco.xml: {path}"
     try:
-        root = ET.parse(path).getroot()
+        root = safe_parse(path)
     except ET.ParseError as exc:
         return None, f"jacoco.xml parse hiba: {exc}"
 
