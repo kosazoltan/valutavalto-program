@@ -55,7 +55,7 @@ export const TRANSACTION_STATUS_LABELS: Record<string, string> = {
   ARCHIVED: 'Archivált',
 }
 
-/** Tükrözi a backend ComplianceTransactionSearchCriteria-t (21 mező, mind opcionális).
+/** Tükrözi a backend ComplianceTransactionSearchCriteria-t (22 mező, mind opcionális).
  *  companyId SZÁNDÉKOSAN nem létezik. Dátum: 'YYYY-MM-DD'. Összeg: string (Jackson/Spring köti BigDecimal-ra). */
 export interface ComplianceTransactionSearchCriteria {
   branchId?: string
@@ -79,6 +79,7 @@ export interface ComplianceTransactionSearchCriteria {
   legalEntityTaxNumber?: string
   legalDeedNumber?: string
   legalEntitySeat?: string
+  beneficialOwnerName?: string
 }
 
 /** Tükrözi a ComplianceTransactionRowDto-t (Boolean wrapper → boolean | null). */

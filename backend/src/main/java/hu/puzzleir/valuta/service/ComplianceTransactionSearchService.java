@@ -47,7 +47,7 @@ public class ComplianceTransactionSearchService {
                 normalize(c.getCustomerName()), c.getCustomerBirthDate(), normalize(c.getCustomerNationality()),
                 normalize(c.getCustomerDocumentNumber()), c.isLegalEntityOnly(), normalize(c.getLegalEntityName()),
                 normalize(c.getLegalEntityTaxNumber()), normalize(c.getLegalDeedNumber()), normalize(c.getLegalEntitySeat()),
-                pageable);
+                normalize(c.getBeneficialOwnerName()), pageable);
         return page.map(this::toRowDto);
     }
 

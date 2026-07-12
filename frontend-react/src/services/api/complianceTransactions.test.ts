@@ -74,6 +74,12 @@ describe('complianceTransactionsApi', () => {
     expect(Object.keys(params)).not.toContain('companyId')
   })
 
+  it('buildCriteriaParams: beneficialOwnerName átengedve és trimmelve', () => {
+    expect(buildCriteriaParams({ beneficialOwnerName: '  Kovács Tulaj Béla  ' })).toEqual({
+      beneficialOwnerName: 'Kovács Tulaj Béla',
+    })
+  })
+
   it('search: _preservePaged + page/size stringként', async () => {
     const paged = { content: [{ id: 1 }], totalElements: 1, totalPages: 1, size: 50, number: 0 }
     mockApi.get.mockResolvedValue({ data: paged })

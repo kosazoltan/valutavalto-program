@@ -339,6 +339,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * Hívó: ComplianceTransactionSearchService (companyId a SecurityContextből).
      * currencyIds: SOHA nem üres lista — üres szűrőnél a service :currencyIdsEmpty=true-t
      * és List.of(-1L) sentinelt ad át (Hibernate üres-IN elkerülése).
+     *
+     * <p>FS11-DEF slice 1: {@code currencyIds} OR-relációval a {@code TransactionLine}-ra is
+     * kiterjed (a fő-valuta VAGY bármely tétel-sor valutája illeszkedhet — multi-line
+     * bizonylatnál a mellék-sor valutája is találjon). {@code beneficialOwnerName} EXISTS-alapú
+     * részszöveg-szűrés a {@code transaction_beneficial_owner} altáblára (case-insensitive,
+     * companyId-szűrt — cross-tenant tulajdonos-sor SOHA nem hozhat találatot).</p>
      */
     @Query(value = "SELECT t FROM Transaction t " +
            "JOIN FETCH t.branch " +
@@ -354,7 +360,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND (:type IS NULL OR t.transactionType = :type) " +
            "AND (:minHufAmount IS NULL OR t.hufAmount >= :minHufAmount) " +
            "AND (:maxHufAmount IS NULL OR t.hufAmount <= :maxHufAmount) " +
-           "AND (:currencyIdsEmpty = true OR t.currency.id IN :currencyIds) " +
+           "AND (:currencyIdsEmpty = true OR t.currency.id IN :currencyIds " +
+           "     OR EXISTS (SELECT 1 FROM TransactionLine tl " +
+           "                WHERE tl.transaction = t AND tl.currency.id IN :currencyIds)) " +
            "AND (:paymentMethod IS NULL OR t.paymentMethod = :paymentMethod) " +
            "AND (:customRateOnly = false OR t.cashierCustomRate = true) " +
            "AND (:kkDiscountOnly = false OR t.discountTypeCode <> 0 " +
@@ -371,6 +379,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND (:legalEntityTaxNumber IS NULL OR LOWER(t.legalEntityTaxNumber) LIKE LOWER(CONCAT('%', CAST(:legalEntityTaxNumber AS string), '%'))) " +
            "AND (:legalDeedNumber IS NULL OR LOWER(t.legalDeedNumber) LIKE LOWER(CONCAT('%', CAST(:legalDeedNumber AS string), '%'))) " +
            "AND (:legalEntitySeat IS NULL OR LOWER(t.legalEntitySeat) LIKE LOWER(CONCAT('%', CAST(:legalEntitySeat AS string), '%'))) " +
+           "AND (:beneficialOwnerName IS NULL OR EXISTS (SELECT 1 FROM TransactionBeneficialOwner bo " +
+           "     WHERE bo.transactionId = t.id AND bo.companyId = :companyId " +
+           "     AND LOWER(bo.ownerName) LIKE LOWER(CONCAT('%', CAST(:beneficialOwnerName AS string), '%')))) " +
            "ORDER BY t.transactionDate DESC, t.transactionTime DESC",
            countQuery = "SELECT COUNT(t) FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
@@ -381,7 +392,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND (:type IS NULL OR t.transactionType = :type) " +
            "AND (:minHufAmount IS NULL OR t.hufAmount >= :minHufAmount) " +
            "AND (:maxHufAmount IS NULL OR t.hufAmount <= :maxHufAmount) " +
-           "AND (:currencyIdsEmpty = true OR t.currency.id IN :currencyIds) " +
+           "AND (:currencyIdsEmpty = true OR t.currency.id IN :currencyIds " +
+           "     OR EXISTS (SELECT 1 FROM TransactionLine tl " +
+           "                WHERE tl.transaction = t AND tl.currency.id IN :currencyIds)) " +
            "AND (:paymentMethod IS NULL OR t.paymentMethod = :paymentMethod) " +
            "AND (:customRateOnly = false OR t.cashierCustomRate = true) " +
            "AND (:kkDiscountOnly = false OR t.discountTypeCode <> 0 " +
@@ -397,7 +410,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND (:legalEntityName IS NULL OR LOWER(t.legalEntityName) LIKE LOWER(CONCAT('%', CAST(:legalEntityName AS string), '%'))) " +
            "AND (:legalEntityTaxNumber IS NULL OR LOWER(t.legalEntityTaxNumber) LIKE LOWER(CONCAT('%', CAST(:legalEntityTaxNumber AS string), '%'))) " +
            "AND (:legalDeedNumber IS NULL OR LOWER(t.legalDeedNumber) LIKE LOWER(CONCAT('%', CAST(:legalDeedNumber AS string), '%'))) " +
-           "AND (:legalEntitySeat IS NULL OR LOWER(t.legalEntitySeat) LIKE LOWER(CONCAT('%', CAST(:legalEntitySeat AS string), '%')))")
+           "AND (:legalEntitySeat IS NULL OR LOWER(t.legalEntitySeat) LIKE LOWER(CONCAT('%', CAST(:legalEntitySeat AS string), '%'))) " +
+           "AND (:beneficialOwnerName IS NULL OR EXISTS (SELECT 1 FROM TransactionBeneficialOwner bo " +
+           "     WHERE bo.transactionId = t.id AND bo.companyId = :companyId " +
+           "     AND LOWER(bo.ownerName) LIKE LOWER(CONCAT('%', CAST(:beneficialOwnerName AS string), '%'))))")
     Page<Transaction> searchComplianceTransactions(
         @Param("companyId") UUID companyId,
         @Param("branchId") UUID branchId,
@@ -422,6 +438,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("legalEntityTaxNumber") String legalEntityTaxNumber,
         @Param("legalDeedNumber") String legalDeedNumber,
         @Param("legalEntitySeat") String legalEntitySeat,
+        @Param("beneficialOwnerName") String beneficialOwnerName,
         Pageable pageable
     );
 

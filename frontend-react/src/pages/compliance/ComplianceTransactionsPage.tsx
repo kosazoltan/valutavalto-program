@@ -48,6 +48,7 @@ const CRITERIA_LABELS: Record<keyof ComplianceTransactionSearchCriteria, string>
   legalEntityTaxNumber: 'Adószám',
   legalDeedNumber: 'Okirat száma',
   legalEntitySeat: 'Székhely',
+  beneficialOwnerName: 'Tényleges tulajdonos neve',
 }
 
 interface FilterFormState {
@@ -72,6 +73,7 @@ interface FilterFormState {
   legalEntityTaxNumber: string
   legalDeedNumber: string
   legalEntitySeat: string
+  beneficialOwnerName: string
 }
 
 const EMPTY_FILTERS: FilterFormState = {
@@ -96,6 +98,7 @@ const EMPTY_FILTERS: FilterFormState = {
   legalEntityTaxNumber: '',
   legalDeedNumber: '',
   legalEntitySeat: '',
+  beneficialOwnerName: '',
 }
 
 function toCriteria(form: FilterFormState): ComplianceTransactionSearchCriteria {
@@ -126,6 +129,7 @@ function toCriteria(form: FilterFormState): ComplianceTransactionSearchCriteria 
   }
   if (form.legalDeedNumber.trim()) criteria.legalDeedNumber = form.legalDeedNumber.trim()
   if (form.legalEntitySeat.trim()) criteria.legalEntitySeat = form.legalEntitySeat.trim()
+  if (form.beneficialOwnerName.trim()) criteria.beneficialOwnerName = form.beneficialOwnerName.trim()
   return criteria
 }
 
@@ -166,6 +170,7 @@ function criteriaToForm(
     legalEntityTaxNumber: criteriaString(criteria, 'legalEntityTaxNumber'),
     legalDeedNumber: criteriaString(criteria, 'legalDeedNumber'),
     legalEntitySeat: criteriaString(criteria, 'legalEntitySeat'),
+    beneficialOwnerName: criteriaString(criteria, 'beneficialOwnerName'),
   }
 }
 
@@ -681,7 +686,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-6">
             <label className="form-label" htmlFor="filter-currencyIds">
-              Valuták
+              Valuták (fő- vagy tételsor)
             </label>
             <select
               id="filter-currencyIds"
@@ -807,6 +812,18 @@ export default function ComplianceTransactionsPage() {
               className="form-input"
               value={form.legalEntitySeat}
               onChange={(event) => updateField('legalEntitySeat', event.target.value)}
+            />
+          </div>
+          <div className="col-span-12 md:col-span-3">
+            <label className="form-label" htmlFor="filter-beneficialOwnerName">
+              Tényleges tulajdonos neve
+            </label>
+            <input
+              id="filter-beneficialOwnerName"
+              data-testid="filter-beneficialOwnerName"
+              className="form-input"
+              value={form.beneficialOwnerName}
+              onChange={(event) => updateField('beneficialOwnerName', event.target.value)}
             />
           </div>
         </fieldset>
