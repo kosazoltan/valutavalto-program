@@ -12,7 +12,13 @@ export default defineConfig({
   testMatch: ['**/excvaluta-live.spec.ts', '**/excvaluta-full-menu.spec.ts'],
   fullyParallel: false,
   retries: 1,
-  reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report-live' }]],
+  reporter: [
+    ['list'],
+    ['html', { open: 'never', outputFolder: 'playwright-report-live' }],
+    // Tier-0 gépi feldolgozás (t0-live-e2e.py): KÜLÖN mappába, mert a html
+    // reporter a saját outputFolder-ét törli-újraírja generáláskor.
+    ['json', { outputFile: 'playwright-json-live/report.json' }],
+  ],
   use: {
     baseURL: 'https://excvaluta.com',
     trace: 'retain-on-failure',
