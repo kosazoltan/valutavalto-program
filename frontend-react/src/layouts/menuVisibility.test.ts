@@ -3,7 +3,7 @@
  * Fedi: full-módú least-privilege, lokál oversight-bypass, item-öröklés, csoport-ha-van-látható-item,
  * és az effectiveCanonicalRolesForPath single-source-of-truth leképzést.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { menuGroups, type MenuGroup } from './menuGroups'
 import {
   isMenuItemVisible,
@@ -11,6 +11,13 @@ import {
   effectiveCanonicalRolesForPath,
   type MenuVisibilityContext,
 } from './menuVisibility'
+
+vi.mock('../services/api/index', () => ({
+  persistToken: vi.fn().mockResolvedValue(undefined),
+  clearPersistedToken: vi.fn().mockResolvedValue(undefined),
+}))
+
+import { useAuthStore, type Worker } from '../stores/authStore'
 
 const groupByLabel = (label: string): MenuGroup =>
   menuGroups.find((g) => g.label === label) as MenuGroup
@@ -281,5 +288,51 @@ describe('FS11-MENU-ROLE-MISMATCH — menü ⊆ backend compliance role-halmaz (
       'biztonsagi_vezeto',
       'ugyvezeto',
     ])
+  })
+})
+
+describe('MENU-LEGACY-ROLE-INVISIBLE: legacy-orphan MANAGER a VALODI authStore-on at (full mod)', () => {
+  const legacyWorker: Worker = {
+    id: 99,
+    workerCode: 'W099',
+    firstName: 'Legacy',
+    lastName: 'Manager',
+    fullName: 'Legacy Manager',
+    role: 'MANAGER',
+    branchId: 'b1',
+    branchCode: '001',
+    branchName: 'Pécs',
+    companyId: 'c1',
+    companyCode: 'EBC',
+    companyName: 'EBC Zrt.',
+  }
+
+  const storeCtx = (appMode: MenuVisibilityContext['appMode']): MenuVisibilityContext => {
+    const s = useAuthStore.getState()
+    return {
+      appMode,
+      hasCanonicalRole: (r: string) => s.hasCanonicalRole(r),
+      hasRole: (r: string) => s.hasRole(r),
+      featureFlags: {},
+    }
+  }
+
+  it('orphan MANAGER (0 canonical assignment): LATJA az "AML / Compliance" csoportot full modban', () => {
+    useAuthStore.getState().login(legacyWorker, 'tok', 'Bearer', '', null, [], [])
+    const aml = groupByLabel('AML / Compliance')
+    expect(isMenuGroupVisible(aml, storeCtx('full'))).toBe(true)
+    expect(isMenuItemVisible(itemByPath(aml, '/admin/error-monitor'), aml, storeCtx('full'))).toBe(true)
+    expect(isMenuItemVisible(itemByPath(aml, '/compliance'), aml, storeCtx('full'))).toBe(true)
+    useAuthStore.getState().logout()
+  })
+
+  it('regresszio: canonical assignmentes (foertektar primary) worker AML-lathatosaga VALTOZATLAN (false)', () => {
+    useAuthStore
+      .getState()
+      .login({ ...legacyWorker, role: 'MANAGER' }, 'tok', 'Bearer', '', 'foertektar', [], ['foertektar'])
+    const aml = groupByLabel('AML / Compliance')
+    expect(isMenuGroupVisible(aml, storeCtx('full'))).toBe(false)
+    expect(isMenuGroupVisible(groupByLabel('Központ'), storeCtx('full'))).toBe(true)
+    useAuthStore.getState().logout()
   })
 })
