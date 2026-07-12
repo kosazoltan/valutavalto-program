@@ -15667,7 +15667,13 @@ export interface components {
       requestedById?: number
       /** @enum {string} */
       status?:
-        'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED' | 'REJECTED'
+        | 'DRAFT'
+        | 'SUBMITTED'
+        | 'APPROVED'
+        | 'IN_TRANSIT'
+        | 'DELIVERED'
+        | 'CANCELLED'
+        | 'REJECTED'
       /** Format: date */
       requestDate?: string
       /** Format: date */
@@ -15727,7 +15733,13 @@ export interface components {
       requestedByWorkerName?: string
       /** @enum {string} */
       status?:
-        'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED' | 'REJECTED'
+        | 'DRAFT'
+        | 'SUBMITTED'
+        | 'APPROVED'
+        | 'IN_TRANSIT'
+        | 'DELIVERED'
+        | 'CANCELLED'
+        | 'REJECTED'
       /** Format: date */
       requestDate?: string
       /** Format: date */
@@ -15750,7 +15762,13 @@ export interface components {
       targetBranchName?: string
       /** @enum {string} */
       requestStatus?:
-        'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED' | 'REJECTED'
+        | 'DRAFT'
+        | 'SUBMITTED'
+        | 'APPROVED'
+        | 'IN_TRANSIT'
+        | 'DELIVERED'
+        | 'CANCELLED'
+        | 'REJECTED'
       /** Format: date */
       requestedDeliveryDate?: string
       /** Format: int64 */
@@ -17228,11 +17246,11 @@ export interface components {
       /** Format: int64 */
       version?: number
       /** Format: uuid */
-      branchId?: string
-      /** Format: uuid */
       companyId?: string
       /** Format: int32 */
       territoryId?: number
+      /** Format: uuid */
+      branchId?: string
     }
     CountItemRequest: {
       /** Format: int32 */
@@ -19890,6 +19908,11 @@ export interface components {
       legalEntityTaxNumber?: string
       legalDeedNumber?: string
       legalEntitySeat?: string
+      beneficialOwnerName?: string
+      customerCountry?: string
+      customerBirthName?: string
+      /** Format: int32 */
+      relatedMinCount?: number
     }
     CreateComplianceSearchTemplateDto: {
       name?: string
@@ -20908,11 +20931,11 @@ export interface components {
       /** Format: int64 */
       offset?: number
       sort?: components['schemas']['SortObject']
+      paged?: boolean
       /** Format: int32 */
       pageSize?: number
       /** Format: int32 */
       pageNumber?: number
-      paged?: boolean
       unpaged?: boolean
     }
     SortObject: {
@@ -21527,9 +21550,9 @@ export interface components {
       version?: number
       /** Format: date-time */
       updatedAt?: string
+      dailyChange?: number
       lowBalance?: boolean
       highBalance?: boolean
-      dailyChange?: number
     }
     DailyClosingReport: {
       /** Format: date */
@@ -22013,12 +22036,12 @@ export interface components {
       /** Format: date-time */
       validFrom?: string
       source?: string
+      /** Format: date-time */
+      lastUpdated?: string
       /** @deprecated */
       bankBuyRate?: number
       /** @deprecated */
       bankSellRate?: number
-      /** Format: date-time */
-      lastUpdated?: string
     }
     CompetitorRateDTO: {
       /** Format: uuid */
@@ -28493,7 +28516,13 @@ export interface operations {
     parameters: {
       query?: {
         status?:
-          'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED' | 'REJECTED'
+          | 'DRAFT'
+          | 'SUBMITTED'
+          | 'APPROVED'
+          | 'IN_TRANSIT'
+          | 'DELIVERED'
+          | 'CANCELLED'
+          | 'REJECTED'
         branchId?: string
         page?: number
         size?: number

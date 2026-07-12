@@ -92,6 +92,19 @@ describe('complianceTransactionsApi', () => {
     })
   })
 
+  it('buildCriteriaParams: relatedMinCount számként string paraméterré alakul, undefined kimarad', () => {
+    expect(
+      buildCriteriaParams({
+        relatedMinCount: 3,
+        beneficialOwnerName: 'Kovács',
+      }),
+    ).toEqual({
+      relatedMinCount: '3',
+      beneficialOwnerName: 'Kovács',
+    })
+    expect(buildCriteriaParams({ relatedMinCount: undefined })).toEqual({})
+  })
+
   it('search: _preservePaged + page/size stringként', async () => {
     const paged = { content: [{ id: 1 }], totalElements: 1, totalPages: 1, size: 50, number: 0 }
     mockApi.get.mockResolvedValue({ data: paged })

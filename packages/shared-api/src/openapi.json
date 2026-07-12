@@ -7,7 +7,7 @@
       "name": "PuzzleIR",
       "email": "info@puzzleir.hu"
     },
-    "version": "2.28.32"
+    "version": "2.28.33"
   },
   "servers": [
     {
@@ -39105,10 +39105,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "branchId": {
-            "type": "string",
-            "format": "uuid"
-          },
           "companyId": {
             "type": "string",
             "format": "uuid"
@@ -39116,6 +39112,10 @@
           "territoryId": {
             "type": "integer",
             "format": "int32"
+          },
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -46357,6 +46357,19 @@
           },
           "legalEntitySeat": {
             "type": "string"
+          },
+          "beneficialOwnerName": {
+            "type": "string"
+          },
+          "customerCountry": {
+            "type": "string"
+          },
+          "customerBirthName": {
+            "type": "string"
+          },
+          "relatedMinCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -49039,6 +49052,9 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
+          "paged": {
+            "type": "boolean"
+          },
           "pageSize": {
             "type": "integer",
             "format": "int32"
@@ -49046,9 +49062,6 @@
           "pageNumber": {
             "type": "integer",
             "format": "int32"
-          },
-          "paged": {
-            "type": "boolean"
           },
           "unpaged": {
             "type": "boolean"
@@ -50632,14 +50645,14 @@
             "type": "string",
             "format": "date-time"
           },
+          "dailyChange": {
+            "type": "number"
+          },
           "lowBalance": {
             "type": "boolean"
           },
           "highBalance": {
             "type": "boolean"
-          },
-          "dailyChange": {
-            "type": "number"
           }
         }
       },
@@ -51931,6 +51944,10 @@
           "source": {
             "type": "string"
           },
+          "lastUpdated": {
+            "type": "string",
+            "format": "date-time"
+          },
           "bankBuyRate": {
             "type": "number",
             "deprecated": true
@@ -51938,10 +51955,6 @@
           "bankSellRate": {
             "type": "number",
             "deprecated": true
-          },
-          "lastUpdated": {
-            "type": "string",
-            "format": "date-time"
           }
         }
       },

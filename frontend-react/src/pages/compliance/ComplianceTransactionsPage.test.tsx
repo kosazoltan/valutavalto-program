@@ -208,6 +208,19 @@ describe('ComplianceTransactionsPage', () => {
     })
   })
 
+  it('keresés: relatedMinCount pozitív egész számként jelenik meg a criteria-ban', async () => {
+    const user = userEvent.setup()
+    mocks.search.mockResolvedValue(paged([]))
+    render(<ComplianceTransactionsPage />)
+
+    await user.type(screen.getByTestId('filter-relatedMinCount'), '3')
+    await user.click(screen.getByTestId('search-button'))
+
+    await waitFor(() => {
+      expect(mocks.search).toHaveBeenCalledWith({ relatedMinCount: 3 }, 0, 50)
+    })
+  })
+
   it('találat renderelés: HU címkék + formázott számok', async () => {
     const user = userEvent.setup()
     render(<ComplianceTransactionsPage />)
@@ -476,6 +489,26 @@ describe('ComplianceTransactionsPage', () => {
     expect(screen.getByTestId('filter-customerName')).toHaveValue('')
     expect(screen.getByTestId('filter-pepOnly')).toBeChecked()
     expect(screen.getByTestId('filter-customRateOnly')).not.toBeChecked()
+    expect(mocks.search).not.toHaveBeenCalled()
+  })
+
+  it('sablon betöltése: a numerikus relatedMinCount string inputértékként töltődik vissza', async () => {
+    const user = userEvent.setup()
+    mocks.listTemplates.mockResolvedValue([
+      {
+        id: 'tpl-related',
+        name: 'Összefüggő tranzakciók',
+        criteria: { relatedMinCount: 5 },
+        createdByWorkerCode: 'W001',
+        createdAt: '2026-07-12T10:00:00',
+      },
+    ])
+    render(<ComplianceTransactionsPage />)
+
+    await screen.findByRole('option', { name: 'Összefüggő tranzakciók' })
+    await user.selectOptions(screen.getByTestId('template-select'), 'tpl-related')
+
+    expect(screen.getByTestId('filter-relatedMinCount')).toHaveValue(5)
     expect(mocks.search).not.toHaveBeenCalled()
   })
 

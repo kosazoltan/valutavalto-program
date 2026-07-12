@@ -51,6 +51,7 @@ const CRITERIA_LABELS: Record<keyof ComplianceTransactionSearchCriteria, string>
   beneficialOwnerName: 'Tényleges tulajdonos neve',
   customerCountry: 'Ügyfél országa',
   customerBirthName: 'Születési név',
+  relatedMinCount: 'Min. összefüggő tranzakció (db)',
 }
 
 interface FilterFormState {
@@ -78,6 +79,7 @@ interface FilterFormState {
   beneficialOwnerName: string
   customerCountry: string
   customerBirthName: string
+  relatedMinCount: string
 }
 
 const EMPTY_FILTERS: FilterFormState = {
@@ -105,6 +107,7 @@ const EMPTY_FILTERS: FilterFormState = {
   beneficialOwnerName: '',
   customerCountry: '',
   customerBirthName: '',
+  relatedMinCount: '',
 }
 
 function toCriteria(form: FilterFormState): ComplianceTransactionSearchCriteria {
@@ -138,6 +141,10 @@ function toCriteria(form: FilterFormState): ComplianceTransactionSearchCriteria 
   if (form.beneficialOwnerName.trim()) criteria.beneficialOwnerName = form.beneficialOwnerName.trim()
   if (form.customerCountry.trim()) criteria.customerCountry = form.customerCountry.trim()
   if (form.customerBirthName.trim()) criteria.customerBirthName = form.customerBirthName.trim()
+  if (form.relatedMinCount.trim()) {
+    const n = Number(form.relatedMinCount.trim())
+    if (Number.isInteger(n) && n > 0) criteria.relatedMinCount = n
+  }
   return criteria
 }
 
@@ -181,6 +188,7 @@ function criteriaToForm(
     beneficialOwnerName: criteriaString(criteria, 'beneficialOwnerName'),
     customerCountry: criteriaString(criteria, 'customerCountry'),
     customerBirthName: criteriaString(criteria, 'customerBirthName'),
+    relatedMinCount: criteriaString(criteria, 'relatedMinCount'),
   }
 }
 
@@ -692,6 +700,22 @@ export default function ComplianceTransactionsPage() {
               className="form-input"
               value={form.maxHufAmount}
               onChange={(event) => updateField('maxHufAmount', event.target.value)}
+            />
+          </div>
+          <div className="col-span-12 md:col-span-3">
+            <label className="form-label" htmlFor="filter-relatedMinCount">
+              Min. összefüggő tranzakció (db)
+            </label>
+            <input
+              id="filter-relatedMinCount"
+              data-testid="filter-relatedMinCount"
+              type="number"
+              min="1"
+              step="1"
+              title="Ügyfelek, akik az időszakban legalább ennyi tranzakciót bonyolítottak"
+              className="form-input"
+              value={form.relatedMinCount}
+              onChange={(event) => updateField('relatedMinCount', event.target.value)}
             />
           </div>
           <div className="col-span-12 md:col-span-6">
