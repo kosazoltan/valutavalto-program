@@ -270,4 +270,54 @@ describe('authStore', () => {
       expect(useAuthStore.getState().hasCanonicalRole('ertekszallito')).toBe(true)
     })
   })
+
+  describe('MENU-LEGACY-ROLE-INVISIBLE: legacy-orphan MANAGER fallback (0 canonical assignment)', () => {
+    const orphanManager = { ...mockWorker, role: 'MANAGER' }
+
+    it('orphan MANAGER (roles=[], activeRole=null): latja az AML canonical role-okat', () => {
+      act(() => {
+        useAuthStore.getState().login(orphanManager, 'tok', 'Bearer', '', null, [], [])
+      })
+      const s = useAuthStore.getState()
+      expect(s.hasCanonicalRole('belso_ellenor')).toBe(true)
+      expect(s.hasCanonicalRole('biztonsagi_vezeto')).toBe(true)
+      expect(s.hasCanonicalRole('ugyvezeto')).toBe(true)
+    })
+
+    it('orphan MANAGER: arfolyam_nezo-t NEM kapja meg (FK-041/II — nincs a SZERVER_ROLES-ban)', () => {
+      act(() => {
+        useAuthStore.getState().login(orphanManager, 'tok', 'Bearer', '', null, [], [])
+      })
+      expect(useAuthStore.getState().hasCanonicalRole('arfolyam_nezo')).toBe(false)
+    })
+
+    it('least-privilege regresszio: canonical assignmentes worker (roles nem ures) viselkedese valtozatlan', () => {
+      const assignedWorker = { ...mockWorker, role: 'MANAGER' }
+      act(() => {
+        useAuthStore
+          .getState()
+          .login(assignedWorker, 'tok', 'Bearer', '', 'foertektar', [], ['foertektar'])
+      })
+      const s = useAuthStore.getState()
+      expect(s.hasCanonicalRole('foertektar')).toBe(true)
+      expect(s.hasCanonicalRole('belso_ellenor')).toBe(false)
+      expect(s.hasCanonicalRole('biztonsagi_vezeto')).toBe(false)
+    })
+
+    it('orphan SUPERVISOR: NEM kap fallbacket (backend compliance hasAnyRole sem engedi)', () => {
+      const orphanSupervisor = { ...mockWorker, role: 'SUPERVISOR' }
+      act(() => {
+        useAuthStore.getState().login(orphanSupervisor, 'tok', 'Bearer', '', null, [], [])
+      })
+      expect(useAuthStore.getState().hasCanonicalRole('belso_ellenor')).toBe(false)
+    })
+
+    it('orphan ADMIN: a meglevo ADMIN-fallback tovabbra is mindent enged (regresszio-pin)', () => {
+      const orphanAdmin = { ...mockWorker, role: 'ADMIN' }
+      act(() => {
+        useAuthStore.getState().login(orphanAdmin, 'tok', 'Bearer', '', null, [], [])
+      })
+      expect(useAuthStore.getState().hasCanonicalRole('belso_ellenor')).toBe(true)
+    })
+  })
 })

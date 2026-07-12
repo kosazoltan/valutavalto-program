@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persistToken, clearPersistedToken } from '../services/api/index'
 import { canonicalizeRoleForAppMode } from '../utils/appModeRoles'
+import { legacyOrphanFallbackMatches } from '../utils/legacyRoleFallback'
 import { clearSessionAppMode } from '../utils/sessionAppMode'
 
 export interface Worker {
@@ -175,11 +176,13 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     const effectiveRole = activeRole || worker?.role
     if (effectiveRole?.trim().toUpperCase() === 'ADMIN') return true
 
-    const list = new Set(
-      (Array.isArray(canonicalRoles) ? canonicalRoles : [canonicalRoles]).map((role) =>
-        canonicalizeRoleForAppMode(role),
-      ),
-    )
+    const requested = Array.isArray(canonicalRoles) ? canonicalRoles : [canonicalRoles]
+
+    // MENU-LEGACY-ROLE-INVISIBLE (2026-07-12): legacy-orphan MANAGER (0 canonical assignment)
+    // a backend hasAnyRole-paritas miatt a SZERVER_ROLES halmazat teljesiti (ld. legacyRoleFallback.ts).
+    if (legacyOrphanFallbackMatches(effectiveRole, roles, requested)) return true
+
+    const list = new Set(requested.map((role) => canonicalizeRoleForAppMode(role)))
     const matchesRequestedRole = (role: string | null | undefined): boolean => {
       const canonical = canonicalizeRoleForAppMode(role)
       return Boolean(canonical) && list.has(canonical)
