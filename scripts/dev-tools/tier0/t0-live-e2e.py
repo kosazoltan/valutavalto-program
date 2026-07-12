@@ -87,8 +87,10 @@ def _tool_error(want_json: bool, script: str, msg: str) -> int:
 
 
 def _denied(p: Path) -> bool:
-    # GLM F-003 fix (2026-07-12): a ".env" SUBSTRING-match tul szeles volt
-    # (pl. ".env-helpers.json"-t is tiltana) -> nev-alapu .env* glob a kontraktus.
+    # GLM F-003 fix (2026-07-12): a ".env" SUBSTRING-match tul szeles volt --
+    # az utvonal BARMELY reszeben talalt ".env"-re tiltott (pl. "config.env.bak",
+    # "src/env-helpers.ts" a szulo-utvonalon at). A kontraktus a .env* NEV-glob:
+    # csak a ".env"-vel KEZDODO fajlNEV tiltott (a .env-helpers.json az marad is).
     if p.name.startswith(".env"):
         return True
     return "backend_deployment/" in str(p).replace("\\", "/")
