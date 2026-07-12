@@ -49,6 +49,8 @@ const CRITERIA_LABELS: Record<keyof ComplianceTransactionSearchCriteria, string>
   legalDeedNumber: 'Okirat száma',
   legalEntitySeat: 'Székhely',
   beneficialOwnerName: 'Tényleges tulajdonos neve',
+  customerCountry: 'Ügyfél országa',
+  customerBirthName: 'Születési név',
 }
 
 interface FilterFormState {
@@ -74,6 +76,8 @@ interface FilterFormState {
   legalDeedNumber: string
   legalEntitySeat: string
   beneficialOwnerName: string
+  customerCountry: string
+  customerBirthName: string
 }
 
 const EMPTY_FILTERS: FilterFormState = {
@@ -99,6 +103,8 @@ const EMPTY_FILTERS: FilterFormState = {
   legalDeedNumber: '',
   legalEntitySeat: '',
   beneficialOwnerName: '',
+  customerCountry: '',
+  customerBirthName: '',
 }
 
 function toCriteria(form: FilterFormState): ComplianceTransactionSearchCriteria {
@@ -130,6 +136,8 @@ function toCriteria(form: FilterFormState): ComplianceTransactionSearchCriteria 
   if (form.legalDeedNumber.trim()) criteria.legalDeedNumber = form.legalDeedNumber.trim()
   if (form.legalEntitySeat.trim()) criteria.legalEntitySeat = form.legalEntitySeat.trim()
   if (form.beneficialOwnerName.trim()) criteria.beneficialOwnerName = form.beneficialOwnerName.trim()
+  if (form.customerCountry.trim()) criteria.customerCountry = form.customerCountry.trim()
+  if (form.customerBirthName.trim()) criteria.customerBirthName = form.customerBirthName.trim()
   return criteria
 }
 
@@ -171,6 +179,8 @@ function criteriaToForm(
     legalDeedNumber: criteriaString(criteria, 'legalDeedNumber'),
     legalEntitySeat: criteriaString(criteria, 'legalEntitySeat'),
     beneficialOwnerName: criteriaString(criteria, 'beneficialOwnerName'),
+    customerCountry: criteriaString(criteria, 'customerCountry'),
+    customerBirthName: criteriaString(criteria, 'customerBirthName'),
   }
 }
 
@@ -748,6 +758,30 @@ export default function ComplianceTransactionsPage() {
               className="form-input"
               value={form.customerNationality}
               onChange={(event) => updateField('customerNationality', event.target.value)}
+            />
+          </div>
+          <div className="col-span-12 md:col-span-3">
+            <label className="form-label" htmlFor="filter-customerCountry">
+              Ügyfél országa
+            </label>
+            <input
+              id="filter-customerCountry"
+              data-testid="filter-customerCountry"
+              className="form-input"
+              value={form.customerCountry}
+              onChange={(event) => updateField('customerCountry', event.target.value)}
+            />
+          </div>
+          <div className="col-span-12 md:col-span-3">
+            <label className="form-label" htmlFor="filter-customerBirthName">
+              Születési név
+            </label>
+            <input
+              id="filter-customerBirthName"
+              data-testid="filter-customerBirthName"
+              className="form-input"
+              value={form.customerBirthName}
+              onChange={(event) => updateField('customerBirthName', event.target.value)}
             />
           </div>
           <div className="col-span-12 md:col-span-3">

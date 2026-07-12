@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.TestApplication;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
+import hu.puzzleir.valuta.entity.Customer;
 import hu.puzzleir.valuta.entity.Dictionary;
 import hu.puzzleir.valuta.entity.PaymentMethod;
 import hu.puzzleir.valuta.entity.Transaction;
@@ -68,6 +69,7 @@ class TransactionRepositoryComplianceSearchIT {
     @Autowired private BranchRepository branchRepository;
     @Autowired private WorkerRepository workerRepository;
     @Autowired private CurrencyRepository currencyRepository;
+    @Autowired private CustomerRepository customerRepository;
     @Autowired private TransactionRepository transactionRepository;
     @Autowired private TransactionBeneficialOwnerRepository beneficialOwnerRepository;
     @Autowired private TransactionLineRepository transactionLineRepository;
@@ -141,6 +143,83 @@ class TransactionRepositoryComplianceSearchIT {
         assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("FS11-DEF-COUNTRY: ügyfél-törzs országa szerint szűr, cross-tenant 0 találat")
+    void customerCountryFilterMatchesViaCustomerMaster() {
+        LocalDateTime now = LocalDateTime.now();
+        Tenant own = seedTenant("DEFCTRA", now);
+        Tenant foreign = seedTenant("DEFCTRB", now);
+        Currency eur = findOrCreateCurrency("EUR", "Euro", "EUR", 2, 1, now);
+        LocalDate day = LocalDate.of(2026, 7, 11);
+
+        customerRepository.save(customer(own.company(), "CDEF001", "Irani Ugyfel", "Irán", null));
+        customerRepository.save(customer(own.company(), "CDEF002", "Hazai Ugyfel", "Magyarország", null));
+        customerRepository.save(customer(foreign.company(), "CDEF003", "Kulso Ugyfel", "Irán", null));
+
+        Transaction match = transaction(own, "DEF-CTR-MATCH", day, LocalTime.of(10, 0), eur, "Irani Ugyfel");
+        match.setCustomerId("CDEF001");
+        transactionRepository.save(match);
+        Transaction noMatch = transaction(own, "DEF-CTR-NOMATCH", day, LocalTime.of(11, 0), eur, "Hazai Ugyfel");
+        noMatch.setCustomerId("CDEF002");
+        transactionRepository.save(noMatch);
+        Transaction noCustomerId = transaction(own, "DEF-CTR-NO-CUSTOMER", day, LocalTime.of(11, 30), eur, "Azonosito Nelkul");
+        noCustomerId.setCustomerId(null);
+        transactionRepository.save(noCustomerId);
+        Transaction foreignTx = transaction(foreign, "DEF-CTR-FOREIGN", day, LocalTime.of(12, 0), eur, "Kulso Ugyfel");
+        foreignTx.setCustomerId("CDEF003");
+        transactionRepository.save(foreignTx);
+        transactionRepository.flush();
+
+        Page<Transaction> result = searchWithCountry(own, "irán", PageRequest.of(0, 20));
+
+        assertThat(result.getContent()).extracting(Transaction::getReceiptNumber)
+                .containsExactly("DEF-CTR-MATCH");
+        assertThat(result.getTotalElements()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("FS11-DEF-BIRTHNAME: ügyfél-törzs születési neve szerint szűr, cross-tenant 0 találat")
+    void customerBirthNameFilterMatchesViaCustomerMaster() {
+        LocalDateTime now = LocalDateTime.now();
+        Tenant own = seedTenant("DEFBNMA", now);
+        Tenant foreign = seedTenant("DEFBNMB", now);
+        Currency eur = findOrCreateCurrency("EUR", "Euro", "EUR", 2, 1, now);
+        LocalDate day = LocalDate.of(2026, 7, 11);
+
+        customerRepository.save(customer(own.company(), "CDEF101", "Kovacs Anna", null, "Kovács Született Anna"));
+        customerRepository.save(customer(own.company(), "CDEF102", "Nagy Eva", null, "Nagy Éva"));
+        customerRepository.save(customer(foreign.company(), "CDEF103", "Kulso Anna", null, "Kovács Született Anna"));
+
+        Transaction match = transaction(own, "DEF-BNM-MATCH", day, LocalTime.of(10, 0), eur, "Kovacs Anna");
+        match.setCustomerId("CDEF101");
+        transactionRepository.save(match);
+        Transaction noMatch = transaction(own, "DEF-BNM-NOMATCH", day, LocalTime.of(11, 0), eur, "Nagy Eva");
+        noMatch.setCustomerId("CDEF102");
+        transactionRepository.save(noMatch);
+        Transaction foreignTx = transaction(foreign, "DEF-BNM-FOREIGN", day, LocalTime.of(12, 0), eur, "Kulso Anna");
+        foreignTx.setCustomerId("CDEF103");
+        transactionRepository.save(foreignTx);
+        transactionRepository.flush();
+
+        Page<Transaction> result = searchWithBirthName(own, "született", PageRequest.of(0, 20));
+
+        assertThat(result.getContent()).extracting(Transaction::getReceiptNumber)
+                .containsExactly("DEF-BNM-MATCH");
+        assertThat(result.getTotalElements()).isEqualTo(1);
+    }
+
+    private static Customer customer(
+            Company company, String code, String name, String country, String birthName) {
+        return Customer.builder()
+                .company(company)
+                .customerCode(code)
+                .name(name)
+                .country(country)
+                .birthName(birthName)
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+
     private static TransactionBeneficialOwner owner(UUID companyId, Long transactionId, int no, String name) {
         return TransactionBeneficialOwner.builder()
                 .companyId(companyId)
@@ -193,7 +272,8 @@ class TransactionRepositoryComplianceSearchIT {
         return transactionRepository.searchComplianceTransactions(
                 tenant.company().getId(), null, null, null, null, null, null,
                 true, List.of(-1L), (PaymentMethod) null, false, false, false, false,
-                customerName, null, null, null, false, null, null, null, null, null, pageable);
+                customerName, null, null, null, false, null, null, null, null,
+                null, null, null, pageable);
     }
 
     private Page<Transaction> searchWithOwner(Tenant tenant, String ownerName, org.springframework.data.domain.Pageable pageable) {
@@ -201,7 +281,7 @@ class TransactionRepositoryComplianceSearchIT {
                 tenant.company().getId(), null, null, null, null, null, null,
                 true, List.of(-1L), (PaymentMethod) null, false, false, false, false,
                 null, null, null, null, false, null, null, null, null,
-                ownerName, pageable);
+                ownerName, null, null, pageable);
     }
 
     private Page<Transaction> searchWithCurrencies(Tenant tenant, List<Long> currencyIds, org.springframework.data.domain.Pageable pageable) {
@@ -209,7 +289,23 @@ class TransactionRepositoryComplianceSearchIT {
                 tenant.company().getId(), null, null, null, null, null, null,
                 false, currencyIds, (PaymentMethod) null, false, false, false, false,
                 null, null, null, null, false, null, null, null, null,
-                null, pageable);
+                null, null, null, pageable);
+    }
+
+    private Page<Transaction> searchWithCountry(Tenant tenant, String country, org.springframework.data.domain.Pageable pageable) {
+        return transactionRepository.searchComplianceTransactions(
+                tenant.company().getId(), null, null, null, null, null, null,
+                true, List.of(-1L), (PaymentMethod) null, false, false, false, false,
+                null, null, null, null, false, null, null, null, null,
+                null, country, null, pageable);
+    }
+
+    private Page<Transaction> searchWithBirthName(Tenant tenant, String birthName, org.springframework.data.domain.Pageable pageable) {
+        return transactionRepository.searchComplianceTransactions(
+                tenant.company().getId(), null, null, null, null, null, null,
+                true, List.of(-1L), (PaymentMethod) null, false, false, false, false,
+                null, null, null, null, false, null, null, null, null,
+                null, null, birthName, pageable);
     }
 
     private Tenant seedTenant(String prefix, LocalDateTime now) {

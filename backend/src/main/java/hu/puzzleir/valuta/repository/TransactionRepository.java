@@ -382,6 +382,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND (:beneficialOwnerName IS NULL OR EXISTS (SELECT 1 FROM TransactionBeneficialOwner bo " +
            "     WHERE bo.transactionId = t.id AND bo.companyId = :companyId " +
            "     AND LOWER(bo.ownerName) LIKE LOWER(CONCAT('%', CAST(:beneficialOwnerName AS string), '%')))) " +
+           "AND (:customerCountry IS NULL OR EXISTS (SELECT 1 FROM Customer c " +
+           "     WHERE c.company.id = :companyId AND c.customerCode = t.customerId " +
+           "     AND t.customerId <> '' " +
+           "     AND LOWER(c.country) LIKE LOWER(CONCAT('%', CAST(:customerCountry AS string), '%')))) " +
+           "AND (:customerBirthName IS NULL OR EXISTS (SELECT 1 FROM Customer c2 " +
+           "     WHERE c2.company.id = :companyId AND c2.customerCode = t.customerId " +
+           "     AND t.customerId <> '' " +
+           "     AND LOWER(c2.birthName) LIKE LOWER(CONCAT('%', CAST(:customerBirthName AS string), '%')))) " +
            "ORDER BY t.transactionDate DESC, t.transactionTime DESC",
            countQuery = "SELECT COUNT(t) FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
@@ -413,7 +421,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND (:legalEntitySeat IS NULL OR LOWER(t.legalEntitySeat) LIKE LOWER(CONCAT('%', CAST(:legalEntitySeat AS string), '%'))) " +
            "AND (:beneficialOwnerName IS NULL OR EXISTS (SELECT 1 FROM TransactionBeneficialOwner bo " +
            "     WHERE bo.transactionId = t.id AND bo.companyId = :companyId " +
-           "     AND LOWER(bo.ownerName) LIKE LOWER(CONCAT('%', CAST(:beneficialOwnerName AS string), '%'))))")
+           "     AND LOWER(bo.ownerName) LIKE LOWER(CONCAT('%', CAST(:beneficialOwnerName AS string), '%')))) " +
+           "AND (:customerCountry IS NULL OR EXISTS (SELECT 1 FROM Customer c " +
+           "     WHERE c.company.id = :companyId AND c.customerCode = t.customerId " +
+           "     AND t.customerId <> '' " +
+           "     AND LOWER(c.country) LIKE LOWER(CONCAT('%', CAST(:customerCountry AS string), '%')))) " +
+           "AND (:customerBirthName IS NULL OR EXISTS (SELECT 1 FROM Customer c2 " +
+           "     WHERE c2.company.id = :companyId AND c2.customerCode = t.customerId " +
+           "     AND t.customerId <> '' " +
+           "     AND LOWER(c2.birthName) LIKE LOWER(CONCAT('%', CAST(:customerBirthName AS string), '%'))))")
     Page<Transaction> searchComplianceTransactions(
         @Param("companyId") UUID companyId,
         @Param("branchId") UUID branchId,
@@ -439,6 +455,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("legalDeedNumber") String legalDeedNumber,
         @Param("legalEntitySeat") String legalEntitySeat,
         @Param("beneficialOwnerName") String beneficialOwnerName,
+        @Param("customerCountry") String customerCountry,
+        @Param("customerBirthName") String customerBirthName,
         Pageable pageable
     );
 

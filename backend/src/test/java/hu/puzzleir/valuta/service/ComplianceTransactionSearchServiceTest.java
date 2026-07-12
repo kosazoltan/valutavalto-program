@@ -82,14 +82,14 @@ class ComplianceTransactionSearchServiceTest {
     void searchUsesCompanyIdFromSecurityContext() {
         when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
 
         service.search(new ComplianceTransactionSearchCriteria(), PageRequest.of(0, 10));
 
         verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
                 eq(true), eq(List.of(-1L)), isNull(), eq(false), eq(false), eq(false), eq(false), isNull(), isNull(), isNull(),
-                isNull(), eq(false), isNull(), isNull(), isNull(), isNull(), isNull(), any());
+                isNull(), eq(false), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
     }
 
     @Test
@@ -97,7 +97,7 @@ class ComplianceTransactionSearchServiceTest {
     void currencyIdsEmptyUsesSentinelOtherwiseOriginalList() {
         when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
 
         service.search(new ComplianceTransactionSearchCriteria(), PageRequest.of(0, 10));
@@ -107,10 +107,10 @@ class ComplianceTransactionSearchServiceTest {
 
         verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 eq(true), eq(List.of(-1L)), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any());
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any());
         verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 eq(false), eq(List.of(1L, 2L)), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any());
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -118,7 +118,7 @@ class ComplianceTransactionSearchServiceTest {
     void stringFiltersAreTrimmedAndBlankBecomesNull() {
         when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
         ComplianceTransactionSearchCriteria criteria = new ComplianceTransactionSearchCriteria();
         criteria.setCustomerName("  kovács  ");
@@ -130,7 +130,7 @@ class ComplianceTransactionSearchServiceTest {
         ArgumentCaptor<String> customerName = ArgumentCaptor.forClass(String.class);
         verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), customerName.capture(), any(), isNull(),
-                isNull(), anyBoolean(), any(), any(), any(), any(), isNull(), any());
+                isNull(), anyBoolean(), any(), any(), any(), any(), isNull(), isNull(), isNull(), any());
         assertThat(customerName.getValue()).isEqualTo("kovács");
     }
 
@@ -139,7 +139,7 @@ class ComplianceTransactionSearchServiceTest {
     void beneficialOwnerNameFilterIsTrimmedAndBlankBecomesNull() {
         when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
         ComplianceTransactionSearchCriteria criteria = new ComplianceTransactionSearchCriteria();
         criteria.setBeneficialOwnerName("  Kovács Tulaj Béla  ");
@@ -149,7 +149,7 @@ class ComplianceTransactionSearchServiceTest {
         ArgumentCaptor<String> beneficialOwnerName = ArgumentCaptor.forClass(String.class);
         verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), isNull(), any(), isNull(),
-                isNull(), anyBoolean(), isNull(), isNull(), isNull(), isNull(), beneficialOwnerName.capture(), any());
+                isNull(), anyBoolean(), isNull(), isNull(), isNull(), isNull(), beneficialOwnerName.capture(), isNull(), isNull(), any());
         assertThat(beneficialOwnerName.getValue()).isEqualTo("Kovács Tulaj Béla");
 
         ComplianceTransactionSearchCriteria blank = new ComplianceTransactionSearchCriteria();
@@ -158,7 +158,25 @@ class ComplianceTransactionSearchServiceTest {
 
         verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), isNull(), any(), isNull(),
-                isNull(), anyBoolean(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
+                isNull(), anyBoolean(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
+    }
+
+    @Test
+    @DisplayName("FS11-DEF: customerCountry és customerBirthName trimelődik, az üres érték null")
+    void customerMasterFiltersAreNormalized() {
+        when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
+                anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+        ComplianceTransactionSearchCriteria criteria = new ComplianceTransactionSearchCriteria();
+        criteria.setCustomerCountry("  Irán  ");
+        criteria.setCustomerBirthName("   ");
+
+        service.search(criteria, PageRequest.of(0, 10));
+
+        verify(transactionRepository).searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
+                anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
+                any(), anyBoolean(), any(), any(), any(), any(), isNull(), eq("Irán"), isNull(), any());
     }
 
     @Test
@@ -174,7 +192,7 @@ class ComplianceTransactionSearchServiceTest {
         noDiscount.setOriginalTransaction(null);
         when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(discountCode, override, noDiscount)));
 
         Page<ComplianceTransactionRowDto> result = service.search(new ComplianceTransactionSearchCriteria(), PageRequest.of(0, 10));
@@ -202,7 +220,7 @@ class ComplianceTransactionSearchServiceTest {
     void searchForExportEnforcesMaxRows() {
         when(transactionRepository.searchComplianceTransactions(eq(COMPANY_ID), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any(), any(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(),
-                any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
+                any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(transaction("FS11-EXPORT-OK")), PageRequest.of(0, 10_000), 10_000))
                 .thenReturn(new PageImpl<>(List.of(transaction("FS11-EXPORT-TOO-LARGE")), PageRequest.of(0, 10_000), 10_001));
 

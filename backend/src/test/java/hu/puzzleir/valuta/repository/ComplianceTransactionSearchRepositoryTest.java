@@ -303,7 +303,7 @@ class ComplianceTransactionSearchRepositoryTest {
                 currencyIdsEmpty, currencyIds, paymentMethod, customRateOnly, kkDiscountOnly,
                 onBehalfOfOtherOnly, pepOnly, customerName, customerBirthDate, customerNationality,
                 customerDocumentNumber, legalEntityOnly, legalEntityName, legalEntityTaxNumber,
-                legalDeedNumber, legalEntitySeat, null, pageable);
+                legalDeedNumber, legalEntitySeat, null, null, null, pageable);
     }
 
     private Tenant seedTenant(String prefix, LocalDateTime now) {
