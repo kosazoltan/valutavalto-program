@@ -38,4 +38,5 @@ public class ComplianceTransactionSearchCriteria {
     private String legalEntityTaxNumber;
     private String legalDeedNumber;
     private String legalEntitySeat;
+    private String beneficialOwnerName;
 }

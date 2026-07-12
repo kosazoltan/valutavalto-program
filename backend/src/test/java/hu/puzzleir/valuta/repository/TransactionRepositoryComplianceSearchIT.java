@@ -7,6 +7,8 @@ import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.Dictionary;
 import hu.puzzleir.valuta.entity.PaymentMethod;
 import hu.puzzleir.valuta.entity.Transaction;
+import hu.puzzleir.valuta.entity.TransactionBeneficialOwner;
+import hu.puzzleir.valuta.entity.TransactionLine;
 import hu.puzzleir.valuta.entity.TransactionStatus;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.entity.Worker;
@@ -29,6 +31,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -66,6 +69,8 @@ class TransactionRepositoryComplianceSearchIT {
     @Autowired private WorkerRepository workerRepository;
     @Autowired private CurrencyRepository currencyRepository;
     @Autowired private TransactionRepository transactionRepository;
+    @Autowired private TransactionBeneficialOwnerRepository beneficialOwnerRepository;
+    @Autowired private TransactionLineRepository transactionLineRepository;
 
     @Test
     @DisplayName("FS11-LOWER-BYTEA: ures szoveges szurokkel a default lista nem dob lower(bytea) hibat")
@@ -109,11 +114,102 @@ class TransactionRepositoryComplianceSearchIT {
         assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("FS11-DEF-OWNER: tulajdonos-név szűrő EXISTS-szel talál, cross-tenant 0 találat")
+    void beneficialOwnerNameFilterMatchesAndIsTenantScoped() {
+        LocalDateTime now = LocalDateTime.now();
+        Tenant own = seedTenant("DEFOWNA", now);
+        Tenant foreign = seedTenant("DEFOWNB", now);
+        Currency eur = findOrCreateCurrency("EUR", "Euro", "EUR", 2, 1, now);
+        LocalDate day = LocalDate.of(2026, 7, 10);
+
+        Transaction match = transactionRepository.save(
+                transaction(own, "DEF-OWN-MATCH", day, LocalTime.of(10, 0), eur, "Cegvezeto Kft"));
+        Transaction noMatch = transactionRepository.save(
+                transaction(own, "DEF-OWN-NOMATCH", day, LocalTime.of(11, 0), eur, "Masik Kft"));
+        Transaction foreignTx = transactionRepository.save(
+                transaction(foreign, "DEF-OWN-FOREIGN", day, LocalTime.of(12, 0), eur, "Kulso Kft"));
+        beneficialOwnerRepository.save(owner(own.company().getId(), match.getId(), 1, "Kovacs Tulaj Bela"));
+        beneficialOwnerRepository.save(owner(own.company().getId(), noMatch.getId(), 1, "Nagy Anna"));
+        beneficialOwnerRepository.save(owner(foreign.company().getId(), foreignTx.getId(), 1, "Kovacs Tulaj Bela"));
+        transactionRepository.flush();
+
+        Page<Transaction> result = searchWithOwner(own, "tulaj", PageRequest.of(0, 20));
+
+        assertThat(result.getContent()).extracting(Transaction::getReceiptNumber)
+                .containsExactly("DEF-OWN-MATCH");
+        assertThat(result.getTotalElements()).isEqualTo(1);
+    }
+
+    private static TransactionBeneficialOwner owner(UUID companyId, Long transactionId, int no, String name) {
+        return TransactionBeneficialOwner.builder()
+                .companyId(companyId)
+                .transactionId(transactionId)
+                .ownerNo(no)
+                .ownerName(name)
+                .build();
+    }
+
+    @Test
+    @DisplayName("FS11-DEF-LINECUR: tétel-sor valutája is találatot ad (OR a fő-valutával), cross-tenant 0")
+    void lineCurrencyMatchesViaExists() {
+        LocalDateTime now = LocalDateTime.now();
+        Tenant own = seedTenant("DEFLCA", now);
+        Tenant foreign = seedTenant("DEFLCB", now);
+        Currency eur = findOrCreateCurrency("EUR", "Euro", "EUR", 2, 1, now);
+        Currency usd = findOrCreateCurrency("USD", "USA dollar", "USD", 2, 1, now);
+        LocalDate day = LocalDate.of(2026, 7, 10);
+
+        // fő-valuta EUR, tétel-sor USD → USD-szűrésre TALÁLAT
+        Transaction multiLine = transactionRepository.save(
+                transaction(own, "DEF-LC-LINE", day, LocalTime.of(10, 0), eur, "Ugyfel Egy"));
+        transactionLineRepository.save(line(multiLine, 1, usd, "100.00"));
+        // fő-valuta EUR, nincs USD-sora → NINCS találat
+        transactionRepository.save(transaction(own, "DEF-LC-MAINONLY", day, LocalTime.of(11, 0), eur, "Ugyfel Ketto"));
+        // másik tenant USD-sora → NINCS találat
+        Transaction foreignTx = transactionRepository.save(
+                transaction(foreign, "DEF-LC-FOREIGN", day, LocalTime.of(12, 0), eur, "Ugyfel Harom"));
+        transactionLineRepository.save(line(foreignTx, 1, usd, "50.00"));
+        transactionRepository.flush();
+
+        Page<Transaction> result = searchWithCurrencies(own, List.of(usd.getId()), PageRequest.of(0, 20));
+
+        assertThat(result.getContent()).extracting(Transaction::getReceiptNumber)
+                .containsExactly("DEF-LC-LINE");
+    }
+
+    private static TransactionLine line(Transaction tx, int no, Currency currency, String count) {
+        return TransactionLine.builder()
+                .transaction(tx)
+                .lineNumber(no)
+                .currency(currency)
+                .appliedRate(new BigDecimal("100.0000"))
+                .banknoteCount(new BigDecimal(count))
+                .hufValue(new BigDecimal("10000"))
+                .build();
+    }
+
     private Page<Transaction> search(Tenant tenant, String customerName, org.springframework.data.domain.Pageable pageable) {
         return transactionRepository.searchComplianceTransactions(
                 tenant.company().getId(), null, null, null, null, null, null,
                 true, List.of(-1L), (PaymentMethod) null, false, false, false, false,
-                customerName, null, null, null, false, null, null, null, null, pageable);
+                customerName, null, null, null, false, null, null, null, null, null, pageable);
+    }
+
+    private Page<Transaction> searchWithOwner(Tenant tenant, String ownerName, org.springframework.data.domain.Pageable pageable) {
+        return transactionRepository.searchComplianceTransactions(
+                tenant.company().getId(), null, null, null, null, null, null,
+                true, List.of(-1L), (PaymentMethod) null, false, false, false, false,
+                null, null, null, null, false, null, null, null, null,
+                ownerName, pageable);
+    }
+
+    private Page<Transaction> searchWithCurrencies(Tenant tenant, List<Long> currencyIds, org.springframework.data.domain.Pageable pageable) {
+        return transactionRepository.searchComplianceTransactions(
+                tenant.company().getId(), null, null, null, null, null, null,
+                false, currencyIds, (PaymentMethod) null, false, false, false, false,
+                null, null, null, null, false, null, null, null, null,
+                null, pageable);
     }
 
     private Tenant seedTenant(String prefix, LocalDateTime now) {

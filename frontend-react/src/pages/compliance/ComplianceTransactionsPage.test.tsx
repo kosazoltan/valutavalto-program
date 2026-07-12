@@ -173,6 +173,23 @@ describe('ComplianceTransactionsPage', () => {
     })
   })
 
+  it('keresés: beneficialOwnerName mező megjelenik a criteria-ban', async () => {
+    const user = userEvent.setup()
+    mocks.search.mockResolvedValue(paged([]))
+    render(<ComplianceTransactionsPage />)
+
+    await user.type(screen.getByTestId('filter-beneficialOwnerName'), 'Kovács Tulaj Béla')
+    await user.click(screen.getByTestId('search-button'))
+
+    await waitFor(() => {
+      expect(mocks.search).toHaveBeenCalledWith(
+        { beneficialOwnerName: 'Kovács Tulaj Béla' },
+        0,
+        50,
+      )
+    })
+  })
+
   it('találat renderelés: HU címkék + formázott számok', async () => {
     const user = userEvent.setup()
     render(<ComplianceTransactionsPage />)
