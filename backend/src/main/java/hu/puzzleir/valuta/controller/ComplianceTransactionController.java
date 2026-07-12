@@ -31,7 +31,8 @@ import java.time.format.DateTimeFormatter;
 @RequiredArgsConstructor
 public class ComplianceTransactionController {
 
-    private static final String ROLES = "hasAnyRole('COMPLIANCE','COMPLIANCE_OFFICER','MANAGER','ADMIN')";
+    private static final String ROLES = "hasAnyRole('COMPLIANCE','COMPLIANCE_OFFICER','MANAGER','ADMIN',"
+            + "'BELSO_ELLENOR','BIZTONSAGI_VEZETO','UGYVEZETO')";
     private static final DateTimeFormatter FILE_DATE = DateTimeFormatter.ISO_LOCAL_DATE;
 
     private final ComplianceTransactionSearchService searchService;

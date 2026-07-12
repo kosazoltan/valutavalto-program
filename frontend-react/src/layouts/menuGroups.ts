@@ -257,6 +257,7 @@ export const menuGroups: MenuGroup[] = [
   },
   {
     label: 'AML / Compliance',
+    // FS11-MENU-ROLE: szinkronban a backend compliance hasAnyRole-halmazával (ld. menuVisibility.test.ts pin)
     canonicalRoles: ['belso_ellenor', 'biztonsagi_vezeto', 'ugyvezeto'],
     modes: ['full'],
     items: [

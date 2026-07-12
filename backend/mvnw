@@ -296,6 +296,24 @@ if $cygwin; then
     MAVEN_PROJECTBASEDIR=`cygpath --path --windows "$MAVEN_PROJECTBASEDIR"`
 fi
 
+# For MinGW/MSYS (Git Bash), switch paths to Windows format before running java
+if $mingw ; then
+  if command -v cygpath > /dev/null 2>&1 ; then
+    [ -n "$M2_HOME" ] &&
+      M2_HOME=`cygpath --path --windows "$M2_HOME"`
+    [ -n "$JAVA_HOME" ] &&
+      JAVA_HOME=`cygpath --path --windows "$JAVA_HOME"`
+    [ -n "$CLASSPATH" ] &&
+      CLASSPATH=`cygpath --path --windows "$CLASSPATH"`
+    [ -n "$MAVEN_PROJECTBASEDIR" ] &&
+      MAVEN_PROJECTBASEDIR=`cygpath --path --windows "$MAVEN_PROJECTBASEDIR"`
+  else
+    # Fallback without cygpath: /d/dir -> d:/dir (java.exe accepts forward slashes)
+    [ -n "$MAVEN_PROJECTBASEDIR" ] &&
+      MAVEN_PROJECTBASEDIR=`echo "$MAVEN_PROJECTBASEDIR" | sed 's#^/\([a-zA-Z]\)/#\1:/#'`
+  fi
+fi
+
 # Provide a "standardized" way to retrieve the CLI args that will
 # work with both Windows and non-Windows executions.
 MAVEN_CMD_LINE_ARGS="$MAVEN_CONFIG $@"

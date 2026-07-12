@@ -28,7 +28,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ComplianceSearchTemplateController {
 
-    private static final String ROLES = "hasAnyRole('COMPLIANCE','COMPLIANCE_OFFICER','MANAGER','ADMIN')";
+    private static final String ROLES = "hasAnyRole('COMPLIANCE','COMPLIANCE_OFFICER','MANAGER','ADMIN',"
+            + "'BELSO_ELLENOR','BIZTONSAGI_VEZETO','UGYVEZETO')";
 
     private final ComplianceSearchTemplateService service;
 

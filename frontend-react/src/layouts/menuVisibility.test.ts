@@ -269,3 +269,17 @@ describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-h
     }
   })
 })
+
+describe('FS11-MENU-ROLE-MISMATCH — menü ⊆ backend compliance role-halmaz (pin)', () => {
+  it('az AML/Compliance csoport canonicalRoles-a pontosan a backend-engedett canonical trió', () => {
+    // Backend-oldali pár: Compliance*Controller + SuspiciousCustomerController
+    // hasAnyRole(...,'BELSO_ELLENOR','BIZTONSAGI_VEZETO','UGYVEZETO').
+    // Ha a backend-halmaz szűkül, ezt a pint és a menüt EGYÜTT kell módosítani.
+    const aml = groupByLabel('AML / Compliance')
+    expect([...(aml.canonicalRoles ?? [])].sort()).toEqual([
+      'belso_ellenor',
+      'biztonsagi_vezeto',
+      'ugyvezeto',
+    ])
+  })
+})
