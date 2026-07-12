@@ -41,9 +41,15 @@ public class ComplianceQuestionController {
     private final ComplianceQuestionService service;
     private final IdempotencyGuard idempotencyGuard;
     private static final String ENDPOINT_ANSWER_PREFIX = "POST /api/v1/compliance-questions/";
+    private static final String COMPLIANCE_MANAGE_ROLES =
+            "hasAnyRole('COMPLIANCE','COMPLIANCE_OFFICER','MANAGER','ADMIN',"
+            + "'BELSO_ELLENOR','BIZTONSAGI_VEZETO','UGYVEZETO')";
+    private static final String COMPLIANCE_VIEW_ROLES =
+            "hasAnyRole('COMPLIANCE','COMPLIANCE_OFFICER','SUPERVISOR','MANAGER','ADMIN',"
+            + "'BELSO_ELLENOR','BIZTONSAGI_VEZETO','UGYVEZETO')";
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('COMPLIANCE','COMPLIANCE_OFFICER','MANAGER','ADMIN')")
+    @PreAuthorize(COMPLIANCE_MANAGE_ROLES)
     @Operation(summary = "Compliance-kérdés létrehozása")
     public ResponseEntity<ComplianceQuestionDto> create(
             @Valid @RequestBody CreateComplianceQuestionDto dto) {
@@ -51,7 +57,7 @@ public class ComplianceQuestionController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('COMPLIANCE','COMPLIANCE_OFFICER','MANAGER','ADMIN')")
+    @PreAuthorize(COMPLIANCE_MANAGE_ROLES)
     @Operation(summary = "Compliance-kérdés módosítása")
     public ResponseEntity<ComplianceQuestionDto> update(
             @PathVariable UUID id,
@@ -60,7 +66,7 @@ public class ComplianceQuestionController {
     }
 
     @PutMapping("/{id}/active")
-    @PreAuthorize("hasAnyRole('COMPLIANCE','COMPLIANCE_OFFICER','MANAGER','ADMIN')")
+    @PreAuthorize(COMPLIANCE_MANAGE_ROLES)
     @Operation(summary = "Compliance-kérdés aktiválása/inaktiválása (soft-disable)")
     public ResponseEntity<ComplianceQuestionDto> setActive(
             @PathVariable UUID id,
@@ -69,7 +75,7 @@ public class ComplianceQuestionController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('COMPLIANCE','COMPLIANCE_OFFICER','MANAGER','ADMIN')")
+    @PreAuthorize(COMPLIANCE_MANAGE_ROLES)
     @Operation(summary = "Összes compliance-kérdés (inaktív is) — compliance-nézet")
     public ResponseEntity<List<ComplianceQuestionDto>> list() {
         return ResponseEntity.ok(service.listForCurrentCompany());
@@ -120,14 +126,14 @@ public class ComplianceQuestionController {
     }
 
     @GetMapping("/{id}/answers")
-    @PreAuthorize("hasAnyRole('COMPLIANCE','COMPLIANCE_OFFICER','SUPERVISOR','MANAGER','ADMIN')")
+    @PreAuthorize(COMPLIANCE_VIEW_ROLES)
     @Operation(summary = "A kérdésre érkezett válaszok — compliance-nézet")
     public ResponseEntity<List<CustomerQuestionAnswerDto>> getAnswers(@PathVariable UUID id) {
         return ResponseEntity.ok(service.getAnswersForQuestion(id));
     }
 
     @GetMapping("/answers/by-customer/{customerId}")
-    @PreAuthorize("hasAnyRole('COMPLIANCE','COMPLIANCE_OFFICER','SUPERVISOR','MANAGER','ADMIN')")
+    @PreAuthorize(COMPLIANCE_VIEW_ROLES)
     @Operation(summary = "Egy ügyfél összes válasza — compliance-nézet")
     public ResponseEntity<List<CustomerQuestionAnswerDto>> getAnswersForCustomer(
             @PathVariable Long customerId) {

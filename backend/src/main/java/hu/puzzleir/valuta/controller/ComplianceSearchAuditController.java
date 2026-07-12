@@ -26,7 +26,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ComplianceSearchAuditController {
 
-    private static final String ROLES = "hasAnyRole('COMPLIANCE','COMPLIANCE_OFFICER','MANAGER','ADMIN')";
+    private static final String ROLES = "hasAnyRole('COMPLIANCE','COMPLIANCE_OFFICER','MANAGER','ADMIN',"
+            + "'BELSO_ELLENOR','BIZTONSAGI_VEZETO','UGYVEZETO')";
 
     private final ComplianceSearchAuditService auditService;
     private final ComplianceSearchAuditPdfService pdfService;

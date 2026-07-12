@@ -130,6 +130,54 @@ class ComplianceSearchAuditControllerSecurityTest {
         verify(pdfService, never()).renderPdf(any());
     }
 
+    @Test
+    @DisplayName("FS11-MENU-ROLE: canonical BELSO_ELLENOR auditot menthet, listázhat és PDF-et tölthet")
+    @WithMockUser(roles = "BELSO_ELLENOR")
+    void belsoEllenorCanCreateListPdf() {
+        CreateComplianceSearchAuditDto request = CreateComplianceSearchAuditDto.builder()
+                .title("Audit")
+                .criteria(new ComplianceTransactionSearchCriteria())
+                .build();
+
+        controller.create(request);
+        controller.list();
+        ResponseEntity<byte[]> pdf = controller.pdf(AUDIT_ID);
+
+        verify(auditService).create(request);
+        verify(auditService).listForCurrentCompany();
+        verify(auditService).loadForPdf(AUDIT_ID);
+        verify(pdfService).renderPdf(any());
+        assertThat(pdf.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION))
+                .contains("compliance_kereses_audit_" + AUDIT_ID + ".pdf");
+        assertThat(pdf.getBody()).isEqualTo("%PDF-".getBytes());
+    }
+
+    @Test
+    @DisplayName("FS11-MENU-ROLE: canonical BIZTONSAGI_VEZETO listázhat")
+    @WithMockUser(roles = "BIZTONSAGI_VEZETO")
+    void biztonsagiVezetoCanList() {
+        controller.list();
+
+        verify(auditService).listForCurrentCompany();
+    }
+
+    @Test
+    @DisplayName("FS11-MENU-ROLE: canonical UGYVEZETO listázhat")
+    @WithMockUser(roles = "UGYVEZETO")
+    void ugyvezetoCanList() {
+        controller.list();
+
+        verify(auditService).listForCurrentCompany();
+    }
+
+    @Test
+    @DisplayName("FS11-MENU-ROLE: PENZTAR tiltott marad")
+    @WithMockUser(roles = "PENZTAR")
+    void penztarIsForbidden() {
+        assertThrows(AccessDeniedException.class, () -> controller.list());
+        verify(auditService, never()).listForCurrentCompany();
+    }
+
     private static ComplianceSearchAuditDto auditDto() {
         return ComplianceSearchAuditDto.builder()
                 .id(AUDIT_ID)

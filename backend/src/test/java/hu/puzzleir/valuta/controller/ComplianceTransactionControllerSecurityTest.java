@@ -128,4 +128,37 @@ class ComplianceTransactionControllerSecurityTest {
         assertThrows(AccessDeniedException.class, () -> controller.search(new ComplianceTransactionSearchCriteria(), 0, 50));
         verify(searchService, never()).search(any(), any(Pageable.class));
     }
+
+    @Test
+    @DisplayName("FS11-MENU-ROLE: canonical BELSO_ELLENOR kereshet")
+    @WithMockUser(roles = "BELSO_ELLENOR")
+    void belsoEllenorCanSearch() {
+        controller.search(new ComplianceTransactionSearchCriteria(), 0, 50);
+        verify(searchService).search(any(), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("FS11-MENU-ROLE: canonical BIZTONSAGI_VEZETO CSV exportot indíthat")
+    @WithMockUser(roles = "BIZTONSAGI_VEZETO")
+    void biztonsagiVezetoCanExportCsv() {
+        controller.exportCsv(new ComplianceTransactionSearchCriteria());
+        verify(exportService).toCsv(any());
+    }
+
+    @Test
+    @DisplayName("FS11-MENU-ROLE: canonical UGYVEZETO XLSX exportot indíthat")
+    @WithMockUser(roles = "UGYVEZETO")
+    void ugyvezetoCanExportXlsx() {
+        controller.exportXlsx(new ComplianceTransactionSearchCriteria());
+        verify(exportService).toXlsx(any());
+    }
+
+    @Test
+    @DisplayName("FS11-MENU-ROLE: PENZTAR tiltott marad")
+    @WithMockUser(roles = "PENZTAR")
+    void penztarIsForbidden() {
+        assertThrows(AccessDeniedException.class,
+                () -> controller.search(new ComplianceTransactionSearchCriteria(), 0, 50));
+        verify(searchService, never()).search(any(), any(Pageable.class));
+    }
 }

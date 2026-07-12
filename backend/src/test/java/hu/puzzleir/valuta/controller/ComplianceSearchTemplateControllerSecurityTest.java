@@ -108,6 +108,50 @@ class ComplianceSearchTemplateControllerSecurityTest {
         verify(service, never()).delete(any());
     }
 
+    @Test
+    @DisplayName("FS11-MENU-ROLE: canonical BELSO_ELLENOR sablont menthet, listázhat és törölhet")
+    @WithMockUser(roles = "BELSO_ELLENOR")
+    void belsoEllenorCanCreateListDelete() {
+        CreateComplianceSearchTemplateDto request = CreateComplianceSearchTemplateDto.builder()
+                .name("Sablon")
+                .criteria(new ComplianceTransactionSearchCriteria())
+                .build();
+
+        controller.create(request);
+        controller.list();
+        controller.delete(TEMPLATE_ID);
+
+        verify(service).create(request);
+        verify(service).listForCurrentCompany();
+        verify(service).delete(TEMPLATE_ID);
+    }
+
+    @Test
+    @DisplayName("FS11-MENU-ROLE: canonical BIZTONSAGI_VEZETO listázhat")
+    @WithMockUser(roles = "BIZTONSAGI_VEZETO")
+    void biztonsagiVezetoCanList() {
+        controller.list();
+
+        verify(service).listForCurrentCompany();
+    }
+
+    @Test
+    @DisplayName("FS11-MENU-ROLE: canonical UGYVEZETO listázhat")
+    @WithMockUser(roles = "UGYVEZETO")
+    void ugyvezetoCanList() {
+        controller.list();
+
+        verify(service).listForCurrentCompany();
+    }
+
+    @Test
+    @DisplayName("FS11-MENU-ROLE: PENZTAR tiltott marad")
+    @WithMockUser(roles = "PENZTAR")
+    void penztarIsForbidden() {
+        assertThrows(AccessDeniedException.class, () -> controller.list());
+        verify(service, never()).listForCurrentCompany();
+    }
+
     private static ComplianceSearchTemplateDto templateDto() {
         return ComplianceSearchTemplateDto.builder()
                 .id(TEMPLATE_ID)

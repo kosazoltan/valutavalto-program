@@ -111,4 +111,48 @@ class SuspiciousCustomerControllerSecurityTest {
                 () -> controller.search(null, null, true, null, true, null, true, null, 0, 50));
         verify(suspiciousCustomerService, never()).search(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean(), any(), any(Pageable.class));
     }
+
+    @Test
+    @DisplayName("FS11-MENU-ROLE: canonical BELSO_ELLENOR kereshet")
+    @WithMockUser(roles = "BELSO_ELLENOR")
+    void belsoEllenorCanSearch() {
+        controller.search(null, null, true, null, true, null, true, null, 0, 50);
+        verify(suspiciousCustomerService).search(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean(), any(), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("FS11-MENU-ROLE: canonical BIZTONSAGI_VEZETO kereshet")
+    @WithMockUser(roles = "BIZTONSAGI_VEZETO")
+    void biztonsagiVezetoCanSearch() {
+        controller.search(null, null, true, null, true, null, true, null, 0, 50);
+        verify(suspiciousCustomerService).search(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean(), any(), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("FS11-MENU-ROLE: canonical UGYVEZETO exportálhat XLSX-et")
+    @WithMockUser(roles = "UGYVEZETO")
+    void ugyvezetoCanExportXlsx() {
+        controller.exportXlsx(null, null);
+        verify(suspiciousCustomerService).listValueBandReachedForExport(any(), any());
+        verify(exportService).toXlsx(any());
+    }
+
+    @Test
+    @DisplayName("FS11-MENU-ROLE: COMPLIANCE regresszió-őr — a meglévő role továbbra is elérheti")
+    @WithMockUser(roles = "COMPLIANCE")
+    void complianceStillCanSearch() {
+        controller.search(null, null, true, null, true, null, true, null, 0, 50);
+        verify(suspiciousCustomerService).search(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean(), any(), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("FS11-MENU-ROLE: PENZTAR tiltott marad")
+    @WithMockUser(roles = "PENZTAR")
+    void penztarIsForbidden() {
+        assertThrows(AccessDeniedException.class,
+                () -> controller.search(null, null, true, null, true, null, true, null, 0, 50));
+        assertThrows(AccessDeniedException.class, () -> controller.exportXlsx(null, null));
+        verify(suspiciousCustomerService, never()).search(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean(), any(), any(Pageable.class));
+        verify(exportService, never()).toXlsx(any());
+    }
 }
