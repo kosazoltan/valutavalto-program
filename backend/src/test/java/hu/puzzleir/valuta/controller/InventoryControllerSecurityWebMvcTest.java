@@ -92,9 +92,9 @@ class InventoryControllerSecurityWebMvcTest {
     @DisplayName("AuthZ: ERTEKTAR ENGEDÉLYEZETT inventory mozgás visszavonására")
     @WithMockUser(roles = "ERTEKTAR")
     void cancel_allowedForErtektar() {
-        assertDoesNotThrow(() -> controller.cancel(1L));
+        assertDoesNotThrow(() -> controller.cancel(1L, authWithWorker(10L)));
 
-        verify(inventoryService).cancelMovement(1L);
+        verify(inventoryService).cancelMovement(1L, 10L);
     }
 
     @Test

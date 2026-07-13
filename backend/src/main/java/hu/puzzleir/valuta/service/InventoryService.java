@@ -177,6 +177,12 @@ public class InventoryService {
         InventoryMovement movement = findMovementForUpdate(movementId);
         Worker worker = findWorker(workerId);
 
+        // FS-territory (2026-07-13): territory-scoped role csak saját vault_territory-jú
+        // mozgást hagyhat jóvá (D2: BANK_DEPOSIT → fromBranch, egyébként toBranch).
+        Branch approveScopeBranch = movement.getMovementType() == MovementType.BANK_DEPOSIT
+                ? movement.getFromBranch() : movement.getToBranch();
+        assertBranchAllowedForCurrentTerritory(approveScopeBranch, worker, "INVENTORY_APPROVE");
+
         // 4-szem-elv: a jóváhagyó nem lehet a mozgást rögzítő dolgozó
         // (AmlApprovalService.resolveSeniorApprover mintája; fail-closed, FK-053/054 invariáns).
         Worker initiator = movement.getInitiatedBy();
@@ -227,6 +233,17 @@ public class InventoryService {
     public InventoryMovementDto receiveMovement(Long movementId, Long workerId, ReceiveMovementDto dto) {
         InventoryMovement movement = findMovementForUpdate(movementId);
         Worker worker = findWorker(workerId);
+
+        // FS-territory (2026-07-13): D2 — BRANCH_TRANSFER-nél MINDKÉT oldal (mindkét
+        // branch stockja íródik), egyébként a fogadó branch (toBranch, fallback fromBranch).
+        if (movement.getMovementType() == MovementType.BRANCH_TRANSFER) {
+            assertBranchAllowedForCurrentTerritory(movement.getFromBranch(), worker, "INVENTORY_RECEIVE");
+            assertBranchAllowedForCurrentTerritory(movement.getToBranch(), worker, "INVENTORY_RECEIVE");
+        } else {
+            Branch receiveScopeBranch = movement.getToBranch() != null
+                    ? movement.getToBranch() : movement.getFromBranch();
+            assertBranchAllowedForCurrentTerritory(receiveScopeBranch, worker, "INVENTORY_RECEIVE");
+        }
 
         // Stornó védelem: véglegesen lezárt mozgás nem módosítható
         validateNotFinalized(movement);
@@ -313,8 +330,15 @@ public class InventoryService {
      * Pessimistic lock-kal védve a race condition ellen.
      */
     @Transactional(rollbackFor = Exception.class)
-    public void cancelMovement(Long movementId) {
+    public void cancelMovement(Long movementId, Long workerId) {
         InventoryMovement movement = findMovementForUpdate(movementId);
+        Worker worker = findWorker(workerId);
+
+        // FS-territory (2026-07-13): D2 — a létrehozáskori ellenőrzés tükre:
+        // BANK_WITHDRAW → toBranch (requestBankWithdraw is azt ellenőrizte), egyébként fromBranch.
+        Branch cancelScopeBranch = movement.getMovementType() == MovementType.BANK_WITHDRAW
+                ? movement.getToBranch() : movement.getFromBranch();
+        assertBranchAllowedForCurrentTerritory(cancelScopeBranch, worker, "INVENTORY_CANCEL");
 
         // Stornó védelem: véglegesen lezárt mozgás nem módosítható
         validateNotFinalized(movement);

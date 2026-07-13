@@ -1066,7 +1066,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("SELECT COALESCE(SUM(t.handlingFee), 0) FROM Transaction t " +
            "WHERE t.branch.id = :branchId " +
            "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
-           "AND t.status = 'COMPLETED'")
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true")
     BigDecimal sumFeeByBranchAndPeriod(
         @Param("branchId") UUID branchId,
         @Param("dateFrom") LocalDate dateFrom,
@@ -1079,7 +1080,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("SELECT COUNT(t) FROM Transaction t " +
            "WHERE t.branch.id = :branchId " +
            "AND t.transactionDate BETWEEN :dateFrom AND :dateTo " +
-           "AND t.status = 'COMPLETED'")
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true")
     long countByBranchAndPeriod(
         @Param("branchId") UUID branchId,
         @Param("dateFrom") LocalDate dateFrom,

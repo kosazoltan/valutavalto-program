@@ -309,6 +309,232 @@ class InventoryServiceTest {
         assertThat(movement.getStatus()).isEqualTo(MovementStatus.IN_TRANSIT); // BANK_WITHDRAW → IN_TRANSIT
     }
 
+    // ============ FS-territory (2026-07-13): approve/receive/cancel territory-scope ============
+
+    /** ERTEKTAR a branch2-n (territory 1); a mozgás cél-branch-e a branch (territory 2). */
+    private void stubTerritoryScopedWorkerOnBranch2() {
+        branch.setVaultTerritoryId(2);
+        branch2.setVaultTerritoryId(1);
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentRole).thenReturn("ertektar");
+        securityUtilsMock.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(BRANCH_ID_2);
+        when(branchRepository.findById(BRANCH_ID_2)).thenReturn(Optional.of(branch2));
+    }
+
+    @Test
+    @DisplayName("approveMovement: ERTEKTAR idegen territóriumú cél-branch → 403 VV-AUTH-001 + audit, nincs mutáció")
+    void approveMovement_ertektarOtherTerritory_deniedAndAudited() {
+        stubTerritoryScopedWorkerOnBranch2();
+        Worker initiator = new Worker();
+        initiator.setId(99L);
+        initiator.setName("Rögzítő dolgozó");
+        InventoryMovement movement = buildMovement(MovementType.BANK_WITHDRAW, MovementStatus.PENDING,
+                eurCurrency, null, branch);
+        movement.setId(31L);
+        movement.setInitiatedBy(initiator);
+        when(movementRepository.findByIdForUpdate(31L)).thenReturn(Optional.of(movement));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+        assertThatThrownBy(() -> inventoryService.approveMovement(31L, WORKER_ID))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("VV-AUTH-001");
+        verify(auditLogService).logInNewTransaction(
+                eq("ACCESS_DENIED"), eq("InventoryMovement"), isNull(),
+                any(), any(), any(), any(), contains("attemptedAction=INVENTORY_APPROVE"));
+        verify(movementRepository, never()).save(any());
+        verify(stockAccessor, never()).adjust(any(), any(), any());
+        assertThat(movement.getStatus()).isEqualTo(MovementStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("approveMovement: ERTEKTAR SAJÁT territóriumú cél-branch → siker (IN_TRANSIT)")
+    void approveMovement_ertektarOwnTerritory_succeeds() {
+        stubTerritoryScopedWorkerOnBranch2();
+        branch.setVaultTerritoryId(1);
+        Worker initiator = new Worker();
+        initiator.setId(99L);
+        initiator.setName("Rögzítő dolgozó");
+        InventoryMovement movement = buildMovement(MovementType.BANK_WITHDRAW, MovementStatus.PENDING,
+                eurCurrency, null, branch);
+        movement.setId(32L);
+        movement.setInitiatedBy(initiator);
+        when(movementRepository.findByIdForUpdate(32L)).thenReturn(Optional.of(movement));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+        when(movementRepository.save(any(InventoryMovement.class))).thenAnswer(i -> i.getArgument(0));
+
+        InventoryMovementDto dto = inventoryService.approveMovement(32L, WORKER_ID);
+
+        assertThat(dto).isNotNull();
+        assertThat(movement.getStatus()).isEqualTo(MovementStatus.IN_TRANSIT);
+    }
+
+    @Test
+    @DisplayName("approveMovement: központi role (ugyvezeto) idegen territóriumra is → változatlan siker")
+    void approveMovement_centralRole_unaffected() {
+        branch.setVaultTerritoryId(2);
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ugyvezeto");
+        securityUtilsMock.when(SecurityUtils::getCurrentRole).thenReturn("ugyvezeto");
+        Worker initiator = new Worker();
+        initiator.setId(99L);
+        initiator.setName("Rögzítő dolgozó");
+        InventoryMovement movement = buildMovement(MovementType.BANK_WITHDRAW, MovementStatus.PENDING,
+                eurCurrency, null, branch);
+        movement.setId(33L);
+        movement.setInitiatedBy(initiator);
+        when(movementRepository.findByIdForUpdate(33L)).thenReturn(Optional.of(movement));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+        when(movementRepository.save(any(InventoryMovement.class))).thenAnswer(i -> i.getArgument(0));
+
+        assertThat(inventoryService.approveMovement(33L, WORKER_ID)).isNotNull();
+        assertThat(movement.getStatus()).isEqualTo(MovementStatus.IN_TRANSIT);
+    }
+
+    @Test
+    @DisplayName("receiveMovement: ERTEKTAR idegen territóriumú cél-branch → 403 VV-AUTH-001 + audit, nincs mutáció")
+    void receiveMovement_ertektarOtherTerritory_deniedAndAudited() {
+        stubTerritoryScopedWorkerOnBranch2();
+        InventoryMovement movement = buildMovement(MovementType.BANK_WITHDRAW, MovementStatus.IN_TRANSIT,
+                eurCurrency, null, branch);
+        movement.setId(34L);
+        hu.puzzleir.valuta.dto.inventory.ReceiveMovementDto dto =
+                hu.puzzleir.valuta.dto.inventory.ReceiveMovementDto.builder()
+                        .receivedAmount(new BigDecimal("1000")).build();
+        when(movementRepository.findByIdForUpdate(34L)).thenReturn(Optional.of(movement));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+        assertThatThrownBy(() -> inventoryService.receiveMovement(34L, WORKER_ID, dto))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("VV-AUTH-001");
+        verify(auditLogService).logInNewTransaction(
+                eq("ACCESS_DENIED"), eq("InventoryMovement"), isNull(),
+                any(), any(), any(), any(), contains("attemptedAction=INVENTORY_RECEIVE"));
+        verify(movementRepository, never()).save(any());
+        verify(stockAccessor, never()).adjust(any(), any(), any());
+        assertThat(movement.getStatus()).isEqualTo(MovementStatus.IN_TRANSIT);
+    }
+
+    @Test
+    @DisplayName("receiveMovement: ERTEKTAR SAJÁT territóriumú cél-branch → siker (RECEIVED)")
+    void receiveMovement_ertektarOwnTerritory_succeeds() {
+        stubTerritoryScopedWorkerOnBranch2();
+        branch.setVaultTerritoryId(1);
+        InventoryMovement movement = buildMovement(MovementType.BANK_WITHDRAW, MovementStatus.IN_TRANSIT,
+                eurCurrency, null, branch);
+        movement.setId(35L);
+        hu.puzzleir.valuta.dto.inventory.ReceiveMovementDto dto =
+                hu.puzzleir.valuta.dto.inventory.ReceiveMovementDto.builder()
+                        .receivedAmount(new BigDecimal("1000")).build();
+        when(movementRepository.findByIdForUpdate(35L)).thenReturn(Optional.of(movement));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+        when(movementRepository.save(any(InventoryMovement.class))).thenAnswer(i -> i.getArgument(0));
+
+        InventoryMovementDto result = inventoryService.receiveMovement(35L, WORKER_ID, dto);
+
+        assertThat(result).isNotNull();
+        assertThat(movement.getStatus()).isEqualTo(MovementStatus.RECEIVED);
+        verify(stockAccessor).adjust(branch, eurCurrency, new BigDecimal("1000"));
+    }
+
+    @Test
+    @DisplayName("receiveMovement: központi role (ugyvezeto) idegen territóriumra is → változatlan siker")
+    void receiveMovement_centralRole_unaffected() {
+        branch.setVaultTerritoryId(2);
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ugyvezeto");
+        securityUtilsMock.when(SecurityUtils::getCurrentRole).thenReturn("ugyvezeto");
+        InventoryMovement movement = buildMovement(MovementType.BANK_WITHDRAW, MovementStatus.IN_TRANSIT,
+                eurCurrency, null, branch);
+        movement.setId(36L);
+        hu.puzzleir.valuta.dto.inventory.ReceiveMovementDto dto =
+                hu.puzzleir.valuta.dto.inventory.ReceiveMovementDto.builder()
+                        .receivedAmount(new BigDecimal("1000")).build();
+        when(movementRepository.findByIdForUpdate(36L)).thenReturn(Optional.of(movement));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+        when(movementRepository.save(any(InventoryMovement.class))).thenAnswer(i -> i.getArgument(0));
+
+        assertThat(inventoryService.receiveMovement(36L, WORKER_ID, dto)).isNotNull();
+        assertThat(movement.getStatus()).isEqualTo(MovementStatus.RECEIVED);
+        verify(stockAccessor).adjust(branch, eurCurrency, new BigDecimal("1000"));
+    }
+
+    @Test
+    @DisplayName("receiveMovement: ERTEKTAR idegen forrású BRANCH_TRANSFER → 403 VV-AUTH-001 + audit, nincs mutáció")
+    void receiveMovement_ertektarTransferFromOtherTerritory_deniedAndAudited() {
+        stubTerritoryScopedWorkerOnBranch2();
+        InventoryMovement movement = buildMovement(MovementType.BRANCH_TRANSFER, MovementStatus.IN_TRANSIT,
+                eurCurrency, branch, branch2);
+        movement.setId(40L);
+        hu.puzzleir.valuta.dto.inventory.ReceiveMovementDto dto =
+                hu.puzzleir.valuta.dto.inventory.ReceiveMovementDto.builder()
+                        .receivedAmount(new BigDecimal("1000")).build();
+        when(movementRepository.findByIdForUpdate(40L)).thenReturn(Optional.of(movement));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+        assertThatThrownBy(() -> inventoryService.receiveMovement(40L, WORKER_ID, dto))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("VV-AUTH-001");
+        verify(auditLogService).logInNewTransaction(
+                eq("ACCESS_DENIED"), eq("InventoryMovement"), isNull(),
+                any(), any(), any(), any(), contains("attemptedAction=INVENTORY_RECEIVE"));
+        verify(movementRepository, never()).save(any());
+        verify(stockAccessor, never()).adjust(any(), any(), any());
+        assertThat(movement.getStatus()).isEqualTo(MovementStatus.IN_TRANSIT);
+    }
+
+    @Test
+    @DisplayName("cancelMovement: ERTEKTAR idegen territóriumú cél-branch → 403 VV-AUTH-001 + audit, nincs mutáció")
+    void cancelMovement_ertektarOtherTerritory_deniedAndAudited() {
+        stubTerritoryScopedWorkerOnBranch2();
+        InventoryMovement movement = buildMovement(MovementType.BANK_WITHDRAW, MovementStatus.PENDING,
+                eurCurrency, null, branch);
+        movement.setId(37L);
+        when(movementRepository.findByIdForUpdate(37L)).thenReturn(Optional.of(movement));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+        assertThatThrownBy(() -> inventoryService.cancelMovement(37L, WORKER_ID))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("VV-AUTH-001");
+        verify(auditLogService).logInNewTransaction(
+                eq("ACCESS_DENIED"), eq("InventoryMovement"), isNull(),
+                any(), any(), any(), any(), contains("attemptedAction=INVENTORY_CANCEL"));
+        verify(movementRepository, never()).save(any());
+        assertThat(movement.getStatus()).isEqualTo(MovementStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("cancelMovement: ERTEKTAR SAJÁT territóriumú cél-branch → siker (CANCELLED)")
+    void cancelMovement_ertektarOwnTerritory_succeeds() {
+        stubTerritoryScopedWorkerOnBranch2();
+        branch.setVaultTerritoryId(1);
+        InventoryMovement movement = buildMovement(MovementType.BANK_WITHDRAW, MovementStatus.PENDING,
+                eurCurrency, null, branch);
+        movement.setId(38L);
+        when(movementRepository.findByIdForUpdate(38L)).thenReturn(Optional.of(movement));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+        inventoryService.cancelMovement(38L, WORKER_ID);
+
+        assertThat(movement.getStatus()).isEqualTo(MovementStatus.CANCELLED);
+        verify(movementRepository).save(movement);
+    }
+
+    @Test
+    @DisplayName("cancelMovement: központi role (ugyvezeto) idegen territóriumra is → változatlan siker")
+    void cancelMovement_centralRole_unaffected() {
+        branch.setVaultTerritoryId(2);
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ugyvezeto");
+        securityUtilsMock.when(SecurityUtils::getCurrentRole).thenReturn("ugyvezeto");
+        InventoryMovement movement = buildMovement(MovementType.BANK_WITHDRAW, MovementStatus.PENDING,
+                eurCurrency, null, branch);
+        movement.setId(39L);
+        when(movementRepository.findByIdForUpdate(39L)).thenReturn(Optional.of(movement));
+        when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
+
+        inventoryService.cancelMovement(39L, WORKER_ID);
+
+        assertThat(movement.getStatus()).isEqualTo(MovementStatus.CANCELLED);
+        verify(movementRepository).save(movement);
+    }
+
     // ============ Fix #2: transferBetweenBranches — forrás-készlet ellenőrzés ============
 
     @Test

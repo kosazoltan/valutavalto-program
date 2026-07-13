@@ -191,8 +191,9 @@ public class InventoryController {
     @PostMapping("/{id}/cancel")
     // FK-xxx (2026-07-03): ERTEKTAR jóváhagyhat — a 4-szem-elvet a service-szintű self-approval tilalom garantálja (InventoryService.approveMovement).
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'ERTEKTAR')")
-    public ResponseEntity<Void> cancel(@PathVariable Long id) {
-        inventoryService.cancelMovement(id);
+    public ResponseEntity<Void> cancel(@PathVariable Long id, Authentication auth) {
+        Long workerId = getWorkerId(auth);
+        inventoryService.cancelMovement(id, workerId);
         return ResponseEntity.noContent().build();
     }
 
