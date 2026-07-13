@@ -418,7 +418,7 @@ public class WorkerService {
         // értéktárosként/vezetőként belépni. Az értéktáros és vezetői belépés CSAK Google-fiókkal
         // (GoogleLoginService): nincs jelszó amit ellopni/elfelejteni, és a Gmail-fiók azonosítja
         // a dolgozót a naplóban.
-        // SZKÓP: KIZÁRÓLAG az explicit lokális terminál módok (penztar/ertektar/ertekszallito).
+        // SZKÓP: KIZÁRÓLAG az explicit lokális terminál módok (penztar/ertektar; legacy ertekszallito).
         // MENTES a webes "full", a rate-maker (foertektar/ugyvezeto jelszavas belépés!), a kamera,
         // ÉS a hiányzó appMode is — a sync-engine bootstrap-login appMode nélkül postol, azt NEM
         // szabad eltörni (Codex P1 backward-compat). Az értéktáros/vezető belépés Google-fiókkal.

@@ -90,19 +90,33 @@ class AppModeRoleConstantsTest {
     }
 
     @Test
-    void computeValidAppModesIncludesCourierAppMode() {
+    void computeValidAppModesMapsCourierRoleToLocalOperativeModes() {
         assertThat(AppModeRoleConstants.computeValidAppModes(
                 List.of("ertekszallito"),
                 null))
-                .containsExactly("ertekszallito");
+                .containsExactly("penztar", "ertektar");
     }
 
     @Test
-    void computeValidAppModesIncludesLegacyCourierAppMode() {
+    void computeValidAppModesMapsLegacyCourierRoleToLocalOperativeModes() {
         assertThat(AppModeRoleConstants.computeValidAppModes(
                 List.of("COURIER"),
                 null))
-                .containsExactly("ertekszallito");
+                .containsExactly("penztar", "ertektar");
+    }
+
+    @Test
+    void computeValidAppModesNeverEmitsErtekszallito() {
+        assertThat(AppModeRoleConstants.computeValidAppModes(List.of("ertekszallito"), null))
+                .doesNotContain("ertekszallito");
+        assertThat(AppModeRoleConstants.computeValidAppModes(List.of("COURIER", "penztar"), null))
+                .doesNotContain("ertekszallito");
+        assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.SUPERVISOR))
+                .doesNotContain("ertekszallito");
+        assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.MANAGER))
+                .doesNotContain("ertekszallito");
+        assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.ADMIN))
+                .doesNotContain("ertekszallito");
     }
 
     @Test
@@ -118,11 +132,11 @@ class AppModeRoleConstantsTest {
         assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.CASHIER))
                 .containsExactly("penztar");
         assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.SUPERVISOR))
-                .containsExactly("penztar", "ertektar", "ertekszallito", "full");
+                .containsExactly("penztar", "ertektar", "full");
         assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.MANAGER))
-                .containsExactly("penztar", "ertektar", "ertekszallito", "full");
+                .containsExactly("penztar", "ertektar", "full");
         assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.ADMIN))
-                .containsExactly("penztar", "ertektar", "ertekszallito", "full", "rate-maker");
+                .containsExactly("penztar", "ertektar", "full", "rate-maker");
     }
 
     @Test
@@ -138,7 +152,24 @@ class AppModeRoleConstantsTest {
         assertThat(AppModeRoleConstants.computeValidAppModes(
                 List.of("ertekszallito", "penztar", "ertektar", "teruleti_vezeto", "foertektar"),
                 null))
-                .containsExactly("penztar", "ertektar", "ertekszallito", "kamera", "full", "rate-maker");
+                .containsExactly("penztar", "ertektar", "kamera", "full", "rate-maker");
+    }
+
+    @Test
+    void isLocalTerminalAppModeStillAcceptsLegacyErtekszallito() {
+        assertThat(AppModeRoleConstants.isLocalTerminalAppMode("ertekszallito")).isTrue();
+        assertThat(AppModeRoleConstants.isRoleSelectableForAppMode("ertekszallito", "ertekszallito"))
+                .isTrue();
+    }
+
+    @Test
+    void courierOnlyWorkerHasSelectableRoleInPenztarAndErtektar() {
+        assertThat(AppModeRoleConstants.hasAnySelectableRoleForAppMode(List.of("ertekszallito"), "penztar"))
+                .isTrue();
+        assertThat(AppModeRoleConstants.hasAnySelectableRoleForAppMode(List.of("ertekszallito"), "ertektar"))
+                .isTrue();
+        assertThat(AppModeRoleConstants.hasAnySelectableRoleForAppMode(List.of("ertekszallito"), "full"))
+                .isFalse();
     }
 
     @Test
@@ -207,7 +238,7 @@ class AppModeRoleConstantsTest {
     @Test
     void legacyAdminFallbackMatchesSelectableAppModes() {
         assertThat(AppModeRoleConstants.computeValidAppModes(List.of(), WorkerRole.ADMIN))
-                .containsExactly("penztar", "ertektar", "ertekszallito", "full", "rate-maker");
+                .containsExactly("penztar", "ertektar", "full", "rate-maker");
     }
 
     @Test

@@ -177,7 +177,7 @@ export default function LoginPage() {
   /**
    * v2.1.4: EBCiroda kanonikus role-alapu default route.
    * - penztar -> /cashier (Lokal Valutavalto)
-   * - ertekszallito -> /transfers (atadas-atvetel bizonylat-alairas)
+   * - ertekszallito role -> /transfers (atadas-atvetel bizonylat-alairas)
    * - ertektar -> /treasury (Lokal Ertektar)
    * - egyeb szerver role (ugyvezeto, foertektar, stb.) -> /dashboard
    */
@@ -250,7 +250,6 @@ export default function LoginPage() {
   /** Mód-specifikus default route (a session appMode még nem frissült a hívás pillanatában). */
   const getDefaultRouteForMode = (mode: AppMode, role?: string | null): string => {
     if (mode === 'penztar') return '/cashier'
-    if (mode === 'ertekszallito') return '/transfers'
     if (mode === 'ertektar') return '/treasury'
     return getDefaultRouteForRole(role)
   }
@@ -332,7 +331,6 @@ export default function LoginPage() {
           .map((m) => {
             if (m === 'penztar') return 'Valutaváltó Pénztár (lokál)'
             if (m === 'ertektar') return 'Értéktár (lokál)'
-            if (m === 'ertekszallito') return 'Értékszállító (lokál)'
             if (m === 'rate-maker') return 'Árfolyamkészítő (lokál)'
             if (m === 'full') return 'Szerver (böngésző)'
             return m
@@ -786,11 +784,6 @@ export default function LoginPage() {
                   {m === 'ertektar' && (
                     <span className="block text-xs text-gray-500">
                       Értéktár — készletek, átadás-átvétel, zárások
-                    </span>
-                  )}
-                  {m === 'ertekszallito' && (
-                    <span className="block text-xs text-gray-500">
-                      Értékszállító — átadólapok aláírása
                     </span>
                   )}
                 </button>

@@ -79,7 +79,7 @@ describe('useAppMode', () => {
     delete (window as any).electronAPI
   })
 
-  it('returns mode="ertekszallito" in Electron when config says so', async () => {
+  it('legacy ertekszallito app_mode config falls back to penztar', async () => {
     mockIsElectron.mockReturnValue(true)
     ;(window as any).electronAPI = {
       getConfig: vi.fn().mockResolvedValue('ertekszallito'),
@@ -91,7 +91,7 @@ describe('useAppMode', () => {
       expect(result.current.isLoading).toBe(false)
     })
 
-    expect(result.current.mode).toBe('ertekszallito')
+    expect(result.current.mode).toBe('penztar')
 
     delete (window as any).electronAPI
   })

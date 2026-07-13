@@ -12,7 +12,6 @@ import { getSessionAppMode } from '../utils/sessionAppMode'
  * - 'penztar':   Electron pénztáros mód (F1-F12 menü)
  * - 'ertektar':  Electron értéktár / regionális központ mód
  * - 'rate-maker': Electron főértéktárosi árfolyamkészítő
- * - 'ertekszallito': Electron értékszállító mód
  */
 export type { AppMode } from '../types/appMode'
 

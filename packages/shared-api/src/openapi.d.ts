@@ -15667,13 +15667,7 @@ export interface components {
       requestedById?: number
       /** @enum {string} */
       status?:
-        | 'DRAFT'
-        | 'SUBMITTED'
-        | 'APPROVED'
-        | 'IN_TRANSIT'
-        | 'DELIVERED'
-        | 'CANCELLED'
-        | 'REJECTED'
+        'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED' | 'REJECTED'
       /** Format: date */
       requestDate?: string
       /** Format: date */
@@ -15733,13 +15727,7 @@ export interface components {
       requestedByWorkerName?: string
       /** @enum {string} */
       status?:
-        | 'DRAFT'
-        | 'SUBMITTED'
-        | 'APPROVED'
-        | 'IN_TRANSIT'
-        | 'DELIVERED'
-        | 'CANCELLED'
-        | 'REJECTED'
+        'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED' | 'REJECTED'
       /** Format: date */
       requestDate?: string
       /** Format: date */
@@ -15762,13 +15750,7 @@ export interface components {
       targetBranchName?: string
       /** @enum {string} */
       requestStatus?:
-        | 'DRAFT'
-        | 'SUBMITTED'
-        | 'APPROVED'
-        | 'IN_TRANSIT'
-        | 'DELIVERED'
-        | 'CANCELLED'
-        | 'REJECTED'
+        'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED' | 'REJECTED'
       /** Format: date */
       requestedDeliveryDate?: string
       /** Format: int64 */
@@ -20931,11 +20913,11 @@ export interface components {
       /** Format: int64 */
       offset?: number
       sort?: components['schemas']['SortObject']
-      paged?: boolean
       /** Format: int32 */
       pageSize?: number
       /** Format: int32 */
       pageNumber?: number
+      paged?: boolean
       unpaged?: boolean
     }
     SortObject: {
@@ -28516,13 +28498,7 @@ export interface operations {
     parameters: {
       query?: {
         status?:
-          | 'DRAFT'
-          | 'SUBMITTED'
-          | 'APPROVED'
-          | 'IN_TRANSIT'
-          | 'DELIVERED'
-          | 'CANCELLED'
-          | 'REJECTED'
+          'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED' | 'REJECTED'
         branchId?: string
         page?: number
         size?: number

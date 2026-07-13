@@ -27,6 +27,11 @@ describe('selectableLocalAppModes (HIBA 2026-05-26 mód-választó)', () => {
       'ertektar',
     ])
   })
+
+  it('a legacy ertekszallito módot kiszűri a lokál terminál választójából', () => {
+    expect(selectableLocalAppModes(['penztar', 'ertekszallito'])).toEqual(['penztar'])
+    expect(selectableLocalAppModes(['ertekszallito'])).toEqual([])
+  })
 })
 
 describe('preferredRoleForAppMode', () => {
@@ -73,12 +78,11 @@ describe('isRoleSelectableForAppMode', () => {
     // Sajat modban: igen
     expect(isRoleSelectableForAppMode('penztar', 'penztar')).toBe(true)
     expect(isRoleSelectableForAppMode('ertektar', 'ertektar')).toBe(true)
-    expect(isRoleSelectableForAppMode('ertekszallito', 'ertekszallito')).toBe(true)
     // Keresztbe: szinten igen (kis irodakban egy dolgozo tobb modban dolgozhat)
     expect(isRoleSelectableForAppMode('ertektar', 'penztar')).toBe(true)
     expect(isRoleSelectableForAppMode('penztar', 'ertektar')).toBe(true)
     expect(isRoleSelectableForAppMode('ertekszallito', 'penztar')).toBe(true)
-    expect(isRoleSelectableForAppMode('penztar', 'ertekszallito')).toBe(true)
+    expect(isRoleSelectableForAppMode('ertekszallito', 'ertektar')).toBe(true)
   })
 
   it('lokalis role-t full (szerver/browser) modban NEM enged', () => {
@@ -93,7 +97,6 @@ describe('isRoleSelectableForAppMode', () => {
     expect(isRoleSelectableForAppMode('biztonsagi_vezeto', 'full')).toBe(true)
     expect(isRoleSelectableForAppMode('foertektar', 'penztar')).toBe(true)
     expect(isRoleSelectableForAppMode('ADMIN', 'ertektar')).toBe(true)
-    expect(isRoleSelectableForAppMode('ugyvezeto', 'ertekszallito')).toBe(true)
   })
 
   it('rate-maker modban csak foertektar, ugyvezeto es admin lephet be', () => {
@@ -105,7 +108,6 @@ describe('isRoleSelectableForAppMode', () => {
   })
 
   it('legacy courier role-t barmely lokalis modban enged', () => {
-    expect(isRoleSelectableForAppMode('COURIER', 'ertekszallito')).toBe(true)
     expect(isRoleSelectableForAppMode('COURIER', 'penztar')).toBe(true)
     expect(isRoleSelectableForAppMode('COURIER', 'ertektar')).toBe(true)
     expect(isRoleSelectableForAppMode('COURIER', 'full')).toBe(false)
@@ -115,14 +117,12 @@ describe('isRoleSelectableForAppMode', () => {
   it('legacy penztar role-t barmely lokalis modban enged', () => {
     expect(isRoleSelectableForAppMode('CASHIER', 'penztar')).toBe(true)
     expect(isRoleSelectableForAppMode('CASHIER', 'ertektar')).toBe(true)
-    expect(isRoleSelectableForAppMode('CASHIER', 'ertekszallito')).toBe(true)
     expect(isRoleSelectableForAppMode('CASHIER', 'full')).toBe(false)
   })
 
   it('legacy ertektar role-t barmely lokalis modban enged', () => {
     expect(isRoleSelectableForAppMode('TREASURY_MANAGER', 'ertektar')).toBe(true)
     expect(isRoleSelectableForAppMode('TREASURY_MANAGER', 'penztar')).toBe(true)
-    expect(isRoleSelectableForAppMode('TREASURY_MANAGER', 'ertekszallito')).toBe(true)
     expect(isRoleSelectableForAppMode('TREASURY_MANAGER', 'full')).toBe(false)
   })
 

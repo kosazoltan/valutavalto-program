@@ -180,7 +180,7 @@ function branchFromGoogleSetup(branch: SetupGoogleBranch | null | undefined): Br
   }
 }
 
-function preferredAppModeFromGoogleSetup(
+export function preferredAppModeFromGoogleSetup(
   response: SetupGoogleIdentifyResponse,
   fallback: ElectronAppMode,
 ): ElectronAppMode {
@@ -188,7 +188,6 @@ function preferredAppModeFromGoogleSetup(
   if (modes.includes(fallback)) return fallback
   if (modes.includes('rate-maker')) return 'rate-maker'
   if (modes.includes('ertektar')) return 'ertektar'
-  if (modes.includes('ertekszallito')) return 'ertekszallito'
   return 'penztar'
 }
 

@@ -255,7 +255,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
  * — ahol a `penztar` NEM választható (isRoleSelectableForAppMode('penztar','full')===false), de a
  * backend a teljes, szűretlen role-listát adja vissza — a penztar precedenciája miatt `/cashier`-re
  * oldódna, és kikerülné a néző-izolációt (eléri pl. a /central-workstation, /foertektar shellt). A
- * szűréssel full módban a penztar/ertektar/ertekszallito kiesik → marad az arfolyam_nezo → a guard zár.
+ * szűréssel full módban a penztar/ertektar kiesik → marad az arfolyam_nezo → a guard zár.
  * Egy penztáros+néző PENZTÁR módban viszont a penztar marad érvényes → /cashier → NEM zár (helyes).
  */
 function RateWatcherGuard({ children }: { children: React.ReactNode }) {
@@ -429,7 +429,7 @@ export default function App() {
                     return
                   }
                   // Offline fallback: az appMode-hoz illeszkedo aktiv role-t tartjuk meg,
-                  // de permissions nelkul. Igy az ertektar/ertekszallito app nem esik ki
+                  // de permissions nelkul. Igy az ertektar app nem esik ki
                   // automatikusan, mikozben az offline jogosultsag tovabbra is minimalis.
                   useAuthStore
                     .getState()

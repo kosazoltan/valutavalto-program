@@ -35,7 +35,7 @@ export interface SetupSaveRequest {
   bootstrapUsername?: string
   bootstrapPassword?: string
   offlineMode: boolean
-  appMode: 'penztar' | 'ertektar' | 'ertekszallito' | 'rate-maker'
+  appMode: 'penztar' | 'ertektar' | 'rate-maker'
   // v2.3.0: a telepito dolgozoi dropdown-bol kivalasztott worker identity.
   // Ha kitoltve -> /auth/first-time-worker-setup (meglevo worker jelszo
   // beallitas, sajat role-vel). Egyebkent bootstrap-admin (uj admin user).

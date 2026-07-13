@@ -22,7 +22,7 @@ public class SelectRoleRequestDto {
     private String roleCode;
 
     /**
-     * Opcionális kliens appMode (penztar, ertektar, ertekszallito, full).
+     * Opcionális kliens appMode (penztar, ertektar, full; legacy: ertekszallito elfogadott).
      * Ha meg van adva, a backend role-szinten ellenőrzi, hogy a kiválasztott
      * role használható-e abban a programban.
      */

@@ -158,7 +158,6 @@ describe('ELLENŐRZÉS — pénztár/értéktár (lokál) modul menüi megfelel�
   }> = [
     { mode: 'penztar', role: 'penztar', groupLabel: 'Pénztár (Valutaváltó)' },
     { mode: 'ertektar', role: 'ertektar', groupLabel: 'Értéktár (lokál)' },
-    { mode: 'ertekszallito', role: 'ertekszallito', groupLabel: 'Értékszállító' },
     { mode: 'rate-maker', role: 'foertektar', groupLabel: 'Árfolyamkészítés' },
   ]
 
@@ -172,6 +171,22 @@ describe('ELLENŐRZÉS — pénztár/értéktár (lokál) modul menüi megfelel�
       }
     })
   }
+
+  it('courier-only dolgozó penztar módban az átadás-átvételi itemet látja, a pénztáros főmenüt nem', () => {
+    const group = groupByLabel('Pénztár (Valutaváltó)')
+    const ctx = ctxFor(['ertekszallito'], 'penztar')
+    expect(isMenuGroupVisible(group, ctx)).toBe(true)
+    expect(isMenuItemVisible(itemByPath(group, '/transfers'), group, ctx)).toBe(true)
+    expect(isMenuItemVisible(itemByPath(group, '/cashier'), group, ctx)).toBe(false)
+  })
+
+  it('courier-only dolgozó ertektar módban az átadás-átvételi itemet látja, a dashboardot nem', () => {
+    const group = groupByLabel('Értéktár (lokál)')
+    const ctx = ctxFor(['ertekszallito'], 'ertektar')
+    expect(isMenuGroupVisible(group, ctx)).toBe(true)
+    expect(isMenuItemVisible(itemByPath(group, '/transfers'), group, ctx)).toBe(true)
+    expect(isMenuItemVisible(itemByPath(group, '/treasury'), group, ctx)).toBe(false)
+  })
 
   it('egyetlen lokál operatív route sincs a central MenuRoleGate-tel szűkített admin-route-ok közt', () => {
     // A central admin-route-ok (App.tsx MenuRoleGate) — ezek operatív userre redirectelnének.
@@ -197,7 +212,7 @@ describe('ELLENŐRZÉS — pénztár/értéktár (lokál) modul menüi megfelel�
       '/seal-tracking',
       '/admin/branches',
     ])
-    const localModes = new Set(['penztar', 'ertektar', 'ertekszallito', 'rate-maker'])
+    const localModes = new Set(['penztar', 'ertektar', 'rate-maker'])
     const localItemPaths = new Set<string>()
     for (const group of menuGroups) {
       if (!group.modes || !group.modes.some((m) => localModes.has(m))) continue

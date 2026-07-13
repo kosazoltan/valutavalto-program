@@ -61,9 +61,6 @@ function isOfflineLocalRoleForAppMode(roleCode: string, appMode: AppMode): boole
   if (appMode === 'ertektar') {
     return canonical === 'ertektar' || legacy === 'TREASURY_MANAGER'
   }
-  if (appMode === 'ertekszallito') {
-    return canonical === 'ertekszallito' || legacy === 'COURIER'
-  }
   return false
 }
 

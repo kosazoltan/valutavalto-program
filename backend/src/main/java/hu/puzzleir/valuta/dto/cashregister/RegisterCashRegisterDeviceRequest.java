@@ -21,7 +21,7 @@ public class RegisterCashRegisterDeviceRequest {
     private String name;
 
     @Size(max = 30)
-    private String appMode;   // penztar | ertektar | ertekszallito | full
+    private String appMode;   // penztar | ertektar | full (legacy: ertekszallito elfogadott)
 
     @Size(max = 30)
     private String appVersion;

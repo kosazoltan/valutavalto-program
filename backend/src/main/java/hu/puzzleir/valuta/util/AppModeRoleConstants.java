@@ -29,13 +29,21 @@ public final class AppModeRoleConstants {
     private static final List<String> RATE_MAKER_LEGACY_ROLES = List.of("admin");
 
     /**
-     * Lokalis Electron role-ok: kis irodakban egy dolgozo tobb modban is dolgozhat,
-     * ezert barmely lokalis modban (penztar/ertektar/ertekszallito) mindharom
-     * lokalis role valaszthato — a felhasznalo lathassa az "Ertektaros" role-t
-     * penztar modban is, es forditva.
+     * Lokalis ROLE-ok (role-selectability): kis irodakban egy dolgozo tobb modban is dolgozhat,
+     * ezert barmely lokalis modban mindharom lokalis role valaszthato — ez NEM azonos
+     * a valaszthato appMode-ok halmazaval.
      */
     private static final List<String> LOCAL_CANONICAL_ROLES = List.of(
             "penztar", "ertektar", "ertekszallito"
+    );
+
+    /**
+     * Lokalis terminal-appMode-ok a validacioban. Az ertekszallito csak legacy
+     * elfogadas: onallo modkent mar nem emittaljuk, de regi kliens jelszavas
+     * loginja nem kerulheti meg a cashier-only kaput.
+     */
+    private static final List<String> LOCAL_TERMINAL_APP_MODES = List.of(
+            "penztar", "ertektar", "ertekszallito" /* LEGACY, nem emittalt */
     );
 
     /** True ha a normalized role lokalis (canonical VAGY legacy forma). */
@@ -69,7 +77,7 @@ public final class AppModeRoleConstants {
         if (appMode == null || appMode.isBlank()) {
             return false;
         }
-        return LOCAL_CANONICAL_ROLES.contains(appMode.trim().toLowerCase(Locale.ROOT));
+        return LOCAL_TERMINAL_APP_MODES.contains(appMode.trim().toLowerCase(Locale.ROOT));
     }
 
     /**
@@ -107,7 +115,7 @@ public final class AppModeRoleConstants {
      * <ul>
      *   <li>"penztar" canonical role -> "penztar" appMode (penztaros Electron)</li>
      *   <li>"ertektar" canonical role -> "ertektar" appMode (ertektar Electron)</li>
-     *   <li>"ertekszallito" canonical role -> "ertekszallito" appMode (ertekszallito Electron)</li>
+     *   <li>"ertekszallito" canonical role -> "penztar" + "ertektar" appMode</li>
      *   <li>{@link #KAMERA_CANONICAL_ROLES} barmelyike -> "kamera" appMode (kameraszoftver, NEM browser)</li>
      *   <li>{@link #SERVER_CANONICAL_ROLES} barmelyike -> "full" appMode (browser admin)</li>
      *   <li>WorkerRole legacy fallback csak role assignment nelkuli regi dolgozokhoz:
@@ -129,7 +137,10 @@ public final class AppModeRoleConstants {
             addIfAbsent(validAppModes, "ertektar");
         }
         if (normalizedRoleCodes.contains("ertekszallito") || hasAny(normalizedRoleCodes, LEGACY_ERTEKSZALLITO_ROLES)) {
-            addIfAbsent(validAppModes, "ertekszallito");
+            // 2026-07-13: az ertekszallito nem onallo appMode. A courier a penztar
+            // es az ertektar programban dokumentalja az atadas-atvetelt.
+            addIfAbsent(validAppModes, "penztar");
+            addIfAbsent(validAppModes, "ertektar");
         }
         if (hasAny(normalizedRoleCodes, KAMERA_CANONICAL_ROLES)) {
             addIfAbsent(validAppModes, "kamera");
@@ -149,7 +160,6 @@ public final class AppModeRoleConstants {
             if (isLegacyServerWorkerRole(workerRoleEnum)) {
                 addIfAbsent(validAppModes, "penztar");
                 addIfAbsent(validAppModes, "ertektar");
-                addIfAbsent(validAppModes, "ertekszallito");
                 addIfAbsent(validAppModes, "full");
                 if (workerRoleEnum == WorkerRole.ADMIN) {
                     addIfAbsent(validAppModes, "rate-maker");
@@ -189,7 +199,8 @@ public final class AppModeRoleConstants {
                 || RATE_MAKER_LEGACY_ROLES.contains(normalizedRole);
         return switch (normalizedAppMode) {
             case "full" -> serverRole;
-            case "penztar", "ertektar", "ertekszallito" -> serverRole || localRole;
+            case "penztar", "ertektar" -> serverRole || localRole;
+            case "ertekszallito" -> serverRole || localRole; // LEGACY appMode-elfogadas
             case "rate-maker" -> rateMakerRole;
             case "kamera" -> KAMERA_CANONICAL_ROLES.contains(normalizedRole);
             default -> false;
@@ -210,7 +221,7 @@ public final class AppModeRoleConstants {
         return switch (appMode.trim().toLowerCase()) {
             case "penztar" -> "penztar";
             case "ertektar" -> "ertektar";
-            case "ertekszallito" -> "ertekszallito";
+            case "ertekszallito" -> "ertekszallito"; // LEGACY appMode-elfogadas
             default -> null;
         };
     }

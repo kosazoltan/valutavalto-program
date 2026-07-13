@@ -13,15 +13,15 @@ function visibleMenuLabels(appMode: AppMode): string[] {
     ])
 }
 
-describe('menuGroups ertekszallito appMode', () => {
-  it('ertekszallito modban van hasznalhato atadas-atveteli menu', () => {
-    const labels = visibleMenuLabels('ertekszallito')
-
-    expect(labels).toContain('Értékszállító')
+describe('menuGroups ertekszallito role', () => {
+  it('penztar modban a courier atadas-atveteli menuje elerheto', () => {
+    const labels = visibleMenuLabels('penztar')
     expect(labels).toContain('Átadás-átvétel aláírás')
-    expect(labels).toContain('Szállítólevelek')
-    expect(labels).not.toContain('Pénztáros főmenü')
-    expect(labels).not.toContain('Értéktári dashboard')
+  })
+
+  it('ertektar modban a courier atadas-atveteli menuje elerheto', () => {
+    const labels = visibleMenuLabels('ertektar')
+    expect(labels).toContain('Átadás-átvétel aláírás')
   })
 
   it('ertekszallito role alapertelmezett route-ja a transfers oldal', () => {
