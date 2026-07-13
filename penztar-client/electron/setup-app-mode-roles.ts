@@ -1,4 +1,4 @@
-export type SetupAppMode = 'penztar' | 'ertektar' | 'ertekszallito' | 'full' | 'rate-maker';
+export type SetupAppMode = 'penztar' | 'ertektar' | 'full' | 'rate-maker';
 
 export interface RoleSelectionSource {
   roles?: string[];
@@ -10,7 +10,6 @@ const LEGACY_BOOTSTRAP_ROLE_CODE = 'CASHIER';
 const APP_MODE_ROLE_PREFERENCES: Record<SetupAppMode, string[]> = {
   penztar: ['penztar', 'CASHIER'],
   ertektar: ['ertektar', 'VAULT_KEEPER', 'CHIEF_VAULT', 'foertektar'],
-  ertekszallito: ['ertekszallito', 'COURIER'],
   'rate-maker': ['foertektar', 'ugyvezeto', 'ADMIN'],
   full: [
     'ugyvezeto',
@@ -31,7 +30,6 @@ export function normalizeSetupAppMode(appMode: string | null | undefined): Setup
   const normalized = appMode?.trim().toLowerCase();
   return normalized === 'penztar' ||
     normalized === 'ertektar' ||
-    normalized === 'ertekszallito' ||
     normalized === 'full'
     ? normalized
     : null;

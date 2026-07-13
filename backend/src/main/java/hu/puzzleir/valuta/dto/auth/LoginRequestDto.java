@@ -28,5 +28,5 @@ public class LoginRequestDto {
     private UUID branchId; // Opcionális - ha több iroda közül választ
 
     @Size(max = 32, message = "Az appMode max 32 karakter lehet")
-    private String appMode; // Opcionális: penztar | ertektar | ertekszallito | full
+    private String appMode; // Opcionális: penztar | ertektar | full (legacy: ertekszallito elfogadott)
 }

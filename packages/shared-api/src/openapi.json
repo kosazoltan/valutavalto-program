@@ -7,7 +7,7 @@
       "name": "PuzzleIR",
       "email": "info@puzzleir.hu"
     },
-    "version": "2.28.33"
+    "version": "2.28.34"
   },
   "servers": [
     {
@@ -49052,9 +49052,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "paged": {
-            "type": "boolean"
-          },
           "pageSize": {
             "type": "integer",
             "format": "int32"
@@ -49062,6 +49059,9 @@
           "pageNumber": {
             "type": "integer",
             "format": "int32"
+          },
+          "paged": {
+            "type": "boolean"
           },
           "unpaged": {
             "type": "boolean"

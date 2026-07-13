@@ -60,7 +60,7 @@ export interface SetupSavePayload {
   bootstrapUsername?: string; // wizardbeli teszt-felhasználó (opcionális, csak offline módban üres)
   bootstrapPassword?: string;
   offlineMode: boolean; // ha true, a szerver kapcsolatot kihagyjuk a wizardban
-  appMode?: 'penztar' | 'ertektar' | 'ertekszallito' | 'full' | 'rate-maker'; // v2.1.4: program-tipus
+  appMode?: 'penztar' | 'ertektar' | 'full' | 'rate-maker'; // v2.1.4: program-tipus
   // v2.3.0: a telepito dolgozoi dropdown-bol kivalasztott worker identity.
   // Ha kitoltve -> /auth/first-time-worker-setup (meglevo worker jelszo beallitas,
   // megtartott role-lel), egyebkent /auth/bootstrap-admin (uj admin letrehozas).
@@ -901,7 +901,7 @@ export async function registerCashRegisterDevice(
     branchCode: string; // NEM UUID - a code (pl. BR039), a szerver lookup-olja az id-t
     code: string; // Egyedi eszkoz kod pl. BR039-penztar-3f2a9b0c
     name?: string;
-    appMode: string; // penztar | ertektar | ertekszallito | full
+    appMode: string; // penztar | ertektar | full (legacy ertekszallito elfogadott)
     appVersion?: string;
     deviceFingerprint?: string;
     osInfo?: string;

@@ -3,6 +3,7 @@ import {
   buildConnectionTestResetKey,
   filterBranchesForAppMode,
   isBranchSelectableForAppMode,
+  preferredAppModeFromGoogleSetup,
   resolveSelectedWorkerForSetup,
 } from './SetupWizard'
 
@@ -63,20 +64,6 @@ describe('isBranchSelectableForAppMode', () => {
     ).toBe(true)
   })
 
-  it('ertekszallito modban a fizikai fiok valaszthato', () => {
-    expect(
-      isBranchSelectableForAppMode(
-        {
-          code: 'KORUT',
-          name: 'Korut',
-          city: 'Szeged',
-          isVault: false,
-        },
-        'ertekszallito',
-      ),
-    ).toBe(true)
-  })
-
   it('filter: ertektar modban vault branch-eket preferalja', () => {
     const branches = [
       { code: 'VAULT', name: 'Ertektar', city: 'Szeged', isVault: true },
@@ -91,11 +78,7 @@ describe('isBranchSelectableForAppMode', () => {
       'KORUT',
       'LEGACY',
     ])
-    expect(filterBranchesForAppMode(branches, 'ertekszallito').map((b) => b.code)).toEqual([
-      'VAULT',
-      'KORUT',
-      'LEGACY',
-    ])
+
   })
 
   it('filter: ertektar fallback — ha nincs vault branch, mindent mutat', () => {
@@ -109,6 +92,22 @@ describe('isBranchSelectableForAppMode', () => {
       'KORUT',
       'LEGACY',
     ])
+  })
+})
+
+describe('preferredAppModeFromGoogleSetup', () => {
+  it('legacy ertekszallito-only response falls back to penztar', () => {
+    expect(
+      preferredAppModeFromGoogleSetup(
+        {
+          matchType: 'WORKER_EMAIL',
+          requiresWorkerSelection: false,
+          googleIdentity: { email: 'courier@example.com', googleSub: 'sub-1' },
+          validAppModes: ['ertekszallito'],
+        },
+        'ertektar',
+      ),
+    ).toBe('penztar')
   })
 })
 

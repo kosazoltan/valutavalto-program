@@ -22,21 +22,19 @@ describe('resolveOfflineRestoreProfile', () => {
     expect(profile?.worker.workerCode).toBe('VAULT1')
   })
 
-  it('restores an ertekszallito profile in ertekszallito app mode', () => {
+  it('courier-only legacy token is not restored offline in ertektar mode', () => {
     const profile = resolveOfflineRestoreProfile(
       {
         workerId: 9,
         workerCode: 'COURIER1',
         workerName: 'Courier User',
-        activeRole: 'ertekszallito',
-        roles: ['ertekszallito'],
+        activeRole: 'COURIER',
+        roles: ['COURIER'],
       },
-      'ertekszallito',
+      'ertektar',
     )
 
-    expect(profile?.activeRole).toBe('ertekszallito')
-    expect(profile?.roles).toEqual(['ertekszallito'])
-    expect(profile?.worker.role).toBe('ertekszallito')
+    expect(profile).toBeNull()
   })
 
   it('rejects a role that is not selectable for the local app mode', () => {
@@ -97,14 +95,10 @@ describe('resolveOfflineRestoreProfile', () => {
     expect(profile?.worker.role).toBe('penztar')
   })
 
-  it('allows legacy local treasury and courier roles in their own offline app modes', () => {
+  it('allows legacy local treasury role in its own offline app mode', () => {
     expect(
       resolveOfflineRestoreProfile({ activeRole: 'TREASURY_MANAGER' }, 'ertektar'),
     ).toMatchObject({ activeRole: 'TREASURY_MANAGER', roles: ['TREASURY_MANAGER'] })
-    expect(resolveOfflineRestoreProfile({ activeRole: 'COURIER' }, 'ertekszallito')).toMatchObject({
-      activeRole: 'COURIER',
-      roles: ['COURIER'],
-    })
   })
 
   it('preserves non-string JWT identity claims as strings', () => {

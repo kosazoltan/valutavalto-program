@@ -238,7 +238,11 @@ describe('resolveBootstrapRoleCodeForAppMode', () => {
   it('az appMode-hoz illeszkedo canonical role code-ot irja ki bootstrap role-kent', () => {
     expect(resolveBootstrapRoleCodeForAppMode('penztar')).toBe('penztar');
     expect(resolveBootstrapRoleCodeForAppMode('ertektar')).toBe('ertektar');
-    expect(resolveBootstrapRoleCodeForAppMode('ertekszallito')).toBe('ertekszallito');
+  });
+
+  it('kivezetett vagy ismeretlen appMode eseten legacy CASHIER fallbacket ad', () => {
+    expect(resolveBootstrapRoleCodeForAppMode('ertekszallito')).toBe('CASHIER');
+    expect(resolveBootstrapRoleCodeForAppMode('unknown')).toBe('CASHIER');
   });
 
   it('hianyzo appMode eseten megtartja a legacy CASHIER bootstrap role-t', () => {
@@ -254,13 +258,10 @@ describe('selectBootstrapLoginRoleCode', () => {
   it('tobb role eseten az appMode-hoz illo role-t valasztja setup loginhoz', () => {
     expect(selectBootstrapLoginRoleCode('penztar', ['ertektar', 'penztar'])).toBe('penztar');
     expect(selectBootstrapLoginRoleCode('ertektar', ['penztar', 'ertektar'])).toBe('ertektar');
-    expect(selectBootstrapLoginRoleCode('ertekszallito', ['COURIER'])).toBe('COURIER');
   });
 
-  it('ertekszallito modban a canonical role-t preferalja a legacy courier fallback elott', () => {
-    expect(selectBootstrapLoginRoleCode('ertekszallito', ['COURIER', 'ertekszallito'])).toBe(
-      'ertekszallito',
-    );
+  it('courier role-t nem valaszt penztar bootstrap loginhoz', () => {
+    expect(selectBootstrapLoginRoleCode('penztar', ['COURIER'])).toBeNull();
   });
 
   it('lokalis appban server role-lal is tud setup device regisztraciot folytatni', () => {

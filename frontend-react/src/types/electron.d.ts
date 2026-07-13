@@ -563,7 +563,7 @@ export interface ElectronAPI {
     bootstrapUsername?: string
     bootstrapPassword?: string
     offlineMode: boolean
-    appMode?: 'penztar' | 'ertektar' | 'ertekszallito' | 'full' | 'rate-maker'
+    appMode?: 'penztar' | 'ertektar' | 'full' | 'rate-maker'
     // v2.3.0: a telepito dolgozoi dropdown-bol kivalasztott worker identity.
     // Ha ez kitoltve -> /auth/first-time-worker-setup. Egyebkent bootstrap-admin.
     selectedWorkerCode?: string

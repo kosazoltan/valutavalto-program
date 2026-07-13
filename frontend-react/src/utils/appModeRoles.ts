@@ -23,8 +23,8 @@ const LEGACY_PENZTAR_ROLES = [OFFLINE_RESTORE_ROLE]
 const LEGACY_ERTEKTAR_ROLES = ['MANAGER', 'TREASURY_MANAGER']
 const LEGACY_ERTEKSZALLITO_ROLES = ['COURIER']
 
-// Kis irodákban egy dolgozó több módban is dolgozhat (pl. értéktáros a pénztár
-// módban is belép), ezért bármely lokális módban mindhárom lokális role választható.
+// Lokális ROLE-ok (role-selectability), nem azonos a választható appMode-halmazzal
+// (PENZTAR_CLIENT_LOCAL_MODES). Kis irodákban mindhárom role keresztben választható.
 const LOCAL_CANONICAL_ROLES = ['penztar', 'ertektar', 'ertekszallito']
 
 function isLocalRole(roleCode: string): boolean {
@@ -78,9 +78,6 @@ export function isRoleSelectableForAppMode(
   if (appMode === 'ertektar') {
     return serverRole || localRole
   }
-  if (appMode === 'ertekszallito') {
-    return serverRole || localRole
-  }
   if (appMode === 'rate-maker') {
     return isRateMakerRole(roleCode)
   }
@@ -91,7 +88,7 @@ export function isRoleSelectableForAppMode(
  * A penztar-client (lokál terminál) által renderelhető üzleti módok.
  * A kozponti-client a full + rate-maker módokat csomagolja — más a támogatott halmaza.
  */
-export const PENZTAR_CLIENT_LOCAL_MODES: AppMode[] = ['penztar', 'ertektar', 'ertekszallito']
+export const PENZTAR_CLIENT_LOCAL_MODES: AppMode[] = ['penztar', 'ertektar']
 
 /**
  * HIBA 2026-05-26 (mód-választó): a belépő dolgozó által ténylegesen választható módok
@@ -148,7 +145,6 @@ export function preferredRoleForAppMode(
 export function appModeLabel(appMode: AppMode): string {
   if (appMode === 'penztar') return 'Valutaváltó Pénztár'
   if (appMode === 'ertektar') return 'Értéktár'
-  if (appMode === 'ertekszallito') return 'Értékszállító'
   if (appMode === 'rate-maker') return 'Árfolyamkészítő'
   return 'Szerver'
 }

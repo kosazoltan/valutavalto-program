@@ -9,7 +9,6 @@ describe('MainLayout daily session gate', () => {
       [CASHIER_APP_MODE, true],
       ['full', false],
       ['ertektar', false],
-      ['ertekszallito', false],
     ]
 
     for (const [appMode, expected] of expectations) {

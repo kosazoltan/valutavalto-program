@@ -25,7 +25,6 @@ import type { AppMode } from '../types/appMode'
 
 export const PENZTAR_ROLES = ['penztar'] as const
 export const ERTEKTAR_ROLES = ['ertektar'] as const
-export const ERTEKSZALLITO_ROLES = ['ertekszallito'] as const
 // SZERVER_ROLES = a központi (full) felület ÁLTALÁNOS irodai/felügyeleti szerepkörei. Ez vezérli a
 // „Központ"/„Főoldal" menücsoportok láthatóságát ÉS a lokál-módú oversight bypass-t (hasSupervisoryAccess).
 // FK-041/II: az `arfolyam_nezo` (Árfolyam néző) SZÁNDÉKOSAN NINCS itt — ő NEM általános irodai/felügyeleti
@@ -121,7 +120,20 @@ export const menuGroups: MenuGroup[] = [
       // FS-9 S3: aktív címletképek read-only nézegetője (hamis bankjegy ellenőrzés).
       { path: '/denomination-images', label: 'Címletképek (valuta)', icon: Banknote },
       { path: '/customers', label: 'Ügyfelek', icon: Users },
-      { path: '/transit', label: 'Úton lévő csomagok', icon: ArrowLeftRight },
+      {
+        path: '/transit',
+        label: 'Úton lévő csomagok',
+        icon: ArrowLeftRight,
+        canonicalRoles: ['penztar', 'ertekszallito'],
+      },
+      // 2026-07-13: az önálló Értékszállító mód kivezetve — az átadás-átvétel
+      // aláírása a pénztár/értéktár programban történik.
+      {
+        path: '/transfers',
+        label: 'Átadás-átvétel aláírás',
+        icon: ArrowLeftRight,
+        canonicalRoles: ['penztar', 'ertekszallito'],
+      },
       { path: '/closing/wizard', label: 'Napzárás', icon: FileText },
       { path: '/rates', label: 'Árfolyamok (nézet)', icon: TrendingUp },
       { path: '/transactions', label: 'Tranzakciólista', icon: FileText },
@@ -152,8 +164,24 @@ export const menuGroups: MenuGroup[] = [
       // pénztárai + társ értéktárak + 10 fix banki/speciális partner).
       { path: '/shipments', label: 'Átadás-átvétel', icon: ArrowLeftRight },
       { path: '/trades', label: 'Irodaközi trade', icon: ArrowLeftRight },
-      { path: '/transfer-documents', label: 'Szállítólevelek', icon: FileText },
-      { path: '/transit', label: 'Úton lévő csomagok', icon: ArrowLeftRight },
+      {
+        path: '/transfers',
+        label: 'Átadás-átvétel aláírás',
+        icon: ArrowLeftRight,
+        canonicalRoles: ['ertektar', 'ertekszallito'],
+      },
+      {
+        path: '/transfer-documents',
+        label: 'Szállítólevelek',
+        icon: FileText,
+        canonicalRoles: ['ertektar', 'ertekszallito'],
+      },
+      {
+        path: '/transit',
+        label: 'Úton lévő csomagok',
+        icon: ArrowLeftRight,
+        canonicalRoles: ['ertektar', 'ertekszallito'],
+      },
       { path: '/inventory', label: 'Értéktári készlet', icon: Wallet },
       { path: '/cashier-stocks', label: 'Pénztári készletek', icon: Wallet },
       // Bali Henriett 2. pont (2026-05-27): manuális pénztár-felrögzítés értéktáros által.
@@ -165,16 +193,6 @@ export const menuGroups: MenuGroup[] = [
       { path: '/closing/monthly', label: 'Havi zárás', icon: FileText },
       { path: '/customers', label: 'Ügyfelek', icon: Users },
       { path: '/rates', label: 'Árfolyamok (nézet)', icon: TrendingUp },
-    ],
-  },
-  {
-    label: 'Értékszállító',
-    canonicalRoles: ERTEKSZALLITO_ROLES,
-    modes: ['ertekszallito'],
-    items: [
-      { path: '/transfers', label: 'Átadás-átvétel aláírás', icon: ArrowLeftRight },
-      { path: '/transfer-documents', label: 'Szállítólevelek', icon: FileText },
-      { path: '/transit', label: 'Úton lévő csomagok', icon: ArrowLeftRight },
     ],
   },
   {

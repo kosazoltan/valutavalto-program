@@ -35,7 +35,7 @@ public class CashRegisterDevice {
     @Column(length = 200)
     private String name;
 
-    /** penztar | ertektar | ertekszallito | full */
+    /** penztar | ertektar | full (legacy: ertekszallito elfogadott) */
     @Column(name = "app_mode", nullable = false, length = 30)
     @Builder.Default
     private String appMode = "penztar";
