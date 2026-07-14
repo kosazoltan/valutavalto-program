@@ -43,7 +43,6 @@ import {
 } from '../../utils/localQueue'
 import { useTranslation } from 'react-i18next'
 import SupervisorPinModal from '../../components/auth/SupervisorPinModal'
-import { ReceiptPreviewModal } from '../../components/electron'
 import { isElectron } from '../../utils/electron'
 import { toast } from '../../components/ui/toaster'
 import type { PrintReceiptData } from '../../types/receipt'
@@ -63,6 +62,7 @@ import {
   buildDenominationPayload,
   type CurrencyLineInput,
 } from './transferRules'
+import TransferReceiptModal from './TransferReceiptModal'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -1982,46 +1982,10 @@ export default function TransferPage() {
       )}
 
       {/* FR-5/FR-6: szállítólevél előnézet + nyomtatás (Szállító + Plombaszám is rajta). */}
-      <ReceiptPreviewModal
+      <TransferReceiptModal
         isOpen={showReceiptModal}
         onClose={() => setShowReceiptModal(false)}
         receiptData={printReceiptData}
-        qrCodeDataUrl={null}
-        allowPrint={isElectron()}
-        onPrint={async () => {
-          // Copilot PR #1100 (storno-minta): a hibás ágak THROW-val zárulnak — a
-          // ReceiptPreviewModal csak SIKERES onPrint után zár be (2s auto-close),
-          // hiba esetén nyitva marad és újrapróbálható.
-          if (!printReceiptData) throw new Error('Nincs aktív bizonylat-adat')
-          if (!window.electronAPI?.printReceipt) {
-            toast.warning(
-              'Nyomtatás nem elérhető',
-              isElectron()
-                ? 'Electron preload/electronAPI hiba — indítsa újra a klienst.'
-                : 'Webes módban nincs nyomtatás. Telepítse az Electron klienst.',
-            )
-            throw new Error('printReceipt nem elérhető')
-          }
-          try {
-            const ok = await window.electronAPI.printReceipt(JSON.stringify(printReceiptData))
-            if (!ok) {
-              toast.error(
-                'Nyomtatás sikertelen',
-                'Ellenőrizze a nyomtatót (Beállítások > Nyomtatás).',
-              )
-              throw new Error('Nyomtatás sikertelen')
-            }
-            toast.success(
-              'Nyomtatás elindítva',
-              `Bizonylat: ${printReceiptData.receiptNumber ?? '—'}`,
-            )
-          } catch (err) {
-            if (!(err instanceof Error && err.message === 'Nyomtatás sikertelen')) {
-              toast.error('Nyomtatás sikertelen', 'A nyomtatási parancs nem futott le.')
-            }
-            throw err
-          }
-        }}
       />
     </div>
   )
