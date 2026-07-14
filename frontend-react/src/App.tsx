@@ -64,6 +64,7 @@ const CashierTransactionPage = lazy(() => import('./pages/transactions/CashierTr
 const CashierMainMenu = lazy(() => import('./pages/CashierMainMenu'))
 const ClosingWizardPage = lazy(() => import('./pages/closing/ClosingWizardPage'))
 const TransferPage = lazy(() => import('./pages/transfers/TransferPage'))
+const TransferCreatePage = lazy(() => import('./pages/transfers/TransferCreatePage'))
 const TradePage = lazy(() => import('./pages/trades/TradePage'))
 // E-B8 banki workflow — működő backend-integrált oldal.
 const BankOrderPage = lazy(() => import('./pages/bankorders/BankOrderPage'))
@@ -768,9 +769,32 @@ export default function App() {
                 {/* FK-ÉRTÉKTÁR (V285): új személyes értéktári munkatárs felvétele (név + jelszó). */}
                 <Route path="/vault-workers/new" element={<NewVaultWorkerPage />} />
 
-                {/* Transfers */}
-                <Route path="/transfers" element={<TransferPage />} />
-                <Route path="/transfers/:id" element={<TransferPage />} />
+                {/* Transfers — visszaigazolás (/transfers, /transfers/:id) vs létrehozás (/transfers/new).
+                    MenuRoleGate: menü-paritás (RBAC-audit minta, effectiveCanonicalRolesForPath UNIÓ). */}
+                <Route
+                  path="/transfers"
+                  element={
+                    <MenuRoleGate path="/transfers">
+                      <TransferPage />
+                    </MenuRoleGate>
+                  }
+                />
+                <Route
+                  path="/transfers/new"
+                  element={
+                    <MenuRoleGate path="/transfers/new">
+                      <TransferCreatePage />
+                    </MenuRoleGate>
+                  }
+                />
+                <Route
+                  path="/transfers/:id"
+                  element={
+                    <MenuRoleGate path="/transfers">
+                      <TransferPage />
+                    </MenuRoleGate>
+                  }
+                />
                 {/* E-B8 banki workflow — backend-integrált oldal */}
                 <Route path="/bank-orders" element={<BankOrderPage />} />
 

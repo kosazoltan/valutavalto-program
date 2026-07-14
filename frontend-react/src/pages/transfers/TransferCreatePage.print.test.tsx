@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { vi, describe, beforeEach, afterEach, it, expect } from 'vitest'
-import TransferPage from './TransferPage'
+import TransferCreatePage from './TransferCreatePage'
 
 /**
  * Copilot PR #1100 (storno-minta átvezetés): a szállítólevél-előnézet
@@ -146,11 +146,10 @@ const electronWindow = window as unknown as {
 async function createTransferAndOpenReceiptModal() {
   render(
     <MemoryRouter>
-      <TransferPage />
+      <TransferCreatePage />
     </MemoryRouter>,
   )
 
-  fireEvent.click(await screen.findByText('Új átadás'))
   await screen.findByRole('option', { name: /BR001 - Budapesti értéktár/ })
 
   fireEvent.change(screen.getByLabelText('Cél iroda'), { target: { value: 'b-target' } })
@@ -172,7 +171,7 @@ async function createTransferAndOpenReceiptModal() {
   return printButtons[printButtons.length - 1]!
 }
 
-describe('TransferPage — sikertelen nyomtatásnál a szállítólevél-modal nyitva marad (PR #1100 minta)', () => {
+describe('TransferCreatePage — sikertelen nyomtatásnál a szállítólevél-modal nyitva marad (PR #1100 minta)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.getOutgoing.mockResolvedValue([])

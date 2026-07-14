@@ -2419,7 +2419,6 @@
     "aPenztarakFele": "A pénztárak felé",
     "aTeljesBankiWorkflowBankiRendelesWesternUnionNapiKereteSurgossegiKivetSkeletonJeMegnezhetoA": "A teljes banki workflow (banki rendelés / Western Union napi kerete / sürgősségi kivét) skeleton-je megnézhető a",
     "atadasAtvetelPenztaraknak": "Átadás-átvétel (pénztáraknak)",
-    "atadasBankMasikErtektar": "Átadás bank / másik értéktár",
     "atadasLetrehozasa": "Átadás létrehozása",
     "atado": "Átadó",
     "atadolapSzam": "Átadólap szám",
@@ -2444,11 +2443,14 @@
     "osszeg": "Összeg *",
     "szervezettAtadasAtvetelhezHasznaljaAz": "szervezett átadás-átvételhez használja az",
     "ujAtadas": "Új átadás",
+    "ujAtadasAtvetelRogzitese": "Új átadás-átvétel rögzítése",
     "ujAtadasLetrehozasa": "Új átadás létrehozása",
     "valasszonIrodat": "-- Válasszon irodát --",
     "valasszonValutat": "-- Válasszon valutát --",
     "valuta": "Valuta *",
-    "valutaAtadas": "Valuta átadás"
+    "valutaAtadas": "Valuta átadás",
+    "visszaAVisszaigazolashoz": "Vissza a visszaigazoláshoz",
+    "visszaigazolasAlairas": "Átadás-átvétel visszaigazolás (aláírás)"
   },
   "transit": {
     "atvetel": "Átvétel",

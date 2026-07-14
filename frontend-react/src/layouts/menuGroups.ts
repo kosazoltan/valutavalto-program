@@ -126,11 +126,17 @@ export const menuGroups: MenuGroup[] = [
         icon: ArrowLeftRight,
         canonicalRoles: ['penztar', 'ertekszallito'],
       },
-      // 2026-07-13: az önálló Értékszállító mód kivezetve — az átadás-átvétel
-      // aláírása a pénztár/értéktár programban történik.
+      // 2026-07-14 (transfers-relabel-split): a régi egybemosott "Átadás-átvétel aláírás"
+      // bejegyzés kettébontva — a címke pontosan azt ígéri, amit a felület csinál.
       {
         path: '/transfers',
-        label: 'Átadás-átvétel aláírás',
+        label: 'Átadás-átvétel visszaigazolás (aláírás)',
+        icon: ClipboardCheck,
+        canonicalRoles: ['penztar', 'ertekszallito'],
+      },
+      {
+        path: '/transfers/new',
+        label: 'Új átadás-átvétel rögzítése',
         icon: ArrowLeftRight,
         canonicalRoles: ['penztar', 'ertekszallito'],
       },
@@ -166,7 +172,13 @@ export const menuGroups: MenuGroup[] = [
       { path: '/trades', label: 'Irodaközi trade', icon: ArrowLeftRight },
       {
         path: '/transfers',
-        label: 'Átadás-átvétel aláírás',
+        label: 'Átadás-átvétel visszaigazolás (aláírás)',
+        icon: ClipboardCheck,
+        canonicalRoles: ['ertektar', 'ertekszallito'],
+      },
+      {
+        path: '/transfers/new',
+        label: 'Új átadás-átvétel rögzítése',
         icon: ArrowLeftRight,
         canonicalRoles: ['ertektar', 'ertekszallito'],
       },
