@@ -38,7 +38,8 @@ describe('__holdout__ transfers címke↔route szemantikai paritás', () => {
     expect(entries.length).toBeGreaterThanOrEqual(2) // penztar + ertektar csoport
     for (const e of entries) {
       expect(e.label).toMatch(/visszaigazolás/i)
-      expect(e.label).not.toMatch(/^Új|rögzítés|létrehoz/i)
+      expect(e.label).not.toMatch(/^Új/i) // a címke ne KEZDŐDJÖN "Új"-jal
+      expect(e.label).not.toMatch(/rögzítés|létrehoz/i) // se "rögzítés"/"létrehoz" bárhol
     }
   })
 
