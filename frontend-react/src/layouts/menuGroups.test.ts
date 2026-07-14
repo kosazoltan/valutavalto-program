@@ -16,12 +16,12 @@ function visibleMenuLabels(appMode: AppMode): string[] {
 describe('menuGroups ertekszallito role', () => {
   it('penztar modban a courier atadas-atveteli menuje elerheto', () => {
     const labels = visibleMenuLabels('penztar')
-    expect(labels).toContain('Átadás-átvétel aláírás')
+    expect(labels).toContain('Átadás-átvétel visszaigazolás (aláírás)')
   })
 
   it('ertektar modban a courier atadas-atveteli menuje elerheto', () => {
     const labels = visibleMenuLabels('ertektar')
-    expect(labels).toContain('Átadás-átvétel aláírás')
+    expect(labels).toContain('Átadás-átvétel visszaigazolás (aláírás)')
   })
 
   it('ertekszallito role alapertelmezett route-ja a transfers oldal', () => {
@@ -69,5 +69,30 @@ describe('menuGroups ertekszallito role', () => {
   it('FK-041/II: KIZAROLAG arfolyam_nezo eseten a beiro oldal (a guard ekkor zar)', () => {
     expect(getDefaultRouteForRoles(['arfolyam_nezo'], 'arfolyam_nezo')).toBe('/competitor-rates')
     expect(getDefaultRouteForRoles(['arfolyam_nezo'], null)).toBe('/competitor-rates')
+  })
+})
+
+describe('transfers menü-szétválasztás (2026-07-14)', () => {
+  it('nincs többé egybemosott "Átadás-átvétel aláírás" bejegyzés', () => {
+    const all = menuGroups.flatMap((g) => g.items)
+    expect(all.filter((i) => i.label === 'Átadás-átvétel aláírás')).toHaveLength(0)
+  })
+
+  it('a /transfers a visszaigazolás címkét viseli a Pénztár ÉS az Értéktár csoportban', () => {
+    const entries = menuGroups.flatMap((g) => g.items).filter((i) => i.path === '/transfers')
+    expect(entries).toHaveLength(2)
+    for (const e of entries) expect(e.label).toBe('Átadás-átvétel visszaigazolás (aláírás)')
+  })
+
+  it('a /transfers/new a létrehozás címkét viseli mindkét csoportban, a szerepkörök változatlanok', () => {
+    const entries = menuGroups.flatMap((g) => g.items).filter((i) => i.path === '/transfers/new')
+    expect(entries).toHaveLength(2)
+    for (const e of entries) expect(e.label).toBe('Új átadás-átvétel rögzítése')
+    expect(entries.map((e) => [...(e.canonicalRoles ?? [])].sort())).toEqual(
+      expect.arrayContaining([
+        ['ertekszallito', 'penztar'],
+        ['ertekszallito', 'ertektar'],
+      ]),
+    )
   })
 })
