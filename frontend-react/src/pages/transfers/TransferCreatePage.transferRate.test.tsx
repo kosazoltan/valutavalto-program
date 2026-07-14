@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { vi, describe, beforeEach, it, expect } from 'vitest'
-import TransferPage from './TransferPage'
+import TransferCreatePage from './TransferCreatePage'
 
 /**
  * FK05 FR-5: az átadás/átvétel forintosítása az ELSZÁMOLÓ árfolyamot (J oszlop,
@@ -128,11 +128,10 @@ const CURRENCIES = [
 async function createEurTransfer() {
   render(
     <MemoryRouter>
-      <TransferPage />
+      <TransferCreatePage />
     </MemoryRouter>,
   )
 
-  fireEvent.click(await screen.findByText('Új átadás'))
   await screen.findByRole('option', { name: /BR001 - Budapesti értéktár/ })
 
   fireEvent.change(screen.getByLabelText('Cél iroda'), { target: { value: 'b-target' } })
@@ -146,7 +145,7 @@ async function createEurTransfer() {
   await screen.findByText(/Átadás létrehozva/)
 }
 
-describe('TransferPage — FK05 FR-5: forintosítás elszámoló árfolyammal', () => {
+describe('TransferCreatePage — FK05 FR-5: forintosítás elszámoló árfolyammal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.getOutgoing.mockResolvedValue([])
