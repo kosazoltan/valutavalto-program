@@ -58,6 +58,9 @@ class ShipmentServiceTest {
     private ShipmentStockBookingService stockBookingService;
 
     @Mock
+    private ShipmentHandlingFeeSyncService handlingFeeSyncService;
+
+    @Mock
     private AuditLogService auditLogService;
 
     @Mock
@@ -641,7 +644,8 @@ class ShipmentServiceTest {
                 workerRepository,
                 exchangeRateService,
                 transferSerialSequenceService,
-                realStockBookingService);
+                realStockBookingService,
+                handlingFeeSyncService);
     }
 
     @Test
