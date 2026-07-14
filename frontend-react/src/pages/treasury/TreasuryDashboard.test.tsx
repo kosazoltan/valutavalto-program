@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TreasuryDashboard from './TreasuryDashboard'
+import { formatMillions } from './treasuryUtils'
 
 const mocks = vi.hoisted(() => ({
   getDailyTurnover: vi.fn(),
@@ -526,6 +527,21 @@ describe('TreasuryDashboard', () => {
 
     const totalStockRow = (await screen.findByText('Készlet érték (összes)')).closest('div')
     expect(totalStockRow).toHaveTextContent('1.2M Ft')
+  })
+
+  it('a kezelési díjakat a backend napi forgalom válaszából jeleníti meg', async () => {
+    mocks.getDailyTurnover.mockResolvedValueOnce({
+      totalBuyCount: 0,
+      totalSellCount: 0,
+      totalBuyHuf: 0,
+      totalSellHuf: 0,
+      totalHandlingFees: 2125,
+    })
+
+    render(<TreasuryDashboard />)
+
+    const handlingFeesRow = (await screen.findByText('Kezelési díjak')).closest('div')
+    expect(handlingFeesRow).toHaveTextContent(formatMillions(2125))
   })
 
   it('a dedikált treasury backend dashboard, fiók-összehasonlítás és beküldési státusz végpontokat is megjeleníti', async () => {
