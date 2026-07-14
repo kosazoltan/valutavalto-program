@@ -48,6 +48,7 @@ public class ShipmentService {
     private final ExchangeRateService exchangeRateService;
     private final TransferSerialSequenceService transferSerialSequenceService;
     private final ShipmentStockBookingService stockBookingService;
+    private final ShipmentHandlingFeeSyncService handlingFeeSyncService;
 
     /**
      * v2.5.70 P0 multi-tenant fix (companyId audit follow-up): a régi findByStatus /
@@ -153,10 +154,14 @@ public class ShipmentService {
     }
 
     public ShipmentRequest create(ShipmentRequest request) {
+        return create(request, null);
+    }
+
+    public ShipmentRequest create(ShipmentRequest request, String serialPrefixOverride) {
         validateCreateRequest(request);
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         request.setCompanyId(companyId);
-        RequestNumberParts requestNumberParts = generateRequestNumber(request);
+        RequestNumberParts requestNumberParts = generateRequestNumber(request, serialPrefixOverride);
         request.setRequestNumber(requestNumberParts.value());
         request.setSerialPrefix(requestNumberParts.prefix());
         request.setSerialNumber(requestNumberParts.serialNumber());
@@ -256,6 +261,7 @@ public class ShipmentService {
         if (existing.getStatus() != ShipmentRequestStatus.DRAFT) {
             throw new ValidationException("Csak DRAFT státuszú kérés módosítható!");
         }
+        handlingFeeSyncService.assertNotHandlingFeeShipment(existing);
         validateEditableRequest(updated);
 
         existing.setFromBranchId(updated.getFromBranchId());
@@ -310,6 +316,7 @@ public class ShipmentService {
         request.setStatus(ShipmentRequestStatus.SUBMITTED);
         log.info("Szállítmánykérés beküldve: {}", request.getRequestNumber());
         ShipmentRequest saved = shipmentRequestRepository.save(request);
+        handlingFeeSyncService.syncFromShipment(saved);
         initLazyForSerialization(saved);
         return saved;
     }
@@ -325,6 +332,7 @@ public class ShipmentService {
         request.setStatus(ShipmentRequestStatus.APPROVED);
         log.info("Szállítmánykérés jóváhagyva: {}", request.getRequestNumber());
         ShipmentRequest saved = shipmentRequestRepository.save(request);
+        handlingFeeSyncService.syncFromShipment(saved);
         initLazyForSerialization(saved);
         return saved;
     }
@@ -348,6 +356,7 @@ public class ShipmentService {
         request.setDeliveryDate(LocalDate.now());
         log.info("Szállítmánykérés leszállítva: {}", request.getRequestNumber());
         ShipmentRequest saved = shipmentRequestRepository.save(request);
+        handlingFeeSyncService.syncFromShipment(saved);
         initLazyForSerialization(saved);
         return saved;
     }
@@ -371,6 +380,7 @@ public class ShipmentService {
         request.setStatus(ShipmentRequestStatus.CANCELLED);
         log.info("Szállítmánykérés visszavonva: {}", request.getRequestNumber());
         ShipmentRequest saved = shipmentRequestRepository.save(request);
+        handlingFeeSyncService.syncFromShipment(saved);
         initLazyForSerialization(saved);
         return saved;
     }
@@ -401,6 +411,7 @@ public class ShipmentService {
         request.setRejectedByWorkerId(workerId);
         log.info("Szállítmánykérés elutasítva: {} (elutasító worker={})", request.getRequestNumber(), workerId);
         ShipmentRequest saved = shipmentRequestRepository.save(request);
+        handlingFeeSyncService.syncFromShipment(saved);
         initLazyForSerialization(saved);
         return saved;
     }
@@ -577,12 +588,14 @@ public class ShipmentService {
         });
     }
 
-    private RequestNumberParts generateRequestNumber(ShipmentRequest request) {
+    private RequestNumberParts generateRequestNumber(ShipmentRequest request, String prefixOverride) {
         ShipmentRequestItem firstItem = request.getItems().get(0);
         Currency currency = currencyRepository.findById(firstItem.getCurrencyId())
                 .orElseThrow(() -> new ValidationException(
                         "Ismeretlen valuta a szállítmány-tételben: currencyId=" + firstItem.getCurrencyId()));
-        String prefix = determineSerialPrefix(currency.getCode(), request);
+        String prefix = prefixOverride != null
+                ? prefixOverride
+                : determineSerialPrefix(currency.getCode(), request);
         UUID companyId = request.getCompanyId() != null ? request.getCompanyId() : SecurityUtils.getCurrentCompanyId();
         long serialNumber = transferSerialSequenceService.next(companyId, prefix);
         return new RequestNumberParts(prefix, serialNumber, prefix + "-" + String.format("%06d", serialNumber));

@@ -1,8 +1,12 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.dto.shipment.ShipmentHandlingFeeCreateRequest;
+import hu.puzzleir.valuta.dto.shipment.ShipmentHandlingFeeCreateResponseDto;
+import hu.puzzleir.valuta.dto.shipment.ShipmentHandlingFeeDto;
 import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
 import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
+import hu.puzzleir.valuta.service.ShipmentHandlingFeeService;
 import hu.puzzleir.valuta.service.ShipmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +37,7 @@ import java.util.UUID;
 public class ShipmentController {
 
     private final ShipmentService shipmentService;
+    private final ShipmentHandlingFeeService shipmentHandlingFeeService;
 
     /**
      * Szállítmánykérések listázása (lapozott, opcionális státusz- és branch-szűrő).
@@ -57,6 +62,28 @@ public class ShipmentController {
     @GetMapping("/{id}")
     public ResponseEntity<ShipmentRequestResponseDto> findById(@PathVariable UUID id) {
         return ResponseEntity.ok(shipmentService.findByIdResponse(id));
+    }
+
+    /**
+     * FKH-018: a shipmenthez tartozó kezelési költség tétel lekérése (404, ha nincs).
+     * GET /api/v1/shipments/{id}/handling-fee
+     */
+    @GetMapping("/{id}/handling-fee")
+    public ResponseEntity<ShipmentHandlingFeeDto> getHandlingFee(@PathVariable UUID id) {
+        return ResponseEntity.ok(shipmentHandlingFeeService.findByShipmentId(id));
+    }
+
+    /**
+     * FKH-018: kezelési költség átvétel rögzítése — shipment (KK prefix, 1 HUF item)
+     * és shipment_handling_fee sor egy tranzakcióban.
+     * POST /api/v1/shipments/handling-fee
+     */
+    @PostMapping("/handling-fee")
+    @PreAuthorize("hasAnyRole('ERTEKTAR', 'FOERTEKTAR', 'ADMIN')")
+    public ResponseEntity<ShipmentHandlingFeeCreateResponseDto> createHandlingFee(
+            @Valid @RequestBody ShipmentHandlingFeeCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(shipmentHandlingFeeService.create(request));
     }
 
     /**

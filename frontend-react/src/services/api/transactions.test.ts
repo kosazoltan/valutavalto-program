@@ -612,6 +612,57 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
     expect(result.requestedAt).toBe('2026-05-07T08:00:00Z')
   })
 
+  it('createHandlingFee: a /shipments/handling-fee endpointot hívja és normalizálja a shipmentet', async () => {
+    mockApi.post.mockResolvedValue({
+      data: {
+        shipment: {
+          id: 'shipment-1',
+          requestNumber: 'KK-000001',
+          status: 'DRAFT',
+          fromBranchId: 'BR-A',
+          fromBranchName: 'Szeged Móra',
+          toBranchId: 'BR-B',
+          toBranchName: 'Szeged Értéktár',
+          createdAt: '2026-07-14T08:00:00Z',
+        },
+        handlingFee: {
+          id: 'fee-1',
+          shipmentRequestId: 'shipment-1',
+          sourceBranchId: 'BR-A',
+          hufAmount: 125000,
+          calculatedFee: 625,
+          status: 'DRAFT',
+          createdAt: '2026-07-14T08:00:00Z',
+          approvedAt: null,
+        },
+      },
+    })
+
+    const result = await shipmentRequestApi.createHandlingFee({
+      fromBranchId: 'BR-A',
+      toBranchId: 'BR-B',
+      hufAmount: 125000,
+      deliveryDate: '',
+      notes: ' kezelési költség ',
+      carrierName: ' Teszt Szállító ',
+      sealNumber: ' KK-123 ',
+    })
+
+    expect(mockApi.post).toHaveBeenCalledWith('/shipments/handling-fee', {
+      fromBranchId: 'BR-A',
+      toBranchId: 'BR-B',
+      hufAmount: 125000,
+      deliveryDate: undefined,
+      notes: 'kezelési költség',
+      carrierName: 'Teszt Szállító',
+      sealNumber: 'KK-123',
+    })
+    expect(result.shipment.requestStatus).toBe('DRAFT')
+    expect(result.shipment.requestingBranchId).toBe('BR-A')
+    expect(result.shipment.targetBranchId).toBe('BR-B')
+    expect(result.handlingFee.calculatedFee).toBe(625)
+  })
+
   it('submit: a /shipments/{id}/submit endpointot hivja', async () => {
     mockApi.post.mockResolvedValue({ data: { id: 'shipment-1', status: 'SUBMITTED' } })
     const result = await shipmentRequestApi.submit('shipment-1')
