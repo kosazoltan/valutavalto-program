@@ -1500,6 +1500,27 @@ export interface ShipmentCreateRequest {
   sealNumber: string
 }
 
+export interface ShipmentHandlingFeeCreatePayload {
+  fromBranchId: string
+  toBranchId: string
+  hufAmount: number
+  deliveryDate?: string
+  notes?: string
+  carrierName: string
+  sealNumber: string
+}
+
+export interface ShipmentHandlingFeeDto {
+  id: string
+  shipmentRequestId: string
+  sourceBranchId: string
+  hufAmount: number
+  calculatedFee: number
+  status: string
+  createdAt?: string
+  approvedAt?: string | null
+}
+
 export interface ShipmentUpdateRequest {
   fromBranchId: string
   toBranchId: string
@@ -1620,6 +1641,24 @@ export const shipmentRequestApi = {
     }
     const response = await api.post<Record<string, unknown>>('/shipments', payload)
     return normalizeShipmentRequest(response.data)
+  },
+  createHandlingFee: async (
+    payload: ShipmentHandlingFeeCreatePayload,
+  ): Promise<{ shipment: ShipmentRequest; handlingFee: ShipmentHandlingFeeDto }> => {
+    const response = await api.post<{
+      shipment: Record<string, unknown>
+      handlingFee: ShipmentHandlingFeeDto
+    }>('/shipments/handling-fee', {
+      ...payload,
+      notes: payload.notes?.trim() || undefined,
+      carrierName: payload.carrierName.trim(),
+      sealNumber: payload.sealNumber.trim(),
+      deliveryDate: payload.deliveryDate || undefined,
+    })
+    return {
+      shipment: normalizeShipmentRequest(response.data.shipment),
+      handlingFee: response.data.handlingFee,
+    }
   },
   submit: async (requestId: string): Promise<ShipmentRequest> => {
     const response = await api.post<Record<string, unknown>>(`/shipments/${requestId}/submit`)

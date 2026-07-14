@@ -9,6 +9,7 @@ import {
   shipmentRequestApi,
   type BranchInfo,
   type Currency,
+  type ShipmentRequest,
 } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -103,6 +104,7 @@ export default function ShipmentNewPage() {
   const [appliedRate, setAppliedRate] = useState<number | null>(null)
   const [rateLoading, setRateLoading] = useState(false)
   const [denominations, setDenominations] = useState<DenominationFormLine[]>([])
+  const [calculatedHandlingFee, setCalculatedHandlingFee] = useState<number | null>(null)
   const disabled = loading || saving
   const selectedCurrency = useMemo(
     () => currencies.find((currency) => String(currency.id) === form.currencyId),
@@ -154,6 +156,14 @@ export default function ShipmentNewPage() {
     () => hasCanonicalRole(['penztar']) && !hasCanonicalRole(['ertektar', 'foertektar']),
     [hasCanonicalRole, roles, activeRole],
   )
+  // FKH-018: a kezelési költség tételtípust a backend RBAC-jával azonos értéktáros
+  // szerepkörök rögzíthetik. A hasCanonicalRole ADMIN-bypass-a szándékos paritás.
+  const [itemType, setItemType] = useState<'currency' | 'handlingFee'>('currency')
+  const canRecordHandlingFee = useMemo(
+    () => hasCanonicalRole(['ertektar', 'foertektar']),
+    [hasCanonicalRole, roles, activeRole],
+  )
+  const isHandlingFee = itemType === 'handlingFee' && canRecordHandlingFee
 
   // FK-013 self-review P0-2: ha az isVaultUser flicker-el (true → false), a vaultCounterparties
   // state stale-en marad → a UI a régi 3-csoportos dropdown-t mutatja inkonzisztens módon.
@@ -250,18 +260,25 @@ export default function ShipmentNewPage() {
     if (!Number.isFinite(amt) || amt <= 0 || appliedRate == null) return null
     return Math.round((amt * appliedRate) / 5) * 5
   }, [form.amount, appliedRate])
+  const roundedHandlingFeeAmount: number | null = useMemo(() => {
+    const amount = Number(form.amount.replace(',', '.'))
+    if (!Number.isFinite(amount) || amount <= 0) return null
+    return Math.round(amount / 5) * 5
+  }, [form.amount])
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError(null)
     const amount = Number(form.amount.replace(',', '.'))
-    if (
-      !form.fromBranchId ||
-      !form.toBranchId ||
-      !form.currencyId ||
-      !Number.isFinite(amount) ||
-      amount <= 0
-    ) {
+    if (!form.fromBranchId || !form.toBranchId || !Number.isFinite(amount) || amount <= 0) {
+      setError(
+        isHandlingFee
+          ? 'Átadó, átvevő és pozitív összeg megadása kötelező.'
+          : 'Átadó, átvevő, valuta és pozitív összeg megadása kötelező.',
+      )
+      return
+    }
+    if (!isHandlingFee && !form.currencyId) {
       setError('Átadó, átvevő, valuta és pozitív összeg megadása kötelező.')
       return
     }
@@ -276,6 +293,10 @@ export default function ShipmentNewPage() {
       setError(carrierSealError)
       return
     }
+    if (isHandlingFee && amount % 5 !== 0) {
+      setError(t('shipments.kezelesiKoltsegOsszegHiba'))
+      return
+    }
     const normalizedDenominations = denominations
       .map((line) => {
         const quantity = Number(line.quantity)
@@ -283,7 +304,7 @@ export default function ShipmentNewPage() {
         return {
           quantity,
           faceValue,
-          currencyCode: selectedCurrency?.code ?? '',
+          currencyCode: isHandlingFee ? 'HUF' : (selectedCurrency?.code ?? ''),
           lineTotal: quantity * faceValue,
         }
       })
@@ -307,31 +328,18 @@ export default function ShipmentNewPage() {
       setError('A címletezés összegének egyeznie kell az átadás-átvétel összegével.')
       return
     }
-    setSaving(true)
-    try {
-      const created = await shipmentRequestApi.create({
-        fromBranchId: form.fromBranchId,
-        toBranchId: form.toBranchId,
-        deliveryDate: form.deliveryDate || undefined,
-        notes: form.notes,
-        carrierName: form.carrierName.trim(),
-        sealNumber: form.sealNumber.trim(),
-        // D követelmény (Codex P1): a backend autoritatív a server-side aktuális rate-tel —
-        // a kliens csak display-célból mutatja a rate-et + hufValue-t, NEM küldi a payloadban.
-        items: [
-          {
-            currencyId: form.currencyId,
-            requestedAmount: amount,
-          },
-        ],
-      })
-      if (!created.id) throw new Error('A szerver nem adott szállítmány azonosítót.')
-      const submitted = await shipmentRequestApi.submit(created.id)
+    const buildAndShowReceipt = (
+      created: ShipmentRequest,
+      submitted: ShipmentRequest,
+      options: {
+        currencyCode: string
+        rate?: number
+        foreignAmount: number
+        roundedHufAmount?: number
+        transferNote?: string
+      },
+    ) => {
       const receiptShipment = { ...created, ...submitted }
-      // FR-1..3: a beküldés után NEM navigálunk azonnal — megnyitjuk a Bizonylat Előnézet modalt.
-      // A bizonylat adatait a szerver-válaszból (átadó/átvevő iroda NEVE, szállító, plomba,
-      // bizonylatszám) + a lokális, már megjelenített valuta/összeg/forintosított értékből építjük.
-      const currencyCode = selectedCurrency?.code ?? ''
       // Elsődleges forrás: backend DTO from/to branch kód+név. Csak régi/hiányos válasznál
       // esünk vissza a már betöltött listára (a cél lehet virtuális partner is).
       const allBranches: BranchInfo[] = [
@@ -351,42 +359,35 @@ export default function ShipmentNewPage() {
       const branchLabel = (id: string, fallbackName?: string, fallbackCode?: string): string => {
         const serverLabel = branchLabelFromBackend(fallbackCode, fallbackName)
         if (serverLabel) return serverLabel
-        const b = allBranches.find((x) => x.id === id)
-        return b ? `${b.code} - ${b.name}` : ''
+        const branch = allBranches.find((candidate) => candidate.id === id)
+        return branch ? `${branch.code} - ${branch.name}` : ''
       }
       const branchAddress = (id: string): string | undefined => {
-        const b = allBranches.find((x) => x.id === id)
-        if (!b) return undefined
-        return [b.city, b.address, b.zipCode].filter(Boolean).join(', ') || undefined
+        const branch = allBranches.find((candidate) => candidate.id === id)
+        if (!branch) return undefined
+        return [branch.city, branch.address, branch.zipCode].filter(Boolean).join(', ') || undefined
       }
-      // FR-2 (fejléc-javítás 2026-06-11): az értéktár telefonszáma a branch törzsből; hiány → nincs telefon sor.
       const branchPhone = (id: string): string | undefined => {
-        const b = allBranches.find((x) => x.id === id)
-        return b?.phone?.trim() || undefined
+        const branch = allBranches.find((candidate) => candidate.id === id)
+        return branch?.phone?.trim() || undefined
       }
       const now = new Date()
       setPrintReceiptData({
         type: 'transfer',
         companyType: getCompanyType(worker),
         receiptNumber: receiptShipment.requestNumber || receiptShipment.id,
-        // Átadó / Átvevő — backend DTO-ból, „KÓD - Név" formátumban.
         branchCode: branchLabel(
           form.fromBranchId,
           receiptShipment.fromBranchName || receiptShipment.requestingBranchName,
           receiptShipment.fromBranchCode,
         ),
         cashierName: receiptShipment.requestedByWorkerName || worker?.fullName || '',
-        // A fejléc dátuma a KIÁLLÍTÁS dátuma (Codex P2); a kért kézbesítési dátum külön mezőben (lentebb).
         date: receiptShipment.requestedAt?.slice(0, 10) || localIsoDate(),
         time: now.toTimeString().slice(0, 8),
-        currencyCode,
-        rate: appliedRate ?? undefined,
-        foreignAmount: amount,
-        // NFR-3: 5 Ft-ra kerekített forintosított érték (a kijelzett hufValue ugyanezzel a szabállyal).
-        // Megjegyzés: a szállítmány-IGÉNY nem perzisztál HUF-ot (nincs items[].hufAmount), így a
-        // bizonylaton a felhasználónak már megjelenített, szerver-autoritatív rate-tel számolt becslés szerepel.
-        roundedHufAmount: hufValue ?? undefined,
-        // FR-2: kért kézbesítési dátum (külön a kiállítási dátumtól).
+        currencyCode: options.currencyCode,
+        rate: options.rate,
+        foreignAmount: options.foreignAmount,
+        roundedHufAmount: options.roundedHufAmount,
         deliveryDate: receiptShipment.requestedDeliveryDate || form.deliveryDate || undefined,
         transferTarget: branchLabel(
           form.toBranchId,
@@ -394,14 +395,61 @@ export default function ShipmentNewPage() {
           receiptShipment.toBranchCode,
         ),
         vaultAddress: branchAddress(ownBranchId),
-        vaultPhone: branchPhone(ownBranchId), // FR-2 (fejléc-javítás)
+        vaultPhone: branchPhone(ownBranchId),
         transferDocType: direction === 'inbound' ? 'receipt' : 'handover',
-        transferNote: receiptShipment.notes || form.notes || undefined,
+        transferNote: options.transferNote ?? (receiptShipment.notes || form.notes || undefined),
         carrierName: receiptShipment.carrierName || form.carrierName.trim(),
         sealNumber: receiptShipment.sealNumber || form.sealNumber.trim(),
         denominations: normalizedDenominations.length > 0 ? normalizedDenominations : undefined,
       })
       setShowReceiptModal(true)
+    }
+
+    setSaving(true)
+    try {
+      if (isHandlingFee) {
+        const { shipment: created, handlingFee } = await shipmentRequestApi.createHandlingFee({
+          fromBranchId: form.fromBranchId,
+          toBranchId: form.toBranchId,
+          hufAmount: amount,
+          deliveryDate: form.deliveryDate || undefined,
+          notes: form.notes,
+          carrierName: form.carrierName.trim(),
+          sealNumber: form.sealNumber.trim(),
+        })
+        if (!created.id) throw new Error('A szerver nem adott szállítmány azonosítót.')
+        const submitted = await shipmentRequestApi.submit(created.id)
+        setCalculatedHandlingFee(handlingFee.calculatedFee)
+        const handlingFeeNote = `${t('shipments.kezelesiKoltsegAtvetel')} — ${t('shipments.szamitottKezelesiDij')}: ${handlingFee.calculatedFee.toLocaleString('hu-HU')} Ft${form.notes ? `\n${form.notes}` : ''}`
+        buildAndShowReceipt(created, submitted, {
+          currencyCode: 'HUF',
+          rate: 1,
+          foreignAmount: amount,
+          roundedHufAmount: amount,
+          transferNote: handlingFeeNote,
+        })
+        return
+      }
+
+      const created = await shipmentRequestApi.create({
+        fromBranchId: form.fromBranchId,
+        toBranchId: form.toBranchId,
+        deliveryDate: form.deliveryDate || undefined,
+        notes: form.notes,
+        carrierName: form.carrierName.trim(),
+        sealNumber: form.sealNumber.trim(),
+        // D követelmény (Codex P1): a backend autoritatív a server-side aktuális rate-tel —
+        // a kliens csak display-célból mutatja a rate-et + hufValue-t, NEM küldi a payloadban.
+        items: [{ currencyId: form.currencyId, requestedAmount: amount }],
+      })
+      if (!created.id) throw new Error('A szerver nem adott szállítmány azonosítót.')
+      const submitted = await shipmentRequestApi.submit(created.id)
+      buildAndShowReceipt(created, submitted, {
+        currencyCode: selectedCurrency?.code ?? '',
+        rate: appliedRate ?? undefined,
+        foreignAmount: amount,
+        roundedHufAmount: hufValue ?? undefined,
+      })
     } catch (err) {
       logger.error('ShipmentNewPage', 'Szallitmanyigeny letrehozasi hiba:', err)
       setError(getErrorMessage(err))
@@ -435,7 +483,7 @@ export default function ShipmentNewPage() {
         </div>
       )}
 
-      <form onSubmit={submit} className="form-panel space-y-4">
+      <form onSubmit={submit} noValidate className="form-panel space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="block">
             <span className="form-label">
@@ -589,66 +637,102 @@ export default function ShipmentNewPage() {
               onChange={(e) => patch({ deliveryDate: e.target.value })}
             />
           </label>
+          {canRecordHandlingFee && (
+            <label className="block">
+              <span className="form-label">{t('shipments.tetelTipusa')}</span>
+              <select
+                className="form-input"
+                value={itemType}
+                disabled={disabled}
+                onChange={(event) => {
+                  setItemType(event.target.value as 'currency' | 'handlingFee')
+                  setCalculatedHandlingFee(null)
+                }}
+              >
+                <option value="currency">{t('shipments.tetelTipusValuta')}</option>
+                <option value="handlingFee">{t('shipments.tetelTipusKezelesiKoltseg')}</option>
+              </select>
+            </label>
+          )}
+          {!isHandlingFee && (
+            <label className="block">
+              <span className="form-label">Valuta</span>
+              <select
+                className="form-input"
+                value={form.currencyId}
+                disabled={disabled}
+                onChange={(e) => patch({ currencyId: e.target.value })}
+              >
+                <option value="">Válasszon valutát</option>
+                {currencies.map((currency) => (
+                  <option key={currency.id} value={currency.id}>
+                    {currency.code} - {currency.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="block">
-            <span className="form-label">Valuta</span>
-            <select
-              className="form-input"
-              value={form.currencyId}
-              disabled={disabled}
-              onChange={(e) => patch({ currencyId: e.target.value })}
-            >
-              <option value="">Válasszon valutát</option>
-              {currencies.map((currency) => (
-                <option key={currency.id} value={currency.id}>
-                  {currency.code} - {currency.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="form-label">Összeg</span>
+            <span className="form-label">
+              {isHandlingFee ? t('shipments.kezelesiKoltsegOsszegeFt') : 'Összeg'}
+            </span>
             <input
               type="number"
-              min="0.01"
-              step="0.01"
+              min={isHandlingFee ? '5' : '0.01'}
+              step={isHandlingFee ? '5' : '0.01'}
               className="form-input"
               value={form.amount}
               disabled={saving}
-              onChange={(e) => patch({ amount: e.target.value })}
+              onChange={(event) => {
+                patch({ amount: event.target.value })
+                setCalculatedHandlingFee(null)
+              }}
             />
           </label>
           {/* D követelmény (Bali Henriett): aktuális elszámoló árfolyam + forintosított érték
               AUTOMATIKUSAN, read-only — a felhasználó NE írja kézzel. */}
+          {!isHandlingFee && (
+            <label className="block">
+              <span className="form-label">
+                Alkalmazott elszámoló árfolyam
+                <span className="ml-1 text-xs text-gray-500">
+                  (automatikus — aktuális rendszer-árfolyam)
+                </span>
+              </span>
+              <input
+                type="text"
+                className="form-input bg-gray-100 cursor-not-allowed"
+                value={
+                  rateLoading
+                    ? 'Betöltés…'
+                    : appliedRate != null
+                      ? appliedRate.toLocaleString('hu-HU', { maximumFractionDigits: 6 })
+                      : '—'
+                }
+                disabled
+                readOnly
+              />
+            </label>
+          )}
           <label className="block">
             <span className="form-label">
-              Alkalmazott elszámoló árfolyam
-              <span className="ml-1 text-xs text-gray-500">
-                (automatikus — aktuális rendszer-árfolyam)
-              </span>
+              {isHandlingFee ? 'Kerekített összeg' : 'Forintosított érték'}
+              <span className="ml-1 text-xs text-gray-500">(automatikus — 5 Ft-ra kerekítve)</span>
+              {isHandlingFee && calculatedHandlingFee != null && (
+                <span className="ml-1 text-xs text-gray-500">
+                  — {t('shipments.szamitottKezelesiDij')}:{' '}
+                  {calculatedHandlingFee.toLocaleString('hu-HU')} Ft
+                </span>
+              )}
             </span>
             <input
               type="text"
               className="form-input bg-gray-100 cursor-not-allowed"
               value={
-                rateLoading
-                  ? 'Betöltés…'
-                  : appliedRate != null
-                    ? appliedRate.toLocaleString('hu-HU', { maximumFractionDigits: 6 })
-                    : '—'
+                (isHandlingFee ? roundedHandlingFeeAmount : hufValue) != null
+                  ? `${(isHandlingFee ? roundedHandlingFeeAmount : hufValue)?.toLocaleString('hu-HU')} Ft`
+                  : '—'
               }
-              disabled
-              readOnly
-            />
-          </label>
-          <label className="block">
-            <span className="form-label">
-              Forintosított érték
-              <span className="ml-1 text-xs text-gray-500">(automatikus — 5 Ft-ra kerekítve)</span>
-            </span>
-            <input
-              type="text"
-              className="form-input bg-gray-100 cursor-not-allowed"
-              value={hufValue != null ? hufValue.toLocaleString('hu-HU') + ' Ft' : '—'}
               disabled
               readOnly
             />
@@ -753,7 +837,7 @@ export default function ShipmentNewPage() {
                         className="form-input bg-gray-100"
                         value={
                           lineTotal > 0
-                            ? `${lineTotal.toLocaleString('hu-HU')} ${selectedCurrency?.code ?? ''}`
+                            ? `${lineTotal.toLocaleString('hu-HU')} ${isHandlingFee ? 'HUF' : (selectedCurrency?.code ?? '')}`
                             : '—'
                         }
                         disabled

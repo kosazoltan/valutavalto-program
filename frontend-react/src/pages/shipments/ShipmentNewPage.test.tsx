@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   },
   currencyApi: { getActive: vi.fn() },
   exchangeRateApi: { getByCurrencyId: vi.fn() },
-  shipmentRequestApi: { create: vi.fn(), submit: vi.fn() },
+  shipmentRequestApi: { create: vi.fn(), createHandlingFee: vi.fn(), submit: vi.fn() },
   persistToken: vi.fn(),
   clearPersistedToken: vi.fn(),
 }))
@@ -269,5 +269,144 @@ describe('ShipmentNewPage', () => {
     ).toBeGreaterThanOrEqual(1)
 
     // A régi /branches/my-territory NEM hívódik értéktáros user esetén (már fent asserted)
+  })
+
+  it('FKH-018: pénztáros user NEM látja a Kezelési költség tételtípust', async () => {
+    render(
+      <MemoryRouter>
+        <ShipmentNewPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(screen.getByLabelText(/Átvevő/i)).not.toBeDisabled())
+    expect(screen.queryByLabelText(/Tétel típusa/i)).not.toBeInTheDocument()
+  })
+
+  it('FKH-018: értéktáros user kiválaszthatja a Kezelési költség tételtípust és a createHandlingFee hívódik', async () => {
+    const user = userEvent.setup()
+    useAuthStore.setState({
+      worker: {
+        id: 99,
+        workerCode: 'BALI',
+        firstName: 'Henriett',
+        lastName: 'Bali',
+        fullName: 'Bali Henriett',
+        role: 'CASHIER',
+        branchId: 'BR-VAULT-SZEGED',
+        branchCode: 'BR075',
+        branchName: 'Szeged Értéktár',
+        companyId: 'C-1',
+        companyCode: 'EBC',
+        companyName: 'EBC',
+      },
+      isAuthenticated: true,
+      roles: ['ertektar'],
+      activeRole: 'ertektar',
+    })
+    mocks.branchApi.listVaultCounterparties.mockResolvedValue({
+      territorialCashiers: [{ id: 'BR-TER-1', code: 'BR026', name: 'Szeged Móra', isActive: true }],
+      peerVaults: [],
+      fixedCounterparties: [],
+    })
+    mocks.shipmentRequestApi.createHandlingFee.mockResolvedValue({
+      shipment: {
+        id: 'shipment-1',
+        requestNumber: 'KK-000001',
+        fromBranchCode: 'BR026',
+        fromBranchName: 'Szeged Móra',
+        toBranchCode: 'BR075',
+        toBranchName: 'Szeged Értéktár',
+        requestedByWorkerName: 'Bali Henriett',
+        requestedAt: '2026-06-21T10:00:00',
+        carrierName: "Brink's Hungary Kft.",
+        sealNumber: 'ABC/12-3',
+      },
+      handlingFee: {
+        hufAmount: 125000,
+        calculatedFee: 625,
+        status: 'DRAFT',
+      },
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/shipments/new?direction=inbound']}>
+        <ShipmentNewPage />
+      </MemoryRouter>,
+    )
+
+    const itemTypeSelect = await screen.findByLabelText(/Tétel típusa/i)
+    await waitFor(() => expect(itemTypeSelect).not.toBeDisabled())
+    await user.selectOptions(itemTypeSelect, 'handlingFee')
+
+    expect(screen.queryByLabelText(/Valuta/i)).not.toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText(/Átadó/i), 'BR-TER-1')
+    await user.type(screen.getByLabelText(/Kezelési költség összege/i), '125000')
+    await user.type(screen.getByLabelText(/Szállító neve/i), "Brink's Hungary Kft.")
+    await user.type(screen.getByLabelText(/Plombaszám/i), 'ABC/12-3')
+    await user.click(screen.getByRole('button', { name: /Igény beküldése/i }))
+
+    await waitFor(() =>
+      expect(mocks.shipmentRequestApi.createHandlingFee).toHaveBeenCalledWith({
+        fromBranchId: 'BR-TER-1',
+        toBranchId: 'BR-VAULT-SZEGED',
+        hufAmount: 125000,
+        deliveryDate: undefined,
+        notes: '',
+        carrierName: "Brink's Hungary Kft.",
+        sealNumber: 'ABC/12-3',
+      }),
+    )
+    expect(mocks.shipmentRequestApi.submit).toHaveBeenCalledWith('shipment-1')
+    expect(mocks.shipmentRequestApi.create).not.toHaveBeenCalled()
+  })
+
+  it('FKH-018: kezelési költségnél a nem 5-tel osztható összeg hibát ad', async () => {
+    const user = userEvent.setup()
+    useAuthStore.setState({
+      worker: {
+        id: 99,
+        workerCode: 'BALI',
+        firstName: 'Henriett',
+        lastName: 'Bali',
+        fullName: 'Bali Henriett',
+        role: 'CASHIER',
+        branchId: 'BR-VAULT-SZEGED',
+        branchCode: 'BR075',
+        branchName: 'Szeged Értéktár',
+        companyId: 'C-1',
+        companyCode: 'EBC',
+        companyName: 'EBC',
+      },
+      isAuthenticated: true,
+      roles: ['ertektar'],
+      activeRole: 'ertektar',
+    })
+    mocks.branchApi.listVaultCounterparties.mockResolvedValue({
+      territorialCashiers: [{ id: 'BR-TER-1', code: 'BR026', name: 'Szeged Móra', isActive: true }],
+      peerVaults: [],
+      fixedCounterparties: [],
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/shipments/new?direction=inbound']}>
+        <ShipmentNewPage />
+      </MemoryRouter>,
+    )
+
+    const itemTypeSelect = await screen.findByLabelText(/Tétel típusa/i)
+    await waitFor(() => expect(itemTypeSelect).not.toBeDisabled())
+    await user.selectOptions(itemTypeSelect, 'handlingFee')
+    await user.selectOptions(screen.getByLabelText(/Átadó/i), 'BR-TER-1')
+    await user.type(screen.getByLabelText(/Kezelési költség összege/i), '125003')
+    await user.type(screen.getByLabelText(/Szállító neve/i), "Brink's Hungary Kft.")
+    await user.type(screen.getByLabelText(/Plombaszám/i), 'ABC/12-3')
+    await user.click(screen.getByRole('button', { name: /Igény beküldése/i }))
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/pozitív, 5 Ft-ra kerekített érték kell legyen/i),
+      ).toBeInTheDocument(),
+    )
+    expect(mocks.shipmentRequestApi.createHandlingFee).not.toHaveBeenCalled()
   })
 })
