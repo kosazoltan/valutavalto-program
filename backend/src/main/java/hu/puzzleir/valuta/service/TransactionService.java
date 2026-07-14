@@ -57,6 +57,7 @@ public class TransactionService {
     private static final VVLogger VV_LOG = VVLogger.of(TransactionService.class);
 
     private final TransactionRepository transactionRepository;
+    private final ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
     private final TransactionLineRepository transactionLineRepository;
     // V325 (Batch3-C): tenyleges tulajdonosok perzisztalasa jogi szemely ugyfelnel
     private final TransactionBeneficialOwnerRepository transactionBeneficialOwnerRepository;
@@ -837,6 +838,7 @@ public class TransactionService {
         long buyCount = transactionRepository.countByBranchIdAndTransactionDateAndTransactionType(branchId, date, TransactionType.BUY);
         long sellCount = transactionRepository.countByBranchIdAndTransactionDateAndTransactionType(branchId, date, TransactionType.SELL);
         BigDecimal totalHandlingFees = transactionRepository.sumDailyHandlingFees(branchId, date);
+        BigDecimal shipmentFees = shipmentHandlingFeeRepository.sumDailyReceivedFees(companyId, branchId, date);
 
         return DailyTurnoverSummary.builder()
                 .date(date)
@@ -849,7 +851,9 @@ public class TransactionService {
                 .totalSellCount(sellCount)
                 .totalBuyHuf(buyTotal != null ? buyTotal : BigDecimal.ZERO)
                 .totalSellHuf(sellTotal != null ? sellTotal : BigDecimal.ZERO)
-                .totalHandlingFees(totalHandlingFees != null ? totalHandlingFees : BigDecimal.ZERO)
+                // FR-6: tranzakciós + Shipment-eredetű (FKH-018) kezelési díj — KÉT külön gazdasági esemény, additív (user-verifikált döntés 2026-07-14)
+                .totalHandlingFees((totalHandlingFees != null ? totalHandlingFees : BigDecimal.ZERO)
+                        .add(shipmentFees != null ? shipmentFees : BigDecimal.ZERO))
                 .totalReversalCount(reversalCount)
                 .build();
     }
