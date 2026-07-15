@@ -583,6 +583,239 @@ class ShipmentServiceTest {
         verify(repository, never()).save(any());
     }
 
+    // === KK fee-shipment approve: négy-szem elv (2026-07-15 user-döntés) ===
+
+    @Test
+    void approve_feeShipment_selfApprovalDenied() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        sr.setRequestedById(77L); // a rögzítő
+        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        ShipmentService svc = serviceWithRealStockBookingService();
+        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(true);
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(sr.getToBranchId());
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(77L); // == rögzítő
+
+            assertThatThrownBy(() -> svc.approve(shipmentId))
+                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                    .hasMessageContaining("VV-AUTH-003");
+        }
+
+        assertThat(sr.getStatus()).isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        verify(auditLogService).logInNewTransaction(
+                org.mockito.ArgumentMatchers.eq(ShipmentStockBookingService.ACTION_ACCESS_DENIED),
+                org.mockito.ArgumentMatchers.eq("ShipmentRequest"),
+                org.mockito.ArgumentMatchers.eq(shipmentId.toString()),
+                org.mockito.ArgumentMatchers.eq("77"),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(sr.getToBranchId().toString()),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.argThat(changes -> changes != null
+                        && changes.contains("\"KAT\":\"AUTH\"")
+                        && changes.contains("\"error_code\":\"VV-AUTH-003\"")
+                        && changes.contains("\"requested_by_id\":\"77\"")
+                        && changes.contains("\"attempt_worker_id\":\"77\"")));
+        verify(repository, never()).save(any());
+        verify(handlingFeeSyncService, never()).syncFromShipment(any());
+    }
+
+    @Test
+    void approve_feeShipment_allowedForNullBranchApprover() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        sr.setRequestedById(77L);
+        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        ShipmentService svc = serviceWithRealStockBookingService();
+        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(true);
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(null);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(88L); // != rögzítő
+
+            ShipmentRequest result = svc.approve(shipmentId);
+            assertThat(result.getStatus())
+                    .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
+        }
+        verify(handlingFeeSyncService).syncFromShipment(sr);
+    }
+
+    @Test
+    void approve_feeShipment_allowedForToBranchApprover() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        sr.setRequestedById(77L);
+        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        ShipmentService svc = serviceWithRealStockBookingService();
+        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(true);
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(sr.getToBranchId());
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(88L);
+
+            ShipmentRequest result = svc.approve(shipmentId);
+            assertThat(result.getStatus())
+                    .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
+        }
+        verify(handlingFeeSyncService).syncFromShipment(sr);
+    }
+
+    @Test
+    void approve_feeShipment_allowedForFromBranchNonRequester() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        sr.setRequestedById(77L);
+        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        ShipmentService svc = serviceWithRealStockBookingService();
+        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(true);
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(sr.getFromBranchId());
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(88L);
+
+            ShipmentRequest result = svc.approve(shipmentId);
+            assertThat(result.getStatus())
+                    .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
+        }
+        verify(handlingFeeSyncService).syncFromShipment(sr);
+    }
+
+    @Test
+    void approve_feeShipment_deniedForForeignBranch() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        UUID attemptBranchId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        sr.setRequestedById(77L);
+        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        ShipmentService svc = serviceWithRealStockBookingService();
+        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(true);
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(attemptBranchId);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(88L);
+
+            assertThatThrownBy(() -> svc.approve(shipmentId))
+                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                    .hasMessageContaining("VV-AUTH-004");
+        }
+
+        assertThat(sr.getStatus()).isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        verify(auditLogService).logInNewTransaction(
+                org.mockito.ArgumentMatchers.eq(ShipmentStockBookingService.ACTION_ACCESS_DENIED),
+                org.mockito.ArgumentMatchers.eq("ShipmentRequest"),
+                org.mockito.ArgumentMatchers.eq(shipmentId.toString()),
+                org.mockito.ArgumentMatchers.eq("88"),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(attemptBranchId.toString()),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.argThat(changes -> changes != null
+                        && changes.contains("\"KAT\":\"AUTH\"")
+                        && changes.contains("\"error_code\":\"VV-AUTH-004\"")
+                        && changes.contains("\"from_branch_id\":\"" + sr.getFromBranchId() + "\"")
+                        && changes.contains("\"to_branch_id\":\"" + sr.getToBranchId() + "\"")
+                        && changes.contains("\"attempt_branch_id\":\"" + attemptBranchId + "\"")));
+        verify(repository, never()).save(any());
+        verify(handlingFeeSyncService, never()).syncFromShipment(any());
+    }
+
+    @Test
+    void approve_feeShipment_deniedWhenRequestedByIdMissing() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        sr.setRequestedById(null);
+        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        ShipmentService svc = serviceWithRealStockBookingService();
+        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(true);
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(sr.getToBranchId());
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(88L);
+
+            assertThatThrownBy(() -> svc.approve(shipmentId))
+                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                    .hasMessageContaining("VV-AUTH-003");
+        }
+
+        assertThat(sr.getStatus()).isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        verify(auditLogService).logInNewTransaction(
+                org.mockito.ArgumentMatchers.eq(ShipmentStockBookingService.ACTION_ACCESS_DENIED),
+                org.mockito.ArgumentMatchers.eq("ShipmentRequest"),
+                org.mockito.ArgumentMatchers.eq(shipmentId.toString()),
+                org.mockito.ArgumentMatchers.eq("88"),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(sr.getToBranchId().toString()),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.argThat(changes -> changes != null
+                        && changes.contains("\"KAT\":\"AUTH\"")
+                        && changes.contains("\"error_code\":\"VV-AUTH-003\"")
+                        && changes.contains("\"requested_by_id\":\"null\"")
+                        && changes.contains("\"attempt_worker_id\":\"88\"")));
+        verify(repository, never()).save(any());
+        verify(handlingFeeSyncService, never()).syncFromShipment(any());
+    }
+
+    @Test
+    void approve_feeShipment_deniedWhenWorkerContextMissing() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        sr.setRequestedById(77L);
+        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        ShipmentService svc = serviceWithRealStockBookingService();
+        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(true);
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(null);
+            security.when(SecurityUtils::getCurrentWorkerId)
+                    .thenThrow(new ValidationException("Nincs bejelentkezett felhasználó!"));
+
+            assertThatThrownBy(() -> svc.approve(shipmentId))
+                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                    .hasMessageContaining("VV-AUTH-003");
+        }
+
+        assertThat(sr.getStatus()).isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        verify(auditLogService).logInNewTransaction(
+                org.mockito.ArgumentMatchers.eq(ShipmentStockBookingService.ACTION_ACCESS_DENIED),
+                org.mockito.ArgumentMatchers.eq("ShipmentRequest"),
+                org.mockito.ArgumentMatchers.eq(shipmentId.toString()),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.argThat(changes -> changes != null
+                        && changes.contains("\"KAT\":\"AUTH\"")
+                        && changes.contains("\"error_code\":\"VV-AUTH-003\"")
+                        && changes.contains("\"requested_by_id\":\"77\"")
+                        && changes.contains("\"attempt_worker_id\":\"null\"")));
+        verify(repository, never()).save(any());
+        verify(handlingFeeSyncService, never()).syncFromShipment(any());
+    }
+
     @Test
     void toResponseDto_itemsIncludeCurrencyCode() {
         UUID companyId = UUID.randomUUID();

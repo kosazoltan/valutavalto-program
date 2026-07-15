@@ -172,20 +172,18 @@ describe('ELLENŐRZÉS — pénztár/értéktár (lokál) modul menüi megfelel�
     })
   }
 
-  it('courier-only dolgozó penztar módban az átadás-átvételi itemet látja, a pénztáros főmenüt nem', () => {
-    const group = groupByLabel('Pénztár (Valutaváltó)')
+  // SPEC-CHANGE 2026-07-14 (user-döntés): a futár tiszta dokumentáció — nincs login, nincs menü.
+  // A korábbi teszt a courier menü-LÁTHATÓSÁGÁT pinelte; az új kontraktus a láthatatlanság.
+  it('courier-only dolgozó penztar módban SEMMILYEN menücsoportot nem lát', () => {
     const ctx = ctxFor(['ertekszallito'], 'penztar')
-    expect(isMenuGroupVisible(group, ctx)).toBe(true)
-    expect(isMenuItemVisible(itemByPath(group, '/transfers'), group, ctx)).toBe(true)
-    expect(isMenuItemVisible(itemByPath(group, '/cashier'), group, ctx)).toBe(false)
+    const visible = menuGroups.filter((g) => isMenuGroupVisible(g, ctx)).map((g) => g.label)
+    expect(visible).toEqual([])
   })
 
-  it('courier-only dolgozó ertektar módban az átadás-átvételi itemet látja, a dashboardot nem', () => {
-    const group = groupByLabel('Értéktár (lokál)')
+  it('courier-only dolgozó ertektar módban SEMMILYEN menücsoportot nem lát', () => {
     const ctx = ctxFor(['ertekszallito'], 'ertektar')
-    expect(isMenuGroupVisible(group, ctx)).toBe(true)
-    expect(isMenuItemVisible(itemByPath(group, '/transfers'), group, ctx)).toBe(true)
-    expect(isMenuItemVisible(itemByPath(group, '/treasury'), group, ctx)).toBe(false)
+    const visible = menuGroups.filter((g) => isMenuGroupVisible(g, ctx)).map((g) => g.label)
+    expect(visible).toEqual([])
   })
 
   it('egyetlen lokál operatív route sincs a central MenuRoleGate-tel szűkített admin-route-ok közt', () => {
@@ -262,16 +260,16 @@ describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-h
   })
 
   it('/transfers → a Pénztár és Értéktár bejegyzések szerepkör-uniója', () => {
+    // SPEC-CHANGE 2026-07-14: az ertekszallito kikerült a menü-RBAC-ból.
     expect([...(effectiveCanonicalRolesForPath(menuGroups, '/transfers') ?? [])].sort()).toEqual([
-      'ertekszallito',
       'ertektar',
       'penztar',
     ])
   })
 
   it('/transfers/new → a Pénztár és Értéktár bejegyzések szerepkör-uniója', () => {
+    // SPEC-CHANGE 2026-07-14: az ertekszallito kikerült a menü-RBAC-ból.
     expect([...(effectiveCanonicalRolesForPath(menuGroups, '/transfers/new') ?? [])].sort()).toEqual([
-      'ertekszallito',
       'ertektar',
       'penztar',
     ])

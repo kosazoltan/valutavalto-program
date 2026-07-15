@@ -327,7 +327,16 @@ public class ShipmentService {
 
     public ShipmentRequest approve(UUID id) {
         ShipmentRequest request = findById(id);
-        stockBookingService.assertRequester(request);
+        // 2026-07-15 (négy-szem KK-fix): a KK kezelési-díj shipmentnél NEM a from-branch-egyezés
+        // a szabály (az önjóváhagyást engedte, a valós jóváhagyót — Főértéktáros null-branch /
+        // cél-branch — 403-ra vágta). Fee-jel = shipment_handling_fee sor léte (tenant-szűrt,
+        // ugyanaz az igazságforrás, mint a syncFromShipment-é). A készletmozgató shipment
+        // approve-ja VÁLTOZATLANUL from-only (assertRequester).
+        if (handlingFeeSyncService.isHandlingFeeShipment(request)) {
+            stockBookingService.assertFeeApprover(request);
+        } else {
+            stockBookingService.assertRequester(request);
+        }
         validateStatusTransition(request, ShipmentRequestStatus.SUBMITTED, ShipmentRequestStatus.APPROVED);
         request.setStatus(ShipmentRequestStatus.APPROVED);
         log.info("Szállítmánykérés jóváhagyva: {}", request.getRequestNumber());

@@ -84,15 +84,19 @@ describe('transfers menü-szétválasztás (2026-07-14)', () => {
     for (const e of entries) expect(e.label).toBe('Átadás-átvétel visszaigazolás (aláírás)')
   })
 
-  it('a /transfers/new a létrehozás címkét viseli mindkét csoportban, a szerepkörök változatlanok', () => {
+  it('a /transfers/new a létrehozás címkét viseli mindkét csoportban — futár (ertekszallito) NÉLKÜL (user-döntés 2026-07-14: a futár tiszta dokumentáció, nincs create-jog)', () => {
     const entries = menuGroups.flatMap((g) => g.items).filter((i) => i.path === '/transfers/new')
     expect(entries).toHaveLength(2)
     for (const e of entries) expect(e.label).toBe('Új átadás-átvétel rögzítése')
     expect(entries.map((e) => [...(e.canonicalRoles ?? [])].sort())).toEqual(
-      expect.arrayContaining([
-        ['ertekszallito', 'penztar'],
-        ['ertekszallito', 'ertektar'],
-      ]),
+      expect.arrayContaining([['penztar'], ['ertektar']]),
     )
+  })
+
+  it('ertekszallito SEMMILYEN menü-route canonicalRoles-ában nem szerepel (2026-07-14)', () => {
+    const offenders = menuGroups.flatMap((g) =>
+      g.items.filter((i) => (i.canonicalRoles ?? []).includes('ertekszallito')),
+    )
+    expect(offenders.map((i) => i.path)).toEqual([])
   })
 })

@@ -72,6 +72,10 @@ public class ShipmentStockBookingService {
     public static final String ERR_NOT_RECEIVER = "VV-AUTH-001";
     /** Approve hibakód: nem az átadó/requester branch próbál jóváhagyni. */
     public static final String ERR_NOT_REQUESTER = "VV-AUTH-002";
+    /** KK fee-approve hibakód: önjóváhagyás / nem bizonyítható négy-szem (jóváhagyó == rögzítő). */
+    public static final String ERR_SELF_APPROVAL = "VV-AUTH-003";
+    /** KK fee-approve hibakód: idegen (se from, se to, se nemzeti-szkópú) fiók próbál jóváhagyni. */
+    public static final String ERR_FEE_BRANCH_SCOPE = "VV-AUTH-004";
     /** §6/§6b hibakód: idegen tenant branch-ére irányuló könyvelési kísérlet (404). */
     public static final String ERR_CROSS_TENANT = "VV-TENANT-001";
 
@@ -191,6 +195,60 @@ public class ShipmentStockBookingService {
                     req.getRequestNumber(), req.getFromBranchId(), currentBranchId);
             throw new AccessDeniedException(
                     ERR_NOT_REQUESTER + ": a szállítmány jóváhagyását kizárólag a kérő (átadó) fiók végezheti.");
+        }
+    }
+
+    /**
+     * KK (kezelési díj) shipment jóváhagyás-guard (2026-07-15 user-döntés) — négy-szem elv:
+     * a jóváhagyó worker NEM lehet a rögzítő ({@code requestedById}); fail-closed: hiányzó
+     * worker-kontextus vagy hiányzó requestedById esetén megtagadás ({@code VV-AUTH-003}).
+     * Branch-szkóp: engedett a nemzeti szkópú (null branch, Főértéktáros), a cél (to) és az
+     * átadó (from) fiók NEM-rögzítő felhasználója; minden más fiók → {@code VV-AUTH-004}.
+     * A készletmozgató shipment approve-ja NEM ezen fut — az marad {@link #assertRequester}.
+     */
+    public void assertFeeApprover(ShipmentRequest req) {
+        Long currentWorkerId;
+        try {
+            currentWorkerId = SecurityUtils.getCurrentWorkerId();
+        } catch (ValidationException e) {
+            currentWorkerId = null; // fail-closed lentebb, 403-ként (nem 400)
+        }
+        UUID currentBranchId = SecurityUtils.getCurrentBranchIdOrNull();
+        Long requesterId = req.getRequestedById();
+
+        if (currentWorkerId == null || requesterId == null || currentWorkerId.equals(requesterId)) {
+            auditLogService.logInNewTransaction(
+                    ACTION_ACCESS_DENIED, AUDIT_ENTITY_TYPE, idStr(req.getId()),
+                    currentWorkerId != null ? currentWorkerId.toString() : null, null,
+                    currentBranchId != null ? currentBranchId.toString() : null, null,
+                    String.format("{\"KAT\":\"AUTH\",\"error_code\":\"%s\",\"shipment_request_id\":\"%s\","
+                                    + "\"requested_by_id\":\"%s\",\"attempt_worker_id\":\"%s\"}",
+                            ERR_SELF_APPROVAL, req.getId(),
+                            requesterId != null ? requesterId.toString() : "null",
+                            currentWorkerId != null ? currentWorkerId.toString() : "null"));
+            log.warn("KK fee-jóváhagyás megtagadva (négy-szem): shipment={}, requestedBy={}, attemptWorker={}",
+                    req.getRequestNumber(), requesterId, currentWorkerId);
+            throw new AccessDeniedException(
+                    ERR_SELF_APPROVAL + ": a kezelési díjat nem hagyhatja jóvá a rögzítője (négy-szem elv).");
+        }
+
+        boolean branchAllowed = currentBranchId == null
+                || currentBranchId.equals(req.getToBranchId())
+                || currentBranchId.equals(req.getFromBranchId());
+        if (!branchAllowed) {
+            auditLogService.logInNewTransaction(
+                    ACTION_ACCESS_DENIED, AUDIT_ENTITY_TYPE, idStr(req.getId()),
+                    currentWorkerId.toString(), null,
+                    currentBranchId.toString(), null,
+                    String.format("{\"KAT\":\"AUTH\",\"error_code\":\"%s\",\"shipment_request_id\":\"%s\","
+                                    + "\"from_branch_id\":\"%s\",\"to_branch_id\":\"%s\",\"attempt_branch_id\":\"%s\"}",
+                            ERR_FEE_BRANCH_SCOPE, req.getId(), req.getFromBranchId(),
+                            req.getToBranchId(), currentBranchId));
+            log.warn("KK fee-jóváhagyás megtagadva (fiók-szkóp): shipment={}, from={}, to={}, attemptBranch={}",
+                    req.getRequestNumber(), req.getFromBranchId(), req.getToBranchId(), currentBranchId);
+            throw new AccessDeniedException(
+                    ERR_FEE_BRANCH_SCOPE + ": a kezelési díj jóváhagyása csak az érintett (átadó/cél) "
+                            + "fiókból vagy nemzeti szkópból végezhető.");
         }
     }
 
