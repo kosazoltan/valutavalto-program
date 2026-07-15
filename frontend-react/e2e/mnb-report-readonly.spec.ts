@@ -205,7 +205,7 @@ test('mnb riport oldal mobil nézetben read-only backend endpointokat használ',
   await Promise.all([dailyRequest, monthlyRequest, validateRequest])
 
   await expect(page.getByText('Nincs hiányzó árfolyam')).toBeVisible()
-  await expect(page.getByText('37')).toBeVisible()
+  await expect(page.getByText('37', { exact: true })).toBeVisible()
 
   const dailyXmlRequest = page.waitForRequest((request) => {
     const url = new URL(request.url())
