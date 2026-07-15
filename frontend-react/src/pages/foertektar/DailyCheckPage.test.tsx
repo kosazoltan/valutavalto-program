@@ -2,8 +2,8 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DailyCheckPage from './DailyCheckPage'
 
-// FK-047 — Napi ellenőrző lista frontend grid: valutánkénti mérleg a daily_balance
-// (FK-046) pénztári adataiból; BANK+/- „–" jelzéssel (jövőbeli FK), üres adat nem hiba.
+// FK-047/FK-052 — Napi ellenőrző lista frontend grid: valutánkénti mérleg a daily_balance
+// adataiból, beleértve a vault napi záráskor rögzített BANK+/BANK− értékeket.
 
 const mocks = vi.hoisted(() => ({
   getGrid: vi.fn(),
@@ -61,6 +61,8 @@ function gridRow(code: string, overrides: Record<string, number | null> = {}) {
     actualStock: 106,
     surplus: 0,
     shortage: 0,
+    bankPlus: null,
+    bankMinus: null,
     ...overrides,
   }
 }
@@ -124,22 +126,53 @@ describe('FK-047 — Napi ellenőrző lista grid', () => {
     expect(screen.getByText('HUF')).toBeInTheDocument()
   })
 
-  it('BANK+ és BANK- cellák értéke mindig „–", a fejléc szürke (FR-4)', async () => {
-    mocks.getGrid.mockResolvedValue([gridRow('EUR')])
+  it('FK-052: BANK+ valós összeget formáz, BANK− null esetén „–" (FR-9, FR-10)', async () => {
+    mocks.getGrid.mockResolvedValue([gridRow('EUR', { bankPlus: 1500, bankMinus: null })])
     render(<DailyCheckPage />)
     await loadGrid()
 
     const grid = await screen.findByTestId('daily-check-grid')
-    // fejléc: szürke jelzés + tooltip
-    const bankPlus = screen.getByText('BANK+')
-    expect(bankPlus.className).toContain('text-gray-400')
-    expect(bankPlus.getAttribute('title')).toBe('Hamarosan elérhető')
-    // minden sor utolsó két cellája „–"
-    for (const tr of Array.from(grid.querySelectorAll('tbody tr'))) {
-      const cells = Array.from(tr.querySelectorAll('td'))
-      expect(cells.at(-1)?.textContent).toBe('–')
-      expect(cells.at(-2)?.textContent).toBe('–')
-    }
+    const eurRow = Array.from(grid.querySelectorAll('tbody tr')).find(
+      (tr) => tr.querySelector('td')?.textContent === 'EUR',
+    )!
+    const cells = Array.from(eurRow.querySelectorAll('td'))
+    expect(cells[10]!.textContent).toBe('1 500,00')
+    expect(cells[11]!.textContent).toBe('–')
+  })
+
+  it('FK-052: BANK+/BANK− fejlécek és adatcellák nem placeholder-szürkék, nincs tooltip', async () => {
+    mocks.getGrid.mockResolvedValue([gridRow('EUR', { bankPlus: 10, bankMinus: 5 })])
+    render(<DailyCheckPage />)
+    await loadGrid()
+
+    const grid = await screen.findByTestId('daily-check-grid')
+    const bankPlusHeader = screen.getByText('BANK+')
+    const bankMinusHeader = screen.getByText('BANK-')
+    expect(bankPlusHeader.className).not.toContain('text-gray-400')
+    expect(bankMinusHeader.className).not.toContain('text-gray-400')
+    expect(bankPlusHeader).not.toHaveAttribute('title')
+    expect(bankMinusHeader).not.toHaveAttribute('title')
+
+    const eurRow = Array.from(grid.querySelectorAll('tbody tr')).find(
+      (tr) => tr.querySelector('td')?.textContent === 'EUR',
+    )!
+    const cells = Array.from(eurRow.querySelectorAll('td'))
+    expect(cells[10]!.className).not.toContain('text-gray-400')
+    expect(cells[11]!.className).not.toContain('text-gray-400')
+  })
+
+  it('FK-052: BANK+ valós nulla „0,00", nem „–"', async () => {
+    mocks.getGrid.mockResolvedValue([gridRow('EUR', { bankPlus: 0, bankMinus: null })])
+    render(<DailyCheckPage />)
+    await loadGrid()
+
+    const grid = await screen.findByTestId('daily-check-grid')
+    const eurRow = Array.from(grid.querySelectorAll('tbody tr')).find(
+      (tr) => tr.querySelector('td')?.textContent === 'EUR',
+    )!
+    const cells = Array.from(eurRow.querySelectorAll('td'))
+    expect(cells[10]!.textContent).toBe('0,00')
+    expect(cells[11]!.textContent).toBe('–')
   })
 
   it('üres adat esetén nincs összeomlás: minden cella „–" (FR-8, NFR-5)', async () => {

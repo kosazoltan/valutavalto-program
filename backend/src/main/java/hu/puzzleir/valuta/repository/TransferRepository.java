@@ -190,6 +190,66 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
            "AND t.toBranch.code = 'TH' AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED'")
     BigDecimal sumShortageToTh(@Param("branchId") UUID branchId, @Param("companyId") UUID companyId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
 
+    // ===== FK-052: napi ellenőrző lista — BANK+/BANK− =====
+
+    /**
+     * FK-052 BANK+: az értéktár által a banktól átvett ({@code direction=U}) technikai RB
+     * tételek napi összege valutánként. Multi-line transfernél kizárólag a sorok számítanak;
+     * üres sorlista esetén a header currency/amount az igazság. Tenant-szűrés kizárólag a
+     * fromBranch cégén fut, mert a transfer.company_id legacy-nullable.
+     *
+     * <p>Az eredmény sora: line-valutakód (nullable), header-valutakód, összeg. A két nyers
+     * valutakód szerinti GROUP BY csoportokat a service olvasztja össze.
+     */
+    @Query("SELECT lc.code, tc.code, " +
+           "SUM(CASE WHEN l.id IS NOT NULL THEN l.amount ELSE t.amount END) " +
+           "FROM Transfer t " +
+           "JOIN t.currency tc " +
+           "LEFT JOIN t.lines l " +
+           "LEFT JOIN l.currency lc " +
+           "WHERE t.fromBranch.id = :branchId " +
+           "AND t.fromBranch.company.id = :companyId " +
+           "AND t.transferDate = :date " +
+           "AND t.transferType IN (hu.puzzleir.valuta.entity.Transfer$TransferType.ERB, " +
+           "hu.puzzleir.valuta.entity.Transfer$TransferType.FRB, " +
+           "hu.puzzleir.valuta.entity.Transfer$TransferType.TRB, " +
+           "hu.puzzleir.valuta.entity.Transfer$TransferType.PRB) " +
+           "AND t.status = hu.puzzleir.valuta.entity.Transfer$TransferStatus.COMPLETED " +
+           "AND t.isCancelled = false " +
+           "AND t.direction = hu.puzzleir.valuta.entity.Transfer$TransferDirection.U " +
+           "GROUP BY lc.code, tc.code")
+    List<Object[]> sumBankInByDay(@Param("branchId") UUID branchId,
+                                  @Param("companyId") UUID companyId,
+                                  @Param("date") LocalDate date);
+
+    /**
+     * FK-052 BANK−: az értéktár bank felé átadott ({@code direction=F/UF/FF}) technikai
+     * RB tételeinek napi összege. A multi-line, tenant-, státusz- és sztornószabályok a
+     * BANK+ lekérdezéssel azonosak.
+     */
+    @Query("SELECT lc.code, tc.code, " +
+           "SUM(CASE WHEN l.id IS NOT NULL THEN l.amount ELSE t.amount END) " +
+           "FROM Transfer t " +
+           "JOIN t.currency tc " +
+           "LEFT JOIN t.lines l " +
+           "LEFT JOIN l.currency lc " +
+           "WHERE t.fromBranch.id = :branchId " +
+           "AND t.fromBranch.company.id = :companyId " +
+           "AND t.transferDate = :date " +
+           "AND t.transferType IN (hu.puzzleir.valuta.entity.Transfer$TransferType.ERB, " +
+           "hu.puzzleir.valuta.entity.Transfer$TransferType.FRB, " +
+           "hu.puzzleir.valuta.entity.Transfer$TransferType.TRB, " +
+           "hu.puzzleir.valuta.entity.Transfer$TransferType.PRB) " +
+           "AND t.status = hu.puzzleir.valuta.entity.Transfer$TransferStatus.COMPLETED " +
+           "AND t.isCancelled = false " +
+           "AND t.direction IN (hu.puzzleir.valuta.entity.Transfer$TransferDirection.F, " +
+           "hu.puzzleir.valuta.entity.Transfer$TransferDirection.UF, " +
+           "hu.puzzleir.valuta.entity.Transfer$TransferDirection.FF) " +
+           "GROUP BY lc.code, tc.code")
+    List<Object[]> sumBankOutByDay(@Param("branchId") UUID branchId,
+                                   @Param("companyId") UUID companyId,
+                                   @Param("date") LocalDate date);
+
     /** Havi aggregalt bejovo transfer osszegek devizanementkent */
     @Query("SELECT t.currency.code, COALESCE(SUM(t.amount), 0) FROM Transfer t " +
            "WHERE t.toBranch.company.id = :companyId " +

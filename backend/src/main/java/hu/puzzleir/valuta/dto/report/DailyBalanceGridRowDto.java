@@ -40,6 +40,12 @@ public class DailyBalanceGridRowDto {
     /** Pénztári SZÁMZÁR (fizikai leszámolás) — null, ha az adott napon nincs rögzítve. */
     private BigDecimal actualStock;
 
+    /** Értéktári banki átvétel (BANK+) — null, ha a scope-ban nincs értéktári mérleg-sor a valutára. */
+    private BigDecimal bankPlus;
+
+    /** Értéktári banki átadás (BANK−) — null, ha a scope-ban nincs értéktári mérleg-sor a valutára. */
+    private BigDecimal bankMinus;
+
     /** TH-tranzakcióból számolt többlet (FR-6). */
     private BigDecimal surplus;
 

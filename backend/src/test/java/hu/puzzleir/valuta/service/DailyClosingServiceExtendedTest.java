@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.dto.ClosingMarkType;
 import hu.puzzleir.valuta.dto.decade.DecadeReportDto;
 import hu.puzzleir.valuta.dto.eveningclosing.DailyDataPackage;
 import hu.puzzleir.valuta.dto.eveningclosing.DataSyncResult;
@@ -17,6 +18,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -362,5 +365,62 @@ class DailyClosingServiceExtendedTest {
         assertThat(result.getWarnings())
             .extracting(DailyClosingService.ClosingWarning::getStep)
             .contains("aml_cache_reset");
+    }
+
+    @Test
+    @DisplayName("FK-052: sikeres záráskor a vault banki igazítás commit után, pontosan egyszer fut")
+    void executeClosing_registersVaultBankAdjustmentForAfterCommit() {
+        LocalDate closingDate = LocalDate.of(2026, 3, 15);
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            var result = dailyClosingService.startDailyClosing(closingDate);
+
+            verify(dailyBalanceService).recordClosingAdjustments(BRANCH_ID, closingDate);
+            verify(dailyBalanceService, never()).recordVaultBankAdjustments(any(), any());
+            assertThat(result.getWarnings()).isEmpty();
+
+            List<TransactionSynchronization> synchronizations =
+                    TransactionSynchronizationManager.getSynchronizations();
+            assertThat(synchronizations).hasSize(1);
+            synchronizations.forEach(TransactionSynchronization::afterCommit);
+
+            verify(dailyBalanceService, times(1))
+                    .recordVaultBankAdjustments(BRANCH_ID, closingDate);
+            assertThat(result.getWarnings()).isEmpty();
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    @DisplayName("FK-052: commit utáni banki igazítás hibája a már visszaadandó eredmény warning-listájába kerül")
+    void executeClosing_afterCommitVaultBankAdjustmentFailure_isVisibleInReturnedWarnings() {
+        LocalDate closingDate = LocalDate.of(2026, 3, 15);
+        doThrow(new RuntimeException("banki igazítás hiba"))
+                .when(dailyBalanceService).recordVaultBankAdjustments(BRANCH_ID, closingDate);
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            var result = dailyClosingService.startDailyClosing(closingDate);
+
+            assertThat(result.isAllPassed()).isTrue();
+            assertThat(result.getWarnings())
+                    .extracting(DailyClosingService.ClosingWarning::getStep)
+                    .doesNotContain("bank_adjustment");
+
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(TransactionSynchronization::afterCommit);
+
+            assertThat(result.getWarnings())
+                    .anySatisfy(warning -> {
+                        assertThat(warning.getStep()).isEqualTo("bank_adjustment");
+                        assertThat(warning.getMessage()).contains("banki igazítás hiba");
+                    });
+            verify(closingControlService)
+                    .markClosingDone(COMPANY_ID, BRANCH_ID, closingDate, ClosingMarkType.DAILY);
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 }

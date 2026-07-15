@@ -15,7 +15,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -32,7 +35,8 @@ class AuditLogServiceHashChainTest {
     @BeforeEach
     void setUp() {
         service = new AuditLogService(auditLogRepository);
-        when(auditLogRepository.findLastEntryHashForUpdate()).thenReturn(Optional.of(PREVIOUS_HASH));
+        lenient().when(auditLogRepository.findLastEntryHashForUpdate())
+                .thenReturn(Optional.of(PREVIOUS_HASH));
     }
 
     @Test
@@ -77,6 +81,31 @@ class AuditLogServiceHashChainTest {
         assertHashChain(saved);
         assertThat(saved.getEntityType()).isEqualTo("SECURITY");
         assertThat(saved.getAction()).isEqualTo("LOGIN_FAILED");
+    }
+
+    @Test
+    @DisplayName("explicit-company REQUIRES_NEW audit: tenantet beállít és hash-láncol")
+    void logInNewTransactionForCompanySetsCompanyAndAppliesHashChain() {
+        UUID companyId = UUID.randomUUID();
+
+        service.logInNewTransactionForCompany("FAILED", "details", "entity-1", companyId);
+
+        AuditLog saved = captureSavedAuditLog();
+        assertHashChain(saved);
+        assertThat(saved.getCompanyId()).isEqualTo(companyId);
+        assertThat(saved.getEntityType()).isEqualTo("SYSTEM");
+        assertThat(saved.getEntityId()).isEqualTo("entity-1");
+    }
+
+    @Test
+    @DisplayName("explicit-company REQUIRES_NEW audit: null companyId fail-fast")
+    void logInNewTransactionForCompanyRejectsNullCompanyId() {
+        assertThatThrownBy(() ->
+                service.logInNewTransactionForCompany("FAILED", "details", "entity-1", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("companyId");
+
+        verify(auditLogRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
     private AuditLog captureSavedAuditLog() {

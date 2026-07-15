@@ -507,6 +507,10 @@ export interface DailyBalanceGridRow {
   closingBalance: number
   /** Pénztári SZÁMZÁR — null, ha az adott napon nincs rögzítve (a grid „–"-t mutat). */
   actualStock: number | null
+  /** Értéktári banki átvétel (BANK+) — null, ha a scope-ban nincs értéktári mérleg-sor (a grid „–"-t mutat). */
+  bankPlus: number | null
+  /** Értéktári banki átadás (BANK−) — null-szemantika a bankPlus-szal azonos. */
+  bankMinus: number | null
   /** TH-tranzakcióból számolt többlet (FR-6, NEM a matematikai difference). */
   surplus: number
   /** TH-tranzakcióból számolt hiány (FR-6). */

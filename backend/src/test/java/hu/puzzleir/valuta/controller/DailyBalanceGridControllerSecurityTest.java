@@ -1,5 +1,7 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
+import hu.puzzleir.valuta.service.AuditLogService;
 import hu.puzzleir.valuta.service.DailyBalanceGridService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -10,17 +12,22 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.reset;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 /**
  * FK-047: a Napi ellenőrző lista grid végpont jogosultsági körének method-security tesztje.
@@ -42,9 +49,12 @@ class DailyBalanceGridControllerSecurityTest {
     @Autowired
     private DailyBalanceGridController controller;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
     @BeforeEach
     void setup() {
-        reset(service);
+        reset(service, auditLogService);
     }
 
     private static void assertAuthorized(Callable<?> call) {
@@ -66,8 +76,14 @@ class DailyBalanceGridControllerSecurityTest {
         }
 
         @Bean
-        DailyBalanceGridController dailyBalanceGridController(DailyBalanceGridService svc) {
-            return new DailyBalanceGridController(svc);
+        AuditLogService auditLogService() {
+            return mock(AuditLogService.class);
+        }
+
+        @Bean
+        DailyBalanceGridController dailyBalanceGridController(
+                DailyBalanceGridService svc, AuditLogService auditLogService) {
+            return new DailyBalanceGridController(svc, auditLogService);
         }
     }
 
@@ -138,5 +154,52 @@ class DailyBalanceGridControllerSecurityTest {
     @DisplayName("IRODAVEZETO → tiltott (a §3 RBAC-mátrixban nem szerepel)")
     void grid_denied_irodavezeto() {
         assertThrows(AccessDeniedException.class, () -> controller.getGrid(DATE, null, null));
+    }
+
+    @Test
+    @WithMockUser(roles = {"FOERTEKTAR"})
+    @DisplayName("FK-052 §6.b: sikeres grid-olvasás EXT audit-bejegyzést készít")
+    void grid_read_isAuditedAsExternalFinancialRead() {
+        UUID companyId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+        AbstractAuthenticationToken authentication =
+                (AbstractAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        authentication.setDetails(new WorkerAuthenticationDetails(
+                1L, companyId, UUID.randomUUID(), "FOERTEKTAR"));
+        when(service.getGrid(companyId, DATE, branchId, 2)).thenReturn(List.of());
+
+        controller.getGrid(DATE, branchId, 2);
+
+        verify(auditLogService).log(
+                eq("DAILY_BALANCE_GRID_READ"),
+                argThat(message -> message.contains("\"KAT\":\"EXT\"")
+                        && message.contains(DATE.toString())
+                        && message.contains(branchId.toString())
+                        && message.contains("\"vaultTerritoryId\":\"2\"")),
+                isNull(String.class));
+    }
+
+    @Test
+    @WithMockUser(roles = {"FOERTEKTAR"})
+    @DisplayName("FK-052: hiányzó branch/territory scope az audit JSON-ban valódi null")
+    void grid_read_nullScopeUsesJsonNullInsteadOfQuotedNull() {
+        UUID companyId = UUID.randomUUID();
+        AbstractAuthenticationToken authentication =
+                (AbstractAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        authentication.setDetails(new WorkerAuthenticationDetails(
+                1L, companyId, UUID.randomUUID(), "FOERTEKTAR"));
+        when(service.getGrid(companyId, DATE, null, null)).thenReturn(List.of());
+
+        controller.getGrid(DATE, null, null);
+
+        verify(auditLogService).log(
+                eq("DAILY_BALANCE_GRID_READ"),
+                argThat(message -> {
+                    assertThat(message).isEqualTo(
+                            "{\"KAT\":\"EXT\",\"date\":\"2026-07-01\","
+                                    + "\"branchId\":null,\"vaultTerritoryId\":null}");
+                    return true;
+                }),
+                isNull(String.class));
     }
 }

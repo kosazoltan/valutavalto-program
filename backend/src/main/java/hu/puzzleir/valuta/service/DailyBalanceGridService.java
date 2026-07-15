@@ -14,9 +14,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -46,12 +48,13 @@ public class DailyBalanceGridService {
     public List<DailyBalanceGridRowDto> getGrid(
             UUID companyId, LocalDate date, UUID branchId, Integer vaultTerritoryId) {
 
-        List<UUID> branchIds = resolveBranchScope(companyId, branchId, vaultTerritoryId);
-        if (branchIds.isEmpty()) {
+        ScopeBranches scope = resolveBranchScope(companyId, branchId, vaultTerritoryId);
+        if (scope.branchIds().isEmpty()) {
             return List.of();
         }
 
-        List<DailyBalance> balances = dailyBalanceRepository.findByBranchIdsAndDate(companyId, branchIds, date);
+        List<DailyBalance> balances = dailyBalanceRepository.findByBranchIdsAndDate(
+                companyId, scope.branchIds(), date);
 
         // Valutánkénti aggregálás — több pénztár (cég/terület nézet) soronként összeadódik.
         Map<String, DailyBalanceGridRowDto> byCurrency = new LinkedHashMap<>();
@@ -66,6 +69,8 @@ public class DailyBalanceGridService {
                             .transfersOut(BigDecimal.ZERO)
                             .closingBalance(BigDecimal.ZERO)
                             .actualStock(null) // null marad, amíg nincs legalább egy rögzített SZÁMZÁR
+                            .bankPlus(null) // null marad, amíg nincs vault mérleg-sor a valutára
+                            .bankMinus(null)
                             .surplus(BigDecimal.ZERO)
                             .shortage(BigDecimal.ZERO)
                             .build());
@@ -80,6 +85,13 @@ public class DailyBalanceGridService {
             if (db.getActualStock() != null) {
                 row.setActualStock(nz(row.getActualStock()).add(db.getActualStock()));
             }
+            // FK-052: a banki aggregátum kizárólag az értéktári daily_balance sorokon hiteles.
+            // Pénztári sorok DB-default 0 értéke nem változtathatja a null (= nincs vault-adat)
+            // szemantikát, és nem adódhat hozzá a banki összeghez.
+            if (scope.vaultBranchIds().contains(db.getBranchId())) {
+                row.setBankPlus(nz(row.getBankPlus()).add(nz(db.getBankIn())));
+                row.setBankMinus(nz(row.getBankMinus()).add(nz(db.getBankOut())));
+            }
             row.setSurplus(row.getSurplus().add(nz(db.getSurplus())));
             row.setShortage(row.getShortage().add(nz(db.getShortage())));
         }
@@ -93,19 +105,32 @@ public class DailyBalanceGridService {
      * A branch-halmaz feloldása a hívó cégére szűrve (multi-tenant izoláció, §1).
      * Pénztár-nézet: a kért iroda tulajdonosát validáljuk (idegen cég → 404).
      */
-    private List<UUID> resolveBranchScope(UUID companyId, UUID branchId, Integer vaultTerritoryId) {
+    private ScopeBranches resolveBranchScope(UUID companyId, UUID branchId, Integer vaultTerritoryId) {
         if (branchId != null) {
-            if (!branchRepository.existsByIdAndCompanyId(branchId, companyId)) {
-                throw new ResourceNotFoundException("Iroda nem található: " + branchId);
-            }
-            return List.of(branchId);
+            Branch branch = branchRepository.findByIdAndCompanyId(branchId, companyId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+            Set<UUID> vaultBranchIds = Boolean.TRUE.equals(branch.getIsVault())
+                    ? Set.of(branchId)
+                    : Set.of();
+            return new ScopeBranches(List.of(branchId), vaultBranchIds);
         }
         List<Branch> companyBranches = branchRepository.findByCompanyId(companyId);
-        return companyBranches.stream()
-                .filter(b -> vaultTerritoryId == null
-                        || vaultTerritoryId.equals(b.getVaultTerritoryId()))
-                .map(Branch::getId)
-                .toList();
+        List<UUID> branchIds = new ArrayList<>();
+        Set<UUID> vaultBranchIds = new HashSet<>();
+        for (Branch branch : companyBranches) {
+            if (vaultTerritoryId != null
+                    && !vaultTerritoryId.equals(branch.getVaultTerritoryId())) {
+                continue;
+            }
+            branchIds.add(branch.getId());
+            if (Boolean.TRUE.equals(branch.getIsVault())) {
+                vaultBranchIds.add(branch.getId());
+            }
+        }
+        return new ScopeBranches(branchIds, vaultBranchIds);
+    }
+
+    private record ScopeBranches(List<UUID> branchIds, Set<UUID> vaultBranchIds) {
     }
 
     private static BigDecimal nz(BigDecimal v) {

@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.report.DailyBalanceGridRowDto;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.AuditLogService;
 import hu.puzzleir.valuta.service.DailyBalanceGridService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -30,6 +31,7 @@ import java.util.UUID;
 public class DailyBalanceGridController {
 
     private final DailyBalanceGridService service;
+    private final AuditLogService auditLogService;
 
     /**
      * Valutánkénti összesített napi mérleg-sorok.
@@ -46,6 +48,17 @@ public class DailyBalanceGridController {
             @RequestParam(required = false) Integer vaultTerritoryId
     ) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        return ResponseEntity.ok(service.getGrid(companyId, date, branchId, vaultTerritoryId));
+        List<DailyBalanceGridRowDto> rows = service.getGrid(
+                companyId, date, branchId, vaultTerritoryId);
+        auditLogService.log(
+                "DAILY_BALANCE_GRID_READ",
+                String.format("{\"KAT\":\"EXT\",\"date\":\"%s\",\"branchId\":%s,\"vaultTerritoryId\":%s}",
+                        date, jsonStringOrNull(branchId), jsonStringOrNull(vaultTerritoryId)),
+                (String) null);
+        return ResponseEntity.ok(rows);
+    }
+
+    private static String jsonStringOrNull(Object value) {
+        return value == null ? "null" : "\"" + value + "\"";
     }
 }

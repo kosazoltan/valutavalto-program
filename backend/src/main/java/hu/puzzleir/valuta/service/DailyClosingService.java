@@ -506,6 +506,25 @@ public class DailyClosingService {
             // NEM dobunk kivételt — ne akadjon meg a zárás (FR-7/FR-9 szellemében)
         }
 
+        // 3.c FK-052: a banki (technikai RB) BANK+/BANK− bekötés csak a teljes napzárás
+        //     sikeres commitja UTÁN indul. A callback szinkron fut a commit közben, ezért a
+        //     mutable warnings lista kiegészítése még látszik a visszaadott eredményben.
+        TransactionAfterCommit.run(() -> {
+            try {
+                dailyBalanceService.recordVaultBankAdjustments(branchId, closingDate);
+            } catch (Exception e) {
+                VV_LOG.error("VV-BIZ-006", "daily_closing.bank_adjustment_failed", e,
+                        java.util.Map.of("closing_date", closingDate,
+                                "branch_id", branchId,
+                                "step", "bank_adjustment"));
+                warnings.add(ClosingWarning.builder()
+                        .step("bank_adjustment")
+                        .message("Banki BANK+/BANK− igazítás hiba: " + e.getMessage())
+                        .build());
+                // A fő zárás ekkor már commitált; a banki REQUIRES_NEW hiba csak warning.
+            }
+        }, "FK-052 bank adjustment branch=" + branchId + ", date=" + closingDate);
+
         // 4. POS terminál napi zárás — ha van aktív terminál az irodán
         executePosTerminalClosing(branchId, closingDate, warnings);
 

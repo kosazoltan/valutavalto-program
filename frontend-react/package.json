@@ -1,7 +1,7 @@
 {
   "name": "valutavalto-frontend",
   "private": true,
-  "version": "2.28.38",
+  "version": "2.28.39",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -20,7 +20,8 @@
     "test:e2e:smoke": "playwright test e2e/smoke.spec.ts --config=playwright.config.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage --exclude '**/*.integration.test.ts'",
+    "test:integration:prod": "vitest run src/pages/setup/SetupWizard.integration.test.ts --maxWorkers=1 --testTimeout=35000"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
