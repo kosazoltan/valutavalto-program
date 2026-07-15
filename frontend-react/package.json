@@ -21,7 +21,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:coverage": "vitest run --coverage --exclude '**/*.integration.test.ts'",
-    "test:integration:prod": "vitest run src/pages/setup/SetupWizard.integration.test.ts --maxWorkers=1 --testTimeout=20000"
+    "test:integration:prod": "vitest run src/pages/setup/SetupWizard.integration.test.ts --maxWorkers=1 --testTimeout=35000"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",

@@ -12,25 +12,26 @@
  * nem létező dolgozói kódot vagy eleve hibás payloadot küldenek, és csak a
  * HTTP válaszkódot, illetve a hibaüzenetet ellenőrzik.
  * A GET kérések legfeljebb 3 próbálkozással, próbálkozásonként 5 s aborttal
- * és logolt transport-retry-jal futnak; HTTP-választ soha nem retry-zunk.
- * A nem idempotens, rate-limitelt POST egyszer fut, 10 s abort-korláttal.
+ * és logolt transport-retry-jal futnak. A runtime guarddal bizonyítottan read-only
+ * validációs POST-ok 3 × 10 s abort-korláttal futnak; HTTP-választ soha nem retry-zunk.
  *
  * Futtatás: npx vitest run src/pages/setup/SetupWizard.integration.test.ts
  *
  * FONTOS: Ezek PRODUCTION endpointokat hívnak — ne futtasd gyakran,
  * és soha ne küldj valós jelszó-módosító kérést!
  */
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const API_BASE = 'https://excvaluta.com/api/v1'
 const COMPANY_CODE = 'EBC'
 const TEST_BRANCH_CODE = 'BR039' // Szeged Tisza — ismert branch
 const TEST_WORKER_CODE = 'KOSA' // Ismert worker
 // 11 karakter: a backend max. 10 karakteres workerCode-validációja a worker lookup előtt elutasítja.
-const NON_EXISTENT_WORKER_CODE = 'NONEXISTENT'
+const LENGTH_INVALID_WORKER_CODE = 'NONEXISTENT'
+const INVALID_COMPANY_CODE = 'FAKECOMPANY'
 
 interface TransportRetryOptions {
-  /** Próbálkozások összesen (1 = nincs retry). GET default: 3, POST: kötelezően 1. */
+  /** Próbálkozások összesen (1 = nincs retry). GET és őrzött validációs POST default: 3. */
   attempts?: number
   /** Attempt-enkénti abort-korlát ms-ben. GET default: 5000, POST: 10000. */
   attemptTimeoutMs?: number
@@ -99,11 +100,118 @@ async function fetchWithTransportRetry(
 }
 
 /**
- * POST first-time-worker-setup: NEM idempotens + rate-limitelt → NINCS retry
- * (attempts=1), csak explicit abort-timeout. Transport-hibánál a teszt őszintén bukik.
+ * Kizárólag biztosan read-only first-time-worker-setup validációs POST.
+ * A guard minden network I/O előtt fail-closed módon bizonyít legalább egy
+ * megváltoztathatatlanul hibás predikátumot; általános POST-ra nem használható.
  */
-const postOnce = (url: string, init: RequestInit): Promise<Response> =>
-  fetchWithTransportRetry(url, init, { attempts: 1, attemptTimeoutMs: 10_000, backoffMs: [] })
+const postReadOnlyValidationWithTransportRetry = (
+  url: string,
+  init: RequestInit,
+): Promise<Response> => {
+  if (init.method !== 'POST' || typeof init.body !== 'string') {
+    throw new Error(
+      '[read-only validation] Kizárólag POST metódus és JSON-string body engedélyezett',
+    )
+  }
+
+  let payload: unknown
+  try {
+    payload = JSON.parse(init.body)
+  } catch (err) {
+    throw new Error('[read-only validation] A request body nem érvényes JSON', { cause: err })
+  }
+
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
+    throw new Error('[read-only validation] A request body csak JSON objektum lehet')
+  }
+
+  const body = payload as Record<string, unknown>
+  const hasReadOnlySafetyPredicate =
+    body.workerCode === LENGTH_INVALID_WORKER_CODE ||
+    body.companyCode === INVALID_COMPANY_CODE ||
+    !Object.prototype.hasOwnProperty.call(body, 'newPassword')
+
+  if (!hasReadOnlySafetyPredicate) {
+    throw new Error(
+      '[read-only validation] Nem bizonyítható, hogy a POST payload biztosan read-only',
+    )
+  }
+
+  return fetchWithTransportRetry(url, init, {
+    attempts: 3,
+    attemptTimeoutMs: 10_000,
+    backoffMs: [500, 1_000],
+  })
+}
+
+describe('read-only validation POST helper proof', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('unsafe real-worker payload fails before fetch', () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+
+    expect(() =>
+      postReadOnlyValidationWithTransportRetry('https://example.invalid/setup', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyCode: COMPANY_CODE,
+          workerCode: TEST_WORKER_CODE,
+          newPassword: 'UnsafeRealWorkerPassword',
+        }),
+      }),
+    ).toThrow('read-only validation')
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('safe validation POST retries transport errors up to the third attempt', async () => {
+    vi.useFakeTimers()
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockRejectedValueOnce(new TypeError('fetch failed 1'))
+      .mockRejectedValueOnce(new TypeError('fetch failed 2'))
+      .mockResolvedValueOnce(new Response(null, { status: 400 }))
+
+    const responsePromise = postReadOnlyValidationWithTransportRetry(
+      'https://example.invalid/setup',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          companyCode: COMPANY_CODE,
+          workerCode: LENGTH_INVALID_WORKER_CODE,
+          newPassword: 'SafeValidationOnly',
+        }),
+      },
+    )
+    await vi.runAllTimersAsync()
+
+    await expect(responsePromise).resolves.toHaveProperty('status', 400)
+    expect(fetchSpy).toHaveBeenCalledTimes(3)
+  })
+
+  it('HTTP 500 returns immediately without retry', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 500 }))
+
+    const response = await postReadOnlyValidationWithTransportRetry(
+      'https://example.invalid/setup',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          companyCode: INVALID_COMPANY_CODE,
+          workerCode: TEST_WORKER_CODE,
+          newPassword: 'SafeValidationOnly',
+        }),
+      },
+    )
+
+    expect(response.status).toBe(500)
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+})
 
 // ---------------------------------------------------------------------------
 // 1. Bootstrap status
@@ -233,15 +341,18 @@ describe('Production API — Worker first-time setup validation', () => {
     actual === expected || actual === 429
 
   it('Ismeretlen workerCode → 400 hibaválasz (vagy 429 rate-limit)', async () => {
-    const res = await postOnce(`${API_BASE}/auth/first-time-worker-setup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        companyCode: COMPANY_CODE,
-        workerCode: NON_EXISTENT_WORKER_CODE,
-        newPassword: 'Test123!',
-      }),
-    })
+    const res = await postReadOnlyValidationWithTransportRetry(
+      `${API_BASE}/auth/first-time-worker-setup`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyCode: COMPANY_CODE,
+          workerCode: LENGTH_INVALID_WORKER_CODE,
+          newPassword: 'Test123!',
+        }),
+      },
+    )
     expect(isRateLimitedOrExpected(res.status, 400)).toBe(true)
     if (res.status === 429) return // rate-limit → endpoint él, teszt elfogadva
     const body = (await res.json()) as Record<string, unknown>
@@ -251,15 +362,18 @@ describe('Production API — Worker first-time setup validation', () => {
   })
 
   it('Ismeretlen companyCode → 400 + hibaüzenet (vagy 429)', async () => {
-    const res = await postOnce(`${API_BASE}/auth/first-time-worker-setup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        companyCode: 'FAKECOMPANY',
-        workerCode: TEST_WORKER_CODE,
-        newPassword: 'Test123!',
-      }),
-    })
+    const res = await postReadOnlyValidationWithTransportRetry(
+      `${API_BASE}/auth/first-time-worker-setup`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyCode: INVALID_COMPANY_CODE,
+          workerCode: TEST_WORKER_CODE,
+          newPassword: 'Test123!',
+        }),
+      },
+    )
     expect(isRateLimitedOrExpected(res.status, 400)).toBe(true)
     if (res.status === 429) return
     const body = (await res.json()) as { message?: string }
@@ -267,14 +381,17 @@ describe('Production API — Worker first-time setup validation', () => {
   })
 
   it('Hiányzó newPassword → 400 (validációs hiba) (vagy 429)', async () => {
-    const res = await postOnce(`${API_BASE}/auth/first-time-worker-setup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        companyCode: COMPANY_CODE,
-        workerCode: TEST_WORKER_CODE,
-      }),
-    })
+    const res = await postReadOnlyValidationWithTransportRetry(
+      `${API_BASE}/auth/first-time-worker-setup`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyCode: COMPANY_CODE,
+          workerCode: TEST_WORKER_CODE,
+        }),
+      },
+    )
     // A backend validálja a DTO-t — hiányzó mező → 400 (vagy 429 ha rate-limited)
     expect(isRateLimitedOrExpected(res.status, 400)).toBe(true)
   })
@@ -284,7 +401,7 @@ describe('Production API — Worker first-time setup validation', () => {
 // 5. Teljes SetupWizard flow szimuláció (read-only)
 // ---------------------------------------------------------------------------
 describe('Production API — SetupWizard teljes flow szimuláció', () => {
-  it('A teljes flow lépései mind sikeresen hívhatók', { timeout: 60_000 }, async () => {
+  it('A teljes flow lépései mind sikeresen hívhatók', { timeout: 90_000 }, async () => {
     // 1. Bootstrap check
     const bootstrapRes = await fetchWithTransportRetry(`${API_BASE}/auth/bootstrap-status`)
     expect(bootstrapRes.status).toBe(200)
@@ -314,15 +431,18 @@ describe('Production API — SetupWizard teljes flow szimuláció', () => {
     // 5. First-time setup endpoint read-only validációs ellenőrzése.
     // A valós KOSA dolgozót csak a GET flow-ban választjuk ki és ellenőrizzük; POST-ban soha
     // nem küldjük el. A garantáltan elutasított workerCode kizárja a jelszómódosítást.
-    const setupRes = await postOnce(`${API_BASE}/auth/first-time-worker-setup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        companyCode: COMPANY_CODE,
-        workerCode: NON_EXISTENT_WORKER_CODE,
-        newPassword: 'IntegrationTestPassword_DO_NOT_SAVE',
-      }),
-    })
+    const setupRes = await postReadOnlyValidationWithTransportRetry(
+      `${API_BASE}/auth/first-time-worker-setup`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyCode: COMPANY_CODE,
+          workerCode: LENGTH_INVALID_WORKER_CODE,
+          newPassword: 'IntegrationTestPassword_DO_NOT_SAVE',
+        }),
+      },
+    )
     // Fail-closed: csak a validációs 400 vagy a dokumentált rate-limit 429 elfogadható.
     expect([400, 429]).toContain(setupRes.status)
 
