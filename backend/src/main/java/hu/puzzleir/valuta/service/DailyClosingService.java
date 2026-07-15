@@ -506,6 +506,22 @@ public class DailyClosingService {
             // NEM dobunk kivételt — ne akadjon meg a zárás (FR-7/FR-9 szellemében)
         }
 
+        // 3.c FK-052: banki (technikai RB) BANK+/BANK− bekötése a napi mérlegbe — KIZÁRÓLAG
+        //     értéktári irodára fut (a service maga guard-ol); pénztári zárásnál NO-OP.
+        try {
+            dailyBalanceService.recordVaultBankAdjustments(branchId, closingDate);
+        } catch (Exception e) {
+            VV_LOG.error("VV-BIZ-006", "daily_closing.bank_adjustment_failed", e,
+                    java.util.Map.of("closing_date", closingDate,
+                            "branch_id", branchId,
+                            "step", "bank_adjustment"));
+            warnings.add(ClosingWarning.builder()
+                    .step("bank_adjustment")
+                    .message("Banki BANK+/BANK− igazítás hiba: " + e.getMessage())
+                    .build());
+            // NEM dobunk kivételt — ne akadjon meg a zárás
+        }
+
         // 4. POS terminál napi zárás — ha van aktív terminál az irodán
         executePosTerminalClosing(branchId, closingDate, warnings);
 

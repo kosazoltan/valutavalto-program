@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.dto.ClosingMarkType;
 import hu.puzzleir.valuta.dto.decade.DecadeReportDto;
 import hu.puzzleir.valuta.dto.eveningclosing.DailyDataPackage;
 import hu.puzzleir.valuta.dto.eveningclosing.DataSyncResult;
@@ -362,5 +363,36 @@ class DailyClosingServiceExtendedTest {
         assertThat(result.getWarnings())
             .extracting(DailyClosingService.ClosingWarning::getStep)
             .contains("aml_cache_reset");
+    }
+
+    @Test
+    @DisplayName("FK-052: sikeres záráskor a vault banki igazítás pontosan egyszer, a SZÁMZÁR/TH után fut")
+    void executeClosing_callsVaultBankAdjustmentOnceAfterClosingAdjustments() {
+        LocalDate closingDate = LocalDate.of(2026, 3, 15);
+
+        dailyClosingService.startDailyClosing(closingDate);
+
+        InOrder order = inOrder(dailyBalanceService);
+        order.verify(dailyBalanceService).recordClosingAdjustments(BRANCH_ID, closingDate);
+        order.verify(dailyBalanceService).recordVaultBankAdjustments(BRANCH_ID, closingDate);
+        verify(dailyBalanceService, times(1)).recordVaultBankAdjustments(BRANCH_ID, closingDate);
+    }
+
+    @Test
+    @DisplayName("FK-052: banki igazítás hibája nem állítja meg a zárást, warning kerül a válaszba")
+    void executeClosing_vaultBankAdjustmentFails_closingCompletesWithWarning() {
+        LocalDate closingDate = LocalDate.of(2026, 3, 15);
+        doThrow(new RuntimeException("banki igazítás hiba"))
+                .when(dailyBalanceService).recordVaultBankAdjustments(BRANCH_ID, closingDate);
+
+        var result = dailyClosingService.startDailyClosing(closingDate);
+
+        assertThat(result.isAllPassed()).isTrue();
+        assertThat(result.getWarnings())
+                .anySatisfy(warning -> {
+                    assertThat(warning.getStep()).isEqualTo("bank_adjustment");
+                    assertThat(warning.getMessage()).contains("banki igazítás hiba");
+                });
+        verify(closingControlService).markClosingDone(COMPANY_ID, BRANCH_ID, closingDate, ClosingMarkType.DAILY);
     }
 }
