@@ -8,9 +8,9 @@
  *   3. GET /public/workers?companyCode=EBC&branchCode=BR039
  *   4. POST /auth/first-time-worker-setup
  *
- * A tesztek nem módosítanak adatot (a POST hívás SZÁNDÉKOSAN NEM küld
- * valós jelszóváltoztatást, hanem a HTTP válaszkódot és hibaüzenetet
- * ellenőrzi).
+ * A tesztek nem módosítanak adatot: a POST validációs hívások garantáltan
+ * nem létező dolgozói kódot vagy eleve hibás payloadot küldenek, és csak a
+ * HTTP válaszkódot, illetve a hibaüzenetet ellenőrzik.
  * A GET kérések legfeljebb 3 próbálkozással, próbálkozásonként 5 s aborttal
  * és logolt transport-retry-jal futnak; HTTP-választ soha nem retry-zunk.
  * A nem idempotens, rate-limitelt POST egyszer fut, 10 s abort-korláttal.
@@ -26,6 +26,8 @@ const API_BASE = 'https://excvaluta.com/api/v1'
 const COMPANY_CODE = 'EBC'
 const TEST_BRANCH_CODE = 'BR039' // Szeged Tisza — ismert branch
 const TEST_WORKER_CODE = 'KOSA' // Ismert worker
+// 11 karakter: a backend max. 10 karakteres workerCode-validációja a worker lookup előtt elutasítja.
+const NON_EXISTENT_WORKER_CODE = 'NONEXISTENT'
 
 interface TransportRetryOptions {
   /** Próbálkozások összesen (1 = nincs retry). GET default: 3, POST: kötelezően 1. */
@@ -236,7 +238,7 @@ describe('Production API — Worker first-time setup validation', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         companyCode: COMPANY_CODE,
-        workerCode: 'NONEXISTENT',
+        workerCode: NON_EXISTENT_WORKER_CODE,
         newPassword: 'Test123!',
       }),
     })
@@ -309,45 +311,35 @@ describe('Production API — SetupWizard teljes flow szimuláció', () => {
     const selectedWorker = workers.find((w) => w.code === TEST_WORKER_CODE)
     expect(selectedWorker).toBeDefined()
 
-    // 5. First-time setup endpoint ELÉRHETŐSÉG ellenőrzés (nem valós jelszóváltás)
-    // Szándékosan fake password + üres currentPassword — a válasz típust ellenőrizzük
+    // 5. First-time setup endpoint read-only validációs ellenőrzése.
+    // A valós KOSA dolgozót csak a GET flow-ban választjuk ki és ellenőrizzük; POST-ban soha
+    // nem küldjük el. A garantáltan elutasított workerCode kizárja a jelszómódosítást.
     const setupRes = await postOnce(`${API_BASE}/auth/first-time-worker-setup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         companyCode: COMPANY_CODE,
-        workerCode: selectedWorker!.code,
+        workerCode: NON_EXISTENT_WORKER_CODE,
         newPassword: 'IntegrationTestPassword_DO_NOT_SAVE',
       }),
     })
-    // A válasz 200 (success), 400 (validation) vagy 429 (rate-limit) —
-    // de NEM 404, 500, 502, stb. A 429 a backend rate-limit védelmi reakciója,
-    // ami épp azt bizonyítja hogy az endpoint él.
-    expect([200, 400, 429]).toContain(setupRes.status)
+    // Fail-closed: csak a validációs 400 vagy a dokumentált rate-limit 429 elfogadható.
+    expect([400, 429]).toContain(setupRes.status)
 
     if (setupRes.status === 429) {
       console.log('[Integration] Rate-limit hit (HTTP 429) — endpoint él, teszt elfogadva')
       return
     }
 
-    const setupBody = (await setupRes.json()) as { success?: boolean; message?: string }
-    // Ha 400: van message mező
-    if (setupRes.status === 400) {
-      expect(setupBody.message).toBeTruthy()
-    }
-    // Ha 200: success === true (DE VIGYÁZAT: ez valóban beállítaná a jelszót!)
-    // A V198 migráció UTÁN ez 200-at fog adni — ami azt jelenti, hogy a flow MŰKÖDIK.
-    if (setupRes.status === 200) {
-      expect(setupBody.success).toBe(true)
-    }
+    const setupBody = (await setupRes.json()) as Record<string, unknown>
+    const errorText = String(setupBody.message ?? setupBody.detail ?? '')
+    expect(errorText).toBeTruthy()
 
     // Összegzés logolás
     console.log(`[Integration] Bootstrap completed: ${bootstrap.completed}`)
     console.log(`[Integration] Branches: ${branches.length}`)
     console.log(`[Integration] Workers for ${TEST_BRANCH_CODE}: ${workers.length}`)
     console.log(`[Integration] First-time-setup response: HTTP ${setupRes.status}`)
-    if (setupRes.status === 400) {
-      console.log(`[Integration] Error message: ${setupBody.message}`)
-    }
+    console.log(`[Integration] Error message: ${errorText}`)
   })
 })
