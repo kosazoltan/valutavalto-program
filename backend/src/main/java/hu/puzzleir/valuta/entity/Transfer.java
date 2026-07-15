@@ -155,6 +155,13 @@ public class Transfer {
      *   TRB = EGYEDI KÖTÉS RB (csak deviza),
      *   PRB = POS ÁTVÉTEL BANKTÓL (csak HUF, csak átvétel irány).
      * A bizonylat-sorszám prefix (AT/AV/FF/UF) valuta+irány alapú, típus-független.
+     *
+     * FIGYELEM — két külön "kezelési díj" mechanizmus él (2026-07-15 audit):
+     * a {@code HANDLING_FEE} ITT a legacy /transfers kézi pénzmozgás-bizonylat típusa
+     * (HUF-only, UI-ról választható — transferRules.ts). A jóváhagyás-életciklusos KK
+     * kezelési-díj a KÜLÖN Shipment-modulon fut (ShipmentHandlingFeeService, "KK" prefix,
+     * shipment_handling_fee tábla) — oda ÚJ funkciót NE Transfer-alapon implementálj.
+     * Az érték @Enumerated(STRING)-ként DB-perzisztált, eltávolítása adatvesztő — TILOS.
      */
     public enum TransferType {
         CURRENCY, CASH, HANDLING_FEE, VAULT_DEPOSIT, VAULT_WITHDRAW, CORRECTION, OTHER,

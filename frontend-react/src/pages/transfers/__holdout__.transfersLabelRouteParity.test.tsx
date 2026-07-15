@@ -5,6 +5,8 @@
  * Az orchestrator adta hozzá a dev-loop pipeline ZÖLD lezárása UTÁN, független
  * elfogadási bizonyítékként (terv: .hermes/plans/2026-07-14-transfers-relabel-split-holdout.md).
  * A teszt-integritási szabály erre is vonatkozik: RED esetén a KÓD javul, nem a teszt.
+ * 2026-07-15: az ertekszallito-t a 2026-07-14-es user-döntés kivezette a menü-RBAC-ból —
+ * plan: 2026-07-15-shipment-approve-rbac.md.
  *
  * (A) menü-szemantika: a címke pontosan azt ígéri, amit a route csinál (mock nélkül).
  * (B) felület-szemantika: a /transfers nem hordoz önálló create-űrlapot; a
@@ -52,11 +54,11 @@ describe('__holdout__ transfers címke↔route szemantikai paritás', () => {
     }
   })
 
-  it('mindkét route menü-gate-elhető (penztar+ertektar+ertekszallito unió)', () => {
+  it('mindkét route menü-gate-elhető (penztar+ertektar unió)', () => {
     for (const path of ['/transfers', '/transfers/new']) {
       const roles = effectiveCanonicalRolesForPath(menuGroups, path)
       expect(roles, `${path} szerepkör-uniója`).toBeDefined()
-      expect([...(roles ?? [])].sort()).toEqual(['ertekszallito', 'ertektar', 'penztar'])
+      expect([...(roles ?? [])].sort()).toEqual(['ertektar', 'penztar'])
     }
   })
 })

@@ -54,10 +54,20 @@ public class ShipmentHandlingFeeSyncService {
         feeRepository.save(fee);
     }
 
+    /**
+     * KK fee-jel (2026-07-15): egy shipment akkor kezelési-díj (KK) típusú, ha tartozik hozzá
+     * shipment_handling_fee sor (tenant-szűrt). Ugyanez a jel vezérli a syncFromShipment-et és
+     * az approve() guard-elágazását (ShipmentService) — egyetlen igazságforrás.
+     */
+    @Transactional(readOnly = true)
+    public boolean isHandlingFeeShipment(ShipmentRequest shipment) {
+        return feeRepository.findByShipmentRequestIdAndCompanyId(
+                shipment.getId(), shipment.getCompanyId()).isPresent();
+    }
+
     @Transactional(readOnly = true)
     public void assertNotHandlingFeeShipment(ShipmentRequest shipment) {
-        if (feeRepository.findByShipmentRequestIdAndCompanyId(
-                shipment.getId(), shipment.getCompanyId()).isPresent()) {
+        if (isHandlingFeeShipment(shipment)) {
             throw new ValidationException(
                     "Kezelési költség tétel a generikus szállítmány-módosítással nem szerkeszthető.");
         }
