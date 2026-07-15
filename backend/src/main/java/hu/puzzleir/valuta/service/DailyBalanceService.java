@@ -509,6 +509,121 @@ public class DailyBalanceService {
         }
     }
 
+    /**
+     * FK-052 — napi zárás BANKI (technikai RB) bekötés. KIZÁRÓLAG értéktári
+     * ({@code isVault=TRUE}) fiókra fut — a pénztári SZÁMZÁR/TH igazítás tükörképe.
+     * BANK+ = direction U; BANK− = F/UF/FF; csak COMPLETED, nem-sztornó, adott napi
+     * ERB/FRB/TRB/PRB tételek, valutánként.
+     *
+     * <p>Idempotens felülírás; csak HUF-ra ötforintos kerekítés; a tenant a branch
+     * cégéből származik (scheduler-safe). Lezárt sort nem ír. Hiba esetén TX-audit
+     * készül és a kivétel továbbmegy a zárási folyamat saját warning-kezeléséhez.
+     */
+    public void recordVaultBankAdjustments(UUID branchId, LocalDate date) {
+        Branch branch = branchRepository.findById(branchId).orElse(null);
+        if (branch == null) {
+            log.warn("FK-052 BANK+/BANK− kihagyva: ismeretlen branch={}", branchId);
+            return;
+        }
+        if (!Boolean.TRUE.equals(branch.getIsVault())) {
+            log.debug("FK-052 BANK+/BANK− kihagyva (nem értéktári iroda): branch={}", branchId);
+            return;
+        }
+
+        Company company = branch.getCompany();
+        if (company == null || company.getId() == null) {
+            log.warn("FK-052 BANK+/BANK− kihagyva: a branch cég-kapcsolata hiányzik, branch={}", branchId);
+            return;
+        }
+        UUID companyId = company.getId();
+
+        try {
+            Map<String, BigDecimal> bankIn = mergeBankAggregates(
+                transferRepository.sumBankInByDay(branchId, companyId, date));
+            Map<String, BigDecimal> bankOut = mergeBankAggregates(
+                transferRepository.sumBankOutByDay(branchId, companyId, date));
+
+            Map<String, DailyBalance> balanceByCurrency = new HashMap<>();
+            for (DailyBalance balance : dailyBalanceRepository.findByBranchIdAndBalanceDate(
+                    companyId, branchId, date)) {
+                balanceByCurrency.put(balance.getCurrencyCode(), balance);
+            }
+
+            Set<String> currencies = new LinkedHashSet<>(balanceByCurrency.keySet());
+            currencies.addAll(bankIn.keySet());
+            currencies.addAll(bankOut.keySet());
+
+            int processed = 0;
+            for (String currencyCode : currencies) {
+                DailyBalance balance = balanceByCurrency.get(currencyCode);
+                if (balance == null) {
+                    balance = DailyBalance.builder()
+                        .branchId(branchId)
+                        .balanceDate(date)
+                        .currencyCode(currencyCode)
+                        .company(company)
+                        .isClosed(false)
+                        .build();
+                    balance.setOpeningBalance(BigDecimal.ZERO);
+                    balance.setPurchases(BigDecimal.ZERO);
+                    balance.setSales(BigDecimal.ZERO);
+                    balance.setTransfersIn(BigDecimal.ZERO);
+                    balance.setTransfersOut(BigDecimal.ZERO);
+                    balance.setClosingBalance(BigDecimal.ZERO);
+                }
+                if (Boolean.TRUE.equals(balance.getIsClosed())) {
+                    continue;
+                }
+
+                balance.setBankIn(roundIfHuf(
+                    currencyCode, bankIn.getOrDefault(currencyCode, BigDecimal.ZERO)));
+                balance.setBankOut(roundIfHuf(
+                    currencyCode, bankOut.getOrDefault(currencyCode, BigDecimal.ZERO)));
+                balance.calculateMnbValidation();
+                dailyBalanceRepository.save(balance);
+                processed++;
+            }
+
+            auditLogService.log(
+                "DAILY_BALANCE_BANK_ADJUSTMENT",
+                String.format("{\"KAT\":\"TX\",\"date\":\"%s\",\"branch_id\":\"%s\",\"currencies\":%d}",
+                    date, branchId, processed),
+                branchId.toString()
+            );
+            log.info("FK-052 BANK+/BANK− rögzítve: branchId={}, date={}, valuták={}",
+                branchId, date, processed);
+        } catch (RuntimeException e) {
+            auditLogService.log(
+                "DAILY_BALANCE_BANK_ADJUSTMENT_FAILED",
+                String.format("{\"KAT\":\"TX\",\"date\":\"%s\",\"branch_id\":\"%s\",\"error\":\"%s\"}",
+                    date, branchId, e.getClass().getSimpleName()),
+                branchId.toString()
+            );
+            throw e;
+        }
+    }
+
+    /**
+     * Repository {@code Object[3]} sorok (lineCode, headerCode, sum) összeolvasztása.
+     * A line-valutakód elsőbbséget élvez; header-only transfernél a header-kód a kulcs.
+     */
+    private static Map<String, BigDecimal> mergeBankAggregates(List<Object[]> rows) {
+        Map<String, BigDecimal> result = new HashMap<>();
+        if (rows == null) {
+            return result;
+        }
+        for (Object[] row : rows) {
+            if (row == null || row.length < 3) {
+                continue;
+            }
+            String currencyCode = row[0] != null ? (String) row[0] : (String) row[1];
+            if (currencyCode != null) {
+                result.merge(currencyCode, toBd(row[2]), BigDecimal::add);
+            }
+        }
+        return result;
+    }
+
     /** Object[]-ből biztonságos BigDecimal (COALESCE 0 + null-véd). */
     private static BigDecimal toBd(Object value) {
         return value == null ? BigDecimal.ZERO : (BigDecimal) value;

@@ -664,4 +664,211 @@ class DailyBalanceServiceTest {
                 .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class);
         verify(dailyBalanceRepository, never()).save(any());
     }
+
+    // ============================================================
+    // FK-052: értéktári BANK+/BANK− napi igazítás
+    // ============================================================
+
+    private Branch vaultBranch() {
+        Branch branch = cashierBranch();
+        branch.setIsVault(true);
+        return branch;
+    }
+
+    @Test
+    @DisplayName("FK-052: pénztári branch-re a banki igazítás NO-OP")
+    void recordVaultBankAdjustments_nonVaultBranch_noOp() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
+
+        dailyBalanceService.recordVaultBankAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        verify(transferRepository, never()).sumBankInByDay(any(), any(), any());
+        verify(transferRepository, never()).sumBankOutByDay(any(), any(), any());
+        verify(dailyBalanceRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("FK-052: ismeretlen branch-re a banki igazítás NO-OP, nem dob")
+    void recordVaultBankAdjustments_unknownBranch_noOp() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.empty());
+
+        assertThatNoException().isThrownBy(() ->
+                dailyBalanceService.recordVaultBankAdjustments(TEST_BRANCH_ID, TEST_DATE));
+
+        verifyNoInteractions(transferRepository);
+        verify(dailyBalanceRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("FK-052: vault meglévő EUR sora BANK+/BANK− értéket kap, MNB-validációval és siker-audittal")
+    void recordVaultBankAdjustments_existingBalance_persistsAggregatesAndValidation() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(vaultBranch()));
+        DailyBalance eur = balanceRow("EUR");
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_COMPANY_ID, TEST_BRANCH_ID, TEST_DATE))
+                .thenReturn(List.of(eur));
+        when(transferRepository.sumBankInByDay(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE))
+                .thenReturn(List.<Object[]>of(new Object[]{null, "EUR", new BigDecimal("1500")}));
+        when(transferRepository.sumBankOutByDay(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE))
+                .thenReturn(List.<Object[]>of(new Object[]{null, "EUR", new BigDecimal("200")}));
+
+        dailyBalanceService.recordVaultBankAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        assertThat(eur.getBankIn()).isEqualByComparingTo("1500");
+        assertThat(eur.getBankOut()).isEqualByComparingTo("200");
+        assertThat(eur.getCalculatedClosing()).isEqualByComparingTo("1300");
+        verify(dailyBalanceRepository).save(eur);
+        verify(auditLogService).log(
+                eq("DAILY_BALANCE_BANK_ADJUSTMENT"),
+                argThat(message -> message.contains("\"KAT\":\"TX\"")
+                        && message.contains("\"currencies\":1")),
+                eq(TEST_BRANCH_ID.toString()));
+    }
+
+    @Test
+    @DisplayName("FK-052: ismételt futás felülírja a banki összeget, nem duplázza")
+    void recordVaultBankAdjustments_rerunOverwritesIdempotently() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(vaultBranch()));
+        DailyBalance eur = balanceRow("EUR");
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_COMPANY_ID, TEST_BRANCH_ID, TEST_DATE))
+                .thenReturn(List.of(eur));
+        when(transferRepository.sumBankInByDay(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE))
+                .thenReturn(
+                        List.<Object[]>of(new Object[]{null, "EUR", new BigDecimal("1500")}),
+                        List.<Object[]>of(new Object[]{null, "EUR", new BigDecimal("500")}));
+        when(transferRepository.sumBankOutByDay(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE))
+                .thenReturn(Collections.emptyList());
+
+        dailyBalanceService.recordVaultBankAdjustments(TEST_BRANCH_ID, TEST_DATE);
+        dailyBalanceService.recordVaultBankAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        assertThat(eur.getBankIn()).as("felülírás, nem 1500+500").isEqualByComparingTo("500");
+        verify(dailyBalanceRepository, times(2)).save(eur);
+    }
+
+    @Test
+    @DisplayName("FK-052: csak banki aggregátumban létező valutára új, nullabázisú mérleg-sor készül")
+    void recordVaultBankAdjustments_aggregateOnlyCurrency_createsZeroBasedRow() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(vaultBranch()));
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_COMPANY_ID, TEST_BRANCH_ID, TEST_DATE))
+                .thenReturn(Collections.emptyList());
+        when(transferRepository.sumBankInByDay(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE))
+                .thenReturn(List.<Object[]>of(new Object[]{"CHF", "EUR", new BigDecimal("777")}));
+        when(transferRepository.sumBankOutByDay(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE))
+                .thenReturn(Collections.emptyList());
+        ArgumentCaptor<DailyBalance> saved = ArgumentCaptor.forClass(DailyBalance.class);
+
+        dailyBalanceService.recordVaultBankAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        verify(dailyBalanceRepository).save(saved.capture());
+        DailyBalance chf = saved.getValue();
+        assertThat(chf.getCurrencyCode()).isEqualTo("CHF");
+        assertThat(chf.getOpeningBalance()).isEqualByComparingTo("0");
+        assertThat(chf.getPurchases()).isEqualByComparingTo("0");
+        assertThat(chf.getSales()).isEqualByComparingTo("0");
+        assertThat(chf.getTransfersIn()).isEqualByComparingTo("0");
+        assertThat(chf.getTransfersOut()).isEqualByComparingTo("0");
+        assertThat(chf.getClosingBalance()).isEqualByComparingTo("0");
+        assertThat(chf.getBankIn()).isEqualByComparingTo("777");
+        assertThat(chf.getBankOut()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("FK-052: banki tétel nélküli meglévő vault-sor bank mezői nullára íródnak")
+    void recordVaultBankAdjustments_existingBalanceWithoutTransfers_overwritesWithZero() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(vaultBranch()));
+        DailyBalance eur = balanceRow("EUR");
+        eur.setBankIn(new BigDecimal("99"));
+        eur.setBankOut(new BigDecimal("88"));
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_COMPANY_ID, TEST_BRANCH_ID, TEST_DATE))
+                .thenReturn(List.of(eur));
+        when(transferRepository.sumBankInByDay(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE))
+                .thenReturn(Collections.emptyList());
+        when(transferRepository.sumBankOutByDay(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE))
+                .thenReturn(Collections.emptyList());
+
+        dailyBalanceService.recordVaultBankAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        assertThat(eur.getBankIn()).isEqualByComparingTo("0");
+        assertThat(eur.getBankOut()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("FK-052 NFR-3: HUF banki összeg 5 Ft-ra kerekül, EUR változatlan marad")
+    void recordVaultBankAdjustments_roundsOnlyHuf() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(vaultBranch()));
+        DailyBalance huf = balanceRow("HUF");
+        DailyBalance eur = balanceRow("EUR");
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_COMPANY_ID, TEST_BRANCH_ID, TEST_DATE))
+                .thenReturn(List.of(huf, eur));
+        when(transferRepository.sumBankInByDay(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE))
+                .thenReturn(List.<Object[]>of(
+                        new Object[]{null, "HUF", new BigDecimal("1002")},
+                        new Object[]{null, "EUR", new BigDecimal("1002")}));
+        when(transferRepository.sumBankOutByDay(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE))
+                .thenReturn(Collections.emptyList());
+
+        dailyBalanceService.recordVaultBankAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        assertThat(huf.getBankIn()).isEqualByComparingTo("1000");
+        assertThat(eur.getBankIn()).isEqualByComparingTo("1002");
+    }
+
+    @Test
+    @DisplayName("FK-052: lezárt mérleg-sort a banki igazítás nem módosít és nem ment")
+    void recordVaultBankAdjustments_closedBalance_isUntouched() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(vaultBranch()));
+        DailyBalance eur = balanceRow("EUR");
+        eur.setIsClosed(true);
+        eur.setBankIn(new BigDecimal("10"));
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_COMPANY_ID, TEST_BRANCH_ID, TEST_DATE))
+                .thenReturn(List.of(eur));
+        when(transferRepository.sumBankInByDay(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE))
+                .thenReturn(List.<Object[]>of(new Object[]{null, "EUR", new BigDecimal("1500")}));
+        when(transferRepository.sumBankOutByDay(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE))
+                .thenReturn(Collections.emptyList());
+
+        dailyBalanceService.recordVaultBankAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        assertThat(eur.getBankIn()).isEqualByComparingTo("10");
+        verify(dailyBalanceRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("FK-052: line-valutakód elsőbbséget kap, a header-fallback külön valutába olvad")
+    void recordVaultBankAdjustments_mergesLineAndHeaderAggregateKeys() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(vaultBranch()));
+        DailyBalance eur = balanceRow("EUR");
+        DailyBalance usd = balanceRow("USD");
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDate(TEST_COMPANY_ID, TEST_BRANCH_ID, TEST_DATE))
+                .thenReturn(List.of(eur, usd));
+        when(transferRepository.sumBankInByDay(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE))
+                .thenReturn(List.<Object[]>of(
+                        new Object[]{"USD", "EUR", new BigDecimal("50")},
+                        new Object[]{null, "EUR", new BigDecimal("100")}));
+        when(transferRepository.sumBankOutByDay(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE))
+                .thenReturn(Collections.emptyList());
+
+        dailyBalanceService.recordVaultBankAdjustments(TEST_BRANCH_ID, TEST_DATE);
+
+        assertThat(eur.getBankIn()).isEqualByComparingTo("100");
+        assertThat(usd.getBankIn()).isEqualByComparingTo("50");
+    }
+
+    @Test
+    @DisplayName("FK-052: aggregációs hiba hiba-audit után változatlanul továbbdobódik")
+    void recordVaultBankAdjustments_repositoryFailure_auditsAndRethrows() {
+        when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(vaultBranch()));
+        RuntimeException failure = new RuntimeException("bank aggregate failed");
+        when(transferRepository.sumBankInByDay(TEST_BRANCH_ID, TEST_COMPANY_ID, TEST_DATE))
+                .thenThrow(failure);
+
+        assertThatThrownBy(() -> dailyBalanceService.recordVaultBankAdjustments(TEST_BRANCH_ID, TEST_DATE))
+                .isSameAs(failure);
+        verify(auditLogService).log(
+                eq("DAILY_BALANCE_BANK_ADJUSTMENT_FAILED"),
+                argThat(message -> message.contains("\"KAT\":\"TX\"")
+                        && message.contains("RuntimeException")),
+                eq(TEST_BRANCH_ID.toString()));
+        verify(dailyBalanceRepository, never()).save(any());
+    }
 }
