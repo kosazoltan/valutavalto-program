@@ -11,6 +11,9 @@
  * A tesztek nem módosítanak adatot (a POST hívás SZÁNDÉKOSAN NEM küld
  * valós jelszóváltoztatást, hanem a HTTP válaszkódot és hibaüzenetet
  * ellenőrzi).
+ * A GET kérések legfeljebb 3 próbálkozással, próbálkozásonként 5 s aborttal
+ * és logolt transport-retry-jal futnak; HTTP-választ soha nem retry-zunk.
+ * A nem idempotens, rate-limitelt POST egyszer fut, 10 s abort-korláttal.
  *
  * Futtatás: npx vitest run src/pages/setup/SetupWizard.integration.test.ts
  *
@@ -24,12 +27,88 @@ const COMPANY_CODE = 'EBC'
 const TEST_BRANCH_CODE = 'BR039' // Szeged Tisza — ismert branch
 const TEST_WORKER_CODE = 'KOSA' // Ismert worker
 
+interface TransportRetryOptions {
+  /** Próbálkozások összesen (1 = nincs retry). GET default: 3, POST: kötelezően 1. */
+  attempts?: number
+  /** Attempt-enkénti abort-korlát ms-ben. GET default: 5000, POST: 10000. */
+  attemptTimeoutMs?: number
+  /** Backoff a próbálkozások KÖZÖTT, ms-ben; hossza attempts-1. Default: [500, 1000]. */
+  backoffMs?: number[]
+}
+
+const GET_DEFAULTS = { attempts: 3, attemptTimeoutMs: 5_000, backoffMs: [500, 1_000] }
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+const isTransportError = (err: unknown): boolean => {
+  if (err instanceof DOMException && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+    return true
+  }
+  // Node undici network-hiba: TypeError('fetch failed'), cause-ban a socket-hiba
+  return err instanceof TypeError
+}
+
+/**
+ * fetch explicit attempt-szintű abort-timeouttal és korlátos, logolt
+ * transport-retry-jal.
+ *
+ * SZERZŐDÉS:
+ *  - Ha BÁRMILYEN Response megérkezik (200/400/429/500/bármi), AZONNAL
+ *    visszaadjuk — HTTP-státuszt SOHA nem retry-zunk.
+ *  - Retry-zható hibák KIZÁRÓLAG: attempt-abort (DOMException 'TimeoutError'
+ *    vagy 'AbortError' az AbortSignal.timeout-ból) és network-szintű TypeError
+ *    ('fetch failed': ECONNRESET, ECONNREFUSED, ETIMEDOUT, EAI_AGAIN, socket hang).
+ *  - Minden retry console.warn-nal logolódik: attempt-sorszám, URL, hiba-név,
+ *    hiba-üzenet, eltelt ms.
+ *  - Ha az összes attempt elfogy, aggregált Error dobódik az összes attempt
+ *    hibájával és időzítésével → a teszt őszintén, diagnosztizálhatóan bukik.
+ */
+async function fetchWithTransportRetry(
+  url: string,
+  init?: RequestInit,
+  opts?: TransportRetryOptions,
+): Promise<Response> {
+  const { attempts, attemptTimeoutMs, backoffMs } = { ...GET_DEFAULTS, ...opts }
+  const failures: string[] = []
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const startedAt = Date.now()
+    try {
+      // Explicit abort-korlát MINDEN network-attemptre (constraint-követelmény).
+      return await fetch(url, { ...init, signal: AbortSignal.timeout(attemptTimeoutMs) })
+    } catch (err) {
+      const elapsed = Date.now() - startedAt
+      const name = err instanceof Error ? err.name : 'UnknownError'
+      const message = err instanceof Error ? err.message : String(err)
+      failures.push(`attempt ${attempt}/${attempts}: ${name} (${message}) ${elapsed}ms után`)
+
+      if (!isTransportError(err) || attempt === attempts) {
+        throw new Error(
+          `[transport] ${init?.method ?? 'GET'} ${url} — minden próbálkozás elbukott:\n` +
+            failures.map((failure) => `  - ${failure}`).join('\n'),
+          { cause: err },
+        )
+      }
+      console.warn(`[transport-retry] ${url} — ${failures[failures.length - 1]}, retry...`)
+      await sleep(backoffMs[attempt - 1] ?? backoffMs[backoffMs.length - 1] ?? 500)
+    }
+  }
+  throw new Error('unreachable') // a for-loop mindig return-öl vagy throw-ol
+}
+
+/**
+ * POST first-time-worker-setup: NEM idempotens + rate-limitelt → NINCS retry
+ * (attempts=1), csak explicit abort-timeout. Transport-hibánál a teszt őszintén bukik.
+ */
+const postOnce = (url: string, init: RequestInit): Promise<Response> =>
+  fetchWithTransportRetry(url, init, { attempts: 1, attemptTimeoutMs: 10_000, backoffMs: [] })
+
 // ---------------------------------------------------------------------------
 // 1. Bootstrap status
 // ---------------------------------------------------------------------------
 describe('Production API — Bootstrap status', () => {
   it('GET /auth/bootstrap-status 200 + completed flag', async () => {
-    const res = await fetch(`${API_BASE}/auth/bootstrap-status`)
+    const res = await fetchWithTransportRetry(`${API_BASE}/auth/bootstrap-status`)
     expect(res.status).toBe(200)
 
     const body = (await res.json()) as { completed?: boolean }
@@ -45,7 +124,7 @@ describe('Production API — Bootstrap status', () => {
 // ---------------------------------------------------------------------------
 describe('Production API — Branch listing', () => {
   it('GET /public/branches?companyCode=EBC visszaad legalább 60 irodát', async () => {
-    const res = await fetch(`${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`)
+    const res = await fetchWithTransportRetry(`${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`)
     expect(res.status).toBe(200)
 
     const branches = (await res.json()) as Array<{
@@ -66,14 +145,14 @@ describe('Production API — Branch listing', () => {
   })
 
   it('A BR039 (Szeged Tisza) iroda létezik a listában', async () => {
-    const res = await fetch(`${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`)
+    const res = await fetchWithTransportRetry(`${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`)
     const branches = (await res.json()) as Array<{ code: string; name: string }>
     const br039 = branches.find((b) => b.code === TEST_BRANCH_CODE)
     expect(br039).toBeDefined()
   })
 
   it('Ismeretlen cégkód üres listát ad (nem hibát)', async () => {
-    const res = await fetch(`${API_BASE}/public/branches?companyCode=FAKECOMPANY`)
+    const res = await fetchWithTransportRetry(`${API_BASE}/public/branches?companyCode=FAKECOMPANY`)
     expect(res.status).toBe(200)
     const branches = await res.json()
     expect(Array.isArray(branches)).toBe(true)
@@ -86,7 +165,7 @@ describe('Production API — Branch listing', () => {
 // ---------------------------------------------------------------------------
 describe('Production API — Worker listing', () => {
   it('GET /public/workers?companyCode=EBC&branchCode=BR039 visszaad dolgozókat', async () => {
-    const res = await fetch(
+    const res = await fetchWithTransportRetry(
       `${API_BASE}/public/workers?companyCode=${COMPANY_CODE}&branchCode=${TEST_BRANCH_CODE}`,
     )
     expect(res.status).toBe(200)
@@ -107,7 +186,7 @@ describe('Production API — Worker listing', () => {
   })
 
   it('A KOSA dolgozó megjelenik a BR039 worker listában', async () => {
-    const res = await fetch(
+    const res = await fetchWithTransportRetry(
       `${API_BASE}/public/workers?companyCode=${COMPANY_CODE}&branchCode=${TEST_BRANCH_CODE}`,
     )
     const workers = (await res.json()) as Array<{ code: string; name: string }>
@@ -117,7 +196,7 @@ describe('Production API — Worker listing', () => {
   })
 
   it('branchCode nélkül üres lista (nem hiba)', async () => {
-    const res = await fetch(`${API_BASE}/public/workers?companyCode=${COMPANY_CODE}`)
+    const res = await fetchWithTransportRetry(`${API_BASE}/public/workers?companyCode=${COMPANY_CODE}`)
     expect(res.status).toBe(200)
     const workers = await res.json()
     expect(Array.isArray(workers)).toBe(true)
@@ -125,7 +204,7 @@ describe('Production API — Worker listing', () => {
   })
 
   it('Ismeretlen branchCode üres lista (nem hiba)', async () => {
-    const res = await fetch(
+    const res = await fetchWithTransportRetry(
       `${API_BASE}/public/workers?companyCode=${COMPANY_CODE}&branchCode=FAKEBRANCH`,
     )
     expect(res.status).toBe(200)
@@ -152,7 +231,7 @@ describe('Production API — Worker first-time setup validation', () => {
     actual === expected || actual === 429
 
   it('Ismeretlen workerCode → 400 hibaválasz (vagy 429 rate-limit)', async () => {
-    const res = await fetch(`${API_BASE}/auth/first-time-worker-setup`, {
+    const res = await postOnce(`${API_BASE}/auth/first-time-worker-setup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -170,7 +249,7 @@ describe('Production API — Worker first-time setup validation', () => {
   })
 
   it('Ismeretlen companyCode → 400 + hibaüzenet (vagy 429)', async () => {
-    const res = await fetch(`${API_BASE}/auth/first-time-worker-setup`, {
+    const res = await postOnce(`${API_BASE}/auth/first-time-worker-setup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -186,7 +265,7 @@ describe('Production API — Worker first-time setup validation', () => {
   })
 
   it('Hiányzó newPassword → 400 (validációs hiba) (vagy 429)', async () => {
-    const res = await fetch(`${API_BASE}/auth/first-time-worker-setup`, {
+    const res = await postOnce(`${API_BASE}/auth/first-time-worker-setup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -203,14 +282,14 @@ describe('Production API — Worker first-time setup validation', () => {
 // 5. Teljes SetupWizard flow szimuláció (read-only)
 // ---------------------------------------------------------------------------
 describe('Production API — SetupWizard teljes flow szimuláció', () => {
-  it('A teljes flow lépései mind sikeresen hívhatók', async () => {
+  it('A teljes flow lépései mind sikeresen hívhatók', { timeout: 60_000 }, async () => {
     // 1. Bootstrap check
-    const bootstrapRes = await fetch(`${API_BASE}/auth/bootstrap-status`)
+    const bootstrapRes = await fetchWithTransportRetry(`${API_BASE}/auth/bootstrap-status`)
     expect(bootstrapRes.status).toBe(200)
     const bootstrap = (await bootstrapRes.json()) as { completed: boolean }
 
     // 2. Branch-ek lekérése
-    const branchesRes = await fetch(`${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`)
+    const branchesRes = await fetchWithTransportRetry(`${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`)
     expect(branchesRes.status).toBe(200)
     const branches = (await branchesRes.json()) as Array<{ code: string; name: string }>
     expect(branches.length).toBeGreaterThan(0)
@@ -219,7 +298,7 @@ describe('Production API — SetupWizard teljes flow szimuláció', () => {
     const selectedBranch = branches.find((b) => b.code === TEST_BRANCH_CODE)
     expect(selectedBranch).toBeDefined()
 
-    const workersRes = await fetch(
+    const workersRes = await fetchWithTransportRetry(
       `${API_BASE}/public/workers?companyCode=${COMPANY_CODE}&branchCode=${selectedBranch!.code}`,
     )
     expect(workersRes.status).toBe(200)
@@ -232,7 +311,7 @@ describe('Production API — SetupWizard teljes flow szimuláció', () => {
 
     // 5. First-time setup endpoint ELÉRHETŐSÉG ellenőrzés (nem valós jelszóváltás)
     // Szándékosan fake password + üres currentPassword — a válasz típust ellenőrizzük
-    const setupRes = await fetch(`${API_BASE}/auth/first-time-worker-setup`, {
+    const setupRes = await postOnce(`${API_BASE}/auth/first-time-worker-setup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
