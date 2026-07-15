@@ -12,9 +12,8 @@ import {
   type DailyBalanceGridRow,
 } from '../../services/api/index'
 
-// FK-047: Napi ellenőrző lista — valutánkénti mérleg-grid a daily_balance (FK-046) pénztári
-// adataiból. A BANK+/BANK- és az értéktári SZÁMZÁR még nem áll rendelkezésre (jövőbeli FK-k);
-// ezek az oszlopok „–" értékkel + szürke fejléccel jelennek meg (FR-3, FR-4).
+// FK-047/FK-052: Napi ellenőrző lista — valutánkénti mérleg-grid a daily_balance pénztári
+// és értéktári BANK+/BANK− adataiból. Az értéktári SZÁMZÁR továbbra is jövőbeli FK.
 
 // FR-3/FR-5: három egység-nézet — a Napi forgalom (DailyTurnoverPage) mintája.
 type UnitMode = 'company' | 'territory' | 'branch'
@@ -107,10 +106,22 @@ export default function DailyCheckPage() {
     }
   }, [date, unitMode, territoryId, branchId])
 
-  const fmt = (n: number | null | undefined) =>
-    n == null
-      ? '–'
-      : n.toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const fmt = (n: number | null | undefined) => {
+    if (n == null) return '–'
+    const formatted = n
+      .toLocaleString('hu-HU', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+        useGrouping: true,
+      })
+      .replace(/[\u00a0\u202f]/g, ' ')
+    const [rawIntegerPart, fractionPart] = formatted.split(',')
+    const integerPart = rawIntegerPart ?? ''
+    // A hu-HU CLDR egyes runtime-okban 4 számjegynél még nem csoportosít; a pénzügyi
+    // grid szerződése viszont következetesen szóközös ezres tagolást kér.
+    const groupedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+    return fractionPart == null ? groupedInteger : `${groupedInteger},${fractionPart}`
+  }
 
   // FR-2/FR-8: minden aktív valutára sor — a backend csak a daily_balance-ben létező valutákat
   // adja; a hiányzókat „–" (null-mezős) sorral pótoljuk, nem rejtjük és nem hibázunk.
@@ -225,13 +236,8 @@ export default function DailyCheckPage() {
                   <th className="text-right">SZÁMZÁR</th>
                   <th className="text-right">TÖBB</th>
                   <th className="text-right">HIÁNY</th>
-                  {/* FR-4: BANK+/- még nincs egységes backend forrás — szürke fejléc, „–" cellák */}
-                  <th className="text-right text-gray-400" title="Hamarosan elérhető">
-                    BANK+
-                  </th>
-                  <th className="text-right text-gray-400" title="Hamarosan elérhető">
-                    BANK-
-                  </th>
+                  <th className="text-right">BANK+</th>
+                  <th className="text-right">BANK-</th>
                 </tr>
               </thead>
               <tbody>
@@ -247,8 +253,8 @@ export default function DailyCheckPage() {
                     <td className="text-right font-mono">{fmt(r.actualStock)}</td>
                     <td className="text-right font-mono">{fmt(r.surplus)}</td>
                     <td className="text-right font-mono">{fmt(r.shortage)}</td>
-                    <td className="text-right font-mono text-gray-400">–</td>
-                    <td className="text-right font-mono text-gray-400">–</td>
+                    <td className="text-right font-mono">{fmt(r.bankPlus)}</td>
+                    <td className="text-right font-mono">{fmt(r.bankMinus)}</td>
                   </tr>
                 ))}
               </tbody>
