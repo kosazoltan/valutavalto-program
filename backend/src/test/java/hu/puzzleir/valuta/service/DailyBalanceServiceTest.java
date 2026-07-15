@@ -717,11 +717,13 @@ class DailyBalanceServiceTest {
         assertThat(eur.getBankOut()).isEqualByComparingTo("200");
         assertThat(eur.getCalculatedClosing()).isEqualByComparingTo("1300");
         verify(dailyBalanceRepository).save(eur);
-        verify(auditLogService).log(
+        verify(auditLogService).logForCompany(
                 eq("DAILY_BALANCE_BANK_ADJUSTMENT"),
                 argThat(message -> message.contains("\"KAT\":\"TX\"")
                         && message.contains("\"currencies\":1")),
-                eq(TEST_BRANCH_ID.toString()));
+                eq(TEST_BRANCH_ID.toString()),
+                eq(TEST_COMPANY_ID));
+        verify(auditLogService, never()).log(anyString(), anyString(), any(String.class));
     }
 
     @Test
@@ -864,11 +866,13 @@ class DailyBalanceServiceTest {
 
         assertThatThrownBy(() -> dailyBalanceService.recordVaultBankAdjustments(TEST_BRANCH_ID, TEST_DATE))
                 .isSameAs(failure);
-        verify(auditLogService).log(
+        verify(auditLogService).logInNewTransactionForCompany(
                 eq("DAILY_BALANCE_BANK_ADJUSTMENT_FAILED"),
                 argThat(message -> message.contains("\"KAT\":\"TX\"")
                         && message.contains("RuntimeException")),
-                eq(TEST_BRANCH_ID.toString()));
+                eq(TEST_BRANCH_ID.toString()),
+                eq(TEST_COMPANY_ID));
+        verify(auditLogService, never()).log(anyString(), anyString(), any(String.class));
         verify(dailyBalanceRepository, never()).save(any());
     }
 }

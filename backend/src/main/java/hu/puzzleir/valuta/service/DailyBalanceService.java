@@ -10,6 +10,7 @@ import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -519,6 +520,7 @@ public class DailyBalanceService {
      * cégéből származik (scheduler-safe). Lezárt sort nem ír. Hiba esetén TX-audit
      * készül és a kivétel továbbmegy a zárási folyamat saját warning-kezeléséhez.
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public void recordVaultBankAdjustments(UUID branchId, LocalDate date) {
         Branch branch = branchRepository.findById(branchId).orElse(null);
         if (branch == null) {
@@ -584,20 +586,22 @@ public class DailyBalanceService {
                 processed++;
             }
 
-            auditLogService.log(
+            auditLogService.logForCompany(
                 "DAILY_BALANCE_BANK_ADJUSTMENT",
                 String.format("{\"KAT\":\"TX\",\"date\":\"%s\",\"branch_id\":\"%s\",\"currencies\":%d}",
                     date, branchId, processed),
-                branchId.toString()
+                branchId.toString(),
+                companyId
             );
             log.info("FK-052 BANK+/BANK− rögzítve: branchId={}, date={}, valuták={}",
                 branchId, date, processed);
         } catch (RuntimeException e) {
-            auditLogService.log(
+            auditLogService.logInNewTransactionForCompany(
                 "DAILY_BALANCE_BANK_ADJUSTMENT_FAILED",
                 String.format("{\"KAT\":\"TX\",\"date\":\"%s\",\"branch_id\":\"%s\",\"error\":\"%s\"}",
                     date, branchId, e.getClass().getSimpleName()),
-                branchId.toString()
+                branchId.toString(),
+                companyId
             );
             throw e;
         }

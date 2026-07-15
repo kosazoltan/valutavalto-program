@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -175,6 +176,30 @@ class DailyBalanceGridControllerSecurityTest {
                         && message.contains(DATE.toString())
                         && message.contains(branchId.toString())
                         && message.contains("\"vaultTerritoryId\":\"2\"")),
+                isNull(String.class));
+    }
+
+    @Test
+    @WithMockUser(roles = {"FOERTEKTAR"})
+    @DisplayName("FK-052: hiányzó branch/territory scope az audit JSON-ban valódi null")
+    void grid_read_nullScopeUsesJsonNullInsteadOfQuotedNull() {
+        UUID companyId = UUID.randomUUID();
+        AbstractAuthenticationToken authentication =
+                (AbstractAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        authentication.setDetails(new WorkerAuthenticationDetails(
+                1L, companyId, UUID.randomUUID(), "FOERTEKTAR"));
+        when(service.getGrid(companyId, DATE, null, null)).thenReturn(List.of());
+
+        controller.getGrid(DATE, null, null);
+
+        verify(auditLogService).log(
+                eq("DAILY_BALANCE_GRID_READ"),
+                argThat(message -> {
+                    assertThat(message).isEqualTo(
+                            "{\"KAT\":\"EXT\",\"date\":\"2026-07-01\","
+                                    + "\"branchId\":null,\"vaultTerritoryId\":null}");
+                    return true;
+                }),
                 isNull(String.class));
     }
 }

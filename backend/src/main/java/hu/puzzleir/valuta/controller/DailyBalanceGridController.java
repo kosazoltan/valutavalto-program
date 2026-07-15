@@ -52,9 +52,13 @@ public class DailyBalanceGridController {
                 companyId, date, branchId, vaultTerritoryId);
         auditLogService.log(
                 "DAILY_BALANCE_GRID_READ",
-                String.format("{\"KAT\":\"EXT\",\"date\":\"%s\",\"branchId\":\"%s\",\"vaultTerritoryId\":\"%s\"}",
-                        date, branchId, vaultTerritoryId),
+                String.format("{\"KAT\":\"EXT\",\"date\":\"%s\",\"branchId\":%s,\"vaultTerritoryId\":%s}",
+                        date, jsonStringOrNull(branchId), jsonStringOrNull(vaultTerritoryId)),
                 (String) null);
         return ResponseEntity.ok(rows);
+    }
+
+    private static String jsonStringOrNull(Object value) {
+        return value == null ? "null" : "\"" + value + "\"";
     }
 }

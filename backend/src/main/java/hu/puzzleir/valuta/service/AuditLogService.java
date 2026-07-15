@@ -82,6 +82,28 @@ public class AuditLogService {
     }
 
     /**
+     * Explicit tenanthez tartozó, a hívó tranzakciójától független audit-bejegyzés.
+     * Pénzügyi művelet rollbackje mellett is megőrzendő hiba-audithoz használható.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
+    public void logInNewTransactionForCompany(
+            String action, String message, String entityId, UUID companyId) {
+        if (companyId == null) {
+            throw new IllegalArgumentException(
+                    "logInNewTransactionForCompany: companyId nem lehet null");
+        }
+        AuditLog entry = AuditLog.builder()
+                .companyId(companyId)
+                .action(action)
+                .entityType("SYSTEM")
+                .entityId(entityId)
+                .changes(message)
+                .build();
+        applyHashChain(entry);
+        auditLogRepository.save(entry);
+    }
+
+    /**
      * Egyszerűsített audit log — action + message + entityId (Long).
      */
     @Transactional(rollbackFor = Exception.class)
