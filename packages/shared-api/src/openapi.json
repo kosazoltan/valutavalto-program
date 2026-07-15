@@ -7,7 +7,7 @@
       "name": "PuzzleIR",
       "email": "info@puzzleir.hu"
     },
-    "version": "2.28.34"
+    "version": "2.28.38"
   },
   "servers": [
     {
@@ -6661,6 +6661,34 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ShipmentRequestResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shipments/handling-fee": {
+      "post": {
+        "tags": ["shipment-controller"],
+        "operationId": "createHandlingFee",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShipmentHandlingFeeCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentHandlingFeeCreateResponseDto"
                 }
               }
             }
@@ -21221,6 +21249,35 @@
                   "items": {
                     "$ref": "#/components/schemas/StampBatchDto"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shipments/{id}/handling-fee": {
+      "get": {
+        "tags": ["shipment-controller"],
+        "operationId": "getHandlingFee",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentHandlingFeeDto"
                 }
               }
             }
@@ -39105,7 +39162,7 @@
             "type": "integer",
             "format": "int64"
           },
-          "companyId": {
+          "branchId": {
             "type": "string",
             "format": "uuid"
           },
@@ -39113,7 +39170,7 @@
             "type": "integer",
             "format": "int32"
           },
-          "branchId": {
+          "companyId": {
             "type": "string",
             "format": "uuid"
           }
@@ -41047,6 +41104,98 @@
           },
           "assignedBy": {
             "type": "string"
+          }
+        }
+      },
+      "ShipmentHandlingFeeCreateRequest": {
+        "type": "object",
+        "properties": {
+          "fromBranchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "toBranchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "hufAmount": {
+            "type": "number",
+            "minimum": 1
+          },
+          "deliveryDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "carrierName": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0
+          },
+          "sealNumber": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0,
+            "pattern": "^[A-Za-z0-9\\-/]+$"
+          }
+        },
+        "required": ["carrierName", "fromBranchId", "hufAmount", "sealNumber", "toBranchId"]
+      },
+      "ShipmentHandlingFeeCreateResponseDto": {
+        "type": "object",
+        "properties": {
+          "shipment": {
+            "$ref": "#/components/schemas/ShipmentRequestResponseDto"
+          },
+          "handlingFee": {
+            "$ref": "#/components/schemas/ShipmentHandlingFeeDto"
+          }
+        }
+      },
+      "ShipmentHandlingFeeDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "shipmentRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceBranchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "hufAmount": {
+            "type": "number"
+          },
+          "calculatedFee": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "SUBMITTED",
+              "APPROVED",
+              "IN_TRANSIT",
+              "DELIVERED",
+              "CANCELLED",
+              "REJECTED"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "approvedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -49052,6 +49201,9 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
+          "paged": {
+            "type": "boolean"
+          },
           "pageSize": {
             "type": "integer",
             "format": "int32"
@@ -49059,9 +49211,6 @@
           "pageNumber": {
             "type": "integer",
             "format": "int32"
-          },
-          "paged": {
-            "type": "boolean"
           },
           "unpaged": {
             "type": "boolean"
@@ -50645,13 +50794,13 @@
             "type": "string",
             "format": "date-time"
           },
+          "highBalance": {
+            "type": "boolean"
+          },
           "dailyChange": {
             "type": "number"
           },
           "lowBalance": {
-            "type": "boolean"
-          },
-          "highBalance": {
             "type": "boolean"
           }
         }
@@ -51415,6 +51564,12 @@
             "type": "number"
           },
           "actualStock": {
+            "type": "number"
+          },
+          "bankPlus": {
+            "type": "number"
+          },
+          "bankMinus": {
             "type": "number"
           },
           "surplus": {
@@ -55183,10 +55338,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "lowBalance": {
+          "highBalance": {
             "type": "boolean"
           },
-          "highBalance": {
+          "lowBalance": {
             "type": "boolean"
           }
         }

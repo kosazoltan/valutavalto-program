@@ -2328,6 +2328,22 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/shipments/handling-fee': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post: operations['createHandlingFee']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/sessions/open': {
     parameters: {
       query?: never
@@ -8878,6 +8894,22 @@ export interface paths {
       cookie?: never
     }
     get: operations['getInventory']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/shipments/{id}/handling-fee': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['getHandlingFee']
     put?: never
     post?: never
     delete?: never
@@ -17228,11 +17260,11 @@ export interface components {
       /** Format: int64 */
       version?: number
       /** Format: uuid */
-      companyId?: string
+      branchId?: string
       /** Format: int32 */
       territoryId?: number
       /** Format: uuid */
-      branchId?: string
+      companyId?: string
     }
     CountItemRequest: {
       /** Format: int32 */
@@ -17896,6 +17928,39 @@ export interface components {
       /** Format: date-time */
       assignedAt?: string
       assignedBy?: string
+    }
+    ShipmentHandlingFeeCreateRequest: {
+      /** Format: uuid */
+      fromBranchId: string
+      /** Format: uuid */
+      toBranchId: string
+      hufAmount: number
+      /** Format: date */
+      deliveryDate?: string
+      notes?: string
+      carrierName: string
+      sealNumber: string
+    }
+    ShipmentHandlingFeeCreateResponseDto: {
+      shipment?: components['schemas']['ShipmentRequestResponseDto']
+      handlingFee?: components['schemas']['ShipmentHandlingFeeDto']
+    }
+    ShipmentHandlingFeeDto: {
+      /** Format: uuid */
+      id?: string
+      /** Format: uuid */
+      shipmentRequestId?: string
+      /** Format: uuid */
+      sourceBranchId?: string
+      hufAmount?: number
+      calculatedFee?: number
+      /** @enum {string} */
+      status?:
+        'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED' | 'REJECTED'
+      /** Format: date-time */
+      createdAt?: string
+      /** Format: date-time */
+      approvedAt?: string
     }
     SessionOpenRequestDto: {
       /** Format: int64 */
@@ -20913,11 +20978,11 @@ export interface components {
       /** Format: int64 */
       offset?: number
       sort?: components['schemas']['SortObject']
+      paged?: boolean
       /** Format: int32 */
       pageSize?: number
       /** Format: int32 */
       pageNumber?: number
-      paged?: boolean
       unpaged?: boolean
     }
     SortObject: {
@@ -21532,9 +21597,9 @@ export interface components {
       version?: number
       /** Format: date-time */
       updatedAt?: string
+      highBalance?: boolean
       dailyChange?: number
       lowBalance?: boolean
-      highBalance?: boolean
     }
     DailyClosingReport: {
       /** Format: date */
@@ -21813,6 +21878,8 @@ export interface components {
       transfersOut?: number
       closingBalance?: number
       actualStock?: number
+      bankPlus?: number
+      bankMinus?: number
       surplus?: number
       shortage?: number
     }
@@ -23265,8 +23332,8 @@ export interface components {
       maxBalance?: number
       /** Format: date-time */
       lastTransactionAt?: string
-      lowBalance?: boolean
       highBalance?: boolean
+      lowBalance?: boolean
     }
     DetailedCashPosition: {
       /** Format: uuid */
@@ -28652,6 +28719,30 @@ export interface operations {
         }
         content: {
           '*/*': components['schemas']['ShipmentRequestResponseDto']
+        }
+      }
+    }
+  }
+  createHandlingFee: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ShipmentHandlingFeeCreateRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['ShipmentHandlingFeeCreateResponseDto']
         }
       }
     }
@@ -39609,6 +39700,28 @@ export interface operations {
         }
         content: {
           '*/*': components['schemas']['StampBatchDto'][]
+        }
+      }
+    }
+  }
+  getHandlingFee: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['ShipmentHandlingFeeDto']
         }
       }
     }
