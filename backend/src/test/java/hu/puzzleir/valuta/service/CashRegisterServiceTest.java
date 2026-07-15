@@ -64,6 +64,7 @@ class CashRegisterServiceTest {
 
     @BeforeEach
     void setUp() {
+        SecurityContextHolder.clearContext();
         lenient().when(systemParameterService.getValue("nav.com-port")).thenReturn("COM1");
         lenient().when(navIntegrationService.sendQrCode(anyString(), anyString())).thenReturn(true);
         lenient().when(navIntegrationService.sendTransaction(anyLong(), anyString())).thenReturn(
@@ -233,6 +234,39 @@ class CashRegisterServiceTest {
         assertThat(result.getCurrencyCode()).isEqualTo("EUR");
         assertThat(result.getAmount()).isEqualByComparingTo(new BigDecimal("500.00"));
         assertThat(result.getAmountHuf()).isEqualByComparingTo(new BigDecimal("195000"));
+        verify(branchRepository).findById(BRANCH_ID);
+        verify(branchRepository, never()).findByIdAndCompanyId(any(), any());
+    }
+
+    @Test
+    @DisplayName("printReceipt → bejelentkezett kontextusban company szerint scope-olt branch lookupot használ")
+    void printReceiptAuthenticatedScopesBranchByCompany() {
+        Branch branch = createBranch();
+        UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken("W0001", null, List.of());
+        auth.setDetails(new WorkerAuthenticationDetails(1L, COMPANY_ID, BRANCH_ID, "SUPERVISOR"));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Optional.of(branch));
+        when(cashRegisterEventRepository.save(any(CashRegisterEvent.class))).thenAnswer(inv -> {
+            CashRegisterEvent e = inv.getArgument(0);
+            if (e.getId() == null) e.setId(UUID.randomUUID());
+            return e;
+        });
+
+        CashRegisterEventDto result = service.printReceipt(CashRegisterReceiptRequest.builder()
+                .branchId(BRANCH_ID)
+                .receiptNumber("R-2026-0001")
+                .amount(new BigDecimal("500.00"))
+                .currencyCode("EUR")
+                .amountHuf(new BigDecimal("195000"))
+                .build());
+
+        assertThat(result).isNotNull();
+        assertThat(result.getBranchId()).isEqualTo(BRANCH_ID);
+        assertThat(result.getEventType()).isEqualTo("RECEIPT");
+        verify(branchRepository).findByIdAndCompanyId(BRANCH_ID, COMPANY_ID);
+        verify(branchRepository, never()).findById(BRANCH_ID);
     }
 
     @Test
