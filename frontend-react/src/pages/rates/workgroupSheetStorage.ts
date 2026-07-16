@@ -16,9 +16,11 @@ import {
   type Sheet0Values,
   type WgValues,
 } from './workgroupSheetFormula'
+import { FORMULA_STORAGE_KEY } from './mainSheetFormula'
 
 /** A 0-s lap (MainRateSheetPage) localStorage kulcsa — A–I oszlop-források. */
 const SHEET0_STORAGE_KEY = 'arfolyamkeszito.mainSheet.v1'
+const MAIN_SHEET_LOCAL_EDITS_KEY = 'arfolyamkeszito.mainSheet.localEdits.v1'
 /** Csoportonkénti J–S érték-pillanatkép kulcs (a `#NN` kereszt-hivatkozásokhoz). */
 const WORKGROUP_VALUES_STORAGE_KEY = 'arfolyamkeszito.workgroupSheet.values.v1'
 const RATE_MAKER_STORAGE_PREFIXES = [
@@ -50,10 +52,137 @@ export function exportRateMakerSheetSnapshot(
   return { version: 1, savedAt: new Date().toISOString(), entries }
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+export function computeProtectedMainSheetCells(
+  localEditsJson: string | null,
+  savedAt: unknown,
+): Set<string> {
+  const protectedCells = new Set<string>()
+  if (!localEditsJson) return protectedCells
+
+  try {
+    const markers: unknown = JSON.parse(localEditsJson)
+    if (!isPlainObject(markers)) return protectedCells
+
+    const savedAtTs = typeof savedAt === 'string' ? Date.parse(savedAt) : Number.NaN
+    for (const [key, markerTs] of Object.entries(markers)) {
+      if (typeof markerTs !== 'number' || !Number.isFinite(markerTs)) continue
+      if (!Number.isFinite(savedAtTs) || markerTs > savedAtTs) protectedCells.add(key)
+    }
+  } catch {
+    // Hibás marker-store nem véd cellát, de az import ettől még nem írhatja felül a store-t.
+  }
+  return protectedCells
+}
+
+export function mergeMainSheetRowsJson(
+  serverJson: string,
+  localJson: string | null,
+  protectedCells: Set<string>,
+): string | null {
+  let serverRows: unknown
+  try {
+    serverRows = JSON.parse(serverJson)
+  } catch {
+    return null
+  }
+  if (!Array.isArray(serverRows)) return null
+  if (protectedCells.size === 0) return serverJson
+
+  let localRows: unknown
+  try {
+    localRows = localJson ? JSON.parse(localJson) : null
+  } catch {
+    return serverJson
+  }
+  if (!Array.isArray(localRows)) return serverJson
+
+  const localByCode = new Map<string, Record<string, unknown>>()
+  for (const row of localRows) {
+    if (isPlainObject(row) && typeof row.currency === 'string') {
+      localByCode.set(row.currency, row)
+    }
+  }
+
+  const serverCurrencies = new Set<string>()
+  const mergedRows = serverRows.map((serverRow) => {
+    if (!isPlainObject(serverRow) || typeof serverRow.currency !== 'string') return serverRow
+    const currency = serverRow.currency
+    serverCurrencies.add(currency)
+    const localRow = localByCode.get(currency)
+    if (!localRow) return serverRow
+
+    let mergedRow = serverRow
+    const prefix = `${currency}.`
+    for (const cellKey of protectedCells) {
+      if (!cellKey.startsWith(prefix)) continue
+      const field = cellKey.slice(prefix.length)
+      if (!field || typeof localRow[field] !== 'number') continue
+      if (mergedRow === serverRow) mergedRow = { ...serverRow }
+      mergedRow[field] = localRow[field]
+      if (field === 'settlement' && Object.hasOwn(localRow, 'settlementManual')) {
+        mergedRow.settlementManual = localRow.settlementManual
+      }
+    }
+    return mergedRow
+  })
+
+  for (const [currency, localRow] of localByCode) {
+    if (serverCurrencies.has(currency)) continue
+    const prefix = `${currency}.`
+    const hasProtectedNumericCell = [...protectedCells].some((cellKey) => {
+      if (!cellKey.startsWith(prefix)) return false
+      const field = cellKey.slice(prefix.length)
+      return field.length > 0 && typeof localRow[field] === 'number'
+    })
+    if (hasProtectedNumericCell) mergedRows.push(localRow)
+  }
+
+  return JSON.stringify(mergedRows)
+}
+
+export function mergeMainSheetFormulasJson(
+  serverJson: string,
+  localJson: string | null,
+  protectedCells: Set<string>,
+): string | null {
+  let serverFormulas: unknown
+  try {
+    serverFormulas = JSON.parse(serverJson)
+  } catch {
+    return null
+  }
+  if (!isPlainObject(serverFormulas)) return null
+  if (protectedCells.size === 0) return serverJson
+
+  let localFormulas: Record<string, unknown> = {}
+  try {
+    const parsedLocal: unknown = localJson ? JSON.parse(localJson) : {}
+    if (isPlainObject(parsedLocal)) localFormulas = parsedLocal
+  } catch {
+    // Hibás lokális formula-store esetén nincs megőrizhető lokális képlet.
+  }
+
+  const merged: Record<string, unknown> = { ...serverFormulas }
+  for (const cellKey of protectedCells) {
+    if (Object.hasOwn(localFormulas, cellKey) && typeof localFormulas[cellKey] === 'string') {
+      merged[cellKey] = localFormulas[cellKey]
+    } else {
+      delete merged[cellKey]
+    }
+  }
+  return JSON.stringify(merged)
+}
+
 export function importRateMakerSheetSnapshot(
   sheetJson: string,
   storage: Storage = localStorage,
+  localBaseline?: RateMakerSheetSnapshot,
 ): number {
+  let imported = 0
   try {
     const parsed = JSON.parse(sheetJson) as Partial<RateMakerSheetSnapshot>
     if (
@@ -64,15 +193,29 @@ export function importRateMakerSheetSnapshot(
     ) {
       return 0
     }
-    let imported = 0
+    const baseline = localBaseline ?? exportRateMakerSheetSnapshot(storage)
+    const protectedCells = computeProtectedMainSheetCells(
+      baseline.entries[MAIN_SHEET_LOCAL_EDITS_KEY] ?? null,
+      parsed.savedAt,
+    )
     for (const [key, value] of Object.entries(parsed.entries)) {
       if (!isRateMakerStorageKey(key) || typeof value !== 'string') continue
-      storage.setItem(key, value)
+      if (key === MAIN_SHEET_LOCAL_EDITS_KEY) continue
+
+      let toWrite: string | null = value
+      if (key === SHEET0_STORAGE_KEY) {
+        toWrite = mergeMainSheetRowsJson(value, baseline.entries[key] ?? null, protectedCells)
+      } else if (key === FORMULA_STORAGE_KEY) {
+        toWrite = mergeMainSheetFormulasJson(value, baseline.entries[key] ?? null, protectedCells)
+      }
+      if (toWrite === null) continue
+
+      storage.setItem(key, toWrite)
       imported += 1
     }
     return imported
   } catch {
-    return 0
+    return imported
   }
 }
 
