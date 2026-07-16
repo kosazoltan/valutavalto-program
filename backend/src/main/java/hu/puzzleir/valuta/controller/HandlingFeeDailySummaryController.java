@@ -34,7 +34,7 @@ public class HandlingFeeDailySummaryController {
 
     @GetMapping("/daily-summary")
     public ResponseEntity<HandlingFeeDailySummaryDto> dailySummary(
-            @RequestParam UUID branchId,
+            @RequestParam(required = false) UUID branchId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return ResponseEntity.ok(service.getDailySummary(branchId, startDate, endDate));
@@ -42,7 +42,7 @@ public class HandlingFeeDailySummaryController {
 
     @GetMapping("/daily-summary/csv")
     public ResponseEntity<byte[]> dailySummaryCsv(
-            @RequestParam UUID branchId,
+            @RequestParam(required = false) UUID branchId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         HandlingFeeDailySummaryDto report = service.getDailySummary(branchId, startDate, endDate);

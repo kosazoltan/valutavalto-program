@@ -1561,11 +1561,12 @@
     "db": "db)",
     "benyujtva": "Benyújtva:",
     "handlingFeeDecade": {
-      "title": "Kezelési díj — dekád riport",
+      "title": "Kezelési díj — készpénz riport",
       "from": "Tól",
       "to": "Ig",
       "branch": "Iroda",
       "branchPlaceholder": "— Válasszon irodát —",
+      "allBranchesOption": "— Minden iroda —",
       "loading": "Betöltés...",
       "submit": "Lekérdezés",
       "csvTitle": "CSV export (kiválasztott iroda)",

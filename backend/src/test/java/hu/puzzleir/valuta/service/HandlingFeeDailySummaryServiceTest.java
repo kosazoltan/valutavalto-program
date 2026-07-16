@@ -31,6 +31,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -44,6 +45,7 @@ import static org.mockito.Mockito.when;
 class HandlingFeeDailySummaryServiceTest {
 
     private static final UUID BRANCH_ID = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    private static final UUID COMPANY_ID = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
     private static final LocalDate D1 = LocalDate.of(2026, 7, 1);
     private static final LocalDate D2 = LocalDate.of(2026, 7, 2);
 
@@ -87,6 +89,37 @@ class HandlingFeeDailySummaryServiceTest {
         assertThat(result.getRows().get(1).getSellFee()).isEqualByComparingTo("40");
         assertThat(result.getTotalBuyFee()).isEqualByComparingTo("150");
         assertThat(result.getTotalSellFee()).isEqualByComparingTo("110");
+    }
+
+    @Test
+    void companyWideSummaryUsesCompanyScopedQueryAndSkipsBranchLookup() {
+        authenticate("FOERTEKTAR");
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(transactionRepository.findDailyCashHandlingFeeByTypeForCompany(COMPANY_ID, D1, D2))
+                    .thenReturn(List.of(
+                            new Object[]{D1, TransactionType.BUY, new BigDecimal("205")},
+                            new Object[]{D1, TransactionType.SELL, new BigDecimal("70")},
+                            new Object[]{D2, TransactionType.SELL, new BigDecimal("40")}));
+
+            var result = service.getDailySummary(null, D1, D2);
+
+            assertThat(result.getStartDate()).isEqualTo(D1);
+            assertThat(result.getEndDate()).isEqualTo(D2);
+            assertThat(result.getRows()).hasSize(2);
+            assertThat(result.getRows().get(0).getDate()).isEqualTo(D1);
+            assertThat(result.getRows().get(0).getBuyFee()).isEqualByComparingTo("205");
+            assertThat(result.getRows().get(0).getSellFee()).isEqualByComparingTo("70");
+            assertThat(result.getRows().get(1).getDate()).isEqualTo(D2);
+            assertThat(result.getRows().get(1).getBuyFee()).isEqualByComparingTo("0");
+            assertThat(result.getRows().get(1).getSellFee()).isEqualByComparingTo("40");
+            assertThat(result.getTotalBuyFee()).isEqualByComparingTo("205");
+            assertThat(result.getTotalSellFee()).isEqualByComparingTo("110");
+        }
+
+        verify(branchService, never()).findById(any());
+        verify(transactionRepository, never()).findDailyCashHandlingFeeByType(any(), any(), any());
+        verify(transactionRepository).findDailyCashHandlingFeeByTypeForCompany(COMPANY_ID, D1, D2);
     }
 
     @ParameterizedTest(name = "engedélyezett szerep: {0}")
@@ -140,6 +173,24 @@ class HandlingFeeDailySummaryServiceTest {
     }
 
     @Test
+    void companyWideDeniedRoleAuditsWithNullEntityId() {
+        authenticate("PENZTAR");
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
+
+            assertThatThrownBy(() -> service.getDailySummary(null, D1, D2))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageStartingWith("VV-AUTH-005");
+        }
+
+        verify(auditLogService).logInNewTransaction(
+                eq("ACCESS_DENIED"), eq("HANDLING_FEE_DAILY_SUMMARY"), isNull(),
+                eq("42"), isNull(), isNull(), isNull(), contains("\"error_code\":\"VV-AUTH-005\""));
+        verify(transactionRepository, never()).findDailyCashHandlingFeeByType(any(), any(), any());
+        verify(transactionRepository, never()).findDailyCashHandlingFeeByTypeForCompany(any(), any(), any());
+    }
+
+    @Test
     void propagatesCrossTenantNotFoundBeforeRepositoryAccess() {
         authenticate("FOERTEKTAR");
         when(branchService.findById(BRANCH_ID))
@@ -161,6 +212,19 @@ class HandlingFeeDailySummaryServiceTest {
 
         verify(branchService, never()).findById(BRANCH_ID);
         verify(transactionRepository, never()).findDailyCashHandlingFeeByType(BRANCH_ID, D2, D1);
+    }
+
+    @Test
+    void companyWideRejectsReversedDateRange() {
+        authenticate("FOERTEKTAR");
+
+        assertThatThrownBy(() -> service.getDailySummary(null, D2, D1))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("A kezdő dátum nem lehet a záró dátum után.");
+
+        verify(branchService, never()).findById(any());
+        verify(transactionRepository, never()).findDailyCashHandlingFeeByType(any(), any(), any());
+        verify(transactionRepository, never()).findDailyCashHandlingFeeByTypeForCompany(any(), any(), any());
     }
 
     @Test
@@ -201,6 +265,22 @@ class HandlingFeeDailySummaryServiceTest {
     }
 
     @Test
+    void controllerDelegatesJsonSummaryRequestWithoutBranchId() {
+        HandlingFeeDailySummaryService summaryService = mock(HandlingFeeDailySummaryService.class);
+        ReportExportService exportService = mock(ReportExportService.class);
+        HandlingFeeDailySummaryDto report = HandlingFeeDailySummaryDto.builder().build();
+        when(summaryService.getDailySummary(null, D1, D2)).thenReturn(report);
+        HandlingFeeDailySummaryController controller =
+                new HandlingFeeDailySummaryController(summaryService, exportService);
+
+        var response = controller.dailySummary(null, D1, D2);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isSameAs(report);
+        verify(summaryService).getDailySummary(null, D1, D2);
+    }
+
+    @Test
     void controllerCsvResponseHasAttachmentNameAndUtf8BomPrefix() {
         HandlingFeeDailySummaryService summaryService = mock(HandlingFeeDailySummaryService.class);
         ReportExportService exportService = mock(ReportExportService.class);
@@ -218,6 +298,25 @@ class HandlingFeeDailySummaryServiceTest {
                 .contains("kezelesi-dij-napi-2026-07-01-2026-07-02.csv");
         assertThat(response.getBody()).startsWith((byte) 0xEF, (byte) 0xBB, (byte) 0xBF);
         verify(summaryService).getDailySummary(BRANCH_ID, D1, D2);
+        verify(exportService).exportHandlingFeeDailySummaryCsv(report);
+    }
+
+    @Test
+    void controllerDelegatesCsvSummaryRequestWithoutBranchId() {
+        HandlingFeeDailySummaryService summaryService = mock(HandlingFeeDailySummaryService.class);
+        ReportExportService exportService = mock(ReportExportService.class);
+        HandlingFeeDailySummaryDto report = HandlingFeeDailySummaryDto.builder().build();
+        when(summaryService.getDailySummary(null, D1, D2)).thenReturn(report);
+        when(exportService.getBom()).thenReturn(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
+        when(exportService.exportHandlingFeeDailySummaryCsv(report)).thenReturn("csv");
+        HandlingFeeDailySummaryController controller =
+                new HandlingFeeDailySummaryController(summaryService, exportService);
+
+        var response = controller.dailySummaryCsv(null, D1, D2);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).startsWith((byte) 0xEF, (byte) 0xBB, (byte) 0xBF);
+        verify(summaryService).getDailySummary(null, D1, D2);
         verify(exportService).exportHandlingFeeDailySummaryCsv(report);
     }
 

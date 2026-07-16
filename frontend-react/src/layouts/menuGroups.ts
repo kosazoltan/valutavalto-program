@@ -261,7 +261,7 @@ export const menuGroups: MenuGroup[] = [
       { path: '/reports', label: 'Riportok', icon: FileText },
       { path: '/reports/extended', label: 'Kiterjesztett riportok', icon: FileText },
       { path: '/reports/mnb', label: 'MNB riportok', icon: FileText },
-      { path: '/reports/handling-fee-decade', label: 'Kezelési díj — dekád', icon: FileText },
+      { path: '/reports/handling-fee-decade', label: 'Kezelési díj — készpénz', icon: FileText },
       { path: '/reports/bank-transactions', label: 'Banki tranzakciók', icon: FileText },
       { path: '/reports/cashier-turnover', label: 'Pénztáros forgalom', icon: FileText },
       { path: '/reports/recurring-customers', label: 'Visszatérő ügyfél (AML)', icon: FileText },

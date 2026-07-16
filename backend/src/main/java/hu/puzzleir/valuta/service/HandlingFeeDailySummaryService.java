@@ -51,10 +51,18 @@ public class HandlingFeeDailySummaryService {
         if (startDate.isAfter(endDate)) {
             throw new ValidationException("A kezdő dátum nem lehet a záró dátum után.");
         }
-        branchService.findById(branchId);
 
-        List<Object[]> sourceRows = transactionRepository
-                .findDailyCashHandlingFeeByType(branchId, startDate, endDate);
+        List<Object[]> sourceRows;
+        if (branchId != null) {
+            branchService.findById(branchId);
+            sourceRows = transactionRepository
+                    .findDailyCashHandlingFeeByType(branchId, startDate, endDate);
+        } else {
+            // FK-055: cég-szintű összesítés; a companyId a SecurityContext-ből jön, nem kliens-input.
+            UUID companyId = SecurityUtils.getCurrentCompanyId();
+            sourceRows = transactionRepository
+                    .findDailyCashHandlingFeeByTypeForCompany(companyId, startDate, endDate);
+        }
         Map<LocalDate, HandlingFeeDailySummaryDto.DailyRow> rowsByDate = new LinkedHashMap<>();
 
         for (Object[] sourceRow : sourceRows) {
