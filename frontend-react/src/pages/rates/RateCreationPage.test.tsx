@@ -1,0 +1,163 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const apiMocks = vi.hoisted(() => ({
+  getLocalRateMakerBootstrap: vi.fn(),
+  getLocalRateMakerSheet: vi.fn(),
+  putLocalRateMakerSheet: vi.fn(),
+}))
+
+vi.mock('../../services/api/index', () => ({
+  rateCreationApi: {
+    getLocalRateMakerBootstrap: apiMocks.getLocalRateMakerBootstrap,
+    getLocalRateMakerSheet: apiMocks.getLocalRateMakerSheet,
+    putLocalRateMakerSheet: apiMocks.putLocalRateMakerSheet,
+    getOverview: vi.fn(),
+    getWorkgroupDetails: vi.fn(),
+    prepareRateCreation: vi.fn(),
+    prepareAllCurrencies: vi.fn(),
+    updateWorkgroupLimits: vi.fn(),
+    getBranches: vi.fn(),
+    updateWorkgroupBranches: vi.fn(),
+  },
+  rateWorkgroupApi: {
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+  },
+}))
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}))
+vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }))
+vi.mock('../../stores/authStore', () => ({
+  useAuthStore: Object.assign(
+    (selector: (state: unknown) => unknown) =>
+      selector({ hasRole: vi.fn(() => true), hasCanonicalRole: vi.fn(() => true) }),
+    { getState: () => ({ logout: vi.fn() }) },
+  ),
+}))
+vi.mock('../../components/ui/toaster', () => ({
+  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
+}))
+vi.mock('../../utils/logger', () => ({
+  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
+}))
+vi.mock('./publishAllWorkgroups', () => ({
+  publishAllWorkgroups: vi.fn(),
+  summarizePublishAll: vi.fn(),
+}))
+vi.mock('./components/RateGrid', () => ({
+  default: ({
+    onCommitCell,
+    rates = [],
+    validationErrors = {},
+  }: {
+    onCommitCell?: (index: number, field: 'buyRate', raw: string) => void
+    rates?: Array<{ buyRate: string }>
+    validationErrors?: Record<number, string[]>
+  }) => (
+    <div data-testid="rate-grid-stub">
+      <button type="button" onClick={() => onCommitCell?.(0, 'buyRate', '405')}>
+        EUR vétel commit
+      </button>
+      <div data-testid="current-buy">{rates[0]?.buyRate}</div>
+      <div data-testid="validation-errors">{JSON.stringify(validationErrors)}</div>
+    </div>
+  ),
+}))
+vi.mock('./components/BranchPickerModal', () => ({ default: () => null }))
+
+const overview = {
+  generatedAt: '2026-07-16T10:00:00.000Z',
+  currencies: [
+    {
+      currencyId: 1,
+      currencyCode: 'EUR',
+      currencyName: 'Euró',
+      displayOrder: 1,
+      currentBuyRate: 395,
+      currentSellRate: 420,
+      officialRate: 400,
+      limit1Amount: 50000,
+      limit1BuyRate: null,
+      limit1SellRate: null,
+      limit2Amount: 300000,
+      limit2BuyRate: null,
+      limit2SellRate: null,
+      limit3Amount: 1000000,
+      limit3BuyRate: null,
+      limit3SellRate: null,
+      buyMarginPercent: null,
+      sellMarginPercent: null,
+      spreadPercent: null,
+      middleRate: 400,
+      lastUpdated: null,
+      hasRate: true,
+    },
+  ],
+}
+
+function workgroup(protectionEnabled: boolean) {
+  return {
+    id: 'wg-1',
+    code: 'WG01',
+    name: 'Budapest központ',
+    legacyGroupNumber: 1,
+    active: true,
+    branches: [],
+    limit1Boundary: 50000,
+    limit2Boundary: 300000,
+    limit3Boundary: 1000000,
+    tileColor: 'sky',
+    protectionEnabled,
+  }
+}
+
+async function renderEditor(protectionEnabled: boolean) {
+  apiMocks.getLocalRateMakerBootstrap.mockResolvedValue({
+    overview,
+    workgroups: [workgroup(protectionEnabled)],
+  })
+  const Page = (await import('./RateCreationPage')).default
+  render(<Page />)
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: /Budapest központ.*árfolyamlap megnyitása/i,
+    }),
+  )
+  await screen.findByTestId('rate-grid-stub')
+}
+
+describe('RateCreationPage folyamatos árfolyamvédelmi validáció', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubEnv('VITE_APP_FLAVOR', 'rate-maker')
+    localStorage.clear()
+    apiMocks.getLocalRateMakerSheet.mockResolvedValue(null)
+    apiMocks.putLocalRateMakerSheet.mockResolvedValue({ version: 1 })
+  })
+
+  it('védett munkacsoportban cella-commit után azonnal jelzi az L vétel > J hibát', async () => {
+    await renderEditor(true)
+
+    expect(screen.getByTestId('validation-errors')).toHaveTextContent('{}')
+    fireEvent.click(screen.getByRole('button', { name: 'EUR vétel commit' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('validation-errors')).toHaveTextContent(
+        '1-es csoport EUR L vétel nem lehet magasabb az elszámolónál (405 > 400).',
+      ),
+    )
+  })
+
+  it('kikapcsolt védelemnél ugyanaz a cella-commit nem jelez védelmi hibát', async () => {
+    await renderEditor(false)
+
+    fireEvent.click(screen.getByRole('button', { name: 'EUR vétel commit' }))
+
+    await waitFor(() => expect(screen.getByTestId('current-buy')).toHaveTextContent('405'))
+    expect(screen.getByTestId('validation-errors')).toHaveTextContent('{}')
+  })
+})

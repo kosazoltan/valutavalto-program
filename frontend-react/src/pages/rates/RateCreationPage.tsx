@@ -1316,10 +1316,31 @@ export default function RateCreationPage() {
       if (r.officialRate && buy > 0 && buy > r.officialRate * 1.1) {
         errs.push('Vétel > MNB +10%')
       }
+      if (selectedWg) {
+        const protectionViolations = validateWorkgroupProtection(
+          [
+            {
+              currencyCode: r.currencyCode,
+              official: r.officialRate,
+              buy,
+              sell,
+              limit1Buy: l1b,
+              limit1Sell: l1s,
+              limit2Buy: l2b,
+              limit2Sell: l2s,
+              limit3Buy: l3b,
+              limit3Sell: l3s,
+            },
+          ],
+          selectedWg.protectionEnabled ?? true,
+          workgroupProtectionLabel(selectedWg.legacyGroupNumber, selectedWg.code),
+        )
+        errs.push(...protectionViolations.map((violation) => violation.message))
+      }
       if (errs.length > 0) errors[r.currencyId] = errs
     }
     return errors
-  }, [rates])
+  }, [rates, selectedWg])
 
   // ===================== FK-02/03/04: Tile-list view =====================
   // Csempés listanézet az induló képernyő — a régi „bal oldali sávos" 54-csempés
@@ -1673,8 +1694,8 @@ export default function RateCreationPage() {
             {/* FR-HL-10 (hibalista): dedikált ELLENŐRZÉS gomb — a háromlépcsős flow (Ellenőrzés →
               Mentés/auto-perzisztálás → Szétküldés) explicit szétválasztása. A gombra kattintáskor a
               fókuszált cella blur-je commitol, így a validationErrors (FR-HL-09 Ellenőrzés-oszlop)
-              naprakész. Ez KLIENS-oldali pre-check (limit/MNB); a tényleges kiküldés a szerver-oldali
-              árfolyamvédelmi ellenőrzést (RatePublishService) is elvégzi (Codex review). */}
+              naprakész. Ez KLIENS-oldali pre-check (limit/MNB/árfolyamvédelem); a tényleges kiküldés
+              a szerver-oldali árfolyamvédelmi ellenőrzést (RatePublishService) is elvégzi. */}
             <button
               onClick={() => {
                 const errorCount = Object.values(validationErrors).filter(

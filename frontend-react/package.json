@@ -17,6 +17,7 @@
     "validate": "npm run lint && npm run type-check",
     "preview": "vite preview",
     "test:e2e": "playwright test",
+    "test:e2e:rate-maker": "playwright test --config=playwright.rate-maker.config.ts",
     "test:e2e:smoke": "playwright test e2e/smoke.spec.ts --config=playwright.config.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
