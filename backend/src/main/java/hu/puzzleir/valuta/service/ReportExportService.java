@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeDailySummaryDto;
 import hu.puzzleir.valuta.exception.BusinessException;
 
 import lombok.RequiredArgsConstructor;
@@ -85,6 +86,27 @@ public class ReportExportService {
 
         } catch (IOException e) {
             log.error("HandlingFeeReport CSV export hiba", e);
+            throw new BusinessException("CSV export meghiúsult", "CSV_EXPORT_FAILED");
+        }
+        return sw.toString();
+    }
+
+    /** FK-053: napi készpénzes kezelési díj CSV (a daily-summary végponttal azonos adat). */
+    public String exportHandlingFeeDailySummaryCsv(HandlingFeeDailySummaryDto report) {
+        StringWriter sw = new StringWriter();
+        try (CSVPrinter printer = new CSVPrinter(sw, CSVFormat.DEFAULT.withHeader(
+                "Dátum", "Vétel kezelési díj (Ft)", "Eladás kezelési díj (Ft)"))) {
+            if (report.getRows() != null) {
+                for (HandlingFeeDailySummaryDto.DailyRow row : report.getRows()) {
+                    printer.printRecord(
+                            row.getDate() != null ? row.getDate().format(DATE_FMT) : "",
+                            row.getBuyFee(),
+                            row.getSellFee());
+                }
+            }
+            printer.printRecord("Összesen", report.getTotalBuyFee(), report.getTotalSellFee());
+        } catch (IOException e) {
+            log.error("HandlingFeeDailySummary CSV export hiba", e);
             throw new BusinessException("CSV export meghiúsult", "CSV_EXPORT_FAILED");
         }
         return sw.toString();

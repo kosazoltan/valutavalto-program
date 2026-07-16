@@ -1340,6 +1340,27 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("endDate") LocalDate endDate
     );
 
+    /**
+     * FK-053: napi KÉSZPÉNZES kezelési díj vétel/eladás bontásban.
+     * NULL payment_method = legacy CASH sor (FS-15 konvenció) — beszámít.
+     * Visszaad: [transactionDate, transactionType, SUM(handlingFee)]
+     */
+    @Query("SELECT t.transactionDate, t.transactionType, SUM(t.handlingFee) " +
+           "FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate BETWEEN :startDate AND :endDate " +
+           "AND t.status = 'COMPLETED' " +
+           "AND (t.paymentMethod = hu.puzzleir.valuta.entity.PaymentMethod.CASH " +
+           "     OR t.paymentMethod IS NULL) " +
+           "AND t.handlingFee > 0 " +
+           "GROUP BY t.transactionDate, t.transactionType " +
+           "ORDER BY t.transactionDate ASC")
+    List<Object[]> findDailyCashHandlingFeeByType(
+        @Param("branchId") UUID branchId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate
+    );
+
     // ============ TURNOVER BREAKDOWN QUERY-K ============
 
     /**

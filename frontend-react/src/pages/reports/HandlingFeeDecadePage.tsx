@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { FileText, AlertTriangle, Search, Download } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, Download, FileText, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api, branchApi } from '../../services/api/index'
 import type { BranchInfo } from '../../services/api/index'
@@ -8,51 +8,18 @@ import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
 import { downloadBlob } from '../../utils/downloadBlob'
 
-/**
- * Kezelési díj dekád riport.
- *
- * Backend: GET /api/v1/handling-fees/report?branchId={uuid}&from={ISO date}&to={ISO date}
- *
- * A backend HandlingFeeReportDto egy összesített riportot ad vissza (totalGrossFee,
- * totalDiscount, totalNetFee, totalCommissionShare, transactionCount, items[]).
- * A frontend a tranzakció-listát dekádra és fizetési módra csoportosítja.
- */
-
-interface HandlingFeeTxn {
-  id?: string
-  transactionId?: number | null
-  paymentMethod?: string | null
-  feeType?: string | null
-  amount?: number | string | null
-  discountPercent?: number | null
-  discountReason?: string | null
-  netFee?: number | string | null
-  workerCommissionShare?: number | string | null
-  createdAt?: string | null
+interface DailyRow {
+  date: string
+  buyFee: number | string
+  sellFee: number | string
 }
 
-interface HandlingFeeReport {
-  dateFrom?: string
-  dateTo?: string
-  totalGrossFee?: number | string
-  totalDiscount?: number | string
-  totalNetFee?: number | string
-  totalCommissionShare?: number | string
-  transactionCount?: number
-  items?: HandlingFeeTxn[]
-}
-
-interface DecadeRow {
-  decadeKey: string
-  decadeLabel: string
-  count: number
-  grossFee: number
-  netFee: number
-  discount: number
-  cashCount: number
-  cardCount: number
-  cashNetFee: number
-  cardNetFee: number
+interface DailySummary {
+  startDate?: string
+  endDate?: string
+  totalBuyFee?: number | string
+  totalSellFee?: number | string
+  rows?: DailyRow[]
 }
 
 function toNum(v: number | string | null | undefined): number {
@@ -62,40 +29,29 @@ function toNum(v: number | string | null | undefined): number {
 }
 
 function formatHuf(n: number): string {
-  return n.toLocaleString('hu-HU') + ' Ft'
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') + ' Ft'
 }
 
-function isCardPayment(paymentMethod: string | null | undefined): boolean {
-  return paymentMethod?.toUpperCase() === 'CARD'
-}
-
-function decadeOf(dateIso: string): { key: string; label: string } {
-  const d = new Date(dateIso)
-  const y = d.getFullYear()
-  const m = d.getMonth() + 1
-  const day = d.getDate()
-  const dec = day <= 10 ? 1 : day <= 20 ? 2 : 3
-  const range = dec === 1 ? '1-10.' : dec === 2 ? '11-20.' : '21-vége'
-  const key = `${y}-${String(m).padStart(2, '0')}-${dec}`
-  const label = `${y}. ${String(m).padStart(2, '0')}. hó / ${dec}. dekád (${range})`
-  return { key, label }
+function branchLabel(branch: BranchInfo): string {
+  return branch.bankCode && branch.bankCode.trim() !== ''
+    ? `${branch.code} – ${branch.bankCode} – ${branch.name}`
+    : `${branch.code} – ${branch.name}`
 }
 
 export default function HandlingFeeDecadePage() {
   const { t } = useTranslation()
-
   const today = useMemo(() => new Date(), [])
   const monthStart = useMemo(() => {
-    const d = new Date(today)
-    d.setDate(1)
-    return d
+    const date = new Date(today)
+    date.setDate(1)
+    return date
   }, [today])
 
-  const [from, setFrom] = useState<string>(localIsoDate(monthStart))
-  const [to, setTo] = useState<string>(localIsoDate(today))
-  const [branchId, setBranchId] = useState<string>('')
+  const [from, setFrom] = useState(localIsoDate(monthStart))
+  const [to, setTo] = useState(localIsoDate(today))
+  const [branchId, setBranchId] = useState('')
   const [branches, setBranches] = useState<BranchInfo[]>([])
-  const [report, setReport] = useState<HandlingFeeReport | null>(null)
+  const [report, setReport] = useState<DailySummary | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -103,14 +59,11 @@ export default function HandlingFeeDecadePage() {
     try {
       const list = await branchApi.listActive()
       setBranches(list)
-      if (list.length > 0 && !branchId) {
-        const first = list[0]
-        if (first) setBranchId(first.id)
-      }
+      setBranchId((current) => current || list[0]?.id || '')
     } catch (err) {
       logger.error('HandlingFeeDecadePage', 'Branch betöltés hiba:', err)
     }
-  }, [branchId])
+  }, [])
 
   useEffect(() => {
     void loadBranches()
@@ -125,79 +78,46 @@ export default function HandlingFeeDecadePage() {
       setError(t('reports.handlingFeeDecade.errors.noDateRange'))
       return
     }
+
     setLoading(true)
     setError(null)
     try {
-      const response = await api.get<HandlingFeeReport>('/handling-fees/report', {
-        params: { branchId, from, to },
+      const response = await api.get<DailySummary>('/handling-fees/daily-summary', {
+        params: { branchId, startDate: from, endDate: to },
       })
       setReport(response.data ?? null)
     } catch (err) {
-      const msg = getErrorMessage(err)
       logger.error('HandlingFeeDecadePage', 'Lekérdezés hiba:', err)
-      setError(msg)
+      setError(getErrorMessage(err))
       setReport(null)
     } finally {
       setLoading(false)
     }
-  }, [branchId, from, to, t])
-
-  const decadeRows: DecadeRow[] = useMemo(() => {
-    if (!report?.items) return []
-    const map = new Map<string, DecadeRow>()
-    for (const item of report.items) {
-      if (!item.createdAt) continue
-      const d = decadeOf(item.createdAt)
-      const existing = map.get(d.key)
-      const gross = toNum(item.amount)
-      const net = toNum(item.netFee)
-      const discount = item.discountPercent ? gross - net : 0
-      const cardPayment = isCardPayment(item.paymentMethod)
-      if (existing) {
-        existing.count += 1
-        existing.grossFee += gross
-        existing.netFee += net
-        existing.discount += discount
-        if (cardPayment) {
-          existing.cardCount += 1
-          existing.cardNetFee += net
-        } else {
-          existing.cashCount += 1
-          existing.cashNetFee += net
-        }
-      } else {
-        map.set(d.key, {
-          decadeKey: d.key,
-          decadeLabel: d.label,
-          count: 1,
-          grossFee: gross,
-          netFee: net,
-          discount,
-          cashCount: cardPayment ? 0 : 1,
-          cardCount: cardPayment ? 1 : 0,
-          cashNetFee: cardPayment ? 0 : net,
-          cardNetFee: cardPayment ? net : 0,
-        })
-      }
-    }
-    return Array.from(map.values()).sort((a, b) => a.decadeKey.localeCompare(b.decadeKey))
-  }, [report])
+  }, [branchId, from, t, to])
 
   const handleExportCsv = useCallback(async () => {
-    if (!from || !to) return
+    if (!branchId || !from || !to) return
+
     setError(null)
     try {
-      // A ReportController biztosit /reports/handling-fees/csv endpointot
-      const r = await api.get('/reports/handling-fees/csv', {
-        params: { startDate: from, endDate: to },
+      const response = await api.get('/handling-fees/daily-summary/csv', {
+        params: { branchId, startDate: from, endDate: to },
         responseType: 'blob',
       })
-      downloadBlob(r.data as BlobPart, `kezelesi-dij-${from}-${to}.csv`, 'text/csv; charset=UTF-8')
+      downloadBlob(
+        response.data as BlobPart,
+        `kezelesi-dij-napi-${from}-${to}.csv`,
+        'text/csv; charset=UTF-8',
+      )
     } catch (err) {
       logger.error('HandlingFeeDecadePage', 'CSV export hiba:', err)
       setError(await getBlobErrorMessage(err))
     }
-  }, [from, to])
+  }, [branchId, from, to])
+
+  const rows = report?.rows ?? []
+  const totalBuyFee = Math.round(toNum(report?.totalBuyFee))
+  const totalSellFee = Math.round(toNum(report?.totalSellFee))
 
   return (
     <div className="form-panel space-y-4">
@@ -224,7 +144,7 @@ export default function HandlingFeeDecadePage() {
             id="hf-from"
             type="date"
             value={from}
-            onChange={(e) => setFrom(e.target.value)}
+            onChange={(event) => setFrom(event.target.value)}
             className="form-input w-full text-sm"
           />
         </div>
@@ -236,7 +156,7 @@ export default function HandlingFeeDecadePage() {
             id="hf-to"
             type="date"
             value={to}
-            onChange={(e) => setTo(e.target.value)}
+            onChange={(event) => setTo(event.target.value)}
             className="form-input w-full text-sm"
           />
         </div>
@@ -247,13 +167,13 @@ export default function HandlingFeeDecadePage() {
           <select
             id="hf-branch"
             value={branchId}
-            onChange={(e) => setBranchId(e.target.value)}
+            onChange={(event) => setBranchId(event.target.value)}
             className="form-input w-full text-sm"
           >
             <option value="">{t('reports.handlingFeeDecade.branchPlaceholder')}</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.code} - {b.name}
+            {branches.map((branch) => (
+              <option key={branch.id} value={branch.id}>
+                {branchLabel(branch)}
               </option>
             ))}
           </select>
@@ -273,9 +193,9 @@ export default function HandlingFeeDecadePage() {
           <button
             type="button"
             onClick={() => void handleExportCsv()}
-            disabled={loading || !report}
+            disabled={loading || !report || !branchId}
             className="form-button flex items-center gap-2"
-            title="CSV export (időszaki, iroda-független)"
+            title={t('reports.handlingFeeDecade.csvTitle')}
           >
             <Download className="h-4 w-4" />
             CSV
@@ -291,115 +211,78 @@ export default function HandlingFeeDecadePage() {
 
       {!loading && report && (
         <div className="space-y-4">
-          <div className="bg-white rounded shadow p-4 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+          <div className="bg-white rounded shadow p-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
             <div>
               <div className="text-gray-500 text-xs">
                 {t('reports.handlingFeeDecade.summary.period')}
               </div>
               <div className="font-semibold">
-                {report.dateFrom} - {report.dateTo}
+                {report.startDate ?? from} - {report.endDate ?? to}
               </div>
             </div>
             <div>
               <div className="text-gray-500 text-xs">
-                {t('reports.handlingFeeDecade.summary.transactions')}
+                {t('reports.handlingFeeDecade.summary.buyTotal')}
               </div>
-              <div className="font-semibold">{report.transactionCount ?? 0}</div>
+              <div className="font-mono font-semibold">{formatHuf(totalBuyFee)}</div>
             </div>
             <div>
               <div className="text-gray-500 text-xs">
-                {t('reports.handlingFeeDecade.summary.grossFee')}
+                {t('reports.handlingFeeDecade.summary.sellTotal')}
               </div>
-              <div className="font-mono font-semibold">
-                {formatHuf(toNum(report.totalGrossFee))}
-              </div>
+              <div className="font-mono font-semibold">{formatHuf(totalSellFee)}</div>
             </div>
             <div>
               <div className="text-gray-500 text-xs">
-                {t('reports.handlingFeeDecade.summary.discount')}
-              </div>
-              <div className="font-mono font-semibold">
-                {formatHuf(toNum(report.totalDiscount))}
-              </div>
-            </div>
-            <div>
-              <div className="text-gray-500 text-xs">
-                {t('reports.handlingFeeDecade.summary.netFee')}
+                {t('reports.handlingFeeDecade.summary.grandTotal')}
               </div>
               <div className="font-mono font-semibold text-green-700">
-                {formatHuf(toNum(report.totalNetFee))}
+                {formatHuf(totalBuyFee + totalSellFee)}
               </div>
             </div>
           </div>
 
           <div className="bg-white rounded shadow">
             <div className="bg-gray-50 px-4 py-2 border-b">
-              <h2 className="font-semibold">{t('reports.handlingFeeDecade.decadeBreakdown')}</h2>
+              <h2 className="font-semibold">{t('reports.handlingFeeDecade.dailyBreakdown')}</h2>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="data-grid min-w-full">
+                <thead>
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                      {t('reports.handlingFeeDecade.table.decade')}
-                    </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                      {t('reports.handlingFeeDecade.table.transactions')}
-                    </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                      {t('reports.handlingFeeDecade.table.cashCount')}
-                    </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                      {t('reports.handlingFeeDecade.table.cardCount')}
-                    </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                      {t('reports.handlingFeeDecade.table.grossFee')}
-                    </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                      {t('reports.handlingFeeDecade.table.discount')}
-                    </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                      {t('reports.handlingFeeDecade.table.netFee')}
-                    </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                      {t('reports.handlingFeeDecade.table.cashNetFee')}
-                    </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                      {t('reports.handlingFeeDecade.table.cardNetFee')}
-                    </th>
+                    <th>{t('reports.handlingFeeDecade.table.date')}</th>
+                    <th className="text-right">{t('reports.handlingFeeDecade.table.buyFee')}</th>
+                    <th className="text-right">{t('reports.handlingFeeDecade.table.sellFee')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {decadeRows.length === 0 && (
+                <tbody>
+                  {rows.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-4 py-4 text-center text-sm text-gray-500">
+                      <td colSpan={3} className="text-center text-gray-500">
                         {t('reports.handlingFeeDecade.table.noData')}
                       </td>
                     </tr>
                   )}
-                  {decadeRows.map((r) => (
-                    <tr key={r.decadeKey} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 text-sm whitespace-nowrap">{r.decadeLabel}</td>
-                      <td className="px-4 py-2 text-right text-sm font-mono">{r.count}</td>
-                      <td className="px-4 py-2 text-right text-sm font-mono">{r.cashCount}</td>
-                      <td className="px-4 py-2 text-right text-sm font-mono">{r.cardCount}</td>
-                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">
-                        {formatHuf(r.grossFee)}
+                  {rows.map((row) => (
+                    <tr key={row.date}>
+                      <td>{new Date(row.date).toLocaleDateString('hu-HU')}</td>
+                      <td className="text-right font-mono whitespace-nowrap">
+                        {formatHuf(Math.round(toNum(row.buyFee)))}
                       </td>
-                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">
-                        {formatHuf(r.discount)}
-                      </td>
-                      <td className="px-4 py-2 text-right text-sm font-mono font-semibold text-green-700 whitespace-nowrap">
-                        {formatHuf(r.netFee)}
-                      </td>
-                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">
-                        {formatHuf(r.cashNetFee)}
-                      </td>
-                      <td className="px-4 py-2 text-right text-sm font-mono whitespace-nowrap">
-                        {formatHuf(r.cardNetFee)}
+                      <td className="text-right font-mono whitespace-nowrap">
+                        {formatHuf(Math.round(toNum(row.sellFee)))}
                       </td>
                     </tr>
                   ))}
+                  <tr className="font-semibold">
+                    <td>{t('reports.handlingFeeDecade.table.totalRow')}</td>
+                    <td className="text-right font-mono whitespace-nowrap">
+                      {formatHuf(totalBuyFee)}
+                    </td>
+                    <td className="text-right font-mono whitespace-nowrap">
+                      {formatHuf(totalSellFee)}
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
