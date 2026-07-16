@@ -37,6 +37,9 @@ interface ShipmentEditDraft {
 
 type ShipmentTab = 'today' | 'past'
 
+const HANDLING_FEE_SELF_APPROVAL_MESSAGE =
+  'Ezt az igényt Ön rögzítette — a négy-szem elv miatt más munkatársnak kell jóváhagynia.'
+
 /** A `requestedDeliveryDate` (LocalDate vagy ISO datetime) → 'YYYY-MM-DD'. */
 function dateOnly(value: string | undefined): string {
   return value ? value.slice(0, 10) : ''
@@ -344,6 +347,12 @@ export default function ShipmentListPage() {
     [allShipments, selectedDate],
   )
 
+  const isHandlingFeeSelfApproval = (shipment: ShipmentRequest): boolean =>
+    shipment.requestStatus === 'SUBMITTED' &&
+    shipment.requestNumber.startsWith('KK-') &&
+    worker?.id != null &&
+    String(shipment.requestedByWorkerId) === String(worker.id)
+
   const renderRow = (shipment: ShipmentRequest, mode: ShipmentTab) => (
     <tr key={shipment.id}>
       <td className="font-mono font-semibold">{shipment.requestNumber}</td>
@@ -369,14 +378,31 @@ export default function ShipmentListPage() {
             <>
               {shipment.requestStatus === 'SUBMITTED' && (
                 <>
-                  <button
-                    onClick={() => handleApprove(shipment.id)}
-                    className="toolbar-button text-green-600"
-                    title="Jóváhagyás"
-                    disabled={loading}
-                  >
-                    <CheckCircle size={14} />
-                  </button>
+                  {isHandlingFeeSelfApproval(shipment) ? (
+                    <span
+                      className="inline-flex"
+                      title={HANDLING_FEE_SELF_APPROVAL_MESSAGE}
+                      tabIndex={0}
+                    >
+                      <button
+                        type="button"
+                        aria-label={HANDLING_FEE_SELF_APPROVAL_MESSAGE}
+                        className="toolbar-button cursor-not-allowed text-amber-600 opacity-70"
+                        disabled
+                      >
+                        <AlertCircle size={14} />
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handleApprove(shipment.id)}
+                      className="toolbar-button text-green-600"
+                      title="Jóváhagyás"
+                      disabled={loading}
+                    >
+                      <CheckCircle size={14} />
+                    </button>
+                  )}
                   <button
                     onClick={() => handleReject(shipment.id)}
                     className="toolbar-button text-red-600"

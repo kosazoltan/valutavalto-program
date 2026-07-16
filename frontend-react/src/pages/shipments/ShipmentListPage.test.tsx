@@ -63,6 +63,8 @@ vi.mock('../../utils/localQueue', () => ({ getCompanyType: () => 'BEST_CHANGE' }
 
 const TODAY = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Budapest' }).format(new Date())
 const OTHER_DAY = '2020-01-15'
+const SELF_APPROVAL_MESSAGE =
+  'Ezt az igényt Ön rögzítette — a négy-szem elv miatt más munkatársnak kell jóváhagynia.'
 
 const baseShipment = {
   id: 'shipment-1',
@@ -179,6 +181,72 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
 
     await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
     expect(screen.queryByTitle('Megérkezett')).toBeNull()
+  })
+
+  it('KK-sor saját rögzítőjénél letiltja a jóváhagyást és megmagyarázza a négy-szem elvet', async () => {
+    const selfRequestedHandlingFee = {
+      ...baseShipment,
+      requestNumber: 'KK-000001',
+      requestStatus: 'SUBMITTED',
+      requestedByWorkerId: '77',
+    }
+    mocks.findByStatus.mockResolvedValue([selfRequestedHandlingFee])
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
+
+    const approvalButton = await screen.findByRole('button', { name: SELF_APPROVAL_MESSAGE })
+    expect(approvalButton).toBeDisabled()
+    expect(screen.getByTitle(SELF_APPROVAL_MESSAGE)).toBeInTheDocument()
+
+    await user.click(approvalButton)
+    expect(mocks.approve).not.toHaveBeenCalled()
+  })
+
+  it('KK-sor más rögzítőjénél a jóváhagyás változatlanul működik', async () => {
+    const otherRequestedHandlingFee = {
+      ...baseShipment,
+      requestNumber: 'KK-000002',
+      requestStatus: 'SUBMITTED',
+      requestedByWorkerId: '88',
+    }
+    mocks.findByStatus.mockResolvedValue([otherRequestedHandlingFee])
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByTitle('Jóváhagyás'))
+
+    await waitFor(() => expect(mocks.approve).toHaveBeenCalledWith('shipment-1', '77'))
+  })
+
+  it('nem KK-sor saját rögzítőjénél a jóváhagyás változatlanul működik', async () => {
+    const selfRequestedStockShipment = {
+      ...baseShipment,
+      requestNumber: 'FF-000001',
+      requestStatus: 'SUBMITTED',
+      requestedByWorkerId: '77',
+    }
+    mocks.findByStatus.mockResolvedValue([selfRequestedStockShipment])
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByTitle('Jóváhagyás'))
+
+    await waitFor(() => expect(mocks.approve).toHaveBeenCalledWith('shipment-1', '77'))
   })
 
   it('DRAFT részletpanelen a szerkesztés a PUT /shipments/{id} szerződést hívja', async () => {
