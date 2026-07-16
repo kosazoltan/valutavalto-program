@@ -1,9 +1,10 @@
 /**
- * FK-04/E — Árfolyamvédelem (frontend, mentés-előtti azonnali visszajelzés).
+ * FK-04/E — Árfolyamvédelem (frontend, cella-commit utáni azonnali visszajelzés).
  *
  * A backend `RatePublishService.validateRateProtection` (FK-04/E.2) AZONOS szabálya,
  * kliens-oldalon megismételve, hogy a felhasználó NE a 400-as szerverhibából, hanem
- * azonnal — a kiküldés gombnyomásakor — értesüljön a téves árfolyamról.
+ * azonnal — már a cella commitja után — értesüljön a téves árfolyamról. Publikáláskor
+ * ugyanez a kliens- és szerveroldali szabály végső védelmi vonalként ismét lefut.
  *
  * Szabály (csempe jobb felső checkbox `protectionEnabled = true` esetén):
  *  - Vételi oszlopok (L, N, P, R) értéke nem lehet NAGYOBB a J (elszámoló) árfolyamnál.
