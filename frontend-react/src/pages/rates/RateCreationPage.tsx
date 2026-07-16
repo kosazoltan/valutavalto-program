@@ -492,6 +492,8 @@ export default function RateCreationPage() {
       let wgData: WorkgroupDetailDTO[]
 
       if (isLocalRateMakerApp) {
+        // FK07-fix-2: az első await előtti, konzisztens lokális érték + marker + képlet baseline.
+        const preImportBaseline = exportRateMakerSheetSnapshot()
         const [bootstrap, serverSheet] = await Promise.all([
           rateCreationApi.getLocalRateMakerBootstrap(),
           rateCreationApi.getLocalRateMakerSheet().catch((sheetErr: unknown) => {
@@ -504,7 +506,11 @@ export default function RateCreationPage() {
           }),
         ])
         if (serverSheet?.sheetJson) {
-          const imported = importRateMakerSheetSnapshot(serverSheet.sheetJson)
+          const imported = importRateMakerSheetSnapshot(
+            serverSheet.sheetJson,
+            localStorage,
+            preImportBaseline,
+          )
           logger.info(
             'RateCreationPage',
             `Szerveroldali rate-maker munkaív importálva: ${imported} localStorage kulcs`,
