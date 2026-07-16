@@ -130,4 +130,29 @@ public class ShipmentRequest {
             }
         }
     }
+
+    /**
+     * Prod-hiba fix (2026-07-16, 11 éles 500-as): a Jackson 3 JSON-deszerializálás
+     * (POST/PUT /api/v1/shipments, @RequestBody ShipmentRequest) a Lombok-generált
+     * konstruktor/builder útvonalon tölti az {@code items} listát, és SOSEM hívja
+     * az {@link #addItem} / {@link #setItems} helpert — így az itemek
+     * {@code shipmentRequest} back-reference-e null marad, és a mentés a
+     * shipment_request_item.shipment_request_id NOT NULL constraintjén bukik el
+     * (DataIntegrityViolationException → 500). Ez a hook MINDEN konstrukciós
+     * útvonalat lefed (JSON, builder, teszt, jövőbeli kód): flush előtt minden
+     * itemre beállítja a szülő-referenciát. Idempotens; a DB not-null constraint
+     * változatlanul marad fail-closed védőhálónak.
+     */
+    @PrePersist
+    @PreUpdate
+    protected void wireItemBackReferences() {
+        if (items == null) {
+            return;
+        }
+        for (ShipmentRequestItem item : items) {
+            if (item != null && item.getShipmentRequest() != this) {
+                item.setShipmentRequest(this);
+            }
+        }
+    }
 }
