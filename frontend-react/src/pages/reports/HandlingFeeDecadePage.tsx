@@ -22,6 +22,8 @@ interface DailySummary {
   rows?: DailyRow[]
 }
 
+const ALL_BRANCHES = '__ALL__'
+
 function toNum(v: number | string | null | undefined): number {
   if (v == null) return 0
   const n = typeof v === 'string' ? Number(v) : v
@@ -82,8 +84,10 @@ export default function HandlingFeeDecadePage() {
     setLoading(true)
     setError(null)
     try {
+      const params: Record<string, string> = { startDate: from, endDate: to }
+      if (branchId !== ALL_BRANCHES) params.branchId = branchId
       const response = await api.get<DailySummary>('/handling-fees/daily-summary', {
-        params: { branchId, startDate: from, endDate: to },
+        params,
       })
       setReport(response.data ?? null)
     } catch (err) {
@@ -100,8 +104,10 @@ export default function HandlingFeeDecadePage() {
 
     setError(null)
     try {
+      const params: Record<string, string> = { startDate: from, endDate: to }
+      if (branchId !== ALL_BRANCHES) params.branchId = branchId
       const response = await api.get('/handling-fees/daily-summary/csv', {
-        params: { branchId, startDate: from, endDate: to },
+        params,
         responseType: 'blob',
       })
       downloadBlob(
@@ -171,6 +177,7 @@ export default function HandlingFeeDecadePage() {
             className="form-input w-full text-sm"
           >
             <option value="">{t('reports.handlingFeeDecade.branchPlaceholder')}</option>
+            <option value={ALL_BRANCHES}>{t('reports.handlingFeeDecade.allBranchesOption')}</option>
             {branches.map((branch) => (
               <option key={branch.id} value={branch.id}>
                 {branchLabel(branch)}

@@ -88,6 +88,28 @@ class HandlingFeeDailySummaryPostgresIT {
         assertRow(branchBRows.get(0), D1, TransactionType.BUY, "777.00");
     }
 
+    @Test
+    @DisplayName("FK-055: cég-szinten aktív, nem értéktári fiókokra aggregál tenant-szivárgás nélkül")
+    void aggregatesCompanyWideExcludingVaultInactiveAndOtherTenant() {
+        Seed seed = transactionTemplate.execute(status -> seed());
+
+        assertThat(seed).isNotNull();
+        List<Object[]> companyRows = transactionRepository.findDailyCashHandlingFeeByTypeForCompany(
+                seed.companyA().getId(), D1, D2);
+
+        assertThat(companyRows).hasSize(3);
+        assertRow(companyRows.get(0), D1, TransactionType.BUY, "205.00");
+        assertRow(companyRows.get(1), D1, TransactionType.SELL, "70.00");
+        assertRow(companyRows.get(2), D2, TransactionType.SELL, "40.00");
+        assertThat(companyRows)
+                .allSatisfy(row -> assertThat((BigDecimal) row[2])
+                        .isNotEqualByComparingTo("555.00")
+                        .isNotEqualByComparingTo("666.00")
+                        .isNotEqualByComparingTo("777.00")
+                        .isNotEqualByComparingTo("888.00")
+                        .isNotEqualByComparingTo("999.00"));
+    }
+
     private Seed seed() {
         LocalDateTime now = D1.atTime(8, 0);
         String suffix = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -122,6 +144,12 @@ class HandlingFeeDailySummaryPostgresIT {
 
         Tenant tenantA = seedTenant("A" + suffix, branchType, country, branchStatus, now);
         Tenant tenantB = seedTenant("B" + suffix, branchType, country, branchStatus, now);
+        Tenant tenantASecondBranch = seedBranch(
+                tenantA.company(), "A2" + suffix, branchType, country, branchStatus, now, false, true);
+        Tenant tenantAVaultBranch = seedBranch(
+                tenantA.company(), "AV" + suffix, branchType, country, branchStatus, now, true, true);
+        Tenant tenantAInactiveBranch = seedBranch(
+                tenantA.company(), "AI" + suffix, branchType, country, branchStatus, now, false, false);
 
         saveTransaction(tenantA, huf, D1, TransactionType.BUY, PaymentMethod.CASH,
                 TransactionStatus.COMPLETED, "100.00", "A1-" + suffix);
@@ -141,10 +169,16 @@ class HandlingFeeDailySummaryPostgresIT {
                 TransactionStatus.COMPLETED, "40.00", "A8-" + suffix);
         saveTransaction(tenantA, huf, D2.plusDays(7), TransactionType.BUY, PaymentMethod.CASH,
                 TransactionStatus.COMPLETED, "500.00", "A9-" + suffix);
+        saveTransaction(tenantASecondBranch, huf, D1, TransactionType.BUY, PaymentMethod.CASH,
+                TransactionStatus.COMPLETED, "25.00", "A10-" + suffix);
+        saveTransaction(tenantAVaultBranch, huf, D1, TransactionType.BUY, PaymentMethod.CASH,
+                TransactionStatus.COMPLETED, "555.00", "A11-" + suffix);
+        saveTransaction(tenantAInactiveBranch, huf, D1, TransactionType.BUY, PaymentMethod.CASH,
+                TransactionStatus.COMPLETED, "666.00", "A12-" + suffix);
         saveTransaction(tenantB, huf, D1, TransactionType.BUY, PaymentMethod.CASH,
                 TransactionStatus.COMPLETED, "777.00", "B1-" + suffix);
         transactionRepository.flush();
-        return new Seed(tenantA.branch(), tenantB.branch());
+        return new Seed(tenantA.company(), tenantA.branch(), tenantB.branch());
     }
 
     private Tenant seedTenant(
@@ -178,6 +212,44 @@ class HandlingFeeDailySummaryPostgresIT {
                 .branch(branch)
                 .code("FK053-W-" + suffix)
                 .name("FK-053 Worker " + suffix)
+                .passwordHash("$2a$10$test")
+                .role(WorkerRole.CASHIER)
+                .active(true)
+                .createdAt(now)
+                .build());
+        return new Tenant(company, branch, worker);
+    }
+
+    private Tenant seedBranch(
+            Company company,
+            String suffix,
+            Dictionary branchType,
+            Dictionary country,
+            Dictionary branchStatus,
+            LocalDateTime now,
+            boolean isVault,
+            boolean isActive) {
+        Branch branch = branchRepository.save(Branch.builder()
+                .code("FK055-B-" + suffix)
+                .company(company)
+                .bankCode("FK055BANK")
+                .branchType(branchType)
+                .name("FK-055 Branch " + suffix)
+                .address("Test Street 2")
+                .city("Budapest")
+                .zipCode("1000")
+                .country(country)
+                .branchStatus(branchStatus)
+                .isVault(isVault)
+                .isActive(isActive)
+                .openingDate(D1)
+                .createdAt(now)
+                .build());
+        Worker worker = workerRepository.save(Worker.builder()
+                .company(company)
+                .branch(branch)
+                .code("FK055-W-" + suffix)
+                .name("FK-055 Worker " + suffix)
                 .passwordHash("$2a$10$test")
                 .role(WorkerRole.CASHIER)
                 .active(true)
@@ -226,5 +298,5 @@ class HandlingFeeDailySummaryPostgresIT {
 
     private record Tenant(Company company, Branch branch, Worker worker) {}
 
-    private record Seed(Branch branchA, Branch branchB) {}
+    private record Seed(Company companyA, Branch branchA, Branch branchB) {}
 }

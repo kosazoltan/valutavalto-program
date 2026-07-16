@@ -1,14 +1,15 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import huJson from '../../i18n/hu.json'
 import HandlingFeeDecadePage from './HandlingFeeDecadePage'
 
 const translations: Record<string, string> = vi.hoisted(() => ({
-  'reports.handlingFeeDecade.title': 'Kezelési díj — dekád riport',
+  'reports.handlingFeeDecade.title': 'Kezelési díj — készpénz riport',
   'reports.handlingFeeDecade.from': 'Tól',
   'reports.handlingFeeDecade.to': 'Ig',
   'reports.handlingFeeDecade.branch': 'Iroda',
   'reports.handlingFeeDecade.branchPlaceholder': '— Válasszon irodát —',
+  'reports.handlingFeeDecade.allBranchesOption': '— Minden iroda —',
   'reports.handlingFeeDecade.loading': 'Betöltés...',
   'reports.handlingFeeDecade.submit': 'Lekérdezés',
   'reports.handlingFeeDecade.csvTitle': 'CSV export (kiválasztott iroda)',
@@ -150,5 +151,75 @@ describe('HandlingFeeDecadePage — FK-053', () => {
     await querySummary()
 
     expect(await screen.findByText('Nincs adat a kiválasztott időszakra.')).toBeInTheDocument()
+  })
+
+  it('FR-3: a Minden iroda opció a placeholder után és a fiókok előtt jelenik meg', async () => {
+    render(<HandlingFeeDecadePage />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('option', { name: '001 – K&H – Fő utca' })).toBeInTheDocument(),
+    )
+
+    const select = screen.getByLabelText('Iroda')
+    const options = within(select).getAllByRole('option')
+    expect(options[0]).toHaveTextContent('— Válasszon irodát —')
+    expect(options[1]).toHaveTextContent('— Minden iroda —')
+    expect(options[2]).toHaveTextContent('001 – K&H – Fő utca')
+  })
+
+  it('FR-1/FR-3: Minden iroda választásakor branchId nélkül kérdez le', async () => {
+    render(<HandlingFeeDecadePage />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('option', { name: '— Minden iroda —' })).toBeInTheDocument(),
+    )
+    setFilters()
+    fireEvent.change(screen.getByLabelText('Iroda'), { target: { value: '__ALL__' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Lekérdezés' }))
+
+    await waitFor(() =>
+      expect(mockGet).toHaveBeenCalledWith('/handling-fees/daily-summary', expect.anything()),
+    )
+    const [, config] = mockGet.mock.calls[0]!
+    expect(config.params).toEqual({ startDate: '2026-07-01', endDate: '2026-07-16' })
+    expect(config.params).not.toHaveProperty('branchId')
+  })
+
+  it('FR-4: CSV export Minden iroda mellett branchId nélkül hívja a végpontot', async () => {
+    mockGet
+      .mockResolvedValueOnce({ data: SUMMARY })
+      .mockResolvedValueOnce({ data: new Blob(['csv'], { type: 'text/csv' }) })
+    render(<HandlingFeeDecadePage />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('option', { name: '— Minden iroda —' })).toBeInTheDocument(),
+    )
+    setFilters()
+    fireEvent.change(screen.getByLabelText('Iroda'), { target: { value: '__ALL__' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Lekérdezés' }))
+    await waitFor(() =>
+      expect(mockGet).toHaveBeenCalledWith('/handling-fees/daily-summary', expect.anything()),
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'CSV' }))
+
+    await waitFor(() =>
+      expect(mockGet).toHaveBeenCalledWith('/handling-fees/daily-summary/csv', expect.anything()),
+    )
+    const [, config] = mockGet.mock.calls[1]!
+    expect(config.params).toEqual({ startDate: '2026-07-01', endDate: '2026-07-16' })
+    expect(config.params).not.toHaveProperty('branchId')
+    expect(config.responseType).toBe('blob')
+  })
+
+  it('FR-6: a készpénzes kezelési díj riportcímet jeleníti meg', async () => {
+    render(<HandlingFeeDecadePage />)
+
+    expect(
+      screen.getByRole('heading', { name: 'Kezelési díj — készpénz riport' }),
+    ).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByRole('option', { name: '001 – K&H – Fő utca' })).toBeInTheDocument(),
+    )
   })
 })
