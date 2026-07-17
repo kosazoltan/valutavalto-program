@@ -12,6 +12,7 @@ import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -42,6 +44,7 @@ public class TransferService {
     // Batch3-B (currency_stock-doc FR-1/FR-2): a vault-erintett kassza-mozgasok
     // currency_stock ("B konyv") tukrozesehez.
     private final VaultStockFlowService vaultStockFlowService;
+    private final AccessScopeService accessScopeService;
 
     @Transactional(rollbackFor = Exception.class)
     public TransferDto create(CreateTransferDto dto, Long workerId) {
@@ -383,6 +386,7 @@ public class TransferService {
         // Multi-tenant IDOR-guard (audit 2026-06-15): szekvenciális Long id-vel enumerálható volt
         // idegen cég átadás-bizonylata; a getStornoPreview-vel azonos ownership-check.
         assertOwnCompany(transfer, String.valueOf(id));
+        assertTerritoryVisible(transfer, String.valueOf(id));
         return toDto(transfer);
     }
 
@@ -394,6 +398,7 @@ public class TransferService {
     public TransferDto getStornoPreview(Long id) {
         Transfer transfer = transferRepository.findById(id).orElse(null);
         assertOwnCompany(transfer, String.valueOf(id));
+        assertTerritoryVisible(transfer, String.valueOf(id));
         TransferDto preview = toDto(transfer);
         preview.setStornoSerialNumber(transfer.getTransferNumber() + "-SZ");
         return preview;
@@ -405,6 +410,7 @@ public class TransferService {
                 .orElseThrow(() -> new ResourceNotFoundException("Átadás nem található: " + transferNumber));
         // Multi-tenant IDOR-guard (audit 2026-06-15): a transferNumber is user-controlled.
         assertOwnCompany(transfer, transferNumber);
+        assertTerritoryVisible(transfer, transferNumber);
         return toDto(transfer);
     }
 
@@ -420,6 +426,29 @@ public class TransferService {
                     || (transfer.getToBranch() != null && transfer.getToBranch().getCompany() != null
                         && companyId.equals(transfer.getToBranch().getCompany().getId())));
         if (!ownCompany) {
+            throw new ResourceNotFoundException("Átadás nem található: " + idForMessage);
+        }
+    }
+
+    /**
+     * Territory-scope guard (2026-07-15 hardening, Bali H. #2): territory-scoped role
+     * (régiós ERTEKTAR) csak olyan átadást olvashat, amelynek BÁRMELYIK vége (from VAGY to)
+     * a saját region-scope-jában van. Scope-on kívül → 404 (nem 403 — az assertOwnCompany-val
+     * azonos anti-enumeráció konvenció, a létezés se szivárogjon). Központi role → null scope
+     * → nincs szűkítés. A companyId-tenant-guard (assertOwnCompany) UTÁN hívandó, arra épül rá.
+     */
+    private void assertTerritoryVisible(Transfer transfer, String idForMessage) {
+        Set<UUID> scope = accessScopeService.vaultRegionBranchScopeOrNull();
+        if (scope == null) {
+            return; // központi role — nincs terület-szűkítés
+        }
+        String fromId = transfer.getFromBranch() != null && transfer.getFromBranch().getId() != null
+                ? transfer.getFromBranch().getId().toString() : null;
+        String toId = transfer.getToBranch() != null && transfer.getToBranch().getId() != null
+                ? transfer.getToBranch().getId().toString() : null;
+        boolean visible = accessScopeService.isBranchVisible(scope, fromId)
+                || accessScopeService.isBranchVisible(scope, toId);
+        if (!visible) {
             throw new ResourceNotFoundException("Átadás nem található: " + idForMessage);
         }
     }
@@ -454,6 +483,16 @@ public class TransferService {
     public Page<TransferDto> search(UUID branchId, LocalDate startDate, LocalDate endDate,
                                      Transfer.TransferStatus status, Transfer.TransferType type, Pageable pageable) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Set<UUID> scope = accessScopeService.vaultRegionBranchScopeOrNull();
+        if (scope != null) {
+            if (scope.isEmpty()) {
+                // Fail-closed (nincs meghatározható region): üres oldal, nem országos lista.
+                return new PageImpl<>(List.of(), pageable, 0);
+            }
+            return transferRepository.searchWithinBranches(
+                            companyId, scope, branchId, startDate, endDate, status, type, pageable)
+                    .map(this::toDto);
+        }
         return transferRepository.search(companyId, branchId, startDate, endDate, status, type, pageable)
                 .map(this::toDto);
     }

@@ -11,6 +11,7 @@ import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,7 +42,14 @@ class TransferServiceTest {
     @Mock private TransferSerialSequenceService transferSerialSequenceService;
     @Mock private AuditLogService auditLogService;
     @Mock private VaultStockFlowService vaultStockFlowService;
+    @Mock private AccessScopeService accessScopeService;
     @InjectMocks private TransferService service;
+
+    @BeforeEach
+    void setUpAccessScope() {
+        // Mockito collection defaults are empty rather than null; preserve the legacy central-role fixture.
+        lenient().when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+    }
 
     @Test
     @DisplayName("create — forras es cel iroda azonos → hiba")

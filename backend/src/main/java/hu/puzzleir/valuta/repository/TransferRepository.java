@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -71,6 +72,30 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
            "AND (:type IS NULL OR t.transferType = :type)")
     Page<Transfer> search(
             @Param("companyId") UUID companyId,
+            @Param("branchId") UUID branchId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("status") Transfer.TransferStatus status,
+            @Param("type") Transfer.TransferType type,
+            Pageable pageable);
+
+    /**
+     * Territory-scope-olt keresés (2026-07-15 security hardening): a meglévő {@link #search}
+     * tenant-klauzulái + a tétel CSAK akkor látható, ha BÁRMELYIK vége (from VAGY to) a
+     * hívó region-scope-jában van. Üres branchIds-szel TILOS hívni (a hívó fail-closed
+     * üres oldalt ad vissza előtte).
+     */
+    @Query("SELECT t FROM Transfer t WHERE " +
+           "(t.fromBranch.company.id = :companyId OR t.toBranch.company.id = :companyId) " +
+           "AND (t.fromBranch.id IN :branchIds OR t.toBranch.id IN :branchIds) " +
+           "AND (:branchId IS NULL OR t.fromBranch.id = :branchId OR t.toBranch.id = :branchId) " +
+           "AND (:startDate IS NULL OR t.transferDate >= :startDate) " +
+           "AND (:endDate IS NULL OR t.transferDate <= :endDate) " +
+           "AND (:status IS NULL OR t.status = :status) " +
+           "AND (:type IS NULL OR t.transferType = :type)")
+    Page<Transfer> searchWithinBranches(
+            @Param("companyId") UUID companyId,
+            @Param("branchIds") Collection<UUID> branchIds,
             @Param("branchId") UUID branchId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,

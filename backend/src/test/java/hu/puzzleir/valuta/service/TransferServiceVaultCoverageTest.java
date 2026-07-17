@@ -52,6 +52,7 @@ class TransferServiceVaultCoverageTest {
     @Mock private TransferSerialSequenceService transferSerialSequenceService;
     @Mock private AuditLogService auditLogService;
     @Mock private VaultStockFlowService vaultStockFlowService;
+    @Mock private AccessScopeService accessScopeService;
     @InjectMocks private TransferService service;
 
     @Test
