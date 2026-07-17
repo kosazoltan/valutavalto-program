@@ -232,17 +232,25 @@ interface RawSheet0Row {
   wholesale?: number // I
 }
 
+/**
+ * FK10: 0 / nem-pozitív / nem-véges forrás = „nincs érték”. A kulcs kihagyásával a
+ * képletmotor meglévő `Nincs érték…` hibaága fut le, a MainRateSheetPage baseline-mintájával
+ * konzisztensen.
+ */
+const pos = (n: number | undefined): n is number =>
+  typeof n === 'number' && Number.isFinite(n) && n > 0
+
 /** Egy 0-s lap sor → A–I oszlop-értékek (a `D` ISO-címke kizárva, mint a motorban). */
 export function sheet0RowToValues(row: RawSheet0Row): Sheet0Values {
   const v: Sheet0Values = {}
-  if (typeof row.settlement === 'number') v.A = row.settlement
-  if (typeof row.otp === 'number') v.B = row.otp
-  if (typeof row.helper === 'number') v.C = row.helper
-  if (typeof row.weakMultiBuy === 'number') v.E = row.weakMultiBuy
-  if (typeof row.weakMultiSell === 'number') v.F = row.weakMultiSell
-  if (typeof row.crossSettlement === 'number') v.G = row.crossSettlement
-  if (typeof row.crossRate === 'number') v.H = row.crossRate
-  if (typeof row.wholesale === 'number') v.I = row.wholesale
+  if (pos(row.settlement)) v.A = row.settlement
+  if (pos(row.otp)) v.B = row.otp
+  if (pos(row.helper)) v.C = row.helper
+  if (pos(row.weakMultiBuy)) v.E = row.weakMultiBuy
+  if (pos(row.weakMultiSell)) v.F = row.weakMultiSell
+  if (pos(row.crossSettlement)) v.G = row.crossSettlement
+  if (pos(row.crossRate)) v.H = row.crossRate
+  if (pos(row.wholesale)) v.I = row.wholesale
   return v
 }
 

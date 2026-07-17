@@ -267,13 +267,12 @@ export default function RateCreationPage() {
     }
     setFormulas(loadGroupFormulas(selectedWg.id))
     setCellErrors({})
-    // Codex #910 P1: az undo/redo stack csoportonként ÉRVÉNYTELEN — csoportváltáskor ürítjük,
-    // különben egy másik csoportban beírt képletet a Ctrl+Z az AKTUÁLIS csoportba állítaná vissza,
-    // és a perzisztáló effekt annak localStorage-kulcsa alá mentené (kereszt-csoport korrupció).
+    // Codex #910 P1: az undo/redo stack csoportváltáskor és teljes frissítéskor ÉRVÉNYTELEN;
+    // különben elavult állapotot állíthatna vissza az aktuális csoport localStorage-kulcsa alá.
     undoStack.current = []
     redoStack.current = []
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- csak a csoport-id váltáskor töltünk újra
-  }, [selectedWg?.id])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- csoportváltáskor ÉS minden reloadnál
+  }, [selectedWg?.id, reloadVersion])
 
   // FK02-B / FR-11, FR-12: az aktuális csoport FIX (nem-formulás) cella-állapotának alkalmazása.
   // Minden string-mezőt a SZERVER-baseline-ra állít vissza, majd rátenni a csoport override-jait
@@ -478,9 +477,9 @@ export default function RateCreationPage() {
       recomputeGuardRef.current = true
       setRates(next)
     }
-    // cellErrors szándékosan kihagyva: csak rates/formulas változásra számolunk újra
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rates, formulas, selectedWg?.legacyGroupNumber])
+    // cellErrors szándékosan kihagyva: rates/formulas/reload változásra számolunk újra
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a friss sheet0-kontextus reloadnál is újraszámítandó
+  }, [rates, formulas, selectedWg?.legacyGroupNumber, reloadVersion])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -1144,6 +1143,14 @@ export default function RateCreationPage() {
     }
     if (!canWriteRateCreation) {
       toast.error('Nincs jogosultság', 'Publikáláshoz főértéktáros vagy ügyvezető szerepkör kell')
+      return
+    }
+
+    if (Object.keys(cellErrors).length > 0) {
+      toast.error(
+        'Nem küldhető szét',
+        'Hibás árfolyam-képlet cella(k) van(nak) a lapon — előbb javítsa a hibás képleteket.',
+      )
       return
     }
 

@@ -81,6 +81,15 @@ describe('RateGrid (FK02-E)', () => {
     renderGrid([row()], { syncing: true })
     expect(screen.getByText(/Szinkronizálás folyamatban, kérjük várjon/)).toBeInTheDocument()
   })
+
+  it('FK10: képlethibás cella tooltipje mutatja a hibát', () => {
+    renderGrid([row({ sellRate: '405' })], {
+      formulas: { '1.sellRate': 'F' },
+      cellErrors: { '1.sellRate': 'Nincs érték a 0-s lap F oszlopában' },
+    })
+    const input = screen.getByDisplayValue('405,00') as HTMLInputElement
+    expect(input.title).toBe('Képlet: F — HIBA: Nincs érték a 0-s lap F oszlopában')
+  })
 })
 
 /**
