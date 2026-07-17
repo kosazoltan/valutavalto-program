@@ -270,12 +270,21 @@ public class TransferService {
 
         transfer = transferRepository.save(transfer);
 
-        // Audit log
-        auditLogService.log("TRANSFER_RECEIVED",
-                String.format("Átadás fogadva: %s, irány: %s, fogadott összeg: %s, különbözet: %s",
-                        transfer.getTransferNumber(), direction,
-                        dto.getReceivedAmount(), transfer.getDifference()),
-                transfer.getId());
+        // Audit log — felelősségi nyom (hibajelentés 2026-07-14 / 3. kérdés): vitás ügyben
+        // visszakereshető, MELYIK dolgozó igazolta vissza az átvételt, és a bizonylaton
+        // rögzített Szállító (carrierName) neve MELLETTE szerepel ("kinek a megbízásából").
+        // A "Átadás fogadva: " prefix változatlan (log-grep kompatibilitás).
+        String auditMessage = String.format(
+                "Átadás fogadva: %s, irány: %s, fogadott összeg: %s, különbözet: %s, igazoló dolgozó: %s (%s)",
+                transfer.getTransferNumber(), direction,
+                dto.getReceivedAmount(), transfer.getDifference(),
+                toWorker.getName(), toWorker.getCode());
+        if (transfer.getCarrierName() != null && !transfer.getCarrierName().isBlank()) {
+            auditMessage += String.format(
+                    ", a bizonylaton rögzített szállító (%s) megbízásából",
+                    transfer.getCarrierName());
+        }
+        auditLogService.log("TRANSFER_RECEIVED", auditMessage, transfer.getId());
 
         return toDto(transfer);
     }
