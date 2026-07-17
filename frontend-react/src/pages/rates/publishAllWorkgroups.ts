@@ -14,6 +14,7 @@
  * csoportonként gyűlnek és a hívó visszajelzésében jelennek meg (FR-8).
  */
 
+import { isAxiosError } from 'axios'
 import {
   rateCreationApi,
   type PublishGroupRateRequest,
@@ -28,6 +29,7 @@ import {
 } from './workgroupProtection'
 import { recomputeWorkgroupSheet, type WgComputeRow, type WgField } from './workgroupSheetCompute'
 import type { WgValues } from './workgroupSheetFormula'
+import { classifyPublishFailure, type PublishFailureKind } from './publishFailureClassification'
 import {
   loadSheet0ByCurrency,
   loadAllGroupValueSnapshots,
@@ -44,6 +46,8 @@ export interface GroupPublishOutcome {
   status: 'published' | 'skipped' | 'failed'
   message?: string
   acceptedRates?: number
+  /** FK09: üzleti/helyi vagy transport-jellegű publikálási hiba. */
+  failureKind?: PublishFailureKind
 }
 
 export interface PublishAllResult {
@@ -279,6 +283,7 @@ export async function publishAllWorkgroups(
             otherGroupsByCurrency,
           )
           if (built.error) {
+            outcome.failureKind = 'business'
             outcome.message = built.error
             outcomes.push(outcome)
             return
@@ -298,6 +303,7 @@ export async function publishAllWorkgroups(
               workgroupProtectionLabel(group.legacyGroupNumber, group.code),
             )
             if (violations.length > 0) {
+              outcome.failureKind = 'business'
               outcome.message = `árfolyamvédelem: ${violations[0]!.message}`
               outcomes.push(outcome)
               return
@@ -314,7 +320,14 @@ export async function publishAllWorkgroups(
         persistGroupRateValues(group.id, {})
         outcomes.push(outcome)
       } catch (err: unknown) {
-        outcome.message = err instanceof Error ? err.message : 'ismeretlen publikálási hiba'
+        outcome.failureKind = classifyPublishFailure(err)
+        const responseData = isAxiosError(err)
+          ? (err.response?.data as { message?: unknown } | undefined)
+          : undefined
+        const responseMessage =
+          typeof responseData?.message === 'string' ? responseData.message : undefined
+        outcome.message =
+          responseMessage ?? (err instanceof Error ? err.message : 'ismeretlen publikálási hiba')
         outcomes.push(outcome)
       } finally {
         done += 1

@@ -1365,13 +1365,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * FK-055: napi KÉSZPÉNZES kezelési díj vétel/eladás bontásban, CÉG-szinten —
      * minden aktív, NEM értéktári fiókra összesítve. NULL payment_method = legacy CASH
      * sor (FS-15 konvenció) — beszámít.
+     * FK-056: a VAULT_COUNTERPARTY virtuális partner-fiókok kanonikus, null-safe
+     * branchType-kizárása. Az isVault = false defense-in-depth marad, mert az
+     * értéktár-kizárás külön dimenzió.
      * Visszaad: [transactionDate, transactionType, SUM(handlingFee)]
      */
     @Query("SELECT t.transactionDate, t.transactionType, SUM(t.handlingFee) " +
            "FROM Transaction t " +
-           "WHERE t.branch.company.id = :companyId " +
-           "AND t.branch.isActive = true " +
-           "AND t.branch.isVault = false " +
+           "JOIN t.branch b " +
+           "LEFT JOIN b.branchType bt " +
+           "WHERE b.company.id = :companyId " +
+           "AND b.isActive = true " +
+           "AND b.isVault = false " +
+           "AND (bt IS NULL OR bt.code <> 'VAULT_COUNTERPARTY') " +
            "AND t.transactionDate BETWEEN :startDate AND :endDate " +
            "AND t.status = 'COMPLETED' " +
            "AND (t.paymentMethod = hu.puzzleir.valuta.entity.PaymentMethod.CASH " +

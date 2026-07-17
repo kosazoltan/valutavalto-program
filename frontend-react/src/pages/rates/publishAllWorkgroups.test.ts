@@ -1,3 +1,4 @@
+import { AxiosError } from 'axios'
 import { vi, describe, beforeEach, it, expect } from 'vitest'
 import { publishAllWorkgroups, summarizePublishAll } from './publishAllWorkgroups'
 import type { RateOverviewItem, WorkgroupDetailDTO } from '../../services/api/exchange-rates'
@@ -316,5 +317,48 @@ describe('publishAllWorkgroups — FK05 egységes szétküldés', () => {
     expect(mocks.getOverview).toHaveBeenCalledTimes(1)
     expect(mocks.getWorkgroupDetails).toHaveBeenCalledTimes(1)
     expect(result.published).toBe(1)
+  })
+
+  it('FK09: 400-as publish-hiba → outcome.failureKind business és backend-üzenet', async () => {
+    const error = new AxiosError('Request failed with status code 400')
+    error.response = {
+      status: 400,
+      data: { message: 'Spread-szabály sértés' },
+    } as AxiosError['response']
+    mocks.publishGroupRate.mockRejectedValue(error)
+
+    const result = await publishAllWorkgroups({
+      preloaded: { overview: [item()], workgroups: [group()] },
+    })
+
+    expect(result.published).toBe(0)
+    expect(result.outcomes[0]!.status).toBe('failed')
+    expect(result.outcomes[0]!.failureKind).toBe('business')
+    expect(result.outcomes[0]!.message).toBe('Spread-szabály sértés')
+  })
+
+  it('FK09: network error publish-hiba → outcome.failureKind transport', async () => {
+    const error = new AxiosError('Network Error')
+    error.code = 'ERR_NETWORK'
+    mocks.publishGroupRate.mockRejectedValue(error)
+
+    const result = await publishAllWorkgroups({
+      preloaded: { overview: [item()], workgroups: [group()] },
+    })
+
+    expect(result.outcomes[0]!.failureKind).toBe('transport')
+  })
+
+  it('FK09: helyi validációs csoport-hiba → outcome.failureKind business', async () => {
+    const result = await publishAllWorkgroups({
+      preloaded: {
+        overview: [item({ currentBuyRate: 405, currentSellRate: 400 })],
+        workgroups: [group()],
+      },
+    })
+
+    expect(result.outcomes[0]!.status).toBe('failed')
+    expect(result.outcomes[0]!.failureKind).toBe('business')
+    expect(mocks.publishGroupRate).not.toHaveBeenCalled()
   })
 })

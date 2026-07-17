@@ -103,6 +103,7 @@ class HandlingFeeDailySummaryPostgresIT {
         assertRow(companyRows.get(2), D2, TransactionType.SELL, "40.00");
         assertThat(companyRows)
                 .allSatisfy(row -> assertThat((BigDecimal) row[2])
+                        .isNotEqualByComparingTo("444.00")
                         .isNotEqualByComparingTo("555.00")
                         .isNotEqualByComparingTo("666.00")
                         .isNotEqualByComparingTo("777.00")
@@ -119,6 +120,14 @@ class HandlingFeeDailySummaryPostgresIT {
                 .name("FK-053 branch type")
                 .createdAt(now)
                 .build());
+        Dictionary counterpartyType = dictionaryRepository
+                .findByCategoryAndCode("BRANCH_TYPE", "VAULT_COUNTERPARTY")
+                .orElseGet(() -> dictionaryRepository.save(Dictionary.builder()
+                        .category("BRANCH_TYPE")
+                        .code("VAULT_COUNTERPARTY")
+                        .name("Vault counterparty")
+                        .createdAt(now)
+                        .build()));
         Dictionary country = dictionaryRepository.save(Dictionary.builder()
                 .category("COUNTRY")
                 .code("FK053-CO-" + suffix)
@@ -150,6 +159,9 @@ class HandlingFeeDailySummaryPostgresIT {
                 tenantA.company(), "AV" + suffix, branchType, country, branchStatus, now, true, true);
         Tenant tenantAInactiveBranch = seedBranch(
                 tenantA.company(), "AI" + suffix, branchType, country, branchStatus, now, false, false);
+        Tenant tenantACounterpartyBranch = seedBranch(
+                tenantA.company(), "AC" + suffix, counterpartyType, country, branchStatus,
+                now, false, true);
 
         saveTransaction(tenantA, huf, D1, TransactionType.BUY, PaymentMethod.CASH,
                 TransactionStatus.COMPLETED, "100.00", "A1-" + suffix);
@@ -175,6 +187,8 @@ class HandlingFeeDailySummaryPostgresIT {
                 TransactionStatus.COMPLETED, "555.00", "A11-" + suffix);
         saveTransaction(tenantAInactiveBranch, huf, D1, TransactionType.BUY, PaymentMethod.CASH,
                 TransactionStatus.COMPLETED, "666.00", "A12-" + suffix);
+        saveTransaction(tenantACounterpartyBranch, huf, D1, TransactionType.BUY, PaymentMethod.CASH,
+                TransactionStatus.COMPLETED, "444.00", "A13-" + suffix);
         saveTransaction(tenantB, huf, D1, TransactionType.BUY, PaymentMethod.CASH,
                 TransactionStatus.COMPLETED, "777.00", "B1-" + suffix);
         transactionRepository.flush();

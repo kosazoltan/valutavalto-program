@@ -30,6 +30,7 @@ import {
 } from '../../services/api/exchangeRateMaster'
 // FK05 (FR-1): a Főlap szétküldése is a munkacsoport-publish útvonalon megy.
 import { publishAllWorkgroups, summarizePublishAll } from './publishAllWorkgroups'
+import { classifyPublishFailure, resolveDispatchSyncDecision } from './publishFailureClassification'
 import { exchangeRateApi } from '../../services/api/exchange-rates'
 import { getCrossBase, useCurrencyCatalog } from '../../hooks/useCurrencyCatalog'
 import CurrencyManagerModal from './components/CurrencyManagerModal'
@@ -1129,138 +1130,150 @@ export default function MainRateSheetPage() {
     const { rows: rowsToDispatch } = flushActiveCell()
     setPublishing(true)
 
-    // 1. Mentes localStorage cache-be - kulon try-block (Sourcery PR #687)
-    // hogy a quota/private-browsing hiba NE legyen szerver-network hibanak jelolt
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(rowsToDispatch))
-      lastSavedAt.current = new Date().toISOString()
-    } catch (storageErr) {
-      logger.error('MainRateSheetPage', 'localStorage cache write failed', storageErr)
-      toast.error(
-        'Tárolási hiba',
-        'A helyi gyorsítótár mentése nem sikerült (böngésző tárhely / privát mód). A szerver-publikálás MÉG meg fog történni.',
-      )
-      // NEM dobunk, folytatjuk a szerver-publikalast
-    }
-
-    // 2. FK05 (FR-1, FR-2): a Főlap szétküldése is a munkacsoport-publish útvonalon megy
-    // (POST /rate-creation/publish-group-rate, MINDEN csoportra) — az exchange-rate-master
-    // create→approve→publish út kivezetése külön technikai-adósság kör (FK05 OUT).
-    // A kiküldés előtti adatminőség-figyelmeztetések (irány, EUA, Raiffeisen-sáv) a 0-s lap
-    // TELJES (nem-nulla rátájú) állományán futnak — a csoportlapok képletei ebből táplálkoznak.
-    const eurRowD = rowsToDispatch.find((r) => r.currency === 'EUR')
-    const usdRowD = rowsToDispatch.find((r) => r.currency === 'USD')
-    const eurS = eurRowD?.settlement ?? 0
-    const usdS = usdRowD?.settlement ?? 0
-
-    const ratedRows = rowsToDispatch.flatMap((r) => {
-      if (r.weakMultiBuy <= 0 || r.weakMultiSell <= 0) return []
-      // A oszlop tényleges értéke: kézi felülírás → beírt érték, egyébként a G auto-érték.
-      return [{ row: r, effectiveSettlement: resolveSettlement(r, eurS, usdS) }]
-    })
-
-    // G7 (EXCMD b1-arfolyamkeszito FR-RFM-25): kiküldés előtti irány-validáció —
-    // az eladási (weakMultiSell) nem lehet kisebb az elszámolónál, a vételi
-    // (weakMultiBuy) nem lehet magasabb. Sértés esetén figyelmeztetés + megerősítés.
-    const directionViolations = validateRateDirection(
-      ratedRows.map(({ row, effectiveSettlement }) => ({
-        currencyCode: row.currency,
-        settlement: effectiveSettlement,
-        buyRate: row.weakMultiBuy,
-        sellRate: row.weakMultiSell,
-      })),
-    )
-    const warnings: string[] = directionViolations.map((v) => `• ${v.message}`)
-
-    // G22 (FR-RFM-09): EUA (euró-érme) árfolyam max 20% eltérés a gyenge euró
-    // eladás × 1.2 képzett értéktől; ennél nagyobb eltérésnél ki kell írni.
-    const eurSell = rowsToDispatch.find((r) => r.currency === 'EUR')?.weakMultiSell ?? 0
-    const euaSell = rowsToDispatch.find((r) => r.currency === 'EUA')?.weakMultiSell ?? 0
-    if (euaSell > 0 && eurSell > 0 && euaDeviationExceeds(euaSell, eurSell)) {
-      warnings.push(
-        `• EUA: az euró-érme árfolyam (${euaSell}) több mint 20%-kal eltér a képzett ` +
-          `értéktől (${computeEuaRate(eurSell).toFixed(2)} = gyenge euró eladás × 1.2)`,
-      )
-    }
-
-    // G23 (FR-RFM-12/13): Raiffeisen ±N% eltérési sáv — a vétel/eladás a kiválasztott bázistól
-    // (elszámoló VAGY OTP) max bandPercent%-kal térhet el. A bázison kívüli értékek figyelmeztetést
-    // adnak a kiküldés előtt (a megbízási szerződés szerinti 10%-os korlát, szabadon állítva).
-    const bandViolations = raiffeisenBandViolations(
-      ratedRows.map(({ row, effectiveSettlement }) => ({
-        currency: row.currency,
-        base: bandBase === 'otp' ? row.otp : effectiveSettlement,
-        buy: row.weakMultiBuy,
-        sell: row.weakMultiSell,
-      })),
-      bandPercent,
-    )
-    const bandBaseLabel = bandBase === 'otp' ? 'OTP' : 'elszámoló'
-    for (const v of bandViolations) {
-      warnings.push(
-        `• Raiffeisen sáv: ${v.currency} ${v.kind === 'buy' ? 'vétel' : 'eladás'} (${v.rate}) a ` +
-          `±${bandPercent}%-os sávon kívül [${v.min.toFixed(2)}–${v.max.toFixed(2)}], ` +
-          `bázis: ${bandBaseLabel} (${v.base.toFixed(2)})`,
-      )
-    }
-
-    if (warnings.length > 0) {
-      // window.confirm: szándékos, függőség-mentes választás, konzisztens a meglévő
-      // mintával (ReservationPage). Egyedi modal-dialógusra cserélése külön UX-kör,
-      // a futó-app (Electron) verifikációval együtt (Sourcery #787).
-      const proceed = window.confirm(
-        'Árfolyam-figyelmeztetés (FR-RFM-25 / FR-RFM-09):\n\n' +
-          warnings.join('\n') +
-          '\n\nBiztosan kiküldi így az árfolyamot?',
-      )
-      if (!proceed) {
-        setPublishing(false)
-        return
+      // 1. Mentes localStorage cache-be - kulon try-block (Sourcery PR #687)
+      // hogy a quota/private-browsing hiba NE legyen szerver-network hibanak jelolt
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(rowsToDispatch))
+        lastSavedAt.current = new Date().toISOString()
+      } catch (storageErr) {
+        logger.error('MainRateSheetPage', 'localStorage cache write failed', storageErr)
+        toast.error(
+          'Tárolási hiba',
+          'A helyi gyorsítótár mentése nem sikerült (böngésző tárhely / privát mód). A szerver-publikálás MÉG meg fog történni.',
+        )
+        // NEM dobunk, folytatjuk a szerver-publikalast
       }
-    }
 
-    // 3. FK05 (FR-1, FR-2, FR-8): minden munkacsoport publikálása a munkacsoport-lap
-    // útvonalán (publish-group-rate) — a csoport-adatok a tárolt overlay + képletek
-    // headless kiértékeléséből jönnek (publishAllWorkgroups, TBD-4 tényfeltárás szerint).
-    try {
-      const result = await publishAllWorkgroups({
-        onProgress: (done, total) => setPublishProgress({ done, total }),
+      // 2. FK05 (FR-1, FR-2): a Főlap szétküldése is a munkacsoport-publish útvonalon megy
+      // (POST /rate-creation/publish-group-rate, MINDEN csoportra) — az exchange-rate-master
+      // create→approve→publish út kivezetése külön technikai-adósság kör (FK05 OUT).
+      // A kiküldés előtti adatminőség-figyelmeztetések (irány, EUA, Raiffeisen-sáv) a 0-s lap
+      // TELJES (nem-nulla rátájú) állományán futnak — a csoportlapok képletei ebből táplálkoznak.
+      const eurRowD = rowsToDispatch.find((r) => r.currency === 'EUR')
+      const usdRowD = rowsToDispatch.find((r) => r.currency === 'USD')
+      const eurS = eurRowD?.settlement ?? 0
+      const usdS = usdRowD?.settlement ?? 0
+
+      const ratedRows = rowsToDispatch.flatMap((r) => {
+        if (r.weakMultiBuy <= 0 || r.weakMultiSell <= 0) return []
+        // A oszlop tényleges értéke: kézi felülírás → beírt érték, egyébként a G auto-érték.
+        return [{ row: r, effectiveSettlement: resolveSettlement(r, eurS, usdS) }]
       })
 
-      setDirty(false)
-      setServerSyncState('online')
-      setServerLastSyncAt(new Date().toISOString())
+      // G7 (EXCMD b1-arfolyamkeszito FR-RFM-25): kiküldés előtti irány-validáció —
+      // az eladási (weakMultiSell) nem lehet kisebb az elszámolónál, a vételi
+      // (weakMultiBuy) nem lehet magasabb. Sértés esetén figyelmeztetés + megerősítés.
+      const directionViolations = validateRateDirection(
+        ratedRows.map(({ row, effectiveSettlement }) => ({
+          currencyCode: row.currency,
+          settlement: effectiveSettlement,
+          buyRate: row.weakMultiBuy,
+          sellRate: row.weakMultiSell,
+        })),
+      )
+      const warnings: string[] = directionViolations.map((v) => `• ${v.message}`)
 
-      if (result.total === 0) {
-        toast.warning(
-          'Nincs munkacsoport',
-          'Nincs aktív árfolyam-munkacsoport — előbb hozzon létre csoportot a munkacsoport-lapon.',
+      // G22 (FR-RFM-09): EUA (euró-érme) árfolyam max 20% eltérés a gyenge euró
+      // eladás × 1.2 képzett értéktől; ennél nagyobb eltérésnél ki kell írni.
+      const eurSell = rowsToDispatch.find((r) => r.currency === 'EUR')?.weakMultiSell ?? 0
+      const euaSell = rowsToDispatch.find((r) => r.currency === 'EUA')?.weakMultiSell ?? 0
+      if (euaSell > 0 && eurSell > 0 && euaDeviationExceeds(euaSell, eurSell)) {
+        warnings.push(
+          `• EUA: az euró-érme árfolyam (${euaSell}) több mint 20%-kal eltér a képzett ` +
+            `értéktől (${computeEuaRate(eurSell).toFixed(2)} = gyenge euró eladás × 1.2)`,
         )
-      } else {
-        const summary = summarizePublishAll(result)
-        if (summary.ok) {
-          // FK07-fix (FR-3): TELJES sikerű szétküldés után a helyi-módosítás jelzők
-          // törlődnek — a következő szerver-szinkron már felülírhat (nincs örökre
-          // beragadt lokális felülbírálás). Részleges sikernél a jelzők maradnak
-          // (a ki nem küldött érték védelme fontosabb).
-          try {
-            localStorage.removeItem(LOCAL_EDIT_STORAGE_KEY)
-          } catch {
-            /* quota/privát mód — a védelem legfeljebb tovább él */
-          }
-          toast.success(summary.title, summary.detail)
-        } else if (result.published > 0) {
-          toast.warning(summary.title, summary.detail)
+      }
+
+      // G23 (FR-RFM-12/13): Raiffeisen ±N% eltérési sáv — a vétel/eladás a kiválasztott bázistól
+      // (elszámoló VAGY OTP) max bandPercent%-kal térhet el. A bázison kívüli értékek figyelmeztetést
+      // adnak a kiküldés előtt (a megbízási szerződés szerinti 10%-os korlát, szabadon állítva).
+      const bandViolations = raiffeisenBandViolations(
+        ratedRows.map(({ row, effectiveSettlement }) => ({
+          currency: row.currency,
+          base: bandBase === 'otp' ? row.otp : effectiveSettlement,
+          buy: row.weakMultiBuy,
+          sell: row.weakMultiSell,
+        })),
+        bandPercent,
+      )
+      const bandBaseLabel = bandBase === 'otp' ? 'OTP' : 'elszámoló'
+      for (const v of bandViolations) {
+        warnings.push(
+          `• Raiffeisen sáv: ${v.currency} ${v.kind === 'buy' ? 'vétel' : 'eladás'} (${v.rate}) a ` +
+            `±${bandPercent}%-os sávon kívül [${v.min.toFixed(2)}–${v.max.toFixed(2)}], ` +
+            `bázis: ${bandBaseLabel} (${v.base.toFixed(2)})`,
+        )
+      }
+
+      if (warnings.length > 0) {
+        // window.confirm: szándékos, függőség-mentes választás, konzisztens a meglévő
+        // mintával (ReservationPage). Egyedi modal-dialógusra cserélése külön UX-kör,
+        // a futó-app (Electron) verifikációval együtt (Sourcery #787).
+        const proceed = window.confirm(
+          'Árfolyam-figyelmeztetés (FR-RFM-25 / FR-RFM-09):\n\n' +
+            warnings.join('\n') +
+            '\n\nBiztosan kiküldi így az árfolyamot?',
+        )
+        if (!proceed) {
+          return
+        }
+      }
+
+      // 3. FK05 (FR-1, FR-2, FR-8): minden munkacsoport publikálása a munkacsoport-lap
+      // útvonalán (publish-group-rate) — a csoport-adatok a tárolt overlay + képletek
+      // headless kiértékeléséből jönnek (publishAllWorkgroups, TBD-4 tényfeltárás szerint).
+      try {
+        const result = await publishAllWorkgroups({
+          onProgress: (done, total) => setPublishProgress({ done, total }),
+        })
+
+        if (result.published > 0) setDirty(false)
+        const syncDecision = resolveDispatchSyncDecision(result)
+        if (syncDecision === 'online') {
+          setServerSyncState('online')
+          setServerLastSyncAt(new Date().toISOString())
         } else {
-          toast.error('Sikertelen', summary.detail)
           setServerSyncState('offline')
+        }
+
+        if (result.total === 0) {
+          toast.warning(
+            'Nincs munkacsoport',
+            'Nincs aktív árfolyam-munkacsoport — előbb hozzon létre csoportot a munkacsoport-lapon.',
+          )
+        } else {
+          const summary = summarizePublishAll(result)
+          if (summary.ok) {
+            // FK07-fix (FR-3): TELJES sikerű szétküldés után a helyi-módosítás jelzők
+            // törlődnek — a következő szerver-szinkron már felülírhat (nincs örökre
+            // beragadt lokális felülbírálás). Részleges sikernél a jelzők maradnak
+            // (a ki nem küldött érték védelme fontosabb).
+            try {
+              localStorage.removeItem(LOCAL_EDIT_STORAGE_KEY)
+            } catch {
+              /* quota/privát mód — a védelem legfeljebb tovább él */
+            }
+            toast.success(summary.title, summary.detail)
+          } else if (result.published > 0) {
+            toast.warning(summary.title, summary.detail)
+          } else {
+            toast.error('Sikertelen', summary.detail)
+          }
+        }
+      } catch (e) {
+        logger.error('MainRateSheetPage', 'Server dispatch failed', e)
+        if (classifyPublishFailure(e) === 'transport') {
+          toast.error('Hálózati hiba', 'Szerver nem elérhető — kérlek próbáld újra.')
+          setServerSyncState('offline')
+        } else {
+          toast.error('Szétküldési hiba', getErrorMessage(e))
         }
       }
     } catch (e) {
-      // Csak szerver/network hiba - localStorage mar a kulon try-block-on tul vagyunk
-      logger.error('MainRateSheetPage', 'Server dispatch failed', e)
-      toast.error('Hálózati hiba', 'Szerver nem elérhető — kérlek próbáld újra.')
-      setServerSyncState('offline')
+      // A warning/confirm szakasz helyi hibája nem hálózati kiesés: az indikátor Online marad.
+      logger.error('MainRateSheetPage', 'Dispatch preparation failed', e)
+      toast.error('Szétküldési hiba', getErrorMessage(e))
     } finally {
       setPublishProgress(null)
       setPublishing(false)
