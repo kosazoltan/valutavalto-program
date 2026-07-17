@@ -98,6 +98,8 @@ public class ShipmentHandlingFeeService {
 
     @Transactional(readOnly = true)
     public ShipmentHandlingFeeDto findByShipmentId(UUID shipmentRequestId) {
+        // Territory-scope guard (2026-07-15): idegen régió shipmentjének díja se olvasható (404).
+        shipmentService.assertShipmentTerritoryVisible(shipmentRequestId);
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         return feeRepository.findByShipmentRequestIdAndCompanyId(shipmentRequestId, companyId)
                 .map(ShipmentHandlingFeeDto::from)

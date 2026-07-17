@@ -16,6 +16,7 @@ import hu.puzzleir.valuta.repository.DictionaryRepository;
 import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
+import hu.puzzleir.valuta.service.AccessScopeService;
 import hu.puzzleir.valuta.service.ExchangeRateService;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeService;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeSyncService;
@@ -95,6 +96,7 @@ class ShipmentCreateJsonBackReferencePostgresIT {
     @MockitoBean private ShipmentStockBookingService stockBookingService;
     @MockitoBean private ShipmentHandlingFeeSyncService handlingFeeSyncService;
     @MockitoBean private ShipmentHandlingFeeService shipmentHandlingFeeService;
+    @MockitoBean private AccessScopeService accessScopeService;
 
     private MockMvc mockMvc;
     private Company company;

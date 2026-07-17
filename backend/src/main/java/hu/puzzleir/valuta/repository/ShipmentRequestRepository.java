@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -79,6 +80,25 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
            "AND sr.fromBranchId IN (SELECT b.id FROM Branch b WHERE b.company.id = :companyId) " +
            "ORDER BY sr.createdAt DESC")
     Page<ShipmentRequest> findByBranchAndCompanyId(
+            @Param("branchId") UUID branchId,
+            @Param("status") ShipmentRequestStatus status,
+            @Param("companyId") UUID companyId,
+            Pageable pageable);
+
+    /**
+     * Territory-scope-olt listázás (2026-07-15 hardening): a meglévő tenant-klauzula
+     * (fromBranchId a cég branch-ei közt) + a tétel CSAK akkor látható, ha BÁRMELYIK vége
+     * (from VAGY to) a hívó region-scope-jában van. A branchId/status opcionális szűrők a
+     * findByBranchAndCompanyId-vel azonos szemantikájúak. Üres branchIds-szel TILOS hívni.
+     */
+    @Query("SELECT sr FROM ShipmentRequest sr " +
+           "WHERE (sr.fromBranchId IN :branchIds OR sr.toBranchId IN :branchIds) " +
+           "AND (:branchId IS NULL OR sr.fromBranchId = :branchId OR sr.toBranchId = :branchId) " +
+           "AND (:status IS NULL OR sr.status = :status) " +
+           "AND sr.fromBranchId IN (SELECT b.id FROM Branch b WHERE b.company.id = :companyId) " +
+           "ORDER BY sr.createdAt DESC")
+    Page<ShipmentRequest> findScopedByCompanyId(
+            @Param("branchIds") Collection<UUID> branchIds,
             @Param("branchId") UUID branchId,
             @Param("status") ShipmentRequestStatus status,
             @Param("companyId") UUID companyId,

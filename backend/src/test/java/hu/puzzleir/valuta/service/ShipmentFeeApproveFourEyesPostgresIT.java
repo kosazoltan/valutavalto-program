@@ -105,6 +105,7 @@ class ShipmentFeeApproveFourEyesPostgresIT {
     @Autowired private JdbcTemplate jdbc;
 
     @MockitoBean private ExchangeRateService exchangeRateService;
+    @MockitoBean private AccessScopeService accessScopeService;
 
     private Company companyA;
     private Branch vaultBranchA;

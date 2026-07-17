@@ -20,6 +20,7 @@ import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -49,6 +51,7 @@ public class ShipmentService {
     private final TransferSerialSequenceService transferSerialSequenceService;
     private final ShipmentStockBookingService stockBookingService;
     private final ShipmentHandlingFeeSyncService handlingFeeSyncService;
+    private final AccessScopeService accessScopeService;
 
     /**
      * v2.5.70 P0 multi-tenant fix (companyId audit follow-up): a régi findByStatus /
@@ -59,6 +62,15 @@ public class ShipmentService {
     public Page<ShipmentRequest> findAll(ShipmentRequestStatus status, UUID branchId, Pageable pageable) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Page<ShipmentRequest> page;
+        Set<UUID> scope = accessScopeService.vaultRegionBranchScopeOrNull();
+        if (scope != null) {
+            if (scope.isEmpty()) {
+                return new PageImpl<>(List.of(), pageable, 0); // fail-closed
+            }
+            page = shipmentRequestRepository.findScopedByCompanyId(scope, branchId, status, companyId, pageable);
+            page.getContent().forEach(ShipmentService::initLazyForSerialization);
+            return page;
+        }
         // F2 (2026-06-01): natív, DB-szintű branch-szűrő — megszünteti a kliens-oldali
         // "összes letöltése + filter" mintát. branchId opcionális; ha megadott, a status is szűr.
         if (branchId != null) {
@@ -107,7 +119,9 @@ public class ShipmentService {
 
     @Transactional(readOnly = true)
     public ShipmentRequestResponseDto findByIdResponse(UUID id) {
-        return toResponseDto(findById(id));
+        ShipmentRequest sr = findById(id);
+        assertTerritoryVisible(sr, id);
+        return toResponseDto(sr);
     }
 
     /**
@@ -140,6 +154,33 @@ public class ShipmentService {
                     shipmentId, which, branchId, branchCompanyId, currentCompanyId);
             throw new ValidationException("A szállítmánykérés nem tartozik a jelenlegi céghez (cross-tenant access blocked, " + which + ")");
         }
+    }
+
+    /**
+     * Territory-scope guard OLVASÓ útvonalra (2026-07-15 hardening): scope-on kívüli
+     * shipment → 404 (assertBranchInCompany-val azonos anti-enumeráció konvenció).
+     * SZÁNDÉKOSAN nincs a findById/findByIdLocked-ban: azokat írási útvonalak
+     * (update/approve/deliver/submit/cancel) hívják, amelyek viselkedése e slice-ban
+     * nem változhat.
+     */
+    private void assertTerritoryVisible(ShipmentRequest sr, UUID idForMessage) {
+        Set<UUID> scope = accessScopeService.vaultRegionBranchScopeOrNull();
+        if (scope == null) {
+            return;
+        }
+        String fromId = sr.getFromBranchId() != null ? sr.getFromBranchId().toString() : null;
+        String toId = sr.getToBranchId() != null ? sr.getToBranchId().toString() : null;
+        boolean visible = accessScopeService.isBranchVisible(scope, fromId)
+                || accessScopeService.isBranchVisible(scope, toId);
+        if (!visible) {
+            throw new ResourceNotFoundException("Szállítmánykérés nem található: " + idForMessage);
+        }
+    }
+
+    /** Publikus read-guard társ-service-eknek (handling-fee): betölt (tenant-guarddal) + territory-check. */
+    @Transactional(readOnly = true)
+    public void assertShipmentTerritoryVisible(UUID shipmentId) {
+        assertTerritoryVisible(findById(shipmentId), shipmentId);
     }
 
     /**
