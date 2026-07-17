@@ -13,6 +13,7 @@ import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.repository.TransferRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -30,6 +31,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -52,6 +54,12 @@ class TransferReceiveAuditTest {
     @Mock private AccessScopeService accessScopeService;
 
     @InjectMocks private TransferService service;
+
+    @BeforeEach
+    void setUpAccessScope() {
+        // Mockito collection defaults are empty rather than null; preserve the legacy central-role fixture.
+        lenient().when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+    }
 
     @Test
     void receive_withCarrierName_auditContainsWorkerAndCarrier() {

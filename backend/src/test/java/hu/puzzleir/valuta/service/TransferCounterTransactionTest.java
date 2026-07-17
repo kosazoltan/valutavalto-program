@@ -73,6 +73,9 @@ class TransferCounterTransactionTest {
 
     @BeforeEach
     void setUp() {
+        // Mockito collection defaults are empty rather than null; preserve the legacy central-role fixture.
+        lenient().when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+
         company = new Company();
         company.setId(COMPANY_ID);
 
