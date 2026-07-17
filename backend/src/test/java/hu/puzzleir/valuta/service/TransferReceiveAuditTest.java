@@ -72,6 +72,18 @@ class TransferReceiveAuditTest {
     }
 
     @Test
+    void receive_withControlCharactersInCarrierName_sanitizesAuditMessage() {
+        String carrierName = "Réti\rPál\nG4S\tX" + (char) 0 + "Y" + (char) 0x7F + "Z";
+
+        String message = receiveAndCaptureAuditMessage(carrierName);
+
+        assertThat(message)
+                .contains("igazoló dolgozó: Kiss Éva (W007)")
+                .contains("szállító (Réti_Pál_G4S_X_Y_Z) megbízásából")
+                .doesNotContainPattern("[\\x00-\\x1F\\x7F]");
+    }
+
+    @Test
     void receive_withoutCarrierName_auditContainsWorkerNoCarrierClause() {
         String message = receiveAndCaptureAuditMessage(null);
 

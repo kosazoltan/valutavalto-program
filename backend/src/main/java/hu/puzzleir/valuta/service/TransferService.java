@@ -282,11 +282,15 @@ public class TransferService {
         if (transfer.getCarrierName() != null && !transfer.getCarrierName().isBlank()) {
             auditMessage += String.format(
                     ", a bizonylaton rögzített szállító (%s) megbízásából",
-                    transfer.getCarrierName());
+                    sanitizeAuditValue(transfer.getCarrierName()));
         }
         auditLogService.log("TRANSFER_RECEIVED", auditMessage, transfer.getId());
 
         return toDto(transfer);
+    }
+
+    private static String sanitizeAuditValue(String value) {
+        return value == null ? null : value.replaceAll("[\\x00-\\x1F\\x7F]", "_");
     }
 
     @Transactional(rollbackFor = Exception.class)
