@@ -6,6 +6,7 @@ import {
   parseNumber,
   type WorkgroupFormulaContext,
 } from './workgroupSheetFormula'
+import { sheet0RowToValues } from './workgroupSheetStorage'
 
 function ctx(over: Partial<WorkgroupFormulaContext> = {}): WorkgroupFormulaContext {
   return {
@@ -152,5 +153,34 @@ describe('workgroupSheetFormula (FK-03)', () => {
     it('a D oszlop nem kerül a függőségek közé (érvénytelen → üres)', () => {
       expect(extractWorkgroupDependencies('D')).toEqual([])
     })
+  })
+})
+
+describe('FK10 — 0 forrásérték = nincs érték hiba', () => {
+  it('self F hivatkozás 0-s forrásnál a meglévő magyar hibát adja', () => {
+    const r = evaluateWorkgroupFormula(
+      'F',
+      ctx({
+        sheet0Self: sheet0RowToValues({ currency: 'RUB', weakMultiSell: 0 }),
+      }),
+    )
+    expect('error' in r && r.error).toBe('Nincs érték a 0-s lap F oszlopában')
+  })
+
+  it('hiányzó mező ugyanazt a hibát adja (paritás)', () => {
+    const r = evaluateWorkgroupFormula('F', ctx({ sheet0Self: {} }))
+    expect('error' in r && r.error).toBe('Nincs érték a 0-s lap F oszlopában')
+  })
+
+  it('kereszt-valuta hivatkozás 0-s forrásnál: Nincs érték: !FEUR', () => {
+    const r = evaluateWorkgroupFormula(
+      '!FEUR',
+      ctx({
+        sheet0ByCurrency: new Map([
+          ['EUR', sheet0RowToValues({ currency: 'EUR', weakMultiSell: 0 })],
+        ]),
+      }),
+    )
+    expect('error' in r && r.error).toBe('Nincs érték: !FEUR')
   })
 })

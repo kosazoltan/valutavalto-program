@@ -74,6 +74,27 @@ describe('sheet0RowToValues', () => {
   it('hiányzó mezőket kihagy', () => {
     expect(sheet0RowToValues({ currency: 'USD', settlement: 360 })).toEqual({ A: 360 })
   })
+
+  it('0 forrásérték kimarad (nincs érték)', () => {
+    expect(sheet0RowToValues({ currency: 'RUB', weakMultiSell: 0 })).toEqual({})
+  })
+
+  it('negatív és nem-véges érték kimarad', () => {
+    expect(
+      sheet0RowToValues({
+        currency: 'RUB',
+        weakMultiSell: -1,
+        helper: NaN,
+        settlement: Infinity,
+      }),
+    ).toEqual({})
+  })
+
+  it('pozitív érték változatlan, a 0-s mező mellett', () => {
+    expect(sheet0RowToValues({ currency: 'EUR', settlement: 400, weakMultiSell: 0 })).toEqual({
+      A: 400,
+    })
+  })
 })
 
 describe('loadSheet0ByCurrency', () => {

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { saveGroupFormulas } from './workgroupSheetStorage'
 
 const apiMocks = vi.hoisted(() => ({
   getLocalRateMakerBootstrap: vi.fn(),
@@ -53,17 +54,21 @@ vi.mock('./components/RateGrid', () => ({
     onCommitCell,
     rates = [],
     validationErrors = {},
+    cellErrors = {},
   }: {
     onCommitCell?: (index: number, field: 'buyRate', raw: string) => void
-    rates?: Array<{ buyRate: string }>
+    rates?: Array<{ buyRate: string; sellRate: string }>
     validationErrors?: Record<number, string[]>
+    cellErrors?: Record<string, string>
   }) => (
     <div data-testid="rate-grid-stub">
       <button type="button" onClick={() => onCommitCell?.(0, 'buyRate', '405')}>
         EUR vétel commit
       </button>
       <div data-testid="current-buy">{rates[0]?.buyRate}</div>
+      <div data-testid="current-sell">{rates[0]?.sellRate}</div>
       <div data-testid="validation-errors">{JSON.stringify(validationErrors)}</div>
+      <div data-testid="cell-errors">{JSON.stringify(cellErrors)}</div>
     </div>
   ),
 }))
@@ -115,13 +120,31 @@ function workgroup(protectionEnabled: boolean) {
   }
 }
 
-async function renderEditor(protectionEnabled: boolean) {
+async function renderEditor(protectionEnabled: boolean, overviewData = overview) {
   apiMocks.getLocalRateMakerBootstrap.mockResolvedValue({
-    overview,
+    overview: overviewData,
     workgroups: [workgroup(protectionEnabled)],
   })
   const Page = (await import('./RateCreationPage')).default
   render(<Page />)
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: /Budapest központ.*árfolyamlap megnyitása/i,
+    }),
+  )
+  await screen.findByTestId('rate-grid-stub')
+}
+
+const overviewWithSellRate = (currentSellRate: number) => ({
+  ...overview,
+  currencies: overview.currencies.map((item) => ({ ...item, currentSellRate })),
+})
+
+async function refreshAndReopenEditor() {
+  fireEvent.click(screen.getByRole('button', { name: 'Csempés nézet' }))
+  const refreshButton = await screen.findByTitle('Frissítés')
+  fireEvent.click(refreshButton)
+  await waitFor(() => expect(refreshButton).not.toBeDisabled())
   fireEvent.click(
     await screen.findByRole('button', {
       name: /Budapest központ.*árfolyamlap megnyitása/i,
@@ -159,5 +182,62 @@ describe('RateCreationPage folyamatos árfolyamvédelmi validáció', () => {
 
     await waitFor(() => expect(screen.getByTestId('current-buy')).toHaveTextContent('405'))
     expect(screen.getByTestId('validation-errors')).toHaveTextContent('{}')
+  })
+
+  describe('FK10 — 0-s lap kontextus frissítése', () => {
+    it('FR-4: Frissítés után a 0-s lap kontextus újratöltődik és újraszámol', async () => {
+      localStorage.setItem(
+        'arfolyamkeszito.mainSheet.v1',
+        JSON.stringify([{ currency: 'EUR', weakMultiSell: 405 }]),
+      )
+      saveGroupFormulas('wg-1', { '1.sellRate': 'F' })
+      await renderEditor(false, overviewWithSellRate(405))
+      await waitFor(() => expect(screen.getByTestId('current-sell')).not.toHaveTextContent(''))
+      const before = screen.getByTestId('current-sell').textContent
+
+      localStorage.setItem(
+        'arfolyamkeszito.mainSheet.v1',
+        JSON.stringify([{ currency: 'EUR', weakMultiSell: 0 }]),
+      )
+      await refreshAndReopenEditor()
+
+      await waitFor(() =>
+        expect(screen.getByTestId('cell-errors')).toHaveTextContent(
+          'Nincs érték a 0-s lap F oszlopában',
+        ),
+      )
+      expect(screen.getByTestId('current-sell')).toHaveTextContent(before!)
+    })
+
+    it('edge: két egymás utáni Frissítés stabil', async () => {
+      localStorage.setItem(
+        'arfolyamkeszito.mainSheet.v1',
+        JSON.stringify([{ currency: 'EUR', weakMultiSell: 405 }]),
+      )
+      saveGroupFormulas('wg-1', { '1.sellRate': 'F' })
+      await renderEditor(false, overviewWithSellRate(405))
+      await waitFor(() => expect(screen.getByTestId('current-sell')).not.toHaveTextContent(''))
+
+      localStorage.setItem(
+        'arfolyamkeszito.mainSheet.v1',
+        JSON.stringify([{ currency: 'EUR', weakMultiSell: 0 }]),
+      )
+      await refreshAndReopenEditor()
+      await waitFor(() =>
+        expect(screen.getByTestId('cell-errors')).toHaveTextContent(
+          'Nincs érték a 0-s lap F oszlopában',
+        ),
+      )
+      const sellAfterFirstRefresh = screen.getByTestId('current-sell').textContent
+
+      await refreshAndReopenEditor()
+
+      await waitFor(() =>
+        expect(screen.getByTestId('cell-errors')).toHaveTextContent(
+          'Nincs érték a 0-s lap F oszlopában',
+        ),
+      )
+      expect(screen.getByTestId('current-sell')).toHaveTextContent(sellAfterFirstRefresh!)
+    })
   })
 })

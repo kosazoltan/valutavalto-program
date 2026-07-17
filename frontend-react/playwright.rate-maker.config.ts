@@ -5,7 +5,11 @@ const baseURL = `http://127.0.0.1:${e2ePort}`
 
 export default defineConfig({
   testDir: './playwright',
-  testMatch: ['**/rate-maker-protection.spec.ts', '**/rate-maker-dispatch-offline.spec.ts'],
+  testMatch: [
+    '**/rate-maker-protection.spec.ts',
+    '**/rate-maker-dispatch-offline.spec.ts',
+    '**/rate-maker-zero-source-error.spec.ts',
+  ],
   fullyParallel: true,
   retries: process.env.CI ? 2 : 0,
   reporter: 'list',
