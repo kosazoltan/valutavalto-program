@@ -133,6 +133,14 @@ async function buildGroupRates(
       sheet0ByCurrency,
       otherGroupsByCurrency,
     })
+    const formulaErrors = Object.values(result.errors)
+    if (formulaErrors.length > 0) {
+      return {
+        rates: [],
+        protectionRows: [],
+        error: `képlet-hiba: ${formulaErrors.join('; ')}`,
+      }
+    }
     if (result.diverged) {
       return {
         rates: [],

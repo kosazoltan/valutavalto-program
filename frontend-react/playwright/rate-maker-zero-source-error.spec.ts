@@ -160,36 +160,26 @@ async function loginAndOpenMain(page: Page) {
 test('FK10: 0-s forrásérték képlethibája látható a munkacsoport-cellán', async ({ page }) => {
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
-  await page.addInitScript(() => {
-    localStorage.setItem(
-      'arfolyamkeszito.mainSheet.v1',
-      JSON.stringify([
-        {
-          currency: 'EUR',
-          settlement: 400,
-          otp: 0,
-          helper: 0,
-          weakMultiBuy: 395,
-          weakMultiSell: 0,
-          crossSettlement: 0,
-          crossRate: 0,
-          wholesale: 0,
-          crossBase: null,
-        },
-      ]),
-    )
-    localStorage.setItem(
-      'arfolyamkeszito.workgroupSheet.formulas.v1.wg-1',
-      JSON.stringify({ '1.sellRate': 'F' }),
-    )
-  })
   await loginAndOpenMain(page)
 
+  const initialLoad = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/v1/local-rate-maker/bootstrap') &&
+      response.request().method() === 'GET',
+  )
   await page.getByRole('button', { name: 'CSOPORTOK KARBANTARTÁSA' }).click()
   await expect(page).toHaveURL(/\/rates\/creation$/)
+  await initialLoad
+
+  const refreshButton = page.getByTitle('Frissítés')
+  const workgroupTile = page.getByRole('button', {
+    name: /Budapest központ.*árfolyamlap megnyitása/i,
+  })
+  await expect(refreshButton).toBeEnabled()
+  await expect(workgroupTile).toBeVisible()
 
   // A Főlap mentése a mockolt 405-ös értéket visszaírhatja; a vizsgált 0-s állapotot rögzítjük,
-  // majd a publikus Frissítés úton újratöltjük a munkacsoport képletkontextusát.
+  // a kezdeti betöltés után, majd a publikus Frissítés úton újratöltjük a képletkontextust.
   await page.evaluate(() => {
     const rows = JSON.parse(localStorage.getItem('arfolyamkeszito.mainSheet.v1') ?? '[]') as Array<{
       weakMultiSell?: number
@@ -201,8 +191,6 @@ test('FK10: 0-s forrásérték képlethibája látható a munkacsoport-cellán',
       JSON.stringify({ '1.sellRate': 'F' }),
     )
   })
-  const refreshButton = page.getByTitle('Frissítés')
-  await expect(refreshButton).toBeEnabled()
   const refreshed = page.waitForResponse(
     (response) =>
       response.url().endsWith('/api/v1/local-rate-maker/bootstrap') &&
@@ -211,7 +199,7 @@ test('FK10: 0-s forrásérték képlethibája látható a munkacsoport-cellán',
   await refreshButton.click()
   await refreshed
   await expect(refreshButton).toBeEnabled()
-  await page.getByRole('button', { name: /Budapest központ.*árfolyamlap megnyitása/i }).click()
+  await workgroupTile.click()
 
   const cell = page.locator('input[title*="HIBA: Nincs érték a 0-s lap F oszlopában"]')
   await expect(cell).toBeVisible()

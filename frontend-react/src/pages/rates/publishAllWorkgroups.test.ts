@@ -144,6 +144,42 @@ describe('publishAllWorkgroups — FK05 egységes szétküldés', () => {
     expect(summary.detail).toContain('1/2 munkacsoport elküldve')
   })
 
+  it('weakMultiSell=0 miatti F képlethiba csak az érintett csoportot blokkolja, a tiszta testvér publikálódik', async () => {
+    localStorage.setItem(
+      'arfolyamkeszito.mainSheet.v1',
+      JSON.stringify([{ currency: 'EUR', weakMultiSell: 0 }]),
+    )
+    localStorage.setItem(
+      'arfolyamkeszito.workgroupSheet.formulas.v1.g1',
+      JSON.stringify({ '1.sellRate': 'F' }),
+    )
+
+    const result = await publishAllWorkgroups({
+      preloaded: {
+        overview: [item({ currentSellRate: 400 })],
+        workgroups: [
+          group({ id: 'g1' }),
+          group({ id: 'g2', code: 'WG2', name: '2. csoport', legacyGroupNumber: 2 }),
+        ],
+      },
+    })
+
+    expect(mocks.publishGroupRate).toHaveBeenCalledTimes(1)
+    expect(mocks.publishGroupRate).toHaveBeenCalledWith(expect.objectContaining({ groupId: 'g2' }))
+    expect(result.published).toBe(1)
+    expect(result.outcomes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          groupId: 'g1',
+          status: 'failed',
+          failureKind: 'business',
+          message: expect.stringContaining('képlet-hiba: Nincs érték a 0-s lap F oszlopában'),
+        }),
+        expect.objectContaining({ groupId: 'g2', status: 'published' }),
+      ]),
+    )
+  })
+
   it('csoport-overlay felülírja a szerver-baseline-t (FK02-B tárolt szerkesztés megy ki)', async () => {
     localStorage.setItem(
       'arfolyamkeszito.workgroupSheet.rates.v1.g1',

@@ -1146,6 +1146,14 @@ export default function RateCreationPage() {
       return
     }
 
+    if (Object.keys(cellErrors).length > 0) {
+      toast.error(
+        'Nem küldhető szét',
+        'Hibás árfolyam-képlet cella(k) van(nak) a lapon — előbb javítsa a hibás képleteket.',
+      )
+      return
+    }
+
     const validRates = rates.filter((r) => {
       const buy = parseNum(r.buyRate)
       const sell = parseNum(r.sellRate)

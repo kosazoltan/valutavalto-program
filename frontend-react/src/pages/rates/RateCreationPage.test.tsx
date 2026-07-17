@@ -8,6 +8,18 @@ const apiMocks = vi.hoisted(() => ({
   putLocalRateMakerSheet: vi.fn(),
 }))
 
+const publishMocks = vi.hoisted(() => ({
+  publishAllWorkgroups: vi.fn(),
+  summarizePublishAll: vi.fn(),
+}))
+
+const toastMocks = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
+  warning: vi.fn(),
+  info: vi.fn(),
+}))
+
 vi.mock('../../services/api/index', () => ({
   rateCreationApi: {
     getLocalRateMakerBootstrap: apiMocks.getLocalRateMakerBootstrap,
@@ -40,14 +52,14 @@ vi.mock('../../stores/authStore', () => ({
   ),
 }))
 vi.mock('../../components/ui/toaster', () => ({
-  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
+  toast: toastMocks,
 }))
 vi.mock('../../utils/logger', () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }))
 vi.mock('./publishAllWorkgroups', () => ({
-  publishAllWorkgroups: vi.fn(),
-  summarizePublishAll: vi.fn(),
+  publishAllWorkgroups: publishMocks.publishAllWorkgroups,
+  summarizePublishAll: publishMocks.summarizePublishAll,
 }))
 vi.mock('./components/RateGrid', () => ({
   default: ({
@@ -238,6 +250,36 @@ describe('RateCreationPage folyamatos árfolyamvédelmi validáció', () => {
         ),
       )
       expect(screen.getByTestId('current-sell')).toHaveTextContent(sellAfterFirstRefresh!)
+    })
+
+    it('weakMultiSell=0 képlethibánál megtartja a pozitív baseline-t, de nem küldi szét', async () => {
+      localStorage.setItem(
+        'arfolyamkeszito.mainSheet.v1',
+        JSON.stringify([{ currency: 'EUR', weakMultiSell: 405 }]),
+      )
+      saveGroupFormulas('wg-1', { '1.sellRate': 'F' })
+      await renderEditor(false, overviewWithSellRate(405))
+      await waitFor(() => expect(screen.getByTestId('current-sell')).toHaveTextContent('405'))
+
+      localStorage.setItem(
+        'arfolyamkeszito.mainSheet.v1',
+        JSON.stringify([{ currency: 'EUR', weakMultiSell: 0 }]),
+      )
+      await refreshAndReopenEditor()
+      await waitFor(() =>
+        expect(screen.getByTestId('cell-errors')).toHaveTextContent(
+          'Nincs érték a 0-s lap F oszlopában',
+        ),
+      )
+      expect(screen.getByTestId('current-sell')).toHaveTextContent('405')
+
+      fireEvent.click(screen.getByRole('button', { name: 'rates.arfolyamokSzetkuldese' }))
+
+      expect(publishMocks.publishAllWorkgroups).not.toHaveBeenCalled()
+      expect(toastMocks.error).toHaveBeenCalledWith(
+        'Nem küldhető szét',
+        'Hibás árfolyam-képlet cella(k) van(nak) a lapon — előbb javítsa a hibás képleteket.',
+      )
     })
   })
 })
