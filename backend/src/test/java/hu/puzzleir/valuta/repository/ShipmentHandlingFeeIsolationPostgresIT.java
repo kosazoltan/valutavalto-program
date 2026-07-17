@@ -16,6 +16,7 @@ import hu.puzzleir.valuta.entity.SystemParameter;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerRole;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.AccessScopeService;
 import hu.puzzleir.valuta.service.AuditLogService;
 import hu.puzzleir.valuta.service.DiscountThresholdService;
 import hu.puzzleir.valuta.service.ExchangeRateService;
@@ -110,6 +111,7 @@ class ShipmentHandlingFeeIsolationPostgresIT {
     @Autowired private TransactionTemplate txTemplate;
 
     @MockitoBean private ExchangeRateService exchangeRateService;
+    @MockitoBean private AccessScopeService accessScopeService;
 
     // Seed holders
     private Company companyA;

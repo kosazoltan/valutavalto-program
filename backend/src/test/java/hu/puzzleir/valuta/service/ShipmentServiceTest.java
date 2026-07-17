@@ -15,6 +15,7 @@ import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -61,6 +62,9 @@ class ShipmentServiceTest {
     private ShipmentHandlingFeeSyncService handlingFeeSyncService;
 
     @Mock
+    private AccessScopeService accessScopeService;
+
+    @Mock
     private AuditLogService auditLogService;
 
     @Mock
@@ -71,6 +75,12 @@ class ShipmentServiceTest {
 
     @InjectMocks
     private ShipmentService service;
+
+    @BeforeEach
+    void setUpAccessScope() {
+        // Mockito collection defaults are empty rather than null; preserve the legacy central-role fixture.
+        lenient().when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+    }
 
     /**
      * A create() happy-path (FR-1) most már a from/to fiókot betölti a könyvelési irány
@@ -878,7 +888,8 @@ class ShipmentServiceTest {
                 exchangeRateService,
                 transferSerialSequenceService,
                 realStockBookingService,
-                handlingFeeSyncService);
+                handlingFeeSyncService,
+                accessScopeService);
     }
 
     @Test

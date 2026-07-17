@@ -52,6 +52,9 @@ class TransferCounterTransactionTest {
     @Mock
     private VaultStockFlowService vaultStockFlowService;
 
+    @Mock
+    private AccessScopeService accessScopeService;
+
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID FROM_BRANCH_ID = UUID.randomUUID();
     private static final UUID TO_BRANCH_ID = UUID.randomUUID();
@@ -70,6 +73,9 @@ class TransferCounterTransactionTest {
 
     @BeforeEach
     void setUp() {
+        // Mockito collection defaults are empty rather than null; preserve the legacy central-role fixture.
+        lenient().when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+
         company = new Company();
         company.setId(COMPANY_ID);
 

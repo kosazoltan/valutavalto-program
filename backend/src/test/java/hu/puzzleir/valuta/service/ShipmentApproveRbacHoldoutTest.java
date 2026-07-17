@@ -80,7 +80,8 @@ class ShipmentApproveRbacHoldoutTest {
                 exchangeRateService,
                 transferSerialSequenceService,
                 realStockBookingService,
-                handlingFeeSyncService);
+                handlingFeeSyncService,
+                org.mockito.Mockito.mock(AccessScopeService.class));
     }
 
     private ShipmentRequest submittedShipment(UUID shipmentId, UUID companyId, String serialPrefix) {
