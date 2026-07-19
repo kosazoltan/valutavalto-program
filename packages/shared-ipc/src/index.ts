@@ -268,6 +268,29 @@ export interface PendingHandoverOperationInput {
   note?: string | null
 }
 
+export interface PendingShipmentReceiptInput {
+  shipmentId: string
+  requestNumber?: string | null
+  branchId: string
+  workerId: number
+  /** Az online próbálkozáskor létrehozott, retry-k között változatlan kulcs. */
+  idempotencyKey: string
+}
+
+export interface PendingShipmentReceiptRow {
+  id: number
+  shipment_id: string
+  request_number: string | null
+  idempotency_key: string
+  branch_id: string
+  worker_id: number
+  company_code: string | null
+  created_at: string
+  synced: number
+  sync_attempts: number
+  sync_error: string | null
+}
+
 // Pozicionális wire (Sprint 7.1) — a tuple címkézett, a formátum változatlan.
 export type QueueStocktakeCountArgs = [
   itemId: string,
@@ -327,6 +350,14 @@ export interface IpcRoutes {
     request: PendingHandoverOperationInput
     response: number
   }
+  'queue-shipment-receipt': {
+    request: PendingShipmentReceiptInput
+    response: number
+  }
+  'get-pending-shipment-receipts': {
+    request: void
+    response: PendingShipmentReceiptRow[]
+  }
   'queue-stocktake-count': {
     request: QueueStocktakeCountArgs
     response: number
@@ -369,6 +400,8 @@ export const IPC_CHANNELS = {
   SAVE_PENDING_TRANSFER_STORNO: 'save-pending-transfer-storno' as const,
   SAVE_PENDING_CIRCULAR_REPLY: 'save-pending-circular-reply' as const,
   SAVE_PENDING_HANDOVER_OPERATION: 'save-pending-handover-operation' as const,
+  QUEUE_SHIPMENT_RECEIPT: 'queue-shipment-receipt' as const,
+  GET_PENDING_SHIPMENT_RECEIPTS: 'get-pending-shipment-receipts' as const,
   QUEUE_STOCKTAKE_COUNT: 'queue-stocktake-count' as const,
   QUEUE_SCANNED_DOCUMENT: 'queue-scanned-document' as const,
   GET_PENDING_TRANSACTION_REF_BY_ID: 'get-pending-transaction-ref-by-id' as const,

@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getIncoming: vi.fn(),
   getPending: vi.fn(),
   countPending: vi.fn(),
+  getShipmentPending: vi.fn(),
   getById: vi.fn(),
   getByTransferNumber: vi.fn(),
   getActive: vi.fn(),
@@ -29,6 +30,10 @@ vi.mock('../../services/api/index', () => ({
     cancel: vi.fn(),
     storno: vi.fn(),
     getStornoPreview: vi.fn(),
+  },
+  shipmentRequestApi: {
+    getPendingForBranch: mocks.getShipmentPending,
+    deliver: vi.fn(),
   },
   currencyApi: { getActive: mocks.getActive },
   branchApi: { listActive: mocks.listActive },
@@ -113,6 +118,7 @@ describe('TransferPage — átadás részlet betöltése átvételhez', () => {
     mocks.getIncoming.mockResolvedValue([])
     mocks.getPending.mockResolvedValue([pendingTransfer])
     mocks.countPending.mockResolvedValue(1)
+    mocks.getShipmentPending.mockResolvedValue([])
     mocks.getActive.mockResolvedValue([{ id: 1, code: 'EUR', name: 'Euró' }])
     mocks.listActive.mockResolvedValue([
       {

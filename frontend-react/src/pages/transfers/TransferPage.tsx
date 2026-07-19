@@ -17,22 +17,23 @@ import {
 } from 'lucide-react'
 import {
   transferApi,
+  shipmentRequestApi,
   currencyApi,
   branchApi,
   Transfer,
+  ShipmentRequest,
   Currency,
 } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal, formatInteger } from '../../utils/numberFormat'
 import { getErrorMessage } from '../../utils/errorHandling'
-import {
-  isElectronQueueAvailable,
-  recordLocalAuditEvent,
-} from '../../utils/electronTransactions'
+import { isElectronQueueAvailable, recordLocalAuditEvent } from '../../utils/electronTransactions'
 import {
   getLocalPendingTransfers,
   getCompanyType,
+  getShipmentReceiptOutboxState,
+  queueOfflineShipmentReceipt,
   queueOfflineTransferStorno,
 } from '../../utils/localQueue'
 import { useTranslation } from 'react-i18next'
@@ -105,6 +106,25 @@ function localizeTransferType(rawType: TransferTypeEnum | null | undefined): str
 
 type TabType = 'outgoing' | 'incoming' | 'pending'
 
+const SHIPMENT_RETRYABLE_TRANSPORT_CODES = new Set([
+  'ERR_NETWORK',
+  'ECONNABORTED',
+  'ECONNRESET',
+  'ECONNREFUSED',
+  'ETIMEDOUT',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+])
+
+function isAmbiguousShipmentTransportFailure(error: unknown): boolean {
+  const transportError = error as { code?: unknown; response?: unknown }
+  return (
+    transportError.response == null &&
+    typeof transportError.code === 'string' &&
+    SHIPMENT_RETRYABLE_TRANSPORT_CODES.has(transportError.code)
+  )
+}
+
 /**
  * Átadás-átvétel oldal
  *
@@ -125,7 +145,13 @@ export default function TransferPage() {
   const [outgoingTransfers, setOutgoingTransfers] = useState<Transfer[]>([])
   const [incomingTransfers, setIncomingTransfers] = useState<Transfer[]>([])
   const [pendingTransfers, setPendingTransfers] = useState<Transfer[]>([])
+  const [pendingShipments, setPendingShipments] = useState<ShipmentRequest[]>([])
+  const [queuedShipmentReceiptIds, setQueuedShipmentReceiptIds] = useState<Set<string>>(new Set())
+  const [shipmentReceiptIssues, setShipmentReceiptIssues] = useState<
+    Array<{ requestNumber: string; message: string }>
+  >([])
   const [pendingCount, setPendingCount] = useState(0)
+  const shipmentReceiptKeysRef = useRef(new Map<string, string>())
 
   // A listák bizonylat-előnézetéhez szükséges törzsadatok
   const [currencies, setCurrencies] = useState<Currency[]>([])
@@ -170,19 +196,64 @@ export default function TransferPage() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
-      const [outgoing, incoming, pending, count, currencyData, localPending] = await Promise.all([
-        transferApi.getOutgoing(),
-        transferApi.getIncoming(),
-        transferApi.getPending(),
-        transferApi.countPending(),
-        currencyApi.getActive(),
-        electronQueueAvailable ? getLocalPendingTransfers(worker) : Promise.resolve([]),
-      ])
+      const [localPending, shipmentOutbox] = electronQueueAvailable
+        ? await Promise.all([getLocalPendingTransfers(worker), getShipmentReceiptOutboxState()])
+        : [[], { pending: [], issues: [] }]
+      const localShipmentIntents: ShipmentRequest[] = shipmentOutbox.pending.map((intent) => {
+        const requestedAt = intent.createdAt.includes('T')
+          ? intent.createdAt
+          : intent.createdAt.replace(' ', 'T')
+        return {
+          id: intent.shipmentId,
+          requestNumber: intent.requestNumber,
+          requestingBranchId: '',
+          requestingBranchName: 'Offline átvételi szándék',
+          targetBranchId: intent.branchId,
+          targetBranchName: worker?.branchName ?? intent.branchId,
+          shipmentType: 'TRANSFER',
+          requestedDeliveryDate: requestedAt.slice(0, 10),
+          requestStatus: 'PENDING_SYNC',
+          requestedByWorkerId: String(intent.workerId),
+          requestedByWorkerName: worker?.fullName ?? 'Helyi pénztáros',
+          requestedAt,
+          items: [],
+        }
+      })
+      const queuedShipmentIds = new Set(localShipmentIntents.map((shipment) => shipment.id))
+
+      // A tartós helyi állapotot a hálózati kérések ELŐTT publikáljuk. Így egy REST-hiba vagy
+      // renderer-újraindítás nem rejti el a már rögzített átvételi szándékot.
+      setOutgoingTransfers(localPending)
+      setPendingTransfers(localPending)
+      setPendingShipments(localShipmentIntents)
+      setQueuedShipmentReceiptIds(queuedShipmentIds)
+      setShipmentReceiptIssues(shipmentOutbox.issues)
+      setPendingCount(localPending.length + localShipmentIntents.length)
+
+      const [outgoing, incoming, pending, count, shipmentPending, currencyData] = await Promise.all(
+        [
+          transferApi.getOutgoing(),
+          transferApi.getIncoming(),
+          transferApi.getPending(),
+          transferApi.countPending(),
+          shipmentRequestApi.getPendingForBranch(),
+          currencyApi.getActive(),
+        ],
+      )
+
+      const remoteShipmentIds = new Set(shipmentPending.map((shipment) => shipment.id))
+      const mergedShipments = [
+        ...shipmentPending,
+        ...localShipmentIntents.filter((shipment) => !remoteShipmentIds.has(shipment.id)),
+      ]
 
       setOutgoingTransfers([...localPending, ...outgoing])
       setIncomingTransfers(incoming)
       setPendingTransfers([...localPending, ...pending])
-      setPendingCount(count + localPending.length)
+      setPendingShipments(mergedShipments)
+      setQueuedShipmentReceiptIds(queuedShipmentIds)
+      setShipmentReceiptIssues(shipmentOutbox.issues)
+      setPendingCount(count + localPending.length + mergedShipments.length)
       setCurrencies(currencyData)
 
       // FK-005/C1 HALASZTVA (Codex P1 #844): a region-scope elejtené a TH (többlet/hiány) és
@@ -227,8 +298,6 @@ export default function TransferPage() {
   // kódnál TBD-2 szerint kód-név fallback, sosem "—"/null.
   const vaultLabel = buildVaultLabel(ownBranch, worker)
 
-
-
   // Receive transfer
   const handleReceive = async () => {
     if (!selectedTransfer || !receivedAmount) {
@@ -268,6 +337,52 @@ export default function TransferPage() {
 
       await loadData()
     } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleShipmentReceive = async (shipment: ShipmentRequest) => {
+    if (queuedShipmentReceiptIds.has(shipment.id)) return
+    const idempotencyKey =
+      shipmentReceiptKeysRef.current.get(shipment.id) ?? globalThis.crypto.randomUUID()
+    shipmentReceiptKeysRef.current.set(shipment.id, idempotencyKey)
+    try {
+      setLoading(true)
+      setError(null)
+      await shipmentRequestApi.deliver(shipment.id, idempotencyKey)
+      shipmentReceiptKeysRef.current.delete(shipment.id)
+      setSuccess(`Shipment átvétele sikeres: ${shipment.requestNumber}`)
+      await loadData()
+    } catch (err) {
+      if (
+        electronQueueAvailable &&
+        isAmbiguousShipmentTransportFailure(err) &&
+        worker?.branchId &&
+        worker.id != null
+      ) {
+        try {
+          const queued = await queueOfflineShipmentReceipt(
+            shipment.id,
+            shipment.requestNumber,
+            worker.branchId,
+            Number(worker.id),
+            idempotencyKey,
+          )
+          if (queued) {
+            shipmentReceiptKeysRef.current.delete(shipment.id)
+            setQueuedShipmentReceiptIds((current) => new Set(current).add(shipment.id))
+            setSuccess(
+              `Shipment átvétele helyben rögzítve: ${shipment.requestNumber}. Szinkronra vár; a készlet csak szervernyugta után változik.`,
+            )
+            return
+          }
+        } catch (queueError) {
+          setError(getErrorMessage(queueError))
+          return
+        }
+      }
       setError(getErrorMessage(err))
     } finally {
       setLoading(false)
@@ -343,7 +458,6 @@ export default function TransferPage() {
       `#${line.currencyId}`,
     [currencies],
   )
-
 
   // Penztar-batch A.2 (2026-06-12): a lista szem-ikonja a BIZONYLATOT hívja elő.
   // (Korábban a /transfers/:id route-ra navigált, ami ugyanerre a lista-komponensre volt
@@ -583,10 +697,12 @@ export default function TransferPage() {
   // Transfer list component
   const TransferList = ({
     transfers,
+    shipments = [],
     showActions = false,
     isOutgoing = false,
   }: {
     transfers: Transfer[]
+    shipments?: ShipmentRequest[]
     showActions?: boolean
     isOutgoing?: boolean
   }) => (
@@ -605,7 +721,7 @@ export default function TransferPage() {
           </tr>
         </thead>
         <tbody>
-          {transfers.length === 0 ? (
+          {transfers.length === 0 && shipments.length === 0 ? (
             <tr>
               <td colSpan={showActions ? 8 : 7} className="text-center text-gray-500 py-8">
                 {t('transfers.nincsenekAtadasok')}
@@ -741,6 +857,49 @@ export default function TransferPage() {
               </tr>
             ))
           )}
+          {shipments.map((shipment) => (
+            <tr key={`shipment-${shipment.id}`}>
+              <td className="font-mono font-semibold">{shipment.requestNumber}</td>
+              <td>
+                <div className="flex items-center gap-1">
+                  <Building2 size={14} className="text-gray-400" />
+                  <span>{shipment.requestingBranchName}</span>
+                </div>
+              </td>
+              <td>Shipment</td>
+              <td className="font-semibold">
+                {shipment.items?.map((item) => (
+                  <div key={item.id}>{item.currencyCode ?? `#${item.currencyId}`}</div>
+                ))}
+              </td>
+              <td className="text-right font-mono">
+                {shipment.items?.map((item) => (
+                  <div key={item.id}>
+                    {formatDecimal(item.requestedAmount ?? item.amount ?? 0, 2, 2)}
+                  </div>
+                ))}
+              </td>
+              <td className="text-sm">{new Date(shipment.requestedAt).toLocaleString('hu-HU')}</td>
+              <td>
+                {queuedShipmentReceiptIds.has(shipment.id)
+                  ? getStatusBadge('PENDING', 'Szinkronra vár')
+                  : getStatusBadge(shipment.requestStatus, 'Átvételre vár')}
+              </td>
+              {showActions && (
+                <td>
+                  <button
+                    type="button"
+                    onClick={() => void handleShipmentReceive(shipment)}
+                    className="toolbar-button text-green-600"
+                    title="Shipment átvétele"
+                    disabled={loading || queuedShipmentReceiptIds.has(shipment.id)}
+                  >
+                    <CheckCircle size={14} />
+                  </button>
+                </td>
+              )}
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
@@ -849,6 +1008,21 @@ export default function TransferPage() {
         </div>
       )}
 
+      {shipmentReceiptIssues.length > 0 && (
+        <div className="form-panel border-amber-300 bg-amber-50 text-amber-900">
+          <div className="mb-1 flex items-center gap-2 font-semibold">
+            <AlertCircle size={18} /> Offline Shipment-átvételi hibák
+          </div>
+          <ul className="list-disc space-y-1 pl-5 text-sm">
+            {shipmentReceiptIssues.map((issue) => (
+              <li key={`${issue.requestNumber}-${issue.message}`}>
+                {issue.requestNumber}: {issue.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex gap-1 border-b">
         <button
@@ -862,7 +1036,7 @@ export default function TransferPage() {
         >
           <Clock size={16} className="inline mr-1" />
           {t('transfers.atvetelreVaro')}
-          {pendingCount})
+          {` (${pendingCount})`}
         </button>
         <button
           type="button"
@@ -893,7 +1067,12 @@ export default function TransferPage() {
       {/* Tab content */}
       <div className="form-panel p-0">
         {activeTab === 'pending' && (
-          <TransferList transfers={pendingTransfers} showActions={true} isOutgoing={false} />
+          <TransferList
+            transfers={pendingTransfers}
+            shipments={pendingShipments}
+            showActions={true}
+            isOutgoing={false}
+          />
         )}
         {activeTab === 'outgoing' && (
           <TransferList transfers={outgoingTransfers} showActions={true} isOutgoing={true} />

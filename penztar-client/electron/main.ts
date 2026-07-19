@@ -60,6 +60,7 @@ import {
   IPC_CHANNELS,
   type PendingCircularReplyInput,
   type PendingHandoverOperationInput,
+  type PendingShipmentReceiptInput,
   type PendingStornoInput,
   type PendingTransferStornoInput,
   type QueueScannedDocumentInput,
@@ -80,9 +81,11 @@ import {
   savePendingBankTransaction,
   savePendingStorno,
   savePendingTransferStorno,
+  savePendingShipmentReceipt,
   savePendingCircularReply,
   savePendingScannedDocument,
   getPendingTransferStornos,
+  getShipmentReceiptOutboxState,
   getPendingTransactions,
   getPendingTransactionRefById,
   getPendingTransferRefById,
@@ -666,6 +669,22 @@ ipcMain.handle(
   'save-pending-transfer-storno',
   async (_event, payload: PendingTransferStornoInput): Promise<number> => {
     return savePendingTransferStorno(payload);
+  },
+);
+
+// FKH-018: Shipment átvételi szándék offline outbox. A sqlite mentési határ
+// futásidőben validálja az UUID/worker/tenant mezőket is.
+ipcMain.handle(
+  IPC_CHANNELS.QUEUE_SHIPMENT_RECEIPT,
+  async (_event, payload: PendingShipmentReceiptInput): Promise<number> => {
+    return savePendingShipmentReceipt(payload);
+  },
+);
+
+ipcMain.handle(
+  IPC_CHANNELS.GET_PENDING_SHIPMENT_RECEIPTS,
+  async (): Promise<ReturnType<typeof getShipmentReceiptOutboxState>> => {
+    return getShipmentReceiptOutboxState();
   },
 );
 

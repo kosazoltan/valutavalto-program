@@ -171,7 +171,7 @@ export default function MainLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-form-bg flex flex-col md:flex-row">
+    <div className="app-layout-root h-screen overflow-hidden bg-form-bg flex flex-col md:flex-row">
       {/* Napnyitás hiba dialógus — csak ha az automatikus nyitás nem sikerült */}
       {showSessionDialog && !sessionReady && sessionError === 'redirect-day-open' && (
         <Navigate to="/cashdesk/day-open" replace />
@@ -241,7 +241,7 @@ export default function MainLayout() {
           sidebarOpen
             ? 'w-full md:w-64'
             : 'h-12 w-full overflow-hidden md:h-auto md:w-16 md:overflow-visible'
-        } bg-secondary-900 text-white transition-all duration-300 ease-in-out flex flex-col shadow-xl`}
+        } min-h-0 max-h-full bg-secondary-900 text-white transition-all duration-300 ease-in-out flex flex-col shadow-xl`}
       >
         {/* Logo/Header */}
         <div className="h-12 px-3 flex items-center justify-between border-b border-secondary-700">
@@ -264,7 +264,9 @@ export default function MainLayout() {
         </div>
 
         {/* Navigation Groups */}
-        <nav className={`${sidebarOpen ? 'block' : 'hidden md:block'} flex-1 py-2 overflow-y-auto`}>
+        <nav
+          className={`${sidebarOpen ? 'block' : 'hidden md:block'} flex-1 min-h-0 py-2 overflow-y-auto`}
+        >
           {menuGroups
             .filter((group) => isMenuGroupVisible(group, menuVisibilityCtx))
             .map((group) => (
@@ -328,7 +330,7 @@ export default function MainLayout() {
           (pl. Átlag árfolyam riport táblázata) szélességére tágulna, és a body görgetne vízszintesen
           a .app-print-content helyett → a sticky VALUTA oszlop elcsúszna. A min-w-0 engedi a main
           zsugorodását, így a .app-print-content (overflow-auto) lesz az EGYETLEN vízszintes scroll. */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0" style={{ minHeight: 0 }}>
         {/* MODERN Header Bar */}
         <header className="no-print min-h-10 bg-white border-b border-form-border flex flex-col gap-2 px-4 py-2 shadow-sm md:flex-row md:items-center md:justify-between md:py-0">
           <div className="flex min-w-0 flex-wrap items-center gap-3">

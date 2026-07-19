@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TransferPage from './TransferPage'
@@ -8,8 +8,15 @@ const mocks = vi.hoisted(() => ({
   getIncoming: vi.fn(),
   getPending: vi.fn(),
   countPending: vi.fn(),
+  getShipmentPending: vi.fn(),
+  deliverShipment: vi.fn(),
   getActive: vi.fn(),
   listActive: vi.fn(),
+  electronQueueAvailable: false,
+  queueShipmentReceipt: vi.fn(),
+  getQueuedShipmentReceiptIds: vi.fn(),
+  getShipmentReceiptIssues: vi.fn(),
+  getShipmentReceiptOutboxState: vi.fn(),
   toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() },
 }))
 
@@ -26,6 +33,10 @@ vi.mock('../../services/api/index', () => ({
     cancel: vi.fn(),
     storno: vi.fn(),
     getStornoPreview: vi.fn(),
+  },
+  shipmentRequestApi: {
+    getPendingForBranch: mocks.getShipmentPending,
+    deliver: mocks.deliverShipment,
   },
   currencyApi: { getActive: mocks.getActive },
   branchApi: { listActive: mocks.listActive },
@@ -48,7 +59,7 @@ vi.mock('../../stores/authStore', () => {
 })
 
 vi.mock('../../utils/electronTransactions', () => ({
-  isElectronQueueAvailable: () => false,
+  isElectronQueueAvailable: () => mocks.electronQueueAvailable,
   recordLocalAuditEvent: vi.fn(),
 }))
 
@@ -56,6 +67,10 @@ vi.mock('../../utils/localQueue', () => ({
   getLocalPendingTransfers: vi.fn().mockResolvedValue([]),
   getCompanyType: () => 'BEST_CHANGE',
   queueOfflineTransferStorno: vi.fn(),
+  queueOfflineShipmentReceipt: mocks.queueShipmentReceipt,
+  getQueuedShipmentReceiptIds: mocks.getQueuedShipmentReceiptIds,
+  getShipmentReceiptIssues: mocks.getShipmentReceiptIssues,
+  getShipmentReceiptOutboxState: mocks.getShipmentReceiptOutboxState,
 }))
 
 vi.mock('../../components/NumberInput', () => ({
@@ -94,13 +109,36 @@ const pendingTransfer = {
   transferTypeDisplay: 'Deviza',
 }
 
+const pendingShipment = {
+  id: 'shipment-1',
+  requestNumber: 'FF-000123',
+  requestingBranchId: 'b-source',
+  requestingBranchName: 'Budapesti értéktár',
+  targetBranchId: 'b-own',
+  targetBranchName: 'Pécsi értéktár',
+  requestStatus: 'SUBMITTED',
+  requestedDeliveryDate: '2026-06-19',
+  requestedAt: '2026-06-19T10:05:00',
+  requestedByWorkerId: '9',
+  requestedByWorkerName: 'Küldő Anna',
+  shipmentType: 'TRANSFER',
+  items: [{ id: 'si-1', currencyId: 1, currencyCode: 'EUR', requestedAmount: 250 }],
+}
+
 describe('TransferPage — visszaigazolás és létrehozás szétválasztása', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.electronQueueAvailable = false
     mocks.getOutgoing.mockResolvedValue([])
     mocks.getIncoming.mockResolvedValue([])
     mocks.getPending.mockResolvedValue([pendingTransfer])
     mocks.countPending.mockResolvedValue(1)
+    mocks.getShipmentPending.mockResolvedValue([pendingShipment])
+    mocks.deliverShipment.mockResolvedValue({ ...pendingShipment, requestStatus: 'DELIVERED' })
+    mocks.queueShipmentReceipt.mockResolvedValue(true)
+    mocks.getQueuedShipmentReceiptIds.mockResolvedValue(new Set())
+    mocks.getShipmentReceiptIssues.mockResolvedValue([])
+    mocks.getShipmentReceiptOutboxState.mockResolvedValue({ pending: [], issues: [] })
     mocks.getActive.mockResolvedValue([{ id: 1, code: 'EUR', name: 'Euró' }])
     mocks.listActive.mockResolvedValue([
       {
@@ -134,5 +172,125 @@ describe('TransferPage — visszaigazolás és létrehozás szétválasztása', 
       'href',
       '/transfers/new',
     )
+  })
+
+  it('a Transfer és Shipment pending tételeket egy listában mutatja és Shipmentet approve nélkül fogad', async () => {
+    render(
+      <MemoryRouter>
+        <TransferPage />
+      </MemoryRouter>,
+    )
+
+    await screen.findByText('AT-LIST-007')
+    expect(screen.getByText('FF-000123')).toBeInTheDocument()
+    const pendingTab = screen.getByRole('button', { name: /Átvételre váró/ })
+    expect(pendingTab).toHaveTextContent('2')
+    expect(screen.queryByText(/Jóváhagy/)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByTitle('Shipment átvétele'))
+    await waitFor(() =>
+      expect(mocks.deliverShipment).toHaveBeenCalledWith('shipment-1', expect.any(String)),
+    )
+  })
+
+  it('hálózati hibánál Electron outboxba ír és szinkronra váróként jelöl, készletet nem könyvel lokálisan', async () => {
+    mocks.electronQueueAvailable = true
+    mocks.deliverShipment.mockRejectedValue({ code: 'ERR_NETWORK' })
+
+    render(
+      <MemoryRouter>
+        <TransferPage />
+      </MemoryRouter>,
+    )
+
+    await screen.findByText('FF-000123')
+    fireEvent.click(screen.getByTitle('Shipment átvétele'))
+
+    await waitFor(() =>
+      expect(mocks.queueShipmentReceipt).toHaveBeenCalledWith(
+        'shipment-1',
+        'FF-000123',
+        'b-own',
+        9,
+        expect.any(String),
+      ),
+    )
+    expect(await screen.findByText('Szinkronra vár')).toBeInTheDocument()
+    expect(screen.getByTitle('Shipment átvétele')).toBeDisabled()
+  })
+
+  it('Axios timeoutnál is ugyanazt az online idempotenciakulcsot adja át az outboxnak', async () => {
+    mocks.electronQueueAvailable = true
+    mocks.deliverShipment.mockRejectedValue({ code: 'ECONNABORTED' })
+
+    render(
+      <MemoryRouter>
+        <TransferPage />
+      </MemoryRouter>,
+    )
+
+    await screen.findByText('FF-000123')
+    fireEvent.click(screen.getByTitle('Shipment átvétele'))
+
+    await waitFor(() => expect(mocks.deliverShipment).toHaveBeenCalledTimes(1))
+    const onlineKey = mocks.deliverShipment.mock.calls[0]?.[1]
+    await waitFor(() =>
+      expect(mocks.queueShipmentReceipt).toHaveBeenCalledWith(
+        'shipment-1',
+        'FF-000123',
+        'b-own',
+        9,
+        onlineKey,
+      ),
+    )
+  })
+
+  it('a terminális offline átvételi hibát láthatóan jelzi az operátornak', async () => {
+    mocks.electronQueueAvailable = true
+    mocks.getShipmentReceiptOutboxState.mockResolvedValue({
+      pending: [],
+      issues: [{ requestNumber: 'FF-000099', message: 'A küldő sztornózta a tételt.' }],
+    })
+
+    render(
+      <MemoryRouter>
+        <TransferPage />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText(/FF-000099: A küldő sztornózta a tételt/)).toBeInTheDocument()
+  })
+
+  it('újraindítás után távoli hiba mellett is megőrzi és számolja a tartós Shipment-átvételi szándékot', async () => {
+    mocks.electronQueueAvailable = true
+    mocks.getShipmentReceiptOutboxState.mockResolvedValue({
+      pending: [
+        {
+          shipmentId: 'shipment-offline-1',
+          requestNumber: 'FF-OFFLINE-001',
+          branchId: 'b-own',
+          workerId: 9,
+          createdAt: '2026-07-18 12:00:00',
+        },
+      ],
+      issues: [],
+    })
+    const offline = new Error('network unavailable')
+    mocks.getOutgoing.mockRejectedValue(offline)
+    mocks.getIncoming.mockRejectedValue(offline)
+    mocks.getPending.mockRejectedValue(offline)
+    mocks.countPending.mockRejectedValue(offline)
+    mocks.getShipmentPending.mockRejectedValue(offline)
+    mocks.getActive.mockRejectedValue(offline)
+
+    render(
+      <MemoryRouter>
+        <TransferPage />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('FF-OFFLINE-001')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Átvételre váró/ })).toHaveTextContent('1')
+    expect(screen.getByText('Szinkronra vár')).toBeInTheDocument()
   })
 })

@@ -37,6 +37,10 @@ import {
   markTransferSynced,
   getPendingTransferStornos,
   markTransferStornoSynced,
+  getPendingShipmentReceipts,
+  markShipmentReceiptSynced,
+  markShipmentReceiptTerminalError,
+  markShipmentReceiptRetryError,
   getPendingCircularReplies,
   markCircularReplySynced,
   getPendingCollections,
@@ -333,6 +337,7 @@ async function httpPost<T>(
   body: Record<string, unknown>,
   token: string | null,
   idempotencyKey?: string,
+  allowEmptyResponse = false,
 ): Promise<T> {
   try {
     const headers: Record<string, string> = {
@@ -359,6 +364,12 @@ async function httpPost<T>(
       throw new HttpStatusError(response.status, response.statusText);
     }
 
+    if (allowEmptyResponse) {
+      if (response.status === 204) return undefined as T;
+      const responseText = await response.text();
+      if (!responseText.trim()) return undefined as T;
+      return JSON.parse(responseText) as T;
+    }
     return response.json() as Promise<T>;
   } catch (err) {
     log.error('[SyncEngine] httpPost failed:', { url, err });
@@ -408,6 +419,7 @@ export class SyncEngine {
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private syncAllInFlight: Promise<SyncResult> | null = null;
   private syncAllInFlightTokenKey: string | null = null;
+  private shipmentReceiptSyncInFlight: Promise<SyncResult> | null = null;
   private lastTokenValidationAt = 0;
   private readonly tokenValidationTtlMs = 120_000;
 
@@ -945,7 +957,9 @@ export class SyncEngine {
     const match = errorMsg.match(/HTTP (4\d\d)/);
     if (!match) return false;
     const code = Number(match[1]);
-    return code >= 400 && code < 500 && code !== 401 && code !== 403 && code !== 429;
+    return (
+      code >= 400 && code < 500 && code !== 401 && code !== 403 && code !== 408 && code !== 429
+    );
   }
 
   private syncAllTokenKey(tokenOverride?: string | null): string {
@@ -968,7 +982,7 @@ export class SyncEngine {
     }
 
     this.syncAllInFlightTokenKey = tokenKey;
-    this.syncAllInFlight = this.performSyncAll(tokenOverride);
+    this.syncAllInFlight = this.performSyncAllWithShipmentReceipts(tokenOverride);
     try {
       return await this.syncAllInFlight;
     } finally {
@@ -992,6 +1006,18 @@ export class SyncEngine {
 
     await Promise.resolve();
     return this.syncAll(tokenOverride);
+  }
+
+  private async performSyncAllWithShipmentReceipts(
+    tokenOverride?: string | null,
+  ): Promise<SyncResult> {
+    const core = await this.performSyncAll(tokenOverride);
+    const shipmentReceipts = await this.syncShipmentReceipts(tokenOverride);
+    return {
+      synced: core.synced + shipmentReceipts.synced,
+      failed: core.failed + shipmentReceipts.failed,
+      errors: [...core.errors, ...shipmentReceipts.errors],
+    };
   }
 
   private async performSyncAll(tokenOverride?: string | null): Promise<SyncResult> {
@@ -2670,6 +2696,123 @@ export class SyncEngine {
     } catch (err) {
       log.warn('[SyncEngine] Transfer-storno sync hiba:', err instanceof Error ? err.message : err);
     }
+  }
+
+  /**
+   * FKH-018: az offline rögzített Shipment-átvételi szándékok szinkronizálása.
+   * A 409 önmagában soha nem siker: az autoritatív GET bizonyítja a végállapotot.
+   */
+  async syncShipmentReceipts(tokenOverride?: string | null): Promise<SyncResult> {
+    if (this.shipmentReceiptSyncInFlight) {
+      return this.shipmentReceiptSyncInFlight;
+    }
+    this.shipmentReceiptSyncInFlight = this.performSyncShipmentReceipts(tokenOverride);
+    try {
+      return await this.shipmentReceiptSyncInFlight;
+    } finally {
+      this.shipmentReceiptSyncInFlight = null;
+    }
+  }
+
+  private async performSyncShipmentReceipts(tokenOverride?: string | null): Promise<SyncResult> {
+    const result: SyncResult = { synced: 0, failed: 0, errors: [] };
+    const pending = getPendingShipmentReceipts();
+    if (pending.length === 0) return result;
+
+    const serverUrl = this.getActiveServerUrl();
+    const token = tokenOverride ?? this.getAuthToken();
+    if (!serverUrl || !token) {
+      result.failed = pending.length;
+      result.errors.push(!serverUrl ? 'Szerver URL nincs beállítva' : 'Nincs auth token');
+      return result;
+    }
+    const sessionCompanyCode = getConfig('bootstrap_company_code');
+
+    for (const receipt of pending) {
+      const mismatchMessage = standaloneCompanyMismatchMessage(
+        'SHIPMENT_RECEIPT',
+        receipt.id,
+        receipt.company_code,
+        sessionCompanyCode,
+      );
+      if (mismatchMessage) {
+        markShipmentReceiptRetryError(receipt.id, mismatchMessage);
+        result.failed++;
+        result.errors.push(mismatchMessage);
+        continue;
+      }
+
+      try {
+        await httpPost<Record<string, unknown>>(
+          `${serverUrl}/shipments/${receipt.shipment_id}/deliver`,
+          {},
+          token,
+          receipt.idempotency_key,
+          true,
+        );
+        markShipmentReceiptSynced(receipt.id);
+        result.synced++;
+      } catch (err) {
+        if (isAuthStatusError(err)) {
+          const message = err instanceof Error ? err.message : String(err);
+          markShipmentReceiptRetryError(receipt.id, message);
+          result.failed++;
+          result.errors.push(message);
+          this.clearStoredAuthToken();
+          break;
+        }
+
+        if (err instanceof HttpStatusError && err.status === 409) {
+          try {
+            const serverState = await httpGet<Record<string, unknown>>(
+              `${serverUrl}/shipments/${receipt.shipment_id}`,
+              token,
+            );
+            const status = String(
+              serverState['status'] ?? serverState['requestStatus'] ?? 'UNKNOWN',
+            );
+            if (status === 'DELIVERED') {
+              markShipmentReceiptSynced(receipt.id);
+              result.synced++;
+              continue;
+            }
+            if (status === 'CANCELLED' || status === 'REJECTED') {
+              const message =
+                status === 'CANCELLED'
+                  ? `Az átvétel nem teljesült: a(z) ${receipt.request_number ?? receipt.shipment_id} tételt a küldő sztornózta.`
+                  : `Az átvétel nem teljesült: a(z) ${receipt.request_number ?? receipt.shipment_id} tételt elutasították.`;
+              markShipmentReceiptTerminalError(receipt.id, message);
+              result.failed++;
+              result.errors.push(message);
+              continue;
+            }
+            const message = `A 409 ellenőrzése után a Shipment státusza ${status}; az átvétel nincs bizonyítva.`;
+            markShipmentReceiptRetryError(receipt.id, message);
+            result.failed++;
+            result.errors.push(message);
+            continue;
+          } catch (verifyError) {
+            const message =
+              verifyError instanceof Error ? verifyError.message : String(verifyError);
+            markShipmentReceiptRetryError(receipt.id, message);
+            result.failed++;
+            result.errors.push(message);
+            continue;
+          }
+        }
+
+        const message = err instanceof Error ? err.message : String(err);
+        if (err instanceof HttpStatusError && this.isBusinessValidationError(message)) {
+          markShipmentReceiptTerminalError(receipt.id, message);
+        } else {
+          markShipmentReceiptRetryError(receipt.id, message);
+        }
+        result.failed++;
+        result.errors.push(message);
+      }
+    }
+
+    return result;
   }
 
   /**

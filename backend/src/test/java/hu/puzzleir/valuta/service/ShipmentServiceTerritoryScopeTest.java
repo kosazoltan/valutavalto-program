@@ -201,7 +201,8 @@ class ShipmentServiceTerritoryScopeTest {
                 .status(ShipmentRequestStatus.SUBMITTED)
                 .items(new ArrayList<>())
                 .build();
-        when(shipmentRequestRepository.findById(SHIPMENT_ID)).thenReturn(Optional.of(request));
+        when(shipmentRequestRepository.findByIdAndCompanyId(SHIPMENT_ID, COMPANY))
+                .thenReturn(Optional.of(request));
         return request;
     }
 

@@ -8,10 +8,13 @@ import hu.puzzleir.valuta.entity.Dictionary;
 import hu.puzzleir.valuta.entity.HandlingFeeBracket;
 import hu.puzzleir.valuta.entity.ShipmentHandlingFee;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
+import hu.puzzleir.valuta.entity.ShipmentRequestItem;
 import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
 import hu.puzzleir.valuta.entity.SystemParameter;
+import hu.puzzleir.valuta.entity.VaultTerritory;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerRole;
+import hu.puzzleir.valuta.exception.ConflictException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
@@ -20,6 +23,7 @@ import hu.puzzleir.valuta.repository.HandlingFeeBracketRepository;
 import hu.puzzleir.valuta.repository.ShipmentHandlingFeeRepository;
 import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
 import hu.puzzleir.valuta.repository.SystemParameterRepository;
+import hu.puzzleir.valuta.repository.VaultTerritoryRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,22 +47,23 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mockStatic;
 
 /**
- * HOLDOUT H2 (a coder NEM látta) — a KK fee-approve négy-szem elve + az ACCESS_DENIED audit
- * PERZISZTENCIÁJA a dobott kivétel rollbackje ELLENÉRE, VALÓS PostgreSQL-en.
- *
- * <p>A terv unit-tesztjei mockolt {@code auditLogService}-szel csak a HÍVÁST bizonyítják. Éles PG-n
- * a REQUIRES_NEW hiánya (pl. ha a guard sima {@code log}-ot hívna) azt jelentené, hogy a
- * megtagadási security-trail a 403 rollbackjével EGYÜTT elveszik. Ez a próba a VALÓDI Spring
- * bean-láncon + valós {@code audit_log} táblán bizonyít.
- *
- * <p>A seed-minta a {@code ShipmentHandlingFeeIsolationPostgresIT}-ből származik (FLYWAY enabled).
+ * FKH-018 valós PostgreSQL holdout: SUBMITTED KK közvetlen átvétel, konkurens dupla-deliver
+ * pontosan-egyszer készlet/audit hatása, valamint a deprecated approve sender-only guardjának
+ * rollbackot túlélő ACCESS_DENIED auditja. Flyway enabled, valódi Spring bean-lánccal.
  */
 @Testcontainers
 @EnableJpaAuditing
@@ -101,6 +106,7 @@ class ShipmentFeeApproveFourEyesPostgresIT {
     @Autowired private CurrencyRepository currencyRepository;
     @Autowired private HandlingFeeBracketRepository bracketRepository;
     @Autowired private SystemParameterRepository systemParameterRepository;
+    @Autowired private VaultTerritoryRepository vaultTerritoryRepository;
     @Autowired private TransactionTemplate txTemplate;
     @Autowired private JdbcTemplate jdbc;
 
@@ -110,8 +116,9 @@ class ShipmentFeeApproveFourEyesPostgresIT {
     private Company companyA;
     private Branch vaultBranchA;
     private Branch cashierBranchA;
-    private Worker requesterW1;   // a rögzítő
-    private Worker approverW2;    // független jóváhagyó
+    private Worker requesterW1;   // a rögzítő/küldő
+    private Worker approverW2;    // a célfiók átvevője
+    private Currency huf;
 
     @BeforeEach
     void seed() {
@@ -129,10 +136,18 @@ class ShipmentFeeApproveFourEyesPostgresIT {
             Dictionary statusDict = dictionaryRepository.save(Dictionary.builder()
                     .category("BRANCH_STATUS").code("BS-" + suffix).name("Active").createdAt(now).build());
 
+            VaultTerritory vaultTerritory = vaultTerritoryRepository.save(VaultTerritory.builder()
+                    .company(companyA)
+                    .name("FE Territory " + suffix)
+                    .baseCapital(BigDecimal.ZERO)
+                    .active(true)
+                    .build());
+
             vaultBranchA = branchRepository.save(Branch.builder()
                     .code("VA-" + suffix).company(companyA).bankCode("FEBANK").branchType(branchType)
                     .name("Vault Branch A").address("Vault Street 1").city("Budapest").zipCode("1000")
                     .country(country).branchStatus(statusDict).isVault(true)
+                    .vaultTerritoryId(vaultTerritory.getId())
                     .openingDate(LocalDate.now()).createdAt(now).build());
 
             cashierBranchA = branchRepository.save(Branch.builder()
@@ -148,7 +163,7 @@ class ShipmentFeeApproveFourEyesPostgresIT {
                     .company(companyA).branch(vaultBranchA).code("W2-" + suffix).name("FE Approver")
                     .passwordHash("$2a$10$test").role(WorkerRole.SUPERVISOR).active(true).createdAt(now).build());
 
-            currencyRepository.findByCode("HUF").orElseGet(() ->
+            huf = currencyRepository.findByCode("HUF").orElseGet(() ->
                     currencyRepository.saveAndFlush(Currency.builder()
                             .code("HUF").name("Forint").symbol("Ft").decimalPlaces(0)
                             .active(true).displayOrder(1).createdAt(now).build()));
@@ -164,18 +179,10 @@ class ShipmentFeeApproveFourEyesPostgresIT {
         });
     }
 
-    /**
-     * SUBMITTED KK fee-shipment + fee-sor KÖZVETLEN repo-seed-je (W1 = requestedById), a testvér
-     * {@code ShipmentHandlingFeeIsolationPostgresIT} helper-mintájával. Szándékosan NEM a valódi
-     * create()+submit() úton megy: a submit() stock-booking (currency_stock/cash_balance fedezet +
-     * pesszimista lock) machinériája nem tárgya ennek a holdoutnak (azt a submit-tesztek fedik), és
-     * friss PG-n fedezet nélkül fail-closed elakadna. A holdout load-bearing állítása kizárólag az
-     * approve() négy-szem guard + az ACCESS_DENIED audit rollback-túlélése — ehhez egy SUBMITTED
-     * fee-shipment kell, a hozzá vezető úttól függetlenül.
-     */
+    /** SUBMITTED KK + fee-sor közvetlen repo-seedje a transition/concurrency holdoutokhoz. */
     private UUID seedSubmittedFeeShipmentByW1() {
         return txTemplate.execute(status -> {
-            ShipmentRequest sr = shipmentRequestRepository.saveAndFlush(ShipmentRequest.builder()
+            ShipmentRequest sr = ShipmentRequest.builder()
                     .requestNumber("KK-H2-" + System.nanoTime())
                     .companyId(companyA.getId())
                     .serialPrefix(ShipmentHandlingFeeService.SERIAL_PREFIX_HANDLING_FEE)
@@ -188,7 +195,14 @@ class ShipmentFeeApproveFourEyesPostgresIT {
                     .requestDate(LocalDate.now())
                     .carrierName("Brink's Hungary Kft.")
                     .sealNumber("H2-" + System.nanoTime())
+                    .build();
+            sr.addItem(ShipmentRequestItem.builder()
+                    .currencyId(huf.getId())
+                    .requestedAmount(new BigDecimal("125000.00"))
+                    .appliedRate(BigDecimal.ONE)
+                    .hufValue(new BigDecimal("125000.00"))
                     .build());
+            sr = shipmentRequestRepository.saveAndFlush(sr);
             feeRepository.saveAndFlush(ShipmentHandlingFee.builder()
                     .companyId(companyA.getId())
                     .shipmentRequestId(sr.getId())
@@ -217,39 +231,105 @@ class ShipmentFeeApproveFourEyesPostgresIT {
         return n == null ? 0 : n;
     }
 
+    private long auditActionCount(UUID shipmentId, String action) {
+        Long n = jdbc.queryForObject(
+                "SELECT count(*) FROM audit_log WHERE action = ? AND entity_id = ?",
+                Long.class, action, shipmentId.toString());
+        return n == null ? 0 : n;
+    }
+
     @Test
-    @DisplayName("H2: önjóváhagyás 403 + ACCESS_DENIED audit túléli a rollbackot; W2 jóváhagy, idempotens")
-    void selfApprovalDeniedAuditSurvivesRollback_thenIndependentApproverSucceeds() {
+    @DisplayName("FKH-018: SUBMITTED KK tétel közvetlenül, négy-szem nélkül kézbesíthető")
+    void submittedFeeShipmentDirectDeliverSucceedsWithoutFourEyesApproval() {
         UUID shipmentId = seedSubmittedFeeShipmentByW1();
 
-        // (1) W1 (a rögzítő) próbál jóváhagyni — to-branchre állított branchId-vel is → VV-AUTH-003.
-        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
-            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyA.getId());
-            sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(requesterW1.getId());
-            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn(requesterW1.getCode());
-            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(vaultBranchA.getId());
-
-            assertThatThrownBy(() -> shipmentService.approveResponse(shipmentId))
-                    .isInstanceOf(AccessDeniedException.class)
-                    .hasMessageContaining("VV-AUTH-003");
-        }
-
-        // Friss tranzakcióból olvasva: a 403 rollbackje ellenére az állapot SUBMITTED, fee approvedAt NULL,
-        // ÉS az ACCESS_DENIED VV-AUTH-003 audit-sor LÉTEZIK (= logInNewTransaction túlélte a rollbackot).
-        assertThat(shipmentRequestRepository.findById(shipmentId).orElseThrow().getStatus())
-                .isEqualTo(ShipmentRequestStatus.SUBMITTED);
-        ShipmentHandlingFee feeAfterDeny = feeRepository
-                .findByShipmentRequestIdAndCompanyId(shipmentId, companyA.getId()).orElseThrow();
-        assertThat(feeAfterDeny.getApprovedAt()).isNull();
-        assertThat(accessDeniedCount(shipmentId, "VV-AUTH-003")).isEqualTo(1L);
-
-        // (2) W2 (független jóváhagyó, != rögzítő; vault/to branch) → APPROVED, fee approvedAt kitöltve,
-        // PONTOSAN EGY FEE_APPROVED audit-sor.
         try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyA.getId());
             sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(approverW2.getId());
             sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn(approverW2.getCode());
             sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(vaultBranchA.getId());
+
+            shipmentService.deliverResponse(shipmentId);
+        }
+
+        assertThat(shipmentRequestRepository.findById(shipmentId).orElseThrow().getStatus())
+                .isEqualTo(ShipmentRequestStatus.DELIVERED);
+        assertThat(auditActionCount(shipmentId, ShipmentService.ACTION_DIRECT_DELIVER)).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("FKH-018 holdout: két valós PG-tranzakció konkurens deliverje pontosan egyszer könyvel")
+    void concurrentDirectDeliverBooksStockAndAuditExactlyOnce() throws Exception {
+        UUID shipmentId = seedSubmittedFeeShipmentByW1();
+        CyclicBarrier start = new CyclicBarrier(2);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        try {
+            Future<Throwable> first = executor.submit(() -> attemptConcurrentDeliver(shipmentId, start));
+            Future<Throwable> second = executor.submit(() -> attemptConcurrentDeliver(shipmentId, start));
+            List<Throwable> outcomes = Arrays.asList(
+                    first.get(60, TimeUnit.SECONDS),
+                    second.get(60, TimeUnit.SECONDS));
+
+            assertThat(outcomes).filteredOn(outcome -> outcome == null).hasSize(1);
+            assertThat(outcomes).filteredOn(ConflictException.class::isInstance).hasSize(1);
+        } finally {
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        }
+
+        assertThat(shipmentRequestRepository.findById(shipmentId).orElseThrow().getStatus())
+                .isEqualTo(ShipmentRequestStatus.DELIVERED);
+        assertThat(auditActionCount(shipmentId, ShipmentStockBookingService.ACTION_STOCK_IN))
+                .isEqualTo(1L);
+        assertThat(auditActionCount(shipmentId, ShipmentService.ACTION_DIRECT_DELIVER)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject(
+                "SELECT quantity FROM currency_stock WHERE company_id = ? AND entity_type = 'VAULT' "
+                        + "AND entity_id = ? AND currency_code = 'HUF'",
+                BigDecimal.class, companyA.getId(), String.valueOf(vaultBranchA.getVaultTerritoryId())))
+                .isEqualByComparingTo("125000.00");
+    }
+
+    private Throwable attemptConcurrentDeliver(UUID shipmentId, CyclicBarrier start) {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyA.getId());
+            sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(approverW2.getId());
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn(approverW2.getCode());
+            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(vaultBranchA.getId());
+            start.await(10, TimeUnit.SECONDS);
+            shipmentService.deliverResponse(shipmentId);
+            return null;
+        } catch (Throwable failure) {
+            return failure;
+        }
+    }
+
+    @Test
+    @DisplayName("FKH-018: deprecated KK approve sender-only; tiltási audit túléli a rollbackot")
+    void deprecatedApproveUsesSenderGuardAndPersistsDeniedAudit() {
+        UUID shipmentId = seedSubmittedFeeShipmentByW1();
+
+        // A célfiók régi kliensének approve-kísérlete tiltott, a security trail megmarad.
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyA.getId());
+            sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(approverW2.getId());
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn(approverW2.getCode());
+            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(vaultBranchA.getId());
+
+            assertThatThrownBy(() -> shipmentService.approveResponse(shipmentId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("VV-AUTH-002");
+        }
+        assertThat(shipmentRequestRepository.findById(shipmentId).orElseThrow().getStatus())
+                .isEqualTo(ShipmentRequestStatus.SUBMITTED);
+        assertThat(accessDeniedCount(shipmentId, "VV-AUTH-002")).isEqualTo(1L);
+
+        // A küldő branch régi kliense kompatibilisen továbbra is APPROVED-ra válthat.
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyA.getId());
+            sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(requesterW1.getId());
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn(requesterW1.getCode());
+            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(cashierBranchA.getId());
 
             shipmentService.approveResponse(shipmentId);
         }
@@ -259,17 +339,19 @@ class ShipmentFeeApproveFourEyesPostgresIT {
                 .findByShipmentRequestIdAndCompanyId(shipmentId, companyA.getId()).orElseThrow();
         assertThat(feeAfterApprove.getApprovedAt()).isNotNull();
         assertThat(feeApprovedCount(shipmentId)).isEqualTo(1L);
+        assertThat(auditActionCount(shipmentId, ShipmentService.ACTION_APPROVE_DEPRECATED)).isEqualTo(1L);
 
-        // (3) Ismételt approve W2-vel → státusz-validációs hiba, és TOVÁBBRA IS pontosan egy FEE_APPROVED sor.
+        // Ismételt approve → státusz-validációs hiba, nincs második audit/sync.
         try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyA.getId());
-            sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(approverW2.getId());
-            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn(approverW2.getCode());
-            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(vaultBranchA.getId());
+            sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(requesterW1.getId());
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn(requesterW1.getCode());
+            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(cashierBranchA.getId());
 
             assertThatThrownBy(() -> shipmentService.approveResponse(shipmentId))
                     .isInstanceOf(RuntimeException.class);
         }
         assertThat(feeApprovedCount(shipmentId)).isEqualTo(1L);
+        assertThat(auditActionCount(shipmentId, ShipmentService.ACTION_APPROVE_DEPRECATED)).isEqualTo(1L);
     }
 }

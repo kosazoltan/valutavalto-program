@@ -1468,6 +1468,9 @@ export interface ShipmentRequest {
   rejectedByWorkerName?: string
   rejectedAt?: string
   rejectionReason?: string
+  cancelledByWorkerId?: string
+  cancelledByWorkerName?: string
+  cancelledAt?: string
   modificationNotes?: string
   notes?: string
   transferId?: string
@@ -1704,7 +1707,15 @@ export const shipmentRequestApi = {
     const rawPages = await fetchPaged<Record<string, unknown>>(`/shipments`, { branchId })
     return rawPages.map(normalizeShipmentRequest)
   },
+  getPendingForBranch: async (): Promise<ShipmentRequest[]> => {
+    const response = await api.get<unknown[]>('/shipments/pending')
+    return asArray<Record<string, unknown>>(response.data).map(normalizeShipmentRequest)
+  },
   // Approve: backend POST /api/v1/shipments/{id}/approve (params ignoralva: workerId + approvedItems + notes)
+  /**
+   * @deprecated since 2.28.45. Use direct {@link shipmentRequestApi.deliver} instead.
+   * Kept for mixed-client compatibility; the backend returns `Deprecation: true` and a `Sunset` header.
+   */
   approve: async (
     requestId: string,
     workerId: string,
@@ -1722,14 +1733,25 @@ export const shipmentRequestApi = {
   // folyamat a visszavonástól (cancel). A státusz REJECTED lesz, és a backend rögzíti a
   // rejectionReason + rejectedByWorkerId (a hitelesített user) mezőket. A workerId paramétert a
   // backend a security-contextből származtatja (mint approve), a kliens-érték nem authoritative.
+  /**
+   * @deprecated since 2.28.45. Use sender-side {@link shipmentRequestApi.cancel} instead.
+   * Kept for mixed-client compatibility; the backend returns `Deprecation: true` and a `Sunset` header.
+   */
   reject: async (requestId: string, workerId: string, reason: string): Promise<ShipmentRequest> => {
     const response = await api.post<ShipmentRequest>(`/shipments/${requestId}/reject`, null, {
       params: { workerId, reason },
     })
     return response.data
   },
-  deliver: async (requestId: string): Promise<ShipmentRequest> => {
-    const response = await api.post<Record<string, unknown>>(`/shipments/${requestId}/deliver`)
+  deliver: async (
+    requestId: string,
+    idempotencyKey: string = globalThis.crypto.randomUUID(),
+  ): Promise<ShipmentRequest> => {
+    const response = await api.post<Record<string, unknown>>(
+      `/shipments/${requestId}/deliver`,
+      null,
+      { headers: { 'Idempotency-Key': idempotencyKey } },
+    )
     return normalizeShipmentRequest(response.data)
   },
   cancel: async (requestId: string): Promise<ShipmentRequest> => {

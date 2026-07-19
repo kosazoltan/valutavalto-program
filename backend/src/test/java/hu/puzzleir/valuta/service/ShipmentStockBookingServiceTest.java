@@ -274,6 +274,33 @@ class ShipmentStockBookingServiceTest {
         }
     }
 
+    @Test
+    void assertSender_allowsOnlyFromBranchAndAuditsDenial() {
+        UUID fromId = UUID.randomUUID();
+        UUID otherBranch = UUID.randomUUID();
+        ShipmentRequest req = shipment(fromId, UUID.randomUUID(), item(4L, "300", null));
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(fromId);
+            assertThatCode(() -> service.assertSender(req)).doesNotThrowAnyException();
+        }
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(otherBranch);
+            sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
+            assertThatThrownBy(() -> service.assertSender(req))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining(ShipmentStockBookingService.ERR_NOT_SENDER);
+        }
+
+        verify(auditLogService).logInNewTransaction(
+                eq(ShipmentStockBookingService.ACTION_ACCESS_DENIED),
+                any(), any(), any(), any(), any(), any(),
+                org.mockito.ArgumentMatchers.argThat(changes -> changes != null
+                        && changes.contains("\"error_code\":\"VV-AUTH-005\"")
+                        && changes.contains("\"from_branch_id\":\"" + fromId + "\"")));
+    }
+
     // ===================== reverseStockOut (TBD-1 reverzió) =====================
 
     @Test
@@ -326,6 +353,29 @@ class ShipmentStockBookingServiceTest {
         verify(auditLogService).log(
                 eq(ShipmentStockBookingService.ACTION_AML_CHECK),
                 any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void bookStockIn_aboveAmlThreshold_writesAmlAuditForReceiver() {
+        UUID companyId = UUID.randomUUID();
+        UUID toId = UUID.randomUUID();
+        Branch to = cashierBranch(toId, companyId);
+        ShipmentRequest req = shipment(UUID.randomUUID(), toId, item(4L, "300", "150000"));
+        CashBalance balance = cashBalance("500");
+
+        when(branchRepository.findByIdAndCompanyId(toId, companyId)).thenReturn(Optional.of(to));
+        when(currencyRepository.findById(4L)).thenReturn(Optional.of(currency("EUR")));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(toId, 4L, companyId))
+                .thenReturn(Optional.of(balance));
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
+            service.bookStockIn(req, companyId);
+        }
+
+        verify(auditLogService).log(
+                eq(ShipmentStockBookingService.ACTION_AML_CHECK),
+                any(), any(), any(), any(), eq(toId.toString()), any(), any(), any(), any());
     }
 
     @Test

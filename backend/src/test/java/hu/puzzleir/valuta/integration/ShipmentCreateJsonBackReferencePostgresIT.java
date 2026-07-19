@@ -17,12 +17,14 @@ import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
 import hu.puzzleir.valuta.service.AccessScopeService;
+import hu.puzzleir.valuta.service.AuditLogService;
 import hu.puzzleir.valuta.service.ExchangeRateService;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeService;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeSyncService;
 import hu.puzzleir.valuta.service.ShipmentService;
 import hu.puzzleir.valuta.service.ShipmentStockBookingService;
 import hu.puzzleir.valuta.service.TransferSerialSequenceService;
+import hu.puzzleir.valuta.util.IdempotencyGuard;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -97,6 +99,8 @@ class ShipmentCreateJsonBackReferencePostgresIT {
     @MockitoBean private ShipmentHandlingFeeSyncService handlingFeeSyncService;
     @MockitoBean private ShipmentHandlingFeeService shipmentHandlingFeeService;
     @MockitoBean private AccessScopeService accessScopeService;
+    @MockitoBean private AuditLogService auditLogService;
+    @MockitoBean private IdempotencyGuard idempotencyGuard;
 
     private MockMvc mockMvc;
     private Company company;

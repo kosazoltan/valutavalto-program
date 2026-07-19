@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ShipmentListPage from './ShipmentListPage'
+import { toast } from '../../components/ui/toaster'
 
 const mocks = vi.hoisted(() => ({
   findByStatus: vi.fn(),
@@ -52,8 +53,20 @@ vi.mock('../../components/electron', () => ({
     receiptData,
   }: {
     isOpen: boolean
-    receiptData: { receiptNumber?: string } | null
-  }) => (isOpen ? <div data-testid="receipt-modal">{receiptData?.receiptNumber}</div> : null),
+    receiptData: {
+      receiptNumber?: string
+      cashierName?: string
+      date?: string
+      isStorno?: boolean
+      stornoReason?: string
+    } | null
+  }) =>
+    isOpen ? (
+      <div data-testid="receipt-modal">
+        {receiptData?.receiptNumber}|{receiptData?.cashierName}|{receiptData?.date}|
+        {receiptData?.isStorno ? 'SZTORNÓ' : ''}|{receiptData?.stornoReason}
+      </div>
+    ) : null,
 }))
 vi.mock('../../utils/electron', () => ({ isElectron: () => false }))
 vi.mock('../../components/ui/toaster', () => ({
@@ -63,8 +76,6 @@ vi.mock('../../utils/localQueue', () => ({ getCompanyType: () => 'BEST_CHANGE' }
 
 const TODAY = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Budapest' }).format(new Date())
 const OTHER_DAY = '2020-01-15'
-const SELF_APPROVAL_MESSAGE =
-  'Ezt az igényt Ön rögzítette — a négy-szem elv miatt más munkatársnak kell jóváhagynia.'
 
 const baseShipment = {
   id: 'shipment-1',
@@ -105,7 +116,12 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
     mocks.approve.mockResolvedValue({ ...approvedShipment, requestStatus: 'APPROVED' })
     mocks.reject.mockResolvedValue({ ...approvedShipment, requestStatus: 'REJECTED' })
     mocks.deliver.mockResolvedValue({ ...approvedShipment, requestStatus: 'DELIVERED' })
-    mocks.cancel.mockResolvedValue({ ...approvedShipment, requestStatus: 'CANCELLED' })
+    mocks.cancel.mockResolvedValue({
+      ...approvedShipment,
+      requestStatus: 'CANCELLED',
+      cancelledByWorkerName: 'Teszt Sztornózó',
+      cancelledAt: `${TODAY}T11:30:00`,
+    })
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     vi.spyOn(window, 'prompt').mockReturnValue('Teszt elutasítás')
   })
@@ -151,7 +167,7 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
     await user.click(screen.getByTitle('shipments.sztorno'))
 
     await waitFor(() => {
-      expect(mocks.deliver).toHaveBeenCalledWith('shipment-1')
+      expect(mocks.deliver).toHaveBeenCalledWith('shipment-1', expect.any(String))
       expect(mocks.cancel).toHaveBeenCalledWith('shipment-1')
     })
   })
@@ -183,70 +199,64 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
     expect(screen.queryByTitle('Megérkezett')).toBeNull()
   })
 
-  it('KK-sor saját rögzítőjénél letiltja a jóváhagyást és megmagyarázza a négy-szem elvet', async () => {
-    const selfRequestedHandlingFee = {
-      ...baseShipment,
-      requestNumber: 'KK-000001',
-      requestStatus: 'SUBMITTED',
-      requestedByWorkerId: '77',
-    }
-    mocks.findByStatus.mockResolvedValue([selfRequestedHandlingFee])
-    const user = userEvent.setup()
-
+  it('KK-sor saját rögzítőjénél sincs jóváhagyás UI', async () => {
+    mocks.findByStatus.mockResolvedValue([
+      { ...baseShipment, requestNumber: 'KK-000001', requestStatus: 'SUBMITTED' },
+    ])
     render(
       <MemoryRouter>
         <ShipmentListPage />
       </MemoryRouter>,
     )
 
-    const approvalButton = await screen.findByRole('button', { name: SELF_APPROVAL_MESSAGE })
-    expect(approvalButton).toBeDisabled()
-    expect(screen.getByTitle(SELF_APPROVAL_MESSAGE)).toBeInTheDocument()
-
-    await user.click(approvalButton)
+    await screen.findByText('KK-000001')
+    expect(screen.queryByTitle('Jóváhagyás')).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'shipments.jovahagyva' })).not.toBeInTheDocument()
     expect(mocks.approve).not.toHaveBeenCalled()
   })
 
-  it('KK-sor más rögzítőjénél a jóváhagyás változatlanul működik', async () => {
-    const otherRequestedHandlingFee = {
-      ...baseShipment,
-      requestNumber: 'KK-000002',
-      requestStatus: 'SUBMITTED',
-      requestedByWorkerId: '88',
-    }
-    mocks.findByStatus.mockResolvedValue([otherRequestedHandlingFee])
-    const user = userEvent.setup()
-
+  it('KK-sor más rögzítőjénél sincs jóváhagyás UI', async () => {
+    mocks.findByStatus.mockResolvedValue([
+      {
+        ...baseShipment,
+        requestNumber: 'KK-000002',
+        requestStatus: 'SUBMITTED',
+        requestedByWorkerId: '88',
+      },
+    ])
     render(
       <MemoryRouter>
         <ShipmentListPage />
       </MemoryRouter>,
     )
 
-    await user.click(await screen.findByTitle('Jóváhagyás'))
-
-    await waitFor(() => expect(mocks.approve).toHaveBeenCalledWith('shipment-1', '77'))
+    await screen.findByText('KK-000002')
+    expect(screen.queryByTitle('Jóváhagyás')).not.toBeInTheDocument()
+    expect(mocks.approve).not.toHaveBeenCalled()
   })
 
-  it('nem KK-sor saját rögzítőjénél a jóváhagyás változatlanul működik', async () => {
-    const selfRequestedStockShipment = {
-      ...baseShipment,
-      requestNumber: 'FF-000001',
-      requestStatus: 'SUBMITTED',
-      requestedByWorkerId: '77',
-    }
-    mocks.findByStatus.mockResolvedValue([selfRequestedStockShipment])
+  it('SUBMITTED nem-KK sor célfiókja közvetlenül kézbesíthet approve nélkül', async () => {
+    mocks.findByStatus.mockResolvedValue([
+      {
+        ...baseShipment,
+        requestNumber: 'FF-000001',
+        requestStatus: 'SUBMITTED',
+        targetBranchId: 'branch-1',
+      },
+    ])
     const user = userEvent.setup()
-
     render(
       <MemoryRouter>
         <ShipmentListPage />
       </MemoryRouter>,
     )
 
-    await user.click(await screen.findByTitle('Jóváhagyás'))
-
-    await waitFor(() => expect(mocks.approve).toHaveBeenCalledWith('shipment-1', '77'))
+    expect(screen.queryByTitle('Jóváhagyás')).not.toBeInTheDocument()
+    await user.click(await screen.findByTitle('Megérkezett'))
+    await waitFor(() =>
+      expect(mocks.deliver).toHaveBeenCalledWith('shipment-1', expect.any(String)),
+    )
+    expect(mocks.approve).not.toHaveBeenCalled()
   })
 
   it('DRAFT részletpanelen a szerkesztés a PUT /shipments/{id} szerződést hívja', async () => {
@@ -332,6 +342,50 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
     expect(screen.getByText('Elutasítva')).toBeInTheDocument()
   })
 
+  it.each(['DRAFT', 'SUBMITTED', 'APPROVED', 'IN_TRANSIT'])(
+    'a saját küldő %s Shipmentjén látható a sztornó gomb',
+    async (requestStatus) => {
+      mocks.findByStatus.mockResolvedValue([{ ...baseShipment, requestStatus }])
+      render(
+        <MemoryRouter>
+          <ShipmentListPage />
+        </MemoryRouter>,
+      )
+
+      await screen.findByText('SH-001')
+      expect(screen.getByTitle('shipments.sztorno')).toBeInTheDocument()
+    },
+  )
+
+  it.each(['REJECTED', 'DELIVERED', 'CANCELLED'])(
+    '%s Shipmentnél rejtett a sztornó gomb',
+    async (requestStatus) => {
+      mocks.findByStatus.mockResolvedValue([{ ...baseShipment, requestStatus }])
+      render(
+        <MemoryRouter>
+          <ShipmentListPage />
+        </MemoryRouter>,
+      )
+
+      await screen.findByText('SH-001')
+      expect(screen.queryByTitle('shipments.sztorno')).not.toBeInTheDocument()
+    },
+  )
+
+  it('másik küldő fiók Shipmentjén rejtett a sztornó gomb', async () => {
+    mocks.findByStatus.mockResolvedValue([
+      { ...baseShipment, requestStatus: 'SUBMITTED', requestingBranchId: 'branch-foreign' },
+    ])
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
+
+    await screen.findByText('SH-001')
+    expect(screen.queryByTitle('shipments.sztorno')).not.toBeInTheDocument()
+  })
+
   it('FR-10: a "Korábbi" fülön nincs státuszszűrő, naptár + üres állapot jelenik meg', async () => {
     const user = userEvent.setup()
     render(
@@ -349,7 +403,7 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
     expect(screen.getByTestId('past-empty-state')).toBeInTheDocument()
   })
 
-  it('FR-8/FR-9/FR-11: "Korábbi" fülön napra kattintva a lista csak megtekintés + újranyomtatás gombot ad, és az újranyomtatás GET /shipments/{id}-t hív', async () => {
+  it('FR-8/FR-9/FR-11: "Korábbi" fülön napra kattintva az újranyomtatás GET /shipments/{id}-t hív', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter>
@@ -363,11 +417,10 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
 
     await user.click(screen.getByTestId(`calendar-day-${TODAY}-active`))
 
-    // Napi lista megjelenik, csak megtekintés + újranyomtatás — nincs operatív gomb
+    // A történeti lista továbbra is ad részleteket és újranyomtatást; approve/deliver nincs rajta.
     await waitFor(() => expect(screen.getByText('SH-001')).toBeInTheDocument())
     expect(screen.getByTitle('Részletek')).toBeInTheDocument()
     expect(screen.getByTitle('shipments.ujranyomtatas')).toBeInTheDocument()
-    expect(screen.queryByTitle('shipments.sztorno')).toBeNull()
     expect(screen.queryByTitle('Jóváhagyás')).toBeNull()
     expect(screen.queryByTitle('Megérkezett')).toBeNull()
 
@@ -378,5 +431,105 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
       expect(mocks.get).toHaveBeenCalledWith('shipment-1')
       expect(screen.getByTestId('receipt-modal')).toHaveTextContent('SH-001')
     })
+  })
+
+  it('FKH-018: a küldő a korábbi fülön is sztornózhat át nem vett Shipmentet, majd irattári bizonylatot kap', async () => {
+    const historical = {
+      ...baseShipment,
+      requestedDeliveryDate: TODAY,
+      requestedAt: `${TODAY}T10:00:00`,
+      requestStatus: 'SUBMITTED',
+    }
+    mocks.findByBranch.mockResolvedValue([historical])
+    mocks.cancel.mockResolvedValue({
+      ...historical,
+      requestStatus: 'CANCELLED',
+      cancelledByWorkerName: 'Sztornózó Pénztáros',
+      cancelledAt: '2020-01-15T11:30:00',
+    })
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByTestId('shipment-tab-past'))
+    await waitFor(() => expect(screen.getByTestId('shipment-calendar')).toBeInTheDocument())
+    await user.click(screen.getByTestId(`calendar-day-${TODAY}-active`))
+    await user.click(await screen.findByTitle('shipments.sztorno'))
+
+    await waitFor(() => expect(mocks.cancel).toHaveBeenCalledWith('shipment-1'))
+    expect(screen.getByTestId('receipt-modal')).toHaveTextContent('SH-001-SZ')
+    expect(screen.getByTestId('receipt-modal')).toHaveTextContent('Sztornózó Pénztáros')
+    expect(screen.getByTestId('receipt-modal')).toHaveTextContent(
+      new Date('2020-01-15T11:30:00').toLocaleDateString('hu-HU'),
+    )
+    expect(screen.getByTestId('receipt-modal')).toHaveTextContent('SZTORNÓ')
+    expect(screen.getByTestId('receipt-modal')).toHaveTextContent('Küldői sztornó átvétel előtt')
+  })
+
+  it('sikeres sztornó után a lista-frissítés hibája sem nyeli el az irattári bizonylatot', async () => {
+    mocks.findByStatus
+      .mockResolvedValueOnce([{ ...baseShipment, requestStatus: 'SUBMITTED' }])
+      .mockRejectedValueOnce(new Error('refresh failed'))
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByTitle('shipments.sztorno'))
+
+    expect(await screen.findByTestId('receipt-modal')).toHaveTextContent('SH-001-SZ')
+    expect(screen.getByTestId('receipt-modal')).toHaveTextContent('SZTORNÓ')
+  })
+
+  it('CANCELLED történeti Shipment újranyomtatása a sztornó-bizonylatot építi fel', async () => {
+    const cancelled = {
+      ...baseShipment,
+      requestStatus: 'CANCELLED',
+      cancelledByWorkerName: 'Archív Sztornózó',
+      cancelledAt: '2020-01-15T14:20:30',
+    }
+    mocks.findByBranch.mockResolvedValue([cancelled])
+    mocks.get.mockResolvedValue(cancelled)
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByTestId('shipment-tab-past'))
+    await user.click(await screen.findByTestId(`calendar-day-${TODAY}-active`))
+    await user.click(await screen.findByTitle('shipments.ujranyomtatas'))
+
+    expect(await screen.findByTestId('receipt-modal')).toHaveTextContent('SH-001-SZ')
+    expect(screen.getByTestId('receipt-modal')).toHaveTextContent('Archív Sztornózó')
+    expect(screen.getByTestId('receipt-modal')).toHaveTextContent('SZTORNÓ')
+  })
+
+  it('FKH-018: auditadat nélkül nem fabrikál bizonylatot, de a sikeres sztornót sikeresnek jelzi', async () => {
+    mocks.findByStatus.mockResolvedValue([{ ...baseShipment, requestStatus: 'SUBMITTED' }])
+    mocks.cancel.mockResolvedValue({ ...baseShipment, requestStatus: 'CANCELLED' })
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByTitle('shipments.sztorno'))
+
+    await waitFor(() => expect(mocks.cancel).toHaveBeenCalledWith('shipment-1'))
+    expect(screen.queryByTestId('receipt-modal')).not.toBeInTheDocument()
+    expect(screen.queryByText(/auditadatai hiányoznak/)).not.toBeInTheDocument()
+    expect(toast.success).toHaveBeenCalledWith(
+      'Sztornó sikeres',
+      expect.stringMatching(/bizonylat később újranyomtatható/i),
+    )
+    expect(toast.error).not.toHaveBeenCalled()
   })
 })

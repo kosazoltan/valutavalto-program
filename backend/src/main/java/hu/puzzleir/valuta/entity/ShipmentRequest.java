@@ -38,7 +38,7 @@ public class ShipmentRequest {
     @Column(name = "request_number", nullable = false, length = 50)
     private String requestNumber;
 
-    @Column(name = "company_id")
+    @Column(name = "company_id", updatable = false)
     private UUID companyId;
 
     @Column(name = "serial_prefix", length = 4)
@@ -102,6 +102,13 @@ public class ShipmentRequest {
 
     @Column(name = "rejected_by_worker_id")
     private Long rejectedByWorkerId;
+
+    /** FKH-018: a küldői sztornót rögzítő hitelesített dolgozó és az esemény időpontja. */
+    @Column(name = "cancelled_by_worker_id")
+    private Long cancelledByWorkerId;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

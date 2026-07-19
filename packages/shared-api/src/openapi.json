@@ -7,7 +7,7 @@
       "name": "PuzzleIR",
       "email": "info@puzzleir.hu"
     },
-    "version": "2.28.38"
+    "version": "2.28.44"
   },
   "servers": [
     {
@@ -6578,7 +6578,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/api/v1/shipments/{id}/deliver": {
@@ -6594,6 +6595,22 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -6603,6 +6620,16 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ShipmentRequestResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Már kézbesített vagy azonos idempotenciakulccsal még feldolgozás alatt áll",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -6665,7 +6692,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/api/v1/shipments/handling-fee": {
@@ -21285,6 +21313,27 @@
         }
       }
     },
+    "/api/v1/shipments/pending": {
+      "get": {
+        "tags": ["shipment-controller"],
+        "operationId": "pending_1",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShipmentRequestResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/sessions/validate-open/{branchId}": {
       "get": {
         "tags": ["session-open-controller"],
@@ -26541,6 +26590,101 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/HandlingFeeReportDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/handling-fees/daily-summary": {
+      "get": {
+        "tags": ["handling-fee-daily-summary-controller"],
+        "operationId": "dailySummary",
+        "parameters": [
+          {
+            "name": "branchId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandlingFeeDailySummaryDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/handling-fees/daily-summary/csv": {
+      "get": {
+        "tags": ["handling-fee-daily-summary-controller"],
+        "operationId": "dailySummaryCsv",
+        "parameters": [
+          {
+            "name": "branchId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
                 }
               }
             }
@@ -35195,6 +35339,14 @@
             "type": "integer",
             "format": "int64"
           },
+          "cancelledByWorkerId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cancelledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -35353,6 +35505,17 @@
           },
           "rejectedByWorkerName": {
             "type": "string"
+          },
+          "cancelledByWorkerId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cancelledByWorkerName": {
+            "type": "string"
+          },
+          "cancelledAt": {
+            "type": "string",
+            "format": "date-time"
           },
           "createdAt": {
             "type": "string",
@@ -39166,13 +39329,13 @@
             "type": "string",
             "format": "uuid"
           },
-          "territoryId": {
-            "type": "integer",
-            "format": "int32"
-          },
           "companyId": {
             "type": "string",
             "format": "uuid"
+          },
+          "territoryId": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -41104,6 +41267,31 @@
           },
           "assignedBy": {
             "type": "string"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "fieldErrors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
           }
         }
       },
@@ -50794,11 +50982,11 @@
             "type": "string",
             "format": "date-time"
           },
-          "highBalance": {
-            "type": "boolean"
-          },
           "dailyChange": {
             "type": "number"
+          },
+          "highBalance": {
+            "type": "boolean"
           },
           "lowBalance": {
             "type": "boolean"
@@ -53255,6 +53443,46 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/HandlingFeeTransactionDto"
+            }
+          }
+        }
+      },
+      "DailyRow": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "buyFee": {
+            "type": "number"
+          },
+          "sellFee": {
+            "type": "number"
+          }
+        }
+      },
+      "HandlingFeeDailySummaryDto": {
+        "type": "object",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "totalBuyFee": {
+            "type": "number"
+          },
+          "totalSellFee": {
+            "type": "number"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DailyRow"
             }
           }
         }

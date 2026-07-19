@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.shipment.ShipmentRequestItemResponseDto;
 import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto;
+import hu.puzzleir.valuta.exception.ConflictException;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.entity.Branch;
@@ -27,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +54,25 @@ public class ShipmentService {
     private final ShipmentStockBookingService stockBookingService;
     private final ShipmentHandlingFeeSyncService handlingFeeSyncService;
     private final AccessScopeService accessScopeService;
+    private final AuditLogService auditLogService;
+
+    public static final String ACTION_DIRECT_DELIVER = "SHIPMENT_DIRECT_DELIVER";
+    public static final String ACTION_DELIVERED = "SHIPMENT_DELIVERED";
+    public static final String ACTION_SUBMITTED = "SHIPMENT_SUBMITTED";
+    public static final String ACTION_CANCELLED_BY_SENDER = "SHIPMENT_CANCELLED_BY_SENDER";
+    public static final String ACTION_APPROVE_DEPRECATED = "SHIPMENT_APPROVE_DEPRECATED";
+    public static final String ACTION_REJECT_DEPRECATED = "SHIPMENT_REJECT_DEPRECATED";
+
+    private static final Set<ShipmentRequestStatus> STOCK_BOOKED_OUT_STATUSES = Set.of(
+            ShipmentRequestStatus.SUBMITTED,
+            ShipmentRequestStatus.APPROVED,
+            ShipmentRequestStatus.IN_TRANSIT);
+
+    private static final Set<ShipmentRequestStatus> CANCELLABLE_STATUSES = Set.of(
+            ShipmentRequestStatus.DRAFT,
+            ShipmentRequestStatus.SUBMITTED,
+            ShipmentRequestStatus.APPROVED,
+            ShipmentRequestStatus.IN_TRANSIT);
 
     /**
      * v2.5.70 P0 multi-tenant fix (companyId audit follow-up): a régi findByStatus /
@@ -100,16 +121,42 @@ public class ShipmentService {
                 .map(request -> toResponseDto(request, companyId, branchCache, workerCache));
     }
 
+    /** FKH-018: a bejelentkezett fiókhoz címzett, még átvehető shipmentek. */
+    @Transactional(readOnly = true)
+    public List<ShipmentRequestResponseDto> findPendingForCurrentBranchResponse() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
+        if (branchId == null) {
+            return List.of();
+        }
+        Set<UUID> scope = accessScopeService.vaultRegionBranchScopeOrNull();
+        if (scope != null && !scope.contains(branchId)) {
+            return List.of();
+        }
+        Set<ShipmentRequestStatus> pendingStatuses = Set.of(
+                ShipmentRequestStatus.SUBMITTED,
+                ShipmentRequestStatus.APPROVED,
+                ShipmentRequestStatus.IN_TRANSIT);
+        List<ShipmentRequest> requests = shipmentRequestRepository.findPendingForToBranch(
+                companyId, branchId, pendingStatuses);
+        requests.forEach(ShipmentService::initLazyForSerialization);
+        Map<UUID, Branch> branchCache = new HashMap<>();
+        Map<Long, Worker> workerCache = new HashMap<>();
+        return requests.stream()
+                .map(request -> toResponseDto(request, companyId, branchCache, workerCache))
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public ShipmentRequest findById(UUID id) {
-        ShipmentRequest sr = shipmentRequestRepository.findById(id)
+        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        ShipmentRequest sr = shipmentRequestRepository.findByIdAndCompanyId(id, currentCompanyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Szállítmánykérés nem található: " + id));
         // v2.5.70 P0 fix + #890 self-review P1-2: cross-tenant IDOR guard — MIND A KÉT
         // branch (from + to) Branch.company.id-jét összevetjük a jelenlegi user
         // company-jával. A korábbi fix csak a fromBranchId-t ellenőrizte; ha egy shipment
         // toBranchId-je másik cégre mutat (data-bug vagy admin-create), a UI-t serializáló
         // entitás sérthette a tenant-izolációt.
-        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
         assertBranchInCompany(sr.getFromBranchId(), currentCompanyId, id, "fromBranchId");
         assertBranchInCompany(sr.getToBranchId(), currentCompanyId, id, "toBranchId");
         // P0 LazyInit hotfix: a controller direkt entity-t serializál, items lazy.
@@ -132,9 +179,9 @@ public class ShipmentService {
      * készlet-könyvelés). NEM {@code readOnly}: a hívó {@code @Transactional} írási tranzakciójában fut.
      */
     private ShipmentRequest findByIdLocked(UUID id) {
-        ShipmentRequest sr = shipmentRequestRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Szállítmánykérés nem található: " + id));
         UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
+        ShipmentRequest sr = shipmentRequestRepository.findByIdAndCompanyIdForUpdate(id, currentCompanyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Szállítmánykérés nem található: " + id));
         assertBranchInCompany(sr.getFromBranchId(), currentCompanyId, id, "fromBranchId");
         assertBranchInCompany(sr.getToBranchId(), currentCompanyId, id, "toBranchId");
         initLazyForSerialization(sr);
@@ -152,7 +199,7 @@ public class ShipmentService {
         if (branchCompanyId == null || !currentCompanyId.equals(branchCompanyId)) {
             log.warn("Cross-tenant access blocked: shipmentRequest={}, {}={}, branchCompany={}, currentCompany={}",
                     shipmentId, which, branchId, branchCompanyId, currentCompanyId);
-            throw new ValidationException("A szállítmánykérés nem tartozik a jelenlegi céghez (cross-tenant access blocked, " + which + ")");
+            throw new ResourceNotFoundException("Szállítmánykérés nem található: " + shipmentId);
         }
     }
 
@@ -298,7 +345,10 @@ public class ShipmentService {
     }
 
     public ShipmentRequest update(UUID id, ShipmentRequest updated) {
-        ShipmentRequest existing = findById(id);
+        // A DRAFT update ugyanarról az állapotról versenyezhet a submit/cancel műveletekkel.
+        // Sor-zár nélkül egy későn flush-oló szerkesztés visszaállíthatná a már SUBMITTED sort
+        // DRAFT-ra, ami a beküldési OUT-könyvelés megismétlését tenné lehetővé.
+        ShipmentRequest existing = findByIdLocked(id);
         if (existing.getStatus() != ShipmentRequestStatus.DRAFT) {
             throw new ValidationException("Csak DRAFT státuszú kérés módosítható!");
         }
@@ -354,6 +404,8 @@ public class ShipmentService {
         // pesszimista lockkal + elégség-ellenőrzéssel (FR-2/5/7/8). Ha elégtelen → 422 VV-VALID-003,
         // a teljes @Transactional rollbackel (a státusz nem vált), az audit REQUIRES_NEW-ban megmarad.
         stockBookingService.bookStockOut(request, SecurityUtils.getCurrentCompanyId());
+        writeStatusAudit(ACTION_SUBMITTED, request, ShipmentRequestStatus.DRAFT,
+                ShipmentRequestStatus.SUBMITTED);
         request.setStatus(ShipmentRequestStatus.SUBMITTED);
         log.info("Szállítmánykérés beküldve: {}", request.getRequestNumber());
         ShipmentRequest saved = shipmentRequestRepository.save(request);
@@ -367,18 +419,17 @@ public class ShipmentService {
     }
 
     public ShipmentRequest approve(UUID id) {
-        ShipmentRequest request = findById(id);
-        // 2026-07-15 (négy-szem KK-fix): a KK kezelési-díj shipmentnél NEM a from-branch-egyezés
-        // a szabály (az önjóváhagyást engedte, a valós jóváhagyót — Főértéktáros null-branch /
-        // cél-branch — 403-ra vágta). Fee-jel = shipment_handling_fee sor léte (tenant-szűrt,
-        // ugyanaz az igazságforrás, mint a syncFromShipment-é). A készletmozgató shipment
-        // approve-ja VÁLTOZATLANUL from-only (assertRequester).
-        if (handlingFeeSyncService.isHandlingFeeShipment(request)) {
-            stockBookingService.assertFeeApprover(request);
-        } else {
-            stockBookingService.assertRequester(request);
-        }
+        // A deprecated approve ugyanarról a SUBMITTED állapotról versenyezhet a közvetlen
+        // deliver/cancel/reject műveletekkel. Ugyanazt a sor-zárat kell használnia, különben egy
+        // korábban beolvasott SUBMITTED entity visszaírhatná az APPROVED státuszt egy már
+        // DELIVERED sorra, és megnyitná a dupla készlet-IN útját.
+        ShipmentRequest request = findByIdLocked(id);
+        // FKH-018: a jóváhagyás csak vegyes kliensflotta miatti deprecated kompatibilitási út.
+        // A KK négy-szem megszűnt; tenant- és küldő-branch guard változatlanul kötelező.
+        stockBookingService.assertRequester(request);
         validateStatusTransition(request, ShipmentRequestStatus.SUBMITTED, ShipmentRequestStatus.APPROVED);
+        writeStatusAudit(ACTION_APPROVE_DEPRECATED, request, ShipmentRequestStatus.SUBMITTED,
+                ShipmentRequestStatus.APPROVED);
         request.setStatus(ShipmentRequestStatus.APPROVED);
         log.info("Szállítmánykérés jóváhagyva: {}", request.getRequestNumber());
         ShipmentRequest saved = shipmentRequestRepository.save(request);
@@ -393,15 +444,24 @@ public class ShipmentService {
 
     public ShipmentRequest deliver(UUID id) {
         ShipmentRequest request = findByIdLocked(id);
-        if (request.getStatus() != ShipmentRequestStatus.APPROVED
-                && request.getStatus() != ShipmentRequestStatus.IN_TRANSIT) {
-            throw new ValidationException("Csak APPROVED vagy IN_TRANSIT státuszú kérés szállítható le!");
-        }
-        // FR-4: a visszaigazolást (DELIVERED) KIZÁRÓLAG az átvevő (to) fiók felhasználója végezheti.
-        // Ha az átadó (vagy más fiók) próbálja → 403 VV-AUTH-001 + ACCESS_DENIED audit.
+        // Authz a státusz-ellenőrzés előtt: idegen/no-branch hívó nem tudja megkülönböztetni
+        // a DELIVERED, érvénytelen és átvehető állapotokat, és mutációig sem juthat el.
         stockBookingService.assertReceiver(request);
+        ShipmentRequestStatus previousStatus = request.getStatus();
+        if (previousStatus == ShipmentRequestStatus.DELIVERED) {
+            throw new ConflictException("VV-SHIP-409-DELIVERED: a szállítmány már kézbesítve lett"
+                    + (request.getDeliveryDate() != null ? " (" + request.getDeliveryDate() + ")" : ""));
+        }
+        if (previousStatus != ShipmentRequestStatus.SUBMITTED
+                && previousStatus != ShipmentRequestStatus.APPROVED
+                && previousStatus != ShipmentRequestStatus.IN_TRANSIT) {
+            throw new ValidationException("Csak SUBMITTED, APPROVED vagy IN_TRANSIT státuszú kérés vehető át!");
+        }
         // FR-3: az ÁTVEVŐ oldal készlete a visszaigazoláskor nő (IN-könyvelés), get-or-create + lock.
         stockBookingService.bookStockIn(request, SecurityUtils.getCurrentCompanyId());
+        writeStatusAudit(
+                previousStatus == ShipmentRequestStatus.SUBMITTED ? ACTION_DIRECT_DELIVER : ACTION_DELIVERED,
+                request, previousStatus, ShipmentRequestStatus.DELIVERED);
         request.setStatus(ShipmentRequestStatus.DELIVERED);
         request.setDeliveryDate(LocalDate.now());
         log.info("Szállítmánykérés leszállítva: {}", request.getRequestNumber());
@@ -417,17 +477,21 @@ public class ShipmentService {
 
     public ShipmentRequest cancel(UUID id) {
         ShipmentRequest request = findByIdLocked(id);
-        if (request.getStatus() == ShipmentRequestStatus.DELIVERED
-                || request.getStatus() == ShipmentRequestStatus.CANCELLED) {
-            throw new ValidationException("DELIVERED vagy CANCELLED státuszú kérés nem vonható vissza!");
-        }
+        stockBookingService.assertSender(request);
+        ShipmentRequestStatus previousStatus = request.getStatus();
+        validateStatusTransition(request, CANCELLABLE_STATUSES, ShipmentRequestStatus.CANCELLED);
         // TBD-1: a készlet az átadó oldalon a beküldéskor (SUBMITTED) csökkent. Ha egy már OUT-könyvelt
         // (SUBMITTED/APPROVED/IN_TRANSIT) kérést visszavonnak, a készletet vissza kell pótolni, különben
         // elveszne. DRAFT-ból visszavonáskor nem volt OUT-könyvelés → nincs reverzió (dupla-jóváírás elkerülés).
-        if (wasStockBookedOut(request.getStatus())) {
+        if (wasStockBookedOut(previousStatus)) {
             stockBookingService.reverseStockOut(request, SecurityUtils.getCurrentCompanyId());
         }
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        LocalDateTime cancelledAt = LocalDateTime.now();
+        writeStatusAudit(ACTION_CANCELLED_BY_SENDER, request, previousStatus, ShipmentRequestStatus.CANCELLED);
         request.setStatus(ShipmentRequestStatus.CANCELLED);
+        request.setCancelledByWorkerId(workerId);
+        request.setCancelledAt(cancelledAt);
         log.info("Szállítmánykérés visszavonva: {}", request.getRequestNumber());
         ShipmentRequest saved = shipmentRequestRepository.save(request);
         handlingFeeSyncService.syncFromShipment(saved);
@@ -450,12 +514,15 @@ public class ShipmentService {
      */
     public ShipmentRequest reject(UUID id, String reason) {
         ShipmentRequest request = findByIdLocked(id);
+        stockBookingService.assertRequester(request);
         validateStatusTransition(request, ShipmentRequestStatus.SUBMITTED, ShipmentRequestStatus.REJECTED);
         // Biztonság: az elutasító dolgozó a HITELESÍTETT user (nem kliens-trusted param) — mint create().
         Long workerId = SecurityUtils.getCurrentWorkerId();
         // TBD-1: a reject CSAK SUBMITTED-ből megengedett, ami mindig OUT-könyvelt állapot → a készletet
         // mindig vissza kell pótolni az átadó oldalra (SHIPMENT_STOCK_REVERSAL audit).
         stockBookingService.reverseStockOut(request, SecurityUtils.getCurrentCompanyId());
+        writeStatusAudit(ACTION_REJECT_DEPRECATED, request, ShipmentRequestStatus.SUBMITTED,
+                ShipmentRequestStatus.REJECTED);
         request.setStatus(ShipmentRequestStatus.REJECTED);
         request.setRejectionReason(reason);
         request.setRejectedByWorkerId(workerId);
@@ -489,6 +556,7 @@ public class ShipmentService {
         Branch toBranch = findBranchInCompany(request.getToBranchId(), companyId, branchCache);
         Worker requestedBy = findWorkerInCompany(request.getRequestedById(), companyId, workerCache);
         Worker rejectedBy = findWorkerInCompany(request.getRejectedByWorkerId(), companyId, workerCache);
+        Worker cancelledBy = findWorkerInCompany(request.getCancelledByWorkerId(), companyId, workerCache);
 
         String fromName = fromBranch != null ? fromBranch.getName() : null;
         String toName = toBranch != null ? toBranch.getName() : null;
@@ -516,6 +584,9 @@ public class ShipmentService {
                 .rejectionReason(request.getRejectionReason())
                 .rejectedByWorkerId(request.getRejectedByWorkerId())
                 .rejectedByWorkerName(rejectedBy != null ? rejectedBy.getName() : null)
+                .cancelledByWorkerId(request.getCancelledByWorkerId())
+                .cancelledByWorkerName(cancelledBy != null ? cancelledBy.getName() : null)
+                .cancelledAt(request.getCancelledAt())
                 .createdAt(request.getCreatedAt())
                 .items(toItemDtos(request.getItems()))
                 .requestingBranchId(request.getFromBranchId())
@@ -589,15 +660,32 @@ public class ShipmentService {
      * Ezekből az állapotokból visszavonáskor a készletet vissza kell pótolni az átadóra; DRAFT-ból nem.
      */
     private boolean wasStockBookedOut(ShipmentRequestStatus status) {
-        return status == ShipmentRequestStatus.SUBMITTED
-                || status == ShipmentRequestStatus.APPROVED
-                || status == ShipmentRequestStatus.IN_TRANSIT;
+        return STOCK_BOOKED_OUT_STATUSES.contains(status);
+    }
+
+    private void writeStatusAudit(String action, ShipmentRequest request,
+                                  ShipmentRequestStatus fromStatus, ShipmentRequestStatus toStatus) {
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
+        auditLogService.log(action, "ShipmentRequest", request.getId().toString(),
+                workerId != null ? workerId.toString() : null, null,
+                branchId != null ? branchId.toString() : null, null,
+                String.format("{\"KAT\":\"TX\",\"shipment_request_id\":\"%s\","
+                                + "\"from_status\":\"%s\",\"to_status\":\"%s\"}",
+                        request.getId(), fromStatus, toStatus),
+                null, null);
     }
 
     private void validateStatusTransition(ShipmentRequest request,
                                           ShipmentRequestStatus expectedCurrent,
                                           ShipmentRequestStatus targetStatus) {
-        if (request.getStatus() != expectedCurrent) {
+        validateStatusTransition(request, Set.of(expectedCurrent), targetStatus);
+    }
+
+    private void validateStatusTransition(ShipmentRequest request,
+                                          Set<ShipmentRequestStatus> expectedCurrent,
+                                          ShipmentRequestStatus targetStatus) {
+        if (!expectedCurrent.contains(request.getStatus())) {
             throw new ValidationException(
                     String.format("A kérés státusza %s, de %s kellene a(z) %s művelethez!",
                             request.getStatus(), expectedCurrent, targetStatus));
