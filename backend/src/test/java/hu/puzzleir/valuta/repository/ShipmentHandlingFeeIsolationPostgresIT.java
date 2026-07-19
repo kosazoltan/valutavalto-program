@@ -36,6 +36,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -61,13 +62,15 @@ import static org.mockito.Mockito.mockStatic;
  *   <li>Teszt 1 — calculated_fee BITRE egyenlő a meglévő HandlingFeeService.calculateHandlingFee
  *       kimenetével (nem duplikált díjlogika) + kerekítés-ellenpróba (125003 → 125005).</li>
  *   <li>Teszt 2 — company_id-izoláció: A talál, B üres, null üres.</li>
- *   <li>Teszt 3 — V357 DDL-invariánsok valós PG-n (unique index, FK, CHECK).</li>
+ *   <li>Teszt 3 — ShipmentRequest normál és lockolt lookup közvetlen company_id-izolációja.</li>
+ *   <li>Teszt 4 — V357 DDL-invariánsok valós PG-n (unique index, FK, CHECK).</li>
  * </ol>
  *
  * <p><b>FLYWAY enabled</b> (nem create-drop) — a cél épp a V357 DDL valós PG-n való bizonyítása.
  */
 @Testcontainers
 @EnableJpaAuditing
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Import({
         ShipmentHandlingFeeService.class,
         ShipmentService.class,
@@ -348,12 +351,32 @@ class ShipmentHandlingFeeIsolationPostgresIT {
                 .isEmpty();
     }
 
+    @Test
+    @DisplayName("ShipmentRequest read + FOR UPDATE az authoritative company_id alapján tenant-izolált")
+    void shipmentRequestNormalAndLockedLookupsAreCompanyIsolated() {
+        UUID shipmentId = createShipmentRequestAndFeeForCompanyA();
+
+        assertThat(shipmentRequestRepository.findByIdAndCompanyId(shipmentId, companyA.getId()))
+                .isPresent();
+        assertThat(shipmentRequestRepository.findByIdAndCompanyId(shipmentId, companyB.getId()))
+                .isEmpty();
+        assertThat(shipmentRequestRepository.findByIdAndCompanyId(UUID.randomUUID(), companyA.getId()))
+                .isEmpty();
+
+        txTemplate.executeWithoutResult(status -> {
+            assertThat(shipmentRequestRepository.findByIdAndCompanyIdForUpdate(shipmentId, companyA.getId()))
+                    .isPresent();
+            assertThat(shipmentRequestRepository.findByIdAndCompanyIdForUpdate(shipmentId, companyB.getId()))
+                    .isEmpty();
+        });
+    }
+
     // =========================================================================
-    // Teszt 3 — DDL-invariánsok valós PG-n (Flyway V357 bizonyítás)
+    // Teszt 4 — DDL-invariánsok valós PG-n (Flyway V357 bizonyítás)
     // =========================================================================
 
     @Test
-    @DisplayName("Teszt 3: V357 DDL — unique index + FK + CHECK enforced on real Postgres")
+    @DisplayName("Teszt 4: V357 DDL — unique index + FK + CHECK enforced on real Postgres")
     void schemaConstraintsEnforcedOnRealPostgres() {
         UUID shipmentId = createShipmentRequestAndFeeForCompanyA();
 

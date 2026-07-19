@@ -25,9 +25,7 @@ const allItems = menuGroups.flatMap((g) => g.items.map((i) => ({ ...i, group: g.
 
 describe('__holdout__ transfers címke↔route szemantikai paritás', () => {
   it('nincs olyan bejegyzés, amely "aláírás" címkével a létrehozó felületre visz', () => {
-    const misleading = allItems.filter(
-      (i) => /aláír/i.test(i.label) && i.path === '/transfers/new',
-    )
+    const misleading = allItems.filter((i) => /aláír/i.test(i.label) && i.path === '/transfers/new')
     expect(misleading).toEqual([])
   })
 
@@ -70,6 +68,7 @@ const mocks = vi.hoisted(() => ({
   getIncoming: vi.fn(),
   getPending: vi.fn(),
   countPending: vi.fn(),
+  getShipmentPending: vi.fn(),
   // TransferCreatePage create-hívások
   create: vi.fn(),
   getActive: vi.fn(),
@@ -99,6 +98,10 @@ vi.mock('../../services/api/index', () => ({
     getStornoPreview: vi.fn(),
     create: mocks.create,
   },
+  shipmentRequestApi: {
+    getPendingForBranch: mocks.getShipmentPending,
+    deliver: vi.fn(),
+  },
   currencyApi: { getActive: mocks.getActive },
   branchApi: { listActive: mocks.listActive },
   cashBalanceApi: { list: mocks.cashBalanceList },
@@ -118,8 +121,7 @@ vi.mock('../../stores/authStore', () => {
     },
   }
   return {
-    useAuthStore: (selector?: (s: typeof state) => unknown) =>
-      selector ? selector(state) : state,
+    useAuthStore: (selector?: (s: typeof state) => unknown) => (selector ? selector(state) : state),
   }
 })
 
@@ -193,13 +195,26 @@ describe('__holdout__ a felületek funkció-hordozója szétvált', () => {
     mocks.getIncoming.mockResolvedValue([])
     mocks.getPending.mockResolvedValue([pendingTransfer])
     mocks.countPending.mockResolvedValue(1)
+    mocks.getShipmentPending.mockResolvedValue([])
     mocks.getActive.mockResolvedValue([
       { id: 1, code: 'EUR', name: 'Euró' },
       { id: 2, code: 'HUF', name: 'Forint' },
     ])
     mocks.listActive.mockResolvedValue([
-      { id: 'b-own', code: 'BR076', name: 'Pécsi értéktár', isVault: true, branchTypeCode: 'VAULT' },
-      { id: 'b-target', code: 'BR001', name: 'Budapesti értéktár', isVault: true, branchTypeCode: 'VAULT' },
+      {
+        id: 'b-own',
+        code: 'BR076',
+        name: 'Pécsi értéktár',
+        isVault: true,
+        branchTypeCode: 'VAULT',
+      },
+      {
+        id: 'b-target',
+        code: 'BR001',
+        name: 'Budapesti értéktár',
+        isVault: true,
+        branchTypeCode: 'VAULT',
+      },
     ])
     mocks.cashBalanceList.mockResolvedValue([{ currencyCode: 'EUR', currentBalance: 100000 }])
     mocks.rateList.mockResolvedValue([])
@@ -219,7 +234,10 @@ describe('__holdout__ a felületek funkció-hordozója szétvált', () => {
     expect(document.querySelector('#transfer-type')).toBeNull()
     expect(document.querySelector('#to-branch')).toBeNull()
     // a létrehozás felé KIZÁRÓLAG navigáció létezik:
-    expect(screen.getByRole('link', { name: /Új átadás/ })).toHaveAttribute('href', '/transfers/new')
+    expect(screen.getByRole('link', { name: /Új átadás/ })).toHaveAttribute(
+      'href',
+      '/transfers/new',
+    )
   })
 
   it('a /transfers/new (létrehozás) hordozza a teljes create-űrlapot, lista-tabok nélkül', async () => {

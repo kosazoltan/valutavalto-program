@@ -317,6 +317,10 @@
   /* A fő tartalmi terület és a layout content-wrappere ne korlátozza/csonkolja a
      nyomtatást. Szűk, dedikált szelektor (.app-print-content) a blast-radius minimumra
      szorításához — a szabály a MainLayout content-konténerére hat, nem tetszőleges div-re. */
+  .app-layout-root {
+    height: auto !important;
+    overflow: visible !important;
+  }
   main {
     overflow: visible !important;
   }

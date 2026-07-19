@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,16 +20,26 @@ import java.util.UUID;
 public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest, UUID> {
 
     /**
-     * P1 (Codex review, PR #1243): pesszimista sor-zár a shipment-re a státuszváltások előtt.
+     * Tenant-scoped shipment lookup az authoritative {@code shipment_request.company_id}
+     * oszlopon. A branch-hivatkozások company-konzisztenciáját a service külön ellenőrzi.
+     */
+    @Query("SELECT sr FROM ShipmentRequest sr WHERE sr.id = :id AND sr.companyId = :companyId")
+    Optional<ShipmentRequest> findByIdAndCompanyId(
+            @Param("id") UUID id,
+            @Param("companyId") UUID companyId);
+
+    /**
+     * Tenant-scoped pesszimista sor-zár a shipment státuszváltásokhoz. A company predicate
+     * közvetlenül a {@code shipment_request.company_id} oszlopot képviselő entity-mezőre épül.
      * A {@code submit/deliver/cancel/reject} transition-ek ezzel töltik be a kérést — két párhuzamos
-     * azonos átmenet (pl. dupla-klikk vagy retry) közül a második a lock feloldása UTÁN a FRISS
-     * státuszt látja, így a {@code validateStatusTransition} elutasítja, és nincs kétszeres
-     * készlet-könyvelés (a {@code bookStockOut} stock-lockja önmagában csak a stock-sort védi, a
-     * shipment-állapotot nem).
+     * azonos átmenet közül a második a lock feloldása UTÁN a friss státuszt látja, így nincs
+     * kétszeres készlet-könyvelés.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT sr FROM ShipmentRequest sr WHERE sr.id = :id")
-    Optional<ShipmentRequest> findByIdForUpdate(@Param("id") UUID id);
+    @Query("SELECT sr FROM ShipmentRequest sr WHERE sr.id = :id AND sr.companyId = :companyId")
+    Optional<ShipmentRequest> findByIdAndCompanyIdForUpdate(
+            @Param("id") UUID id,
+            @Param("companyId") UUID companyId);
 
     /**
      * @deprecated multi-tenant unsafe — minden cég összes shipment-jét visszaadja.
@@ -38,12 +49,13 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
     Page<ShipmentRequest> findByStatus(ShipmentRequestStatus status, Pageable pageable);
 
     /**
-     * Multi-tenant filter Branch.company FK-on át — v2.5.70 P0 companyId audit fix.
-     * A fromBranchId vagy toBranchId által hivatkozott Branch.company.id egyezik a paraméterrel.
+     * Fail-closed multi-tenant filter Branch.company FK-on át: mindkét hivatkozott branchnek
+     * a paraméterként kapott céghez kell tartoznia.
      */
     @Query("SELECT sr FROM ShipmentRequest sr " +
            "WHERE sr.status = :status " +
            "AND sr.fromBranchId IN (SELECT b.id FROM Branch b WHERE b.company.id = :companyId) " +
+           "AND sr.toBranchId IN (SELECT b.id FROM Branch b WHERE b.company.id = :companyId) " +
            "ORDER BY sr.createdAt DESC")
     Page<ShipmentRequest> findByStatusAndCompanyId(
             @Param("status") ShipmentRequestStatus status,
@@ -58,10 +70,11 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
     Page<ShipmentRequest> findAllOrdered(Pageable pageable);
 
     /**
-     * Multi-tenant filter Branch.company FK-on át — v2.5.70 P0 companyId audit fix.
+     * Fail-closed multi-tenant filter Branch.company FK-on át.
      */
     @Query("SELECT sr FROM ShipmentRequest sr " +
            "WHERE sr.fromBranchId IN (SELECT b.id FROM Branch b WHERE b.company.id = :companyId) " +
+           "AND sr.toBranchId IN (SELECT b.id FROM Branch b WHERE b.company.id = :companyId) " +
            "ORDER BY sr.createdAt DESC")
     Page<ShipmentRequest> findAllOrderedByCompanyId(
             @Param("companyId") UUID companyId,
@@ -70,7 +83,7 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
     /**
      * F2 (2026-06-01): natív, DB-szintű branch-szűrő — a fromBranchId VAGY toBranchId egyezik a
      * megadott branchId-val. Megszünteti a kliens-oldali "összes shipment letöltése + filter"
-     * mintát (memóriaszivárgás / silent truncation). Multi-tenant: a fromBranchId a cég
+     * mintát (memóriaszivárgás / silent truncation). Multi-tenant: mindkét végpont a cég
      * branch-ei között kell legyen (azonos izoláció mint findAllOrderedByCompanyId). A status
      * opcionális (null → minden státusz).
      */
@@ -78,6 +91,7 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
            "WHERE (sr.fromBranchId = :branchId OR sr.toBranchId = :branchId) " +
            "AND (:status IS NULL OR sr.status = :status) " +
            "AND sr.fromBranchId IN (SELECT b.id FROM Branch b WHERE b.company.id = :companyId) " +
+           "AND sr.toBranchId IN (SELECT b.id FROM Branch b WHERE b.company.id = :companyId) " +
            "ORDER BY sr.createdAt DESC")
     Page<ShipmentRequest> findByBranchAndCompanyId(
             @Param("branchId") UUID branchId,
@@ -86,8 +100,8 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
             Pageable pageable);
 
     /**
-     * Territory-scope-olt listázás (2026-07-15 hardening): a meglévő tenant-klauzula
-     * (fromBranchId a cég branch-ei közt) + a tétel CSAK akkor látható, ha BÁRMELYIK vége
+     * Territory-scope-olt listázás (2026-07-15 hardening): mindkét végpont tenant-kötött,
+     * és a tétel CSAK akkor látható, ha BÁRMELYIK vége
      * (from VAGY to) a hívó region-scope-jában van. A branchId/status opcionális szűrők a
      * findByBranchAndCompanyId-vel azonos szemantikájúak. Üres branchIds-szel TILOS hívni.
      */
@@ -96,6 +110,7 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
            "AND (:branchId IS NULL OR sr.fromBranchId = :branchId OR sr.toBranchId = :branchId) " +
            "AND (:status IS NULL OR sr.status = :status) " +
            "AND sr.fromBranchId IN (SELECT b.id FROM Branch b WHERE b.company.id = :companyId) " +
+           "AND sr.toBranchId IN (SELECT b.id FROM Branch b WHERE b.company.id = :companyId) " +
            "ORDER BY sr.createdAt DESC")
     Page<ShipmentRequest> findScopedByCompanyId(
             @Param("branchIds") Collection<UUID> branchIds,
@@ -103,6 +118,21 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
             @Param("status") ShipmentRequestStatus status,
             @Param("companyId") UUID companyId,
             Pageable pageable);
+
+    /**
+     * FKH-018: a hitelesített célfiók átvehető shipmentjei. Mindkét branch tenant-kötött,
+     * így hibás/cross-tenant adatsor sem szivároghat a pending listába.
+     */
+    @Query("SELECT sr FROM ShipmentRequest sr " +
+           "WHERE sr.toBranchId = :toBranchId " +
+           "AND sr.status IN :statuses " +
+           "AND sr.fromBranchId IN (SELECT b.id FROM Branch b WHERE b.company.id = :companyId) " +
+           "AND sr.toBranchId IN (SELECT b.id FROM Branch b WHERE b.company.id = :companyId) " +
+           "ORDER BY sr.createdAt DESC")
+    List<ShipmentRequest> findPendingForToBranch(
+            @Param("companyId") UUID companyId,
+            @Param("toBranchId") UUID toBranchId,
+            @Param("statuses") Collection<ShipmentRequestStatus> statuses);
 
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(sr.requestNumber, LENGTH(:prefix) + 1) AS integer)), 0) " +
            "FROM ShipmentRequest sr WHERE sr.requestNumber LIKE CONCAT(:prefix, '%')")

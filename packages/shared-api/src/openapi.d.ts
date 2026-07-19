@@ -2273,6 +2273,7 @@ export interface paths {
     }
     get?: never
     put?: never
+    /** @deprecated */
     post: operations['reject_2']
     delete?: never
     options?: never
@@ -2321,6 +2322,7 @@ export interface paths {
     }
     get?: never
     put?: never
+    /** @deprecated */
     post: operations['approve_1']
     delete?: never
     options?: never
@@ -8918,6 +8920,22 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/shipments/pending': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['pending_1']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/sessions/validate-open/{branchId}': {
     parameters: {
       query?: never
@@ -11402,6 +11420,38 @@ export interface paths {
       cookie?: never
     }
     get: operations['report']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/handling-fees/daily-summary': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['dailySummary']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/handling-fees/daily-summary/csv': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['dailySummaryCsv']
     put?: never
     post?: never
     delete?: never
@@ -15710,6 +15760,10 @@ export interface components {
       rejectionReason?: string
       /** Format: int64 */
       rejectedByWorkerId?: number
+      /** Format: int64 */
+      cancelledByWorkerId?: number
+      /** Format: date-time */
+      cancelledAt?: string
       /** Format: date-time */
       createdAt?: string
       items?: components['schemas']['ShipmentRequestItem'][]
@@ -15771,6 +15825,11 @@ export interface components {
       /** Format: int64 */
       rejectedByWorkerId?: number
       rejectedByWorkerName?: string
+      /** Format: int64 */
+      cancelledByWorkerId?: number
+      cancelledByWorkerName?: string
+      /** Format: date-time */
+      cancelledAt?: string
       /** Format: date-time */
       createdAt?: string
       items?: components['schemas']['ShipmentRequestItemResponseDto'][]
@@ -17261,10 +17320,10 @@ export interface components {
       version?: number
       /** Format: uuid */
       branchId?: string
-      /** Format: int32 */
-      territoryId?: number
       /** Format: uuid */
       companyId?: string
+      /** Format: int32 */
+      territoryId?: number
     }
     CountItemRequest: {
       /** Format: int32 */
@@ -17928,6 +17987,17 @@ export interface components {
       /** Format: date-time */
       assignedAt?: string
       assignedBy?: string
+    }
+    ErrorResponse: {
+      /** Format: date-time */
+      timestamp?: string
+      /** Format: int32 */
+      status?: number
+      error?: string
+      message?: string
+      fieldErrors?: {
+        [key: string]: string
+      }
     }
     ShipmentHandlingFeeCreateRequest: {
       /** Format: uuid */
@@ -21597,8 +21667,8 @@ export interface components {
       version?: number
       /** Format: date-time */
       updatedAt?: string
-      highBalance?: boolean
       dailyChange?: number
+      highBalance?: boolean
       lowBalance?: boolean
     }
     DailyClosingReport: {
@@ -22526,6 +22596,21 @@ export interface components {
       /** Format: int32 */
       transactionCount?: number
       items?: components['schemas']['HandlingFeeTransactionDto'][]
+    }
+    DailyRow: {
+      /** Format: date */
+      date?: string
+      buyFee?: number
+      sellFee?: number
+    }
+    HandlingFeeDailySummaryDto: {
+      /** Format: date */
+      startDate?: string
+      /** Format: date */
+      endDate?: string
+      totalBuyFee?: number
+      totalSellFee?: number
+      rows?: components['schemas']['DailyRow'][]
     }
     CurrentRateDto: {
       currencyCode?: string
@@ -28660,7 +28745,10 @@ export interface operations {
   deliver_1: {
     parameters: {
       query?: never
-      header?: never
+      header?: {
+        'Idempotency-Key'?: string
+        'X-Idempotency-Key'?: string
+      }
       path: {
         id: string
       }
@@ -28675,6 +28763,15 @@ export interface operations {
         }
         content: {
           '*/*': components['schemas']['ShipmentRequestResponseDto']
+        }
+      }
+      /** @description Már kézbesített vagy azonos idempotenciakulccsal még feldolgozás alatt áll */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['ErrorResponse']
         }
       }
     }
@@ -39726,6 +39823,26 @@ export interface operations {
       }
     }
   }
+  pending_1: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['ShipmentRequestResponseDto'][]
+        }
+      }
+    }
+  }
   validateSessionOpen: {
     parameters: {
       query?: never
@@ -43213,6 +43330,54 @@ export interface operations {
         }
         content: {
           '*/*': components['schemas']['HandlingFeeReportDto']
+        }
+      }
+    }
+  }
+  dailySummary: {
+    parameters: {
+      query: {
+        branchId?: string
+        startDate: string
+        endDate: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['HandlingFeeDailySummaryDto']
+        }
+      }
+    }
+  }
+  dailySummaryCsv: {
+    parameters: {
+      query: {
+        branchId?: string
+        startDate: string
+        endDate: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': string
         }
       }
     }

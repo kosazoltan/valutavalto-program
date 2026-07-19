@@ -10,6 +10,7 @@ import type {
   PendingTransactionInputV2,
   PendingCircularReplyInput,
   PendingTransferStornoInput,
+  PendingShipmentReceiptInput,
 } from '@valuta/shared-ipc';
 
 export type {
@@ -19,6 +20,7 @@ export type {
   PendingTransactionInputV2,
   PendingCircularReplyInput,
   PendingTransferStornoInput,
+  PendingShipmentReceiptInput,
 };
 
 let db: Database | null = null;
@@ -96,6 +98,7 @@ export const OUTBOX_TABLES = [
   'pending_handover_operations',
   'pending_transfers',
   'pending_transfer_stornos',
+  'pending_shipment_receipts',
   'pending_circular_replies',
   'pending_distributions',
   'pending_collections',
@@ -652,6 +655,27 @@ export async function initDatabase(): Promise<void> {
         created_at TEXT DEFAULT (datetime('now')),
         synced INTEGER DEFAULT 0
       );
+    `);
+
+    // FKH-018: offline Shipment-átvételi szándék. A készlet csak a backend nyugtája után változik.
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_shipment_receipts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        shipment_id TEXT NOT NULL,
+        request_number TEXT,
+        idempotency_key TEXT NOT NULL UNIQUE,
+        branch_id TEXT NOT NULL,
+        worker_id INTEGER NOT NULL,
+        company_code TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        synced INTEGER NOT NULL DEFAULT 0,
+        sync_attempts INTEGER NOT NULL DEFAULT 0,
+        sync_error TEXT
+      );
+    `);
+    db.run(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_pending_shipment_receipt_open
+      ON pending_shipment_receipts (shipment_id) WHERE synced = 0;
     `);
 
     // FS-C: körlevél-válasz outbox (offline is rögzíthető, sync-engine küldi fel).
@@ -2353,6 +2377,146 @@ export function getPendingTransfers(): PendingTransferRow[] {
 export function markTransferSynced(id: number): void {
   if (!db) return;
   db.run('UPDATE pending_transfers SET synced = 1 WHERE id = ?', [id]);
+  saveDatabase();
+}
+
+export interface PendingShipmentReceiptRow {
+  id: number;
+  shipment_id: string;
+  request_number: string | null;
+  idempotency_key: string;
+  branch_id: string;
+  worker_id: number;
+  company_code: string | null;
+  created_at: string;
+  synced: number;
+  sync_attempts: number;
+  sync_error: string | null;
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuidString(value: unknown): value is string {
+  return typeof value === 'string' && UUID_PATTERN.test(value);
+}
+
+function containsAsciiControlCharacter(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    if (value.charCodeAt(index) <= 0x1f) return true;
+  }
+  return false;
+}
+
+export function savePendingShipmentReceipt(input: PendingShipmentReceiptInput): number {
+  if (!db) throw new Error('Database not initialized');
+  if (
+    !input ||
+    !isUuidString(input.shipmentId) ||
+    !isUuidString(input.branchId) ||
+    !isUuidString(input.idempotencyKey)
+  ) {
+    throw new Error('Érvénytelen Shipment-átvételi azonosító.');
+  }
+  if (!Number.isInteger(input.workerId) || input.workerId <= 0) {
+    throw new Error('Érvénytelen Shipment-átvételi dolgozóazonosító.');
+  }
+  if (
+    input.requestNumber != null &&
+    (typeof input.requestNumber !== 'string' ||
+      input.requestNumber.length > 128 ||
+      containsAsciiControlCharacter(input.requestNumber))
+  ) {
+    throw new Error('Érvénytelen Shipment bizonylatszám.');
+  }
+  const companyCode = getActiveCompanyCode();
+  if (!companyCode) {
+    throw new Error('A Shipment-átvétel nem rögzíthető aktív cégkód nélkül.');
+  }
+  const open = db.exec(
+    'SELECT id FROM pending_shipment_receipts WHERE shipment_id = ? AND synced = 0 LIMIT 1',
+    [input.shipmentId],
+  );
+  if (open[0]?.values.length) {
+    throw new Error('Ehhez a Shipmenthez már van szinkronra váró átvétel.');
+  }
+  db.run(
+    `INSERT INTO pending_shipment_receipts
+      (shipment_id, request_number, idempotency_key, branch_id, worker_id, company_code)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      input.shipmentId,
+      input.requestNumber?.trim() || null,
+      input.idempotencyKey,
+      input.branchId,
+      input.workerId,
+      companyCode,
+    ],
+  );
+  const id = lastInsertRowId(db);
+  saveDatabase();
+  return id;
+}
+
+export function getPendingShipmentReceipts(): PendingShipmentReceiptRow[] {
+  if (!db) return [];
+  const companyCode = getActiveCompanyCode();
+  if (!companyCode) return [];
+  const results: PendingShipmentReceiptRow[] = [];
+  const stmt = db.prepare(
+    `SELECT * FROM pending_shipment_receipts
+     WHERE synced = 0 AND company_code = ?
+     ORDER BY created_at ASC`,
+  );
+  stmt.bind([companyCode]);
+  while (stmt.step()) results.push(stmt.getAsObject() as unknown as PendingShipmentReceiptRow);
+  stmt.free();
+  return results;
+}
+
+/**
+ * Renderer-láthatóság: a retry-zandó sorok mellett a lezárt üzleti hibák is megmaradnak,
+ * miközben a sync-engine továbbra is kizárólag a getPendingShipmentReceipts synced=0
+ * sorait dolgozza fel.
+ */
+export function getShipmentReceiptOutboxState(): PendingShipmentReceiptRow[] {
+  if (!db) return [];
+  const companyCode = getActiveCompanyCode();
+  if (!companyCode) return [];
+  const results: PendingShipmentReceiptRow[] = [];
+  const stmt = db.prepare(
+    `SELECT * FROM pending_shipment_receipts
+     WHERE company_code = ? AND (synced = 0 OR sync_error IS NOT NULL)
+     ORDER BY created_at ASC`,
+  );
+  stmt.bind([companyCode]);
+  while (stmt.step()) results.push(stmt.getAsObject() as unknown as PendingShipmentReceiptRow);
+  stmt.free();
+  return results;
+}
+
+export function markShipmentReceiptSynced(id: number): void {
+  if (!db) return;
+  db.run('UPDATE pending_shipment_receipts SET synced = 1, sync_error = NULL WHERE id = ?', [id]);
+  saveDatabase();
+}
+
+export function markShipmentReceiptTerminalError(id: number, message: string): void {
+  if (!db) return;
+  db.run(
+    `UPDATE pending_shipment_receipts
+     SET synced = 1, sync_attempts = sync_attempts + 1, sync_error = ? WHERE id = ?`,
+    [message, id],
+  );
+  saveDatabase();
+}
+
+export function markShipmentReceiptRetryError(id: number, message: string): void {
+  if (!db) return;
+  db.run(
+    `UPDATE pending_shipment_receipts
+     SET sync_attempts = sync_attempts + 1, sync_error = ? WHERE id = ?`,
+    [message, id],
+  );
   saveDatabase();
 }
 

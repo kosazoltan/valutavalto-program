@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.TestApplication;
 import hu.puzzleir.valuta.entity.ShipmentHandlingFee;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
 import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,7 @@ class ShipmentHandlingFeeRepositoryTest {
 
     @Autowired
     private ShipmentRequestRepository shipmentRepository;
+
 
     @Test
     @DisplayName("Kezelési költség menthető és tenant-szkópoltan visszaolvasható")

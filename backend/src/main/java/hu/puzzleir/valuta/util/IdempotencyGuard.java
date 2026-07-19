@@ -93,7 +93,7 @@ public class IdempotencyGuard {
      * @param <T> response DTO tipus
      * @return korabbi cached result vagy uj PROCESSING rekord (acquired.cachedResult() == null)
      * @throws ConflictException ha ugyanaz a key-en mas payload erkezett (cache poisoning vedelem)
-     * @throws ValidationException ha a kulcs jelenleg PROCESSING (parhuzamos dupla kerelem)
+     * @throws ConflictException ha a kulcs jelenleg PROCESSING (parhuzamos dupla kerelem)
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public <T> Acquired<T> tryAcquire(
@@ -135,7 +135,7 @@ public class IdempotencyGuard {
                 case PROCESSING -> {
                     log.warn("Idempotency PROCESSING in-flight — endpoint={} keyHash={}",
                             endpoint, hashKeyForLog(idempotencyKey));
-                    throw new ValidationException(
+                    throw new ConflictException(
                             "A keres feldolgozas alatt all. Kerjuk ne kuldje el ujra!");
                 }
                 case FAILED -> {
@@ -153,7 +153,7 @@ public class IdempotencyGuard {
                         // Masik retry mar PROCESSING-re allitotta — mi blokkoljuk magunkat.
                         log.warn("Idempotency PROCESSING in-flight (FAILED-retry race) endpoint={} keyHash={}",
                                 endpoint, hashKeyForLog(idempotencyKey));
-                        throw new ValidationException(
+                        throw new ConflictException(
                                 "A keres feldolgozas alatt all. Kerjuk ne kuldje el ujra!");
                     }
                     if (locked.getStatus() == IdempotencyRecord.Status.COMPLETED) {
@@ -199,7 +199,7 @@ public class IdempotencyGuard {
                     .findByCompanyIdAndEndpointAndIdempotencyKey(companyId, endpoint, idempotencyKey)
                     .orElseThrow(() -> race);
             if (rec.getStatus() == IdempotencyRecord.Status.PROCESSING) {
-                throw new ValidationException(
+                throw new ConflictException(
                         "A keres feldolgozas alatt all. Kerjuk ne kuldje el ujra!");
             }
             T cached = null;

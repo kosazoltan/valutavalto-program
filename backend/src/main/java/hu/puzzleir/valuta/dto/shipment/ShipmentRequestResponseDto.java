@@ -42,6 +42,9 @@ public class ShipmentRequestResponseDto {
     private String rejectionReason;
     private Long rejectedByWorkerId;
     private String rejectedByWorkerName;
+    private Long cancelledByWorkerId;
+    private String cancelledByWorkerName;
+    private LocalDateTime cancelledAt;
     private LocalDateTime createdAt;
     private List<ShipmentRequestItemResponseDto> items;
 

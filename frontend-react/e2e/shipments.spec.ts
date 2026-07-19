@@ -102,6 +102,22 @@ async function mockShipmentApis(page: Page, activeShipment = shipment, activeWor
       })
     }
 
+    if (path.endsWith('/transit/incoming') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
+    }
+
+    if (path.endsWith('/features') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({}),
+      })
+    }
+
     if (path.endsWith('/shipments') && method === 'GET') {
       return route.fulfill({
         status: 200,
@@ -143,7 +159,7 @@ async function mockShipmentApis(page: Page, activeShipment = shipment, activeWor
       })
     }
 
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
+    throw new Error(`Unhandled API route: ${method} ${path}`)
   })
 }
 
@@ -157,7 +173,7 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('szállítmány lista detail, deliver és cancel backend workflow-t hív', async ({ page }) => {
+test('fogadó fiók megnyitja és megérkezteti a szállítmányt', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockShipmentApis(page, shipment, receiverWorker)
   page.on('dialog', (dialog) => void dialog.accept())
@@ -165,6 +181,7 @@ test('szállítmány lista detail, deliver és cancel backend workflow-t hív', 
 
   await page.goto('/shipments', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('SH-001')).toBeVisible()
+  await expect(page.getByTitle('Sztornó')).toHaveCount(0)
 
   const detailRequest = page.waitForRequest(
     (request) => request.method() === 'GET' && request.url().includes('/shipments/shipment-1'),
@@ -175,17 +192,38 @@ test('szállítmány lista detail, deliver és cancel backend workflow-t hív', 
 
   const deliverRequest = page.waitForRequest(
     (request) =>
-      request.method() === 'POST' && request.url().includes('/shipments/shipment-1/deliver'),
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/shipments/shipment-1/deliver',
   )
   await page.getByTitle('Megérkezett').click()
-  await deliverRequest
+  const request = await deliverRequest
+  expect(request.method()).toBe('POST')
+  expect(new URL(request.url()).pathname).toBe('/api/v1/shipments/shipment-1/deliver')
+
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+  )
+  expect(horizontalOverflow).toBe(false)
+})
+
+test('feladó fiók sztornózza a friss APPROVED szállítmányt', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mockShipmentApis(page, shipment, worker)
+  page.on('dialog', (dialog) => void dialog.accept())
+  await login(page)
+
+  await page.goto('/shipments', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByText('SH-001')).toBeVisible()
 
   const cancelRequest = page.waitForRequest(
     (request) =>
-      request.method() === 'POST' && request.url().includes('/shipments/shipment-1/cancel'),
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/shipments/shipment-1/cancel',
   )
   await page.getByTitle('Sztornó').click()
-  await cancelRequest
+  const request = await cancelRequest
+  expect(request.method()).toBe('POST')
+  expect(new URL(request.url()).pathname).toBe('/api/v1/shipments/shipment-1/cancel')
 
   const horizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,

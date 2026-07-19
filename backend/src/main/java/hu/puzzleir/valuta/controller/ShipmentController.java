@@ -6,8 +6,14 @@ import hu.puzzleir.valuta.dto.shipment.ShipmentHandlingFeeDto;
 import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
 import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
+import hu.puzzleir.valuta.exception.ErrorResponse;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeService;
 import hu.puzzleir.valuta.service.ShipmentService;
+import hu.puzzleir.valuta.util.IdempotencyGuard;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -17,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -38,6 +45,9 @@ public class ShipmentController {
 
     private final ShipmentService shipmentService;
     private final ShipmentHandlingFeeService shipmentHandlingFeeService;
+    private final IdempotencyGuard idempotencyGuard;
+
+    private static final String DEPRECATION_SUNSET = "Thu, 31 Dec 2026 23:59:59 GMT";
 
     /**
      * Szállítmánykérések listázása (lapozott, opcionális státusz- és branch-szűrő).
@@ -53,6 +63,14 @@ public class ShipmentController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(shipmentService.findAllResponse(status, branchId, PageRequest.of(page, size)));
+    }
+
+    /** FKH-018: a hitelesített célfiók még átvehető shipmentjei. */
+    @GetMapping("/pending")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', "
+            + "'PENZTAR', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
+    public ResponseEntity<List<ShipmentRequestResponseDto>> pending() {
+        return ResponseEntity.ok(shipmentService.findPendingForCurrentBranchResponse());
     }
 
     /**
@@ -111,6 +129,8 @@ public class ShipmentController {
      * POST /api/v1/shipments/{id}/submit
      */
     @PostMapping("/{id}/submit")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', "
+            + "'PENZTAR', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<ShipmentRequestResponseDto> submit(@PathVariable UUID id) {
         return ResponseEntity.ok(shipmentService.submitResponse(id));
     }
@@ -121,8 +141,9 @@ public class ShipmentController {
      */
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
+    @Deprecated(since = "2.28.45", forRemoval = false)
     public ResponseEntity<ShipmentRequestResponseDto> approve(@PathVariable UUID id) {
-        return ResponseEntity.ok(shipmentService.approveResponse(id));
+        return deprecatedResponse(shipmentService.approveResponse(id));
     }
 
     /**
@@ -136,8 +157,32 @@ public class ShipmentController {
     @PostMapping("/{id}/deliver")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', "
             + "'PENZTAR', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
-    public ResponseEntity<ShipmentRequestResponseDto> deliver(@PathVariable UUID id) {
-        return ResponseEntity.ok(shipmentService.deliverResponse(id));
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "OK",
+                    content = @Content(schema = @Schema(implementation = ShipmentRequestResponseDto.class))),
+            @ApiResponse(responseCode = "409",
+                    description = "Már kézbesített vagy azonos idempotenciakulccsal még feldolgozás alatt áll",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<ShipmentRequestResponseDto> deliver(
+            @PathVariable UUID id,
+            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestHeader(name = "X-Idempotency-Key", required = false) String legacyIdempotencyKey) {
+        String resolvedIdempotencyKey = resolveIdempotencyKey(idempotencyKey, legacyIdempotencyKey);
+        String endpoint = "POST /api/v1/shipments/" + id + "/deliver";
+        IdempotencyGuard.Acquired<ShipmentRequestResponseDto> acquired = idempotencyGuard.tryAcquire(
+                resolvedIdempotencyKey, endpoint, id, ShipmentRequestResponseDto.class);
+        if (acquired.cachedResult() != null) {
+            return ResponseEntity.ok(acquired.cachedResult());
+        }
+        try {
+            ShipmentRequestResponseDto result = shipmentService.deliverResponse(id);
+            idempotencyGuard.complete(acquired, result);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            idempotencyGuard.fail(acquired);
+            throw e;
+        }
     }
 
     /**
@@ -145,6 +190,8 @@ public class ShipmentController {
      * POST /api/v1/shipments/{id}/cancel
      */
     @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', "
+            + "'PENZTAR', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<ShipmentRequestResponseDto> cancel(@PathVariable UUID id) {
         return ResponseEntity.ok(shipmentService.cancelResponse(id));
     }
@@ -158,10 +205,22 @@ public class ShipmentController {
      * párja → azonos írás-jogosultság.
      */
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
+    @Deprecated(since = "2.28.45", forRemoval = false)
     public ResponseEntity<ShipmentRequestResponseDto> reject(
             @PathVariable UUID id,
             @RequestParam(required = false) String reason) {
-        return ResponseEntity.ok(shipmentService.rejectResponse(id, reason));
+        return deprecatedResponse(shipmentService.rejectResponse(id, reason));
+    }
+
+    private static <T> ResponseEntity<T> deprecatedResponse(T body) {
+        return ResponseEntity.ok()
+                .header("Deprecation", "true")
+                .header("Sunset", DEPRECATION_SUNSET)
+                .body(body);
+    }
+
+    private static String resolveIdempotencyKey(String key, String legacyKey) {
+        return key != null && !key.isBlank() ? key : legacyKey;
     }
 }

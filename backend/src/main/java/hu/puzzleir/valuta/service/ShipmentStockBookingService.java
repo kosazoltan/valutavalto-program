@@ -70,8 +70,10 @@ public class ShipmentStockBookingService {
     public static final String ERR_INSUFFICIENT = "VV-VALID-003";
     /** FR-4 hibakód: nem az átvevő branch próbál visszaigazolni. */
     public static final String ERR_NOT_RECEIVER = "VV-AUTH-001";
-    /** Approve hibakód: nem az átadó/requester branch próbál jóváhagyni. */
+    /** Deprecated approve/reject küldői guard: nem az átadó/requester branch kezdeményez. */
     public static final String ERR_NOT_REQUESTER = "VV-AUTH-002";
+    /** FKH-018: nem az átadó branch próbálja sztornózni a shipmentet. */
+    public static final String ERR_NOT_SENDER = "VV-AUTH-005";
     /** KK fee-approve hibakód: önjóváhagyás / nem bizonyítható négy-szem (jóváhagyó == rögzítő). */
     public static final String ERR_SELF_APPROVAL = "VV-AUTH-003";
     /** KK fee-approve hibakód: idegen (se from, se to, se nemzeti-szkópú) fiók próbál jóváhagyni. */
@@ -131,7 +133,7 @@ public class ShipmentStockBookingService {
     @Transactional
     public void bookStockOut(ShipmentRequest req, UUID companyId) {
         Branch from = loadBranch(req.getFromBranchId(), companyId);
-        amlCheck(req, companyId, from);
+        amlCheck(req, from);
         for (ShipmentRequestItem item : sortedItems(req)) {
             String currencyCode = resolveCurrencyCode(item.getCurrencyId());
             applySide(from, companyId, item, currencyCode, req, false, ACTION_STOCK_OUT);
@@ -145,6 +147,7 @@ public class ShipmentStockBookingService {
     @Transactional
     public void bookStockIn(ShipmentRequest req, UUID companyId) {
         Branch to = loadBranch(req.getToBranchId(), companyId);
+        amlCheck(req, to);
         for (ShipmentRequestItem item : sortedItems(req)) {
             String currencyCode = resolveCurrencyCode(item.getCurrencyId());
             applySide(to, companyId, item, currencyCode, req, true, ACTION_STOCK_IN);
@@ -177,8 +180,31 @@ public class ShipmentStockBookingService {
     }
 
     /**
-     * A jóváhagyást KIZÁRÓLAG a kérő/átadó (from) branch felhasználója végezheti.
-     * Hiányzó branch-kontextus esetén fail-closed: {@code VV-AUTH-002} + {@code ACCESS_DENIED} audit.
+     * FKH-018: a még át nem vett shipmentet kizárólag az átadó (from) branch sztornózhatja.
+     * Hiányzó branch-kontextus esetén fail-closed; a tiltás auditja független tranzakcióban marad meg.
+     */
+    public void assertSender(ShipmentRequest req) {
+        UUID currentBranchId = SecurityUtils.getCurrentBranchIdOrNull();
+        if (currentBranchId == null || !currentBranchId.equals(req.getFromBranchId())) {
+            auditLogService.logInNewTransaction(
+                    ACTION_ACCESS_DENIED, AUDIT_ENTITY_TYPE, idStr(req.getId()),
+                    workerIdStr(), null,
+                    currentBranchId != null ? currentBranchId.toString() : null, null,
+                    String.format("{\"KAT\":\"AUTH\",\"error_code\":\"%s\",\"shipment_request_id\":\"%s\","
+                                    + "\"from_branch_id\":\"%s\",\"attempt_branch_id\":\"%s\"}",
+                            ERR_NOT_SENDER, req.getId(), req.getFromBranchId(),
+                            currentBranchId != null ? currentBranchId.toString() : "null"));
+            log.warn("Shipment sztornó megtagadva: shipment={}, fromBranch={}, attemptBranch={}",
+                    req.getRequestNumber(), req.getFromBranchId(), currentBranchId);
+            throw new AccessDeniedException(
+                    ERR_NOT_SENDER + ": a szállítmányt kizárólag az átadó fiók sztornózhatja.");
+        }
+    }
+
+    /**
+     * A deprecated approve/reject küldői műveletét KIZÁRÓLAG a kérő/átadó (from) branch
+     * felhasználója végezheti. Hiányzó branch-kontextus esetén fail-closed:
+     * {@code VV-AUTH-002} + {@code ACCESS_DENIED} audit.
      */
     public void assertRequester(ShipmentRequest req) {
         UUID currentBranchId = SecurityUtils.getCurrentBranchIdOrNull();
@@ -191,10 +217,10 @@ public class ShipmentStockBookingService {
                                     + "\"from_branch_id\":\"%s\",\"attempt_branch_id\":\"%s\"}",
                             ERR_NOT_REQUESTER, req.getId(), req.getFromBranchId(),
                             currentBranchId != null ? currentBranchId.toString() : "null"));
-            log.warn("Szállítmány jóváhagyás megtagadva: shipment={}, fromBranch={}, attemptBranch={}",
+            log.warn("Szállítmány küldői művelet megtagadva: shipment={}, fromBranch={}, attemptBranch={}",
                     req.getRequestNumber(), req.getFromBranchId(), currentBranchId);
             throw new AccessDeniedException(
-                    ERR_NOT_REQUESTER + ": a szállítmány jóváhagyását kizárólag a kérő (átadó) fiók végezheti.");
+                    ERR_NOT_REQUESTER + ": ezt a műveletet kizárólag a kérő (átadó) fiók végezheti.");
         }
     }
 
@@ -491,7 +517,7 @@ public class ShipmentStockBookingService {
      * nemlétező AML-API-t. A teljes HUF-érték a tételek {@code hufValue}-jából (a create-kor beemelt
      * elszámoló árfolyamon számolt) adódik.
      */
-    private void amlCheck(ShipmentRequest req, UUID companyId, Branch from) {
+    private void amlCheck(ShipmentRequest req, Branch branch) {
         BigDecimal totalHuf = BigDecimal.ZERO;
         for (ShipmentRequestItem item : req.getItems()) {
             if (item.getHufValue() != null) {
@@ -503,7 +529,7 @@ public class ShipmentStockBookingService {
         }
         String level = totalHuf.compareTo(AML_FULL_THRESHOLD) >= 0 ? "FULL" : "PARTIAL";
         auditLogService.log(ACTION_AML_CHECK, AUDIT_ENTITY_TYPE, idStr(req.getId()),
-                workerIdStr(), null, branchIdStr(from.getId()), from.getName(),
+                workerIdStr(), null, branchIdStr(branch.getId()), branch.getName(),
                 String.format("{\"KAT\":\"AML\",\"shipment_request_id\":\"%s\",\"total_huf\":%s,\"level\":\"%s\"}",
                         req.getId(), totalHuf.toPlainString(), level),
                 null, null);

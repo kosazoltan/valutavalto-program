@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Package,
   Eye,
-  CheckCircle,
   XCircle,
   AlertCircle,
   ArrowUpFromLine,
@@ -37,8 +36,7 @@ interface ShipmentEditDraft {
 
 type ShipmentTab = 'today' | 'past'
 
-const HANDLING_FEE_SELF_APPROVAL_MESSAGE =
-  'Ezt az igényt Ön rögzítette — a négy-szem elv miatt más munkatársnak kell jóváhagynia.'
+const CANCELLABLE_STATUSES = new Set(['DRAFT', 'SUBMITTED', 'APPROVED', 'IN_TRANSIT'])
 
 /** A `requestedDeliveryDate` (LocalDate vagy ISO datetime) → 'YYYY-MM-DD'. */
 function dateOnly(value: string | undefined): string {
@@ -64,6 +62,7 @@ export default function ShipmentListPage() {
   const [selectedShipment, setSelectedShipment] = useState<ShipmentRequest | null>(null)
   const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState<ShipmentEditDraft | null>(null)
+  const deliveryKeysRef = useRef(new Map<string, string>())
 
   // "Korábbi" fül (FR-5..FR-11): teljes (összes státuszú) lista a naptárhoz + napi listához.
   const [allShipments, setAllShipments] = useState<ShipmentRequest[]>([])
@@ -128,41 +127,6 @@ export default function ShipmentListPage() {
     setSelectedDate(null)
   }
 
-  const handleApprove = async (shipmentId: string): Promise<void> => {
-    if (!worker?.id) return
-    if (!confirm('Biztosan jóváhagyja ezt a szállítmány igényt?')) return
-
-    try {
-      setLoading(true)
-      await shipmentRequestApi.approve(shipmentId, String(worker.id))
-      await loadShipments()
-    } catch (err) {
-      const errorMessage = getErrorMessage(err)
-      setError(errorMessage)
-      logger.error('ShipmentListPage', 'Failed to approve shipment:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleReject = async (shipmentId: string): Promise<void> => {
-    if (!worker?.id) return
-    const reason = prompt('Elutasítás oka:')
-    if (!reason) return
-
-    try {
-      setLoading(true)
-      await shipmentRequestApi.reject(shipmentId, String(worker.id), reason)
-      await loadShipments()
-    } catch (err) {
-      const errorMessage = getErrorMessage(err)
-      setError(errorMessage)
-      logger.error('ShipmentListPage', 'Failed to reject shipment:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleOpenDetails = async (shipmentId: string): Promise<void> => {
     try {
       setDetailLoadingId(shipmentId)
@@ -180,10 +144,13 @@ export default function ShipmentListPage() {
 
   const handleDeliver = async (shipmentId: string): Promise<void> => {
     if (!confirm('Biztosan kézbesítettként jelöli ezt a szállítmány igényt?')) return
+    const idempotencyKey = deliveryKeysRef.current.get(shipmentId) ?? globalThis.crypto.randomUUID()
+    deliveryKeysRef.current.set(shipmentId, idempotencyKey)
 
     try {
       setLoading(true)
-      await shipmentRequestApi.deliver(shipmentId)
+      await shipmentRequestApi.deliver(shipmentId, idempotencyKey)
+      deliveryKeysRef.current.delete(shipmentId)
       await loadShipments()
     } catch (err) {
       const errorMessage = getErrorMessage(err)
@@ -200,7 +167,21 @@ export default function ShipmentListPage() {
 
     try {
       setLoading(true)
-      await shipmentRequestApi.cancel(shipmentId)
+      setError(null)
+      const cancelled = await shipmentRequestApi.cancel(shipmentId)
+      try {
+        setReprintReceipt(buildStornoReceiptData(cancelled, worker))
+      } catch (receiptError) {
+        toast.success(
+          'Sztornó sikeres',
+          'A bizonylat most nem készíthető el; a bizonylat később újranyomtatható.',
+        )
+        logger.warn(
+          'ShipmentListPage',
+          'Cancelled shipment receipt data is incomplete:',
+          receiptError,
+        )
+      }
       await loadShipments()
     } catch (err) {
       const errorMessage = getErrorMessage(err)
@@ -258,7 +239,11 @@ export default function ShipmentListPage() {
       setReprintLoadingId(shipmentId)
       setError(null)
       const shipment = await shipmentRequestApi.get(shipmentId)
-      setReprintReceipt(buildReprintReceiptData(shipment, worker))
+      setReprintReceipt(
+        shipment.requestStatus === 'CANCELLED'
+          ? buildStornoReceiptData(shipment, worker)
+          : buildReprintReceiptData(shipment, worker),
+      )
     } catch (err) {
       const errorMessage = getErrorMessage(err)
       setError(errorMessage)
@@ -290,13 +275,16 @@ export default function ShipmentListPage() {
     }
   }
 
-  const canCancel = (status: string): boolean => status !== 'DELIVERED' && status !== 'CANCELLED'
+  const canCancel = (shipment: ShipmentRequest): boolean =>
+    shipment.requestingBranchId === branchId && CANCELLABLE_STATUSES.has(shipment.requestStatus)
   // FR-6 (Értéktár Shipment készletkönyvelés): a "Megérkezett" (DELIVERED visszaigazolás) gombot
   // KIZÁRÓLAG az ÁTVEVŐ (target) fiók felhasználója láthatja — az átadó nem. A backend FR-4
   // hard-gate-je (403 VV-AUTH-001 az assertReceiver-ben) ezt amúgy is kikényszeríti; itt a UI-t
   // igazítjuk hozzá, hogy az átadónak a gomb meg se jelenjen (teljesen elrejtve, nem csak disabled).
   const canDeliver = (shipment: ShipmentRequest): boolean =>
-    (shipment.requestStatus === 'APPROVED' || shipment.requestStatus === 'IN_TRANSIT') &&
+    (shipment.requestStatus === 'SUBMITTED' ||
+      shipment.requestStatus === 'APPROVED' ||
+      shipment.requestStatus === 'IN_TRANSIT') &&
     shipment.targetBranchId === branchId
   const canEdit = (status: string): boolean => status === 'DRAFT'
 
@@ -347,12 +335,6 @@ export default function ShipmentListPage() {
     [allShipments, selectedDate],
   )
 
-  const isHandlingFeeSelfApproval = (shipment: ShipmentRequest): boolean =>
-    shipment.requestStatus === 'SUBMITTED' &&
-    shipment.requestNumber.startsWith('KK-') &&
-    worker?.id != null &&
-    String(shipment.requestedByWorkerId) === String(worker.id)
-
   const renderRow = (shipment: ShipmentRequest, mode: ShipmentTab) => (
     <tr key={shipment.id}>
       <td className="font-mono font-semibold">{shipment.requestNumber}</td>
@@ -376,43 +358,6 @@ export default function ShipmentListPage() {
           </button>
           {mode === 'today' ? (
             <>
-              {shipment.requestStatus === 'SUBMITTED' && (
-                <>
-                  {isHandlingFeeSelfApproval(shipment) ? (
-                    <span
-                      className="inline-flex"
-                      title={HANDLING_FEE_SELF_APPROVAL_MESSAGE}
-                      tabIndex={0}
-                    >
-                      <button
-                        type="button"
-                        aria-label={HANDLING_FEE_SELF_APPROVAL_MESSAGE}
-                        className="toolbar-button cursor-not-allowed text-amber-600 opacity-70"
-                        disabled
-                      >
-                        <AlertCircle size={14} />
-                      </button>
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => handleApprove(shipment.id)}
-                      className="toolbar-button text-green-600"
-                      title="Jóváhagyás"
-                      disabled={loading}
-                    >
-                      <CheckCircle size={14} />
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleReject(shipment.id)}
-                    className="toolbar-button text-red-600"
-                    title="Elutasítás"
-                    disabled={loading}
-                  >
-                    <XCircle size={14} />
-                  </button>
-                </>
-              )}
               {canDeliver(shipment) && (
                 <button
                   onClick={() => void handleDeliver(shipment.id)}
@@ -423,7 +368,7 @@ export default function ShipmentListPage() {
                   <Package size={14} />
                 </button>
               )}
-              {canCancel(shipment.requestStatus) && (
+              {canCancel(shipment) && (
                 <button
                   onClick={() => void handleCancel(shipment.id)}
                   className="toolbar-button text-red-700"
@@ -435,14 +380,26 @@ export default function ShipmentListPage() {
               )}
             </>
           ) : (
-            <button
-              onClick={() => void handleReprint(shipment.id)}
-              className="toolbar-button text-blue-700"
-              title={t('shipments.ujranyomtatas')}
-              disabled={reprintLoadingId === shipment.id}
-            >
-              <Printer size={14} />
-            </button>
+            <>
+              <button
+                onClick={() => void handleReprint(shipment.id)}
+                className="toolbar-button text-blue-700"
+                title={t('shipments.ujranyomtatas')}
+                disabled={reprintLoadingId === shipment.id}
+              >
+                <Printer size={14} />
+              </button>
+              {canCancel(shipment) && (
+                <button
+                  onClick={() => void handleCancel(shipment.id)}
+                  className="toolbar-button text-red-700"
+                  title={t('shipments.sztorno')}
+                  disabled={loading}
+                >
+                  <XCircle size={14} />
+                </button>
+              )}
+            </>
           )}
         </div>
       </td>
@@ -549,7 +506,6 @@ export default function ShipmentListPage() {
                 <option value="">{t('common.all')}</option>
                 <option value="DRAFT">{t('shipments.vazlat')}</option>
                 <option value="SUBMITTED">{t('shipments.kerve')}</option>
-                <option value="APPROVED">{t('shipments.jovahagyva')}</option>
                 <option value="IN_TRANSIT">{t('shipments.uton')}</option>
                 <option value="DELIVERED">{t('shipments.kezbesitve')}</option>
                 <option value="REJECTED">{t('shipments.elutasitva')}</option>
@@ -808,6 +764,35 @@ function buildReprintReceiptData(
     transferLines: lines.length > 0 ? lines : undefined,
     currencyCode: lines[0]?.currencyCode,
     foreignAmount: lines[0]?.amount,
+  }
+}
+
+function buildStornoReceiptData(
+  shipment: ShipmentRequest,
+  worker: Parameters<typeof getCompanyType>[0],
+): PrintReceiptData {
+  const receipt = buildReprintReceiptData(shipment, worker)
+  const cancelledAt = shipment.cancelledAt?.trim()
+  const cancelledByWorkerName = shipment.cancelledByWorkerName?.trim()
+  if (!cancelledAt || !cancelledByWorkerName) {
+    throw new Error('A sztornó-bizonylat hiteles auditadatai hiányoznak (sztornózó vagy időpont).')
+  }
+  const cancelledDate = new Date(cancelledAt)
+  if (Number.isNaN(cancelledDate.getTime())) {
+    throw new Error('A sztornó-bizonylat hiteles auditadatai hiányoznak (érvénytelen időpont).')
+  }
+  return {
+    ...receipt,
+    receiptNumber: `${shipment.requestNumber || shipment.id}-SZ`,
+    cashierName: cancelledByWorkerName,
+    date: cancelledDate.toLocaleDateString('hu-HU'),
+    time: cancelledDate.toLocaleTimeString('hu-HU', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }),
+    isStorno: true,
+    stornoReason: 'Küldői sztornó átvétel előtt',
   }
 }
 

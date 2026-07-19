@@ -136,8 +136,8 @@ class IdempotencyGuardTest {
     }
 
     @Test
-    @DisplayName("(4) PROCESSING key in-flight -> ValidationException")
-    void processingKey_inFlight_throwsValidation() {
+    @DisplayName("(4) PROCESSING key in-flight -> 409-re mappelhető ConflictException")
+    void processingKey_inFlight_throwsConflict() {
         IdempotencyRecord existing = IdempotencyRecord.builder()
                 .companyId(COMPANY_ID).endpoint(ENDPOINT).idempotencyKey(KEY)
                 .requestHash(computeHash(new FakeDto("buy", 100)))
@@ -151,7 +151,7 @@ class IdempotencyGuardTest {
 
             assertThatThrownBy(() ->
                     guard.tryAcquire(KEY, ENDPOINT, new FakeDto("buy", 100), FakeDto.class))
-                    .isInstanceOf(ValidationException.class)
+                    .isInstanceOf(ConflictException.class)
                     .hasMessageContaining("feldolgozas alatt");
         }
     }
@@ -188,7 +188,7 @@ class IdempotencyGuardTest {
 
     @Test
     @DisplayName("Codex P1 PR #358: FAILED retry race — second caller meglatja a PROCESSING-et a lock utan")
-    void failedKeyRetryRace_secondCallerSeesProcessing_throwsValidation() {
+    void failedKeyRetryRace_secondCallerSeesProcessing_throwsConflict() {
         IdempotencyRecord failedBeforeLock = IdempotencyRecord.builder()
                 .companyId(COMPANY_ID).endpoint(ENDPOINT).idempotencyKey(KEY)
                 .requestHash(computeHash(new FakeDto("buy", 100)))
@@ -213,7 +213,7 @@ class IdempotencyGuardTest {
             assertThatThrownBy(() ->
                     guard.tryAcquire(KEY, ENDPOINT, new FakeDto("buy", 100), FakeDto.class))
                     .as("FAILED retry race: a masik retry mar PROCESSING-en — mi varjuk a 4xx-et")
-                    .isInstanceOf(ValidationException.class)
+                    .isInstanceOf(ConflictException.class)
                     .hasMessageContaining("feldolgozas alatt");
             verify(repository, Mockito.never()).save(any());
         }

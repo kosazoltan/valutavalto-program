@@ -7,7 +7,9 @@ import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
 import hu.puzzleir.valuta.entity.ShipmentRequestItem;
+import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
 import hu.puzzleir.valuta.entity.Worker;
+import hu.puzzleir.valuta.exception.ConflictException;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
@@ -18,6 +20,9 @@ import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -27,7 +32,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -332,7 +339,7 @@ class ShipmentServiceTest {
         UUID companyId = UUID.randomUUID();
         UUID shipmentId = UUID.randomUUID();
         ShipmentRequest sr = rejectableShipment(shipmentId, companyId);
-        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
@@ -344,6 +351,13 @@ class ShipmentServiceTest {
             assertThat(result.getRejectionReason()).isEqualTo("Hibás összeg");
             assertThat(result.getRejectedByWorkerId()).isEqualTo(77L);
         }
+        verify(auditLogService).log(
+                eq(ShipmentService.ACTION_REJECT_DEPRECATED),
+                eq("ShipmentRequest"), eq(shipmentId.toString()), eq("77"),
+                isNull(), isNull(), isNull(),
+                argThat((String changes) -> changes.contains("\"from_status\":\"SUBMITTED\"")
+                        && changes.contains("\"to_status\":\"REJECTED\"")),
+                isNull(), isNull());
     }
 
     @Test
@@ -354,7 +368,7 @@ class ShipmentServiceTest {
         UUID shipmentId = UUID.randomUUID();
         ShipmentRequest sr = rejectableShipment(shipmentId, companyId);
         sr.setStatus(hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
-        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
@@ -427,6 +441,81 @@ class ShipmentServiceTest {
         verify(repository, never()).findByBranchAndCompanyId(any(), any(), any(), any());
     }
 
+    @Test
+    void findById_tenantScopedRepositoryMiss_returnsUniformNotFound() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        when(repository.findByIdAndCompanyId(shipmentId, companyId))
+                .thenReturn(java.util.Optional.empty());
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            assertThatThrownBy(() -> service.findById(shipmentId))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("Szállítmánykérés nem található: " + shipmentId);
+        }
+
+        verify(repository).findByIdAndCompanyId(shipmentId, companyId);
+        verify(repository, never()).findById(shipmentId);
+        verifyNoInteractions(branchRepository);
+    }
+
+    @Test
+    void findById_corruptCrossTenantBranchReferenceReturnsUniformNotFound() {
+        UUID currentCompanyId = UUID.randomUUID();
+        UUID foreignCompanyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        UUID fromBranchId = UUID.randomUUID();
+        UUID toBranchId = UUID.randomUUID();
+        ShipmentRequest sr = ShipmentRequest.builder()
+                .id(shipmentId)
+                .companyId(currentCompanyId)
+                .fromBranchId(fromBranchId)
+                .toBranchId(toBranchId)
+                .items(new ArrayList<>())
+                .build();
+        when(repository.findByIdAndCompanyId(shipmentId, currentCompanyId))
+                .thenReturn(java.util.Optional.of(sr));
+        when(branchRepository.findById(fromBranchId)).thenReturn(java.util.Optional.of(
+                Branch.builder().id(fromBranchId)
+                        .company(Company.builder().id(currentCompanyId).build()).build()));
+        when(branchRepository.findById(toBranchId)).thenReturn(java.util.Optional.of(
+                Branch.builder().id(toBranchId)
+                        .company(Company.builder().id(foreignCompanyId).build()).build()));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(currentCompanyId);
+
+            assertThatThrownBy(() -> service.findById(shipmentId))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("Szállítmánykérés nem található: " + shipmentId);
+        }
+
+        verify(branchRepository).findById(fromBranchId);
+        verify(branchRepository).findById(toBranchId);
+    }
+
+    @Test
+    void deliver_tenantScopedLockedRepositoryMiss_returnsUniformNotFoundBeforeMutation() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId))
+                .thenReturn(java.util.Optional.empty());
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            assertThatThrownBy(() -> service.deliver(shipmentId))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("Szállítmánykérés nem található: " + shipmentId);
+        }
+
+        verify(repository).findByIdAndCompanyIdForUpdate(shipmentId, companyId);
+        verifyNoInteractions(branchRepository, stockBookingService, handlingFeeSyncService, auditLogService);
+        verify(repository, never()).save(any());
+    }
+
     // ===================== FK orkesztráció: a ShipmentService a könyvelő-motort delegálja =====================
 
     @Test
@@ -435,11 +524,12 @@ class ShipmentServiceTest {
         UUID shipmentId = UUID.randomUUID();
         ShipmentRequest sr = bookedShipment(shipmentId, companyId,
                 hu.puzzleir.valuta.entity.ShipmentRequestStatus.DRAFT);
-        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(77L);
             ShipmentRequest result = service.submit(shipmentId);
 
             assertThat(result.getStatus())
@@ -448,6 +538,13 @@ class ShipmentServiceTest {
         // FR-2: a beküldés OUT-könyvel az átadón, a státuszváltás ELŐTT (elégtelen → 422 rollback).
         verify(stockBookingService).bookStockOut(eq(sr), eq(companyId));
         verify(stockBookingService, never()).bookStockIn(any(), any());
+        verify(auditLogService).log(
+                eq(ShipmentService.ACTION_SUBMITTED),
+                eq("ShipmentRequest"), eq(shipmentId.toString()), eq("77"),
+                isNull(), isNull(), isNull(),
+                argThat((String changes) -> changes.contains("\"from_status\":\"DRAFT\"")
+                        && changes.contains("\"to_status\":\"SUBMITTED\"")),
+                isNull(), isNull());
     }
 
     @Test
@@ -456,20 +553,192 @@ class ShipmentServiceTest {
         UUID shipmentId = UUID.randomUUID();
         ShipmentRequest sr = bookedShipment(shipmentId, companyId,
                 hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
-        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(77L);
             ShipmentRequest result = service.deliver(shipmentId);
 
             assertThat(result.getStatus())
                     .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.DELIVERED);
         }
         // FR-4: az átvevő-gate a könyvelés ELŐTT fut; FR-3: utána IN-könyvel az átvevőn.
-        org.mockito.InOrder order = inOrder(stockBookingService);
+        org.mockito.InOrder order = inOrder(stockBookingService, auditLogService, repository, handlingFeeSyncService);
         order.verify(stockBookingService).assertReceiver(sr);
         order.verify(stockBookingService).bookStockIn(eq(sr), eq(companyId));
+        order.verify(auditLogService).log(
+                eq(ShipmentService.ACTION_DELIVERED),
+                eq("ShipmentRequest"), eq(shipmentId.toString()), eq("77"),
+                isNull(), isNull(), isNull(),
+                argThat((String changes) -> changes.contains("\"from_status\":\"APPROVED\"")
+                        && changes.contains("\"to_status\":\"DELIVERED\"")),
+                isNull(), isNull());
+        order.verify(repository).save(sr);
+        order.verify(handlingFeeSyncService).syncFromShipment(sr);
+    }
+
+    @Test
+    void deliver_fromSubmitted_booksStockInExactlyOnceAndWritesDirectTransitionAudit() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(77L);
+
+            ShipmentRequest result = service.deliver(shipmentId);
+
+            assertThat(result.getStatus())
+                    .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.DELIVERED);
+        }
+
+        verify(stockBookingService).assertReceiver(sr);
+        verify(stockBookingService, times(1)).bookStockIn(sr, companyId);
+        verify(auditLogService).log(
+                eq(ShipmentService.ACTION_DIRECT_DELIVER),
+                eq("ShipmentRequest"),
+                eq(shipmentId.toString()),
+                eq("77"),
+                isNull(), isNull(), isNull(),
+                argThat((String changes) -> changes.contains("\"KAT\":\"TX\"")
+                        && changes.contains("\"from_status\":\"SUBMITTED\"")
+                        && changes.contains("\"to_status\":\"DELIVERED\"")),
+                isNull(), isNull());
+    }
+
+    @Test
+    void deliver_whenAlreadyDelivered_returnsConflictWithoutSecondStockIn() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.DELIVERED);
+        sr.setDeliveryDate(LocalDate.of(2026, 7, 18));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            assertThatThrownBy(() -> service.deliver(shipmentId))
+                    .isInstanceOf(ConflictException.class)
+                    .hasMessageContaining("VV-SHIP-409-DELIVERED")
+                    .hasMessageContaining("2026-07-18");
+        }
+
+        verify(stockBookingService).assertReceiver(sr);
+        verify(stockBookingService, never()).bookStockIn(any(), any());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void deliver_corruptCrossTenantBranchReferenceReturnsUniformNotFoundBeforeMutation() {
+        UUID currentCompanyId = UUID.randomUUID();
+        UUID foreignCompanyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        UUID fromBranchId = UUID.randomUUID();
+        UUID toBranchId = UUID.randomUUID();
+        ShipmentRequest sr = ShipmentRequest.builder()
+                .id(shipmentId)
+                .fromBranchId(fromBranchId)
+                .toBranchId(toBranchId)
+                .status(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED)
+                .items(new ArrayList<>())
+                .build();
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, currentCompanyId))
+                .thenReturn(java.util.Optional.of(sr));
+        when(branchRepository.findById(fromBranchId)).thenReturn(java.util.Optional.of(
+                Branch.builder().id(fromBranchId).company(Company.builder().id(currentCompanyId).build()).build()));
+        when(branchRepository.findById(toBranchId)).thenReturn(java.util.Optional.of(
+                Branch.builder().id(toBranchId).company(Company.builder().id(foreignCompanyId).build()).build()));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(currentCompanyId);
+
+            assertThatThrownBy(() -> service.deliver(shipmentId))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("Szállítmánykérés nem található: " + shipmentId);
+        }
+
+        verify(stockBookingService, never()).assertReceiver(any());
+        verify(stockBookingService, never()).bookStockIn(any(), any());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void pendingForCurrentBranch_queriesReceiverStatusesWithTenantAndBranchScope() {
+        UUID companyId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+        ShipmentRequest submitted = ShipmentRequest.builder()
+                .id(UUID.randomUUID())
+                .companyId(companyId)
+                .requestNumber("FF-000123")
+                .fromBranchId(UUID.randomUUID())
+                .toBranchId(branchId)
+                .status(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED)
+                .items(new ArrayList<>())
+                .build();
+        Branch toBranch = Branch.builder().id(branchId).company(Company.builder().id(companyId).build())
+                .code("BR027").name("Szeged Tesco").build();
+        Branch fromBranch = Branch.builder().id(submitted.getFromBranchId())
+                .company(Company.builder().id(companyId).build()).code("BR075").name("Szeged Értéktár").build();
+        when(branchRepository.findByIdAndCompanyId(any(UUID.class), eq(companyId)))
+                .thenAnswer(invocation -> {
+                    UUID id = invocation.getArgument(0);
+                    return java.util.Optional.of(id.equals(branchId) ? toBranch : fromBranch);
+                });
+        when(repository.findPendingForToBranch(
+                eq(companyId), eq(branchId), eq(Set.of(
+                        hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED,
+                        hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED,
+                        hu.puzzleir.valuta.entity.ShipmentRequestStatus.IN_TRANSIT))))
+                .thenReturn(List.of(submitted));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(branchId);
+
+            List<ShipmentRequestResponseDto> result = service.findPendingForCurrentBranchResponse();
+
+            assertThat(result).extracting(ShipmentRequestResponseDto::getId)
+                    .containsExactly(submitted.getId());
+        }
+    }
+
+    @Test
+    void pendingForCurrentBranch_territoryScopeWithoutOwnBranchFailsClosed() {
+        UUID companyId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+        when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(Set.of(UUID.randomUUID()));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(branchId);
+
+            assertThat(service.findPendingForCurrentBranchResponse()).isEmpty();
+        }
+        verify(repository, never()).findPendingForToBranch(any(), any(), any());
+    }
+
+    @Test
+    void pendingForCurrentBranch_withoutBranchContextReturnsEmptyBeforeScopeAndRepositoryAccess() {
+        UUID companyId = UUID.randomUUID();
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(null);
+
+            assertThat(service.findPendingForCurrentBranchResponse()).isEmpty();
+
+            security.verify(SecurityUtils::getCurrentBranchIdOrNull);
+            security.verify(SecurityUtils::getCurrentBranchId, never());
+        }
+
+        verifyNoInteractions(accessScopeService);
+        verify(repository, never()).findPendingForToBranch(any(), any(), any());
     }
 
     @Test
@@ -478,7 +747,7 @@ class ShipmentServiceTest {
         UUID shipmentId = UUID.randomUUID();
         ShipmentRequest sr = bookedShipment(shipmentId, companyId,
                 hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
-        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
         doThrow(new org.springframework.security.access.AccessDeniedException("VV-AUTH-001"))
                 .when(stockBookingService).assertReceiver(sr);
 
@@ -493,6 +762,55 @@ class ShipmentServiceTest {
         verify(repository, never()).save(any());
     }
 
+    @ParameterizedTest(name = "status={0}, noBranch={1}: receiver authz wins before status disclosure")
+    @MethodSource("unauthorizedReceiverContextsAndStatuses")
+    void deliver_unauthorizedReceiverGetsSameForbiddenBeforeStatusForEveryStatus(
+            ShipmentRequestStatus status, boolean noBranch) {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId, status);
+        UUID attemptBranch = noBranch ? null : UUID.randomUUID();
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId))
+                .thenReturn(java.util.Optional.of(sr));
+        ShipmentStockBookingService guardedStockBookingService = spy(new ShipmentStockBookingService(
+                branchRepository,
+                cashBalanceRepository,
+                currencyStockRepository,
+                currencyRepository,
+                auditLogService));
+        ShipmentService guardedService = serviceWithStockBookingService(guardedStockBookingService);
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(attemptBranch);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(77L);
+
+            assertThatThrownBy(() -> guardedService.deliver(shipmentId))
+                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                    .hasMessageContaining(ShipmentStockBookingService.ERR_NOT_RECEIVER);
+        }
+
+        assertThat(sr.getStatus()).isEqualTo(status);
+        assertThat(sr.getDeliveryDate()).isNull();
+        verify(guardedStockBookingService).assertReceiver(sr);
+        verify(guardedStockBookingService, never()).bookStockIn(any(), any());
+        verify(auditLogService).logInNewTransaction(
+                eq(ShipmentStockBookingService.ACTION_ACCESS_DENIED),
+                eq("ShipmentRequest"), eq(shipmentId.toString()), eq("77"),
+                isNull(), eq(attemptBranch != null ? attemptBranch.toString() : null), isNull(), any());
+        verify(auditLogService, never()).log(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(repository, never()).save(any());
+        verify(handlingFeeSyncService, never()).syncFromShipment(any());
+    }
+
+    private static Stream<Arguments> unauthorizedReceiverContextsAndStatuses() {
+        return Stream.of(ShipmentRequestStatus.values())
+                .flatMap(status -> Stream.of(
+                        Arguments.of(status, false),
+                        Arguments.of(status, true)));
+    }
+
     @Test
     void approve_deniedWhenCallerNotFromBranch() {
         UUID companyId = UUID.randomUUID();
@@ -500,7 +818,7 @@ class ShipmentServiceTest {
         ShipmentRequest sr = bookedShipment(shipmentId, companyId,
                 hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
         UUID attemptBranch = UUID.randomUUID();
-        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
         ShipmentService serviceWithRealRequesterGate = serviceWithRealStockBookingService();
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
@@ -532,12 +850,120 @@ class ShipmentServiceTest {
     }
 
     @Test
+    void reject_deniedWhenCallerNotFromBranchFailsBeforeStockReversalAuditSaveOrSync() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        UUID attemptBranch = UUID.randomUUID();
+        long workerId = 77L;
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
+        ShipmentStockBookingService guardedStockBookingService = spy(new ShipmentStockBookingService(
+                branchRepository,
+                cashBalanceRepository,
+                currencyStockRepository,
+                currencyRepository,
+                auditLogService));
+        ShipmentService guardedService = serviceWithStockBookingService(guardedStockBookingService);
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(attemptBranch);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(workerId);
+
+            assertThatThrownBy(() -> guardedService.reject(shipmentId, "Hibás összeg"))
+                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                    .hasMessageContaining(ShipmentStockBookingService.ERR_NOT_REQUESTER);
+        }
+
+        assertThat(sr.getStatus()).isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        assertThat(sr.getRejectionReason()).isNull();
+        assertThat(sr.getRejectedByWorkerId()).isNull();
+        verify(guardedStockBookingService).assertRequester(sr);
+        verify(guardedStockBookingService, never()).reverseStockOut(any(), any());
+        verify(auditLogService).logInNewTransaction(
+                eq(ShipmentStockBookingService.ACTION_ACCESS_DENIED),
+                eq("ShipmentRequest"),
+                eq(shipmentId.toString()),
+                eq(String.valueOf(workerId)),
+                isNull(),
+                eq(attemptBranch.toString()),
+                isNull(),
+                argThat(changes -> changes != null
+                        && changes.contains("\"KAT\":\"AUTH\"")
+                        && changes.contains("\"error_code\":\""
+                                + ShipmentStockBookingService.ERR_NOT_REQUESTER + "\"")
+                        && changes.contains("\"from_branch_id\":\"" + sr.getFromBranchId() + "\"")
+                        && changes.contains("\"attempt_branch_id\":\"" + attemptBranch + "\"")));
+        verify(auditLogService, never()).log(
+                eq(ShipmentService.ACTION_REJECT_DEPRECATED),
+                any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(repository, never()).save(any());
+        verify(handlingFeeSyncService, never()).syncFromShipment(any());
+    }
+
+    @Test
+    void reject_deniedWhenNoBranchInTokenFailsBeforeStockReversalAuditSaveOrSync() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        long workerId = 77L;
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId))
+                .thenReturn(java.util.Optional.of(sr));
+        ShipmentStockBookingService guardedStockBookingService = spy(new ShipmentStockBookingService(
+                branchRepository,
+                cashBalanceRepository,
+                currencyStockRepository,
+                currencyRepository,
+                auditLogService));
+        ShipmentService guardedService = serviceWithStockBookingService(guardedStockBookingService);
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(null);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(workerId);
+
+            assertThatThrownBy(() -> guardedService.reject(shipmentId, "Hibás összeg"))
+                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                    .hasMessageContaining(ShipmentStockBookingService.ERR_NOT_REQUESTER)
+                    .hasMessageContaining("műveletet")
+                    .hasMessageNotContaining("jóváhagyás");
+        }
+
+        assertThat(sr.getStatus()).isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        assertThat(sr.getRejectionReason()).isNull();
+        assertThat(sr.getRejectedByWorkerId()).isNull();
+        verify(guardedStockBookingService).assertRequester(sr);
+        verify(guardedStockBookingService, never()).reverseStockOut(any(), any());
+        verify(auditLogService).logInNewTransaction(
+                eq(ShipmentStockBookingService.ACTION_ACCESS_DENIED),
+                eq("ShipmentRequest"),
+                eq(shipmentId.toString()),
+                eq(String.valueOf(workerId)),
+                isNull(),
+                isNull(),
+                isNull(),
+                argThat(changes -> changes != null
+                        && changes.contains("\"KAT\":\"AUTH\"")
+                        && changes.contains("\"error_code\":\""
+                                + ShipmentStockBookingService.ERR_NOT_REQUESTER + "\"")
+                        && changes.contains("\"from_branch_id\":\"" + sr.getFromBranchId() + "\"")
+                        && changes.contains("\"attempt_branch_id\":\"null\"")));
+        verify(auditLogService, never()).log(
+                eq(ShipmentService.ACTION_REJECT_DEPRECATED),
+                any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(repository, never()).save(any());
+        verify(handlingFeeSyncService, never()).syncFromShipment(any());
+    }
+
+    @Test
     void approve_allowedWhenCallerIsFromBranch() {
         UUID companyId = UUID.randomUUID();
         UUID shipmentId = UUID.randomUUID();
         ShipmentRequest sr = bookedShipment(shipmentId, companyId,
                 hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
-        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
@@ -562,7 +988,7 @@ class ShipmentServiceTest {
         long workerId = 77L;
         ShipmentRequest sr = bookedShipment(shipmentId, companyId,
                 hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
-        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
         ShipmentService serviceWithRealRequesterGate = serviceWithRealStockBookingService();
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
@@ -593,235 +1019,78 @@ class ShipmentServiceTest {
         verify(repository, never()).save(any());
     }
 
-    // === KK fee-shipment approve: négy-szem elv (2026-07-15 user-döntés) ===
+    // === FKH-018: a deprecated approve KK-nál is a küldő-branch guardot tartja meg ===
 
     @Test
-    void approve_feeShipment_selfApprovalDenied() {
-        UUID companyId = UUID.randomUUID();
-        UUID shipmentId = UUID.randomUUID();
-        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
-                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
-        sr.setRequestedById(77L); // a rögzítő
-        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
-        ShipmentService svc = serviceWithRealStockBookingService();
-        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(true);
-
-        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
-            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
-            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(sr.getToBranchId());
-            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(77L); // == rögzítő
-
-            assertThatThrownBy(() -> svc.approve(shipmentId))
-                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
-                    .hasMessageContaining("VV-AUTH-003");
-        }
-
-        assertThat(sr.getStatus()).isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
-        verify(auditLogService).logInNewTransaction(
-                org.mockito.ArgumentMatchers.eq(ShipmentStockBookingService.ACTION_ACCESS_DENIED),
-                org.mockito.ArgumentMatchers.eq("ShipmentRequest"),
-                org.mockito.ArgumentMatchers.eq(shipmentId.toString()),
-                org.mockito.ArgumentMatchers.eq("77"),
-                org.mockito.ArgumentMatchers.isNull(),
-                org.mockito.ArgumentMatchers.eq(sr.getToBranchId().toString()),
-                org.mockito.ArgumentMatchers.isNull(),
-                org.mockito.ArgumentMatchers.argThat(changes -> changes != null
-                        && changes.contains("\"KAT\":\"AUTH\"")
-                        && changes.contains("\"error_code\":\"VV-AUTH-003\"")
-                        && changes.contains("\"requested_by_id\":\"77\"")
-                        && changes.contains("\"attempt_worker_id\":\"77\"")));
-        verify(repository, never()).save(any());
-        verify(handlingFeeSyncService, never()).syncFromShipment(any());
+    void approve_feeShipment_selfRequesterFromSenderBranchAllowedWithoutFourEyes() {
+        approveFeeShipmentFromSenderBranch(77L, 77L);
     }
 
     @Test
-    void approve_feeShipment_allowedForNullBranchApprover() {
-        UUID companyId = UUID.randomUUID();
-        UUID shipmentId = UUID.randomUUID();
-        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
-                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
-        sr.setRequestedById(77L);
-        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
-        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        ShipmentService svc = serviceWithRealStockBookingService();
-        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(true);
-
-        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
-            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
-            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(null);
-            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(88L); // != rögzítő
-
-            ShipmentRequest result = svc.approve(shipmentId);
-            assertThat(result.getStatus())
-                    .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
-        }
-        verify(handlingFeeSyncService).syncFromShipment(sr);
+    void approve_feeShipment_nonRequesterFromSenderBranchAllowed() {
+        approveFeeShipmentFromSenderBranch(77L, 88L);
     }
 
     @Test
-    void approve_feeShipment_allowedForToBranchApprover() {
-        UUID companyId = UUID.randomUUID();
-        UUID shipmentId = UUID.randomUUID();
-        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
-                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
-        sr.setRequestedById(77L);
-        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
-        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        ShipmentService svc = serviceWithRealStockBookingService();
-        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(true);
-
-        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
-            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
-            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(sr.getToBranchId());
-            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(88L);
-
-            ShipmentRequest result = svc.approve(shipmentId);
-            assertThat(result.getStatus())
-                    .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
-        }
-        verify(handlingFeeSyncService).syncFromShipment(sr);
+    void approve_feeShipment_missingRequestedByStillUsesAuthenticatedSenderBranch() {
+        approveFeeShipmentFromSenderBranch(null, 88L);
     }
 
     @Test
-    void approve_feeShipment_allowedForFromBranchNonRequester() {
+    void approve_feeShipment_targetBranchDeniedBySenderGuard() {
+        assertFeeApproveDeniedForBranch(false);
+    }
+
+    @Test
+    void approve_feeShipment_nullBranchDeniedBySenderGuard() {
+        assertFeeApproveDeniedForBranch(true);
+    }
+
+    private void approveFeeShipmentFromSenderBranch(Long requestedById, long workerId) {
         UUID companyId = UUID.randomUUID();
         UUID shipmentId = UUID.randomUUID();
         ShipmentRequest sr = bookedShipment(shipmentId, companyId,
                 hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
-        sr.setRequestedById(77L);
-        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        sr.setRequestedById(requestedById);
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         ShipmentService svc = serviceWithRealStockBookingService();
-        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(true);
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
             security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(sr.getFromBranchId());
-            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(88L);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(workerId);
 
             ShipmentRequest result = svc.approve(shipmentId);
             assertThat(result.getStatus())
                     .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
         }
         verify(handlingFeeSyncService).syncFromShipment(sr);
+        verify(auditLogService).log(eq(ShipmentService.ACTION_APPROVE_DEPRECATED),
+                eq("ShipmentRequest"), eq(shipmentId.toString()), eq(String.valueOf(workerId)),
+                isNull(), eq(sr.getFromBranchId().toString()), isNull(),
+                argThat((String changes) -> changes.contains("\"KAT\":\"TX\"")), isNull(), isNull());
     }
 
-    @Test
-    void approve_feeShipment_deniedForForeignBranch() {
+    private void assertFeeApproveDeniedForBranch(boolean nullBranch) {
         UUID companyId = UUID.randomUUID();
         UUID shipmentId = UUID.randomUUID();
-        UUID attemptBranchId = UUID.randomUUID();
         ShipmentRequest sr = bookedShipment(shipmentId, companyId,
                 hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
-        sr.setRequestedById(77L);
-        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
         ShipmentService svc = serviceWithRealStockBookingService();
-        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(true);
+        UUID attemptBranch = nullBranch ? null : sr.getToBranchId();
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
-            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(attemptBranchId);
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(attemptBranch);
             security.when(SecurityUtils::getCurrentWorkerId).thenReturn(88L);
 
             assertThatThrownBy(() -> svc.approve(shipmentId))
                     .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
-                    .hasMessageContaining("VV-AUTH-004");
+                    .hasMessageContaining(ShipmentStockBookingService.ERR_NOT_REQUESTER);
         }
-
         assertThat(sr.getStatus()).isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
-        verify(auditLogService).logInNewTransaction(
-                org.mockito.ArgumentMatchers.eq(ShipmentStockBookingService.ACTION_ACCESS_DENIED),
-                org.mockito.ArgumentMatchers.eq("ShipmentRequest"),
-                org.mockito.ArgumentMatchers.eq(shipmentId.toString()),
-                org.mockito.ArgumentMatchers.eq("88"),
-                org.mockito.ArgumentMatchers.isNull(),
-                org.mockito.ArgumentMatchers.eq(attemptBranchId.toString()),
-                org.mockito.ArgumentMatchers.isNull(),
-                org.mockito.ArgumentMatchers.argThat(changes -> changes != null
-                        && changes.contains("\"KAT\":\"AUTH\"")
-                        && changes.contains("\"error_code\":\"VV-AUTH-004\"")
-                        && changes.contains("\"from_branch_id\":\"" + sr.getFromBranchId() + "\"")
-                        && changes.contains("\"to_branch_id\":\"" + sr.getToBranchId() + "\"")
-                        && changes.contains("\"attempt_branch_id\":\"" + attemptBranchId + "\"")));
-        verify(repository, never()).save(any());
-        verify(handlingFeeSyncService, never()).syncFromShipment(any());
-    }
-
-    @Test
-    void approve_feeShipment_deniedWhenRequestedByIdMissing() {
-        UUID companyId = UUID.randomUUID();
-        UUID shipmentId = UUID.randomUUID();
-        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
-                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
-        sr.setRequestedById(null);
-        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
-        ShipmentService svc = serviceWithRealStockBookingService();
-        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(true);
-
-        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
-            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
-            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(sr.getToBranchId());
-            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(88L);
-
-            assertThatThrownBy(() -> svc.approve(shipmentId))
-                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
-                    .hasMessageContaining("VV-AUTH-003");
-        }
-
-        assertThat(sr.getStatus()).isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
-        verify(auditLogService).logInNewTransaction(
-                org.mockito.ArgumentMatchers.eq(ShipmentStockBookingService.ACTION_ACCESS_DENIED),
-                org.mockito.ArgumentMatchers.eq("ShipmentRequest"),
-                org.mockito.ArgumentMatchers.eq(shipmentId.toString()),
-                org.mockito.ArgumentMatchers.eq("88"),
-                org.mockito.ArgumentMatchers.isNull(),
-                org.mockito.ArgumentMatchers.eq(sr.getToBranchId().toString()),
-                org.mockito.ArgumentMatchers.isNull(),
-                org.mockito.ArgumentMatchers.argThat(changes -> changes != null
-                        && changes.contains("\"KAT\":\"AUTH\"")
-                        && changes.contains("\"error_code\":\"VV-AUTH-003\"")
-                        && changes.contains("\"requested_by_id\":\"null\"")
-                        && changes.contains("\"attempt_worker_id\":\"88\"")));
-        verify(repository, never()).save(any());
-        verify(handlingFeeSyncService, never()).syncFromShipment(any());
-    }
-
-    @Test
-    void approve_feeShipment_deniedWhenWorkerContextMissing() {
-        UUID companyId = UUID.randomUUID();
-        UUID shipmentId = UUID.randomUUID();
-        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
-                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
-        sr.setRequestedById(77L);
-        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(sr));
-        ShipmentService svc = serviceWithRealStockBookingService();
-        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(true);
-
-        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
-            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
-            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(null);
-            security.when(SecurityUtils::getCurrentWorkerId)
-                    .thenThrow(new ValidationException("Nincs bejelentkezett felhasználó!"));
-
-            assertThatThrownBy(() -> svc.approve(shipmentId))
-                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
-                    .hasMessageContaining("VV-AUTH-003");
-        }
-
-        assertThat(sr.getStatus()).isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
-        verify(auditLogService).logInNewTransaction(
-                org.mockito.ArgumentMatchers.eq(ShipmentStockBookingService.ACTION_ACCESS_DENIED),
-                org.mockito.ArgumentMatchers.eq("ShipmentRequest"),
-                org.mockito.ArgumentMatchers.eq(shipmentId.toString()),
-                org.mockito.ArgumentMatchers.isNull(),
-                org.mockito.ArgumentMatchers.isNull(),
-                org.mockito.ArgumentMatchers.isNull(),
-                org.mockito.ArgumentMatchers.isNull(),
-                org.mockito.ArgumentMatchers.argThat(changes -> changes != null
-                        && changes.contains("\"KAT\":\"AUTH\"")
-                        && changes.contains("\"error_code\":\"VV-AUTH-003\"")
-                        && changes.contains("\"requested_by_id\":\"77\"")
-                        && changes.contains("\"attempt_worker_id\":\"null\"")));
         verify(repository, never()).save(any());
         verify(handlingFeeSyncService, never()).syncFromShipment(any());
     }
@@ -880,6 +1149,10 @@ class ShipmentServiceTest {
                 currencyStockRepository,
                 currencyRepository,
                 auditLogService);
+        return serviceWithStockBookingService(realStockBookingService);
+    }
+
+    private ShipmentService serviceWithStockBookingService(ShipmentStockBookingService bookingService) {
         return new ShipmentService(
                 repository,
                 branchRepository,
@@ -887,9 +1160,10 @@ class ShipmentServiceTest {
                 workerRepository,
                 exchangeRateService,
                 transferSerialSequenceService,
-                realStockBookingService,
+                bookingService,
                 handlingFeeSyncService,
-                accessScopeService);
+                accessScopeService,
+                auditLogService);
     }
 
     @Test
@@ -898,38 +1172,122 @@ class ShipmentServiceTest {
         UUID shipmentId = UUID.randomUUID();
         ShipmentRequest sr = bookedShipment(shipmentId, companyId,
                 hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
-        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(77L);
             ShipmentRequest result = service.cancel(shipmentId);
 
             assertThat(result.getStatus())
                     .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.CANCELLED);
+            assertThat(result.getCancelledByWorkerId()).isEqualTo(77L);
+            assertThat(result.getCancelledAt()).isNotNull();
         }
-        // TBD-1: OUT-könyvelt (SUBMITTED) állapotból visszavonva a készletet vissza kell pótolni.
+        verify(stockBookingService).assertSender(sr);
         verify(stockBookingService).reverseStockOut(eq(sr), eq(companyId));
+        verify(auditLogService).log(
+                eq(ShipmentService.ACTION_CANCELLED_BY_SENDER),
+                eq("ShipmentRequest"),
+                eq(shipmentId.toString()),
+                eq("77"),
+                isNull(), isNull(), isNull(),
+                argThat((String changes) -> changes.contains("\"KAT\":\"TX\"")
+                        && changes.contains("\"from_status\":\"SUBMITTED\"")
+                        && changes.contains("\"to_status\":\"CANCELLED\"")),
+                isNull(), isNull());
     }
 
     @Test
-    void cancel_fromDraft_doesNotReverseStock() {
+    void cancel_afterReject_failsWithoutSecondStockReversalOrCancelAudit() {
+        UUID companyId = UUID.randomUUID();
+        UUID shipmentId = UUID.randomUUID();
+        ShipmentRequest sr = bookedShipment(shipmentId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(77L);
+
+            service.reject(shipmentId, "Hibás összeg");
+
+            assertThatThrownBy(() -> service.cancel(shipmentId))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("REJECTED");
+        }
+
+        assertThat(sr.getStatus())
+                .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.REJECTED);
+        verify(stockBookingService, times(1)).reverseStockOut(eq(sr), eq(companyId));
+        verify(auditLogService, never()).log(
+                eq(ShipmentService.ACTION_CANCELLED_BY_SENDER),
+                any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(handlingFeeSyncService, times(1)).syncFromShipment(sr);
+    }
+
+    @Test
+    void cancel_fromApprovedAndInTransit_reversesStockOutExactlyOnce() {
+        UUID companyId = UUID.randomUUID();
+        UUID approvedId = UUID.randomUUID();
+        UUID inTransitId = UUID.randomUUID();
+        ShipmentRequest approved = bookedShipment(approvedId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.APPROVED);
+        ShipmentRequest inTransit = bookedShipment(inTransitId, companyId,
+                hu.puzzleir.valuta.entity.ShipmentRequestStatus.IN_TRANSIT);
+        when(repository.findByIdAndCompanyIdForUpdate(approvedId, companyId)).thenReturn(java.util.Optional.of(approved));
+        when(repository.findByIdAndCompanyIdForUpdate(inTransitId, companyId)).thenReturn(java.util.Optional.of(inTransit));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(77L);
+
+            assertThat(service.cancel(approvedId).getStatus())
+                    .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.CANCELLED);
+            assertThat(service.cancel(inTransitId).getStatus())
+                    .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.CANCELLED);
+        }
+
+        verify(stockBookingService, times(1)).reverseStockOut(approved, companyId);
+        verify(stockBookingService, times(1)).reverseStockOut(inTransit, companyId);
+    }
+
+    @Test
+    void cancel_fromDraft_succeedsWithoutStockReversalAndWritesAudit() {
         UUID companyId = UUID.randomUUID();
         UUID shipmentId = UUID.randomUUID();
         ShipmentRequest sr = bookedShipment(shipmentId, companyId,
                 hu.puzzleir.valuta.entity.ShipmentRequestStatus.DRAFT);
-        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            security.when(SecurityUtils::getCurrentWorkerId).thenReturn(77L);
+
             ShipmentRequest result = service.cancel(shipmentId);
 
             assertThat(result.getStatus())
                     .isEqualTo(hu.puzzleir.valuta.entity.ShipmentRequestStatus.CANCELLED);
+            assertThat(result.getCancelledByWorkerId()).isEqualTo(77L);
+            assertThat(result.getCancelledAt()).isNotNull();
         }
-        // DRAFT-ból NEM volt OUT-könyvelés → NINCS reverzió (dupla-jóváírás elkerülése).
+
+        verify(stockBookingService).assertSender(sr);
         verify(stockBookingService, never()).reverseStockOut(any(), any());
+        verify(repository).save(sr);
+        verify(auditLogService).log(
+                eq(ShipmentService.ACTION_CANCELLED_BY_SENDER),
+                eq("ShipmentRequest"),
+                eq(shipmentId.toString()),
+                eq("77"),
+                isNull(), isNull(), isNull(),
+                argThat((String changes) -> changes.contains("\"from_status\":\"DRAFT\"")
+                        && changes.contains("\"to_status\":\"CANCELLED\"")),
+                isNull(), isNull());
     }
 
     @Test
@@ -938,7 +1296,7 @@ class ShipmentServiceTest {
         UUID shipmentId = UUID.randomUUID();
         ShipmentRequest sr = bookedShipment(shipmentId, companyId,
                 hu.puzzleir.valuta.entity.ShipmentRequestStatus.SUBMITTED);
-        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
@@ -946,28 +1304,30 @@ class ShipmentServiceTest {
             security.when(SecurityUtils::getCurrentWorkerId).thenReturn(77L);
             service.reject(shipmentId, "Hibás összeg");
         }
-        // TBD-1: a reject CSAK SUBMITTED-ből → mindig OUT-könyvelt → mindig reverzió.
-        verify(stockBookingService).reverseStockOut(eq(sr), eq(companyId));
+        // A küldő-branch guardnak a pénzügyi reverzió előtt kell lefutnia.
+        org.mockito.InOrder order = inOrder(stockBookingService);
+        order.verify(stockBookingService).assertRequester(sr);
+        order.verify(stockBookingService).reverseStockOut(eq(sr), eq(companyId));
     }
 
     // ===================== P1 (Codex): transition-ek pesszimista sor-lockkal töltenek =====================
 
     @Test
-    void submit_loadsShipmentWithPessimisticLock_notPlainFindById() {
-        // P1: a státuszváltás a @Lock(PESSIMISTIC_WRITE) findByIdForUpdate-et használja (nem a sima
-        // findById-t) — így két párhuzamos /submit szerializálódik és nincs kétszeres készlet-levonás.
+    void submit_loadsShipmentWithTenantScopedPessimisticLock_notPlainFindById() {
+        // P1 + tenant defense: a státuszváltás a companyId-szűrt @Lock(PESSIMISTIC_WRITE)
+        // findert használja (nem a sima findById-t), így a lock és a tenant-szűrés egy queryben él.
         UUID companyId = UUID.randomUUID();
         UUID shipmentId = UUID.randomUUID();
         ShipmentRequest sr = bookedShipment(shipmentId, companyId,
                 hu.puzzleir.valuta.entity.ShipmentRequestStatus.DRAFT);
-        when(repository.findByIdForUpdate(shipmentId)).thenReturn(java.util.Optional.of(sr));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(sr));
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
             service.submit(shipmentId);
         }
-        verify(repository).findByIdForUpdate(shipmentId);
+        verify(repository).findByIdAndCompanyIdForUpdate(shipmentId, companyId);
         verify(repository, never()).findById(shipmentId);
     }
 
@@ -1004,7 +1364,7 @@ class ShipmentServiceTest {
                         .build())))
                 .build();
 
-        when(repository.findById(shipmentId)).thenReturn(java.util.Optional.of(existing));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(java.util.Optional.of(existing));
         when(currencyRepository.findById(6L)).thenReturn(java.util.Optional.of(currency("HUF")));
         // findById guard: branchRepository.findById a tenant-ellenőrzéshez
         when(branchRepository.findById(fromBranch)).thenReturn(java.util.Optional.of(fromVault));

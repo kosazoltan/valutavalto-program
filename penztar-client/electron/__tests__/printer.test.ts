@@ -547,6 +547,36 @@ describe('printer — generateReceiptContent (ESC/POS)', () => {
     expect(content).not.toContain('Büntetőjogi felelősségem tudatában');
   });
 
+  it('FKH-018: Shipment-sztornó actor/time/ok és aláírásblokk az ESC/POS és HTML sablonban is nyomtatható', async () => {
+    const data = {
+      ...baseData,
+      type: 'transfer' as const,
+      transferDocType: 'handover' as const,
+      receiptNumber: 'FF-000123-SZ',
+      branchCode: 'Szeged Értéktár',
+      transferTarget: 'Szeged Tisza Sarok',
+      cashierName: 'Sztornózó Pénztáros',
+      date: '2026. 07. 18.',
+      time: '11:30:00',
+      isStorno: true,
+      stornoReason: 'Küldői sztornó átvétel előtt',
+    };
+
+    const escpos = generateReceiptContent(data);
+    const html = await generateReceiptHtml(data);
+
+    for (const output of [escpos, html]) {
+      expect(output).toContain('SZTORNÓ BIZONYLAT');
+      expect(output).toContain('FF-000123-SZ');
+      expect(output).toContain('Sztornózó Pénztáros');
+      expect(output).toContain('2026. 07. 18.');
+      expect(output).toContain('11:30:00');
+      expect(output).toContain('Küldői sztornó átvétel előtt');
+      expect(output).toContain('Átadó');
+      expect(output).toContain('Átvevő');
+    }
+  });
+
   it('fejléc-javítás FR-6: átvételi bizonylaton a nyilatkozat UTÁN következnek az Átadó/Átvevő aláírás sorok', () => {
     const content = generateReceiptContent({
       ...baseData,

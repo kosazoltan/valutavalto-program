@@ -1,6 +1,8 @@
 import type {
   PendingHandoverOperationInput,
   PendingConversionInputV2,
+  PendingShipmentReceiptInput,
+  PendingShipmentReceiptRow,
   PendingStornoInput,
   PendingTransactionInputV2,
   PendingTransferStornoInput,
@@ -337,6 +339,9 @@ export interface ElectronAPI {
   >
   /** Offline átadás-átvétel SZTORNÓ (internetkimaradáskor): a backend fordítja vissza a készletet szinkronkor. */
   savePendingTransferStorno(payload: PendingTransferStornoInput): Promise<number>
+  /** FKH-018: Shipment átvételi szándék tartós offline outboxba írása. */
+  queueShipmentReceipt(payload: PendingShipmentReceiptInput): Promise<number>
+  getPendingShipmentReceipts(): Promise<PendingShipmentReceiptRow[]>
   /** FS-C: körlevél-válasz offline rögzítése — a sync-engine küldi fel. */
   savePendingCircularReply?(payload: { circularId: number; replyText: string }): Promise<number>
   getPendingTransferStornos(): Promise<

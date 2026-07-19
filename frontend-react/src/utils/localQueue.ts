@@ -564,6 +564,79 @@ export async function queueOfflineTransferStorno(
   return true
 }
 
+/** FKH-018: szerveroldali Shipment meglévő állapotának offline átvételi szándéka. */
+export async function queueOfflineShipmentReceipt(
+  shipmentId: string,
+  requestNumber: string | null,
+  branchId: string,
+  workerId: number,
+  idempotencyKey: string,
+): Promise<boolean> {
+  const electronAPI = getElectronAPI()
+  if (!electronAPI?.queueShipmentReceipt) return false
+  await electronAPI.queueShipmentReceipt({
+    shipmentId,
+    requestNumber,
+    branchId,
+    workerId,
+    idempotencyKey,
+  })
+  return true
+}
+
+export interface LocalShipmentReceiptIntent {
+  shipmentId: string
+  requestNumber: string
+  branchId: string
+  workerId: number
+  createdAt: string
+}
+
+export interface LocalShipmentReceiptOutboxState {
+  pending: LocalShipmentReceiptIntent[]
+  issues: Array<{ requestNumber: string; message: string }>
+}
+
+/**
+ * A teljes, tenant-szűrt outbox állapot egy IPC-olvasással. A pending sorok nem csak ID-ként
+ * térnek vissza: így renderer-újraindítás és REST-kiesés után is megjeleníthető a tartós szándék.
+ */
+export async function getShipmentReceiptOutboxState(): Promise<LocalShipmentReceiptOutboxState> {
+  const electronAPI = getElectronAPI()
+  if (!electronAPI?.getPendingShipmentReceipts) return { pending: [], issues: [] }
+  const state = await electronAPI.getPendingShipmentReceipts()
+  return {
+    pending: state
+      .filter((row) => row.synced === 0)
+      .map((row) => ({
+        shipmentId: row.shipment_id,
+        requestNumber: row.request_number || row.shipment_id,
+        branchId: row.branch_id,
+        workerId: row.worker_id,
+        createdAt: row.created_at,
+      })),
+    issues: state
+      .filter((row) => row.synced !== 0 && Boolean(row.sync_error))
+      .map((row) => ({
+        requestNumber: row.request_number || row.shipment_id,
+        message: row.sync_error || 'Az offline Shipment-átvétel sikertelen.',
+      })),
+  }
+}
+
+/** A tartós outboxban még nyugtázatlan Shipment-azonosítók a "szinkronra vár" UI-hoz. */
+export async function getQueuedShipmentReceiptIds(): Promise<Set<string>> {
+  const state = await getShipmentReceiptOutboxState()
+  return new Set(state.pending.map((row) => row.shipmentId))
+}
+
+/** Tartós, terminális Shipment-átvételi hibák az operátori felülethez. */
+export async function getShipmentReceiptIssues(): Promise<
+  Array<{ requestNumber: string; message: string }>
+> {
+  return (await getShipmentReceiptOutboxState()).issues
+}
+
 export async function getLocalPendingBankTransactions(): Promise<BankTransaction[]> {
   try {
     const electronAPI = getElectronAPI()

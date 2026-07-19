@@ -35,15 +35,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * HOLDOUT H1 (a coder NEM látta) — a fee-jel a shipment_handling_fee SOR, NEM a "KK" címke.
- *
- * <p>Anti-spoof: egy "ügyes" implementáció a {@code serialPrefix == "KK"} rövidítéssel is zöldre
- * vihetné a publikus terv tesztjeit (azok mindig konzisztens fixture-t adnak). Ez a próba
- * szétválasztja a két jelet: a KK-prefix ÖNMAGÁBAN nem nyithatja ki a fee-ágat, és a fee-ág
- * KIZÁRÓLAG a fee-sor létén (isHandlingFeeShipment) múlik.
- *
- * <p>Ha ez bukik: a coder string-konvencióra épített auth-döntést (terv B-alternatíva, ELVETVE) →
- * gyökérok-hiba, a kódot kell javítani, nem a próbát.
+ * FKH-018 holdout: a deprecated approve minden Shipmentnél ugyanazt a sender-only guardot
+ * használja. Sem a {@code KK} prefix, sem a kezelési díj sor léte nem nyithat külön receiver/
+ * négy-szem jóváhagyási ágat; a cél- vagy null branch tiltott, a küldő branch kompatibilisen él.
  */
 class ShipmentApproveRbacHoldoutTest {
 
@@ -57,6 +51,7 @@ class ShipmentApproveRbacHoldoutTest {
     @Mock private TransferSerialSequenceService transferSerialSequenceService;
     @Mock private AuditLogService auditLogService;
     @Mock private ShipmentHandlingFeeSyncService handlingFeeSyncService;
+    @Mock private AccessScopeService accessScopeService;
 
     private AutoCloseable mocks;
 
@@ -81,7 +76,8 @@ class ShipmentApproveRbacHoldoutTest {
                 transferSerialSequenceService,
                 realStockBookingService,
                 handlingFeeSyncService,
-                org.mockito.Mockito.mock(AccessScopeService.class));
+                accessScopeService,
+                auditLogService);
     }
 
     private ShipmentRequest submittedShipment(UUID shipmentId, UUID companyId, String serialPrefix) {
@@ -110,12 +106,12 @@ class ShipmentApproveRbacHoldoutTest {
     void kkPrefixWithoutFeeRow_takesFromOnlyPath_VVAUTH002_notFeePath() {
         UUID companyId = UUID.randomUUID();
         UUID shipmentId = UUID.randomUUID();
-        // "KK" prefix, DE nincs fee-sor: isHandlingFeeShipment == false → from-only ág kell.
+        // "KK" prefix önmagában sem nyithat receiver approve ágat.
         ShipmentRequest sr = submittedShipment(shipmentId, companyId, "KK");
         sr.setRequestedById(77L);
-        when(repository.findById(shipmentId)).thenReturn(Optional.of(sr));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(Optional.of(sr));
         ShipmentService svc = serviceWithRealStockBookingService();
-        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(false);
+
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
@@ -130,28 +126,30 @@ class ShipmentApproveRbacHoldoutTest {
         assertThat(sr.getStatus()).isEqualTo(ShipmentRequestStatus.SUBMITTED);
         verify(repository, never()).save(any());
         verify(handlingFeeSyncService, never()).syncFromShipment(any());
+        verify(handlingFeeSyncService, never()).isHandlingFeeShipment(any());
     }
 
     @Test
-    void feeRowWithoutKkPrefix_takesFeePath_approvedForToBranchNonRequester() {
+    void feeRowWithoutKkPrefix_usesSameDeprecatedSenderGuardAsEveryShipment() {
         UUID companyId = UUID.randomUUID();
         UUID shipmentId = UUID.randomUUID();
-        // NINCS "KK" prefix (sőt null), DE VAN fee-sor: a döntés kizárólag a fee-jelen múlik.
+        // NINCS "KK" prefix (sőt null), DE VAN fee-sor: FKH-018 után ez sem nyithat
+        // külön négy-szem/receiver approve ágat; a deprecated út sender-only marad.
         ShipmentRequest sr = submittedShipment(shipmentId, companyId, null);
         sr.setRequestedById(77L);
-        when(repository.findById(shipmentId)).thenReturn(Optional.of(sr));
+        when(repository.findByIdAndCompanyIdForUpdate(shipmentId, companyId)).thenReturn(Optional.of(sr));
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         ShipmentService svc = serviceWithRealStockBookingService();
-        when(handlingFeeSyncService.isHandlingFeeShipment(sr)).thenReturn(true);
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
-            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(sr.getToBranchId());
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(sr.getFromBranchId());
             security.when(SecurityUtils::getCurrentWorkerId).thenReturn(88L); // != rögzítő
 
             ShipmentRequest result = svc.approve(shipmentId);
             assertThat(result.getStatus()).isEqualTo(ShipmentRequestStatus.APPROVED);
         }
         verify(handlingFeeSyncService).syncFromShipment(sr);
+        verify(handlingFeeSyncService, never()).isHandlingFeeShipment(any());
     }
 }

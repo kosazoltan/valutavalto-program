@@ -773,8 +773,10 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
 
   it('deliver: a /shipments/{id}/deliver workflow endpointot hivja', async () => {
     mockApi.post.mockResolvedValue({ data: { id: 'shipment-1', status: 'DELIVERED' } })
-    const result = await shipmentRequestApi.deliver('shipment-1')
-    expect(mockApi.post).toHaveBeenCalledWith('/shipments/shipment-1/deliver')
+    const result = await shipmentRequestApi.deliver('shipment-1', 'stable-receipt-key')
+    expect(mockApi.post).toHaveBeenCalledWith('/shipments/shipment-1/deliver', null, {
+      headers: { 'Idempotency-Key': 'stable-receipt-key' },
+    })
     expect(result.requestStatus).toBe('DELIVERED')
   })
 

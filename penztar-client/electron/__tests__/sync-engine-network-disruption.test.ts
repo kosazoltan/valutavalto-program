@@ -38,6 +38,7 @@ vi.mock('../sqlite', () => ({
   getPendingCircularReplies: vi.fn(() => []),
   getPendingCollections: vi.fn(() => []),
   getPendingHandoverOperations: vi.fn(() => []),
+  getPendingShipmentReceipts: vi.fn(() => []),
   markTransactionSynced: vi.fn(),
   markConversionSynced: vi.fn(),
   markBankTransactionSynced: vi.fn(),
