@@ -194,8 +194,9 @@ describe('CashierStocksPage (FK-007/008)', () => {
 
   it('FK-1: a pénztárválasztó legördülő a my-territory listából épül (értéktár kiszűrve, scope-helyes)', async () => {
     render(<CashierStocksPage />)
-    await waitFor(() => expect(mocks.branchListMyTerritory).toHaveBeenCalled())
     const select = screen.getByRole('combobox')
+    await within(select).findByRole('option', { name: 'Baja Tesco' })
+    expect(mocks.branchListMyTerritory).toHaveBeenCalled()
     const options = within(select)
       .getAllByRole('option')
       .map((o) => o.textContent)
