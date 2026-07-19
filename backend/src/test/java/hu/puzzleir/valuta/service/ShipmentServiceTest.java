@@ -187,6 +187,104 @@ class ShipmentServiceTest {
     }
 
     @Test
+    void toResponseDtoUsesCurrentTenantBranchContactWithTrimmedAddressAndPhone() {
+        UUID companyId = UUID.randomUUID();
+        UUID vaultBranchId = UUID.randomUUID();
+        Branch vaultBranch = Branch.builder()
+                .id(vaultBranchId)
+                .company(Company.builder().id(companyId).build())
+                .city("  Szeged ")
+                .address(" Kossuth Lajos sugárút 1.  ")
+                .zipCode(" 6720 ")
+                .phone("  +36 62 555 010  ")
+                .build();
+        ShipmentRequest request = ShipmentRequest.builder()
+                .companyId(companyId)
+                .build();
+        when(branchRepository.findByIdAndCompanyId(vaultBranchId, companyId))
+                .thenReturn(java.util.Optional.of(vaultBranch));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(vaultBranchId);
+
+            ShipmentRequestResponseDto response = service.toResponseDto(request);
+
+            assertThat(response.getVaultAddress())
+                    .isEqualTo("Szeged, Kossuth Lajos sugárút 1., 6720");
+            assertThat(response.getVaultPhone()).isEqualTo("+36 62 555 010");
+        }
+        verify(branchRepository).findByIdAndCompanyId(vaultBranchId, companyId);
+    }
+
+    @Test
+    void toResponseDtoWithoutCurrentBranchLeavesVaultContactNull() {
+        UUID companyId = UUID.randomUUID();
+        ShipmentRequest request = ShipmentRequest.builder()
+                .companyId(companyId)
+                .build();
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(null);
+
+            ShipmentRequestResponseDto response = service.toResponseDto(request);
+
+            assertThat(response.getVaultAddress()).isNull();
+            assertThat(response.getVaultPhone()).isNull();
+        }
+        verifyNoInteractions(branchRepository);
+    }
+
+    @Test
+    void toResponseDtoCrossTenantCurrentBranchDoesNotLeakVaultContact() {
+        UUID companyId = UUID.randomUUID();
+        UUID foreignBranchId = UUID.randomUUID();
+        ShipmentRequest request = ShipmentRequest.builder()
+                .companyId(companyId)
+                .build();
+        when(branchRepository.findByIdAndCompanyId(foreignBranchId, companyId))
+                .thenReturn(java.util.Optional.empty());
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(foreignBranchId);
+
+            ShipmentRequestResponseDto response = service.toResponseDto(request);
+
+            assertThat(response.getVaultAddress()).isNull();
+            assertThat(response.getVaultPhone()).isNull();
+        }
+        verify(branchRepository).findByIdAndCompanyId(foreignBranchId, companyId);
+        verify(branchRepository, never()).findById(foreignBranchId);
+    }
+
+    @Test
+    void toResponseDtoBlankCurrentBranchPhoneIsNull() {
+        UUID companyId = UUID.randomUUID();
+        UUID vaultBranchId = UUID.randomUUID();
+        Branch vaultBranch = Branch.builder()
+                .id(vaultBranchId)
+                .company(Company.builder().id(companyId).build())
+                .city("Szeged")
+                .address(" ")
+                .zipCode(" ")
+                .phone(" \t ")
+                .build();
+        ShipmentRequest request = ShipmentRequest.builder()
+                .companyId(companyId)
+                .build();
+        when(branchRepository.findByIdAndCompanyId(vaultBranchId, companyId))
+                .thenReturn(java.util.Optional.of(vaultBranch));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(vaultBranchId);
+
+            ShipmentRequestResponseDto response = service.toResponseDto(request);
+
+            assertThat(response.getVaultAddress()).isEqualTo("Szeged");
+            assertThat(response.getVaultPhone()).isNull();
+        }
+    }
+
+    @Test
     void createRejectsSameSourceAndTargetBranch() {
         ShipmentRequest request = validRequest();
         request.setToBranchId(request.getFromBranchId());

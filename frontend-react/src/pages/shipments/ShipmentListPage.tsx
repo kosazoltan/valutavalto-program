@@ -743,6 +743,12 @@ function buildReprintReceiptData(
   worker: Parameters<typeof getCompanyType>[0],
 ): PrintReceiptData {
   const requestedAt = s.requestedAt || ''
+  const branchLabel = (code?: string, name?: string): string => {
+    const normalizedCode = code?.trim()
+    const normalizedName = name?.trim()
+    if (normalizedCode && normalizedName) return `${normalizedCode} - ${normalizedName}`
+    return normalizedName || normalizedCode || ''
+  }
   const lines = (s.items ?? []).map((i) => ({
     currencyCode: i.currencyCode ?? String(i.currencyId ?? ''),
     amount: Number(i.requestedAmount ?? i.amount ?? 0),
@@ -751,16 +757,24 @@ function buildReprintReceiptData(
     type: 'transfer',
     companyType: getCompanyType(worker),
     receiptNumber: s.requestNumber || s.id,
-    branchCode: s.requestingBranchName || s.sourceBranchName || s.requestingBranchId || '',
+    branchCode: branchLabel(
+      s.fromBranchCode,
+      s.fromBranchName || s.requestingBranchName || s.sourceBranchName,
+    ),
     cashierName: s.requestedByWorkerName || '',
     date: requestedAt.slice(0, 10) || dateOnly(s.requestedDeliveryDate),
     time: requestedAt.length >= 19 ? requestedAt.slice(11, 19) : '',
     deliveryDate: dateOnly(s.requestedDeliveryDate) || undefined,
-    transferTarget: s.targetBranchName || s.targetBranchId || '',
+    transferTarget: branchLabel(s.toBranchCode, s.toBranchName || s.targetBranchName),
+    vaultAddress: s.vaultAddress,
+    vaultPhone: s.vaultPhone,
     transferNote: s.notes || undefined,
     carrierName: s.carrierName || undefined,
     sealNumber: s.sealNumber || undefined,
-    transferDocType: 'handover',
+    transferDocType:
+      s.requestStatus === 'DELIVERED' && worker?.branchId === s.targetBranchId
+        ? 'receipt'
+        : 'handover',
     transferLines: lines.length > 0 ? lines : undefined,
     currencyCode: lines[0]?.currencyCode,
     foreignAmount: lines[0]?.amount,

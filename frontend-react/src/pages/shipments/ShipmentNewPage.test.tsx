@@ -134,6 +134,61 @@ describe('ShipmentNewPage', () => {
     expect(screen.getByText(/BR027 - Szeged Tesco/)).toBeInTheDocument()
   })
 
+  it('a bizonylat fejlécét kizárólag a szerver cím- és telefonadataiból tölti ki', async () => {
+    const user = userEvent.setup()
+    mocks.branchApi.listCashierShipmentTargets.mockResolvedValue([
+      {
+        id: 'BR-A',
+        code: 'EBC',
+        name: 'Erzsébet körút',
+        city: 'Elavult város',
+        address: 'Elavult cím 1.',
+        zipCode: '0000',
+        phone: '00 000 0000',
+        isActive: true,
+      },
+      { id: 'BR-B', code: 'BEL', name: 'Belváros', isActive: true },
+    ])
+    const serverShipment = {
+      id: 'shipment-1',
+      requestNumber: 'FF-000001',
+      fromBranchCode: 'BR075',
+      fromBranchName: 'Szeged Értéktár',
+      toBranchCode: 'BR027',
+      toBranchName: 'Szeged Tesco',
+      requestedByWorkerName: 'Bali Henriett',
+      requestedAt: '2026-06-21T10:00:00',
+      carrierName: "Brink's Hungary Kft.",
+      sealNumber: 'ABC/12-3',
+      vaultAddress: 'Szeged, Hajnóczy u. 57., 6722',
+      vaultPhone: '+36 62 555 010',
+    }
+    mocks.shipmentRequestApi.create.mockResolvedValue(serverShipment)
+    mocks.shipmentRequestApi.submit.mockResolvedValue({
+      ...serverShipment,
+      requestStatus: 'SUBMITTED',
+    })
+
+    render(
+      <MemoryRouter>
+        <ShipmentNewPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(screen.getByLabelText(/Átvevő/i)).not.toBeDisabled())
+    await user.selectOptions(screen.getByLabelText(/Átvevő/i), 'BR-B')
+    await user.selectOptions(screen.getByLabelText(/Valuta/i), '4')
+    await user.type(screen.getByLabelText(/Összeg/i), '1250')
+    await user.type(screen.getByLabelText(/Szállító neve/i), "Brink's Hungary Kft.")
+    await user.type(screen.getByLabelText(/Plombaszám/i), 'ABC/12-3')
+    await user.click(screen.getByRole('button', { name: /Igény beküldése/i }))
+
+    expect(await screen.findByText('Szeged, Hajnóczy u. 57., 6722')).toBeInTheDocument()
+    expect(screen.getByText('Tel: +36 62 555 010')).toBeInTheDocument()
+    expect(screen.queryByText('Elavult város, Elavult cím 1., 0000')).not.toBeInTheDocument()
+    expect(screen.queryByText('Tel: 00 000 0000')).not.toBeInTheDocument()
+  })
+
   it('FK02: hiányzó szállító/plombaszám esetén blokkolja a beküldést és hibát mutat', async () => {
     const user = userEvent.setup()
     render(

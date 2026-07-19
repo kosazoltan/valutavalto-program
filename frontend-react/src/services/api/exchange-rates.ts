@@ -1,4 +1,5 @@
 import { api } from './client'
+import { asArray } from '../../utils/asArray'
 
 // ================== EXCHANGE RATES API ==================
 
@@ -288,13 +289,10 @@ function assertValidCurrencyDenominationUpload(req: CurrencyDenominationImageUpl
 
 export const currencyDenominationImageApi = {
   list: async (currencyId?: number): Promise<CurrencyDenominationImageDto[]> => {
-    const response = await api.get<CurrencyDenominationImageDto[]>(
-      '/currency-denomination-images',
-      {
-        params: currencyId != null ? { currencyId } : {},
-      },
-    )
-    return response.data
+    const response = await api.get<unknown>('/currency-denomination-images', {
+      params: currencyId != null ? { currencyId } : {},
+    })
+    return asArray<CurrencyDenominationImageDto>(response.data)
   },
   upload: async (
     req: CurrencyDenominationImageUploadRequest,

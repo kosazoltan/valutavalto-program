@@ -57,6 +57,11 @@ vi.mock('../../components/electron', () => ({
       receiptNumber?: string
       cashierName?: string
       date?: string
+      branchCode?: string
+      transferTarget?: string
+      vaultAddress?: string
+      vaultPhone?: string
+      transferDocType?: 'handover' | 'receipt'
       isStorno?: boolean
       stornoReason?: string
     } | null
@@ -64,7 +69,12 @@ vi.mock('../../components/electron', () => ({
     isOpen ? (
       <div data-testid="receipt-modal">
         {receiptData?.receiptNumber}|{receiptData?.cashierName}|{receiptData?.date}|
-        {receiptData?.isStorno ? 'SZTORNÓ' : ''}|{receiptData?.stornoReason}
+        {receiptData?.branchCode}|{receiptData?.transferTarget}|{receiptData?.vaultAddress}|
+        {receiptData?.vaultPhone ? `Tel: ${receiptData.vaultPhone}` : ''}|
+        {receiptData?.isStorno ? 'SZTORNÓ' : ''}|{receiptData?.stornoReason}|
+        {receiptData?.transferDocType === 'receipt' && !receiptData?.isStorno
+          ? 'Büntetőjogi felelősségem tudatában, kijelentem'
+          : ''}
       </div>
     ) : null,
 }))
@@ -433,6 +443,87 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
     })
   })
 
+  it('FKH-006: reprintnél a szerver fejlécét és a kód-név iroda-címkéket mutatja UUID nélkül', async () => {
+    const reprintShipment = {
+      ...baseShipment,
+      requestingBranchId: '11111111-1111-1111-1111-111111111111',
+      targetBranchId: '22222222-2222-2222-2222-222222222222',
+      fromBranchCode: 'BR075',
+      fromBranchName: 'Szeged Értéktár',
+      toBranchCode: 'BR027',
+      toBranchName: 'Szeged Tesco',
+      vaultAddress: 'Szeged, Hajnóczy u. 57., 6722',
+      vaultPhone: '+36 62 555 010',
+    }
+    mocks.findByBranch.mockResolvedValue([reprintShipment])
+    mocks.get.mockResolvedValue(reprintShipment)
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByTestId('shipment-tab-past'))
+    await user.click(await screen.findByTestId(`calendar-day-${TODAY}-active`))
+    await user.click(await screen.findByTitle('shipments.ujranyomtatas'))
+
+    const receipt = await screen.findByTestId('receipt-modal')
+    expect(receipt).toHaveTextContent('Szeged, Hajnóczy u. 57., 6722')
+    expect(receipt).toHaveTextContent('Tel: +36 62 555 010')
+    expect(receipt).toHaveTextContent('BR075 - Szeged Értéktár')
+    expect(receipt).toHaveTextContent('BR027 - Szeged Tesco')
+    expect(receipt).not.toHaveTextContent('11111111-1111-1111-1111-111111111111')
+    expect(receipt).not.toHaveTextContent('22222222-2222-2222-2222-222222222222')
+  })
+
+  it('FKH-006: célfióki DELIVERED reprint átvételi nyilatkozatot mutat', async () => {
+    const deliveredToCurrentBranch = {
+      ...baseShipment,
+      requestStatus: 'DELIVERED',
+      targetBranchId: 'branch-1',
+    }
+    mocks.findByBranch.mockResolvedValue([deliveredToCurrentBranch])
+    mocks.get.mockResolvedValue(deliveredToCurrentBranch)
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByTestId('shipment-tab-past'))
+    await user.click(await screen.findByTestId(`calendar-day-${TODAY}-active`))
+    await user.click(await screen.findByTitle('shipments.ujranyomtatas'))
+
+    expect(await screen.findByTestId('receipt-modal')).toHaveTextContent(
+      'Büntetőjogi felelősségem tudatában, kijelentem',
+    )
+  })
+
+  it.each([
+    ['küldő oldali DELIVERED', { requestStatus: 'DELIVERED', targetBranchId: 'branch-2' }],
+    ['célfióki nem kézbesített', { requestStatus: 'APPROVED', targetBranchId: 'branch-1' }],
+  ])('FKH-006: %s reprint nem mutat átvételi nyilatkozatot', async (_case, overrides) => {
+    const shipment = { ...baseShipment, ...overrides }
+    mocks.findByBranch.mockResolvedValue([shipment])
+    mocks.get.mockResolvedValue(shipment)
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByTestId('shipment-tab-past'))
+    await user.click(await screen.findByTestId(`calendar-day-${TODAY}-active`))
+    await user.click(await screen.findByTitle('shipments.ujranyomtatas'))
+
+    expect(await screen.findByTestId('receipt-modal')).not.toHaveTextContent(
+      'Büntetőjogi felelősségem tudatában, kijelentem',
+    )
+  })
+
   it('FKH-018: a küldő a korábbi fülön is sztornózhat át nem vett Shipmentet, majd irattári bizonylatot kap', async () => {
     const historical = {
       ...baseShipment,
@@ -492,6 +583,8 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
       requestStatus: 'CANCELLED',
       cancelledByWorkerName: 'Archív Sztornózó',
       cancelledAt: '2020-01-15T14:20:30',
+      vaultAddress: 'Szeged, Hajnóczy u. 57., 6722',
+      vaultPhone: '+36 62 555 010',
     }
     mocks.findByBranch.mockResolvedValue([cancelled])
     mocks.get.mockResolvedValue(cancelled)
@@ -509,6 +602,11 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
     expect(await screen.findByTestId('receipt-modal')).toHaveTextContent('SH-001-SZ')
     expect(screen.getByTestId('receipt-modal')).toHaveTextContent('Archív Sztornózó')
     expect(screen.getByTestId('receipt-modal')).toHaveTextContent('SZTORNÓ')
+    expect(screen.getByTestId('receipt-modal')).toHaveTextContent('Szeged, Hajnóczy u. 57., 6722')
+    expect(screen.getByTestId('receipt-modal')).toHaveTextContent('Tel: +36 62 555 010')
+    expect(screen.getByTestId('receipt-modal')).not.toHaveTextContent(
+      'Büntetőjogi felelősségem tudatában, kijelentem',
+    )
   })
 
   it('FKH-018: auditadat nélkül nem fabrikál bizonylatot, de a sikeres sztornót sikeresnek jelzi', async () => {

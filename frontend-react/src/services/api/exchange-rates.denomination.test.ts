@@ -48,6 +48,14 @@ describe('currencyDenominationImageApi', () => {
     expect(result).toEqual([dto])
   })
 
+  it('list_returns_empty_array_for_malformed_non_array_payload', async () => {
+    mockApi.get.mockResolvedValue({ data: {} })
+
+    const result = await currencyDenominationImageApi.list(7)
+
+    expect(result).toEqual([])
+  })
+
   it('list_no_currencyId_omits_param', async () => {
     mockApi.get.mockResolvedValue({ data: [dto] })
     await currencyDenominationImageApi.list()
