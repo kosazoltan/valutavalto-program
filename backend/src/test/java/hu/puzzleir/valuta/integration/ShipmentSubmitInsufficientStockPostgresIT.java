@@ -25,6 +25,7 @@ import hu.puzzleir.valuta.service.ExchangeRateService;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeSyncService;
 import hu.puzzleir.valuta.service.ShipmentService;
 import hu.puzzleir.valuta.service.ShipmentStockBookingService;
+import hu.puzzleir.valuta.service.SystemParameterService;
 import hu.puzzleir.valuta.service.TransferSerialSequenceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -106,6 +107,7 @@ class ShipmentSubmitInsufficientStockPostgresIT {
     @MockitoBean private TransferSerialSequenceService transferSerialSequenceService;
     @MockitoBean private ShipmentHandlingFeeSyncService handlingFeeSyncService;
     @MockitoBean private AccessScopeService accessScopeService;
+    @MockitoBean private SystemParameterService systemParameterService;
 
     private Company company;
     private Branch fromBranch;
