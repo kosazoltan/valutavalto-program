@@ -4,7 +4,7 @@ import { builtinModules } from 'node:module';
 import path from 'node:path';
 import fs from 'node:fs';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { createElectronDevLaunchArgs, createElectronDevServerConfig } from './vite-watch-config';
+import { createElectronDevServerConfig, spawnElectronDevProcess } from './vite-watch-config';
 
 // All Node.js builtins + Electron must be external for the main process.
 const nodeExternals = [
@@ -111,14 +111,13 @@ function launchElectronIfReady() {
   const devUserData = path.resolve('.dev-user-data');
   fs.mkdirSync(devUserData, { recursive: true });
 
-  electronDevProcess = spawn(electronExe, createElectronDevLaunchArgs(tmpAppDir), {
-    stdio: 'inherit',
+  electronDevProcess = spawnElectronDevProcess({
+    electronExe,
+    tmpAppDir,
+    devUserData,
     cwd: process.cwd(),
-    env: {
-      ...process.env,
-      ELECTRON_RENDERER_URL: 'http://127.0.0.1:3000',
-      ELECTRON_DEV_USER_DATA: devUserData,
-    },
+    env: process.env,
+    spawnFn: spawn,
   });
   electronDevProcess.once('exit', () => {
     try {
