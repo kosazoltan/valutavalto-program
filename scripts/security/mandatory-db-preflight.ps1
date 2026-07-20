@@ -17,6 +17,19 @@ function Ensure-PsqlAvailable {
         return $true
     }
 
+    $repoBinCandidates = @(
+        (Join-Path $RepoRoot 'installer\build\downloads\postgresql-binaries\pgsql\bin'),
+        'C:\ProgramData\BestChange\pgsql\bin'
+    )
+    foreach ($binPath in $repoBinCandidates) {
+        if (Test-Path -LiteralPath (Join-Path $binPath 'psql.exe')) {
+            $env:Path = "$env:Path;$binPath"
+            if (Get-Command psql -ErrorAction SilentlyContinue) {
+                return $true
+            }
+        }
+    }
+
     $postgresRoot = 'C:\Program Files\PostgreSQL'
     if (Test-Path -LiteralPath $postgresRoot) {
         $binCandidates = Get-ChildItem -LiteralPath $postgresRoot -Directory -ErrorAction SilentlyContinue |

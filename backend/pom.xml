@@ -28,8 +28,10 @@
         <!-- CVE-2026-41842/41850/41851 fix: Spring Framework 7.0.7 -> 7.0.8
              (same 7.0.x line; Spring Framework 7.0.8 was published as the security patch release). -->
         <spring-framework.version>7.0.8</spring-framework.version>
-        <!-- CVE-2026-22746/22748 fix: Spring Security 6.5.9 -> 6.5.10 -->
-        <spring-security.version>6.5.10</spring-security.version>
+        <!-- CVE-2026-22746/22748/47838 fix: Spring Security 6.5.9 -> 6.5.11 -->
+        <spring-security.version>6.5.11</spring-security.version>
+        <!-- CVE-2026-54515 fix: Jackson 2 BOM 2.21.4 -> 2.21.5 -->
+        <jackson-2-bom.version>2.21.5</jackson-2-bom.version>
         <!-- CVE-2026-34478/34480/34481 fix: log4j explicit override 2.24.3 -> 2.25.4 -->
         <log4j2.version>2.25.4</log4j2.version>
         <!-- CVE-2026-33186 fix: force patched grpc-api over Google client transitive -->

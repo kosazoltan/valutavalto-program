@@ -180,6 +180,77 @@ function Get-RgExcludeArgs {
     ) -join ' '
 }
 
+function Test-ContainsNonAscii {
+    param([string]$Value)
+
+    if ([string]::IsNullOrEmpty($Value)) {
+        return $false
+    }
+
+    return $Value -match '[^\u0000-\u007F]'
+}
+
+function Get-AsciiCompatibleHomePath {
+    $candidates = @()
+
+    if (-not [string]::IsNullOrWhiteSpace($env:VALUTAVALTO_ASCII_HOME)) {
+        $candidates += $env:VALUTAVALTO_ASCII_HOME
+    }
+
+    $candidates += "C:\Valutavalto\home"
+
+    foreach ($candidate in $candidates) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path -LiteralPath $candidate)) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
+function Get-PreferredLocalAppDataPath {
+    if (-not [string]::IsNullOrWhiteSpace($env:VALUTAVALTO_ASCII_LOCALAPPDATA)) {
+        return $env:VALUTAVALTO_ASCII_LOCALAPPDATA
+    }
+
+    $asciiHome = Get-AsciiCompatibleHomePath
+    if ($asciiHome) {
+        $asciiLocalAppData = Join-Path $asciiHome "AppData\Local"
+        if (Test-Path -LiteralPath $asciiLocalAppData) {
+            return $asciiLocalAppData
+        }
+    }
+
+    return $env:LOCALAPPDATA
+}
+
+function Test-PowerShellProbeCommand {
+    param(
+        [string]$WorkingDir,
+        [string]$ProbeCommand
+    )
+
+    $probeScript = Join-Path ([System.IO.Path]::GetTempPath()) ("security-gate-probe-{0}.ps1" -f ([guid]::NewGuid()))
+    $escapedWorkingDir = $WorkingDir.Replace("'", "''")
+
+    try {
+        @(
+            '$ErrorActionPreference = ''Stop'''
+            "Set-Location -LiteralPath '$escapedWorkingDir'"
+            $ProbeCommand
+        ) -join "`r`n" | Set-Content -LiteralPath $probeScript -Encoding UTF8
+
+        & pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $probeScript 2>&1 | Out-Null
+        return ($null -eq $LASTEXITCODE -or $LASTEXITCODE -eq 0)
+    }
+    catch {
+        return $false
+    }
+    finally {
+        Remove-TempFileSafe -PathValue $probeScript
+    }
+}
+
 function Invoke-CheckWithTimeout {
     param(
         [string]$Name,
@@ -205,11 +276,18 @@ function Invoke-CheckWithTimeout {
     $stderr = ""
     $stdoutTemp = [System.IO.Path]::GetTempFileName()
     $stderrTemp = [System.IO.Path]::GetTempFileName()
+    $commandScript = Join-Path ([System.IO.Path]::GetTempPath()) ("security-gate-command-{0}.cmd" -f ([guid]::NewGuid()))
 
     try {
+        @(
+            '@echo off'
+            $Command
+            'exit /b %errorlevel%'
+        ) -join "`r`n" | Set-Content -LiteralPath $commandScript -Encoding ASCII
+
         $psi = New-Object System.Diagnostics.ProcessStartInfo
         $psi.FileName = "cmd.exe"
-        $psi.Arguments = ('/d /s /c "{0} 1>""{1}"" 2>""{2}"""' -f $Command, $stdoutTemp, $stderrTemp)
+        $psi.Arguments = ('/d /s /c ""{0}" 1>"{1}" 2>"{2}""' -f $commandScript, $stdoutTemp, $stderrTemp)
         $psi.WorkingDirectory = $WorkingDir
         $psi.UseShellExecute = $false
         $psi.CreateNoWindow = $true
@@ -277,6 +355,7 @@ function Invoke-CheckWithTimeout {
 
         Remove-TempFileSafe -PathValue $stdoutTemp
         Remove-TempFileSafe -PathValue $stderrTemp
+        Remove-TempFileSafe -PathValue $commandScript
     }
 
     return [PSCustomObject]$result
@@ -297,13 +376,7 @@ function Invoke-OptionalCheckWithTimeout {
 
     $probeFailed = $false
     try {
-        Push-Location $WorkingDir
-        try {
-            Invoke-Expression $ProbeCommand 2>&1 | Out-Null
-        }
-        finally {
-            Pop-Location
-        }
+        $probeFailed = -not (Test-PowerShellProbeCommand -WorkingDir $WorkingDir -ProbeCommand $ProbeCommand)
     }
     catch {
         $probeFailed = $true
@@ -331,9 +404,15 @@ function Invoke-OptionalCheckWithTimeout {
 }
 
 function Resolve-PythonAuditInterpreter {
-    $defaultVenvRoot = Join-Path $env:LOCALAPPDATA "Valutavalto\SecurityGate\python-audit"
+    $preferredLocalAppData = Get-PreferredLocalAppDataPath
+    $defaultVenvRoot = Join-Path $preferredLocalAppData "Valutavalto\SecurityGate\python-audit"
     $venvRoot = if ([string]::IsNullOrWhiteSpace($env:SECURITY_GATE_PYTHON_AUDIT_VENV)) {
-        $defaultVenvRoot
+        if (Test-ContainsNonAscii $defaultVenvRoot) {
+            "C:\Valutavalto\SecurityGate\python-audit"
+        }
+        else {
+            $defaultVenvRoot
+        }
     }
     else {
         $env:SECURITY_GATE_PYTHON_AUDIT_VENV
@@ -364,9 +443,15 @@ function Resolve-OsvScannerPath {
         throw "OSV_SCANNER_PATH does not exist: $($env:OSV_SCANNER_PATH)"
     }
 
-    $localOsvPath = Join-Path $env:LOCALAPPDATA "Valutavalto\Tools\osv-scanner\v2.4.0\osv-scanner_windows_arm64.exe"
-    if (Test-Path -LiteralPath $localOsvPath) {
-        return $localOsvPath
+    $preferredLocalAppData = Get-PreferredLocalAppDataPath
+    $localOsvCandidates = @(
+        (Join-Path $preferredLocalAppData "Valutavalto\Tools\osv-scanner\v2.4.0\osv-scanner_windows_amd64.exe"),
+        (Join-Path $preferredLocalAppData "Valutavalto\Tools\osv-scanner\v2.4.0\osv-scanner_windows_arm64.exe")
+    )
+    foreach ($localOsvPath in $localOsvCandidates) {
+        if (Test-Path -LiteralPath $localOsvPath) {
+            return $localOsvPath
+        }
     }
 
     $command = Get-Command "osv-scanner" -ErrorAction SilentlyContinue
@@ -533,11 +618,10 @@ if ($hasPython) {
         -OutputFile (Join-Path $reportDir "python_pip_audit.txt")
     $results.Add($pythonPipAuditResult)
 
-    $pythonSafetyResult = Invoke-OptionalCheckWithTimeout `
+    $pythonSafetyResult = Invoke-CheckWithTimeout `
         -Name "python_safety_check" `
         -WorkingDir $RepoRoot `
         -Command ('set PYTHONIOENCODING=utf-8 && "{0}" -m safety check -r "{1}" --json' -f $pythonAuditExeForCmd, $pythonDependencyFileForCmd) `
-        -ProbeCommand ('& "{0}" -m safety --version' -f $pythonAuditExeForCmd) `
         -TimeoutSeconds $ScannerTimeoutSec `
         -DisplayCommand ('python -m safety check -r "{0}" --json' -f $pythonDependencyFileForCmd) `
         -OutputFile (Join-Path $reportDir "python_safety_check.txt")
