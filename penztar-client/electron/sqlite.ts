@@ -200,7 +200,7 @@ export function resolveDatabasePath(
     }
 
     const systemDriveMatch = /^([A-Za-z]):[\\/]?$/u.exec(environment.SystemDrive?.trim() ?? '');
-    const fallbackWindowsRoot = path.join(`${systemDriveMatch?.[1] ?? 'C'}:${path.sep}`, 'Windows');
+    const fallbackWindowsRoot = path.resolve(`${systemDriveMatch?.[1] ?? 'C'}:\\Windows`);
     const protectedRoots = [
       environment.SystemRoot,
       fallbackWindowsRoot,
@@ -216,7 +216,7 @@ export function resolveDatabasePath(
       .map((root) => path.resolve(root));
 
     const isProtectedPath = protectedRoots.some((protectedRoot) => {
-      const relativePath = path.relative(protectedRoot, resolvedDir);
+      const relativePath = path.relative(protectedRoot.toLowerCase(), resolvedDir.toLowerCase());
       return (
         relativePath === '' ||
         (relativePath !== '..' &&
