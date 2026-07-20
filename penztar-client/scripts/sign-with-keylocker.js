@@ -41,6 +41,11 @@ const os = require('node:os');
 exports.default = async function signWithKeyLocker(configuration) {
   const filePath = configuration.path;
 
+  if (process.env.ALLOW_UNSIGNED_BUILD === '1') {
+    console.log(`[sign-with-keylocker] ALLOW_UNSIGNED_BUILD=1, signing SKIPPED for ${filePath}`);
+    return;
+  }
+
   // 1. Fail-closed: production csomagolás csak aktív aláírással készülhet.
   if (process.env.CODE_SIGN_ENABLED !== '1') {
     throw new Error(

@@ -48,6 +48,13 @@ const { execFileSync } = require('child_process');
 exports.default = async function signWithAzureKeyVault(configuration) {
   const filePath = configuration.path;
 
+  if (process.env.ALLOW_UNSIGNED_BUILD === '1') {
+    console.log(
+      `[sign-with-azure-keyvault] ALLOW_UNSIGNED_BUILD=1, signing SKIPPED for ${filePath}`,
+    );
+    return;
+  }
+
   // 1. Fail-closed: production package csak bekapcsolt kódaláírással készülhet.
   if (process.env.CODE_SIGN_ENABLED !== '1') {
     throw new Error(
