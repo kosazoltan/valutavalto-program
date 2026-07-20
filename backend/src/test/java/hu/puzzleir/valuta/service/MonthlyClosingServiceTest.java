@@ -55,6 +55,9 @@ class MonthlyClosingServiceTest {
     private BranchRepository branchRepository;
 
     @Mock
+    private MonthlyClosingAccessGuard monthlyClosingAccessGuard;
+
+    @Mock
     private WorkerRepository workerRepository;
 
     @Mock
@@ -83,6 +86,11 @@ class MonthlyClosingServiceTest {
         TestingAuthenticationToken auth = new TestingAuthenticationToken("test", "pass", "ROLE_ADMIN");
         auth.setDetails(details);
         SecurityContextHolder.getContext().setAuthentication(auth);
+
+        Branch branch = new Branch();
+        branch.setId(BRANCH_ID);
+        branch.setCompany(Company.builder().id(COMPANY_ID).build());
+        lenient().when(monthlyClosingAccessGuard.requireAccessibleBranch(BRANCH_ID)).thenReturn(branch);
     }
 
     // ============ 1. OPEN SESSION BLOCK ============

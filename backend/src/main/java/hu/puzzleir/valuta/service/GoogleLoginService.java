@@ -73,6 +73,7 @@ public class GoogleLoginService {
     // FK-ÉRTÉKTÁR (V285): a kétlépcsős belépés jelszó-fázisához — lockout-újrahasználat + bcrypt match.
     private final WorkerService workerService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private final SessionBranchResolver sessionBranchResolver;
 
     @Value("${google.login.bind-sub-on-first-login:true}")
     private boolean bindSubOnFirstLogin;
@@ -336,24 +337,10 @@ public class GoogleLoginService {
                 ? AppModeRoleConstants.selectableRolesForAppMode(roleCodes, appMode)
                 : roleCodes;
 
-        // Codex P1 PR #361 follow-up: legacy worker eseten a branch null lehet → ceg-szintu fallback.
-        Branch sessionBranch = worker.getBranch();
-        if (sessionBranch == null) {
-            sessionBranch = branchRepository.findByCompanyIdAndIsActiveTrue(worker.getCompany().getId())
-                    .stream()
-                    .findFirst()
-                    .orElseGet(() -> branchRepository.findByCompanyId(worker.getCompany().getId())
-                            .stream().findFirst().orElse(null));
-            if (sessionBranch == null) {
-                log.error("GOOGLE_LOGIN_NO_AVAILABLE_BRANCH workerCode={} companyId={}",
-                        worker.getCode(), worker.getCompany().getId());
-                throw new AuthenticationException("Nincs elerheto iroda a bejelentkezeshez!");
-            }
-            worker.setBranch(sessionBranch);
-        }
+        Branch sessionBranch = sessionBranchResolver.resolveSessionBranch(worker, activeRole);
 
         // 6. JWT + Session
-        String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
+        String token = jwtTokenProvider.generateToken(worker, sessionBranch, activeRole, permissions);
         String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
         String clientIp = clientIpResolver.resolveClientIp(httpRequest);
 
@@ -387,7 +374,7 @@ public class GoogleLoginService {
 
         return LoginResponseDto.builder()
                 .token(token)
-                .worker(WorkerDto.from(worker))
+                .worker(WorkerDto.from(worker, sessionBranch))
                 .expiresIn(expiresInMs)
                 .expiresAt(expiresAt.toString())
                 .roles(responseRoleCodes)

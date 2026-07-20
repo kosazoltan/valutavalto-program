@@ -16,9 +16,10 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
 import { useAuthStore } from '../../stores/authStore'
-import { eveningClosingApi } from '../../services/api/index'
+import { closingWizardApi, eveningClosingApi } from '../../services/api/index'
 import { useTranslation } from 'react-i18next'
 import VaultClosingChecklistPanel from '../../components/closing/VaultClosingChecklistPanel'
+import type { ClosingWizardStatus } from '../../services/api/transactions'
 
 interface EveningClosingPreview {
   branchId: string
@@ -71,6 +72,7 @@ export default function EveningClosingPage() {
   const [reportLoading, setReportLoading] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [closingStatus, setClosingStatus] = useState<ClosingWizardStatus | null>(null)
 
   const loadPreview = useCallback(async () => {
     if (!branchId) {
@@ -80,12 +82,17 @@ export default function EveningClosingPage() {
     try {
       setLoading(true)
       setError(null)
-      const data = await eveningClosingApi.preview(branchId, date)
+      const [data, status] = await Promise.all([
+        eveningClosingApi.preview(branchId, date),
+        closingWizardApi.getStatus(date).catch(() => null),
+      ])
       setPreview(data as EveningClosingPreview)
+      setClosingStatus(status)
     } catch (err) {
       logger.error('EveningClosingPage', 'Előnézet hiba:', err)
       setError(getErrorMessage(err))
       setPreview(null)
+      setClosingStatus(null)
     } finally {
       setLoading(false)
     }
@@ -112,6 +119,10 @@ export default function EveningClosingPage() {
 
   const handleSend = async () => {
     if (!branchId || !preview) return
+    if (closingStatus?.vaultContext && !closingStatus.exactMatch) {
+      toast.warning('Címletezés szükséges', closingStatus.message)
+      return
+    }
     if (
       preview.warnings.length > 0 &&
       !confirm(`${preview.warnings.length} figyelmeztetés van. Biztosan elküldi az esti zárást?`)
@@ -151,7 +162,11 @@ export default function EveningClosingPage() {
             </button>
           )}
           {preview && preview.status !== 'SENT' && preview.status !== 'CONFIRMED' && (
-            <button onClick={handleSend} disabled={sending} className="form-button-primary">
+            <button
+              onClick={handleSend}
+              disabled={sending || Boolean(closingStatus?.vaultContext && !closingStatus.exactMatch)}
+              className="form-button-primary"
+            >
               <Send size={16} /> {sending ? 'Küldés...' : 'Esti zárás küldése'}
             </button>
           )}
@@ -186,6 +201,12 @@ export default function EveningClosingPage() {
 
       {/* FR-ZARUI-16..26: Értéktári zárás-előtti ellenőrzőlista — kísérő kontroll, nem blokkoló gate */}
       <VaultClosingChecklistPanel date={date} />
+
+      {closingStatus?.vaultContext && !closingStatus.exactMatch && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded">
+          {closingStatus.message}
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">

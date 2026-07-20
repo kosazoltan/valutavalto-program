@@ -17,6 +17,7 @@ import hu.puzzleir.valuta.repository.WorkerRoleDefinitionRepository;
 import hu.puzzleir.valuta.repository.WorkerRolePermissionRepository;
 import hu.puzzleir.valuta.repository.WorkerSessionRepository;
 import hu.puzzleir.valuta.security.JwtTokenProvider;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,8 +55,23 @@ class WorkerServiceLoginTest {
     @Mock private TokenBlacklistService tokenBlacklistService;
     @Mock private WorkerRoleService workerRoleService;
     @Mock private TotpService totpService;
+    @Mock private SessionBranchResolver sessionBranchResolver;
     @Mock private WorkerBranchAccessService workerBranchAccessService; // v2.4.5 B6
     @InjectMocks private WorkerService workerService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(sessionBranchResolver.resolveSessionBranch(any(Worker.class), any()))
+                .thenAnswer(inv -> {
+                    Worker worker = inv.getArgument(0);
+                    if (worker.getBranch() != null) {
+                        return worker.getBranch();
+                    }
+                    return branchRepository.findByCompanyIdAndIsActiveTrue(worker.getCompany().getId()).stream()
+                            .findFirst()
+                            .orElse(null);
+                });
+    }
 
     @Test
     @DisplayName("T07 security fix: nem létező companyCode → AuthenticationException, nem fallback")
@@ -332,7 +348,7 @@ class WorkerServiceLoginTest {
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("szerepkör");
 
-        verify(jwtTokenProvider, never()).generateToken(any(Worker.class), any(), any());
+        verify(jwtTokenProvider, never()).generateToken(any(Worker.class), any(), any(), any());
         verify(workerSessionRepository, never()).save(any());
     }
 
@@ -348,7 +364,7 @@ class WorkerServiceLoginTest {
         when(passwordEncoder.matches("1234", "hash")).thenReturn(true);
         when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of());
         when(branchRepository.findByCompanyIdAndIsActiveTrue(company.getId())).thenReturn(List.of(branch));
-        when(jwtTokenProvider.generateToken(worker, null, List.of())).thenReturn("jwt-token");
+        when(jwtTokenProvider.generateToken(worker, branch, null, List.of())).thenReturn("jwt-token");
         when(jwtTokenProvider.getTokenIdFromToken("jwt-token")).thenReturn("token-id");
 
         LoginResponseDto response = workerService.login(legacyLoginRequest("penztar"), "127.0.0.1", "test");
@@ -356,7 +372,6 @@ class WorkerServiceLoginTest {
         assertThat(response.getActiveRole()).isNull();
         assertThat(response.getValidAppModes()).containsExactly("penztar");
         assertThat(response.getWorker().getBranchCode()).isEqualTo("TISZA");
-        assertThat(worker.getBranch()).isEqualTo(branch);
         verify(workerSessionRepository).save(any());
         verify(workerRepository).save(worker);
     }
@@ -378,7 +393,7 @@ class WorkerServiceLoginTest {
                 roleAssignment(1, "penztar"),
                 roleAssignment(2, "ertektar")));
         when(workerRolePermissionRepository.findByRoleDefIdWithPermission(1)).thenReturn(List.of());
-        when(jwtTokenProvider.generateToken(worker, "penztar", List.of())).thenReturn("jwt-token");
+        when(jwtTokenProvider.generateToken(worker, branch, "penztar", List.of())).thenReturn("jwt-token");
         when(jwtTokenProvider.getTokenIdFromToken("jwt-token")).thenReturn("token-id");
         when(totpService.isMfaRequired(10L)).thenReturn(true);
 
@@ -410,7 +425,7 @@ class WorkerServiceLoginTest {
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("csak pénztáros");
 
-        verify(jwtTokenProvider, never()).generateToken(any(Worker.class), any(), any());
+        verify(jwtTokenProvider, never()).generateToken(any(Worker.class), any(), any(), any());
         verify(workerSessionRepository, never()).save(any());
     }
 
@@ -430,7 +445,7 @@ class WorkerServiceLoginTest {
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("csak pénztáros");
 
-        verify(jwtTokenProvider, never()).generateToken(any(Worker.class), any(), any());
+        verify(jwtTokenProvider, never()).generateToken(any(Worker.class), any(), any(), any());
     }
 
     @Test
@@ -446,7 +461,7 @@ class WorkerServiceLoginTest {
         lenient().when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of(
                 roleAssignment(5, "foertektar")));
         lenient().when(workerRolePermissionRepository.findByRoleDefIdWithPermission(5)).thenReturn(List.of());
-        lenient().when(jwtTokenProvider.generateToken(any(Worker.class), any(), any())).thenReturn("jwt");
+        lenient().when(jwtTokenProvider.generateToken(any(Worker.class), any(), any(), any())).thenReturn("jwt");
         lenient().when(jwtTokenProvider.getTokenIdFromToken("jwt")).thenReturn("tid");
 
         // appMode szándékosan NINCS beállítva (null) — sync-engine bootstrap-login mintája.
@@ -480,7 +495,7 @@ class WorkerServiceLoginTest {
         lenient().when(workerRoleAssignmentRepository.findByWorkerId(10L)).thenReturn(List.of(
                 roleAssignment(5, "foertektar")));
         lenient().when(workerRolePermissionRepository.findByRoleDefIdWithPermission(5)).thenReturn(List.of());
-        lenient().when(jwtTokenProvider.generateToken(any(Worker.class), any(), any())).thenReturn("jwt");
+        lenient().when(jwtTokenProvider.generateToken(any(Worker.class), any(), any(), any())).thenReturn("jwt");
         lenient().when(jwtTokenProvider.getTokenIdFromToken("jwt")).thenReturn("tid");
 
         Exception caught = null;

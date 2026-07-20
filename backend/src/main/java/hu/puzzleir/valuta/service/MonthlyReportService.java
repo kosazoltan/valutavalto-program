@@ -32,10 +32,7 @@ public class MonthlyReportService {
 
     private final ReportService reportService;
     private final BranchRepository branchRepository;
-    // IDOR-fix (audit 2026-06-15, FINDING #2): branch-ownership guard a teljes havi
-    // riport (és a rajta keresztül futó PDF) read-úton. A branchService.findById(branchId)
-    // ResourceNotFoundException-t dob cross-tenant branchId-nél.
-    private final BranchService branchService;
+    private final MonthlyClosingAccessGuard monthlyClosingAccessGuard;
     private final DailyBalanceRepository dailyBalanceRepository;
     private final TransactionRepository transactionRepository;
     private final DailySubledgerSnapshotRepository subledgerSnapshotRepository;
@@ -73,14 +70,7 @@ public class MonthlyReportService {
 
         log.info("S3-01 havi jelentes: branchId={}, yearMonth={}", branchId, yearMonthStr);
 
-        // IDOR guard (FINDING #2): a branchId KÖTELEZŐEN a hívó cégéhez tartozik —
-        // findById ResourceNotFoundException-t dob cross-tenant branchId-nél, mielőtt
-        // bármilyen branch-szűrt lekérdezés lefutna. Ez védi a /full és a /pdf (rajta
-        // keresztül futó MonthlyClosingPdfService) read-utat is.
-        branchService.findById(branchId);
-
-        Branch branch = branchRepository.findById(branchId)
-                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem talalhato: " + branchId));
+        Branch branch = monthlyClosingAccessGuard.requireAccessibleBranch(branchId);
         // IDOR-fix (FINDING #2): a companyId a HÍVÓ cégéből (SecurityUtils), NEM a cél
         // branch-ből származik — a fenti findById guard után a kettő amúgy is egyezik,
         // de a downstream lekérdezések (pl. exchangeRateRepository.findActiveByDateAndBranch)

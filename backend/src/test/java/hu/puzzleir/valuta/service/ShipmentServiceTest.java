@@ -78,6 +78,9 @@ class ShipmentServiceTest {
     private SystemParameterService systemParameterService;
 
     @Mock
+    private HufDaybookSequenceService hufDaybookSequenceService;
+
+    @Mock
     private CashBalanceRepository cashBalanceRepository;
 
     @Mock
@@ -1265,7 +1268,8 @@ class ShipmentServiceTest {
                 handlingFeeSyncService,
                 accessScopeService,
                 auditLogService,
-                systemParameterService);
+                systemParameterService,
+                hufDaybookSequenceService);
     }
 
     @Test

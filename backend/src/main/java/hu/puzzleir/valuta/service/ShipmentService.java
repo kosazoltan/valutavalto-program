@@ -62,6 +62,7 @@ public class ShipmentService {
     private final AccessScopeService accessScopeService;
     private final AuditLogService auditLogService;
     private final SystemParameterService systemParameterService;
+    private final HufDaybookSequenceService hufDaybookSequenceService;
 
     public static final String ACTION_DIRECT_DELIVER = "SHIPMENT_DIRECT_DELIVER";
     public static final String ACTION_DELIVERED = "SHIPMENT_DELIVERED";
@@ -267,6 +268,10 @@ public class ShipmentService {
         request.setRequestNumber(requestNumberParts.value());
         request.setSerialPrefix(requestNumberParts.prefix());
         request.setSerialNumber(requestNumberParts.serialNumber());
+        if (isHufDaybookPrefix(requestNumberParts.prefix())) {
+            request.setAnnualJournalSequence(
+                    hufDaybookSequenceService.next(companyId, LocalDate.now().getYear()));
+        }
         request.setStatus(ShipmentRequestStatus.DRAFT);
         request.setRequestedById(SecurityUtils.getCurrentWorkerId());
         request.setRequestDate(LocalDate.now());
@@ -869,4 +874,8 @@ public class ShipmentService {
     }
 
     private record RequestNumberParts(String prefix, long serialNumber, String value) {}
+
+    private static boolean isHufDaybookPrefix(String prefix) {
+        return "FF".equalsIgnoreCase(prefix) || "UF".equalsIgnoreCase(prefix);
+    }
 }

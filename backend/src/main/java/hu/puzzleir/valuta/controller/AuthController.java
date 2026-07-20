@@ -23,6 +23,7 @@ import hu.puzzleir.valuta.service.RefreshCookieService;
 import hu.puzzleir.valuta.service.WorkerFirstTimeSetupService;
 import hu.puzzleir.valuta.service.WorkerSetupTokenService;
 import hu.puzzleir.valuta.service.TokenBlacklistService;
+import hu.puzzleir.valuta.service.SessionBranchResolver;
 import hu.puzzleir.valuta.service.WorkerRoleService;
 import hu.puzzleir.valuta.service.WorkerService;
 import hu.puzzleir.valuta.exception.BusinessException;
@@ -66,6 +67,7 @@ public class AuthController {
     private final PasswordResetService passwordResetService;
     private final RefreshTokenService refreshTokenService;
     private final RefreshCookieService refreshCookieService;
+    private final SessionBranchResolver sessionBranchResolver;
     /** Audit P1.4 SSOT: trusted-proxy-aware kliens IP feloldas. */
     private final ClientIpResolver clientIpResolver;
     // Audit P0.3 (2026-05-03): a `refreshTokenRepository` + `bcrypt10` direct hivatkozas
@@ -218,7 +220,9 @@ public class AuthController {
         List<String> perms = activeRole != null
             ? workerRoleService.getPermissionCodesForRole(activeRole)
             : List.of();
-        String newAccess = jwtTokenProvider.generateToken(worker, activeRole, perms);
+        hu.puzzleir.valuta.entity.Branch sessionBranch =
+                sessionBranchResolver.resolveSessionBranch(worker, activeRole);
+        String newAccess = jwtTokenProvider.generateToken(worker, sessionBranch, activeRole, perms);
 
         // Token rotation - regi revoke + uj issue
         RefreshTokenService.IssuedToken newIssued = refreshTokenService.rotate(oldRefresh, worker, request, activeRole);
@@ -290,7 +294,9 @@ public class AuthController {
         List<String> permissions = workerRoleService.getPermissionCodesForRole(dto.getRoleCode());
         
         // Új JWT generálás az aktív role-lal
-        String newToken = jwtTokenProvider.generateToken(worker, dto.getRoleCode(), permissions);
+        hu.puzzleir.valuta.entity.Branch sessionBranch =
+                sessionBranchResolver.resolveSessionBranch(worker, dto.getRoleCode());
+        String newToken = jwtTokenProvider.generateToken(worker, sessionBranch, dto.getRoleCode(), permissions);
 
         refreshCookieService.issueOrThrow(
                 worker,
@@ -312,7 +318,7 @@ public class AuthController {
         
         return ResponseEntity.ok(LoginResponseDto.builder()
                 .token(newToken)
-                .worker(hu.puzzleir.valuta.dto.worker.WorkerDto.from(worker))
+                .worker(hu.puzzleir.valuta.dto.worker.WorkerDto.from(worker, sessionBranch))
                 .expiresIn(expiresInMs)
                 .expiresAt(expiresAt.toString())
                 .roles(roleCodes)
@@ -391,7 +397,9 @@ public class AuthController {
                 : List.of();
 
         // Új token generálás az aktív role megtartásával
-        String newToken = jwtTokenProvider.generateToken(worker, activeRole, permissions);
+        hu.puzzleir.valuta.entity.Branch sessionBranch =
+                sessionBranchResolver.resolveSessionBranch(worker, activeRole);
+        String newToken = jwtTokenProvider.generateToken(worker, sessionBranch, activeRole, permissions);
 
         // 🔴 Régi token blacklistelése (token rotation)
         tokenBlacklistService.blacklistToken(oldTokenId, workerId, TokenBlacklistService.REASON_REFRESH, blacklistExpiresAt);

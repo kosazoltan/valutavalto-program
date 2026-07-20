@@ -53,6 +53,7 @@ class ShipmentApproveRbacHoldoutTest {
     @Mock private ShipmentHandlingFeeSyncService handlingFeeSyncService;
     @Mock private AccessScopeService accessScopeService;
     @Mock private SystemParameterService systemParameterService;
+    @Mock private HufDaybookSequenceService hufDaybookSequenceService;
 
     private AutoCloseable mocks;
 
@@ -79,7 +80,8 @@ class ShipmentApproveRbacHoldoutTest {
                 handlingFeeSyncService,
                 accessScopeService,
                 auditLogService,
-                systemParameterService);
+                systemParameterService,
+                hufDaybookSequenceService);
     }
 
     private ShipmentRequest submittedShipment(UUID shipmentId, UUID companyId, String serialPrefix) {

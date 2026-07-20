@@ -15,6 +15,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Repository
 public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest, UUID> {
@@ -137,4 +139,36 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(sr.requestNumber, LENGTH(:prefix) + 1) AS integer)), 0) " +
            "FROM ShipmentRequest sr WHERE sr.requestNumber LIKE CONCAT(:prefix, '%')")
     int findMaxRequestNumber(@Param("prefix") String prefix);
+
+    @Query("""
+            SELECT DISTINCT sr FROM ShipmentRequest sr
+            LEFT JOIN FETCH sr.items
+            WHERE sr.companyId = :companyId
+              AND sr.serialPrefix IN ('FF', 'UF')
+              AND sr.requestDate = :date
+              AND ((sr.serialPrefix = 'FF' AND sr.fromBranchId = :branchId)
+                OR (sr.serialPrefix = 'UF' AND sr.toBranchId = :branchId))
+            ORDER BY sr.createdAt ASC, sr.serialNumber ASC
+            """)
+    List<ShipmentRequest> findHufDaybookShipmentsForDate(
+            @Param("companyId") UUID companyId,
+            @Param("branchId") UUID branchId,
+            @Param("date") LocalDate date);
+
+    @Query("""
+            SELECT DISTINCT sr FROM ShipmentRequest sr
+            LEFT JOIN FETCH sr.items
+            WHERE sr.companyId = :companyId
+              AND sr.serialPrefix IN ('FF', 'UF')
+              AND sr.cancelledAt >= :from
+              AND sr.cancelledAt < :to
+              AND ((sr.serialPrefix = 'FF' AND sr.fromBranchId = :branchId)
+                OR (sr.serialPrefix = 'UF' AND sr.toBranchId = :branchId))
+            ORDER BY sr.cancelledAt ASC, sr.serialNumber ASC
+            """)
+    List<ShipmentRequest> findCancelledHufDaybookShipmentsForDate(
+            @Param("companyId") UUID companyId,
+            @Param("branchId") UUID branchId,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
 }

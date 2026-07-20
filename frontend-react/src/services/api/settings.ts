@@ -1952,13 +1952,15 @@ export interface VatRefundRequest {
   deedNumber?: string
 }
 
-// ================== DAILY REPORT / DAYBOOK API ==================
+// ================== DAYBOOK API ==================
 export const dailyReportApi = {
-  get: async (branchId: string, date: string) =>
-    (await api.get(`/reports/daily/${branchId}/${date}`)).data,
-  generate: async (branchId: string, date: string) =>
-    (await api.post(`/reports/daily/${branchId}/generate`, null, { params: { date } })).data,
-  submit: async (reportId: string) => (await api.post(`/reports/daily/${reportId}/submit`)).data,
+  get: async (branchId: string, date: string) => (await api.get(`/daybook/${branchId}/${date}`)).data,
+  downloadPdf: async (branchId: string, date: string): Promise<Blob> => {
+    const response = await api.get(`/daybook/${branchId}/${date}/pdf`, {
+      responseType: 'blob',
+    })
+    return response.data as Blob
+  },
 }
 
 // ================== TURNOVER API ==================

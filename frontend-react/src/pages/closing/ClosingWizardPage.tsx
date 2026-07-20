@@ -12,7 +12,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
-import { closingWizardApi, dailySessionApi } from '../../services/api/index'
+import { closingWizardApi, dailySessionApi, currencyApi, denominationApi } from '../../services/api/index'
 import type {
   ClosingWizard,
   ClosingWizardDifference,
@@ -20,6 +20,8 @@ import type {
   ClosingWizardStep,
   DailyClosingValidation,
 } from '../../services/api/transactions'
+import type { Currency } from '../../services/api/exchange-rates'
+import type { Denomination } from '../../services/api/settings'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
@@ -68,6 +70,7 @@ export default function ClosingWizardPage() {
   const navigate = useNavigate()
   const { wizardId: routeWizardId } = useParams<{ wizardId?: string }>()
   const worker = useAuthStore((s) => s.worker)
+  const activeRole = useAuthStore((s) => s.activeRole)
   const [steps, setSteps] = useState<ClosingStep[]>(INITIAL_STEPS)
   const [isRunning, setIsRunning] = useState(false)
   const [wizardId, setWizardId] = useState<string | null>(null)
@@ -76,12 +79,41 @@ export default function ClosingWizardPage() {
   const [closingType, setClosingType] = useState<ClosingWizard['closingType']>('DAILY')
 
   // Denomination input state
-  const [denomQuantities, setDenomQuantities] = useState<Record<number, number>>(() =>
-    Object.fromEntries(HUF_DENOMINATIONS.map((d) => [d, 0])),
+  const [currencyDenominations, setCurrencyDenominations] = useState<Record<string, number[]>>({})
+  const [denomQuantities, setDenomQuantities] = useState<Record<string, number>>(() =>
+    Object.fromEntries(HUF_DENOMINATIONS.map((d) => [`HUF:${d}`, 0])),
+  )
+  const denomKey = (currencyCode: string, faceValue: number) => `${currencyCode}:${faceValue}`
+  const normalizedRole = (activeRole ?? worker?.role ?? '').toString().toLowerCase()
+  const isVaultContext =
+    normalizedRole.includes('ertektar') ||
+    normalizedRole.includes('vault') ||
+    normalizedRole.includes('foertektar')
+  const denominationSections = useMemo(
+    () =>
+      isVaultContext
+        ? Object.entries(currencyDenominations)
+            .map(([currencyCode, faceValues]) => ({ currencyCode, faceValues }))
+            .sort((a, b) => a.currencyCode.localeCompare(b.currencyCode))
+        : [{ currencyCode: 'HUF', faceValues: [...HUF_DENOMINATIONS] }],
+    [currencyDenominations, isVaultContext],
+  )
+  const denominationTotals = useMemo(
+    () =>
+      Object.fromEntries(
+        denominationSections.map(({ currencyCode, faceValues }) => [
+          currencyCode,
+          faceValues.reduce(
+            (sum, faceValue) => sum + faceValue * (denomQuantities[denomKey(currencyCode, faceValue)] ?? 0),
+            0,
+          ),
+        ]),
+      ) as Record<string, number>,
+    [denominationSections, denomQuantities],
   )
   const denomTotal = useMemo(
-    () => HUF_DENOMINATIONS.reduce((sum, d) => sum + d * (denomQuantities[d] ?? 0), 0),
-    [denomQuantities],
+    () => Object.values(denominationTotals).reduce((sum, value) => sum + value, 0),
+    [denominationTotals],
   )
   const [denomSubmitted, setDenomSubmitted] = useState(false)
   const [closingDifferences, setClosingDifferences] = useState<ClosingWizardDifference[]>([])
@@ -119,6 +151,45 @@ export default function ClosingWizardPage() {
   useEffect(() => {
     void loadClosingValidation()
   }, [loadClosingValidation])
+
+  useEffect(() => {
+    if (!isVaultContext) return
+
+    let cancelled = false
+    const loadDenominations = async () => {
+      try {
+        const [currencies, denominations] = await Promise.all([
+          currencyApi.getActive(),
+          denominationApi.list(),
+        ])
+        if (cancelled) return
+
+        const activeCodes = new Set(currencies.map((currency: Currency) => currency.code))
+        const grouped: Record<string, number[]> = {}
+        denominations.forEach((denomination: Denomination) => {
+          if (!activeCodes.has(denomination.currencyCode)) return
+          if (!grouped[denomination.currencyCode]) {
+            grouped[denomination.currencyCode] = []
+          }
+          grouped[denomination.currencyCode]!.push(denomination.faceValue)
+        })
+        Object.keys(grouped).forEach((code) => {
+          grouped[code] = [...new Set(grouped[code])].sort((a, b) => b - a)
+        })
+        setCurrencyDenominations(grouped)
+      } catch (err) {
+        if (!cancelled) {
+          logger.error('ClosingWizardPage', 'Valuta címlettörzs betöltési hiba:', err)
+          toast.error('Címlettörzs hiba', getErrorMessage(err))
+        }
+      }
+    }
+
+    void loadDenominations()
+    return () => {
+      cancelled = true
+    }
+  }, [isVaultContext])
 
   useEffect(() => {
     if (!routeWizardId) return
@@ -266,7 +337,10 @@ export default function ClosingWizardPage() {
         return
       }
 
-      toast.success('Step 1 OK', 'Most rögzítsd a HUF címletezést')
+      toast.success(
+        'Step 1 OK',
+        isVaultContext ? 'Most rögzítsd a valutánkénti címletezést' : 'Most rögzítsd a HUF címletezést',
+      )
 
       // Pause: wait for denomination input before continuing
       setIsRunning(false)
@@ -278,7 +352,7 @@ export default function ClosingWizardPage() {
       toast.error('Napzárás hiba', errorMsg)
       setIsRunning(false)
     }
-  }, [worker, runSteps, closingType])
+  }, [worker, runSteps, closingType, isVaultContext])
 
   /** Phase 2: user submitted denomination → persist to backend, then continue steps 2-9 */
   const continueAfterDenom = useCallback(async () => {
@@ -286,14 +360,20 @@ export default function ClosingWizardPage() {
 
     setIsRunning(true)
 
-    const hufDenoms: Record<number, number> = {}
-    for (const [faceValue, qty] of Object.entries(denomQuantities)) {
-      if (qty > 0) hufDenoms[Number(faceValue)] = qty
-    }
+    const denominationPayload = Object.fromEntries(
+      denominationSections.map(({ currencyCode, faceValues }) => [
+        currencyCode,
+        Object.fromEntries(
+          faceValues
+            .filter((faceValue) => (denomQuantities[denomKey(currencyCode, faceValue)] ?? 0) >= 0)
+            .map((faceValue) => [faceValue, denomQuantities[denomKey(currencyCode, faceValue)] ?? 0]),
+        ),
+      ]),
+    )
 
     // Submit denomination data to backend before continuing
     try {
-      await closingWizardApi.submitDenominations(wizardId, { HUF: hufDenoms })
+      await closingWizardApi.submitDenominations(wizardId, denominationPayload)
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Cimletezés rögzítés sikertelen'
       toast.error('Cimletezés hiba', errorMsg)
@@ -302,9 +382,7 @@ export default function ClosingWizardPage() {
     }
 
     try {
-      setClosingDifferences(
-        await closingWizardApi.calculateDifferences(wizardId, { HUF: denomTotal }),
-      )
+      setClosingDifferences(await closingWizardApi.calculateDifferences(wizardId, denominationTotals))
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : t('closing.elteresEllenorzesHiba')
       toast.error(t('closing.elteresEllenorzesHiba'), errorMsg)
@@ -332,7 +410,7 @@ export default function ClosingWizardPage() {
       setClosingReport(null)
     }
     setIsRunning(false)
-  }, [wizardId, denomQuantities, denomTotal, steps.length, runSteps, loadClosingValidation, t])
+  }, [wizardId, denominationSections, denomQuantities, denominationTotals, steps.length, runSteps, loadClosingValidation, t])
 
   const handleFinalize = useCallback(async () => {
     if (!canFinalize || !wizardId || !worker) return
@@ -395,7 +473,7 @@ export default function ClosingWizardPage() {
     setClosingReport(null)
     setClosingDifferences([])
     setReportLoading(false)
-    setDenomQuantities(Object.fromEntries(HUF_DENOMINATIONS.map((d) => [d, 0])))
+    setDenomQuantities(Object.fromEntries(HUF_DENOMINATIONS.map((d) => [`HUF:${d}`, 0])))
   }, [wizardId])
 
   const statusIcon = (status: StepStatus) => {
@@ -614,24 +692,43 @@ export default function ClosingWizardPage() {
           </div>
           {!denomSubmitted ? (
             <>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-2 gap-y-0.5">
-                {HUF_DENOMINATIONS.map((faceValue) => (
-                  <div key={faceValue} className="flex items-center gap-1">
-                    <span className="w-16 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
-                      {faceValue.toLocaleString('hu-HU')}
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={denomQuantities[faceValue] || ''}
-                      onChange={(e) => {
-                        const val = Math.max(0, parseInt(e.target.value) || 0)
-                        setDenomQuantities((prev) => ({ ...prev, [faceValue]: val }))
-                      }}
-                      className="w-14 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-1 py-0.5 text-center text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      placeholder="0"
-                      disabled={!denomEditable}
-                    />
+              <div className="space-y-3">
+                {denominationSections.map(({ currencyCode, faceValues }) => (
+                  <div key={currencyCode}>
+                    {isVaultContext && (
+                      <div className="mb-1 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                        {currencyCode}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-2 gap-y-0.5">
+                      {faceValues.map((faceValue) => (
+                        <div key={`${currencyCode}-${faceValue}`} className="flex items-center gap-1">
+                          <span className="w-16 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
+                            {faceValue.toLocaleString('hu-HU')}
+                          </span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={denomQuantities[denomKey(currencyCode, faceValue)] || ''}
+                            onChange={(e) => {
+                              const val = Math.max(0, parseInt(e.target.value) || 0)
+                              setDenomQuantities((prev) => ({
+                                ...prev,
+                                [denomKey(currencyCode, faceValue)]: val,
+                              }))
+                            }}
+                            className="w-14 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-1 py-0.5 text-center text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            placeholder="0"
+                            disabled={!denomEditable}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    {isVaultContext && (
+                      <div className="mt-1 text-right text-xs font-semibold text-gray-600 dark:text-gray-300">
+                        {currencyCode}: {(denominationTotals[currencyCode] ?? 0).toLocaleString('hu-HU')}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -645,7 +742,7 @@ export default function ClosingWizardPage() {
               </div>
               <button
                 onClick={continueAfterDenom}
-                disabled={denomTotal === 0 || !denomEditable}
+                disabled={(!isVaultContext && denomTotal === 0) || !denomEditable || denominationSections.length === 0}
                 className="mt-1 w-full rounded bg-amber-600 py-1.5 text-sm font-bold text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {t('closing.cimletezesRogziteseEsTovabblepes')}

@@ -7,6 +7,7 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Worker;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -77,13 +78,18 @@ public class JwtTokenProvider {
      * @param permissions   Az aktív role-hoz tartozó permission kódok — null ha nincs
      */
     public String generateToken(Worker worker, String activeRole, java.util.List<String> permissions) {
+        return generateToken(worker, worker != null ? worker.getBranch() : null, activeRole, permissions);
+    }
+
+    public String generateToken(Worker worker, Branch sessionBranch, String activeRole, java.util.List<String> permissions) {
+        Branch effectiveBranch = sessionBranch != null ? sessionBranch : worker.getBranch();
         Map<String, Object> claims = new HashMap<>();
         claims.put("workerId", worker.getId());
         claims.put("workerCode", worker.getCode());
         claims.put("workerName", worker.getName());
         claims.put("role", worker.getRole().name());
-        claims.put("branchId", worker.getBranch().getId());
-        claims.put("branchCode", worker.getBranch().getCode());
+        claims.put("branchId", effectiveBranch.getId());
+        claims.put("branchCode", effectiveBranch.getCode());
         
         // 🔴 MULTI-TENANT: Company ID claim!
         claims.put("companyId", worker.getCompany().getId());

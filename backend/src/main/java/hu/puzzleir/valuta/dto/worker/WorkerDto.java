@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.dto.worker;
 
+import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Worker;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -61,12 +62,21 @@ public class WorkerDto {
         return from(worker, Collections.emptyList());
     }
 
+    public static WorkerDto from(Worker worker, Branch sessionBranch) {
+        return from(worker, sessionBranch, Collections.emptyList());
+    }
+
     /**
      * FK-026: a {@code roleCodes} listát kívülről (batch-lekérdezésből) adjuk át,
      * hogy ne keletkezzen N+1 a {@code worker_role_assignment} lekérdezésekor.
      */
     public static WorkerDto from(Worker worker, List<String> roleCodes) {
+        return from(worker, worker != null ? worker.getBranch() : null, roleCodes);
+    }
+
+    public static WorkerDto from(Worker worker, Branch sessionBranch, List<String> roleCodes) {
         String[] nameParts = splitName(worker.getName());
+        Branch effectiveBranch = sessionBranch != null ? sessionBranch : worker.getBranch();
 
         return WorkerDto.builder()
                 .id(worker.getId())
@@ -80,9 +90,9 @@ public class WorkerDto {
                 .role(worker.getRole().name())
                 .region(worker.getRegion())
                 .roleCodes(roleCodes != null ? roleCodes : Collections.emptyList())
-                .branchId(worker.getBranch().getId().toString())
-                .branchCode(worker.getBranch().getCode())
-                .branchName(worker.getBranch().getName())
+                .branchId(effectiveBranch != null ? effectiveBranch.getId().toString() : null)
+                .branchCode(effectiveBranch != null ? effectiveBranch.getCode() : null)
+                .branchName(effectiveBranch != null ? effectiveBranch.getName() : null)
                 .active(worker.getActive())
                 .phone(worker.getPhone())
                 .email(worker.getEmail())

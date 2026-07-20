@@ -56,6 +56,7 @@ public class WorkerService {
     private final WorkerRolePermissionRepository rolePermissionRepository;
     private final TokenBlacklistService tokenBlacklistService;
     private final TotpService totpService;
+    private final SessionBranchResolver sessionBranchResolver;
     // v2.4.5 (B6): branchId override engedélyezésének ellenőrzéséhez.
     private final WorkerBranchAccessService workerBranchAccessService;
 
@@ -479,23 +480,10 @@ public class WorkerService {
                 ? AppModeRoleConstants.selectableRolesForAppMode(roleCodes, dto.getAppMode())
                 : roleCodes;
 
-        // Session tracking
-        // BUGFIX: worker.getBranch() may be null -> use company's first active branch before JWT generation,
-        // because JwtTokenProvider also embeds branchId/branchCode claims.
-        Branch sessionBranch = worker.getBranch();
-        if (sessionBranch == null) {
-            sessionBranch = branchRepository.findByCompanyIdAndIsActiveTrue(company.getId()).stream()
-                    .findFirst()
-                    .orElseGet(() -> branchRepository.findByCompanyId(company.getId()).stream().findFirst().orElse(null));
-            
-            if (sessionBranch == null) {
-                throw new ValidationException("Nincs elérhető iroda a bejelentkezéshez!");
-            }
-            worker.setBranch(sessionBranch);
-        }
+        Branch sessionBranch = sessionBranchResolver.resolveSessionBranch(worker, activeRole);
 
         // JWT token generálás
-        String token = jwtTokenProvider.generateToken(worker, activeRole, permissions);
+        String token = jwtTokenProvider.generateToken(worker, sessionBranch, activeRole, permissions);
         String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
         
         WorkerSession session = WorkerSession.builder()
@@ -525,7 +513,7 @@ public class WorkerService {
 
         return LoginResponseDto.builder()
                 .token(token)
-                .worker(WorkerDto.from(worker))
+                .worker(WorkerDto.from(worker, sessionBranch))
                 .expiresIn(expiresInMs)
                 .expiresAt(expiresAt.toString()) // ISO format for frontend
                 .roles(responseRoleCodes)

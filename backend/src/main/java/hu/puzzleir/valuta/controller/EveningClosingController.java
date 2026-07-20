@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.eveningclosing.*;
 import hu.puzzleir.valuta.dto.ClosingMarkType;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.ClosingWizardService;
 import hu.puzzleir.valuta.service.ClosingControlService;
 import hu.puzzleir.valuta.service.EveningClosingService;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,7 @@ import java.util.UUID;
  * Legacy: Delphi ESTIZAR modul → FTP-n bináris csomag.
  * Modern: REST API — JSON adatcsomag küldés a központnak.
  */
-@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
 @RestController
 @RequestMapping("/api/v1/evening-closing")
 @RequiredArgsConstructor
@@ -30,6 +31,7 @@ public class EveningClosingController {
 
     private final EveningClosingService eveningClosingService;
     private final ClosingControlService closingControlService;
+    private final ClosingWizardService closingWizardService;
 
     /**
      * Napi adatcsomag előkészítése (preview — nem küld).
@@ -53,6 +55,7 @@ public class EveningClosingController {
             @PathVariable UUID branchId,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         log.info("Esti zárás küldés: branchId={}, datum={}", branchId, date);
+        closingWizardService.ensureClosingCanBeSent(branchId, date);
 
         DailyDataPackage pkg = eveningClosingService.prepareDailyPackage(branchId, date);
         DataSyncResult result = eveningClosingService.sendToHeadquarters(pkg);

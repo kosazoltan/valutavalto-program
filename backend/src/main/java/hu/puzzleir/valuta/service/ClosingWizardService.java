@@ -8,12 +8,14 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardDto;
+import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardStatusDto;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardStepDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.entity.DenominationType;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.ClosingWizardRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
+import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.DailySessionRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
@@ -54,6 +56,7 @@ public class ClosingWizardService {
     private final DenominationRepository denominationRepository;
     private final DenominationBalanceRepository denominationBalanceRepository;
     private final CurrencyRepository currencyRepository;
+    private final CurrencyStockRepository currencyStockRepository;
     private final SystemParameterService systemParameterService;
 
     /** G3: a zárás-eltérés magyarázat-kötelezettség feature-flag SystemParameter kulcsa. */
@@ -400,24 +403,34 @@ public class ClosingWizardService {
      */
     @Transactional(readOnly = true)
     public List<Map<String, Object>> calculateDifferences(UUID branchId, Map<String, BigDecimal> physicalCounts) {
+        Branch branch = findBranchInCurrentCompany(branchId);
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
         List<Map<String, Object>> differences = new ArrayList<>();
 
+        if (isVaultContext(branch)) {
+            for (hu.puzzleir.valuta.entity.Currency currency : currencyRepository.findAllActiveOrdered()) {
+                String code = currency.getCode();
+                BigDecimal expected = currencyStockRepository
+                        .findByCompanyIdAndEntityTypeAndEntityIdAndCurrencyCode(
+                                companyId, "VAULT", resolveVaultEntityId(branch), code)
+                        .map(CurrencyStock::getQuantity)
+                        .orElse(BigDecimal.ZERO);
+                differences.add(differenceItem(code, expected, physicalCounts.getOrDefault(code, BigDecimal.ZERO)));
+            }
+            for (String code : physicalCounts.keySet()) {
+                boolean missing = differences.stream()
+                        .noneMatch(item -> code.equals(item.get("currencyCode")));
+                if (missing) {
+                    differences.add(differenceItem(code, BigDecimal.ZERO, physicalCounts.getOrDefault(code, BigDecimal.ZERO)));
+                }
+            }
+            return differences;
+        }
+
+        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
         for (CashBalance cb : balances) {
             String code = cb.getCurrency().getCode();
-            BigDecimal expected = cb.getCurrentBalance();
-            BigDecimal actual = physicalCounts.getOrDefault(code, BigDecimal.ZERO);
-            BigDecimal diff = actual.subtract(expected);
-
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("currencyCode", code);
-            item.put("expected", expected);
-            item.put("actual", actual);
-            item.put("difference", diff);
-            item.put("status", diff.compareTo(BigDecimal.ZERO) == 0 ? "OK" : "DISCREPANCY");
-
-            differences.add(item);
+            differences.add(differenceItem(code, cb.getCurrentBalance(), physicalCounts.getOrDefault(code, BigDecimal.ZERO)));
         }
 
         return differences;
@@ -457,15 +470,27 @@ public class ClosingWizardService {
         }
 
         // Készlet állapot
-        List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
         List<Map<String, Object>> inventorySnapshot = new ArrayList<>();
-        for (CashBalance cb : balances) {
-            inventorySnapshot.add(Map.of(
-                    "currencyCode", cb.getCurrency().getCode(),
-                    "openingBalance", cb.getOpeningBalance(),
-                    "currentBalance", cb.getCurrentBalance(),
-                    "dailyChange", cb.getDailyChange()
-            ));
+        if (isVaultContext(wizard.getBranch())) {
+            for (CurrencyStock stock : currencyStockRepository.findByEntityTypeAndEntityId(
+                    "VAULT", resolveVaultEntityId(wizard.getBranch()))) {
+                inventorySnapshot.add(Map.of(
+                        "currencyCode", stock.getCurrencyCode(),
+                        "openingBalance", BigDecimal.ZERO,
+                        "currentBalance", stock.getQuantity(),
+                        "dailyChange", BigDecimal.ZERO
+                ));
+            }
+        } else {
+            List<CashBalance> balances = cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
+            for (CashBalance cb : balances) {
+                inventorySnapshot.add(Map.of(
+                        "currencyCode", cb.getCurrency().getCode(),
+                        "openingBalance", cb.getOpeningBalance(),
+                        "currentBalance", cb.getCurrentBalance(),
+                        "dailyChange", cb.getDailyChange()
+                ));
+            }
         }
         report.put("inventory", inventorySnapshot);
 
@@ -520,10 +545,18 @@ public class ClosingWizardService {
 
         // Valódi napzárás végrehajtása a DailyClosingService-en keresztül
         LocalDate closingDate = wizard.getClosingDate() != null ? wizard.getClosingDate() : LocalDate.now();
+        Branch branch = wizard.getBranch();
+
+        if (branch != null && isVaultContext(branch)) {
+            ClosingWizardStatusDto status = getClosingStatus(branch.getId(), closingDate);
+            if (!status.isExactMatch()) {
+                throw new ValidationException(status.getMessage());
+            }
+        }
 
         // G3 (FR-13): eltérés-magyarázat gate a véglegesítés előtt.
         java.math.BigDecimal discrepancy = computeCashDiscrepancy(SecurityUtils.getCurrentCompanyId(),
-                wizard.getBranch() != null ? wizard.getBranch().getId() : null, closingDate);
+                branch != null ? branch.getId() : null, closingDate);
         wizard.setDiscrepancyAmount(discrepancy);
         if (discrepancyExplanation != null && !discrepancyExplanation.isBlank()) {
             wizard.setDiscrepancyExplanation(discrepancyExplanation.trim());
@@ -576,6 +609,14 @@ public class ClosingWizardService {
         if (branchId == null) {
             return null;
         }
+        Branch branch = findBranchInCurrentCompany(branchId);
+        if (isVaultContext(branch)) {
+            return calculateDifferences(branchId, loadPhysicalCounts(branchId, date)).stream()
+                    .map(item -> item.get("difference"))
+                    .filter(BigDecimal.class::isInstance)
+                    .map(BigDecimal.class::cast)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
         java.math.BigDecimal denominated = denominationBalanceRepository.sumDenominatedAmount(branchId, date, "EVENING");
         java.math.BigDecimal expected = cashBalanceRepository.sumCurrentBalanceHufByBranchIdAndCompanyId(branchId, companyId);
         if (denominated == null || expected == null) {
@@ -605,6 +646,48 @@ public class ClosingWizardService {
         return String.format(
                 "Pénzügyi eltérés (%s Ft) — a zárás véglegesítéséhez eltérés-magyarázat kötelező (FR-13).",
                 discrepancyHuf.toPlainString());
+    }
+
+    @Transactional(readOnly = true)
+    public ClosingWizardStatusDto getClosingStatus(UUID branchId, LocalDate date) {
+        Branch branch = findBranchInCurrentCompany(branchId);
+        boolean denominationRecorded = denominationBalanceRepository.existsByBranchIdAndDateAndCategory(
+                branchId, date, DenominationCategory.EVENING);
+        List<Map<String, Object>> differences = calculateDifferences(branchId, loadPhysicalCounts(branchId, date));
+        boolean exactMatch = denominationRecorded && differences.stream()
+                .allMatch(item -> "OK".equals(String.valueOf(item.get("status"))));
+
+        String message;
+        if (!denominationRecorded) {
+            message = "Nincs rogzitett esti cimletezes erre a napra.";
+        } else if (!exactMatch) {
+            message = isVaultContext(branch)
+                    ? "Az esti zaras csak a valutankenti cimletezes es a currency_stock teljes egyezese utan kuldheto."
+                    : "Eltérés van a címletezés és a nyilvántartás között.";
+        } else {
+            message = "A zárási címletezés pontosan egyezik a nyilvántartással.";
+        }
+
+        return ClosingWizardStatusDto.builder()
+                .branchId(branchId.toString())
+                .closingDate(date.toString())
+                .vaultContext(isVaultContext(branch))
+                .denominationRecorded(denominationRecorded)
+                .exactMatch(exactMatch)
+                .message(message)
+                .differences(differences)
+                .build();
+    }
+
+    public void ensureClosingCanBeSent(UUID branchId, LocalDate date) {
+        Branch branch = findBranchInCurrentCompany(branchId);
+        if (!isVaultContext(branch)) {
+            return;
+        }
+        ClosingWizardStatusDto status = getClosingStatus(branchId, date);
+        if (!status.isExactMatch()) {
+            throw new ValidationException(status.getMessage());
+        }
     }
 
     // ============ HELPER METHODS ============
@@ -685,5 +768,38 @@ public class ClosingWizardService {
                 .canProceed(step.getCanProceed())
                 .stepData(stepDataMap)
                 .build();
+    }
+
+    private Map<String, BigDecimal> loadPhysicalCounts(UUID branchId, LocalDate date) {
+        Map<String, BigDecimal> counts = new LinkedHashMap<>();
+        for (Object[] row : denominationBalanceRepository.sumActualStockByCurrency(
+                branchId, date, date.plusDays(1), DenominationCategory.EVENING)) {
+            if (row.length >= 2 && row[0] instanceof String code && row[1] instanceof BigDecimal total) {
+                counts.put(code, total);
+            }
+        }
+        return counts;
+    }
+
+    private Map<String, Object> differenceItem(String code, BigDecimal expected, BigDecimal actual) {
+        BigDecimal diff = actual.subtract(expected);
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("currencyCode", code);
+        item.put("expected", expected);
+        item.put("actual", actual);
+        item.put("difference", diff);
+        item.put("status", diff.compareTo(BigDecimal.ZERO) == 0 ? "OK" : "DISCREPANCY");
+        return item;
+    }
+
+    private boolean isVaultContext(Branch branch) {
+        return branch != null && Boolean.TRUE.equals(branch.getIsVault());
+    }
+
+    private String resolveVaultEntityId(Branch branch) {
+        if (branch == null || branch.getVaultTerritoryId() == null) {
+            throw new ValidationException("Az ertektari branchhez nincs vault_territory_id rendelve.");
+        }
+        return branch.getVaultTerritoryId().toString();
     }
 }

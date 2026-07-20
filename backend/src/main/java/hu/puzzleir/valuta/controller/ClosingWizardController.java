@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardDto;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardStepDto;
+import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardStatusDto;
 import hu.puzzleir.valuta.service.ClosingWizardService;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -33,7 +35,7 @@ public class ClosingWizardController {
      * POST /api/v1/closing-wizard/start?branchId=&cashDeskId=&closingType=&workerId=
      */
     @PostMapping("/start")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<ClosingWizardDto> startWizard(
             @RequestParam(required = false) UUID cashDeskId,
             @RequestParam String closingType) {
@@ -49,7 +51,7 @@ public class ClosingWizardController {
      * GET /api/v1/closing-wizard/{wizardId}
      */
     @GetMapping("/{wizardId}")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<ClosingWizardDto> getWizard(@PathVariable UUID wizardId) {
         ClosingWizardDto result = closingWizardService.getWizard(wizardId);
         return ResponseEntity.ok(result);
@@ -61,7 +63,7 @@ public class ClosingWizardController {
      * GET /api/v1/closing-wizard/{wizardId}/step/{stepNumber}
      */
     @GetMapping("/{wizardId}/step/{stepNumber}")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<ClosingWizardStepDto> getStep(
             @PathVariable UUID wizardId,
             @PathVariable int stepNumber) {
@@ -75,7 +77,7 @@ public class ClosingWizardController {
      * POST /api/v1/closing-wizard/{wizardId}/navigate?targetStep=
      */
     @PostMapping("/{wizardId}/navigate")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<ClosingWizardDto> navigate(
             @PathVariable UUID wizardId,
             @RequestParam int targetStep) {
@@ -89,7 +91,7 @@ public class ClosingWizardController {
      * POST /api/v1/closing-wizard/{wizardId}/complete?workerId=
      */
     @PostMapping("/{wizardId}/complete")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<ClosingWizardDto> complete(
             @PathVariable UUID wizardId) {
         Long workerId = SecurityUtils.getCurrentWorkerId();
@@ -103,7 +105,7 @@ public class ClosingWizardController {
      * POST /api/v1/closing-wizard/{wizardId}/cancel
      */
     @PostMapping("/{wizardId}/cancel")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<ClosingWizardDto> cancel(@PathVariable UUID wizardId) {
         ClosingWizardDto result = closingWizardService.cancel(wizardId);
         return ResponseEntity.ok(result);
@@ -117,11 +119,20 @@ public class ClosingWizardController {
      * GET /api/v1/closing-wizard/validate-transactions
      */
     @GetMapping("/validate-transactions")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<List<String>> validateOpenTransactions() {
         UUID branchId = SecurityUtils.getCurrentBranchId();
         List<String> errors = closingWizardService.validateOpenTransactions(branchId);
         return ResponseEntity.ok(errors);
+    }
+
+    @GetMapping("/status")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
+    public ResponseEntity<ClosingWizardStatusDto> getStatus(
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+            LocalDate date) {
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        return ResponseEntity.ok(closingWizardService.getClosingStatus(branchId, date));
     }
 
     /**
@@ -130,7 +141,7 @@ public class ClosingWizardController {
      * POST /api/v1/closing-wizard/{wizardId}/denominations
      */
     @PostMapping("/{wizardId}/denominations")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<Map<String, Object>> countDenominations(
             @PathVariable UUID wizardId,
             @Valid @RequestBody Map<String, Map<Integer, Integer>> denomCounts) {
@@ -146,7 +157,7 @@ public class ClosingWizardController {
      * POST /api/v1/closing-wizard/{wizardId}/differences
      */
     @PostMapping("/{wizardId}/differences")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<List<Map<String, Object>>> calculateDifferences(
             @PathVariable UUID wizardId,
             @Valid @RequestBody Map<String, BigDecimal> physicalCounts) {
@@ -162,7 +173,7 @@ public class ClosingWizardController {
      * GET /api/v1/closing-wizard/{wizardId}/report
      */
     @GetMapping("/{wizardId}/report")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<Map<String, Object>> generateClosingReport(@PathVariable UUID wizardId) {
         Map<String, Object> report = closingWizardService.generateClosingReport(wizardId);
         return ResponseEntity.ok(report);
@@ -174,7 +185,7 @@ public class ClosingWizardController {
      * POST /api/v1/closing-wizard/{wizardId}/finalize?workerId=
      */
     @PostMapping("/{wizardId}/finalize")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<Map<String, Object>> finalizeClosing(
             @PathVariable UUID wizardId,
             @RequestBody(required = false) Map<String, String> body) {

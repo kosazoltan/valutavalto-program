@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/denominations")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
 public class DenominationController {
 
     private final DenominationService denominationService;

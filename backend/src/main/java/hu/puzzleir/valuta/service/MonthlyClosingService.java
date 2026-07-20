@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.entity.ArchivedMonthlyTransaction;
 import hu.puzzleir.valuta.entity.CurrencyStock;
 import hu.puzzleir.valuta.entity.MnbExchangeRateCache;
@@ -49,10 +50,7 @@ public class MonthlyClosingService {
     private final TransactionRepository transactionRepository;
     private final MonthlyClosingSummaryRepository monthlyClosingSummaryRepository;
     private final BranchRepository branchRepository;
-    // IDOR-fix (audit 2026-06-15, FINDING #2): branch-ownership guard a havi-zárás
-    // read-utakon. A branchService.findById(branchId) ResourceNotFoundException-t dob,
-    // ha a branch NEM a hívó cégéhez (SecurityUtils.getCurrentCompanyId()) tartozik.
-    private final BranchService branchService;
+    private final MonthlyClosingAccessGuard monthlyClosingAccessGuard;
     private final WorkerRepository workerRepository;
     private final ObjectMapper objectMapper;
     private final MnbExchangeRateService mnbExchangeRateService;
@@ -99,8 +97,7 @@ public class MonthlyClosingService {
                 "Először zárd le az összes napi munkamenetet.");
         }
 
-        Branch branch = branchRepository.findById(branchId)
-                .orElseThrow(() -> new ValidationException("Iroda nem található: " + branchId));
+        Branch branch = monthlyClosingAccessGuard.requireAccessibleBranch(branchId);
 
         Long currentWorkerId = SecurityUtils.getCurrentWorkerId();
         Worker worker = workerRepository.findById(currentWorkerId)
@@ -157,8 +154,7 @@ public class MonthlyClosingService {
      */
     @Transactional(readOnly = true)
     public MonthlyClosingSummary getMonthlyReport(UUID branchId, String yearMonth) {
-        // IDOR guard (FINDING #2): cross-tenant branchId → ResourceNotFoundException.
-        branchService.findById(branchId);
+        monthlyClosingAccessGuard.requireAccessibleBranch(branchId);
         return monthlyClosingSummaryRepository.findByBranchIdAndYearMonth(branchId, yearMonth)
                 .orElseThrow(() -> new ValidationException(
                         "Nincs havi zárás a(z) " + yearMonth + " hónapra ennél az irodánál!"));
@@ -169,6 +165,7 @@ public class MonthlyClosingService {
      */
     @Transactional(readOnly = true)
     public boolean isMonthClosed(UUID branchId, String yearMonth) {
+        monthlyClosingAccessGuard.requireAccessibleBranch(branchId);
         return monthlyClosingSummaryRepository.existsByBranchIdAndYearMonth(branchId, yearMonth);
     }
 
@@ -177,8 +174,7 @@ public class MonthlyClosingService {
      */
     @Transactional(readOnly = true)
     public List<MonthlyClosingSummary> getAllClosedMonths(UUID branchId) {
-        // IDOR guard (FINDING #2): cross-tenant branchId → ResourceNotFoundException.
-        branchService.findById(branchId);
+        monthlyClosingAccessGuard.requireAccessibleBranch(branchId);
         return monthlyClosingSummaryRepository.findAllByBranchId(branchId);
     }
 

@@ -47,6 +47,9 @@ public class ShipmentRequest {
     @Column(name = "serial_number")
     private Long serialNumber;
 
+    @Column(name = "annual_journal_sequence")
+    private Integer annualJournalSequence;
+
     @Column(name = "from_branch_id", nullable = false)
     private UUID fromBranchId;
 

@@ -15,6 +15,7 @@ import hu.puzzleir.valuta.service.GoogleLoginService;
 import hu.puzzleir.valuta.service.PasswordResetService;
 import hu.puzzleir.valuta.service.RefreshCookieService;
 import hu.puzzleir.valuta.service.RefreshTokenService;
+import hu.puzzleir.valuta.service.SessionBranchResolver;
 import hu.puzzleir.valuta.service.TokenBlacklistService;
 import hu.puzzleir.valuta.service.WorkerFirstTimeSetupService;
 import hu.puzzleir.valuta.service.WorkerRoleService;
@@ -54,12 +55,12 @@ class AuthRefreshCookieIssueFailureTest {
     private final PasswordResetService passwordResetService = mock(PasswordResetService.class);
     private final RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
     private final RefreshCookieService refreshCookieService = new RefreshCookieService(refreshTokenService);
+    private final SessionBranchResolver sessionBranchResolver = mock(SessionBranchResolver.class);
     private final ClientIpResolver clientIpResolver = mock(ClientIpResolver.class);
     private final GoogleLoginService googleLoginService = mock(GoogleLoginService.class);
 
-    @Test
-    void passwordLoginFailsWhenRefreshCookieCannotBeIssued() {
-        AuthController controller = new AuthController(
+    private AuthController controller() {
+        return new AuthController(
                 workerService,
                 jwtTokenProvider,
                 workerRepository,
@@ -72,7 +73,13 @@ class AuthRefreshCookieIssueFailureTest {
                 passwordResetService,
                 refreshTokenService,
                 refreshCookieService,
+                sessionBranchResolver,
                 clientIpResolver);
+    }
+
+    @Test
+    void passwordLoginFailsWhenRefreshCookieCannotBeIssued() {
+        AuthController controller = controller();
         LoginRequestDto requestDto = new LoginRequestDto();
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -92,20 +99,7 @@ class AuthRefreshCookieIssueFailureTest {
 
     @Test
     void passwordLoginDoesNotIssueRefreshCookieBeforeRoleSelection() {
-        AuthController controller = new AuthController(
-                workerService,
-                jwtTokenProvider,
-                workerRepository,
-                workerRoleService,
-                tokenBlacklistService,
-                adminBootstrapService,
-                workerFirstTimeSetupService,
-                workerSetupTokenService,
-                companyRepository,
-                passwordResetService,
-                refreshTokenService,
-                refreshCookieService,
-                clientIpResolver);
+        AuthController controller = controller();
         LoginRequestDto requestDto = new LoginRequestDto();
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -131,20 +125,7 @@ class AuthRefreshCookieIssueFailureTest {
 
     @Test
     void passwordLoginRejectsSingleRoleThatDoesNotBelongToRequestedAppModeBeforeCookie() {
-        AuthController controller = new AuthController(
-                workerService,
-                jwtTokenProvider,
-                workerRepository,
-                workerRoleService,
-                tokenBlacklistService,
-                adminBootstrapService,
-                workerFirstTimeSetupService,
-                workerSetupTokenService,
-                companyRepository,
-                passwordResetService,
-                refreshTokenService,
-                refreshCookieService,
-                clientIpResolver);
+        AuthController controller = controller();
         LoginRequestDto requestDto = new LoginRequestDto();
         requestDto.setAppMode("penztar");
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -169,20 +150,7 @@ class AuthRefreshCookieIssueFailureTest {
 
     @Test
     void selectRoleIssuesRefreshCookieForFinalSession() {
-        AuthController controller = new AuthController(
-                workerService,
-                jwtTokenProvider,
-                workerRepository,
-                workerRoleService,
-                tokenBlacklistService,
-                adminBootstrapService,
-                workerFirstTimeSetupService,
-                workerSetupTokenService,
-                companyRepository,
-                passwordResetService,
-                refreshTokenService,
-                refreshCookieService,
-                clientIpResolver);
+        AuthController controller = controller();
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         Worker worker = worker();
@@ -207,20 +175,7 @@ class AuthRefreshCookieIssueFailureTest {
 
     @Test
     void selectRoleRejectsRoleThatDoesNotBelongToRequestedAppMode() {
-        AuthController controller = new AuthController(
-                workerService,
-                jwtTokenProvider,
-                workerRepository,
-                workerRoleService,
-                tokenBlacklistService,
-                adminBootstrapService,
-                workerFirstTimeSetupService,
-                workerSetupTokenService,
-                companyRepository,
-                passwordResetService,
-                refreshTokenService,
-                refreshCookieService,
-                clientIpResolver);
+        AuthController controller = controller();
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         Worker worker = worker();
@@ -244,20 +199,7 @@ class AuthRefreshCookieIssueFailureTest {
 
     @Test
     void selectRoleFailsWhenRefreshCookieCannotBeIssued() {
-        AuthController controller = new AuthController(
-                workerService,
-                jwtTokenProvider,
-                workerRepository,
-                workerRoleService,
-                tokenBlacklistService,
-                adminBootstrapService,
-                workerFirstTimeSetupService,
-                workerSetupTokenService,
-                companyRepository,
-                passwordResetService,
-                refreshTokenService,
-                refreshCookieService,
-                clientIpResolver);
+        AuthController controller = controller();
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         Worker worker = worker();
@@ -282,20 +224,7 @@ class AuthRefreshCookieIssueFailureTest {
 
     @Test
     void refreshTokenRejectsRevokedActiveRoleFromJwt() {
-        AuthController controller = new AuthController(
-                workerService,
-                jwtTokenProvider,
-                workerRepository,
-                workerRoleService,
-                tokenBlacklistService,
-                adminBootstrapService,
-                workerFirstTimeSetupService,
-                workerSetupTokenService,
-                companyRepository,
-                passwordResetService,
-                refreshTokenService,
-                refreshCookieService,
-                clientIpResolver);
+        AuthController controller = controller();
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer access-token");
         Worker worker = worker();
@@ -323,20 +252,7 @@ class AuthRefreshCookieIssueFailureTest {
 
     @Test
     void refreshTokenBlacklistFallbackUsesConfiguredJwtExpirationWhenTokenExpiryIsMissing() {
-        AuthController controller = new AuthController(
-                workerService,
-                jwtTokenProvider,
-                workerRepository,
-                workerRoleService,
-                tokenBlacklistService,
-                adminBootstrapService,
-                workerFirstTimeSetupService,
-                workerSetupTokenService,
-                companyRepository,
-                passwordResetService,
-                refreshTokenService,
-                refreshCookieService,
-                clientIpResolver);
+        AuthController controller = controller();
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer access-token");
         Worker worker = worker();
@@ -363,20 +279,7 @@ class AuthRefreshCookieIssueFailureTest {
 
     @Test
     void refreshTokenRecomputesPermissionsFromCurrentRole() {
-        AuthController controller = new AuthController(
-                workerService,
-                jwtTokenProvider,
-                workerRepository,
-                workerRoleService,
-                tokenBlacklistService,
-                adminBootstrapService,
-                workerFirstTimeSetupService,
-                workerSetupTokenService,
-                companyRepository,
-                passwordResetService,
-                refreshTokenService,
-                refreshCookieService,
-                clientIpResolver);
+        AuthController controller = controller();
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer access-token");
         Worker worker = worker();
@@ -487,20 +390,7 @@ class AuthRefreshCookieIssueFailureTest {
 
     @Test
     void refreshCookiePreservesStoredActiveRole() {
-        AuthController controller = new AuthController(
-                workerService,
-                jwtTokenProvider,
-                workerRepository,
-                workerRoleService,
-                tokenBlacklistService,
-                adminBootstrapService,
-                workerFirstTimeSetupService,
-                workerSetupTokenService,
-                companyRepository,
-                passwordResetService,
-                refreshTokenService,
-                refreshCookieService,
-                clientIpResolver);
+        AuthController controller = controller();
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setCookies(new jakarta.servlet.http.Cookie("refreshToken", "selector.verifier"));
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -526,20 +416,7 @@ class AuthRefreshCookieIssueFailureTest {
 
     @Test
     void refreshCookieRejectsRevokedStoredActiveRole() {
-        AuthController controller = new AuthController(
-                workerService,
-                jwtTokenProvider,
-                workerRepository,
-                workerRoleService,
-                tokenBlacklistService,
-                adminBootstrapService,
-                workerFirstTimeSetupService,
-                workerSetupTokenService,
-                companyRepository,
-                passwordResetService,
-                refreshTokenService,
-                refreshCookieService,
-                clientIpResolver);
+        AuthController controller = controller();
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setCookies(new jakarta.servlet.http.Cookie("refreshToken", "selector.verifier"));
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -567,20 +444,7 @@ class AuthRefreshCookieIssueFailureTest {
 
     @Test
     void refreshCookieRejectsAmbiguousLegacySessionWithoutActiveRole() {
-        AuthController controller = new AuthController(
-                workerService,
-                jwtTokenProvider,
-                workerRepository,
-                workerRoleService,
-                tokenBlacklistService,
-                adminBootstrapService,
-                workerFirstTimeSetupService,
-                workerSetupTokenService,
-                companyRepository,
-                passwordResetService,
-                refreshTokenService,
-                refreshCookieService,
-                clientIpResolver);
+        AuthController controller = controller();
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setCookies(new jakarta.servlet.http.Cookie("refreshToken", "selector.verifier"));
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -607,20 +471,7 @@ class AuthRefreshCookieIssueFailureTest {
 
     @Test
     void firstTimeWorkerSetupIssuesRefreshCookieForAutoLogin() {
-        AuthController controller = new AuthController(
-                workerService,
-                jwtTokenProvider,
-                workerRepository,
-                workerRoleService,
-                tokenBlacklistService,
-                adminBootstrapService,
-                workerFirstTimeSetupService,
-                workerSetupTokenService,
-                companyRepository,
-                passwordResetService,
-                refreshTokenService,
-                refreshCookieService,
-                clientIpResolver);
+        AuthController controller = controller();
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         Worker worker = worker();
@@ -647,20 +498,7 @@ class AuthRefreshCookieIssueFailureTest {
 
     @Test
     void firstTimeWorkerSetupFailsWhenRefreshCookieCannotBeIssued() {
-        AuthController controller = new AuthController(
-                workerService,
-                jwtTokenProvider,
-                workerRepository,
-                workerRoleService,
-                tokenBlacklistService,
-                adminBootstrapService,
-                workerFirstTimeSetupService,
-                workerSetupTokenService,
-                companyRepository,
-                passwordResetService,
-                refreshTokenService,
-                refreshCookieService,
-                clientIpResolver);
+        AuthController controller = controller();
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         Worker worker = worker();

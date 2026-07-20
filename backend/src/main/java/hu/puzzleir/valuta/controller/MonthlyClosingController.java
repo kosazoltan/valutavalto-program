@@ -42,7 +42,7 @@ public class MonthlyClosingController {
      * Havi zárás végrehajtása.
      */
     @PostMapping("/{branchId}/{yearMonth}")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<MonthlyClosingSummary> performMonthlyClosing(
             @PathVariable UUID branchId,
             @PathVariable String yearMonth) {
@@ -54,7 +54,7 @@ public class MonthlyClosingController {
      * Havi összesítő lekérdezés.
      */
     @GetMapping("/{branchId}/{yearMonth}")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<MonthlyClosingSummary> getMonthlyReport(
             @PathVariable UUID branchId,
             @PathVariable String yearMonth) {
@@ -65,7 +65,7 @@ public class MonthlyClosingController {
      * Összes lezárt hónap listája.
      */
     @GetMapping("/{branchId}")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<List<MonthlyClosingSummary>> getAllClosedMonths(
             @PathVariable UUID branchId) {
         return ResponseEntity.ok(monthlyClosingService.getAllClosedMonths(branchId));
@@ -75,7 +75,7 @@ public class MonthlyClosingController {
      * Teljes havi riport DTO (S3-01).
      */
     @GetMapping("/{branchId}/{yearMonth}/full")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<MonthlyReportFullDto> getMonthlyFullReport(
             @PathVariable UUID branchId,
             @PathVariable String yearMonth) {
@@ -86,7 +86,7 @@ public class MonthlyClosingController {
      * Havi zaras PDF letoltes (S3-02 — Delphi: HAVIZAR.DLL nyomtatas).
      */
     @GetMapping(value = "/{branchId}/{yearMonth}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<byte[]> getMonthlyClosingPdf(
             @PathVariable UUID branchId,
             @PathVariable String yearMonth) {

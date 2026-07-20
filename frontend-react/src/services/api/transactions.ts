@@ -1132,6 +1132,16 @@ export interface ClosingWizardDifference {
   status: 'OK' | 'DISCREPANCY' | string
 }
 
+export interface ClosingWizardStatus {
+  branchId: string
+  closingDate: string
+  vaultContext: boolean
+  denominationRecorded: boolean
+  exactMatch: boolean
+  message: string
+  differences: ClosingWizardDifference[]
+}
+
 export const closingWizardApi = {
   start: async (
     branchId: string,
@@ -1162,6 +1172,12 @@ export const closingWizardApi = {
   },
   validateTransactions: async (): Promise<string[]> => {
     const response = await api.get<string[]>('/closing-wizard/validate-transactions')
+    return response.data
+  },
+  getStatus: async (date: string): Promise<ClosingWizardStatus> => {
+    const response = await api.get<ClosingWizardStatus>('/closing-wizard/status', {
+      params: { date },
+    })
     return response.data
   },
   cancel: async (wizardId: string): Promise<ClosingWizard> => {
