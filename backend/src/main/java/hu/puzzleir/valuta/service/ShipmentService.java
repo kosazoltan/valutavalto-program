@@ -592,6 +592,8 @@ public class ShipmentService {
             int staleThresholdHours) {
         Branch fromBranch = findBranchInCompany(request.getFromBranchId(), companyId, branchCache);
         Branch toBranch = findBranchInCompany(request.getToBranchId(), companyId, branchCache);
+        Branch vaultBranch = findBranchInCompany(
+                SecurityUtils.getCurrentBranchIdOrNull(), companyId, branchCache);
         Worker requestedBy = findWorkerInCompany(request.getRequestedById(), companyId, workerCache);
         Worker rejectedBy = findWorkerInCompany(request.getRejectedByWorkerId(), companyId, workerCache);
         Worker cancelledBy = findWorkerInCompany(request.getCancelledByWorkerId(), companyId, workerCache);
@@ -626,6 +628,8 @@ public class ShipmentService {
                 .cancelledByWorkerName(cancelledBy != null ? cancelledBy.getName() : null)
                 .cancelledAt(request.getCancelledAt())
                 .createdAt(request.getCreatedAt())
+                .vaultAddress(vaultBranch != null ? formatBranchAddress(vaultBranch) : null)
+                .vaultPhone(vaultBranch != null ? normalizedPhone(vaultBranch.getPhone()) : null)
                 .items(toItemDtos(request.getItems()))
                 .requestingBranchId(request.getFromBranchId())
                 .requestingBranchName(fromName)
@@ -703,6 +707,26 @@ public class ShipmentService {
             cache.put(branchId, branchRepository.findByIdAndCompanyId(branchId, companyId).orElse(null));
         }
         return cache.get(branchId);
+    }
+
+    /** FKH-006: a Transfer-bizonylattal azonos, blank-safe fejléc-cím formázás. */
+    private String formatBranchAddress(Branch branch) {
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        if (branch.getCity() != null && !branch.getCity().isBlank()) {
+            parts.add(branch.getCity().trim());
+        }
+        if (branch.getAddress() != null && !branch.getAddress().isBlank()) {
+            parts.add(branch.getAddress().trim());
+        }
+        if (branch.getZipCode() != null && !branch.getZipCode().isBlank()) {
+            parts.add(branch.getZipCode().trim());
+        }
+        return parts.isEmpty() ? null : String.join(", ", parts);
+    }
+
+    /** FKH-006: üres telefonszámnál a bizonylat ne rendereljen telefon sort. */
+    private String normalizedPhone(String phone) {
+        return (phone == null || phone.isBlank()) ? null : phone.trim();
     }
 
     private Worker findWorkerInCompany(Long workerId, UUID companyId, Map<Long, Worker> cache) {

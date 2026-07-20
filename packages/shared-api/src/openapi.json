@@ -7,7 +7,7 @@
       "name": "PuzzleIR",
       "email": "info@puzzleir.hu"
     },
-    "version": "2.28.45"
+    "version": "2.28.47"
   },
   "servers": [
     {
@@ -35530,6 +35530,12 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "vaultAddress": {
+            "type": "string"
+          },
+          "vaultPhone": {
+            "type": "string"
           },
           "items": {
             "type": "array",

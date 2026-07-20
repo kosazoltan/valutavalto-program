@@ -15832,6 +15832,8 @@ export interface components {
       cancelledAt?: string
       /** Format: date-time */
       createdAt?: string
+      vaultAddress?: string
+      vaultPhone?: string
       items?: components['schemas']['ShipmentRequestItemResponseDto'][]
       /** Format: uuid */
       requestingBranchId?: string

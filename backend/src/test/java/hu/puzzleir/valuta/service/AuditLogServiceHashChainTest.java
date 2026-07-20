@@ -98,6 +98,22 @@ class AuditLogServiceHashChainTest {
     }
 
     @Test
+    @DisplayName("részletes REQUIRES_NEW audit: a kapott tenantet használja és hash-láncol")
+    void detailedLogInNewTransactionUsesExplicitCompanyAndAppliesHashChain() {
+        UUID companyId = UUID.randomUUID();
+
+        service.logInNewTransaction(
+                "STOCK_INSUFFICIENT", "ShipmentRequest", "shipment-1",
+                "42", null, "branch-1", "Branch 1", "details", companyId);
+
+        AuditLog saved = captureSavedAuditLog();
+        assertHashChain(saved);
+        assertThat(saved.getCompanyId()).isEqualTo(companyId);
+        assertThat(saved.getEntityType()).isEqualTo("ShipmentRequest");
+        assertThat(saved.getEntityId()).isEqualTo("shipment-1");
+    }
+
+    @Test
     @DisplayName("explicit-company REQUIRES_NEW audit: null companyId fail-fast")
     void logInNewTransactionForCompanyRejectsNullCompanyId() {
         assertThatThrownBy(() ->

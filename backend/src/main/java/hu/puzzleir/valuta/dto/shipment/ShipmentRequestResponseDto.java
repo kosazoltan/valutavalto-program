@@ -46,6 +46,11 @@ public class ShipmentRequestResponseDto {
     private String cancelledByWorkerName;
     private LocalDateTime cancelledAt;
     private LocalDateTime createdAt;
+
+    // FKH-006: a bejelentkezett értéktár szerveroldali, bizonylatfejléc-adatai.
+    private String vaultAddress;
+    private String vaultPhone;
+
     private List<ShipmentRequestItemResponseDto> items;
 
     // Frontend-kompatibilis aliasok a korábbi ShipmentRequest interface-hez.

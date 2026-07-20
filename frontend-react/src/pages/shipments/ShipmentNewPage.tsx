@@ -362,15 +362,6 @@ export default function ShipmentNewPage() {
         const branch = allBranches.find((candidate) => candidate.id === id)
         return branch ? `${branch.code} - ${branch.name}` : ''
       }
-      const branchAddress = (id: string): string | undefined => {
-        const branch = allBranches.find((candidate) => candidate.id === id)
-        if (!branch) return undefined
-        return [branch.city, branch.address, branch.zipCode].filter(Boolean).join(', ') || undefined
-      }
-      const branchPhone = (id: string): string | undefined => {
-        const branch = allBranches.find((candidate) => candidate.id === id)
-        return branch?.phone?.trim() || undefined
-      }
       const now = new Date()
       setPrintReceiptData({
         type: 'transfer',
@@ -394,8 +385,8 @@ export default function ShipmentNewPage() {
           receiptShipment.toBranchName || receiptShipment.targetBranchName,
           receiptShipment.toBranchCode,
         ),
-        vaultAddress: branchAddress(ownBranchId),
-        vaultPhone: branchPhone(ownBranchId),
+        vaultAddress: receiptShipment.vaultAddress,
+        vaultPhone: receiptShipment.vaultPhone,
         transferDocType: direction === 'inbound' ? 'receipt' : 'handover',
         transferNote: options.transferNote ?? (receiptShipment.notes || form.notes || undefined),
         carrierName: receiptShipment.carrierName || form.carrierName.trim(),

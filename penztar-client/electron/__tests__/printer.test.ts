@@ -767,6 +767,40 @@ describe('printer — fejléc-javítás FR-7: HUF transfer dupla példány', () 
     expect((BrowserWindow as unknown as Mock).mock.calls.length).toBe(1);
   });
 
+  it('KK sorszámú HUF Shipment bizonylat KÉT példányban nyomtat', async () => {
+    const result = await printReceipt(
+      {
+        ...baseData,
+        type: 'transfer',
+        receiptNumber: 'KK-000123',
+        transferDocType: 'handover',
+        currencyCode: 'HUF',
+        transferTarget: 'BR027 - Szeged Tesco',
+        vaultAddress: 'Szeged, Hajnóczy u. 57., 6722',
+      },
+      'EPSON TM-T88V',
+    );
+    expect(result).toBe(true);
+    expect((BrowserWindow as unknown as Mock).mock.calls.length).toBe(2);
+  });
+
+  it('FF sorszámú deviza Shipment bizonylat EGY példányban nyomtat', async () => {
+    const result = await printReceipt(
+      {
+        ...baseData,
+        type: 'transfer',
+        receiptNumber: 'FF-000124',
+        transferDocType: 'receipt',
+        currencyCode: 'EUR',
+        transferTarget: 'BR075 - Szeged Értéktár',
+        vaultAddress: 'Szeged, Hajnóczy u. 57., 6722',
+      },
+      'EPSON TM-T88V',
+    );
+    expect(result).toBe(true);
+    expect((BrowserWindow as unknown as Mock).mock.calls.length).toBe(1);
+  });
+
   it('nem-transfer (sell) HUF-os bizonylat EGY példányban nyomtat (a dupla szabály csak transferre vonatkozik)', async () => {
     const result = await printReceipt(
       { ...baseData, type: 'sell', currencyCode: 'HUF' },
