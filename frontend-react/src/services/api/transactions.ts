@@ -1477,6 +1477,8 @@ export interface ShipmentRequest {
   /** FK02 (átadás-átvétel): a fizikai szállítást végző neve + a szállítmány plombaszáma. */
   carrierName?: string
   sealNumber?: string
+  vaultAddress?: string
+  vaultPhone?: string
   items?: ShipmentRequestItem[]
 }
 
