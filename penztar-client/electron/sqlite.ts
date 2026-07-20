@@ -105,6 +105,27 @@ export const OUTBOX_TABLES = [
   'pending_stocktake_items',
 ] as const;
 
+/** Additív SQLite oszlopmigráció: kizárólag a várt duplicate-column hibát kezeli idempotensen. */
+export function addColumnIfMissing(
+  database: Database,
+  table: string,
+  columnName: string,
+  columnDefinition: string,
+): void {
+  const identifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
+  if (!identifierPattern.test(table) || !identifierPattern.test(columnName)) {
+    throw new Error('Érvénytelen SQLite migrációs azonosító');
+  }
+  try {
+    database.run(`ALTER TABLE ${table} ADD COLUMN ${columnName} ${columnDefinition}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.trim().toLowerCase() !== `duplicate column name: ${columnName.toLowerCase()}`) {
+      throw err;
+    }
+  }
+}
+
 /**
  * Multi-tenant outbox invariant (2026-07-04): every offline outbox row can carry
  * the company code active when it was recorded. Additive + idempotent repo pattern.
@@ -670,9 +691,16 @@ export async function initDatabase(): Promise<void> {
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         synced INTEGER NOT NULL DEFAULT 0,
         sync_attempts INTEGER NOT NULL DEFAULT 0,
-        sync_error TEXT
+        sync_error TEXT,
+        confirmed_stale INTEGER NOT NULL DEFAULT 0
       );
     `);
+    addColumnIfMissing(
+      db,
+      'pending_shipment_receipts',
+      'confirmed_stale',
+      'INTEGER NOT NULL DEFAULT 0',
+    );
     db.run(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_pending_shipment_receipt_open
       ON pending_shipment_receipts (shipment_id) WHERE synced = 0;
@@ -2392,6 +2420,7 @@ export interface PendingShipmentReceiptRow {
   synced: number;
   sync_attempts: number;
   sync_error: string | null;
+  confirmed_stale?: number | null;
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -2420,6 +2449,9 @@ export function savePendingShipmentReceipt(input: PendingShipmentReceiptInput): 
   if (!Number.isInteger(input.workerId) || input.workerId <= 0) {
     throw new Error('Érvénytelen Shipment-átvételi dolgozóazonosító.');
   }
+  if (input.confirmedStale != null && typeof input.confirmedStale !== 'boolean') {
+    throw new Error('Érvénytelen Shipment stale megerősítés.');
+  }
   if (
     input.requestNumber != null &&
     (typeof input.requestNumber !== 'string' ||
@@ -2441,8 +2473,8 @@ export function savePendingShipmentReceipt(input: PendingShipmentReceiptInput): 
   }
   db.run(
     `INSERT INTO pending_shipment_receipts
-      (shipment_id, request_number, idempotency_key, branch_id, worker_id, company_code)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+      (shipment_id, request_number, idempotency_key, branch_id, worker_id, company_code, confirmed_stale)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       input.shipmentId,
       input.requestNumber?.trim() || null,
@@ -2450,6 +2482,7 @@ export function savePendingShipmentReceipt(input: PendingShipmentReceiptInput): 
       input.branchId,
       input.workerId,
       companyCode,
+      input.confirmedStale === true ? 1 : 0,
     ],
   );
   const id = lastInsertRowId(db);

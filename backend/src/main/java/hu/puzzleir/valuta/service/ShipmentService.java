@@ -25,11 +25,15 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,6 +49,8 @@ import java.util.UUID;
 @Slf4j
 public class ShipmentService {
 
+    private static final ObjectMapper AUDIT_JSON_MAPPER = new ObjectMapper();
+
     private final ShipmentRequestRepository shipmentRequestRepository;
     private final BranchRepository branchRepository;
     private final CurrencyRepository currencyRepository;
@@ -55,6 +61,7 @@ public class ShipmentService {
     private final ShipmentHandlingFeeSyncService handlingFeeSyncService;
     private final AccessScopeService accessScopeService;
     private final AuditLogService auditLogService;
+    private final SystemParameterService systemParameterService;
 
     public static final String ACTION_DIRECT_DELIVER = "SHIPMENT_DIRECT_DELIVER";
     public static final String ACTION_DELIVERED = "SHIPMENT_DELIVERED";
@@ -62,6 +69,9 @@ public class ShipmentService {
     public static final String ACTION_CANCELLED_BY_SENDER = "SHIPMENT_CANCELLED_BY_SENDER";
     public static final String ACTION_APPROVE_DEPRECATED = "SHIPMENT_APPROVE_DEPRECATED";
     public static final String ACTION_REJECT_DEPRECATED = "SHIPMENT_REJECT_DEPRECATED";
+    public static final String ACTION_DELIVER_CONFIRMED_STALE = "SHIPMENT_DELIVER_CONFIRMED_STALE";
+    public static final String PARAM_STALE_WARNING_HOURS = "SHIPMENT_STALE_DELIVERY_WARNING_HOURS";
+    public static final int DEFAULT_STALE_HOURS = 48;
 
     private static final Set<ShipmentRequestStatus> STOCK_BOOKED_OUT_STATUSES = Set.of(
             ShipmentRequestStatus.SUBMITTED,
@@ -115,10 +125,12 @@ public class ShipmentService {
     public Page<ShipmentRequestResponseDto> findAllResponse(
             ShipmentRequestStatus status, UUID branchId, Pageable pageable) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
+        int staleThresholdHours = effectiveStaleThresholdHours();
         Map<UUID, Branch> branchCache = new HashMap<>();
         Map<Long, Worker> workerCache = new HashMap<>();
         return findAll(status, branchId, pageable)
-                .map(request -> toResponseDto(request, companyId, branchCache, workerCache));
+                .map(request -> toResponseDto(
+                        request, companyId, branchCache, workerCache, staleThresholdHours));
     }
 
     /** FKH-018: a bejelentkezett fiókhoz címzett, még átvehető shipmentek. */
@@ -142,8 +154,10 @@ public class ShipmentService {
         requests.forEach(ShipmentService::initLazyForSerialization);
         Map<UUID, Branch> branchCache = new HashMap<>();
         Map<Long, Worker> workerCache = new HashMap<>();
+        int staleThresholdHours = effectiveStaleThresholdHours();
         return requests.stream()
-                .map(request -> toResponseDto(request, companyId, branchCache, workerCache))
+                .map(request -> toResponseDto(
+                        request, companyId, branchCache, workerCache, staleThresholdHours))
                 .toList();
     }
 
@@ -443,6 +457,10 @@ public class ShipmentService {
     }
 
     public ShipmentRequest deliver(UUID id) {
+        return deliver(id, false);
+    }
+
+    public ShipmentRequest deliver(UUID id, boolean confirmedStale) {
         ShipmentRequest request = findByIdLocked(id);
         // Authz a státusz-ellenőrzés előtt: idegen/no-branch hívó nem tudja megkülönböztetni
         // a DELIVERED, érvénytelen és átvehető állapotokat, és mutációig sem juthat el.
@@ -457,11 +475,25 @@ public class ShipmentService {
                 && previousStatus != ShipmentRequestStatus.IN_TRANSIT) {
             throw new ValidationException("Csak SUBMITTED, APPROVED vagy IN_TRANSIT státuszú kérés vehető át!");
         }
+        int staleThresholdHours = DEFAULT_STALE_HOURS;
+        LocalDateTime staleCheckedAt = null;
+        boolean auditConfirmedStale = false;
+        if (confirmedStale) {
+            staleThresholdHours = effectiveStaleThresholdHours();
+            staleCheckedAt = LocalDateTime.now();
+            auditConfirmedStale = isStaleForDelivery(request, staleThresholdHours, staleCheckedAt);
+            if (!auditConfirmedStale) {
+                log.info("A kliens stale megerősítést küldött, de a szerver szerint a Shipment nem stale: id={}", id);
+            }
+        }
         // FR-3: az ÁTVEVŐ oldal készlete a visszaigazoláskor nő (IN-könyvelés), get-or-create + lock.
         stockBookingService.bookStockIn(request, SecurityUtils.getCurrentCompanyId());
         writeStatusAudit(
                 previousStatus == ShipmentRequestStatus.SUBMITTED ? ACTION_DIRECT_DELIVER : ACTION_DELIVERED,
                 request, previousStatus, ShipmentRequestStatus.DELIVERED);
+        if (auditConfirmedStale) {
+            writeConfirmedStaleAudit(request, staleThresholdHours, staleCheckedAt);
+        }
         request.setStatus(ShipmentRequestStatus.DELIVERED);
         request.setDeliveryDate(LocalDate.now());
         log.info("Szállítmánykérés leszállítva: {}", request.getRequestNumber());
@@ -473,6 +505,10 @@ public class ShipmentService {
 
     public ShipmentRequestResponseDto deliverResponse(UUID id) {
         return toResponseDto(deliver(id));
+    }
+
+    public ShipmentRequestResponseDto deliverResponse(UUID id, boolean confirmedStale) {
+        return toResponseDto(deliver(id, confirmedStale));
     }
 
     public ShipmentRequest cancel(UUID id) {
@@ -544,14 +580,16 @@ public class ShipmentService {
         UUID companyId = request.getCompanyId() != null
                 ? request.getCompanyId()
                 : SecurityUtils.getCurrentCompanyId();
-        return toResponseDto(request, companyId, new HashMap<>(), new HashMap<>());
+        return toResponseDto(
+                request, companyId, new HashMap<>(), new HashMap<>(), effectiveStaleThresholdHours());
     }
 
     private ShipmentRequestResponseDto toResponseDto(
             ShipmentRequest request,
             UUID companyId,
             Map<UUID, Branch> branchCache,
-            Map<Long, Worker> workerCache) {
+            Map<Long, Worker> workerCache,
+            int staleThresholdHours) {
         Branch fromBranch = findBranchInCompany(request.getFromBranchId(), companyId, branchCache);
         Branch toBranch = findBranchInCompany(request.getToBranchId(), companyId, branchCache);
         Worker requestedBy = findWorkerInCompany(request.getRequestedById(), companyId, workerCache);
@@ -597,7 +635,64 @@ public class ShipmentService {
                 .requestedDeliveryDate(request.getDeliveryDate())
                 .requestedByWorkerId(request.getRequestedById())
                 .requestedAt(request.getCreatedAt())
+                .staleForDelivery(isStaleForDelivery(request, staleThresholdHours, LocalDateTime.now()))
+                .staleThresholdHours(staleThresholdHours)
                 .build();
+    }
+
+    private int effectiveStaleThresholdHours() {
+        String configured = systemParameterService.getRawValue(PARAM_STALE_WARNING_HOURS, null);
+        if (configured == null) {
+            return DEFAULT_STALE_HOURS;
+        }
+        try {
+            int parsed = Integer.parseInt(configured.trim());
+            if (parsed > 0) {
+                return parsed;
+            }
+        } catch (NumberFormatException ignored) {
+            // A közös WARN ág lent kezeli a jelen lévő, de hibás értéket.
+        }
+        log.warn("Érvénytelen Shipment stale küszöb, fallback 48 órára: key={}, value={}",
+                PARAM_STALE_WARNING_HOURS, configured);
+        return DEFAULT_STALE_HOURS;
+    }
+
+    static boolean isStaleForDelivery(ShipmentRequest request, int thresholdHours, LocalDateTime now) {
+        if (request == null || request.getCreatedAt() == null) {
+            log.warn("Shipment stale számítás createdAt nélkül, nem stale eredmény: shipmentId={}",
+                    request != null ? request.getId() : null);
+            return false;
+        }
+        return Duration.between(request.getCreatedAt(), now)
+                .compareTo(Duration.ofHours(thresholdHours)) > 0;
+    }
+
+    private void writeConfirmedStaleAudit(
+            ShipmentRequest request, int thresholdHours, LocalDateTime checkedAt) {
+        long ageHours = Duration.between(request.getCreatedAt(), checkedAt).toHours();
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        UUID branchId = SecurityUtils.getCurrentBranchIdOrNull();
+        Map<String, Object> changes = new LinkedHashMap<>();
+        changes.put("KAT", "TX");
+        changes.put("shipment_request_id", request.getId().toString());
+        changes.put("request_number", request.getRequestNumber());
+        changes.put("threshold_hours", thresholdHours);
+        changes.put("age_hours", ageHours);
+        changes.put("confirmed", true);
+        auditLogService.log(ACTION_DELIVER_CONFIRMED_STALE, "ShipmentRequest", request.getId().toString(),
+                workerId != null ? workerId.toString() : null, null,
+                branchId != null ? branchId.toString() : null, null,
+                serializeAuditChanges(changes),
+                null, null);
+    }
+
+    private static String serializeAuditChanges(Map<String, Object> changes) {
+        try {
+            return AUDIT_JSON_MAPPER.writeValueAsString(changes);
+        } catch (JacksonException e) {
+            throw new IllegalStateException("Shipment stale audit JSON serialization failed", e);
+        }
     }
 
     private Branch findBranchInCompany(UUID branchId, UUID companyId, Map<UUID, Branch> cache) {

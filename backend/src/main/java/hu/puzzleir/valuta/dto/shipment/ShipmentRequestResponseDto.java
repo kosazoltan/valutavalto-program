@@ -57,4 +57,6 @@ public class ShipmentRequestResponseDto {
     private LocalDate requestedDeliveryDate;
     private Long requestedByWorkerId;
     private LocalDateTime requestedAt;
+    private Boolean staleForDelivery;
+    private Integer staleThresholdHours;
 }

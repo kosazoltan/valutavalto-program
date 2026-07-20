@@ -42,6 +42,7 @@ import type { PrintReceiptData } from '../../types/receipt'
 import { localIsoDate } from '../../utils/dateFormat'
 import TransferReceiptModal from './TransferReceiptModal'
 import { buildVaultLabel, loadOwnVaultContact } from './transferPageShared'
+import StaleShipmentConfirmDialog from '../../components/shipments/StaleShipmentConfirmDialog'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -146,6 +147,7 @@ export default function TransferPage() {
   const [incomingTransfers, setIncomingTransfers] = useState<Transfer[]>([])
   const [pendingTransfers, setPendingTransfers] = useState<Transfer[]>([])
   const [pendingShipments, setPendingShipments] = useState<ShipmentRequest[]>([])
+  const [staleConfirmShipment, setStaleConfirmShipment] = useState<ShipmentRequest | null>(null)
   const [queuedShipmentReceiptIds, setQueuedShipmentReceiptIds] = useState<Set<string>>(new Set())
   const [shipmentReceiptIssues, setShipmentReceiptIssues] = useState<
     Array<{ requestNumber: string; message: string }>
@@ -343,15 +345,23 @@ export default function TransferPage() {
     }
   }
 
-  const handleShipmentReceive = async (shipment: ShipmentRequest) => {
+  const handleShipmentReceive = async (shipment: ShipmentRequest, confirmedStale = false) => {
     if (queuedShipmentReceiptIds.has(shipment.id)) return
+    if (shipment.staleForDelivery === true && !confirmedStale) {
+      setStaleConfirmShipment(shipment)
+      return
+    }
     const idempotencyKey =
       shipmentReceiptKeysRef.current.get(shipment.id) ?? globalThis.crypto.randomUUID()
     shipmentReceiptKeysRef.current.set(shipment.id, idempotencyKey)
     try {
       setLoading(true)
       setError(null)
-      await shipmentRequestApi.deliver(shipment.id, idempotencyKey)
+      if (confirmedStale) {
+        await shipmentRequestApi.deliver(shipment.id, idempotencyKey, { confirmedStale: true })
+      } else {
+        await shipmentRequestApi.deliver(shipment.id, idempotencyKey)
+      }
       shipmentReceiptKeysRef.current.delete(shipment.id)
       setSuccess(`Shipment átvétele sikeres: ${shipment.requestNumber}`)
       await loadData()
@@ -363,13 +373,22 @@ export default function TransferPage() {
         worker.id != null
       ) {
         try {
-          const queued = await queueOfflineShipmentReceipt(
-            shipment.id,
-            shipment.requestNumber,
-            worker.branchId,
-            Number(worker.id),
-            idempotencyKey,
-          )
+          const queued = confirmedStale
+            ? await queueOfflineShipmentReceipt(
+                shipment.id,
+                shipment.requestNumber,
+                worker.branchId,
+                Number(worker.id),
+                idempotencyKey,
+                true,
+              )
+            : await queueOfflineShipmentReceipt(
+                shipment.id,
+                shipment.requestNumber,
+                worker.branchId,
+                Number(worker.id),
+                idempotencyKey,
+              )
           if (queued) {
             shipmentReceiptKeysRef.current.delete(shipment.id)
             setQueuedShipmentReceiptIds((current) => new Set(current).add(shipment.id))
@@ -1224,6 +1243,17 @@ export default function TransferPage() {
         onClose={() => setShowReceiptModal(false)}
         receiptData={printReceiptData}
       />
+      {staleConfirmShipment && (
+        <StaleShipmentConfirmDialog
+          shipment={staleConfirmShipment}
+          onCancel={() => setStaleConfirmShipment(null)}
+          onConfirm={() => {
+            const shipment = staleConfirmShipment
+            setStaleConfirmShipment(null)
+            void handleShipmentReceive(shipment, true)
+          }}
+        />
+      )}
     </div>
   )
 }

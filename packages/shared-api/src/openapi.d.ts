@@ -15848,6 +15848,9 @@ export interface components {
       requestedByWorkerId?: number
       /** Format: date-time */
       requestedAt?: string
+      staleForDelivery?: boolean
+      /** Format: int32 */
+      staleThresholdHours?: number
     }
     RoleDto: {
       id?: string
@@ -17320,10 +17323,10 @@ export interface components {
       version?: number
       /** Format: uuid */
       branchId?: string
-      /** Format: uuid */
-      companyId?: string
       /** Format: int32 */
       territoryId?: number
+      /** Format: uuid */
+      companyId?: string
     }
     CountItemRequest: {
       /** Format: int32 */
@@ -17987,6 +17990,9 @@ export interface components {
       /** Format: date-time */
       assignedAt?: string
       assignedBy?: string
+    }
+    ShipmentDeliverRequest: {
+      confirmedStale?: boolean
     }
     ErrorResponse: {
       /** Format: date-time */
@@ -28754,7 +28760,12 @@ export interface operations {
       }
       cookie?: never
     }
-    requestBody?: never
+    /** @description Régi Shipment figyelmeztetés tudatos megerősítése; hiánya kompatibilis. */
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['ShipmentDeliverRequest']
+      }
+    }
     responses: {
       /** @description OK */
       200: {

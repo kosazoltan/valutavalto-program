@@ -2745,7 +2745,7 @@ export class SyncEngine {
       try {
         await httpPost<Record<string, unknown>>(
           `${serverUrl}/shipments/${receipt.shipment_id}/deliver`,
-          {},
+          receipt.confirmed_stale === 1 ? { confirmedStale: true } : {},
           token,
           receipt.idempotency_key,
           true,

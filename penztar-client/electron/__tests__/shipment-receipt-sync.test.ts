@@ -99,6 +99,7 @@ function row(overrides: Partial<PendingReceipt> = {}): PendingReceipt {
     synced: 0,
     sync_attempts: 0,
     sync_error: null,
+    confirmed_stale: 0,
     ...overrides,
   };
 }
@@ -146,6 +147,20 @@ describe('SyncEngine — offline Shipment-átvételi outbox', () => {
       }),
     );
     expect(mockedSynced).toHaveBeenCalledWith(11);
+    expect((fetchMock.mock.calls[0]?.[1] as RequestInit).body).toBe('{}');
+    expect(result).toEqual({ synced: 1, failed: 0, errors: [] });
+  });
+
+  it('a queue-ban megőrzött stale megerősítést a deliver bodyban továbbítja', async () => {
+    mockedPending.mockReturnValue([row({ confirmed_stale: 1 })]);
+    const fetchMock = vi.fn().mockResolvedValue(response(200, { status: 'DELIVERED' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await engine.syncShipmentReceipts();
+
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toEqual({
+      confirmedStale: true,
+    });
     expect(result).toEqual({ synced: 1, failed: 0, errors: [] });
   });
 

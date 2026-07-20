@@ -75,6 +75,9 @@ class ShipmentServiceTest {
     private AuditLogService auditLogService;
 
     @Mock
+    private SystemParameterService systemParameterService;
+
+    @Mock
     private CashBalanceRepository cashBalanceRepository;
 
     @Mock
@@ -1163,7 +1166,8 @@ class ShipmentServiceTest {
                 bookingService,
                 handlingFeeSyncService,
                 accessScopeService,
-                auditLogService);
+                auditLogService,
+                systemParameterService);
     }
 
     @Test
