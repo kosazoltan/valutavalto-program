@@ -144,8 +144,20 @@ public class AuditLogService {
     public void logInNewTransaction(String action, String entityType, String entityId,
                                     String userId, String userName, String branchId, String branchName,
                                     String changes) {
+        logInNewTransaction(
+                action, entityType, entityId, userId, userName, branchId, branchName, changes, null);
+    }
+
+    /**
+     * Független audit-bejegyzés explicit, a híváskor rögzített tenant azonosítóval.
+     * Null companyId esetén a meglévő SecurityContext-alapú feloldás marad érvényben.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
+    public void logInNewTransaction(String action, String entityType, String entityId,
+                                    String userId, String userName, String branchId, String branchName,
+                                    String changes, UUID companyId) {
         AuditLog entry = AuditLog.builder()
-                .companyId(resolveCompanyId())
+                .companyId(companyId != null ? companyId : resolveCompanyId())
                 .action(action)
                 .entityType(entityType)
                 .entityId(entityId)

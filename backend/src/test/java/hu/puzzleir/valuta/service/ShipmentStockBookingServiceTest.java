@@ -20,6 +20,8 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -179,6 +181,59 @@ class ShipmentStockBookingServiceTest {
 
         assertThat(balance.getCurrentBalance()).isEqualByComparingTo("100");
         verify(cashBalanceRepository, never()).save(any());
+    }
+
+    @Test
+    void bookStockOut_insufficientAuditRunsAfterCompletionWithCapturedContext() {
+        UUID companyId = UUID.randomUUID();
+        UUID fromId = UUID.randomUUID();
+        Branch from = cashierBranch(fromId, companyId);
+        ShipmentRequest req = shipment(fromId, UUID.randomUUID(), item(4L, "300", "150000"));
+
+        when(branchRepository.findByIdAndCompanyId(fromId, companyId)).thenReturn(Optional.of(from));
+        when(currencyRepository.findById(4L)).thenReturn(Optional.of(currency("EUR")));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(fromId, 4L, companyId))
+                .thenReturn(Optional.empty());
+
+        TransactionSynchronization synchronization;
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+                sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
+                sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+                assertThatThrownBy(() -> service.bookStockOut(req, companyId))
+                        .isInstanceOf(BusinessException.class)
+                        .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                        .isEqualTo(ShipmentStockBookingService.ERR_INSUFFICIENT);
+
+                verify(auditLogService, never()).logInNewTransaction(
+                        any(), any(), any(), any(), any(), any(), any(), any(), any());
+                assertThat(TransactionSynchronizationManager.getSynchronizations()).singleElement();
+                synchronization = TransactionSynchronizationManager.getSynchronizations().getFirst();
+            }
+
+            synchronization.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+
+            verify(auditLogService).logInNewTransaction(
+                    eq(ShipmentStockBookingService.ACTION_STOCK_INSUFFICIENT),
+                    eq("ShipmentRequest"),
+                    eq(req.getId().toString()),
+                    eq("42"),
+                    eq(null),
+                    eq(fromId.toString()),
+                    eq(from.getName()),
+                    org.mockito.ArgumentMatchers.argThat(changes -> changes != null
+                            && changes.contains("\"shipment_request_id\":\"" + req.getId() + "\"")
+                            && changes.contains("\"branch_id\":\"" + fromId + "\"")
+                            && changes.contains("\"currency_id\":4")
+                            && changes.contains("\"requested\":300")
+                            && changes.contains("\"available\":0")),
+                    eq(companyId));
+            verify(cashBalanceRepository, never()).save(any());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     // ===================== bookStockIn (átvevő IN) =====================

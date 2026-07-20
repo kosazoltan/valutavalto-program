@@ -479,18 +479,48 @@ public class ShipmentStockBookingService {
     }
 
     /**
-     * FR-8: elégtelen készlet → audit {@code STOCK_INSUFFICIENT} (független tranzakcióban, hogy a
-     * dobott {@link BusinessException} rollbackje ELLENÉRE megmaradjon) + 422 {@code VV-VALID-003}.
+     * FR-8: elégtelen készlet → audit {@code STOCK_INSUFFICIENT} + 422 {@code VV-VALID-003}.
+     * Az audit független tranzakciója csak a hívó tranzakció {@code afterCompletion} callbackjében
+     * indul: addigra az AML- vagy korábbi tételaudit által zárolt hash-láncvég felszabadult, ezért
+     * a felfüggesztett külső tranzakció és a {@code REQUIRES_NEW} audit nem várhat egymásra.
      */
     private BusinessException insufficientStock(ShipmentRequest req, Branch branch, ShipmentRequestItem item,
-                                                String currencyCode, BigDecimal requested, BigDecimal available) {
-        auditLogService.logInNewTransaction(
-                ACTION_STOCK_INSUFFICIENT, AUDIT_ENTITY_TYPE, idStr(req.getId()),
-                workerIdStr(), null, branchIdStr(branch.getId()), branch.getName(),
-                String.format("{\"KAT\":\"VALID\",\"shipment_request_id\":\"%s\",\"branch_id\":\"%s\","
-                                + "\"currency_id\":%d,\"currency\":\"%s\",\"requested\":%s,\"available\":%s}",
-                        req.getId(), branch.getId(), item.getCurrencyId(), currencyCode,
-                        requested.toPlainString(), available.toPlainString()));
+                                                 String currencyCode, BigDecimal requested, BigDecimal available) {
+        String action = ACTION_STOCK_INSUFFICIENT;
+        String entityType = AUDIT_ENTITY_TYPE;
+        String entityId = idStr(req.getId());
+        String userId = workerIdStr();
+        String branchId = branchIdStr(branch.getId());
+        String branchName = branch.getName();
+        String changes = String.format(
+                "{\"KAT\":\"VALID\",\"shipment_request_id\":\"%s\",\"branch_id\":\"%s\","
+                        + "\"currency_id\":%d,\"currency\":\"%s\",\"requested\":%s,\"available\":%s}",
+                req.getId(), branch.getId(), item.getCurrencyId(), currencyCode,
+                requested.toPlainString(), available.toPlainString());
+        UUID companyId;
+        try {
+            companyId = SecurityUtils.getCurrentCompanyId();
+        } catch (ValidationException e) {
+            companyId = null;
+            log.debug("STOCK_INSUFFICIENT audit companyId nélkül: nincs hitelesített tenant-kontextus");
+        } catch (Exception e) {
+            companyId = null;
+            log.warn("STOCK_INSUFFICIENT audit companyId rögzítése sikertelen: {}: {}",
+                    e.getClass().getSimpleName(), e.getMessage());
+        }
+
+        UUID capturedCompanyId = companyId;
+        DeferredIndependentAudit.run(() -> {
+            if (capturedCompanyId != null) {
+                auditLogService.logInNewTransaction(
+                        action, entityType, entityId, userId, null, branchId, branchName, changes,
+                        capturedCompanyId);
+            } else {
+                // Megőrzi a korábbi, SecurityContext-fallback viselkedést rendszerkontextusban.
+                auditLogService.logInNewTransaction(
+                        action, entityType, entityId, userId, null, branchId, branchName, changes);
+            }
+        }, "STOCK_INSUFFICIENT audit " + entityId);
         return new BusinessException(
                 String.format("Nincs elegendő készlet a(z) %s átadásához: kért %s, elérhető %s (%s).",
                         currencyCode, requested.toPlainString(), available.toPlainString(), branch.getCode()),
