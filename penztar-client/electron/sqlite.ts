@@ -141,12 +141,111 @@ export function ensureOutboxCompanyColumns(
   }
 }
 
-function getDbPath(): string {
-  const userDir = app.getPath('home');
-  const valutaDir = path.join(userDir, '.valuta');
-  if (!fs.existsSync(valutaDir)) {
+interface DatabasePathEnvironment {
+  ELECTRON_DEV_USER_DATA?: string;
+  SystemDrive?: string;
+  SystemRoot?: string;
+  ProgramFiles?: string;
+  'ProgramFiles(x86)'?: string;
+  ProgramData?: string;
+}
+
+/**
+ * A lokális SQLite fájl útvonala. Packaged módban mindig a változatlan
+ * production defaultot használja; kizárólag dev/E2E módban enged izolált
+ * Electron profil alatti adatbázist.
+ */
+export function resolveDatabasePath(
+  homeDir: string,
+  environment: DatabasePathEnvironment,
+  isPackaged: boolean,
+): string {
+  const productionDatabasePath = path.join(homeDir, '.valuta', 'local.db');
+  if (isPackaged) {
+    return productionDatabasePath;
+  }
+
+  const overrideName = 'ELECTRON_DEV_USER_DATA';
+  if (environment[overrideName] !== undefined) {
+    const rawOverride = environment[overrideName];
+    const overrideDir = rawOverride.trim();
+    if (!overrideDir) {
+      throw new Error(`${overrideName} nem lehet üres.`);
+    }
+
+    if (/^[\\/]{2}/u.test(overrideDir)) {
+      throw new Error(
+        `${overrideName} nem használhat UNC útvonalat, Windows namespace- vagy device-prefixet.`,
+      );
+    }
+    const hasTerminalSpaceBeforeNormalization = / $/u.test(rawOverride);
+    if (
+      hasTerminalSpaceBeforeNormalization ||
+      overrideDir
+        .split(/[\\/]/u)
+        .some((segment) => segment !== '.' && segment !== '..' && /[. ]$/u.test(segment))
+    ) {
+      throw new Error(
+        `${overrideName} útvonalszegmense nem végződhet ponttal vagy szóközzel: ${overrideDir}`,
+      );
+    }
+
+    if (!path.isAbsolute(overrideDir)) {
+      throw new Error(`${overrideName} csak abszolút könyvtárútvonal lehet: ${overrideDir}`);
+    }
+
+    const resolvedDir = path.resolve(overrideDir);
+    if (resolvedDir === path.parse(resolvedDir).root) {
+      throw new Error(`${overrideName} nem mutathat fájlrendszer-gyökérre: ${resolvedDir}`);
+    }
+
+    const systemDriveMatch = /^([A-Za-z]):[\\/]?$/u.exec(environment.SystemDrive?.trim() ?? '');
+    const fallbackWindowsRoot = path.join(`${systemDriveMatch?.[1] ?? 'C'}:${path.sep}`, 'Windows');
+    const protectedRoots = [
+      environment.SystemRoot,
+      fallbackWindowsRoot,
+      environment.ProgramFiles,
+      environment['ProgramFiles(x86)'],
+      environment.ProgramData,
+    ]
+      .map((root) => root?.trim())
+      .filter(
+        (root): root is string =>
+          typeof root === 'string' && root.length > 0 && path.isAbsolute(root),
+      )
+      .map((root) => path.resolve(root));
+
+    const isProtectedPath = protectedRoots.some((protectedRoot) => {
+      const relativePath = path.relative(protectedRoot, resolvedDir);
+      return (
+        relativePath === '' ||
+        (relativePath !== '..' &&
+          !relativePath.startsWith(`..${path.sep}`) &&
+          !path.isAbsolute(relativePath))
+      );
+    });
+    if (isProtectedPath) {
+      throw new Error(
+        `${overrideName} nem mutathat védett rendszerkönyvtárra vagy annak leszármazottjára: ${resolvedDir}`,
+      );
+    }
+
+    return path.join(resolvedDir, 'local.db');
+  }
+
+  return productionDatabasePath;
+}
+
+type DirectoryFileSystem = Pick<typeof fs, 'existsSync' | 'mkdirSync'>;
+
+export function ensureDatabaseDirectory(
+  databasePath: string,
+  fileSystem: DirectoryFileSystem = fs,
+): void {
+  const valutaDir = path.dirname(databasePath);
+  if (!fileSystem.existsSync(valutaDir)) {
     try {
-      fs.mkdirSync(valutaDir, { recursive: true });
+      fileSystem.mkdirSync(valutaDir, { recursive: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       throw new Error(`Nem sikerült létrehozni a valuta mappát: ${valutaDir}. ${message}`, {
@@ -154,7 +253,12 @@ function getDbPath(): string {
       });
     }
   }
-  return path.join(valutaDir, 'local.db');
+}
+
+function getDbPath(): string {
+  const databasePath = resolveDatabasePath(app.getPath('home'), process.env, app.isPackaged);
+  ensureDatabaseDirectory(databasePath);
+  return databasePath;
 }
 
 function resolveWasmPath(): string {
