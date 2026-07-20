@@ -275,6 +275,8 @@ export interface PendingShipmentReceiptInput {
   workerId: number
   /** Az online próbálkozáskor létrehozott, retry-k között változatlan kulcs. */
   idempotencyKey: string
+  /** Régi Shipment tudatos megerősítése; hiányában legacy, nem megerősített átvétel. */
+  confirmedStale?: boolean
 }
 
 export interface PendingShipmentReceiptRow {
@@ -289,6 +291,8 @@ export interface PendingShipmentReceiptRow {
   synced: number
   sync_attempts: number
   sync_error: string | null
+  /** Legacy preload/sor esetén hiányozhat; az csak megerősítetlen átvételt jelent. */
+  confirmed_stale?: number | null
 }
 
 // Pozicionális wire (Sprint 7.1) — a tuple címkézett, a formátum változatlan.

@@ -33,6 +33,8 @@ class SystemParameterServiceTest {
 
     private static final UUID COMPANY_A =
             UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID COMPANY_B =
+            UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final String KEY = "FORINT_SUPERVISOR_THRESHOLD";
 
     @Mock private SystemParameterRepository repo;
@@ -61,6 +63,31 @@ class SystemParameterServiceTest {
             assertThat(service.getValue(KEY)).isEqualTo("500000");
             verify(repo, never()).findByParameterKeyAndCompanyIdIsNull(anyString());
         }
+    }
+
+    @Test
+    @DisplayName("Shipment stale küszöb — az A cég override-ja nem szivárog át a B cégbe")
+    void shipmentStaleThresholdOverrideRemainsTenantScoped() {
+        String key = ShipmentService.PARAM_STALE_WARNING_HOURS;
+        SystemParameter companyOverride = SystemParameter.builder()
+                .parameterKey(key)
+                .parameterValue("24")
+                .companyId(COMPANY_A)
+                .build();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A, COMPANY_B);
+            when(repo.findByParameterKeyAndCompanyId(key, COMPANY_A))
+                    .thenReturn(Optional.of(companyOverride));
+            when(repo.findByParameterKeyAndCompanyId(key, COMPANY_B))
+                    .thenReturn(Optional.empty());
+            when(repo.findByParameterKeyAndCompanyIdIsNull(key)).thenReturn(Optional.empty());
+
+            assertThat(service.getValue(key, "48")).isEqualTo("24");
+            assertThat(service.getValue(key, "48")).isEqualTo("48");
+        }
+
+        verify(repo).findByParameterKeyAndCompanyId(key, COMPANY_A);
+        verify(repo).findByParameterKeyAndCompanyId(key, COMPANY_B);
     }
 
     @Test
@@ -106,6 +133,18 @@ class SystemParameterServiceTest {
             assertThatThrownBy(() -> service.getByKey(KEY))
                     .isInstanceOf(ResourceNotFoundException.class);
             assertThat(service.getValue(KEY, "fallback")).isEqualTo("fallback");
+        }
+    }
+
+    @Test
+    @DisplayName("getRawValue — a jelen lévő üres értéket nem mossa össze a hiányzó paraméterrel")
+    void getRawValue_preservesPresentBlankValue() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+                    .thenReturn(Optional.of(param("", COMPANY_A)));
+
+            assertThat(service.getRawValue(KEY, null)).isEmpty();
         }
     }
 

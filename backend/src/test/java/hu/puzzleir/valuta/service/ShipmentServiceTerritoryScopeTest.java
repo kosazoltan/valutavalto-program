@@ -60,6 +60,7 @@ class ShipmentServiceTerritoryScopeTest {
     @Mock private ShipmentStockBookingService stockBookingService;
     @Mock private ShipmentHandlingFeeSyncService handlingFeeSyncService;
     @Mock private AccessScopeService accessScopeService;
+    @Mock private SystemParameterService systemParameterService;
 
     @InjectMocks private ShipmentService service;
 

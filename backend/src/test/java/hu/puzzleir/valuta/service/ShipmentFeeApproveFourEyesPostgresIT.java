@@ -14,6 +14,7 @@ import hu.puzzleir.valuta.entity.SystemParameter;
 import hu.puzzleir.valuta.entity.VaultTerritory;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerRole;
+import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto;
 import hu.puzzleir.valuta.exception.ConflictException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
@@ -26,6 +27,8 @@ import hu.puzzleir.valuta.repository.SystemParameterRepository;
 import hu.puzzleir.valuta.repository.VaultTerritoryRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,6 +62,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 /**
  * FKH-018 valós PostgreSQL holdout: SUBMITTED KK közvetlen átvétel, konkurens dupla-deliver
@@ -109,6 +113,7 @@ class ShipmentFeeApproveFourEyesPostgresIT {
     @Autowired private VaultTerritoryRepository vaultTerritoryRepository;
     @Autowired private TransactionTemplate txTemplate;
     @Autowired private JdbcTemplate jdbc;
+    @PersistenceContext private EntityManager entityManager;
 
     @MockitoBean private ExchangeRateService exchangeRateService;
     @MockitoBean private AccessScopeService accessScopeService;
@@ -122,6 +127,7 @@ class ShipmentFeeApproveFourEyesPostgresIT {
 
     @BeforeEach
     void seed() {
+        when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
         txTemplate.executeWithoutResult(status -> {
             LocalDateTime now = LocalDateTime.now();
             String suffix = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -238,6 +244,41 @@ class ShipmentFeeApproveFourEyesPostgresIT {
         return n == null ? 0 : n;
     }
 
+    private void makeShipmentStale(UUID shipmentId) {
+        txTemplate.executeWithoutResult(status -> {
+            int updated = jdbc.update(
+                    "UPDATE shipment_request SET created_at = created_at - INTERVAL '49 hours' WHERE id = ?",
+                    shipmentId);
+            assertThat(updated).isEqualTo(1);
+            entityManager.clear();
+        });
+        entityManager.getEntityManagerFactory().getCache().evict(ShipmentRequest.class, shipmentId);
+        LocalDateTime persistedCreatedAt = jdbc.queryForObject(
+                "SELECT created_at FROM shipment_request WHERE id = ?", LocalDateTime.class, shipmentId);
+        assertThat(persistedCreatedAt).isBefore(LocalDateTime.now().minusHours(48));
+    }
+
+    private long receiverStockRowCount() {
+        Long count = jdbc.queryForObject(
+                "SELECT count(*) FROM currency_stock WHERE company_id = ? AND entity_type = 'VAULT' "
+                        + "AND entity_id = ? AND currency_code = 'HUF'",
+                Long.class, companyA.getId(), String.valueOf(vaultBranchA.getVaultTerritoryId()));
+        return count == null ? 0 : count;
+    }
+
+    private void assertServerReportsShipmentStale(UUID shipmentId) {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyA.getId());
+            sec.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(companyA.getId());
+            sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(approverW2.getId());
+            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(vaultBranchA.getId());
+            ShipmentRequestResponseDto response = shipmentService.findByIdResponse(shipmentId);
+            assertThat(response.getCreatedAt()).isBefore(LocalDateTime.now().minusHours(48));
+            assertThat(response.getStaleThresholdHours()).isEqualTo(ShipmentService.DEFAULT_STALE_HOURS);
+            assertThat(response.getStaleForDelivery()).isTrue();
+        }
+    }
+
     @Test
     @DisplayName("FKH-018: SUBMITTED KK tétel közvetlenül, négy-szem nélkül kézbesíthető")
     void submittedFeeShipmentDirectDeliverSucceedsWithoutFourEyesApproval() {
@@ -290,18 +331,91 @@ class ShipmentFeeApproveFourEyesPostgresIT {
                 .isEqualByComparingTo("125000.00");
     }
 
+    @Test
+    @DisplayName("FKH-023 holdout: két confirmed-stale PG-tranzakcióból csak egy könyvel és auditál")
+    void concurrentConfirmedStaleDeliverBooksStockAndConfirmationAuditExactlyOnce() throws Exception {
+        UUID shipmentId = seedSubmittedFeeShipmentByW1();
+        makeShipmentStale(shipmentId);
+        assertServerReportsShipmentStale(shipmentId);
+        CyclicBarrier start = new CyclicBarrier(2);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        try {
+            Future<Throwable> first = executor.submit(() -> attemptConcurrentDeliver(shipmentId, start, true));
+            Future<Throwable> second = executor.submit(() -> attemptConcurrentDeliver(shipmentId, start, true));
+            List<Throwable> outcomes = Arrays.asList(
+                    first.get(60, TimeUnit.SECONDS),
+                    second.get(60, TimeUnit.SECONDS));
+
+            assertThat(outcomes).filteredOn(outcome -> outcome == null).hasSize(1);
+            assertThat(outcomes).filteredOn(ConflictException.class::isInstance).hasSize(1);
+        } finally {
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        }
+
+        assertThat(shipmentRequestRepository.findById(shipmentId).orElseThrow().getStatus())
+                .isEqualTo(ShipmentRequestStatus.DELIVERED);
+        assertThat(auditActionCount(shipmentId, ShipmentStockBookingService.ACTION_STOCK_IN)).isEqualTo(1L);
+        assertThat(auditActionCount(shipmentId, ShipmentService.ACTION_DIRECT_DELIVER)).isEqualTo(1L);
+        assertThat(auditActionCount(shipmentId, ShipmentService.ACTION_DELIVER_CONFIRMED_STALE)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject(
+                "SELECT quantity FROM currency_stock WHERE company_id = ? AND entity_type = 'VAULT' "
+                        + "AND entity_id = ? AND currency_code = 'HUF'",
+                BigDecimal.class, companyA.getId(), String.valueOf(vaultBranchA.getVaultTerritoryId())))
+                .isEqualByComparingTo("125000.00");
+    }
+
+    @Test
+    @DisplayName("FKH-023 holdout: külső valós tranzakció rollbackje együtt törli a confirmed-stale mutációkat")
+    void confirmedStaleDeliveryRollsBackStatusStockAndAuditTogether() {
+        UUID shipmentId = seedSubmittedFeeShipmentByW1();
+        makeShipmentStale(shipmentId);
+        assertServerReportsShipmentStale(shipmentId);
+        assertThat(receiverStockRowCount()).isZero();
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyA.getId());
+            sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(approverW2.getId());
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn(approverW2.getCode());
+            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(vaultBranchA.getId());
+
+            assertThatThrownBy(() -> txTemplate.executeWithoutResult(status -> {
+                shipmentService.deliverResponse(shipmentId, true);
+                entityManager.flush();
+                assertThat(auditActionCount(shipmentId, ShipmentService.ACTION_DELIVER_CONFIRMED_STALE))
+                        .isEqualTo(1L);
+                throw new ForcedRollbackException();
+            })).isInstanceOf(ForcedRollbackException.class);
+        }
+
+        assertThat(shipmentRequestRepository.findById(shipmentId).orElseThrow().getStatus())
+                .isEqualTo(ShipmentRequestStatus.SUBMITTED);
+        assertThat(receiverStockRowCount()).isZero();
+        assertThat(auditActionCount(shipmentId, ShipmentStockBookingService.ACTION_STOCK_IN)).isZero();
+        assertThat(auditActionCount(shipmentId, ShipmentService.ACTION_DIRECT_DELIVER)).isZero();
+        assertThat(auditActionCount(shipmentId, ShipmentService.ACTION_DELIVER_CONFIRMED_STALE)).isZero();
+    }
+
     private Throwable attemptConcurrentDeliver(UUID shipmentId, CyclicBarrier start) {
+        return attemptConcurrentDeliver(shipmentId, start, false);
+    }
+
+    private Throwable attemptConcurrentDeliver(UUID shipmentId, CyclicBarrier start, boolean confirmedStale) {
         try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyA.getId());
             sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(approverW2.getId());
             sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn(approverW2.getCode());
             sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(vaultBranchA.getId());
             start.await(10, TimeUnit.SECONDS);
-            shipmentService.deliverResponse(shipmentId);
+            shipmentService.deliverResponse(shipmentId, confirmedStale);
             return null;
         } catch (Throwable failure) {
             return failure;
         }
+    }
+
+    private static final class ForcedRollbackException extends RuntimeException {
     }
 
     @Test

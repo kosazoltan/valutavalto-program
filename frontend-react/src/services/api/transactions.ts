@@ -1461,6 +1461,8 @@ export interface ShipmentRequest {
   requestedByWorkerId: string
   requestedByWorkerName: string
   requestedAt: string
+  staleForDelivery?: boolean
+  staleThresholdHours?: number
   approvedByWorkerId?: string
   approvedByWorkerName?: string
   approvedAt?: string
@@ -1748,10 +1750,11 @@ export const shipmentRequestApi = {
   deliver: async (
     requestId: string,
     idempotencyKey: string = globalThis.crypto.randomUUID(),
+    options?: { confirmedStale?: boolean },
   ): Promise<ShipmentRequest> => {
     const response = await api.post<Record<string, unknown>>(
       `/shipments/${requestId}/deliver`,
-      null,
+      options?.confirmedStale === true ? { confirmedStale: true } : null,
       { headers: { 'Idempotency-Key': idempotencyKey } },
     )
     return normalizeShipmentRequest(response.data)

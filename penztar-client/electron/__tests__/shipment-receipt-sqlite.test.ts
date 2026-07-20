@@ -14,6 +14,7 @@ vi.mock('electron', () => ({
 }));
 
 import {
+  addColumnIfMissing,
   deleteConfig,
   getDb,
   getPendingShipmentReceipts,
@@ -56,8 +57,53 @@ describe('pending_shipment_receipts SQLite outbox', () => {
       worker_id: 42,
       company_code: 'BEST_CHANGE',
       idempotency_key: idempotencyKey,
+      confirmed_stale: 0,
       synced: 0,
     });
+  });
+
+  it('a stale megerősítés atomikusan megmarad a queue-ban és újrainicializálás után is', async () => {
+    savePendingShipmentReceipt({
+      shipmentId: '11111111-1111-4111-8111-111111111111',
+      requestNumber: 'FF-000011',
+      branchId: '22222222-2222-4222-8222-222222222222',
+      workerId: 42,
+      idempotencyKey: '33333333-3333-4333-8333-333333333333',
+      confirmedStale: true,
+    });
+
+    expect(getPendingShipmentReceipts()).toContainEqual(
+      expect.objectContaining({ confirmed_stale: 1 }),
+    );
+
+    await initDatabase();
+
+    expect(getPendingShipmentReceipts()).toContainEqual(
+      expect.objectContaining({ confirmed_stale: 1 }),
+    );
+  });
+
+  it('csak a várt duplicate-column hibát nyeli el az additív ALTER migráció', () => {
+    const database = getDb();
+    expect(database).not.toBeNull();
+
+    expect(() =>
+      addColumnIfMissing(
+        database!,
+        'pending_shipment_receipts',
+        'confirmed_stale',
+        'INTEGER NOT NULL DEFAULT 0',
+      ),
+    ).not.toThrow();
+
+    expect(() =>
+      addColumnIfMissing(
+        database!,
+        'missing_pending_shipment_receipts',
+        'confirmed_stale',
+        'INTEGER NOT NULL DEFAULT 0',
+      ),
+    ).toThrow(/no such table/i);
   });
 
   it('ugyanarra a nem szinkronizált Shipmentre nem enged második sort', () => {

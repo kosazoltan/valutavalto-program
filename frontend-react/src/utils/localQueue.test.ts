@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   getPendingReceiptDrafts,
   getReprintableReceiptDrafts,
@@ -7,6 +7,7 @@ import {
   getLocalPendingBankTransactions,
   getLocalPendingHandoverOperations,
   mapPendingHandoverGeneratesToSheets,
+  queueOfflineShipmentReceipt,
 } from './localQueue'
 import type { LocalPendingHandoverOperation } from './localQueue'
 import type { PrintReceiptData } from '../types/receipt'
@@ -60,6 +61,36 @@ describe('localQueue — without electronAPI', () => {
   it('getLocalPendingHandoverOperations returns []', async () => {
     const result = await getLocalPendingHandoverOperations()
     expect(result).toEqual([])
+  })
+})
+
+describe('queueOfflineShipmentReceipt — Electron IPC payload', () => {
+  afterEach(() => {
+    if ('electronAPI' in window) delete (window as any).electronAPI
+  })
+
+  it('a stale megerősítés tényét az idempotenciakulccsal együtt adja át', async () => {
+    const queueShipmentReceipt = vi.fn().mockResolvedValue(1)
+    ;(window as any).electronAPI = { queueShipmentReceipt }
+
+    const queued = await queueOfflineShipmentReceipt(
+      '11111111-1111-4111-8111-111111111111',
+      'FF-000011',
+      '22222222-2222-4222-8222-222222222222',
+      42,
+      '33333333-3333-4333-8333-333333333333',
+      true,
+    )
+
+    expect(queued).toBe(true)
+    expect(queueShipmentReceipt).toHaveBeenCalledWith({
+      shipmentId: '11111111-1111-4111-8111-111111111111',
+      requestNumber: 'FF-000011',
+      branchId: '22222222-2222-4222-8222-222222222222',
+      workerId: 42,
+      idempotencyKey: '33333333-3333-4333-8333-333333333333',
+      confirmedStale: true,
+    })
   })
 })
 

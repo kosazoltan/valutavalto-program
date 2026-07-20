@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.shipment.ShipmentHandlingFeeCreateRequest;
 import hu.puzzleir.valuta.dto.shipment.ShipmentHandlingFeeCreateResponseDto;
 import hu.puzzleir.valuta.dto.shipment.ShipmentHandlingFeeDto;
+import hu.puzzleir.valuta.dto.shipment.ShipmentDeliverRequest;
 import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
 import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
@@ -167,8 +168,13 @@ public class ShipmentController {
     public ResponseEntity<ShipmentRequestResponseDto> deliver(
             @PathVariable UUID id,
             @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
-            @RequestHeader(name = "X-Idempotency-Key", required = false) String legacyIdempotencyKey) {
+            @RequestHeader(name = "X-Idempotency-Key", required = false) String legacyIdempotencyKey,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = false,
+                    description = "Régi Shipment figyelmeztetés tudatos megerősítése; hiánya kompatibilis.")
+            @RequestBody(required = false) ShipmentDeliverRequest body) {
         String resolvedIdempotencyKey = resolveIdempotencyKey(idempotencyKey, legacyIdempotencyKey);
+        boolean confirmedStale = body != null && Boolean.TRUE.equals(body.getConfirmedStale());
         String endpoint = "POST /api/v1/shipments/" + id + "/deliver";
         IdempotencyGuard.Acquired<ShipmentRequestResponseDto> acquired = idempotencyGuard.tryAcquire(
                 resolvedIdempotencyKey, endpoint, id, ShipmentRequestResponseDto.class);
@@ -176,7 +182,7 @@ public class ShipmentController {
             return ResponseEntity.ok(acquired.cachedResult());
         }
         try {
-            ShipmentRequestResponseDto result = shipmentService.deliverResponse(id);
+            ShipmentRequestResponseDto result = shipmentService.deliverResponse(id, confirmedStale);
             idempotencyGuard.complete(acquired, result);
             return ResponseEntity.ok(result);
         } catch (Exception e) {

@@ -571,6 +571,7 @@ export async function queueOfflineShipmentReceipt(
   branchId: string,
   workerId: number,
   idempotencyKey: string,
+  confirmedStale?: boolean,
 ): Promise<boolean> {
   const electronAPI = getElectronAPI()
   if (!electronAPI?.queueShipmentReceipt) return false
@@ -580,6 +581,7 @@ export async function queueOfflineShipmentReceipt(
     branchId,
     workerId,
     idempotencyKey,
+    ...(confirmedStale === true ? { confirmedStale: true } : {}),
   })
   return true
 }

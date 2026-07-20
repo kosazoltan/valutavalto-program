@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.dto.shipment.ShipmentDeliverRequest;
 import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeService;
 import hu.puzzleir.valuta.service.ShipmentService;
@@ -108,9 +109,9 @@ class ShipmentUnifiedReceiptControllerTest {
                 new IdempotencyGuard.Acquired<>(null, null, ShipmentRequestResponseDto.class);
         when(idempotencyGuard.tryAcquire(eq(key), eq("POST /api/v1/shipments/" + id + "/deliver"),
                 eq(id), eq(ShipmentRequestResponseDto.class))).thenReturn(acquired);
-        when(shipmentService.deliverResponse(id)).thenReturn(dto);
+        when(shipmentService.deliverResponse(id, false)).thenReturn(dto);
 
-        ResponseEntity<ShipmentRequestResponseDto> response = controller.deliver(id, key, null);
+        ResponseEntity<ShipmentRequestResponseDto> response = controller.deliver(id, key, null, null);
 
         assertThat(response.getBody()).isSameAs(dto);
         verify(idempotencyGuard).complete(acquired, dto);
@@ -126,17 +127,18 @@ class ShipmentUnifiedReceiptControllerTest {
         when(idempotencyGuard.tryAcquire(eq(key), eq("POST /api/v1/shipments/" + id + "/deliver"),
                 eq(id), eq(ShipmentRequestResponseDto.class))).thenReturn(acquired);
 
-        ResponseEntity<ShipmentRequestResponseDto> response = controller.deliver(id, null, key);
+        ResponseEntity<ShipmentRequestResponseDto> response = controller.deliver(id, null, key, null);
 
         assertThat(response.getBody()).isSameAs(cached);
-        verify(shipmentService, never()).deliverResponse(id);
+        verify(shipmentService, never()).deliverResponse(id, false);
         verify(idempotencyGuard, never()).complete(acquired, cached);
     }
 
     @Test
     void deliverPublishesBothIdempotencyHeadersInTheRuntimeContract() throws Exception {
         var parameters = ShipmentController.class
-                .getDeclaredMethod("deliver", UUID.class, String.class, String.class)
+                .getDeclaredMethod(
+                        "deliver", UUID.class, String.class, String.class, ShipmentDeliverRequest.class)
                 .getParameters();
 
         assertThat(parameters[1].getAnnotation(RequestHeader.class).name())
@@ -150,7 +152,8 @@ class ShipmentUnifiedReceiptControllerTest {
     @Test
     void deliverPublishesConflictResponseForOfflineVerification() throws Exception {
         ApiResponses responses = ShipmentController.class
-                .getDeclaredMethod("deliver", UUID.class, String.class, String.class)
+                .getDeclaredMethod(
+                        "deliver", UUID.class, String.class, String.class, ShipmentDeliverRequest.class)
                 .getAnnotation(ApiResponses.class);
 
         assertThat(responses).isNotNull();

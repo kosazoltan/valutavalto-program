@@ -76,6 +76,21 @@ public class SystemParameterService {
     }
 
     /**
+     * Nyers effektív érték fallbackkel: a hiányzó/null paraméter defaultot ad, de a jelen lévő
+     * üres értéket megőrzi, hogy a hívó meg tudja különböztetni a normál hiányt a hibás konfigurációtól.
+     */
+    public String getRawValue(String key, String defaultValue) {
+        try {
+            SystemParameter p = findEffective(key).orElse(null);
+            return p == null || p.getParameterValue() == null ? defaultValue : p.getParameterValue();
+        } catch (Exception e) {
+            log.warn("SystemParameter nyers lekeres sikertelen, fallback default: key={}, default={}, hiba={}",
+                    key, defaultValue, e.getMessage(), e);
+            return defaultValue;
+        }
+    }
+
+    /**
      * Cég-KIZÁRÓLAGOS olvasás — tenant-titok (pl. compliance címzettek).
      * SOHA nem esik vissza globális sorra; null companyId (nincs kontextus) → default.
      */

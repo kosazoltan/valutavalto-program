@@ -193,6 +193,77 @@ describe('TransferPage — visszaigazolás és létrehozás szétválasztása', 
     )
   })
 
+  it('stale Shipmentnél ugyanazt az app-dialógust nyitja, Mégse esetén nincs mutáció', async () => {
+    mocks.getShipmentPending.mockResolvedValue([
+      { ...pendingShipment, staleForDelivery: true, staleThresholdHours: 48 },
+    ])
+    render(
+      <MemoryRouter>
+        <TransferPage />
+      </MemoryRouter>,
+    )
+
+    await screen.findByText('FF-000123')
+    fireEvent.click(screen.getByTitle('Shipment átvétele'))
+
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('FF-000123')
+    expect(mocks.deliverShipment).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Mégse' }))
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(screen.getByText('FF-000123')).toBeInTheDocument()
+    expect(mocks.deliverShipment).not.toHaveBeenCalled()
+  })
+
+  it('stale Shipment megerősítése confirmedStale bodyval kézbesít', async () => {
+    mocks.getShipmentPending.mockResolvedValue([
+      { ...pendingShipment, staleForDelivery: true, staleThresholdHours: 48 },
+    ])
+    render(
+      <MemoryRouter>
+        <TransferPage />
+      </MemoryRouter>,
+    )
+
+    await screen.findByText('FF-000123')
+    fireEvent.click(screen.getByTitle('Shipment átvétele'))
+    fireEvent.click(screen.getByRole('button', { name: 'Igen, folytatás' }))
+
+    await waitFor(() =>
+      expect(mocks.deliverShipment).toHaveBeenCalledWith('shipment-1', expect.any(String), {
+        confirmedStale: true,
+      }),
+    )
+  })
+
+  it('stale megerősítés hálózati hibánál a megerősítés tényével együtt kerül az outboxba', async () => {
+    mocks.electronQueueAvailable = true
+    mocks.getShipmentPending.mockResolvedValue([
+      { ...pendingShipment, staleForDelivery: true, staleThresholdHours: 48 },
+    ])
+    mocks.deliverShipment.mockRejectedValue({ code: 'ERR_NETWORK' })
+    render(
+      <MemoryRouter>
+        <TransferPage />
+      </MemoryRouter>,
+    )
+
+    await screen.findByText('FF-000123')
+    fireEvent.click(screen.getByTitle('Shipment átvétele'))
+    fireEvent.click(screen.getByRole('button', { name: 'Igen, folytatás' }))
+
+    await waitFor(() =>
+      expect(mocks.queueShipmentReceipt).toHaveBeenCalledWith(
+        'shipment-1',
+        'FF-000123',
+        'b-own',
+        9,
+        expect.any(String),
+        true,
+      ),
+    )
+  })
+
   it('hálózati hibánál Electron outboxba ír és szinkronra váróként jelöl, készletet nem könyvel lokálisan', async () => {
     mocks.electronQueueAvailable = true
     mocks.deliverShipment.mockRejectedValue({ code: 'ERR_NETWORK' })

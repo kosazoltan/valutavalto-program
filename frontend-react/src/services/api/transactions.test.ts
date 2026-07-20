@@ -780,6 +780,29 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
     expect(result.requestStatus).toBe('DELIVERED')
   })
 
+  it('deliver: stale megerősítéskor bodyt küld, az idempotenciakulcs változatlan marad', async () => {
+    mockApi.post.mockResolvedValue({
+      data: {
+        id: 'shipment-1',
+        status: 'DELIVERED',
+        staleForDelivery: true,
+        staleThresholdHours: 48,
+      },
+    })
+
+    const result = await shipmentRequestApi.deliver('shipment-1', 'stable-receipt-key', {
+      confirmedStale: true,
+    })
+
+    expect(mockApi.post).toHaveBeenCalledWith(
+      '/shipments/shipment-1/deliver',
+      { confirmedStale: true },
+      { headers: { 'Idempotency-Key': 'stable-receipt-key' } },
+    )
+    expect(result.staleForDelivery).toBe(true)
+    expect(result.staleThresholdHours).toBe(48)
+  })
+
   it('cancel: a /shipments/{id}/cancel workflow endpointot hivja', async () => {
     mockApi.post.mockResolvedValue({ data: { id: 'shipment-1', status: 'CANCELLED' } })
     const result = await shipmentRequestApi.cancel('shipment-1')

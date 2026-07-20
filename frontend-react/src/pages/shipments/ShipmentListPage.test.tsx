@@ -182,6 +182,59 @@ describe('ShipmentListPage backend contract + FK kétfüles nézet', () => {
     })
   })
 
+  it('stale Shipmentnél app-dialógust nyit, Mégse esetén nincs mutáció', async () => {
+    const staleIncoming = {
+      ...approvedShipment,
+      targetBranchId: 'branch-1',
+      staleForDelivery: true,
+      staleThresholdHours: 48,
+    }
+    mocks.findByStatus.mockResolvedValue([staleIncoming])
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByTitle('Megérkezett'))
+
+    expect(window.confirm).not.toHaveBeenCalled()
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('SH-001')
+    expect(mocks.deliver).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Mégse' }))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(screen.getByText('SH-001')).toBeInTheDocument()
+    expect(mocks.deliver).not.toHaveBeenCalled()
+  })
+
+  it('stale Shipment tudatos megerősítése confirmedStale bodyval kézbesít', async () => {
+    const staleIncoming = {
+      ...approvedShipment,
+      targetBranchId: 'branch-1',
+      staleForDelivery: true,
+      staleThresholdHours: 48,
+    }
+    mocks.findByStatus.mockResolvedValue([staleIncoming])
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <ShipmentListPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByTitle('Megérkezett'))
+    await user.click(screen.getByRole('button', { name: 'Igen, folytatás' }))
+
+    await waitFor(() =>
+      expect(mocks.deliver).toHaveBeenCalledWith('shipment-1', expect.any(String), {
+        confirmedStale: true,
+      }),
+    )
+    expect(window.confirm).not.toHaveBeenCalled()
+  })
+
   it('FR-6: a "Megérkezett" gomb csak az ÁTVEVŐ (target) fiók felhasználójának látszik', async () => {
     // A bejelentkezett user branchId='branch-1'; a shipment ÁTVEVŐJE is branch-1 → gomb látható.
     mocks.findByStatus.mockResolvedValue([{ ...approvedShipment, targetBranchId: 'branch-1' }])

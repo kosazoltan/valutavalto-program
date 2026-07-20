@@ -7,7 +7,7 @@
       "name": "PuzzleIR",
       "email": "info@puzzleir.hu"
     },
-    "version": "2.28.46"
+    "version": "2.28.47"
   },
   "servers": [
     {
@@ -6613,6 +6613,16 @@
             }
           }
         ],
+        "requestBody": {
+          "description": "Régi Shipment figyelmeztetés tudatos megerősítése; hiánya kompatibilis.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShipmentDeliverRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -35570,6 +35580,13 @@
           "requestedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "staleForDelivery": {
+            "type": "boolean"
+          },
+          "staleThresholdHours": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -39335,13 +39352,13 @@
             "type": "string",
             "format": "uuid"
           },
-          "companyId": {
-            "type": "string",
-            "format": "uuid"
-          },
           "territoryId": {
             "type": "integer",
             "format": "int32"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -41273,6 +41290,14 @@
           },
           "assignedBy": {
             "type": "string"
+          }
+        }
+      },
+      "ShipmentDeliverRequest": {
+        "type": "object",
+        "properties": {
+          "confirmedStale": {
+            "type": "boolean"
           }
         }
       },

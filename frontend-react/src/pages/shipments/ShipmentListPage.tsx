@@ -26,6 +26,7 @@ import { toast } from '../../components/ui/toaster'
 import { getCompanyType } from '../../utils/localQueue'
 import type { PrintReceiptData } from '../../types/receipt'
 import ShipmentCalendarPanel from './ShipmentCalendarPanel'
+import StaleShipmentConfirmDialog from '../../components/shipments/StaleShipmentConfirmDialog'
 
 interface ShipmentEditDraft {
   deliveryDate: string
@@ -60,6 +61,7 @@ export default function ShipmentListPage() {
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('SUBMITTED')
   const [selectedShipment, setSelectedShipment] = useState<ShipmentRequest | null>(null)
+  const [staleConfirmShipment, setStaleConfirmShipment] = useState<ShipmentRequest | null>(null)
   const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState<ShipmentEditDraft | null>(null)
   const deliveryKeysRef = useRef(new Map<string, string>())
@@ -142,15 +144,28 @@ export default function ShipmentListPage() {
     }
   }
 
-  const handleDeliver = async (shipmentId: string): Promise<void> => {
-    if (!confirm('Biztosan kézbesítettként jelöli ezt a szállítmány igényt?')) return
-    const idempotencyKey = deliveryKeysRef.current.get(shipmentId) ?? globalThis.crypto.randomUUID()
-    deliveryKeysRef.current.set(shipmentId, idempotencyKey)
+  const handleDeliver = async (
+    shipment: ShipmentRequest,
+    confirmedStale = false,
+  ): Promise<void> => {
+    if (shipment.staleForDelivery === true && !confirmedStale) {
+      setStaleConfirmShipment(shipment)
+      return
+    }
+    if (!confirmedStale && !confirm('Biztosan kézbesítettként jelöli ezt a szállítmány igényt?'))
+      return
+    const idempotencyKey =
+      deliveryKeysRef.current.get(shipment.id) ?? globalThis.crypto.randomUUID()
+    deliveryKeysRef.current.set(shipment.id, idempotencyKey)
 
     try {
       setLoading(true)
-      await shipmentRequestApi.deliver(shipmentId, idempotencyKey)
-      deliveryKeysRef.current.delete(shipmentId)
+      if (confirmedStale) {
+        await shipmentRequestApi.deliver(shipment.id, idempotencyKey, { confirmedStale: true })
+      } else {
+        await shipmentRequestApi.deliver(shipment.id, idempotencyKey)
+      }
+      deliveryKeysRef.current.delete(shipment.id)
       await loadShipments()
     } catch (err) {
       const errorMessage = getErrorMessage(err)
@@ -360,7 +375,7 @@ export default function ShipmentListPage() {
             <>
               {canDeliver(shipment) && (
                 <button
-                  onClick={() => void handleDeliver(shipment.id)}
+                  onClick={() => void handleDeliver(shipment)}
                   className="toolbar-button text-blue-600"
                   title="Megérkezett"
                   disabled={loading}
@@ -732,6 +747,17 @@ export default function ShipmentListPage() {
         onPrint={handleReprintPrint}
         variant="official"
       />
+      {staleConfirmShipment && (
+        <StaleShipmentConfirmDialog
+          shipment={staleConfirmShipment}
+          onCancel={() => setStaleConfirmShipment(null)}
+          onConfirm={() => {
+            const shipment = staleConfirmShipment
+            setStaleConfirmShipment(null)
+            void handleDeliver(shipment, true)
+          }}
+        />
+      )}
     </div>
   )
 }
