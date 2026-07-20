@@ -3,7 +3,8 @@ import electron from 'vite-plugin-electron';
 import { builtinModules } from 'node:module';
 import path from 'node:path';
 import fs from 'node:fs';
-import { spawn, execSync, type ChildProcess } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { createElectronDevServerConfig, spawnElectronDevProcess } from './vite-watch-config';
 
 // All Node.js builtins + Electron must be external for the main process.
 const nodeExternals = [
@@ -40,14 +41,13 @@ function launchElectronIfReady() {
     return; // Még nincs kész mindkét entry — a következő onstart majd elindítja
   }
   // Idempotency: ha mar fut egy electronDevProcess, NE indits ujat (hirtelen kill+spawn roncsol)
-  // Csak a kezdeti inditas csinalja meg az ASAR-t; HMR reload-ok a preload-on at futnak.
+  // A kezdeti inditas kesziti elo a dev appot; HMR reload-ok a preload-on at futnak.
   if (electronDevProcess && !electronDevProcess.killed) {
     return;
   }
 
   const electronExe = path.resolve('node_modules/electron/dist/electron.exe');
   const tmpAppDir = path.resolve('.dev-app');
-  const asarPath = path.resolve('node_modules/electron/dist/resources/app.asar');
 
   if (fs.existsSync(tmpAppDir)) {
     fs.rmSync(tmpAppDir, { recursive: true, force: true });
@@ -104,17 +104,6 @@ function launchElectronIfReady() {
     }
   }
 
-  try {
-    execSync(`npx asar pack "${tmpAppDir}" "${asarPath}"`, { stdio: 'pipe' });
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e);
-    console.error(
-      '[vite-electron] ASAR pack HIBA — Electron NEM indul (korrupt archivum helyett inkabb nem indul):',
-      message,
-    );
-    return; // ne spawn-oljuk az Electron-t korrupt ASAR-ral
-  }
-
   if (electronDevProcess && !electronDevProcess.killed) {
     electronDevProcess.kill();
   }
@@ -122,14 +111,13 @@ function launchElectronIfReady() {
   const devUserData = path.resolve('.dev-user-data');
   fs.mkdirSync(devUserData, { recursive: true });
 
-  electronDevProcess = spawn(electronExe, [], {
-    stdio: 'inherit',
+  electronDevProcess = spawnElectronDevProcess({
+    electronExe,
+    tmpAppDir,
+    devUserData,
     cwd: process.cwd(),
-    env: {
-      ...process.env,
-      ELECTRON_RENDERER_URL: 'http://127.0.0.1:3000',
-      ELECTRON_DEV_USER_DATA: devUserData,
-    },
+    env: process.env,
+    spawnFn: spawn,
   });
   electronDevProcess.once('exit', () => {
     try {
@@ -156,6 +144,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    server: createElectronDevServerConfig(),
     plugins: [
       electron([
         {
