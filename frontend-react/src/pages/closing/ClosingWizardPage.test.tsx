@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { AxiosError } from 'axios'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { vi, describe, beforeEach, it, expect } from 'vitest'
 import ClosingWizardPage from './ClosingWizardPage'
@@ -321,6 +322,33 @@ describe('ClosingWizardPage', () => {
     await waitFor(() => {
       expect(mocks.toast.error).toHaveBeenCalled()
     })
+  })
+
+  it('start HTTP 400 esetén a backend validációs üzenetét mutatja', async () => {
+    const backendError = new AxiosError(
+      'Request failed with status code 400',
+      'ERR_BAD_REQUEST',
+      undefined,
+      undefined,
+      {
+        status: 400,
+        data: { message: 'Már van aktív zárási varázsló ehhez az irodához a mai napra!' },
+      } as never,
+    )
+    mocks.closingWizardApiValidateTransactions.mockResolvedValue([])
+    mocks.closingWizardApiStart.mockRejectedValue(backendError)
+
+    renderClosingWizardPage()
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /ELLENŐRZÉS INDÍTÁSA/i }))
+
+    await waitFor(() =>
+      expect(mocks.toast.error).toHaveBeenCalledWith(
+        'Napzárás hiba',
+        'Már van aktív zárási varázsló ehhez az irodához a mai napra!',
+      ),
+    )
   })
 
   // ========== DENOMINATION FLOW TESTS ==========
