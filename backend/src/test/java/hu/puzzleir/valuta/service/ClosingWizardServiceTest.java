@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -49,6 +50,60 @@ class ClosingWizardServiceTest {
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
         when(closingWizardRepository.findByBranchIdAndStatus(eq(BRANCH_ID), any()))
                 .thenReturn(List.of(existing));
+
+        assertThatThrownBy(() -> service.startWizard(BRANCH_ID, null, "DAILY", 1L))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("aktív");
+    }
+
+    @Test
+    @DisplayName("startWizard — korábbi napi aktív varázsló nem blokkol")
+    void startWizard_priorDayInProgressDoesNotBlock() {
+        Branch branch = Branch.builder().id(BRANCH_ID).build();
+        Worker worker = Worker.builder().id(1L).build();
+        ClosingWizard staleWizard = ClosingWizard.builder()
+                .id(UUID.randomUUID())
+                .closingDate(LocalDate.now().minusDays(1))
+                .wizardStatus(WizardStatus.IN_PROGRESS)
+                .build();
+
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
+        lenient().when(closingWizardRepository.findByBranchIdAndStatus(eq(BRANCH_ID), any()))
+                .thenReturn(List.of(staleWizard));
+        lenient().when(closingWizardRepository.findByBranchIdAndStatusAndClosingDate(
+                        eq(BRANCH_ID), eq(WizardStatus.IN_PROGRESS), eq(LocalDate.now())))
+                .thenReturn(List.of());
+        when(closingWizardRepository.save(any())).thenAnswer(invocation -> {
+            ClosingWizard saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
+
+        assertThat(service.startWizard(BRANCH_ID, null, "DAILY", 1L)).isNotNull();
+    }
+
+    @Test
+    @DisplayName("startWizard — mai aktív varázsló blokkol")
+    void startWizard_sameDayInProgressBlocks() {
+        Branch branch = Branch.builder().id(BRANCH_ID).build();
+        Worker worker = Worker.builder().id(1L).build();
+        ClosingWizard activeToday = ClosingWizard.builder()
+                .id(UUID.randomUUID())
+                .closingDate(LocalDate.now())
+                .wizardStatus(WizardStatus.IN_PROGRESS)
+                .build();
+
+        when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
+        when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
+        lenient().when(closingWizardRepository.findByBranchIdAndStatusAndClosingDate(
+                        eq(BRANCH_ID), eq(WizardStatus.IN_PROGRESS), eq(LocalDate.now())))
+                .thenReturn(List.of(activeToday));
+        lenient().when(closingWizardRepository.save(any())).thenAnswer(invocation -> {
+            ClosingWizard saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
 
         assertThatThrownBy(() -> service.startWizard(BRANCH_ID, null, "DAILY", 1L))
                 .isInstanceOf(ValidationException.class)

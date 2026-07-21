@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,6 +27,16 @@ public interface ClosingWizardRepository extends JpaRepository<ClosingWizard, UU
     List<ClosingWizard> findByBranchIdAndStatus(
         @Param("branchId") UUID branchId,
         @Param("status") WizardStatus status
+    );
+
+    @Query("SELECT cw FROM ClosingWizard cw " +
+           "WHERE cw.branch.id = :branchId " +
+           "AND cw.wizardStatus = :status " +
+           "AND cw.closingDate = :closingDate")
+    List<ClosingWizard> findByBranchIdAndStatusAndClosingDate(
+        @Param("branchId") UUID branchId,
+        @Param("status") WizardStatus status,
+        @Param("closingDate") LocalDate closingDate
     );
 
     /**
