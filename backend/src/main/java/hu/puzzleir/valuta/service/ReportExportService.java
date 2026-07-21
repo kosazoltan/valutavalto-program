@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeDailySummaryDto;
+import hu.puzzleir.valuta.dto.handlingfee.PosHandlingFeeDailySummaryDto;
 import hu.puzzleir.valuta.exception.BusinessException;
 
 import lombok.RequiredArgsConstructor;
@@ -107,6 +108,27 @@ public class ReportExportService {
             printer.printRecord("Összesen", report.getTotalBuyFee(), report.getTotalSellFee());
         } catch (IOException e) {
             log.error("HandlingFeeDailySummary CSV export hiba", e);
+            throw new BusinessException("CSV export meghiúsult", "CSV_EXPORT_FAILED");
+        }
+        return sw.toString();
+    }
+
+    /** FK-059: daily POS net and handling-fee CSV, matching the JSON report. */
+    public String exportPosHandlingFeeDailySummaryCsv(PosHandlingFeeDailySummaryDto report) {
+        StringWriter sw = new StringWriter();
+        try (CSVPrinter printer = new CSVPrinter(sw, CSVFormat.DEFAULT.withHeader(
+                "Dátum", "POS nettó (Ft)", "POS KK (Ft)"))) {
+            if (report.getRows() != null) {
+                for (PosHandlingFeeDailySummaryDto.DailyRow row : report.getRows()) {
+                    printer.printRecord(
+                            row.getDate() != null ? row.getDate().format(DATE_FMT) : "",
+                            row.getNetAmount(),
+                            row.getFeeAmount());
+                }
+            }
+            printer.printRecord("Összesen", report.getTotalNetAmount(), report.getTotalFeeAmount());
+        } catch (IOException e) {
+            log.error("PosHandlingFeeDailySummary CSV export hiba", e);
             throw new BusinessException("CSV export meghiúsult", "CSV_EXPORT_FAILED");
         }
         return sw.toString();
