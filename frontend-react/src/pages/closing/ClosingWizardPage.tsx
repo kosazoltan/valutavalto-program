@@ -12,7 +12,12 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { toast } from '../../components/ui/toaster'
-import { closingWizardApi, dailySessionApi, currencyApi, denominationApi } from '../../services/api/index'
+import {
+  closingWizardApi,
+  dailySessionApi,
+  currencyApi,
+  denominationApi,
+} from '../../services/api/index'
 import type {
   ClosingWizard,
   ClosingWizardDifference,
@@ -104,7 +109,8 @@ export default function ClosingWizardPage() {
         denominationSections.map(({ currencyCode, faceValues }) => [
           currencyCode,
           faceValues.reduce(
-            (sum, faceValue) => sum + faceValue * (denomQuantities[denomKey(currencyCode, faceValue)] ?? 0),
+            (sum, faceValue) =>
+              sum + faceValue * (denomQuantities[denomKey(currencyCode, faceValue)] ?? 0),
             0,
           ),
         ]),
@@ -339,7 +345,9 @@ export default function ClosingWizardPage() {
 
       toast.success(
         'Step 1 OK',
-        isVaultContext ? 'Most rögzítsd a valutánkénti címletezést' : 'Most rögzítsd a HUF címletezést',
+        isVaultContext
+          ? 'Most rögzítsd a valutánkénti címletezést'
+          : 'Most rögzítsd a HUF címletezést',
       )
 
       // Pause: wait for denomination input before continuing
@@ -364,7 +372,10 @@ export default function ClosingWizardPage() {
         Object.fromEntries(
           faceValues
             .filter((faceValue) => (denomQuantities[denomKey(currencyCode, faceValue)] ?? 0) >= 0)
-            .map((faceValue) => [faceValue, denomQuantities[denomKey(currencyCode, faceValue)] ?? 0]),
+            .map((faceValue) => [
+              faceValue,
+              denomQuantities[denomKey(currencyCode, faceValue)] ?? 0,
+            ]),
         ),
       ]),
     )
@@ -380,7 +391,9 @@ export default function ClosingWizardPage() {
     }
 
     try {
-      setClosingDifferences(await closingWizardApi.calculateDifferences(wizardId, denominationTotals))
+      setClosingDifferences(
+        await closingWizardApi.calculateDifferences(wizardId, denominationTotals),
+      )
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : t('closing.elteresEllenorzesHiba')
       toast.error(t('closing.elteresEllenorzesHiba'), errorMsg)
@@ -408,7 +421,16 @@ export default function ClosingWizardPage() {
       setClosingReport(null)
     }
     setIsRunning(false)
-  }, [wizardId, denominationSections, denomQuantities, denominationTotals, steps.length, runSteps, loadClosingValidation, t])
+  }, [
+    wizardId,
+    denominationSections,
+    denomQuantities,
+    denominationTotals,
+    steps.length,
+    runSteps,
+    loadClosingValidation,
+    t,
+  ])
 
   const handleFinalize = useCallback(async () => {
     if (!canFinalize || !wizardId || !worker) return
@@ -700,7 +722,10 @@ export default function ClosingWizardPage() {
                     )}
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-2 gap-y-0.5">
                       {faceValues.map((faceValue) => (
-                        <div key={`${currencyCode}-${faceValue}`} className="flex items-center gap-1">
+                        <div
+                          key={`${currencyCode}-${faceValue}`}
+                          className="flex items-center gap-1"
+                        >
                           <span className="w-16 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
                             {faceValue.toLocaleString('hu-HU')}
                           </span>
@@ -724,7 +749,8 @@ export default function ClosingWizardPage() {
                     </div>
                     {isVaultContext && (
                       <div className="mt-1 text-right text-xs font-semibold text-gray-600 dark:text-gray-300">
-                        {currencyCode}: {(denominationTotals[currencyCode] ?? 0).toLocaleString('hu-HU')}
+                        {currencyCode}:{' '}
+                        {(denominationTotals[currencyCode] ?? 0).toLocaleString('hu-HU')}
                       </div>
                     )}
                   </div>
@@ -740,7 +766,11 @@ export default function ClosingWizardPage() {
               </div>
               <button
                 onClick={continueAfterDenom}
-                disabled={(!isVaultContext && denomTotal === 0) || !denomEditable || denominationSections.length === 0}
+                disabled={
+                  (!isVaultContext && denomTotal === 0) ||
+                  !denomEditable ||
+                  denominationSections.length === 0
+                }
                 className="mt-1 w-full rounded bg-amber-600 py-1.5 text-sm font-bold text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {t('closing.cimletezesRogziteseEsTovabblepes')}
