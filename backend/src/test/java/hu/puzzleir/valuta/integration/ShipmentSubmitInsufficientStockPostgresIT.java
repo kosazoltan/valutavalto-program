@@ -22,6 +22,7 @@ import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
 import hu.puzzleir.valuta.service.AccessScopeService;
 import hu.puzzleir.valuta.service.AuditLogService;
 import hu.puzzleir.valuta.service.ExchangeRateService;
+import hu.puzzleir.valuta.service.HufDaybookSequenceService;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeSyncService;
 import hu.puzzleir.valuta.service.ShipmentService;
 import hu.puzzleir.valuta.service.ShipmentStockBookingService;
@@ -108,6 +109,7 @@ class ShipmentSubmitInsufficientStockPostgresIT {
     @MockitoBean private ShipmentHandlingFeeSyncService handlingFeeSyncService;
     @MockitoBean private AccessScopeService accessScopeService;
     @MockitoBean private SystemParameterService systemParameterService;
+    @MockitoBean private HufDaybookSequenceService hufDaybookSequenceService;
 
     private Company company;
     private Branch fromBranch;
