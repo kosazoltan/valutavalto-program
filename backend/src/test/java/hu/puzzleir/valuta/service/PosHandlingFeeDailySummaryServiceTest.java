@@ -97,7 +97,8 @@ class PosHandlingFeeDailySummaryServiceTest {
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             when(transactionRepository.findDailyPosHandlingFeeForCompany(COMPANY_ID, D1, D2))
-                    .thenReturn(List.of(new Object[]{D1, new BigDecimal("93000"), new BigDecimal("3800")}));
+                    .thenReturn(List.<Object[]>of(
+                            new Object[]{D1, new BigDecimal("93000"), new BigDecimal("3800")}));
 
             PosHandlingFeeDailySummaryDto result = service.getDailySummary(null, D1, D2);
 
