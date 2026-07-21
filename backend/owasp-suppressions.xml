@@ -145,4 +145,20 @@
         <cve>CVE-2026-29181</cve>
         <cve>CVE-2026-39882</cve>
     </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+            A dependency-check a `org.apache.httpcomponents:httpcore:4.4.16` artifactot a
+            tul-tag `apache:httpcomponents_core` CPE-re mappeli, es emiatt raakasztja a
+            CVE-2026-54399 / CVE-2026-54428 advisory-kat. Ezek a publikus leirasok szerint
+            a HttpComponents Core 5.x ag HTTP/1.1 parserere, illetve a core5-h2 HTTP/2 HPACK
+            decoderre vonatkoznak; a projektben levo 4.4.x `httpcore` nem tartalmazza ezeket
+            a komponenseket. A transitive behuzas forrasa a `com.google.api-client:google-api-client`,
+            amelynek jelenleg sincs frissebb upstream release-e Maven Centralon, ezert a match
+            false positive-kent kezelendo mindaddig, amig az upstream dependency-lanc nem valtozik.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.httpcomponents/httpcore@4\.4\.16$</packageUrl>
+        <cve>CVE-2026-54399</cve>
+        <cve>CVE-2026-54428</cve>
+    </suppress>
 </suppressions>

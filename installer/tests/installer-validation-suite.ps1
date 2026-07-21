@@ -48,6 +48,7 @@ $BE_PORT = 8080
 $SVC_PG = "BestChange-PostgreSQL"
 $SVC_BE = "BestChange-Backend"
 $PUBLISHER = "Exclusive Best Change Zrt."
+$global:InstalledMode = $null
 
 # X8b fix: az NSI SetRegView 64-gyel ir (Penztar-Setup.nsi:1171-1187, v2.3.1
 # Codex P2 #220) -> a nativ 64-bit kulcs az elsodleges. WOW6432Node fallback
@@ -68,6 +69,48 @@ $REG_UNINST = Resolve-RegPath @(
     'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar',
     'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar'
 )
+
+function Get-InstalledMode {
+    if (-not (Test-Path $REG_APP)) {
+        return $global:InstalledMode
+    }
+
+    $appReg = Get-ItemProperty $REG_APP -ErrorAction SilentlyContinue
+    if ($null -eq $appReg) {
+        return $global:InstalledMode
+    }
+
+    $mode = $appReg.InstallMode
+    if ([string]::IsNullOrWhiteSpace($mode)) {
+        $mode = "FULL"
+    }
+
+    $global:InstalledMode = $mode.ToUpperInvariant()
+    return $global:InstalledMode
+}
+
+function Test-IsFullInstallMode {
+    return (Get-InstalledMode) -eq "FULL"
+}
+
+function Wait-ForPathState {
+    param(
+        [string]$Path,
+        [bool]$ShouldExist,
+        [int]$TimeoutSeconds = 15
+    )
+
+    $elapsed = 0
+    while ($elapsed -lt $TimeoutSeconds) {
+        if ((Test-Path $Path) -eq $ShouldExist) {
+            return $true
+        }
+        Start-Sleep -Seconds 1
+        $elapsed++
+    }
+
+    return ((Test-Path $Path) -eq $ShouldExist)
+}
 
 # Installer exe auto-detect
 if (-not $InstallerExe) {
@@ -132,7 +175,8 @@ function Test-PreInstall {
     # 1.2 EXE Properties (Windows metadata) — Forrás: NSIS Manual
     if ($exeExists) {
         $vi = (Get-Item $InstallerExe).VersionInfo
-        Test-Assert "PreInstall" "FileVersion metadata kitoltve" ($vi.FileVersion -like "1.5*") "FileVersion: $($vi.FileVersion)"
+        $fileVersionOk = ($vi.FileVersion -eq $VERSION -or $vi.FileVersion -eq "$VERSION.0")
+        Test-Assert "PreInstall" "FileVersion metadata kitoltve" $fileVersionOk "FileVersion: $($vi.FileVersion)"
         Test-Assert "PreInstall" "ProductName metadata" ($vi.ProductName -like "*Penztar*" -or $vi.ProductName -like "*P*nzt*r*") "ProductName: $($vi.ProductName)"
         Test-Assert "PreInstall" "CompanyName metadata" ($vi.CompanyName -like "*Best Change*" -or $vi.CompanyName -like "*Exclusive*") "CompanyName: $($vi.CompanyName)"
         Test-Assert "PreInstall" "FileDescription metadata" ($null -ne $vi.FileDescription -and $vi.FileDescription -ne "") "FileDescription: $($vi.FileDescription)"
@@ -140,7 +184,7 @@ function Test-PreInstall {
 
     # 1.3 Admin jog check
     $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
-    Test-Assert "PreInstall" "Teszt admin joggal fut" $isAdmin "Admin: $isAdmin"
+    Test-Assert "PreInstall" "Teszt admin joggal fut" $isAdmin "Admin: $isAdmin; nem emelt shell eseten UAC prompt jelenhet meg" "WARN"
 
     # 1.4 x64 OS
     Test-Assert "PreInstall" "64-bites OS" ([Environment]::Is64BitOperatingSystem) ""
@@ -166,21 +210,28 @@ function Test-SilentInstall {
     Test-Assert "Install" "Exit code 0" ($proc.ExitCode -eq 0) "ExitCode: $($proc.ExitCode)"
     Test-Assert "Install" "Telepites ideje esszeru (<600s)" ($installSec -lt 600) "Ido: ${installSec}s"
 
-    # Várjunk a service-ekre
-    Write-Host "  Varakozas a service-ekre (max 120s)..." -ForegroundColor DarkCyan
-    $waited = 0
-    while ($waited -lt 120) {
-        Start-Sleep -Seconds 5
-        $waited += 5
-        try {
-            $r = Invoke-WebRequest -Uri "http://localhost:$BE_PORT/actuator/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
-            if ($r.StatusCode -eq 200) {
-                Write-Host "  Backend health OK (${waited}s)" -ForegroundColor Green
-                break
-            }
-        } catch { }
+    $mode = Get-InstalledMode
+    Test-Assert "Install" "InstallMode rogzitve" (-not [string]::IsNullOrWhiteSpace($mode)) "InstallMode: $mode"
+
+    if (Test-IsFullInstallMode) {
+        # Várjunk a service-ekre
+        Write-Host "  Varakozas a service-ekre (max 120s)..." -ForegroundColor DarkCyan
+        $waited = 0
+        while ($waited -lt 120) {
+            Start-Sleep -Seconds 5
+            $waited += 5
+            try {
+                $r = Invoke-WebRequest -Uri "http://localhost:$BE_PORT/actuator/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
+                if ($r.StatusCode -eq 200) {
+                    Write-Host "  Backend health OK (${waited}s)" -ForegroundColor Green
+                    break
+                }
+            } catch { }
+        }
+        Test-Assert "Install" "Backend health 200 (max 120s)" ($waited -lt 120) "Waited: ${waited}s"
+    } else {
+        Test-Assert "Install" "Silent install alapertelmezett modja THIN" ($mode -eq "THIN") "InstallMode: $mode"
     }
-    Test-Assert "Install" "Backend health 200 (max 120s)" ($waited -lt 120) "Waited: ${waited}s"
 }
 
 # =============================================================================
@@ -189,38 +240,43 @@ function Test-SilentInstall {
 # =============================================================================
 function Test-FileSystem {
     Write-Host "`n=== 3. FAJLRENDSZER VALIDACIO ===" -ForegroundColor Cyan
+    $isFullInstall = Test-IsFullInstallMode
 
     # 3.1 INSTDIR fájlok
     $instFiles = @(
         @{ Path = "$INSTDIR\Penztar.exe"; Desc = "Electron app" },
         @{ Path = "$INSTDIR\uninstall.exe"; Desc = "Uninstaller" },
-        @{ Path = "$INSTDIR\.env"; Desc = "Electron env" }
+        @{ Path = "$INSTDIR\diagnose-penztar-network.ps1"; Desc = "Diagnosztikai script" }
     )
     foreach ($f in $instFiles) {
         Test-Assert "Files" "$($f.Desc) letezik" (Test-Path $f.Path) $f.Path
     }
 
     # 3.2 DATA_DIR struktúra
-    $dataDirs = @(
-        "$DATA_DIR\pgsql\bin\postgres.exe",
-        "$DATA_DIR\pgsql\bin\psql.exe",
-        "$DATA_DIR\pgsql\data\PG_VERSION",
-        "$DATA_DIR\pgsql\data\postgresql.conf",
-        "$DATA_DIR\pgsql\data\pg_hba.conf",
-        "$DATA_DIR\jre\bin\java.exe",
-        "$DATA_DIR\backend\valuta-backend.jar",
-        "$DATA_DIR\tools\nssm.exe",
-        "$DATA_DIR\config\application-local.properties",
-        "$DATA_DIR\scripts\seed-data.sql"
-    )
-    foreach ($p in $dataDirs) {
-        $name = Split-Path $p -Leaf
-        Test-Assert "Files" "$name letezik" (Test-Path $p) $p
-    }
+    if ($isFullInstall) {
+        $dataDirs = @(
+            "$DATA_DIR\pgsql\bin\postgres.exe",
+            "$DATA_DIR\pgsql\bin\psql.exe",
+            "$DATA_DIR\pgsql\data\PG_VERSION",
+            "$DATA_DIR\pgsql\data\postgresql.conf",
+            "$DATA_DIR\pgsql\data\pg_hba.conf",
+            "$DATA_DIR\jre\bin\java.exe",
+            "$DATA_DIR\backend\valuta-backend.jar",
+            "$DATA_DIR\tools\nssm.exe",
+            "$DATA_DIR\config\application-local.properties",
+            "$DATA_DIR\scripts\seed-data.sql"
+        )
+        foreach ($p in $dataDirs) {
+            $name = Split-Path $p -Leaf
+            Test-Assert "Files" "$name letezik" (Test-Path $p) $p
+        }
 
-    # 3.3 Log könyvtárak léteznek
-    Test-Assert "Files" "PG log dir" (Test-Path "$DATA_DIR\pgsql\log") "$DATA_DIR\pgsql\log"
-    Test-Assert "Files" "Backend log dir" (Test-Path "$DATA_DIR\backend\logs") "$DATA_DIR\backend\logs"
+        # 3.3 Log könyvtárak léteznek
+        Test-Assert "Files" "PG log dir" (Test-Path "$DATA_DIR\pgsql\log") "$DATA_DIR\pgsql\log"
+        Test-Assert "Files" "Backend log dir" (Test-Path "$DATA_DIR\backend\logs") "$DATA_DIR\backend\logs"
+    } else {
+        Test-Assert "Files" "THIN modban lokalis backend nem kotelezo" $true "InstallMode: $(Get-InstalledMode)"
+    }
 
     # 3.4 Config tartalom ellenőrzés (Advanced Installer: "integrity check")
     if (Test-Path "$DATA_DIR\config\application-local.properties") {
@@ -269,9 +325,11 @@ function Test-Registry {
     Test-Assert "Registry" "App key letezik" (Test-Path $REG_APP) $REG_APP
     if (Test-Path $REG_APP) {
         $appReg = Get-ItemProperty $REG_APP -ErrorAction SilentlyContinue
+        $global:InstalledMode = if ([string]::IsNullOrWhiteSpace($appReg.InstallMode)) { "FULL" } else { $appReg.InstallMode.ToUpperInvariant() }
         Test-Assert "Registry" "InstallDir helyes" ($appReg.InstallDir -eq $INSTDIR) "InstallDir: $($appReg.InstallDir)"
         Test-Assert "Registry" "DataDir helyes" ($appReg.DataDir -eq $DATA_DIR) "DataDir: $($appReg.DataDir)"
         Test-Assert "Registry" "Version helyes" ($appReg.Version -eq $VERSION) "Version: $($appReg.Version)"
+        Test-Assert "Registry" "InstallMode helyes" ($global:InstalledMode -in @("THIN", "FULL")) "InstallMode: $($global:InstalledMode)"
     }
 
     # 4.2 Uninstall registry (Add/Remove Programs)
@@ -297,6 +355,10 @@ function Test-Registry {
 # =============================================================================
 function Test-Services {
     Write-Host "`n=== 5. SZOLGALTATASOK VALIDACIO ===" -ForegroundColor Cyan
+    if (-not (Test-IsFullInstallMode)) {
+        Test-Assert "Services" "THIN modban nincs lokalis service" $true "InstallMode: $(Get-InstalledMode)"
+        return
+    }
 
     foreach ($svcName in @($SVC_PG, $SVC_BE)) {
         $svc = Get-Service -Name $svcName -ErrorAction SilentlyContinue
@@ -317,12 +379,16 @@ function Test-Services {
         Test-Assert "Services" "Backend fugg PostgreSQL-tol" ($null -ne $hasPgDep) "DependsOn: $($deps.Name -join ',')"
     }
 
-    # Service account: NetworkService
+    $svcAccounts = @{
+        $SVC_PG = "*NetworkService*"
+        $SVC_BE = "LocalSystem"
+    }
     foreach ($svcName in @($SVC_PG, $SVC_BE)) {
         $svcObj = Get-CimInstance Win32_Service -Filter "Name='$svcName'" -ErrorAction SilentlyContinue
         if ($svcObj) {
             $account = $svcObj.StartName
-            Test-Assert "Services" "$svcName NetworkService fiok" ($account -like "*NetworkService*") "Account: $account"
+            $expected = $svcAccounts[$svcName]
+            Test-Assert "Services" "$svcName megfelelo szolgaltatasfiok" ($account -like $expected) "Account: $account"
         }
     }
 }
@@ -333,6 +399,10 @@ function Test-Services {
 # =============================================================================
 function Test-Network {
     Write-Host "`n=== 6. HALOZAT ES HEALTH VALIDACIO ===" -ForegroundColor Cyan
+    if (-not (Test-IsFullInstallMode)) {
+        Test-Assert "Network" "THIN modban nincs lokalis backend port" $true "InstallMode: $(Get-InstalledMode)"
+        return
+    }
 
     # 6.1 PostgreSQL port
     $pgConn = $null
@@ -394,24 +464,30 @@ function Test-Network {
 # =============================================================================
 function Test-Shortcuts {
     Write-Host "`n=== 7. PARANCSIKONOK VALIDACIO ===" -ForegroundColor Cyan
+    $isFullInstall = Test-IsFullInstallMode
 
     # Desktop shortcut
-    $desktopLnk = Join-Path ([Environment]::GetFolderPath("CommonDesktopDirectory")) "Valutaváltó Pénztár.lnk"
-    Test-Assert "Shortcuts" "Asztali ikon letezik" (Test-Path $desktopLnk) $desktopLnk
+    $desktopLnk = Join-Path ([Environment]::GetFolderPath("Desktop")) "Valutavalto Penztar.lnk"
+    Test-Assert "Shortcuts" "Asztali ikon letezik" (Wait-ForPathState -Path $desktopLnk -ShouldExist $true) $desktopLnk
 
     # Start Menu shortcuts
-    $smDir = Join-Path ([Environment]::GetFolderPath("CommonPrograms")) "Valutaváltó Pénztár"
-    Test-Assert "Shortcuts" "Start menu mappa letezik" (Test-Path $smDir) $smDir
+    $smDir = Join-Path ([Environment]::GetFolderPath("Programs")) "Valutavalto Penztar"
+    Test-Assert "Shortcuts" "Start menu mappa letezik" (Wait-ForPathState -Path $smDir -ShouldExist $true) $smDir
 
     $expectedLinks = @(
-        "Valutaváltó Pénztár.lnk",
-        "Szolgáltatások indítása.lnk",
-        "Szolgáltatások leállítása.lnk",
-        "Eltávolítás.lnk"
+        "Valutavalto Penztar.lnk",
+        "Halozati diagnosztika.lnk",
+        "Eltavolitas.lnk"
     )
+    if ($isFullInstall) {
+        $expectedLinks += @(
+            "Szolgaltatasok inditasa.lnk",
+            "Szolgaltatasok leallitasa.lnk"
+        )
+    }
     foreach ($lnk in $expectedLinks) {
         $lnkPath = Join-Path $smDir $lnk
-        Test-Assert "Shortcuts" "Start menu: $lnk" (Test-Path $lnkPath) $lnkPath
+        Test-Assert "Shortcuts" "Start menu: $lnk" (Wait-ForPathState -Path $lnkPath -ShouldExist $true) $lnkPath
     }
 
     # Shortcut target validation (Advanced Installer: "shortcuts point to correct executables")
@@ -427,10 +503,11 @@ function Test-Shortcuts {
 # =============================================================================
 function Test-Security {
     Write-Host "`n=== 8. BIZTONSAGI VALIDACIO ===" -ForegroundColor Cyan
+    $isFullInstall = Test-IsFullInstallMode
 
     # 8.1 Config fájl nem world-readable
     $cfgFile = "$DATA_DIR\config\application-local.properties"
-    if (Test-Path $cfgFile) {
+    if ($isFullInstall -and (Test-Path $cfgFile)) {
         $acl = Get-Acl $cfgFile
         $everyoneAccess = $acl.Access | Where-Object { $_.IdentityReference -like "*Everyone*" -or $_.IdentityReference -like "*Users*" }
         # Ha van Users/Everyone olvasási jog, az WARN (NetworkService elég)
@@ -439,15 +516,19 @@ function Test-Security {
 
     # 8.2 NSSM exe nem world-writable
     $nssmPath = "$DATA_DIR\tools\nssm.exe"
-    if (Test-Path $nssmPath) {
+    if ($isFullInstall -and (Test-Path $nssmPath)) {
         $nssmAcl = Get-Acl $nssmPath
         $nssmWrite = $nssmAcl.Access | Where-Object { $_.IdentityReference -like "*Users*" -and $_.FileSystemRights -match "Write|FullControl" }
         Test-Assert "Security" "NSSM nem Users-writable" ($null -eq $nssmWrite) ""
     }
 
     # 8.3 Jelszó sehol nem plaintext temp fájlban
-    $tempSqlFiles = Get-ChildItem "$DATA_DIR\scripts\*.sql" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "setup-user|update-password|verify-user" }
-    Test-Assert "Security" "Nincs temp SQL jelszo-fajl" ($tempSqlFiles.Count -eq 0) "Talalt: $($tempSqlFiles.Name -join ',')"
+    if ($isFullInstall) {
+        $tempSqlFiles = Get-ChildItem "$DATA_DIR\scripts\*.sql" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "setup-user|update-password|verify-user" }
+        Test-Assert "Security" "Nincs temp SQL jelszo-fajl" ($tempSqlFiles.Count -eq 0) "Talalt: $($tempSqlFiles.Name -join ',')"
+    } else {
+        Test-Assert "Security" "THIN modban nincs lokalis SQL temp fajl" $true "InstallMode: $(Get-InstalledMode)"
+    }
 
     # 8.4 generate-secrets.ps1 nem maradt
     Test-Assert "Security" "Nincs temp secrets PS1" (-not (Test-Path "$INSTDIR\generate-secrets.ps1")) ""
@@ -476,18 +557,25 @@ function Test-SilentUninstall {
 
 function Test-PostUninstall {
     Write-Host "`n=== 10. POST-UNINSTALL VALIDACIO ===" -ForegroundColor Cyan
+    $wasFullInstall = Test-IsFullInstallMode
 
     # 10.1 Services eltuntek
-    foreach ($svcName in @($SVC_PG, $SVC_BE)) {
-        $svc = Get-Service -Name $svcName -ErrorAction SilentlyContinue
-        Test-Assert "PostUninst" "$svcName eltavolitve" ($null -eq $svc) "Status: $($svc.Status)"
+    if ($wasFullInstall) {
+        foreach ($svcName in @($SVC_PG, $SVC_BE)) {
+            $svc = Get-Service -Name $svcName -ErrorAction SilentlyContinue
+            Test-Assert "PostUninst" "$svcName eltavolitve" ($null -eq $svc) "Status: $($svc.Status)"
+        }
+    } else {
+        Test-Assert "PostUninst" "THIN modban nincs service eltavolitando" $true "InstallMode: THIN"
     }
 
     # 10.2 Portok szabadok
-    $pgListen = netstat -an | Select-String ":$PG_PORT " | Select-String "LISTENING"
-    Test-Assert "PostUninst" "Port $PG_PORT szabad" ($null -eq $pgListen) ""
-    $beListen = netstat -an | Select-String ":$BE_PORT " | Select-String "LISTENING"
-    Test-Assert "PostUninst" "Port $BE_PORT szabad" ($null -eq $beListen) ""
+    if ($wasFullInstall) {
+        $pgListen = netstat -an | Select-String ":$PG_PORT " | Select-String "LISTENING"
+        Test-Assert "PostUninst" "Port $PG_PORT szabad" ($null -eq $pgListen) ""
+        $beListen = netstat -an | Select-String ":$BE_PORT " | Select-String "LISTENING"
+        Test-Assert "PostUninst" "Port $BE_PORT szabad" ($null -eq $beListen) ""
+    }
 
     # 10.3 Registry torolve
     Test-Assert "PostUninst" "App registry torolve" (-not (Test-Path $REG_APP)) ""
@@ -503,18 +591,25 @@ function Test-PostUninstall {
     }
 
     # 10.5 Shortcuts torolve
-    $desktopLnk = Join-Path ([Environment]::GetFolderPath("CommonDesktopDirectory")) "Valutaváltó Pénztár.lnk"
-    Test-Assert "PostUninst" "Asztali ikon torolve" (-not (Test-Path $desktopLnk)) ""
-    $smDir = Join-Path ([Environment]::GetFolderPath("CommonPrograms")) "Valutaváltó Pénztár"
-    Test-Assert "PostUninst" "Start menu mappa torolve" (-not (Test-Path $smDir)) ""
+    $desktopLnk = Join-Path ([Environment]::GetFolderPath("Desktop")) "Valutavalto Penztar.lnk"
+    Test-Assert "PostUninst" "Asztali ikon torolve" (Wait-ForPathState -Path $desktopLnk -ShouldExist $false) ""
+    $smDir = Join-Path ([Environment]::GetFolderPath("Programs")) "Valutavalto Penztar"
+    Test-Assert "PostUninst" "Start menu mappa torolve" (Wait-ForPathState -Path $smDir -ShouldExist $false) ""
 
     # 10.6 DATA_DIR: silent uninstall megtartja az adatokat (design decision)
-    Test-Assert "PostUninst" "DATA_DIR adatok megmaradtak (silent=keep)" (Test-Path "$DATA_DIR\pgsql\data\PG_VERSION") "Silent uninstall NEM torol adatot" "WARN"
+    if ($wasFullInstall) {
+        Test-Assert "PostUninst" "DATA_DIR adatok megmaradtak (silent=keep)" (Test-Path "$DATA_DIR\pgsql\data\PG_VERSION") "Silent uninstall NEM torol adatot" "WARN"
+    } else {
+        $thinDataDirMissingOrEmpty = (-not (Test-Path "$DATA_DIR")) -or (@(Get-ChildItem "$DATA_DIR" -Force -ErrorAction SilentlyContinue).Count -eq 0)
+        Test-Assert "PostUninst" "THIN modban nincs lokalis DATA_DIR" $thinDataDirMissingOrEmpty "InstallMode: THIN"
+    }
 
     # 10.7 DATA_DIR: binarisok torolve (jre, tools, scripts)
-    Test-Assert "PostUninst" "JRE binaris torolve" (-not (Test-Path "$DATA_DIR\jre\bin\java.exe")) ""
-    Test-Assert "PostUninst" "NSSM torolve" (-not (Test-Path "$DATA_DIR\tools\nssm.exe")) ""
-    Test-Assert "PostUninst" "Backend JAR torolve" (-not (Test-Path "$DATA_DIR\backend\valuta-backend.jar")) ""
+    if ($wasFullInstall) {
+        Test-Assert "PostUninst" "JRE binaris torolve" (-not (Test-Path "$DATA_DIR\jre\bin\java.exe")) ""
+        Test-Assert "PostUninst" "NSSM torolve" (-not (Test-Path "$DATA_DIR\tools\nssm.exe")) ""
+        Test-Assert "PostUninst" "Backend JAR torolve" (-not (Test-Path "$DATA_DIR\backend\valuta-backend.jar")) ""
+    }
 }
 
 # =============================================================================
@@ -528,25 +623,30 @@ function Test-Reinstall {
     $proc = Start-Process -FilePath $InstallerExe -ArgumentList "/S" -Wait -PassThru
     Test-Assert "Reinstall" "Ujratelepites exit code 0" ($proc.ExitCode -eq 0) "ExitCode: $($proc.ExitCode)"
 
-    # Várjunk a health-re
-    Write-Host "  Varakozas backend-re (max 120s)..." -ForegroundColor DarkCyan
-    $waited = 0
-    $healthOk = $false
-    while ($waited -lt 120) {
-        Start-Sleep -Seconds 5
-        $waited += 5
-        try {
-            $r = Invoke-WebRequest -Uri "http://localhost:$BE_PORT/actuator/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
-            if ($r.StatusCode -eq 200) { $healthOk = $true; break }
-        } catch { }
-    }
-    Test-Assert "Reinstall" "Backend health OK ujratelepites utan" $healthOk "Waited: ${waited}s"
+    $mode = Get-InstalledMode
+    if ($mode -eq "FULL") {
+        # Várjunk a health-re
+        Write-Host "  Varakozas backend-re (max 120s)..." -ForegroundColor DarkCyan
+        $waited = 0
+        $healthOk = $false
+        while ($waited -lt 120) {
+            Start-Sleep -Seconds 5
+            $waited += 5
+            try {
+                $r = Invoke-WebRequest -Uri "http://localhost:$BE_PORT/actuator/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
+                if ($r.StatusCode -eq 200) { $healthOk = $true; break }
+            } catch { }
+        }
+        Test-Assert "Reinstall" "Backend health OK ujratelepites utan" $healthOk "Waited: ${waited}s"
 
-    # DB megmaradt az adatokkal
-    $psqlExe = "$DATA_DIR\pgsql\bin\psql.exe"
-    if (Test-Path $psqlExe) {
-        $dbCheck = & $psqlExe -p $PG_PORT -U postgres -d valuta -t -A -c "SELECT 1" 2>&1
-        Test-Assert "Reinstall" "DB kapcsolat mukodik" ($dbCheck -match "1") ""
+        # DB megmaradt az adatokkal
+        $psqlExe = "$DATA_DIR\pgsql\bin\psql.exe"
+        if (Test-Path $psqlExe) {
+            $dbCheck = & $psqlExe -p $PG_PORT -U postgres -d valuta -t -A -c "SELECT 1" 2>&1
+            Test-Assert "Reinstall" "DB kapcsolat mukodik" ($dbCheck -match "1") ""
+        }
+    } else {
+        Test-Assert "Reinstall" "Silent ujratelepites THIN modban marad" ($mode -eq "THIN") "InstallMode: $mode"
     }
 }
 

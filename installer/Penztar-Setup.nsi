@@ -1354,10 +1354,11 @@ Section "un.Eltavolitas"
         DetailPrint "Felhasznaloi adatok (Setup config + logok) torlese: $APPDATA\valuta-penztar"
         RMDir /r "$APPDATA\valuta-penztar"
     ${EndIf}
-    SetShellVarContext all  ; reset all-users context-re
-
+    ; A shortcutokat a telepito current-user contextben hozza letre, ezert
+    ; az uninstallnak is ugyanabban a shell contextben kell torolnie oket.
     Delete "$DESKTOP\Valutavalto Penztar.lnk"
     RMDir /r "$SMPROGRAMS\Valutavalto Penztar"
+    SetShellVarContext all  ; reset all-users context-re
 
     ; BUG-07 fix: 64-bit registry view in uninstaller
     SetRegView 64
