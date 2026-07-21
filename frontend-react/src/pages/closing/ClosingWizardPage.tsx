@@ -347,9 +347,7 @@ export default function ClosingWizardPage() {
       setWaitingForDenom(true)
     } catch (err) {
       logger.error('ClosingWizardPage', 'start failed:', err)
-      const errorMsg =
-        err instanceof Error ? err.message : 'Nem sikerült a napzárás wizard indítása'
-      toast.error('Napzárás hiba', errorMsg)
+      toast.error('Napzárás hiba', getErrorMessage(err))
       setIsRunning(false)
     }
   }, [worker, runSteps, closingType, isVaultContext])
