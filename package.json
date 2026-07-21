@@ -113,7 +113,7 @@
   },
   "overrides": {
     "axios": ">=1.15.2",
-    "shell-quote": "^1.8.4"
+    "shell-quote": "^1.10.0"
   },
   "engines": {
     "node": ">=20.19.0",
