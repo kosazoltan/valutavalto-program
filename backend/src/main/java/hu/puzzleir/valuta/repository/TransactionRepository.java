@@ -1391,6 +1391,54 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("endDate") LocalDate endDate
     );
 
+    /**
+     * FK-059: napi POS (bankkártyás) kezelési díj + nettó, egy fiókra.
+     * CARD + SELL + COMPLETED only (FR-3: CARD+BUY kizárva — A1 anomália).
+     * Nettó = hufAmount - handlingFee - roundingAmount (D2). Nincs fee>0 szűrés (D3).
+     * Visszaad: [transactionDate, SUM(net), SUM(fee)]
+     */
+    @Query("SELECT t.transactionDate, " +
+           "SUM(t.hufAmount - COALESCE(t.handlingFee, 0) - COALESCE(t.roundingAmount, 0)), " +
+           "SUM(COALESCE(t.handlingFee, 0)) " +
+           "FROM Transaction t " +
+           "WHERE t.branch.id = :branchId " +
+           "AND t.transactionDate BETWEEN :startDate AND :endDate " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.transactionType = hu.puzzleir.valuta.entity.TransactionType.SELL " +
+           "AND t.paymentMethod = hu.puzzleir.valuta.entity.PaymentMethod.CARD " +
+           "GROUP BY t.transactionDate ORDER BY t.transactionDate ASC")
+    List<Object[]> findDailyPosHandlingFee(
+        @Param("branchId") UUID branchId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate
+    );
+
+    /**
+     * FK-059 (FR-4): cég-szintű "Minden iroda" POS napi összesítő — a FK-056 kanonikus,
+     * null-safe VAULT_COUNTERPARTY-kizárással. NEM a sumCardSalesByCurrencyAndBranchAndDate
+     * kiterjesztése (annak nincs kizárása).
+     */
+    @Query("SELECT t.transactionDate, " +
+           "SUM(t.hufAmount - COALESCE(t.handlingFee, 0) - COALESCE(t.roundingAmount, 0)), " +
+           "SUM(COALESCE(t.handlingFee, 0)) " +
+           "FROM Transaction t " +
+           "JOIN t.branch b " +
+           "LEFT JOIN b.branchType bt " +
+           "WHERE b.company.id = :companyId " +
+           "AND b.isActive = true " +
+           "AND b.isVault = false " +
+           "AND (bt IS NULL OR bt.code <> 'VAULT_COUNTERPARTY') " +
+           "AND t.transactionDate BETWEEN :startDate AND :endDate " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.transactionType = hu.puzzleir.valuta.entity.TransactionType.SELL " +
+           "AND t.paymentMethod = hu.puzzleir.valuta.entity.PaymentMethod.CARD " +
+           "GROUP BY t.transactionDate ORDER BY t.transactionDate ASC")
+    List<Object[]> findDailyPosHandlingFeeForCompany(
+        @Param("companyId") UUID companyId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate
+    );
+
     // ============ TURNOVER BREAKDOWN QUERY-K ============
 
     /**
