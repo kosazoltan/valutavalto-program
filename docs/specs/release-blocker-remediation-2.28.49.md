@@ -18,13 +18,13 @@ Restore all mandatory release gates on `main`, then build, publish, download, an
 
 ## Build-integrity branch integration
 
-The following patch-unique commits SHALL be integrated before the signed build, preserving their authorship and atomic history:
+The following patch-unique commits SHALL be integrated before the signed build, preserving their authorship and atomic history through `--no-ff` branch merges:
 
 - `339c85a4`, `c3c1c720` — shipment receipt/audit fixes;
 - `dd2a33f4`, `4d608627` — stale-delivery warning and its PostgreSQL fixture follow-up;
 - `f59f2a6e`, `0a387d0e`, `39f0d420` — Windows/Electron development-tooling fixes.
 
-Merge-only commits SHALL NOT be cherry-picked. Conflicts SHALL retain both the already verified release dependency fixes and the intended branch behavior. After integration, all release gates and remote CI SHALL run again from the new `main` HEAD.
+Conflicts SHALL retain both the already verified release dependency fixes and the intended branch behavior. After integration, all release gates and remote CI SHALL run again from the new `main` HEAD.
 
 ## Confirmed blockers
 
