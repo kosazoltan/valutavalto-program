@@ -1,6 +1,7 @@
 # FK-059 — POS handling-fee daily report contract
 
-Status: APPROVED  
+Status: APPROVED
+
 Scope: backend and central React renderer (`frontend-react`)
 
 ## Goal
@@ -78,25 +79,25 @@ written, and no report repository query runs.
 
 ## Non-functional requirements
 
-| ID    | Requirement  | Measurable criterion                                                                 |
-| ----- | ------------ | ------------------------------------------------------------------------------------ |
-| NFR-1 | Performance  | 31-day branch p95 < 500 ms; 65-branch company p95 < 1000 ms                          |
-| NFR-2 | Localization | Hungarian labels and `hu-HU` date formatting                                         |
-| NFR-3 | HUF display  | Stored amounts displayed as whole forints                                            |
-| NFR-4 | Table style  | `.data-grid` class with the established alternating-row presentation                 |
+| ID    | Requirement  | Measurable criterion                                                                   |
+| ----- | ------------ | -------------------------------------------------------------------------------------- |
+| NFR-1 | Performance  | 31-day branch p95 < 500 ms; 65-branch company p95 < 1000 ms                            |
+| NFR-2 | Localization | Hungarian labels and `hu-HU` date formatting                                           |
+| NFR-3 | HUF display  | Stored amounts displayed as whole forints                                              |
+| NFR-4 | Table style  | `.data-grid` class with the established alternating-row presentation                   |
 | NFR-5 | Isolation    | Branch access is IDOR-safe; all-office company ID comes only from the security context |
 
 ## RBAC matrix
 
-| Role                 | Read JSON | Export CSV |
-| -------------------- | --------- | ---------- |
-| `ROLE_FOERTEKTAR`    | yes       | yes        |
-| `ROLE_UGYVEZETO`     | yes       | yes        |
-| `ROLE_IRODAVEZETO`   | yes       | yes        |
-| `ROLE_BELSO_ELLENOR` | yes       | yes        |
-| `ROLE_TERULETI_VEZETO` | yes     | yes        |
-| `ROLE_PENZUGYI_VEZETO` | yes     | yes        |
-| Other or no authority | no       | no         |
+| Role                   | Read JSON | Export CSV |
+| ---------------------- | --------- | ---------- |
+| `ROLE_FOERTEKTAR`      | yes       | yes        |
+| `ROLE_UGYVEZETO`       | yes       | yes        |
+| `ROLE_IRODAVEZETO`     | yes       | yes        |
+| `ROLE_BELSO_ELLENOR`   | yes       | yes        |
+| `ROLE_TERULETI_VEZETO` | yes       | yes        |
+| `ROLE_PENZUGYI_VEZETO` | yes       | yes        |
+| Other or no authority  | no        | no         |
 
 ## Data and calculation contract
 
