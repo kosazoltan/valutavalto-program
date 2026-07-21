@@ -26,7 +26,7 @@
   "devDependencies": {
     "@types/node": "^20.11.20",
     "@types/sql.js": "^1.4.11",
-    "concurrently": "^9.2.1",
+    "concurrently": "^9.2.4",
     "electron": "^42.0.1",
     "electron-builder": "^26.8.1",
     "shx": "^0.4.0",
@@ -39,7 +39,8 @@
   },
   "overrides": {
     "tmp": "^0.2.6",
-    "shell-quote": "^1.8.4",
+    "shell-quote": "^1.10.0",
+    "js-yaml": "4.3.0",
     "@electron/get": {
       "undici": "^7.28.0"
     },

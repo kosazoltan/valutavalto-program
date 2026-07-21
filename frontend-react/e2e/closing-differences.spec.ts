@@ -163,7 +163,22 @@ async function mockClosingApis(page: Page) {
     }
 
     if (path.endsWith(`/closing-wizard/${wizardId}/denominations`) && method === 'POST') {
-      expect(await route.request().postDataJSON()).toEqual({ HUF: { 20000: 5 } })
+      expect(await route.request().postDataJSON()).toEqual({
+        HUF: {
+          20000: 5,
+          10000: 0,
+          5000: 0,
+          2000: 0,
+          1000: 0,
+          500: 0,
+          200: 0,
+          100: 0,
+          50: 0,
+          20: 0,
+          10: 0,
+          5: 0,
+        },
+      })
       return route.fulfill({
         status: 200,
         contentType: 'application/json',

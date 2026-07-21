@@ -38,7 +38,7 @@ class MonthlyReportServiceTest {
     @Mock private CurrencyRepository currencyRepository;
     @Mock private MnbExchangeRateService mnbExchangeRateService;
     @Mock private TransferRepository transferRepository;
-    @Mock private BranchService branchService;
+    @Mock private MonthlyClosingAccessGuard monthlyClosingAccessGuard;
 
     @InjectMocks
     private MonthlyReportService service;
@@ -68,11 +68,8 @@ class MonthlyReportServiceTest {
         testBranch.setAddress("7621 Pecs, Kiraly u. 10.");
         testBranch.setCompany(testCompany);
 
-        // IDOR-guard (audit 2026-06-15): a generateFullReport elején branchService.findById fut
-        // (dob, ha a branch nem a hívó cégéé). A visszaadott BranchDto-t a service nem használja
-        // (a Branch entitást külön branchRepository.findById-ből veszi), csak a guard számít.
-        when(branchService.findById(BRANCH_ID))
-                .thenReturn(org.mockito.Mockito.mock(hu.puzzleir.valuta.dto.BranchDto.class));
+        // IDOR-guard: ugyanazt a tenant-scoped Branch entitást adja vissza, mint productionben.
+        when(monthlyClosingAccessGuard.requireAccessibleBranch(BRANCH_ID)).thenReturn(testBranch);
     }
 
     @Test
@@ -199,8 +196,8 @@ class MonthlyReportServiceTest {
     @Test
     @DisplayName("generateFullReport: branch not found -> ResourceNotFoundException")
     void generateFullReport_branchNotFound() {
-        // IDOR-guard: cross-tenant / nem létező branch esetén a branchService.findById dob ResourceNotFoundException-t.
-        when(branchService.findById(BRANCH_ID))
+        // IDOR-guard: cross-tenant / nem létező branch esetén a guard dob ResourceNotFoundException-t.
+        when(monthlyClosingAccessGuard.requireAccessibleBranch(BRANCH_ID))
                 .thenThrow(new hu.puzzleir.valuta.exception.ResourceNotFoundException("Iroda nem található"));
 
         assertThatThrownBy(() -> service.generateFullReport(BRANCH_ID, "2026-03"))

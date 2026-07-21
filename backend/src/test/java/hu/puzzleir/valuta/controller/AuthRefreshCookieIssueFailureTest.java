@@ -161,7 +161,9 @@ class AuthRefreshCookieIssueFailureTest {
         when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar", "ertektar"));
         when(workerRoleService.getPermissionCodesForRole("penztar")).thenReturn(List.of("TRADE_EXECUTE"));
-        when(jwtTokenProvider.generateToken(worker, "penztar", List.of("TRADE_EXECUTE"))).thenReturn("final-token");
+        when(sessionBranchResolver.resolveSessionBranch(worker, "penztar")).thenReturn(worker.getBranch());
+        when(jwtTokenProvider.generateToken(worker, worker.getBranch(), "penztar", List.of("TRADE_EXECUTE")))
+                .thenReturn("final-token");
         when(refreshTokenService.issue(worker, request, "penztar"))
                 .thenReturn(new RefreshTokenService.IssuedToken("selector.verifier", "hash", Instant.now()));
 
@@ -210,7 +212,9 @@ class AuthRefreshCookieIssueFailureTest {
         when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar"));
         when(workerRoleService.getPermissionCodesForRole("penztar")).thenReturn(List.of("TRADE_EXECUTE"));
-        when(jwtTokenProvider.generateToken(worker, "penztar", List.of("TRADE_EXECUTE"))).thenReturn("final-token");
+        when(sessionBranchResolver.resolveSessionBranch(worker, "penztar")).thenReturn(worker.getBranch());
+        when(jwtTokenProvider.generateToken(worker, worker.getBranch(), "penztar", List.of("TRADE_EXECUTE")))
+                .thenReturn("final-token");
         when(refreshTokenService.issue(worker, request, "penztar")).thenThrow(new IllegalStateException("database unavailable"));
 
         assertThatThrownBy(() -> controller.selectRole(new SelectRoleRequestDto("temp-token", "penztar"), request, response))
@@ -291,7 +295,8 @@ class AuthRefreshCookieIssueFailureTest {
         when(jwtTokenProvider.getActiveRoleFromToken("access-token")).thenReturn("penztar");
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar", "ertektar"));
         when(workerRoleService.getPermissionCodesForRole("penztar")).thenReturn(List.of("TRADE_EXECUTE"));
-        when(jwtTokenProvider.generateToken(worker, "penztar", List.of("TRADE_EXECUTE")))
+        when(sessionBranchResolver.resolveSessionBranch(worker, "penztar")).thenReturn(worker.getBranch());
+        when(jwtTokenProvider.generateToken(worker, worker.getBranch(), "penztar", List.of("TRADE_EXECUTE")))
                 .thenReturn("refreshed-token");
         LocalDateTime tokenExpiresAt = LocalDateTime.of(2026, 5, 7, 15, 30);
         when(jwtTokenProvider.getExpirationDateTimeFromToken("access-token")).thenReturn(tokenExpiresAt);
@@ -404,7 +409,9 @@ class AuthRefreshCookieIssueFailureTest {
         when(workerRepository.findByIdWithCompanyAndBranch(42L)).thenReturn(Optional.of(worker));
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar", "ertektar"));
         when(workerRoleService.getPermissionCodesForRole("ertektar")).thenReturn(List.of("VAULT_READ"));
-        when(jwtTokenProvider.generateToken(worker, "ertektar", List.of("VAULT_READ"))).thenReturn("refreshed-token");
+        when(sessionBranchResolver.resolveSessionBranch(worker, "ertektar")).thenReturn(worker.getBranch());
+        when(jwtTokenProvider.generateToken(worker, worker.getBranch(), "ertektar", List.of("VAULT_READ")))
+                .thenReturn("refreshed-token");
         when(refreshTokenService.rotate(oldRefresh, worker, request, "ertektar"))
                 .thenReturn(new RefreshTokenService.IssuedToken("new.selector", "hash", Instant.now()));
 
