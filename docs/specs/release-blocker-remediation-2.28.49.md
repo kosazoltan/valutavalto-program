@@ -3,6 +3,7 @@
 ## Status
 
 Approved by the user on 2026-07-21 for full blocker remediation and signed release.
+Before release dispatch, the user additionally approved integrating every recent non-Dependabot branch reported by the build-integrity gate.
 
 ## Goal
 
@@ -14,6 +15,16 @@ Restore all mandatory release gates on `main`, then build, publish, download, an
 - No weakening, skipping, deleting, or rewriting assertions merely to make tests pass.
 - No unrelated refactors or broad dependency upgrades.
 - No standalone rate-maker installer.
+
+## Build-integrity branch integration
+
+The following patch-unique commits SHALL be integrated before the signed build, preserving their authorship and atomic history:
+
+- `339c85a4`, `c3c1c720` — shipment receipt/audit fixes;
+- `dd2a33f4`, `4d608627` — stale-delivery warning and its PostgreSQL fixture follow-up;
+- `f59f2a6e`, `0a387d0e`, `39f0d420` — Windows/Electron development-tooling fixes.
+
+Merge-only commits SHALL NOT be cherry-picked. Conflicts SHALL retain both the already verified release dependency fixes and the intended branch behavior. After integration, all release gates and remote CI SHALL run again from the new `main` HEAD.
 
 ## Confirmed blockers
 
@@ -80,3 +91,4 @@ AND package/build/type/test gates SHALL prove compatibility.
   - `Penztar-Eltavolito-2.28.49-<date>.exe`
   - `Kozponti-Munkaallomas-Setup-2.28.49.exe`
 - Downloaded artifacts have valid Authenticode signatures and SHA-256 values matching the release manifest.
+- The seven approved branch commits are patch-equivalent in `main`, with no remaining unmerged non-Dependabot feature/fix branch content intended for this release.
