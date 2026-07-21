@@ -111,6 +111,9 @@ class ClosingFlowTest {
         void testClosingWizard_happyPath() {
             when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Optional.of(branch));
             when(workerRepository.findByIdAndCompanyId(WORKER_ID, COMPANY_ID)).thenReturn(Optional.of(worker));
+            when(closingWizardRepository.findByBranchIdAndStatusAndClosingDate(
+                            BRANCH_ID, WizardStatus.IN_PROGRESS, LocalDate.now()))
+                    .thenReturn(Collections.emptyList());
             when(closingWizardRepository.findByBranchIdAndStatus(BRANCH_ID, WizardStatus.IN_PROGRESS))
                     .thenReturn(Collections.emptyList());
             when(closingWizardRepository.save(any(ClosingWizard.class))).thenAnswer(inv -> {
@@ -286,7 +289,8 @@ class ClosingFlowTest {
             when(workerRepository.findByIdAndCompanyId(WORKER_ID, COMPANY_ID)).thenReturn(Optional.of(worker));
 
             ClosingWizard existing = createWizard(UUID.randomUUID(), 1, WizardStatus.IN_PROGRESS);
-            when(closingWizardRepository.findByBranchIdAndStatus(BRANCH_ID, WizardStatus.IN_PROGRESS))
+            when(closingWizardRepository.findByBranchIdAndStatusAndClosingDate(
+                            BRANCH_ID, WizardStatus.IN_PROGRESS, LocalDate.now()))
                     .thenReturn(List.of(existing));
 
             assertThatThrownBy(() -> closingWizardService.startWizard(BRANCH_ID, CASH_DESK_ID, "DAILY", WORKER_ID))
