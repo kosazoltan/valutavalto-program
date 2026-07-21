@@ -1590,6 +1590,35 @@
         "noDateRange": "Add meg a dátum-tartományt!"
       }
     },
+    "posHandlingFee": {
+      "title": "Kezelési díj — POS riport",
+      "from": "Tól",
+      "to": "Ig",
+      "branch": "Iroda",
+      "branchPlaceholder": "— Válasszon irodát —",
+      "allBranchesOption": "— Minden iroda —",
+      "loading": "Betöltés...",
+      "submit": "Lekérdezés",
+      "csvTitle": "CSV export",
+      "summary": {
+        "period": "Időszak",
+        "netTotal": "POS nettó összesen",
+        "feeTotal": "POS KK összesen"
+      },
+      "dailyBreakdown": "Naponkénti bontás",
+      "table": {
+        "date": "Dátum",
+        "netAmount": "POS nettó (Ft)",
+        "feeAmount": "POS KK (Ft)",
+        "totalRow": "Összesen",
+        "noData": "Nincs adat a kiválasztott időszakra."
+      },
+      "emptyState": "Adja meg a szűrőfeltételeket és nyomja meg a Lekérdezés gombot.",
+      "errors": {
+        "noBranch": "Válasszon irodát!",
+        "noDateRange": "Add meg a dátum-tartományt!"
+      }
+    },
     "bankTransactions": {
       "title": "Banki tranzakciók riport",
       "from": "Tól",
