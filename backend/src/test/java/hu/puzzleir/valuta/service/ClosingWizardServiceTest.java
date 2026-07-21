@@ -48,7 +48,8 @@ class ClosingWizardServiceTest {
 
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
-        when(closingWizardRepository.findByBranchIdAndStatus(eq(BRANCH_ID), any()))
+        when(closingWizardRepository.findByBranchIdAndStatusAndClosingDate(
+                        eq(BRANCH_ID), eq(WizardStatus.IN_PROGRESS), eq(LocalDate.now())))
                 .thenReturn(List.of(existing));
 
         assertThatThrownBy(() -> service.startWizard(BRANCH_ID, null, "DAILY", 1L))
@@ -69,9 +70,9 @@ class ClosingWizardServiceTest {
 
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
-        lenient().when(closingWizardRepository.findByBranchIdAndStatus(eq(BRANCH_ID), any()))
+        when(closingWizardRepository.findByBranchIdAndStatus(eq(BRANCH_ID), any()))
                 .thenReturn(List.of(staleWizard));
-        lenient().when(closingWizardRepository.findByBranchIdAndStatusAndClosingDate(
+        when(closingWizardRepository.findByBranchIdAndStatusAndClosingDate(
                         eq(BRANCH_ID), eq(WizardStatus.IN_PROGRESS), eq(LocalDate.now())))
                 .thenReturn(List.of());
         when(closingWizardRepository.save(any())).thenAnswer(invocation -> {
@@ -96,14 +97,9 @@ class ClosingWizardServiceTest {
 
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
         when(workerRepository.findById(1L)).thenReturn(Optional.of(worker));
-        lenient().when(closingWizardRepository.findByBranchIdAndStatusAndClosingDate(
+        when(closingWizardRepository.findByBranchIdAndStatusAndClosingDate(
                         eq(BRANCH_ID), eq(WizardStatus.IN_PROGRESS), eq(LocalDate.now())))
                 .thenReturn(List.of(activeToday));
-        lenient().when(closingWizardRepository.save(any())).thenAnswer(invocation -> {
-            ClosingWizard saved = invocation.getArgument(0);
-            saved.setId(UUID.randomUUID());
-            return saved;
-        });
 
         assertThatThrownBy(() -> service.startWizard(BRANCH_ID, null, "DAILY", 1L))
                 .isInstanceOf(ValidationException.class)
@@ -121,7 +117,8 @@ class ClosingWizardServiceTest {
             su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_ID);
             when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Optional.of(branch));
             when(workerRepository.findByIdAndCompanyId(1L, COMPANY_ID)).thenReturn(Optional.of(worker));
-            when(closingWizardRepository.findByBranchIdAndStatus(eq(BRANCH_ID), any()))
+            when(closingWizardRepository.findByBranchIdAndStatusAndClosingDate(
+                            eq(BRANCH_ID), eq(WizardStatus.IN_PROGRESS), eq(LocalDate.now())))
                     .thenReturn(List.of(existing));
 
             assertThatThrownBy(() -> service.startWizard(BRANCH_ID, null, "DAILY", 1L))

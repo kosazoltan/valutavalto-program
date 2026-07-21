@@ -72,10 +72,21 @@ public class ClosingWizardService {
 
         Worker worker = findWorkerInCurrentCompany(workerId);
 
-        // Ellenőrzés: nincs-e már aktív varázsló
-        List<ClosingWizard> activeWizards = closingWizardRepository.findByBranchIdAndStatus(branchId, WizardStatus.IN_PROGRESS);
-        if (!activeWizards.isEmpty()) {
-            throw new ValidationException("Már van aktív zárási varázsló ehhez az irodához!");
+        // Ellenőrzés: nincs-e már MA aktív varázsló ehhez az irodához.
+        // Korábbi napról beragadt IN_PROGRESS rekord nem blokkolhat (stale lock) —
+        // azt csak figyelmeztetésként naplózzuk, nem módosítjuk.
+        LocalDate today = LocalDate.now();
+        List<ClosingWizard> activeToday = closingWizardRepository
+                .findByBranchIdAndStatusAndClosingDate(branchId, WizardStatus.IN_PROGRESS, today);
+        if (!activeToday.isEmpty()) {
+            throw new ValidationException("Már van aktív zárási varázsló ehhez az irodához a mai napra!");
+        }
+        List<ClosingWizard> staleActive = closingWizardRepository
+                .findByBranchIdAndStatus(branchId, WizardStatus.IN_PROGRESS);
+        if (!staleActive.isEmpty()) {
+            log.warn("Beragadt (korábbi napi) IN_PROGRESS zárási varázsló(k) az irodához: branchId={}, ids={}",
+                    branchId,
+                    staleActive.stream().map(w -> w.getId() + "@" + w.getClosingDate()).collect(Collectors.toList()));
         }
 
         ClosingType closingType = ClosingType.valueOf(closingTypeStr);
@@ -84,7 +95,7 @@ public class ClosingWizardService {
         ClosingWizard wizard = ClosingWizard.builder()
                 .branch(branch)
                 .cashDeskId(cashDeskId)
-                .closingDate(LocalDate.now())
+                .closingDate(today)
                 .closingType(closingType)
                 .currentStep(1)
                 .totalSteps(totalSteps)
