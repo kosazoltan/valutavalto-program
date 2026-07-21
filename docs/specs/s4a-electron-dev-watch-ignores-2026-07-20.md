@@ -44,3 +44,10 @@ specifikációváltozás nélkül.
 `penztar-client/electron/__tests__/vite-watch-config.test.ts` ellenőrzi mind az
 öt pontos mintát, a fagyasztott listát és azt, hogy a Vite server-config
 ugyanazt az exportált referenciát használja.
+
+## Dev process cleanup biztonsági invariáns
+
+- A cleanup kizárólag az explicit `-ProcessId` gyökerek bizonyított leszármazottait állíthatja le.
+- A `-DevPort` kizárólag leállítás utáni, fail-closed `netstat` bizonyíték; port, owner vagy worktree-parancssor alapján önálló processz nem választható ki leállításra.
+- Reparentelt listener ancestry-bizonyíték nélkül életben marad, a cleanup pedig `LISTENING` hibával tér vissza.
+- A Pester suite és a disposable Vite runtime harness ezt a negatív biztonsági szerződést ellenőrzi.

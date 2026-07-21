@@ -492,7 +492,7 @@ Describe 'stop-owned-dev-processes contract' {
         Assert-MockCalled Stop-Process -Times 0
     }
 
-    It 'csak a sajat worktree-bol bizonyitott reparentelt Vite listenert allitja le' {
+    It 'ancestry bizonyitek nelkul a sajat worktree Vite listenert sem allitja le' {
         $Self = New-TestSelfProcess
         $Vite = [pscustomobject]@{
             ProcessId = 1201
@@ -522,10 +522,10 @@ Describe 'stop-owned-dev-processes contract' {
         }
 
         { Invoke-OwnedDevProcessCleanup -RootProcessId 1200 -Port 3000 } |
-            Should -Not -Throw
+            Should -Throw '*LISTENING*'
 
-        Assert-MockCalled Stop-Process -Times 1 -Exactly -ParameterFilter { $Id -eq 1201 }
-        Assert-MockCalled Get-NetstatLines -Times 2 -Exactly
+        Assert-MockCalled Stop-Process -Times 0
+        Assert-MockCalled Get-NetstatLines -Times 1 -Exactly
     }
 
     It 'bizonyitatlan port-owner processzt eletben hagy es LISTENING hibaval zar' {
@@ -616,15 +616,6 @@ Describe 'stop-owned-dev-processes contract' {
         Assert-MockCalled Stop-Process -Times 0
     }
 
-    It 'nem fogad el kulon argumentumban worktree-pathot es idegen Vite entrypointot' {
-        $Decoy = [pscustomobject]@{
-            ExecutablePath = 'C:\Program Files\nodejs\node.exe'
-            CommandLine = '"C:\Program Files\nodejs\node.exe" "D:\foreign\node_modules\vite\bin\vite.js" --config "D:\repo\worktree\vite.config.ts"'
-        }
-
-        Test-ExpectedViteProcess -Process $Decoy -ProjectRoot 'D:\repo\worktree' |
-            Should -BeFalse
-    }
 
     It 'ciklikus hivo-oslancnal determinisztikusan fail-closed hibazik' {
         $FirstAncestor = [pscustomobject]@{

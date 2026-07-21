@@ -249,136 +249,6 @@ function Get-DevProjectRoot {
     return [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 }
 
-function Test-ExpectedViteProcess {
-    param(
-        [Parameter(Mandatory = $true)]
-        [object]$Process,
-
-        [Parameter(Mandatory = $true)]
-        [string]$ProjectRoot
-    )
-
-    $ExecutablePath = [string]$Process.ExecutablePath
-    $CommandLine = [string]$Process.CommandLine
-    if ([string]::IsNullOrWhiteSpace($ExecutablePath) -or
-        [string]::IsNullOrWhiteSpace($CommandLine)) {
-        return $false
-    }
-
-    if (-not [string]::Equals(
-        [System.IO.Path]::GetFileName($ExecutablePath),
-        'node.exe',
-        [System.StringComparison]::OrdinalIgnoreCase
-    )) {
-        return $false
-    }
-
-    $NormalizedProjectRoot = [System.IO.Path]::GetFullPath($ProjectRoot).TrimEnd('\', '/')
-    $ProjectRootPrefix = "$NormalizedProjectRoot\"
-    $CommandLineTokens = [regex]::Matches($CommandLine, '(?:"([^"]*)"|''([^'']*)''|(\S+))')
-    foreach ($TokenMatch in $CommandLineTokens) {
-        $Token = if ($TokenMatch.Groups[1].Success) {
-            $TokenMatch.Groups[1].Value
-        }
-        elseif ($TokenMatch.Groups[2].Success) {
-            $TokenMatch.Groups[2].Value
-        }
-        else {
-            $TokenMatch.Groups[3].Value
-        }
-        if ($Token -notmatch '[\\/]node_modules[\\/](?:\.bin[\\/]\.\.[\\/])?vite[\\/]bin[\\/]vite\.js$') {
-            continue
-        }
-
-        try {
-            $ResolvedViteEntryPoint = [System.IO.Path]::GetFullPath($Token)
-        }
-        catch {
-            continue
-        }
-        if ($ResolvedViteEntryPoint.StartsWith(
-            $ProjectRootPrefix,
-            [System.StringComparison]::OrdinalIgnoreCase
-        )) {
-            return $true
-        }
-    }
-
-    return $false
-}
-
-function Stop-ProvenDevPortListeners {
-    param(
-        [int[]]$Port = @(),
-
-        [Parameter(Mandatory = $true)]
-        [string]$ExpectedOwner,
-
-        [Parameter(Mandatory = $true)]
-        [string]$ProjectRoot
-    )
-
-    if ($Port.Count -eq 0) {
-        return $false
-    }
-
-    $RequiresFinalProof = $false
-    $Lines = @(Get-NetstatLines)
-    foreach ($CurrentPort in $Port) {
-        $ListenerProcessIds = @(Get-ListeningProcessIds -NetstatLines $Lines -Port $CurrentPort)
-        if ($ListenerProcessIds.Count -eq 0) {
-            Write-Host "netstat proof: TCP $CurrentPort porton nincs LISTENING folyamat."
-            continue
-        }
-        $RequiresFinalProof = $true
-        foreach ($ListenerProcessId in $ListenerProcessIds) {
-            $Snapshot = @(Get-ProcessSnapshot)
-            Assert-SafeRootProcessId `
-                -RootProcessId $ListenerProcessId `
-                -ProcessSnapshot $Snapshot
-            $ListenerProcess = $Snapshot |
-                Where-Object { [int]$_.ProcessId -eq $ListenerProcessId } |
-                Select-Object -First 1
-            if ($null -eq $ListenerProcess) {
-                continue
-            }
-
-            try {
-                $ActualOwner = Get-ProcessOwnerName -Process $ListenerProcess
-            }
-            catch {
-                throw "A(z) $CurrentPort TCP port tovabbra is LISTENING allapotu: PID $ListenerProcessId; a tulajdonos nem bizonyithato."
-            }
-            $OwnerMatches = [string]::Equals(
-                $ActualOwner,
-                $ExpectedOwner,
-                [System.StringComparison]::OrdinalIgnoreCase
-            )
-            $ExpectedViteProcess = Test-ExpectedViteProcess `
-                -Process $ListenerProcess `
-                -ProjectRoot $ProjectRoot
-            if (-not $OwnerMatches -or -not $ExpectedViteProcess) {
-                Write-Warning "A(z) $CurrentPort port $ListenerProcessId PID-je nem bizonyitott sajat worktree Vite processz; nem lesz leallitva."
-                throw "A(z) $CurrentPort TCP port tovabbra is LISTENING allapotu: PID $ListenerProcessId."
-            }
-
-            $ListenerTree = @([pscustomobject]@{
-                Process = $ListenerProcess
-                Depth = 0
-            })
-            try {
-                Stop-OwnedProcessTree `
-                    -ProcessTree $ListenerTree `
-                    -ExpectedOwner $ExpectedOwner
-            }
-            catch {
-                throw "A(z) $CurrentPort TCP port tovabbra is LISTENING allapotu: PID $ListenerProcessId; a kill-time identitasbizonyitas sikertelen. $($_.Exception.Message)"
-            }
-        }
-    }
-    return $RequiresFinalProof
-}
-
 function Assert-DevPortsReleased {
     param(
         [int[]]$Port = @()
@@ -549,11 +419,7 @@ function Invoke-OwnedDevProcessCleanup {
         Stop-OwnedProcessTree -ProcessTree $NewTree -ExpectedOwner $ExpectedOwner
     }
 
-    $RequiresFinalPortProof = Stop-ProvenDevPortListeners `
-        -Port $Port `
-        -ExpectedOwner $ExpectedOwner `
-        -ProjectRoot (Get-DevProjectRoot)
-    if ($RequiresFinalPortProof) {
+    if ($Port.Count -gt 0) {
         Assert-DevPortsReleased -Port $Port
     }
 }

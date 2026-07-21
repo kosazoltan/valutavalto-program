@@ -126,15 +126,30 @@ try {
         throw "A disposable Vite processz nem kezdett LISTENING allapotba: PID $($RuntimeEvidence.ViteProcessId), port $RuntimePort."
     }
 
-    Invoke-OwnedDevProcessCleanup `
-        -RootProcessId ([int]$RuntimeEvidence.RootProcessId) `
-        -Port $RuntimePort
+    $CleanupFailure = $null
+    try {
+        Invoke-OwnedDevProcessCleanup `
+            -RootProcessId ([int]$RuntimeEvidence.RootProcessId) `
+            -Port $RuntimePort
+    }
+    catch {
+        $CleanupFailure = $_
+    }
+    if ($null -eq $CleanupFailure -or $CleanupFailure.Exception.Message -notmatch 'LISTENING') {
+        throw 'A reparentelt Vite listener cleanupjanak fail-closed LISTENING hibaval kell leallnia.'
+    }
+
+    $PreservedVite = Get-ProcessById -ProcessId ([int]$RuntimeEvidence.ViteProcessId)
+    if ($null -eq $PreservedVite -or
+        [string]$PreservedVite.CreationDate -ne [string]$RuntimeEvidence.ViteCreationDate) {
+        throw 'A cleanup ancestry bizonyitek nelkul leallitotta vagy lecserelte a disposable Vite listenert.'
+    }
 
     $RemainingListenerIds = @(Get-ListeningProcessIds `
         -NetstatLines @(Get-NetstatLines) `
         -Port $RuntimePort)
-    if ($RemainingListenerIds.Count -ne 0) {
-        throw "A runtime regresszio utan a disposable port LISTENING maradt: $RuntimePort."
+    if ($RemainingListenerIds -notcontains [int]$RuntimeEvidence.ViteProcessId) {
+        throw "A fail-closed runtime proof alatt eltunt a disposable Vite listener: $RuntimePort."
     }
 
     [pscustomobject]@{
@@ -142,7 +157,7 @@ try {
         DeadRootProcessId = [int]$RuntimeEvidence.RootProcessId
         ReparentedViteProcessId = [int]$RuntimeEvidence.ViteProcessId
         Port = $RuntimePort
-        PortReleased = $true
+        PortListenerPreserved = $true
     } | ConvertTo-Json -Compress
 }
 finally {
