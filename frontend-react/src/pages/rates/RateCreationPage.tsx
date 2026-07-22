@@ -1466,9 +1466,41 @@ export default function RateCreationPage() {
             <Redo2 size={13} />
           </button>
           {modifiedCount > 0 && (
-            <span className="text-orange-600 font-medium">
-              {modifiedCount} {t('rates.mod')}
-            </span>
+            <>
+              <span
+                role="status"
+                data-testid="wg-dirty-indicator"
+                className="text-orange-600 font-medium"
+              >
+                {modifiedCount} {t('rates.mod')}
+              </span>
+              {canWriteRateCreation && selectedWg && (
+                <button
+                  type="button"
+                  data-testid="wg-dirty-discard"
+                  className="px-2 py-0.5 border border-orange-300 rounded text-orange-700 hover:bg-orange-50"
+                  title="A csoport nem publikált módosításainak elvetése — vissza az utolsó publikált értékekre"
+                  onClick={() => {
+                    const groupId = selectedWg.id
+                    setRateConfirm({
+                      title: 'Eltérések elvetése',
+                      message:
+                        'Biztosan elveti a csoport nem publikált fix árfolyam-eltéréseit, és visszaáll az utolsó publikált értékekre?',
+                      confirmLabel: 'Igen',
+                      danger: true,
+                      onConfirm: () => {
+                        pushUndo()
+                        persistGroupRateValues(groupId, {})
+                        setReloadVersion((v) => v + 1)
+                        setRateConfirm(null)
+                      },
+                    })
+                  }}
+                >
+                  Eltérések elvetése
+                </button>
+              )}
+            </>
           )}
           <button
             onClick={() => void loadData()}
