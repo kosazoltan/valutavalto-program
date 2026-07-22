@@ -13,6 +13,7 @@ import {
   persistGroupRateValues,
   exportRateMakerSheetSnapshot,
   importRateMakerSheetSnapshot,
+  dirtyCurrencyIdsFromOverlay,
 } from './workgroupSheetStorage'
 import type { WgValues } from './workgroupSheetFormula'
 
@@ -558,6 +559,28 @@ describe('group fix rátaértékek round-trip (FK02-B / FR-11, FR-12)', () => {
     const s = memStorage()
     s.setItem('arfolyamkeszito.workgroupSheet.rates.v1.wg-1', '{nem json')
     expect(loadGroupRateValues('wg-1', s)).toEqual({})
+  })
+})
+
+describe('dirtyCurrencyIdsFromOverlay', () => {
+  it('üres overlayhez üres halmazt ad', () => {
+    expect(dirtyCurrencyIdsFromOverlay({})).toEqual(new Set())
+  })
+
+  it('valutánként összevonja a fix és officialRate override-okat, az üres értéket is beleszámítva', () => {
+    expect(
+      dirtyCurrencyIdsFromOverlay({
+        '1.buyRate': '405',
+        '1.sellRate': '',
+        '7.officialRate': '400',
+      }),
+    ).toEqual(new Set([1, 7]))
+  })
+
+  it('figyelmen kívül hagyja a nem numerikus és üres valutaazonosítót', () => {
+    expect(dirtyCurrencyIdsFromOverlay({ 'x.buyRate': '405', '.buyRate': '400' })).toEqual(
+      new Set(),
+    )
   })
 })
 

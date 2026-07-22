@@ -297,6 +297,17 @@ export function loadGroupRateValues(
   }
 }
 
+export function dirtyCurrencyIdsFromOverlay(values: Record<string, string>): Set<number> {
+  const currencyIds = new Set<number>()
+  for (const key of Object.keys(values)) {
+    const currencyIdPart = key.split('.')[0]
+    if (!currencyIdPart) continue
+    const currencyId = Number(currencyIdPart)
+    if (Number.isFinite(currencyId)) currencyIds.add(currencyId)
+  }
+  return currencyIds
+}
+
 export function saveGroupRateValues(
   groupId: string,
   values: Record<string, string>,
