@@ -235,7 +235,7 @@ public class DailyClosingService {
     private StepCheckResult checkEveningDenomination(UUID companyId, UUID branchId, LocalDate date) {
         // Ellenorzi hogy a cimletezett osszeg egyezik-e a szamitott keszlettel
         boolean hasDenomination = denominationBalanceRepository
-            .existsByBranchIdAndDate(branchId, date);
+            .existsByBranchIdAndDateAndCategory(branchId, date, DenominationCategory.EVENING);
 
         if (!hasDenomination) {
             return StepCheckResult.failed("Hianyzik az esti penztar cimletezese!");

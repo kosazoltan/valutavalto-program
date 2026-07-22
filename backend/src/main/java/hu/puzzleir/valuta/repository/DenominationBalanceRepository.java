@@ -53,16 +53,6 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
 
     // ============ NAPZARAS QUERY-K ============
 
-    /**
-     * Van-e cimletez es az adott irodahoz es datumhoz?
-     */
-    @Query("SELECT COUNT(db) > 0 FROM DenominationBalance db " +
-           "WHERE db.cashDeskId = :branchId " +
-           "AND db.updatedAt >= CAST(:date AS timestamp)")
-    boolean existsByBranchIdAndDate(
-        @Param("branchId") UUID branchId,
-        @Param("date") java.time.LocalDate date
-    );
 
     /**
      * Van-e adott kategóriájú cimletez es?
@@ -83,7 +73,7 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
      */
     @Query("SELECT COUNT(db) > 0 FROM DenominationBalance db " +
            "WHERE db.cashDeskId = :branchId " +
-           "AND db.updatedAt >= CAST(:date AS timestamp) " +
+           "AND db.submissionDate = :date " +
            "AND db.denominationCategory = :category")
     boolean existsByBranchIdAndDateAndCategory(
         @Param("branchId") UUID branchId,
@@ -96,7 +86,7 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
      */
     @Query("SELECT COALESCE(SUM(db.totalValue), 0) FROM DenominationBalance db " +
            "WHERE db.cashDeskId = :branchId " +
-           "AND db.updatedAt >= CAST(:date AS timestamp) " +
+           "AND db.submissionDate = :date " +
            "AND CAST(db.denominationCategory AS string) = :type")
     BigDecimal sumDenominatedAmount(
         @Param("branchId") UUID branchId,
@@ -109,7 +99,7 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
      */
     @Query("SELECT COALESCE(SUM(db.totalValue), 0) FROM DenominationBalance db " +
            "WHERE db.cashDeskId = :branchId " +
-           "AND db.updatedAt >= CAST(:date AS timestamp) " +
+           "AND db.submissionDate = :date " +
            "AND db.denominationCategory = :category")
     BigDecimal sumDenominatedAmountByCategory(
         @Param("branchId") UUID branchId,
@@ -118,12 +108,11 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
     );
 
     /**
-     * Adott iroda/pénztárgép aznapi (módosított) cimlet egyenlegei az esti záráshoz.
-     * Az adott naptól (éjféltől) módosított rekordokat adja vissza.
+     * Adott iroda/pénztárgép adott üzleti napra beküldött cimlet egyenlegei az esti záráshoz.
      */
     @Query("SELECT db FROM DenominationBalance db " +
            "WHERE db.cashDeskId = :branchId " +
-           "AND db.updatedAt >= CAST(:date AS timestamp) " +
+           "AND db.submissionDate = :date " +
            "AND db.quantity > 0")
     List<DenominationBalance> findByBranchIdAndDate(
         @Param("branchId") UUID branchId,
@@ -135,7 +124,7 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
      */
     @Query("SELECT db FROM DenominationBalance db " +
            "WHERE db.cashDeskId = :branchId " +
-           "AND db.updatedAt >= CAST(:date AS timestamp) " +
+           "AND db.submissionDate = :date " +
            "AND db.denominationCategory = :category " +
            "AND db.quantity > 0")
     List<DenominationBalance> findByBranchIdAndDateAndCategory(
@@ -148,19 +137,17 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
      * FK-046 FR-2: a záráskori (EVENING) fizikailag leszámolt készlet (SZÁMZÁR) valutakódonként
      * összesítve — egy branch + egy nap. A címletenkénti {@code totalValue} sorokat a valuta kódja
      * szerint csoportosítja, így a kliens metódus valutánként megkapja a leszámolt záró készletet.
-     * A dátumszűrés [date, date+1) FÉLZÁRT tartomány — a következő napi (vagy retry utáni más napi)
-     * snapshot NEM szivárog be (GLM #1 fix). Visszaad: [currencyCode, SUM(totalValue)] sorok.
+     * A pontos üzleti dátum szűrés miatt a következő napi snapshot NEM szivárog be.
+     * Visszaad: [currencyCode, SUM(totalValue)] sorok.
      */
     @Query("SELECT db.denomination.currency.code, COALESCE(SUM(db.totalValue), 0) FROM DenominationBalance db " +
            "WHERE db.cashDeskId = :branchId " +
-           "AND db.updatedAt >= CAST(:date AS timestamp) " +
-           "AND db.updatedAt < CAST(:nextDate AS timestamp) " +
+           "AND db.submissionDate = :date " +
            "AND db.denominationCategory = :category " +
            "GROUP BY db.denomination.currency.code")
     List<Object[]> sumActualStockByCurrency(
         @Param("branchId") UUID branchId,
         @Param("date") java.time.LocalDate date,
-        @Param("nextDate") java.time.LocalDate nextDate,
         @Param("category") DenominationCategory category
     );
 }

@@ -342,7 +342,7 @@ class DailyBalanceServiceTest {
     void recordActualStock_invokedOnDailyClosing_singleCurrency() {
         when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
         when(denominationBalanceRepository.sumActualStockByCurrency(
-                TEST_BRANCH_ID, TEST_DATE, TEST_DATE.plusDays(1), DenominationCategory.EVENING))
+                TEST_BRANCH_ID, TEST_DATE, DenominationCategory.EVENING))
             .thenReturn(List.<Object[]>of(new Object[]{"EUR", new BigDecimal("1000")}));
         DailyBalance eur = balanceRow("EUR");
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(TEST_COMPANY_ID), org.mockito.ArgumentMatchers.eq(TEST_BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
@@ -361,7 +361,7 @@ class DailyBalanceServiceTest {
     void recordActualStock_invokedOnDailyClosing_multipleCurrencies() {
         when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
         when(denominationBalanceRepository.sumActualStockByCurrency(
-                TEST_BRANCH_ID, TEST_DATE, TEST_DATE.plusDays(1), DenominationCategory.EVENING))
+                TEST_BRANCH_ID, TEST_DATE, DenominationCategory.EVENING))
             .thenReturn(List.<Object[]>of(
                 new Object[]{"EUR", new BigDecimal("1000")},
                 new Object[]{"USD", new BigDecimal("500")}));
@@ -385,7 +385,7 @@ class DailyBalanceServiceTest {
         when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
         // EUR-ra van snapshot, USD-re nincs
         when(denominationBalanceRepository.sumActualStockByCurrency(
-                TEST_BRANCH_ID, TEST_DATE, TEST_DATE.plusDays(1), DenominationCategory.EVENING))
+                TEST_BRANCH_ID, TEST_DATE, DenominationCategory.EVENING))
             .thenReturn(List.<Object[]>of(new Object[]{"EUR", new BigDecimal("1000")}));
         DailyBalance eur = balanceRow("EUR");
         DailyBalance usd = balanceRow("USD");
@@ -412,14 +412,14 @@ class DailyBalanceServiceTest {
         dailyBalanceService.recordClosingAdjustments(TEST_BRANCH_ID, TEST_DATE);
 
         verify(dailyBalanceRepository, never()).findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(TEST_COMPANY_ID), any(), any());
-        verify(denominationBalanceRepository, never()).sumActualStockByCurrency(any(), any(), any(), any());
+        verify(denominationBalanceRepository, never()).sumActualStockByCurrency(any(), any(), any());
     }
 
     @Test
     @DisplayName("FK-046 FR-4: a TH-tól átvett tétel a Többlet (surplus) mezőbe kerül")
     void surplus_calculatedFromThTransfer_incoming() {
         when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
-        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any(), any()))
+        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any()))
             .thenReturn(Collections.emptyList());
         DailyBalance eur = balanceRow("EUR");
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(TEST_COMPANY_ID), org.mockito.ArgumentMatchers.eq(TEST_BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
@@ -438,7 +438,7 @@ class DailyBalanceServiceTest {
     @DisplayName("FK-046 FR-4: a TH-nak átadott tétel a Hiány (shortage) mezőbe kerül")
     void shortage_calculatedFromThTransfer_outgoing() {
         when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
-        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any(), any()))
+        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any()))
             .thenReturn(Collections.emptyList());
         DailyBalance eur = balanceRow("EUR");
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(TEST_COMPANY_ID), org.mockito.ArgumentMatchers.eq(TEST_BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
@@ -457,7 +457,7 @@ class DailyBalanceServiceTest {
     @DisplayName("FK-046 NFR-5: ismételt zárás-futás felülírja a Többlet/Hiány-t, nem duplázza (idempotens)")
     void thTransfer_idempotent_rerunDoesNotDuplicate() {
         when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
-        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any(), any()))
+        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any()))
             .thenReturn(Collections.emptyList());
         DailyBalance eur = balanceRow("EUR");
         eur.setSurplus(new BigDecimal("200")); // korábbi futás értéke
@@ -481,7 +481,7 @@ class DailyBalanceServiceTest {
         // calculatedClosing-ba. Nyitó 0, vétel 100000, TH-tól TÖBBLET 5000 → calculatedClosing =
         // (0+100000+5000) − 0 = 105000. Ha a metódus NEM számítaná be a surplus-t, 100000 lenne (a teszt bukna).
         when(denominationBalanceRepository.sumActualStockByCurrency(
-                TEST_BRANCH_ID, TEST_DATE, TEST_DATE.plusDays(1), DenominationCategory.EVENING))
+                TEST_BRANCH_ID, TEST_DATE, DenominationCategory.EVENING))
             .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("105000")}));
         DailyBalance huf = balanceRow("HUF");
         huf.setOpeningBalance(BigDecimal.ZERO);
@@ -510,7 +510,7 @@ class DailyBalanceServiceTest {
         // A query 'COMPLETED'-szűrése miatt egy PENDING tétel nem szerepel az összegben → a repo 0-t ad.
         // Ezt service-szinten azzal igazoljuk, hogy a (COMPLETED-only) repo-összeg 0, így surplus/shortage 0.
         when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
-        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any(), any()))
+        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any()))
             .thenReturn(Collections.emptyList());
         DailyBalance eur = balanceRow("EUR");
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(TEST_COMPANY_ID), org.mockito.ArgumentMatchers.eq(TEST_BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
@@ -530,7 +530,7 @@ class DailyBalanceServiceTest {
     @DisplayName("FK-046 GLM #2 (NFR-3): nem-HUF (EUR) Többlet/Hiány NEM kerül 5 Ft-os kerekítésre")
     void surplus_nonHuf_notRoundedToFive() {
         when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
-        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any(), any()))
+        when(denominationBalanceRepository.sumActualStockByCurrency(any(), any(), any()))
             .thenReturn(Collections.emptyList());
         DailyBalance eur = balanceRow("EUR");
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(TEST_COMPANY_ID), org.mockito.ArgumentMatchers.eq(TEST_BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
@@ -551,7 +551,7 @@ class DailyBalanceServiceTest {
         when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(cashierBranch()));
         // CHF-re van snapshot, de NINCS aznapi mérleg-sor (nem volt mozgás)
         when(denominationBalanceRepository.sumActualStockByCurrency(
-                TEST_BRANCH_ID, TEST_DATE, TEST_DATE.plusDays(1), DenominationCategory.EVENING))
+                TEST_BRANCH_ID, TEST_DATE, DenominationCategory.EVENING))
             .thenReturn(List.<Object[]>of(new Object[]{"CHF", new BigDecimal("777")}));
         when(dailyBalanceRepository.findByBranchIdAndBalanceDate(org.mockito.ArgumentMatchers.eq(TEST_COMPANY_ID), org.mockito.ArgumentMatchers.eq(TEST_BRANCH_ID), org.mockito.ArgumentMatchers.eq(TEST_DATE)))
             .thenReturn(Collections.emptyList()); // nincs előzetes sor

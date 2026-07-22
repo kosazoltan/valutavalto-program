@@ -146,8 +146,11 @@ public class ClosingWizardController {
             @PathVariable UUID wizardId,
             @Valid @RequestBody Map<String, Map<Integer, Integer>> denomCounts) {
         ClosingWizardDto wizard = closingWizardService.getWizard(wizardId);
+        LocalDate businessDate = wizard.getClosingDate() != null
+                ? LocalDate.parse(wizard.getClosingDate())
+                : LocalDate.now();
         Map<String, Object> result = closingWizardService.countDenominations(
-                UUID.fromString(wizard.getBranchId()), denomCounts);
+                UUID.fromString(wizard.getBranchId()), businessDate, denomCounts);
         return ResponseEntity.ok(result);
     }
 

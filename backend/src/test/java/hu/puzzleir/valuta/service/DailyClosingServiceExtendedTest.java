@@ -96,7 +96,8 @@ class DailyClosingServiceExtendedTest {
         // Lépés ellenőrzések: mind PASS
         when(transactionRepository.findByBranchIdAndTransactionDateAndMtcnIsNull(any(), any(), any()))
             .thenReturn(Collections.emptyList());
-        when(denominationBalanceRepository.existsByBranchIdAndDate(any(), any())).thenReturn(true);
+        when(denominationBalanceRepository.existsByBranchIdAndDateAndCategory(
+                any(), any(), eq(DenominationCategory.EVENING))).thenReturn(true);
         when(denominationBalanceRepository.sumDenominatedAmount(any(), any(), any()))
             .thenReturn(new BigDecimal("100000"));
         when(cashBalanceRepository.sumCurrentBalanceHufByBranchIdAndCompanyId(any(), any()))
@@ -295,6 +296,24 @@ class DailyClosingServiceExtendedTest {
         assertThat(result.isPassed()).isTrue();
         assertThat(result.getMessage()).contains("NAV kontroll");
         verify(transactionRepository).countUnreportedTransactions(BRANCH_ID, closingDate);
+    }
+
+    @Test
+    @DisplayName("FK-060: más kategória mai sora nem helyettesíti az EVENING címletezést")
+    void eveningDenominationRequiresEveningCategory() {
+        LocalDate closingDate = LocalDate.of(2026, 7, 22);
+        when(denominationBalanceRepository.existsByBranchIdAndDateAndCategory(
+                BRANCH_ID, closingDate, DenominationCategory.EVENING)).thenReturn(false);
+
+        DailyClosingService.StepCheckResult result =
+                dailyClosingService.executeStepCheck(2, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isFalse();
+        assertThat(result.getMessage()).contains("Hianyzik az esti penztar cimletezese");
+        verify(denominationBalanceRepository).existsByBranchIdAndDateAndCategory(
+                BRANCH_ID, closingDate, DenominationCategory.EVENING);
+        verify(denominationBalanceRepository, never())
+                .sumDenominatedAmount(any(), any(), any());
     }
 
     @Test

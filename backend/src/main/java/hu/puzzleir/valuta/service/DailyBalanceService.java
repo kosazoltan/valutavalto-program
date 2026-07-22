@@ -417,10 +417,10 @@ public class DailyBalanceService {
 
         try {
             // FR-2: a záráskori (EVENING) címlet-snapshotból valutánként összesített SZÁMZÁR.
-            // GLM #1 fix: [date, date+1) félzárt tartomány — a következő napi snapshot nem szivárog be.
+            // FK-060: exact business date prevents next-day snapshots from leaking in.
             Map<String, BigDecimal> actualStockByCurrency = new HashMap<>();
             for (Object[] row : denominationBalanceRepository.sumActualStockByCurrency(
-                    branchId, date, date.plusDays(1), DenominationCategory.EVENING)) {
+                    branchId, date, DenominationCategory.EVENING)) {
                 if (row[0] == null) {
                     continue;
                 }

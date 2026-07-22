@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -95,6 +96,9 @@ public class DenominationBalanceService {
 
         balance.setQuantity(quantity);
         balance.recalculateTotalValue();
+        // FK-060: ez a karbantartó út nem kap zárási varázsló-dátumot, ezért a
+        // ClosingWizardService.startWizard által is használt aktuális üzleti napot rögzíti.
+        balance.setSubmissionDate(LocalDate.now());
 
         DenominationBalance saved = denominationBalanceRepository.save(balance);
         log.info("Címlet egyenleg frissítve: cashDesk={}, denomination={}, quantity={}", cashDeskId, denominationId, quantity);

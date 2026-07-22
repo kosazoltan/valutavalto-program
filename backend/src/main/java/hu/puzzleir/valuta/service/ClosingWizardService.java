@@ -304,10 +304,14 @@ public class ClosingWizardService {
      * mindig "Hianyzik az esti penztar cimletezese!" hibat adott -> napzaras beragadt Step 2-n.
      *
      * Most a DenominationBalance rekordokat upsert-elve ment (EVENING kategoria),
-     * igy a checkEveningDenomination a existsByBranchIdAndDate es sumDenominatedAmount
-     * query-kkel megtalalja azokat.
+     * igy a checkEveningDenomination az existsByBranchIdAndDateAndCategory(..., EVENING)
+     * es sumDenominatedAmount query-kkel megtalalja azokat.
      */
-    public Map<String, Object> countDenominations(UUID branchId, Map<String, Map<Integer, Integer>> denomCounts) {
+    public Map<String, Object> countDenominations(
+            UUID branchId,
+            LocalDate businessDate,
+            Map<String, Map<Integer, Integer>> denomCounts) {
+        Objects.requireNonNull(businessDate, "A címletezés üzleti dátuma kötelező");
         Map<String, Object> result = new LinkedHashMap<>();
         Map<String, BigDecimal> totals = new LinkedHashMap<>();
         int savedRecords = 0;
@@ -336,7 +340,8 @@ public class ClosingWizardService {
                 ));
 
                 // Issue #117: persist DenominationBalance rekordot
-                saveDenominationBalance(branchId, currency, BigDecimal.valueOf(value), count, subtotal);
+                saveDenominationBalance(
+                        branchId, currency, BigDecimal.valueOf(value), count, subtotal, businessDate);
                 savedRecords++;
             }
 
@@ -356,7 +361,13 @@ public class ClosingWizardService {
      * Idempotens: ha letezik (branchId, denominationId) rekord -> UPDATE. Ha nem -> INSERT.
      * Denomination auto-create, ha a branch-currency-faceValue kombora meg nem letezik.
      */
-    private void saveDenominationBalance(UUID branchId, hu.puzzleir.valuta.entity.Currency currency, BigDecimal faceValue, int quantity, BigDecimal subtotal) {
+    private void saveDenominationBalance(
+            UUID branchId,
+            hu.puzzleir.valuta.entity.Currency currency,
+            BigDecimal faceValue,
+            int quantity,
+            BigDecimal subtotal,
+            LocalDate businessDate) {
         Denomination denomination = denominationRepository
                 .findByBranchIdAndCurrencyIdAndFaceValue(branchId, currency.getId(), faceValue)
                 .orElseGet(() -> {
@@ -390,6 +401,7 @@ public class ClosingWizardService {
         balance.setQuantity(quantity);
         balance.setTotalValue(subtotal);
         balance.setDenominationCategory(DenominationCategory.EVENING);
+        balance.setSubmissionDate(businessDate);
         denominationBalanceRepository.save(balance);
     }
 
@@ -784,7 +796,7 @@ public class ClosingWizardService {
     private Map<String, BigDecimal> loadPhysicalCounts(UUID branchId, LocalDate date) {
         Map<String, BigDecimal> counts = new LinkedHashMap<>();
         for (Object[] row : denominationBalanceRepository.sumActualStockByCurrency(
-                branchId, date, date.plusDays(1), DenominationCategory.EVENING)) {
+                branchId, date, DenominationCategory.EVENING)) {
             if (row.length >= 2 && row[0] instanceof String code && row[1] instanceof BigDecimal total) {
                 counts.put(code, total);
             }

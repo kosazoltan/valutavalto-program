@@ -6,6 +6,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -67,6 +68,13 @@ public class DenominationBalance {
     @Column(name = "denomination_category", nullable = false, length = 30)
     @Builder.Default
     private DenominationCategory denominationCategory = DenominationCategory.EVENING;
+
+    /**
+     * FK-060: explicit business date set by every supported service writer.
+     * There is intentionally no entity lifecycle clock fallback.
+     */
+    @Column(name = "submission_date", nullable = false)
+    private LocalDate submissionDate;
 
     @LastModifiedDate
     @Column(name = "updated_at")

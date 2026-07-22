@@ -171,6 +171,7 @@ class ClosingFlowTest {
         @Test
         @DisplayName("testClosingWizard_denomCount — címletezés számítás")
         void testClosingWizard_denomCount() {
+            LocalDate businessDate = LocalDate.of(2026, 7, 22);
             Map<String, Map<Integer, Integer>> denomCounts = new LinkedHashMap<>();
             denomCounts.put("HUF", Map.of(20000, 5, 10000, 3, 5000, 2));
             denomCounts.put("EUR", Map.of(100, 10, 50, 5));
@@ -204,13 +205,18 @@ class ClosingFlowTest {
             when(denominationBalanceRepository.save(any(hu.puzzleir.valuta.entity.DenominationBalance.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
-            Map<String, Object> result = closingWizardService.countDenominations(BRANCH_ID, denomCounts);
+            Map<String, Object> result = closingWizardService.countDenominations(
+                    BRANCH_ID, businessDate, denomCounts);
 
             assertThat(result).containsKey("totals");
             @SuppressWarnings("unchecked")
             Map<String, BigDecimal> totals = (Map<String, BigDecimal>) result.get("totals");
             assertThat(totals.get("HUF")).isEqualByComparingTo(new BigDecimal("140000")); // 100k + 30k + 10k
             assertThat(totals.get("EUR")).isEqualByComparingTo(new BigDecimal("1250")); // 1000 + 250
+            ArgumentCaptor<DenominationBalance> savedBalance = ArgumentCaptor.forClass(DenominationBalance.class);
+            verify(denominationBalanceRepository, times(5)).save(savedBalance.capture());
+            assertThat(savedBalance.getAllValues())
+                    .allSatisfy(balance -> assertThat(balance.getSubmissionDate()).isEqualTo(businessDate));
         }
 
         @Test
