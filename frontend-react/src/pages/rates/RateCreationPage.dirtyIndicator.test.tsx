@@ -1,9 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  loadGroupRateValues,
-  persistGroupRateValues,
-} from './workgroupSheetStorage'
+import { loadGroupRateValues, persistGroupRateValues } from './workgroupSheetStorage'
 
 const apiMocks = vi.hoisted(() => ({
   getLocalRateMakerBootstrap: vi.fn(),
@@ -286,9 +283,9 @@ describe('FK11 — tartós munkacsoport dirty-jelző', () => {
     fireEvent.click(screen.getByRole('button', { name: 'EUR vétel képlet commit' }))
 
     await waitFor(() =>
-      expect(
-        localStorage.getItem('arfolyamkeszito.workgroupSheet.formulas.v1.wg-1'),
-      ).toContain('J*1.01'),
+      expect(localStorage.getItem('arfolyamkeszito.workgroupSheet.formulas.v1.wg-1')).toContain(
+        'J*1.01',
+      ),
     )
     expect(loadGroupRateValues('wg-1')).toEqual({})
     expect(screen.queryByTestId('wg-dirty-indicator')).not.toBeInTheDocument()

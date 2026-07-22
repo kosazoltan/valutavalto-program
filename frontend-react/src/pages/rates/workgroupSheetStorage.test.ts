@@ -206,20 +206,23 @@ describe('FK07-fix-2 — marker-védett snapshot-import', () => {
   it.each([
     ['string', '396'],
     ['null', null],
-  ])('érvényes marker mellett is a szerver számértéke nyer, ha a lokális sor mezője %s', (_, value) => {
-    const s = memStorage()
-    const localMarker = JSON.stringify({ 'EUR.weakMultiBuy': savedAtTs + 1 })
-    s.setItem(MAIN_SHEET_KEY, JSON.stringify([{ ...eurRow(396, 405), weakMultiBuy: value }]))
-    s.setItem(LOCAL_EDITS_KEY, localMarker)
+  ])(
+    'érvényes marker mellett is a szerver számértéke nyer, ha a lokális sor mezője %s',
+    (_, value) => {
+      const s = memStorage()
+      const localMarker = JSON.stringify({ 'EUR.weakMultiBuy': savedAtTs + 1 })
+      s.setItem(MAIN_SHEET_KEY, JSON.stringify([{ ...eurRow(396, 405), weakMultiBuy: value }]))
+      s.setItem(LOCAL_EDITS_KEY, localMarker)
 
-    importRateMakerSheetSnapshot(
-      snapshotJson(savedAt, { [MAIN_SHEET_KEY]: JSON.stringify([eurRow(390, 410)]) }),
-      s,
-    )
+      importRateMakerSheetSnapshot(
+        snapshotJson(savedAt, { [MAIN_SHEET_KEY]: JSON.stringify([eurRow(390, 410)]) }),
+        s,
+      )
 
-    expect(JSON.parse(s.getItem(MAIN_SHEET_KEY)!)[0].weakMultiBuy).toBe(390)
-    expect(s.getItem(LOCAL_EDITS_KEY)).toBe(localMarker)
-  })
+      expect(JSON.parse(s.getItem(MAIN_SHEET_KEY)!)[0].weakMultiBuy).toBe(390)
+      expect(s.getItem(LOCAL_EDITS_KEY)).toBe(localMarker)
+    },
+  )
 
   it('a snapshotnál régebbi marker nem védi a lokális cellát', () => {
     const s = memStorage()
@@ -383,31 +386,34 @@ describe('FK07-fix-2 — marker-védett snapshot-import', () => {
     ['szám', 123],
     ['tömb', ['C*0,99']],
     ['objektum', { formula: 'C*0,99' }],
-  ])('védett cellánál a nem string lokális formulaértéket törölt képletként kezeli: %s', (_, value) => {
-    const s = memStorage()
-    s.setItem(
-      FORMULAS_KEY,
-      JSON.stringify({
-        'EUR.weakMultiBuy': value,
-        'EUR.weakMultiSell': 'C*1,01',
-      }),
-    )
-    s.setItem(LOCAL_EDITS_KEY, JSON.stringify({ 'EUR.weakMultiBuy': savedAtTs + 1 }))
-
-    importRateMakerSheetSnapshot(
-      snapshotJson(savedAt, {
-        [FORMULAS_KEY]: JSON.stringify({
-          'EUR.weakMultiBuy': 'C*0,95',
-          'EUR.weakMultiSell': 'C*1,05',
+  ])(
+    'védett cellánál a nem string lokális formulaértéket törölt képletként kezeli: %s',
+    (_, value) => {
+      const s = memStorage()
+      s.setItem(
+        FORMULAS_KEY,
+        JSON.stringify({
+          'EUR.weakMultiBuy': value,
+          'EUR.weakMultiSell': 'C*1,01',
         }),
-      }),
-      s,
-    )
+      )
+      s.setItem(LOCAL_EDITS_KEY, JSON.stringify({ 'EUR.weakMultiBuy': savedAtTs + 1 }))
 
-    expect(JSON.parse(s.getItem(FORMULAS_KEY)!)).toEqual({
-      'EUR.weakMultiSell': 'C*1,05',
-    })
-  })
+      importRateMakerSheetSnapshot(
+        snapshotJson(savedAt, {
+          [FORMULAS_KEY]: JSON.stringify({
+            'EUR.weakMultiBuy': 'C*0,95',
+            'EUR.weakMultiSell': 'C*1,05',
+          }),
+        }),
+        s,
+      )
+
+      expect(JSON.parse(s.getItem(FORMULAS_KEY)!)).toEqual({
+        'EUR.weakMultiSell': 'C*1,05',
+      })
+    },
+  )
 
   it.each(['{nem json', '["nem", "objektum"]'])(
     'hibás szerver formulas entrynél a lokális formula-store változatlan: %s',
