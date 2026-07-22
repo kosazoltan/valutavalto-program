@@ -39,6 +39,19 @@ class ClosingWizardServiceTest {
     private static final UUID BRANCH_ID = UUID.randomUUID();
     private static final UUID COMPANY_ID = UUID.randomUUID();
 
+    /**
+     * A SecurityContext megörökölhető a surefire-fork korábbi tesztjeitől
+     * (CI-ben más a tesztsorrend, mint lokálisan). Beragadt Authentication
+     * esetén a service company-szkópolt repository-hívásra vált, amit ez a
+     * teszt nem stubbol → ResourceNotFound / UnnecessaryStubbing. Ezért
+     * minden teszt előtt és után takarítunk.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    @org.junit.jupiter.api.AfterEach
+    void clearSecurityContext() {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+    }
+
     @Test
     @DisplayName("startWizard — mar van aktiv varazslo → hiba")
     void testStartWizard_alreadyActive() {
