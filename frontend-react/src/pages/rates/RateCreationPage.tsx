@@ -78,6 +78,7 @@ import {
   isGroupRateOfflineDbAvailable,
   exportRateMakerSheetSnapshot,
   importRateMakerSheetSnapshot,
+  dirtyCurrencyIdsFromOverlay,
 } from './workgroupSheetStorage'
 import { useTranslation } from 'react-i18next'
 
@@ -284,6 +285,7 @@ export default function RateCreationPage() {
   useEffect(() => {
     if (!selectedWg) return
     const saved = loadGroupRateValues(selectedWg.id)
+    const dirtyIds = dirtyCurrencyIdsFromOverlay(saved)
     const server = serverRateValuesRef.current
     setRates((prev) => {
       let changed = false
@@ -310,6 +312,12 @@ export default function RateCreationPage() {
           nr.officialRate = ofTarget
           changed = true
         }
+        const modified = dirtyIds.has(r.currencyId)
+        if (nr.modified !== modified) {
+          if (nr === r) nr = { ...r }
+          nr.modified = modified
+          changed = true
+        }
         return nr
       })
       return changed ? next : prev
@@ -328,6 +336,7 @@ export default function RateCreationPage() {
     void loadGroupRateValuesFromOfflineDb(groupId).then((saved) => {
       if (cancelled || !saved || Object.keys(saved).length === 0) return
       saveGroupRateValues(groupId, saved) // a szinkron localStorage utat is szinkronizáljuk
+      const dirtyIds = dirtyCurrencyIdsFromOverlay(loadGroupRateValues(groupId))
       setRates((prev) => {
         let changed = false
         const next = prev.map((r) => {
@@ -349,6 +358,12 @@ export default function RateCreationPage() {
               nr.officialRate = ofVal
               changed = true
             }
+          }
+          const modified = dirtyIds.has(r.currencyId)
+          if (nr.modified !== modified) {
+            if (nr === r) nr = { ...r }
+            nr.modified = modified
+            changed = true
           }
           return nr
         })
