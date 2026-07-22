@@ -748,9 +748,10 @@ export default function RateCreationPage() {
 
       const applyCommit = () => {
         pushUndo()
+        const saved = wgId ? loadGroupRateValues(wgId) : {}
+        let overlayMutated = false
         if (isFormula(trimmed)) {
           setFormulas((prev) => (prev[key] === trimmed ? prev : { ...prev, [key]: trimmed }))
-          setRates((prev) => prev.map((x, i) => (i === index ? { ...x, modified: true } : x)))
         } else {
           setFormulas((prev) => {
             if (!prev[key]) return prev
@@ -758,21 +759,6 @@ export default function RateCreationPage() {
             delete copy[key]
             return copy
           })
-          if (field === 'officialRate') {
-            // J (Elszámoló) NUMBER mező (a többi string). Fix override → parse; üres → vissza a
-            // szerver-alapértékre (FK02-E FR-9: a 0-s lap A oszlopa), NEM marad üres.
-            const n = numOrNull(trimmed)
-            const resolved = n ?? serverOfficialRateRef.current[r.currencyId] ?? null
-            setRates((prev) =>
-              prev.map((x, i) =>
-                i === index ? { ...x, officialRate: resolved, modified: true } : x,
-              ),
-            )
-          } else {
-            setRates((prev) =>
-              prev.map((x, i) => (i === index ? { ...x, [field]: trimmed, modified: true } : x)),
-            )
-          }
         }
 
         // FK02-B / FR-11, FR-12: a fix (nem-formulás) érték localStorage-perzisztálása csoportonként,
@@ -781,25 +767,19 @@ export default function RateCreationPage() {
         // nélkül) NEM pinelődik, így nem árnyékolja a jövőbeni szerver-változást. Formula vagy
         // szerver-egyezés → kulcstörlés; üres a szerver nem-üres értékén = szándékos '' override. J nincs.
         if (wgId && field !== 'officialRate') {
-          const saved = loadGroupRateValues(wgId)
           const serverNum = baselineRatesRef.current[key]
           const nextNum = numOrNull(trimmed)
           const sameAsServer =
             (trimmed === '' && serverNum === undefined) ||
             (nextNum !== null && nextNum === serverNum)
-          let mutated = false
           if (isFormula(trimmed) || sameAsServer) {
             if (key in saved) {
               delete saved[key]
-              mutated = true
+              overlayMutated = true
             }
           } else if (saved[key] !== trimmed) {
             saved[key] = trimmed
-            mutated = true
-          }
-          if (mutated) {
-            // FK02-B / FR-11,12: dual-write — localStorage (szinkron) + tartós Electron SQLite (best-effort).
-            persistGroupRateValues(wgId, saved)
+            overlayMutated = true
           }
         }
 
@@ -807,23 +787,40 @@ export default function RateCreationPage() {
         // fix érték marad override-ként; formula vagy üres/alapérték → kulcstörlés (reloadkor a J a
         // szerver-alapértékre = 0-s lap A oszlopra áll vissza). A formula maga külön (saveGroupFormulas) megy.
         if (wgId && field === 'officialRate') {
-          const saved = loadGroupRateValues(wgId)
           const ofKey = `${r.currencyId}.officialRate`
           const n = numOrNull(trimmed)
           const serverDefault = serverOfficialRateRef.current[r.currencyId] ?? null
           const isDefault = !isFormula(trimmed) && (n === null || n === serverDefault)
-          let mutated = false
           if (isFormula(trimmed) || isDefault) {
             if (ofKey in saved) {
               delete saved[ofKey]
-              mutated = true
+              overlayMutated = true
             }
           } else if (saved[ofKey] !== trimmed) {
             saved[ofKey] = trimmed
-            mutated = true
+            overlayMutated = true
           }
-          if (mutated) persistGroupRateValues(wgId, saved)
         }
+
+        if (wgId && overlayMutated) {
+          // FK02-B / FR-11,12: dual-write — localStorage (szinkron) + tartós Electron SQLite (best-effort).
+          persistGroupRateValues(wgId, saved)
+        }
+        const rowDirty = dirtyCurrencyIdsFromOverlay(saved).has(r.currencyId)
+        setRates((prev) =>
+          prev.map((x, i) => {
+            if (i !== index) return x
+            if (isFormula(trimmed)) return { ...x, modified: rowDirty }
+            if (field === 'officialRate') {
+              // J (Elszámoló) NUMBER mező (a többi string). Fix override → parse; üres → vissza a
+              // szerver-alapértékre (FK02-E FR-9: a 0-s lap A oszlopa), NEM marad üres.
+              const resolved =
+                numOrNull(trimmed) ?? serverOfficialRateRef.current[r.currencyId] ?? null
+              return { ...x, officialRate: resolved, modified: rowDirty }
+            }
+            return { ...x, [field]: trimmed, modified: rowDirty }
+          }),
+        )
       }
 
       // FK02-B / FR-2..5: fix számra cserélt vétel/eladás/sáv mező esetén, ha az új érték a
@@ -879,29 +876,9 @@ export default function RateCreationPage() {
         return f
       })
 
-      // Fix (nem-formula) értékek visszaírása a rates string-mezőkbe (a formula-cellákat a recompute tölti).
-      setRates((prev) =>
-        prev.map((x, i) => {
-          const forRow = cells.filter((c) => c.row === i)
-          if (forRow.length === 0) return x
-          const nr: EditableRate = { ...x, modified: true }
-          for (const { field, raw } of forRow) {
-            const trimmed = raw.trim()
-            if (isFormula(trimmed)) continue
-            // Codex #1112 (FK03): a J üres értéke a SZERVER-alapértékre áll vissza
-            // (FK02-E FR-9), a commitCell-lel azonosan — nem marad null/üres.
-            if (field === 'officialRate')
-              nr.officialRate =
-                numOrNull(trimmed) ?? serverOfficialRateRef.current[x.currencyId] ?? null
-            else nr[field] = trimmed
-          }
-          return nr
-        }),
-      )
-
       // localStorage-perzisztálás (sparse): csak a szerver-baseline-tól ELTÉRŐ fix érték marad override-ként.
+      const saved = wgId ? loadGroupRateValues(wgId) : {}
       if (wgId) {
-        const saved = loadGroupRateValues(wgId)
         for (const { row, field, raw } of cells) {
           const r = rates[row]
           if (!r) continue
@@ -929,6 +906,27 @@ export default function RateCreationPage() {
         }
         persistGroupRateValues(wgId, saved) // FK02-B: dual-write (localStorage + SQLite)
       }
+
+      const dirtyIds = dirtyCurrencyIdsFromOverlay(saved)
+      // Fix (nem-formula) értékek visszaírása a rates string-mezőkbe (a formula-cellákat a recompute tölti).
+      setRates((prev) =>
+        prev.map((x, i) => {
+          const forRow = cells.filter((c) => c.row === i)
+          if (forRow.length === 0) return x
+          const nr: EditableRate = { ...x, modified: dirtyIds.has(x.currencyId) }
+          for (const { field, raw } of forRow) {
+            const trimmed = raw.trim()
+            if (isFormula(trimmed)) continue
+            // Codex #1112 (FK03): a J üres értéke a SZERVER-alapértékre áll vissza
+            // (FK02-E FR-9), a commitCell-lel azonosan — nem marad null/üres.
+            if (field === 'officialRate')
+              nr.officialRate =
+                numOrNull(trimmed) ?? serverOfficialRateRef.current[x.currencyId] ?? null
+            else nr[field] = trimmed
+          }
+          return nr
+        }),
+      )
     },
     [canWriteRateCreation, rates, pushUndo, selectedWg?.id],
   )
