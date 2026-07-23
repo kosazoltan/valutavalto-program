@@ -136,9 +136,11 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
            "JOIN FETCH ds.company " +
            "LEFT JOIN FETCH ds.openedByWorker " +
            "LEFT JOIN FETCH ds.closedByWorker " +
+           "LEFT JOIN ds.branch.branchType bt " +
            "WHERE ds.company.id = :companyId " +
            "AND ds.sessionDate BETWEEN :startDate AND :endDate " +
            "AND (ds.branch.isVault IS NULL OR ds.branch.isVault = false) " +
+           "AND (bt IS NULL OR bt.code <> 'VAULT_COUNTERPARTY') " +
            "ORDER BY ds.sessionDate DESC")
     List<DailySession> findByDateRangeExcludingVault(
         @Param("companyId") UUID companyId,
