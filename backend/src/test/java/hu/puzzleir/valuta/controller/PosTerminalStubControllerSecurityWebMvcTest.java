@@ -11,7 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -85,8 +85,8 @@ class PosTerminalStubControllerSecurityWebMvcTest {
         }
 
         @Bean
-        MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter() {
-            return new MappingJackson2HttpMessageConverter();
+        JacksonJsonHttpMessageConverter jacksonJsonHttpMessageConverter() {
+            return new JacksonJsonHttpMessageConverter();
         }
 
         @Bean
