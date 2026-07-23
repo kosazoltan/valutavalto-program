@@ -75,6 +75,7 @@ import static org.mockito.Mockito.when;
         ShipmentHandlingFeeService.class,
         ShipmentService.class,
         HandlingFeeService.class,
+        HufDaybookSequenceService.class,
         TransferSerialSequenceService.class,
         ShipmentStockBookingService.class,
         ShipmentHandlingFeeSyncService.class,

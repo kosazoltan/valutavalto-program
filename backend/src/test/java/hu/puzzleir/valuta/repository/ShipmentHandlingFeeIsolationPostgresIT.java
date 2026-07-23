@@ -21,6 +21,7 @@ import hu.puzzleir.valuta.service.AuditLogService;
 import hu.puzzleir.valuta.service.DiscountThresholdService;
 import hu.puzzleir.valuta.service.ExchangeRateService;
 import hu.puzzleir.valuta.service.HandlingFeeService;
+import hu.puzzleir.valuta.service.HufDaybookSequenceService;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeService;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeSyncService;
 import hu.puzzleir.valuta.service.ShipmentService;
@@ -75,6 +76,7 @@ import static org.mockito.Mockito.mockStatic;
         ShipmentHandlingFeeService.class,
         ShipmentService.class,
         HandlingFeeService.class,
+        HufDaybookSequenceService.class,
         TransferSerialSequenceService.class,
         ShipmentStockBookingService.class,
         ShipmentHandlingFeeSyncService.class,
