@@ -809,6 +809,13 @@ public class InventoryService {
             // FK-051: a Mátrix PÉNZTÁR-nézet — a vault (értéktár) branch-eket kizárjuk, konzisztensen
             // a getAllStock activeNonVaultBranch szűrőjével (a vault-készlet a getVaultStockFlow-ban van).
             if (Boolean.TRUE.equals(cb.getBranch().getIsVault())) continue;
+            // FK-058 follow-up (2026-07-23): a VAULT_COUNTERPARTY virtuális partnerek (is_vault=FALSE!)
+            // kizárása a központi ágon is — a getAllStock-ot az ExcludingCounterparties scope védi, a
+            // mátrixot eddig semmi. Élő prodban ma 0 counterparty cash_balance sor van (SQL-lel igazolva),
+            // de ha valaha kapnának, beszivárognának. Null-safe (FK-056 kanonikus minta): a branchType
+            // nélküli sor bennmarad. Lazy Dictionary — a @Transactional(readOnly) session-ön belül töltődik.
+            var bt = cb.getBranch().getBranchType();
+            if (bt != null && "VAULT_COUNTERPARTY".equals(bt.getCode())) continue;
             UUID bId = cb.getBranch().getId();
             if (allowedBranchIds != null && !allowedBranchIds.contains(bId)) continue;
             String branchIdStr = bId.toString();

@@ -1269,6 +1269,32 @@ class InventoryServiceTest {
     }
 
     @Test
+    @DisplayName("FK-058 getStockMatrix: VAULT_COUNTERPARTY branch (is_vault=FALSE) NEM kerül a mátrixba")
+    void getStockMatrix_excludesVaultCounterparty() {
+        // Központi role (nincs region-szűrés) — a counterparty kizárásnak scope-tól függetlenül kell élnie.
+        branch.setIsVault(false);
+        branch.setIsActive(true);
+        branch2.setIsVault(false);
+        branch2.setIsActive(true);
+        branch2.setBranchType(hu.puzzleir.valuta.entity.Dictionary.builder().category("BRANCH_TYPE").code("VAULT_COUNTERPARTY").build());
+
+        CashBalance normal = CashBalance.builder().branch(branch).currency(hufCurrency).company(company)
+                .currentBalance(new BigDecimal("100")).openingBalance(BigDecimal.ZERO).build();
+        CashBalance counterparty = CashBalance.builder().branch(branch2).currency(hufCurrency).company(company)
+                .currentBalance(new BigDecimal("999")).openingBalance(BigDecimal.ZERO).build();
+
+        securityUtilsMock.when(SecurityUtils::getActiveOperationalRole).thenReturn("ugyvezeto");
+        when(cashBalanceRepository.findByCompanyId(COMPANY_ID))
+                .thenReturn(java.util.List.of(normal, counterparty));
+
+        var matrix = inventoryService.getStockMatrix().getMatrix();
+
+        assertThat(matrix).containsKey(BRANCH_ID.toString());
+        assertThat(matrix).as("a VAULT_COUNTERPARTY virtuális partner nem szivárog be a mátrixba")
+                .doesNotContainKey(BRANCH_ID_2.toString());
+    }
+
+    @Test
     @DisplayName("FK-051 getAllStock (központi role): null scope → nincs szűrés, mindent lát")
     void getAllStock_centralRole_noScopeFilter() {
         // UGYVEZETO nem territory-scoped → regionScope == null → nincs region-szűrés (minden branch).
