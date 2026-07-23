@@ -143,8 +143,10 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
            "JOIN FETCH cb.branch " +
            "JOIN FETCH cb.currency " +
            "JOIN FETCH cb.company " +
+           "LEFT JOIN cb.branch.branchType bt " +
            "WHERE cb.company.id = :companyId " +
            "AND (cb.branch.isVault IS NULL OR cb.branch.isVault = false) " +
+           "AND (bt IS NULL OR bt.code <> 'VAULT_COUNTERPARTY') " +
            "ORDER BY cb.branch.name, cb.currency.displayOrder")
     List<CashBalance> findByCompanyIdExcludingVault(@Param("companyId") UUID companyId);
 
