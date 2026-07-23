@@ -19,10 +19,12 @@ import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
 import hu.puzzleir.valuta.service.AccessScopeService;
 import hu.puzzleir.valuta.service.AuditLogService;
 import hu.puzzleir.valuta.service.ExchangeRateService;
+import hu.puzzleir.valuta.service.HufDaybookSequenceService;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeService;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeSyncService;
 import hu.puzzleir.valuta.service.ShipmentService;
 import hu.puzzleir.valuta.service.ShipmentStockBookingService;
+import hu.puzzleir.valuta.service.SystemParameterService;
 import hu.puzzleir.valuta.service.TransferSerialSequenceService;
 import hu.puzzleir.valuta.util.IdempotencyGuard;
 import org.junit.jupiter.api.AfterEach;
@@ -65,7 +67,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @Testcontainers
 @EnableJpaAuditing
-@Import({ShipmentController.class, ShipmentService.class, TransferSerialSequenceService.class})
+@Import({ShipmentController.class, ShipmentService.class, TransferSerialSequenceService.class,
+        HufDaybookSequenceService.class, SystemParameterService.class})
 @SpringBootTest(
         classes = TestApplication.class,
         properties = {
