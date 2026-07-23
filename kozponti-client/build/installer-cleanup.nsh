@@ -8,6 +8,24 @@
 ;   - com.bestchange.kozponti        -> 8d6cb25c-88c3-528b-8d57-4255e2a10dff (regi Iranyitokozpont)
 ;   - com.bestchange.arfolyamkeszito -> 20a800ca-9d77-5e25-82c1-18c49595c2ad (regi Arfolyamkeszito)
 
+; === #1428 R2: System.dll crash-fix friss telepitesnel (preInit) ===
+; A WER-fingerprint (System.dll 0xc0000005, offset 0x1581 = System!Store+0x4a0)
+; az electron-builder multiUser.nsh setInstallModePerUser agaban keletkezik:
+; ha NINCS korabbi InstallLocation a registryben, a boilerplate a
+; System::Store S + SHGetKnownFolderPath + System::Call utat futtatja, ami
+; intermittensen access-violationnel osszeomlik (upstream: electron-builder
+; issue #7921; a System::Store call eltavolitasa megszunteti).
+; Mitigacio: a preInit (ami az initMultiUser ELOTT fut) beirja az
+; InstallLocation-t a default per-user utvonalra, igy a crash-elo ag
+; SOHA nem fut le. A /D= kapcsolo tovabbra is felulirja az utvonalat
+; (a GetDParameter az InstallLocation-olvasas UTAN ertekelodik ki).
+!macro preInit
+  SetShellVarContext current
+  ReadRegStr $0 HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
+  StrCmp $0 "" 0 +2
+  WriteRegStr HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation "$LocalAppData\Programs\${APP_FILENAME}"
+!macroend
+
 !macro customInit
   ; 1. Regi per-user telepitesi konyvtarak torlese (AppData\Local\Programs)
   ;    (a beagyazott "...\Iranyitokozpont\Munkaallomas" allapotot is ez tisztitja)
