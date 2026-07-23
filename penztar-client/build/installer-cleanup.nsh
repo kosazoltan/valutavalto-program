@@ -2,6 +2,24 @@
 ; A fajl a customInit mellett a customCheckAppRunning hookot is definialja (#1428).
 ; Ez a script a telepites ELOTT fut — eltavolitja a korabbi verziok maradekait
 
+; === #1428 R2: System.dll crash-fix friss telepitesnel (preInit) ===
+; A WER-fingerprint (System.dll 0xc0000005, offset 0x1581 = System!Store+0x4a0)
+; az electron-builder multiUser.nsh setInstallModePerUser agaban keletkezik:
+; ha NINCS korabbi InstallLocation a registryben, a boilerplate a
+; System::Store S + SHGetKnownFolderPath + System::Call utat futtatja, ami
+; intermittensen access-violationnel osszeomlik (upstream: electron-builder
+; issue #7921; a System::Store call eltavolitasa megszunteti).
+; Mitigacio: a preInit (ami az initMultiUser ELOTT fut) beirja az
+; InstallLocation-t a default per-user utvonalra, igy a crash-elo ag
+; SOHA nem fut le. A /D= kapcsolo tovabbra is felulirja az utvonalat
+; (a GetDParameter az InstallLocation-olvasas UTAN ertekelodik ki).
+!macro preInit
+  SetShellVarContext current
+  ReadRegStr $0 HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
+  StrCmp $0 "" 0 +2
+  WriteRegStr HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation "$LocalAppData\Programs\${APP_FILENAME}"
+!macroend
+
 !macro customInit
   ; 1. Regi "valuta-penztar" konyvtar torlese (C:\Program Files)
   RMDir /r "$PROGRAMFILES\valuta-penztar"
