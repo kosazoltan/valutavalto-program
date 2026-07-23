@@ -383,8 +383,20 @@ export default function CircularPage() {
       const response = await api.get<Blob>(`/circulars/${circular.id}/attachment`, {
         responseType: 'blob',
       })
-      const blob = response.data
-      downloadBlob(blob, circular.attachmentFilename ?? `korlevel-${circular.id}`)
+      // FK-058 follow-up (FK-051 v2 FR-7 minta): defenzív Blob-becsomagolás a fájlnév szerinti
+      // MIME-típussal — másodlagos védelmi réteg az Electron IPC proxy whitelist-detekciója mellett
+      // (odt/docx/pdf mind bináris; a docx content-type-ja is tartalmazza az "xml" szót).
+      const filename = circular.attachmentFilename ?? `korlevel-${circular.id}`
+      const mimeType = filename.endsWith('.odt')
+        ? 'application/vnd.oasis.opendocument.text'
+        : filename.endsWith('.docx')
+          ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          : filename.endsWith('.pdf')
+            ? 'application/pdf'
+            : 'application/octet-stream'
+      const raw = response.data
+      const blob = raw instanceof Blob ? raw : new Blob([raw as BlobPart], { type: mimeType })
+      downloadBlob(blob, filename)
     } catch (err) {
       toast.error('Csatolmány letöltési hiba', await getBlobErrorMessage(err))
     }
