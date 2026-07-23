@@ -104,7 +104,12 @@ export default function AverageRateReportPage() {
     setExporting(true)
     setError(null)
     try {
-      const blob = await averageRateApi.exportExcel(from, to)
+      // FK-051 v2 (FR-7): defenzív Blob-becsomagolás explicit xlsx MIME-típussal —
+      // másodlagos védelmi réteg az IPC proxy whitelist-detekciója mellett.
+      const rawData = await averageRateApi.exportExcel(from, to)
+      const blob = new Blob([rawData as BlobPart], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
       downloadBlob(blob, `atlag_arfolyam_${from}_${to}.xlsx`)
     } catch (err) {
       logger.error('AverageRateReportPage', 'Excel export hiba:', err)
