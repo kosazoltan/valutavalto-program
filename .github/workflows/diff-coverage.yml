@@ -36,7 +36,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Python (diff-cover)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: diff-cover telepítése
@@ -70,7 +70,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend-react/package-lock.json
       - name: Python (diff-cover)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: diff-cover telepítése
