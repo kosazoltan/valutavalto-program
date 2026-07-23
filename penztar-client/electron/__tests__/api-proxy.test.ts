@@ -335,6 +335,58 @@ describe('fetchViaElectronNet', () => {
       const result = await promise;
       expect(result.isBase64).toBe(false);
     });
+
+    it('xlsx content-type (openxmlformats) → base64 kódolt (FK-051 v2)', async () => {
+      // Regressziós védelem: a régi blacklist-detekció a MIME-típusban lévő "xml"
+      // szó miatt tévesen szövegként kezelte a .xlsx-t → bájt-korrupció.
+      const xlsxMagic = Buffer.from([0x50, 0x4b, 0x03, 0x04]); // PK zip header
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/reports/average-rate/export',
+      });
+      triggerResponse({
+        headers: {
+          'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        },
+        chunks: [xlsxMagic],
+      });
+      vi.advanceTimersByTime(0);
+      const result = await promise;
+
+      expect(result.isBase64).toBe(true);
+      expect(result.body).toBe(xlsxMagic.toString('base64'));
+    });
+
+    it('application/xml → NEM base64 (whitelist-regresszió)', async () => {
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/test/xml',
+      });
+      triggerResponse({
+        headers: { 'content-type': 'application/xml' },
+        chunks: [Buffer.from('<a/>')],
+      });
+      vi.advanceTimersByTime(0);
+      const result = await promise;
+      expect(result.isBase64).toBe(false);
+      expect(result.body).toBe('<a/>');
+    });
+
+    it('application/pdf → base64 kódolt (whitelist: nem szöveges)', async () => {
+      const pdfMagic = Buffer.from('%PDF-1.7');
+      const promise = fetchViaElectronNet({
+        method: 'GET',
+        url: 'https://excvaluta.com/api/v1/test/pdf',
+      });
+      triggerResponse({
+        headers: { 'content-type': 'application/pdf' },
+        chunks: [pdfMagic],
+      });
+      vi.advanceTimersByTime(0);
+      const result = await promise;
+      expect(result.isBase64).toBe(true);
+      expect(result.body).toBe(pdfMagic.toString('base64'));
+    });
   });
 
   describe('több chunk', () => {

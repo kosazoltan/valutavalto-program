@@ -203,12 +203,19 @@ export function fetchViaElectronNet(params: ApiProxyRequest): Promise<ApiProxyRe
         const fullBuffer = Buffer.concat(chunks);
         const responseHeaders = Object.fromEntries(respHeaders);
         const ct = (responseHeaders['content-type'] ?? '').toLowerCase();
-        const isBinary =
-          !ct.includes('json') &&
-          !ct.includes('text') &&
-          !ct.includes('xml') &&
-          !ct.includes('html') &&
-          ct !== '';
+        // FK-051 v2: whitelist-alapú szöveges-MIME detekció. A korábbi blacklist
+        // (`!ct.includes('xml')`) az application/vnd.openxmlformats-...sheet (.xlsx)
+        // típust — mivel tartalmazza az "xml" szót — tévesen szövegként kezelte,
+        // ami az Excel-exportok bájt-korrupcióját okozta. Whitelist: explicit szöveges
+        // típusok; minden más (application/vnd.*, pdf, octet-stream) bináris → base64.
+        const isTextual =
+          ct === '' ||
+          ct.startsWith('text/') ||
+          ct.includes('application/json') ||
+          ct.includes('application/xml') ||
+          ct.includes('text/xml') ||
+          ct.includes('application/x-www-form-urlencoded');
+        const isBinary = !isTextual;
         resolve({
           ok: status >= 200 && status < 300,
           status,
