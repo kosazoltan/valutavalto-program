@@ -35,7 +35,7 @@
         <!-- CVE-2026-34478/34480/34481 fix: log4j explicit override 2.24.3 -> 2.25.4 -->
         <log4j2.version>2.25.4</log4j2.version>
         <!-- CVE-2026-33186 fix: force patched grpc-api over Google client transitive -->
-        <grpc.version>1.82.1</grpc.version>
+        <grpc.version>1.83.0</grpc.version>
         <!-- AI review fix Codex P1 #263 (2026-04-29): a `<tomcat.version>10.1.54</tomcat.version>`
              override SB 3.5-re volt szükséges (CVE-2026-34483/34486/34487 fix), de SB 4.0.6
              Servlet 6.1 stack-et céloz, ami Tomcat 11.x. A 10.1.x override Servlet 6.0
@@ -49,7 +49,7 @@
         <testcontainers.version>1.21.4</testcontainers.version>
         <archunit.version>1.4.2</archunit.version>
         <jacoco.version>0.8.15</jacoco.version>
-        <pitest.version>1.25.5</pitest.version>
+        <pitest.version>1.25.8</pitest.version>
         <pitest.junit5.version>1.2.3</pitest.junit5.version>
         <cyclonedx.version>2.9.2</cyclonedx.version>
         <!-- CVE-2026-41293/43512/43515/41284/43513/42498/43514 + CVE-2026-53404/53434/
@@ -160,7 +160,7 @@
         <dependency>
             <groupId>com.nimbusds</groupId>
             <artifactId>nimbus-jose-jwt</artifactId>
-            <version>10.3</version>
+            <version>10.9.1</version>
         </dependency>
         
         <!-- SpringDoc OpenAPI / Swagger UI - 2.8.17 marad (Spring Boot 3.5 kompat)
@@ -225,7 +225,7 @@
         <dependency>
             <groupId>com.google.auth</groupId>
             <artifactId>google-auth-library-oauth2-http</artifactId>
-            <version>1.48.0</version>
+            <version>1.49.0</version>
         </dependency>
 
         <dependency>
@@ -318,7 +318,7 @@
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
-            <version>3.0.7</version>
+            <version>3.0.8</version>
         </dependency>
 
         <!-- Serial port communication for LED displays -->
