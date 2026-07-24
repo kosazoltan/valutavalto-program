@@ -68,6 +68,7 @@ class DailyClosingServiceExtendedTest {
     @Mock private AmlService amlService;
     @Mock private ReceiptSequenceService receiptSequenceService;
     @Mock private ClosingControlService closingControlService;
+    @Mock private BranchRepository branchRepository;
 
     private static final UUID BRANCH_ID  = UUID.randomUUID();
     private static final UUID COMPANY_ID = UUID.randomUUID();
@@ -106,6 +107,13 @@ class DailyClosingServiceExtendedTest {
             .thenReturn(BigDecimal.ZERO);
         when(transactionRepository.countUnreportedTransactions(any(), any())).thenReturn(0L);
         when(systemParameterService.getValue(anyString())).thenReturn("false");
+
+        // FK-061: alapértelmezett nem-vault branch (pénztári kontextus)
+        Branch nonVaultBranch = new Branch();
+        nonVaultBranch.setId(BRANCH_ID);
+        nonVaultBranch.setIsVault(false);
+        when(branchRepository.findById(any(UUID.class)))
+            .thenReturn(java.util.Optional.of(nonVaultBranch));
 
         // executeClosing belső hívások
         when(exchangeRateRepository.findActiveRatesByDate(any(), any()))
@@ -441,5 +449,69 @@ class DailyClosingServiceExtendedTest {
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }
+    }
+
+    // ============ FK-061: vault-kontextusú checkEveningDenomination kihagyás ============
+
+    private void makeBranchVault() {
+        Branch vaultBranch = new Branch();
+        vaultBranch.setId(BRANCH_ID);
+        vaultBranch.setIsVault(true);
+        when(branchRepository.findById(any(UUID.class)))
+            .thenReturn(java.util.Optional.of(vaultBranch));
+    }
+
+    @Test
+    @DisplayName("FK-061: vault branch — az esti címletezés-lépés kihagyva (skipped, PASS), audit-esemény rögzítve")
+    void startDailyClosing_vaultBranch_skipsEveningDenominationWithAudit() {
+        makeBranchVault();
+        // A HUF-only egyezés szándékosan HIBÁS lenne (nem-HUF állományú értéktár szimulációja):
+        when(denominationBalanceRepository.existsByBranchIdAndDateAndCategory(
+                any(), any(), eq(DenominationCategory.EVENING))).thenReturn(false);
+
+        LocalDate closingDate = LocalDate.of(2026, 3, 15);
+        var result = dailyClosingService.startDailyClosing(closingDate);
+
+        assertThat(result.isAllPassed()).isTrue();
+        var step2 = result.getSteps().stream()
+            .filter(s -> s.getStepNumber() == 2).findFirst().orElseThrow();
+        assertThat(step2.isPassed()).isTrue();
+        assertThat(step2.isSkipped()).isTrue();
+        verify(auditLogService).log(
+            eq("EVENING_DENOMINATION_CHECK_SKIPPED_VAULT"),
+            contains("vault"),
+            eq(BRANCH_ID.toString()));
+        // A HUF-only ellenőrzés lekérdezései nem futhatnak vault-kontextusban
+        verify(denominationBalanceRepository, never()).sumDenominatedAmount(any(), any(), eq("EVENING"));
+    }
+
+    @Test
+    @DisplayName("FK-061 regresszió: nem-vault branch — az esti címletezés-lépés változatlanul fut, nincs skip-audit")
+    void startDailyClosing_cashierBranch_eveningDenominationRunsUnchanged() {
+        LocalDate closingDate = LocalDate.of(2026, 3, 15);
+        var result = dailyClosingService.startDailyClosing(closingDate);
+
+        assertThat(result.isAllPassed()).isTrue();
+        var step2 = result.getSteps().stream()
+            .filter(s -> s.getStepNumber() == 2).findFirst().orElseThrow();
+        assertThat(step2.isSkipped()).isFalse();
+        verify(auditLogService, never()).log(
+            eq("EVENING_DENOMINATION_CHECK_SKIPPED_VAULT"), anyString(), anyString());
+        verify(denominationBalanceRepository).sumDenominatedAmount(any(), any(), eq("EVENING"));
+    }
+
+    @Test
+    @DisplayName("FK-061 regresszió: nem-vault branch címletezés-eltéréssel továbbra is FAIL")
+    void startDailyClosing_cashierBranch_denominationMismatchStillFails() {
+        when(denominationBalanceRepository.sumDenominatedAmount(any(), any(), any()))
+            .thenReturn(new BigDecimal("99000"));
+
+        LocalDate closingDate = LocalDate.of(2026, 3, 15);
+        var result = dailyClosingService.startDailyClosing(closingDate);
+
+        assertThat(result.isAllPassed()).isFalse();
+        var step2 = result.getSteps().stream()
+            .filter(s -> s.getStepNumber() == 2).findFirst().orElseThrow();
+        assertThat(step2.isPassed()).isFalse();
     }
 }

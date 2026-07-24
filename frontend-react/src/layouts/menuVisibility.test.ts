@@ -35,6 +35,22 @@ function ctxFor(roles: string[], appMode: MenuVisibilityContext['appMode']): Men
 }
 
 describe('menuVisibility — konzisztens szigorítás (full mód)', () => {
+  it('FK-061: ertektar (ertektar mód) látja a "Napzárás" (/closing/wizard) menüpontot az Értéktár csoportban', () => {
+    const ctx = ctxFor(['ertektar'], 'ertektar')
+    const group = groupByLabel('Értéktár (lokál)')
+    const item = itemByPath(group, '/closing/wizard')
+    expect(item).toBeDefined()
+    expect(item.label).toBe('Napzárás')
+    expect(isMenuItemVisible(item, group, ctx)).toBe(true)
+  })
+
+  it('FK-061 paritás: a "Napzárás" (/closing/wizard) a Pénztár és az Értéktár csoportban is szerepel', () => {
+    const penztar = groupByLabel('Pénztár (Valutaváltó)')
+    const ertektar = groupByLabel('Értéktár (lokál)')
+    expect(itemByPath(penztar, '/closing/wizard')).toBeDefined()
+    expect(itemByPath(ertektar, '/closing/wizard')).toBeDefined()
+  })
+
   it('arfolyam_nezo (full): NEM látja az AML/Compliance csoportot (nincs benne a roles-ban)', () => {
     const aml = groupByLabel('AML / Compliance')
     expect(isMenuGroupVisible(aml, ctxFor(['arfolyam_nezo'], 'full'))).toBe(false)

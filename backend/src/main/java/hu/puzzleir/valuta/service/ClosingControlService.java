@@ -231,9 +231,11 @@ public class ClosingControlService {
     }
 
     private boolean isRequiredClosingDone(Branch branch, boolean dailyDone, boolean eveningDone) {
-        if (branch != null && Boolean.TRUE.equals(branch.getIsVault())) {
-            return eveningDone;
-        }
+        // FK-062: minden branch-típusnál (vault és nem-vault) kizárólag a napi zárás
+        // (DAILY) jelzője számít "Rendben"-nek. A korábbi vault-ág az EVENING jelzőt
+        // várta, amit a zárási varázsló sosem ír — ezért minden értéktári zárás tévesen
+        // "Zárás nem érkezett be"-ként jelent meg. Az eveningDone paraméter szándékosan
+        // megmarad a szignatúrában (hívási helyek változatlanok), de már nem befolyásol.
         return dailyDone;
     }
 }
