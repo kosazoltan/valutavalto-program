@@ -17,7 +17,7 @@
     
     <groupId>com.puzzleir</groupId>
     <artifactId>valuta-backend</artifactId>
-    <version>2.28.56</version>
+    <version>2.28.57</version>
     <name>Valutaváltó Backend</name>
     <description>Valutaváltó program Spring Boot backend</description>
     
