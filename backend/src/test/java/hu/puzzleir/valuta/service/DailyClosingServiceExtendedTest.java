@@ -486,7 +486,7 @@ class DailyClosingServiceExtendedTest {
     }
 
     @Test
-    @DisplayName("FK-061 regresszió: nem-vault branch — az esti címletezés-lépés változatlanul fut, nincs skip-audit")
+    @DisplayName("FK-061/FK-063 regresszió: nem-vault branch — az esti címletezés-lépés változatlanul fut, nincs skip-audit")
     void startDailyClosing_cashierBranch_eveningDenominationRunsUnchanged() {
         LocalDate closingDate = LocalDate.of(2026, 3, 15);
         var result = dailyClosingService.startDailyClosing(closingDate);
@@ -497,14 +497,20 @@ class DailyClosingServiceExtendedTest {
         assertThat(step2.isSkipped()).isFalse();
         verify(auditLogService, never()).log(
             eq("EVENING_DENOMINATION_CHECK_SKIPPED_VAULT"), anyString(), anyString());
-        verify(denominationBalanceRepository).sumDenominatedAmount(any(), any(), eq("EVENING"));
+        // FK-063: a pénztári ág már a pénznemenkénti lekérdezést használja
+        verify(denominationBalanceRepository).sumActualStockByCurrency(
+            any(), any(), eq(DenominationCategory.EVENING));
     }
 
     @Test
-    @DisplayName("FK-061 regresszió: nem-vault branch címletezés-eltéréssel továbbra is FAIL")
+    @DisplayName("FK-061/FK-063 regresszió: nem-vault branch címletezés-eltéréssel (HUF) továbbra is FAIL")
     void startDailyClosing_cashierBranch_denominationMismatchStillFails() {
-        when(denominationBalanceRepository.sumDenominatedAmount(any(), any(), any()))
-            .thenReturn(new BigDecimal("99000"));
+        // FK-063: pénznemenkénti út — becímletezve 99 000 HUF, nyilvántartva 100 000 HUF
+        when(denominationBalanceRepository.sumActualStockByCurrency(
+                any(), any(), eq(DenominationCategory.EVENING)))
+            .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("99000")}));
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(any(), any()))
+            .thenReturn(List.of(cashBalanceOf("HUF", new BigDecimal("100000"))));
 
         LocalDate closingDate = LocalDate.of(2026, 3, 15);
         var result = dailyClosingService.startDailyClosing(closingDate);
@@ -513,5 +519,118 @@ class DailyClosingServiceExtendedTest {
         var step2 = result.getSteps().stream()
             .filter(s -> s.getStepNumber() == 2).findFirst().orElseThrow();
         assertThat(step2.isPassed()).isFalse();
+        assertThat(step2.getMessage()).contains("HUF");
+    }
+
+    // ============ FK-063: pénznemenkénti checkEveningDenomination a pénztári ágon ============
+
+    private CashBalance cashBalanceOf(String code, BigDecimal balance) {
+        Currency currency = new Currency();
+        currency.setCode(code);
+        CashBalance cb = new CashBalance();
+        cb.setCurrency(currency);
+        cb.setCurrentBalance(balance);
+        return cb;
+    }
+
+    @Test
+    @DisplayName("FK-063 FR-5: minden bekért pénznem (HUF+EUR+USD) egyezik → step 2 PASS")
+    void checkEveningDenomination_allCurrenciesMatch_passes() {
+        LocalDate closingDate = LocalDate.of(2026, 7, 24);
+        when(denominationBalanceRepository.sumActualStockByCurrency(
+                BRANCH_ID, closingDate, DenominationCategory.EVENING))
+            .thenReturn(List.<Object[]>of(
+                new Object[]{"HUF", new BigDecimal("100000")},
+                new Object[]{"EUR", new BigDecimal("500")},
+                new Object[]{"USD", new BigDecimal("300")}));
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID))
+            .thenReturn(List.of(
+                cashBalanceOf("HUF", new BigDecimal("100000")),
+                cashBalanceOf("EUR", new BigDecimal("500")),
+                cashBalanceOf("USD", new BigDecimal("300"))));
+
+        DailyClosingService.StepCheckResult result =
+            dailyClosingService.executeStepCheck(2, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isTrue();
+        assertThat(result.isSkipped()).isFalse();
+    }
+
+    @Test
+    @DisplayName("FK-063 FR-6: EUR-eltérés esetén a step 2 bukik és nevesíti az EUR-t (HUF/USD egyezik)")
+    void checkEveningDenomination_eurMismatch_failsNamingEur() {
+        LocalDate closingDate = LocalDate.of(2026, 7, 24);
+        when(denominationBalanceRepository.sumActualStockByCurrency(
+                BRANCH_ID, closingDate, DenominationCategory.EVENING))
+            .thenReturn(List.<Object[]>of(
+                new Object[]{"HUF", new BigDecimal("100000")},
+                new Object[]{"EUR", new BigDecimal("450")},
+                new Object[]{"USD", new BigDecimal("300")}));
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID))
+            .thenReturn(List.of(
+                cashBalanceOf("HUF", new BigDecimal("100000")),
+                cashBalanceOf("EUR", new BigDecimal("500")),
+                cashBalanceOf("USD", new BigDecimal("300"))));
+
+        DailyClosingService.StepCheckResult result =
+            dailyClosingService.executeStepCheck(2, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isFalse();
+        assertThat(result.getMessage()).contains("EUR").doesNotContain("USD");
+    }
+
+    @Test
+    @DisplayName("FK-063: HUF 1 Ft-os kerekítési eltérés tolerálva, de nem-HUF 1 egységnyi eltérés bukik")
+    void checkEveningDenomination_hufToleranceOnly() {
+        LocalDate closingDate = LocalDate.of(2026, 7, 24);
+        when(denominationBalanceRepository.sumActualStockByCurrency(
+                BRANCH_ID, closingDate, DenominationCategory.EVENING))
+            .thenReturn(List.<Object[]>of(
+                new Object[]{"HUF", new BigDecimal("100001")},
+                new Object[]{"EUR", new BigDecimal("501")}));
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID))
+            .thenReturn(List.of(
+                cashBalanceOf("HUF", new BigDecimal("100000")),
+                cashBalanceOf("EUR", new BigDecimal("500"))));
+
+        DailyClosingService.StepCheckResult result =
+            dailyClosingService.executeStepCheck(2, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isFalse();
+        assertThat(result.getMessage()).contains("EUR").doesNotContain("HUF:");
+    }
+
+    @Test
+    @DisplayName("FK-063: nyilvántartott, de be nem címletezett pénznem (hiányzó EUR-szekció) bukik")
+    void checkEveningDenomination_missingCurrencySection_fails() {
+        LocalDate closingDate = LocalDate.of(2026, 7, 24);
+        when(denominationBalanceRepository.sumActualStockByCurrency(
+                BRANCH_ID, closingDate, DenominationCategory.EVENING))
+            .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("100000")}));
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID))
+            .thenReturn(List.of(
+                cashBalanceOf("HUF", new BigDecimal("100000")),
+                cashBalanceOf("EUR", new BigDecimal("500"))));
+
+        DailyClosingService.StepCheckResult result =
+            dailyClosingService.executeStepCheck(2, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isFalse();
+        assertThat(result.getMessage()).contains("EUR");
+    }
+
+    @Test
+    @DisplayName("FK-063 regresszió: vault-ági skipped-logika változatlan (per-currency út nem fut vaultnál)")
+    void checkEveningDenomination_vaultBranch_skipLogicUntouched() {
+        makeBranchVault();
+        LocalDate closingDate = LocalDate.of(2026, 7, 24);
+
+        DailyClosingService.StepCheckResult result =
+            dailyClosingService.executeStepCheck(2, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isTrue();
+        assertThat(result.isSkipped()).isTrue();
+        verify(denominationBalanceRepository, never()).sumActualStockByCurrency(any(), any(), any());
+        verify(cashBalanceRepository, never()).findByBranchIdAndCompanyId(any(), any());
     }
 }

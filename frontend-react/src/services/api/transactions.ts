@@ -1222,6 +1222,15 @@ export const closingWizardApi = {
     const response = await api.get<ClosingWizardReport>(`/closing-wizard/${wizardId}/report`)
     return response.data
   },
+  /**
+   * FK-063 FR-1: a bejelentkezett pénztár branch-ének készleten lévő (nem-nulla
+   * cash_balance) pénznemei — HUF mindig benne van. A multi-devizás pénztári
+   * becímletező forma ebből épül fel.
+   */
+  getCurrenciesWithBalance: async (): Promise<string[]> => {
+    const response = await api.get<string[]>('/closing-wizard/currencies-with-balance')
+    return response.data
+  },
 }
 
 // ================== AUTHORIZED REPRESENTATIVE API ==================

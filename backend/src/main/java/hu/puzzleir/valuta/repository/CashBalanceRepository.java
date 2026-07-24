@@ -198,6 +198,20 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
             @Param("branchId") UUID branchId, @Param("companyId") UUID companyId);
 
     /**
+     * FK-063 FR-1 (2026-07-24): pénznem-kódok, amelyekből az adott pénztári branch-nek
+     * NEM-NULLA készlete van — a pénztári napi zárás multi-devizás becímletezésének
+     * forrás-lekérdezése. Cég-szűrt (defense-in-depth tenant-scope, cross-tenant
+     * branchId üres listát ad — fail-closed). Skalár projekció (currency.code),
+     * így OSIV-off mellett sincs lazy-proxy kockázat.
+     */
+    @Query("SELECT cb.currency.code FROM CashBalance cb " +
+           "WHERE cb.branch.id = :branchId AND cb.company.id = :companyId " +
+           "AND cb.currentBalance <> 0 " +
+           "ORDER BY cb.currency.displayOrder")
+    List<String> findCurrencyCodesWithNonZeroBalance(
+            @Param("branchId") UUID branchId, @Param("companyId") UUID companyId);
+
+    /**
      * Egyenleg keresése fiók és valuta kód szerint (egyeztetéshez).
      * 2026-07-10 (4. kör, CASHBAL-BRANCH-SCOPED): companyId-predikátum — defense-in-depth tenant-scope.
      */

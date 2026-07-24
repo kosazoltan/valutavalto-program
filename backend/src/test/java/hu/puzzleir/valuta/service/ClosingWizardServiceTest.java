@@ -184,4 +184,46 @@ class ClosingWizardServiceTest {
                     .isInstanceOf(ValidationException.class);
         }
     }
+
+    // ============ FK-063 FR-1: getCurrenciesWithBalance ============
+
+    @Test
+    @DisplayName("FK-063 FR-1: nem-nulla készletű pénznemek + HUF mindig benne (cég-szűrt)")
+    void getCurrenciesWithBalance_returnsStockCurrenciesPlusHuf() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(cashBalanceRepository.findCurrencyCodesWithNonZeroBalance(BRANCH_ID, COMPANY_ID))
+                    .thenReturn(List.of("EUR", "USD"));
+
+            List<String> result = service.getCurrenciesWithBalance(BRANCH_ID);
+
+            assertThat(result).containsExactly("HUF", "EUR", "USD");
+            verify(cashBalanceRepository).findCurrencyCodesWithNonZeroBalance(BRANCH_ID, COMPANY_ID);
+        }
+    }
+
+    @Test
+    @DisplayName("FK-063 FR-1: HUF nem duplikálódik, ha már készleten van")
+    void getCurrenciesWithBalance_noHufDuplicate() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(cashBalanceRepository.findCurrencyCodesWithNonZeroBalance(BRANCH_ID, COMPANY_ID))
+                    .thenReturn(List.of("HUF", "EUR"));
+
+            assertThat(service.getCurrenciesWithBalance(BRANCH_ID)).containsExactly("HUF", "EUR");
+        }
+    }
+
+    @Test
+    @DisplayName("FK-063 FR-1 cross-tenant: idegen cég branch-e üres készletet ad → csak HUF")
+    void getCurrenciesWithBalance_crossTenant_failClosed() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            // A cég-szűrt query idegen branchId-re üres listát ad (fail-closed)
+            when(cashBalanceRepository.findCurrencyCodesWithNonZeroBalance(any(), eq(COMPANY_ID)))
+                    .thenReturn(List.of());
+
+            assertThat(service.getCurrenciesWithBalance(UUID.randomUUID())).containsExactly("HUF");
+        }
+    }
 }

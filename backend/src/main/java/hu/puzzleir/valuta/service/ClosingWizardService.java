@@ -578,8 +578,15 @@ public class ClosingWizardService {
         }
 
         // G3 (FR-13): eltérés-magyarázat gate a véglegesítés előtt.
-        java.math.BigDecimal discrepancy = computeCashDiscrepancy(SecurityUtils.getCurrentCompanyId(),
-                branch != null ? branch.getId() : null, closingDate);
+        UUID gateCompanyId = SecurityUtils.getCurrentCompanyId();
+        // FK-063 FR-3/FR-4: pénztári (nem-vault) ágon pénznemenkénti eltérés-térkép,
+        // hogy a blokkoló üzenet nevesítse az érintett pénznem(ek)et.
+        Map<String, BigDecimal> perCurrencyDiscrepancies =
+                (branch != null && !isVaultContext(branch))
+                        ? computePerCurrencyDiscrepancies(gateCompanyId, branch.getId(), closingDate)
+                        : null;
+        java.math.BigDecimal discrepancy = computeCashDiscrepancy(gateCompanyId,
+                branch != null ? branch.getId() : null, closingDate, perCurrencyDiscrepancies);
         wizard.setDiscrepancyAmount(discrepancy);
         if (discrepancyExplanation != null && !discrepancyExplanation.isBlank()) {
             wizard.setDiscrepancyExplanation(discrepancyExplanation.trim());
@@ -587,8 +594,11 @@ public class ClosingWizardService {
         boolean enforce = systemParameterService != null
                 && "true".equalsIgnoreCase(systemParameterService.getValue(CLOSING_DISCREPANCY_PARAM, "false"));
         if (enforce) {
-            String blockReason = closingDiscrepancyBlockReason(
-                    discrepancy, wizard.getDiscrepancyExplanation(), DISCREPANCY_TOLERANCE_HUF);
+            String blockReason = perCurrencyDiscrepancies != null
+                    ? perCurrencyDiscrepancyBlockReason(
+                            perCurrencyDiscrepancies, wizard.getDiscrepancyExplanation(), DISCREPANCY_TOLERANCE_HUF)
+                    : closingDiscrepancyBlockReason(
+                            discrepancy, wizard.getDiscrepancyExplanation(), DISCREPANCY_TOLERANCE_HUF);
             if (blockReason != null) {
                 throw new ValidationException(blockReason);
             }
@@ -629,6 +639,16 @@ public class ClosingWizardService {
      * COALESCE-olnak 0-ra, így hiányzó adatnál az eltérés 0 (toleranciaon belül).
      */
     private java.math.BigDecimal computeCashDiscrepancy(UUID companyId, UUID branchId, LocalDate date) {
+        return computeCashDiscrepancy(companyId, branchId, date, null);
+    }
+
+    /**
+     * FK-063: mint {@link #computeCashDiscrepancy(UUID, UUID, LocalDate)}, de a hívó
+     * átadhatja az előre kiszámolt pénznemenkénti eltérés-térképet (nem-vault ág),
+     * elkerülve a dupla repository-lekérdezést a finalizeClosing gate-jében.
+     */
+    private java.math.BigDecimal computeCashDiscrepancy(
+            UUID companyId, UUID branchId, LocalDate date, Map<String, BigDecimal> precomputedPerCurrency) {
         if (branchId == null) {
             return null;
         }
@@ -640,12 +660,58 @@ public class ClosingWizardService {
                     .map(BigDecimal.class::cast)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
         }
-        java.math.BigDecimal denominated = denominationBalanceRepository.sumDenominatedAmount(branchId, date, "EVENING");
-        java.math.BigDecimal expected = cashBalanceRepository.sumCurrentBalanceHufByBranchIdAndCompanyId(branchId, companyId);
-        if (denominated == null || expected == null) {
-            return null;
+        // FK-063 FR-3/FR-4: pénztári ágon pénznemenkénti összevetés (nem forint-only).
+        // A visszaadott összeg a pénznemenkénti eltérések abszolútértékeinek összege —
+        // előjeles összegzésnél a +EUR/−HUF eltérés kiolthatná egymást és a gate átengedne.
+        Map<String, BigDecimal> perCurrency = precomputedPerCurrency != null
+                ? precomputedPerCurrency
+                : computePerCurrencyDiscrepancies(companyId, branchId, date);
+        return perCurrency.values().stream()
+                .map(BigDecimal::abs)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /**
+     * FK-063 FR-3/FR-4: pénztári (nem-vault) ág pénznemenkénti eltérései —
+     * becímletezett (EVENING, {@code sumActualStockByCurrency}) vs. nyilvántartott
+     * ({@code cash_balance}) egyenleg, pénznem-kód szerint. Csak a nem-nulla
+     * eltérésű pénznemek kerülnek a térképbe.
+     */
+    private Map<String, BigDecimal> computePerCurrencyDiscrepancies(UUID companyId, UUID branchId, LocalDate date) {
+        Map<String, BigDecimal> denominated = loadPhysicalCounts(branchId, date);
+        Map<String, BigDecimal> expected = new LinkedHashMap<>();
+        for (CashBalance cb : cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId)) {
+            expected.put(cb.getCurrency().getCode(), cb.getCurrentBalance());
         }
-        return denominated.subtract(expected);
+        Set<String> codes = new LinkedHashSet<>(expected.keySet());
+        codes.addAll(denominated.keySet());
+
+        Map<String, BigDecimal> diffs = new LinkedHashMap<>();
+        for (String code : codes) {
+            BigDecimal diff = denominated.getOrDefault(code, BigDecimal.ZERO)
+                    .subtract(expected.getOrDefault(code, BigDecimal.ZERO));
+            if (diff.compareTo(BigDecimal.ZERO) != 0) {
+                diffs.put(code, diff);
+            }
+        }
+        return diffs;
+    }
+
+    /**
+     * FK-063 FR-1: pénznem-kódok, amelyekre a pénztári becímletezésnek szekciót kell
+     * nyitnia — a branch nem-nulla {@code cash_balance} készletű pénznemei, plusz a
+     * HUF mindig (akkor is, ha az egyenlege éppen 0). Cég-szűrt (cross-tenant
+     * branchId üres készletet ad — csak a kötelező HUF marad).
+     */
+    @Transactional(readOnly = true)
+    public List<String> getCurrenciesWithBalance(UUID branchId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<String> codes = new ArrayList<>(
+                cashBalanceRepository.findCurrencyCodesWithNonZeroBalance(branchId, companyId));
+        if (!codes.contains("HUF")) {
+            codes.add(0, "HUF");
+        }
+        return codes;
     }
 
     /**
@@ -669,6 +735,45 @@ public class ClosingWizardService {
         return String.format(
                 "Pénzügyi eltérés (%s Ft) — a zárás véglegesítéséhez eltérés-magyarázat kötelező (FR-13).",
                 discrepancyHuf.toPlainString());
+    }
+
+    /**
+     * FK-063 FR-4: pénznemenkénti eltérés-gate döntés a pénztári (nem-vault) ágra —
+     * statikus, függőség-mentes (tesztelhető). A HUF-ra a kerekítési tolerancia él
+     * (|diff| ≤ tolerance nem blokkol); nem-HUF pénznemre bármilyen nem-nulla eltérés
+     * blokkol (a valuta-készlet darabra pontos). A blokkoló üzenet nevesíti az érintett
+     * pénznem(ek)et és eltérésüket.
+     *
+     * @return blokkoló indok, ha van tolerancián túli eltérés ÉS nincs magyarázat;
+     *         különben {@code null}
+     */
+    static String perCurrencyDiscrepancyBlockReason(
+            Map<String, java.math.BigDecimal> perCurrencyDiscrepancies,
+            String explanation,
+            java.math.BigDecimal hufToleranceHuf) {
+        if (perCurrencyDiscrepancies == null || perCurrencyDiscrepancies.isEmpty()) {
+            return null;
+        }
+        List<String> blocking = new ArrayList<>();
+        for (Map.Entry<String, java.math.BigDecimal> entry : perCurrencyDiscrepancies.entrySet()) {
+            java.math.BigDecimal diff = entry.getValue();
+            if (diff == null || diff.compareTo(java.math.BigDecimal.ZERO) == 0) {
+                continue;
+            }
+            if ("HUF".equals(entry.getKey()) && diff.abs().compareTo(hufToleranceHuf) <= 0) {
+                continue;
+            }
+            blocking.add(entry.getKey() + ": " + diff.toPlainString());
+        }
+        if (blocking.isEmpty()) {
+            return null;
+        }
+        if (explanation != null && !explanation.isBlank()) {
+            return null;
+        }
+        return String.format(
+                "Pénznemenkénti pénzügyi eltérés (%s) — a zárás véglegesítéséhez eltérés-magyarázat kötelező (FR-13).",
+                String.join("; ", blocking));
     }
 
     @Transactional(readOnly = true)

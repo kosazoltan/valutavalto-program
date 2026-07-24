@@ -136,6 +136,23 @@ public class ClosingWizardController {
     }
 
     /**
+     * FK-063 FR-1: a bejelentkezett pénztár branch-ének készleten lévő (nem-nulla
+     * cash_balance) pénznemei — HUF mindig benne van. A pénztári napi zárás
+     * multi-devizás becímletező formája ebből épül fel.
+     *
+     * GET /api/v1/closing-wizard/currencies-with-balance
+     *
+     * A branchId szándékosan a JWT-ből jön (nem paraméter) — IDOR-mentes, a válasz
+     * kizárólag a hívó saját irodájának készletét tükrözi.
+     */
+    @GetMapping("/currencies-with-balance")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
+    public ResponseEntity<List<String>> getCurrenciesWithBalance() {
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        return ResponseEntity.ok(closingWizardService.getCurrenciesWithBalance(branchId));
+    }
+
+    /**
      * Step 2: Címletolvasó
      *
      * POST /api/v1/closing-wizard/{wizardId}/denominations
