@@ -203,6 +203,9 @@ export const menuGroups: MenuGroup[] = [
       { path: '/vault-workers/new', label: 'Új munkatárs felvétele', icon: Users },
       { path: '/daybook', label: 'Naplókönyv', icon: FileText },
       { path: '/evening-closing', label: 'Napi zárás', icon: FileText },
+      // FK-061 FR-1: a zárási varázsló ("Napzárás") értéktári módban is elérhető a menüből.
+      // A /closing/wizard route gate nélkül, mindkét módban kiszolgál (App.tsx változatlan).
+      { path: '/closing/wizard', label: 'Napzárás', icon: FileText },
       { path: '/closing/monthly', label: 'Havi zárás', icon: FileText },
       { path: '/customers', label: 'Ügyfelek', icon: Users },
       { path: '/rates', label: 'Árfolyamok (nézet)', icon: TrendingUp },

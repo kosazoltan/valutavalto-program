@@ -177,8 +177,8 @@ class ClosingControlServiceTest {
     }
 
     @Test
-    @DisplayName("vault branch needs evening closing flag for OK state")
-    void getBranchStatus_vaultNeedsEveningFlag() {
+    @DisplayName("FK-062: vault branch is OK with DAILY flag alone (evening flag ignored)")
+    void getBranchStatus_vaultDailyAloneIsOk() {
         LocalDate date = LocalDate.now();
         UUID branchId = UUID.randomUUID();
         Branch branch = branch(branchId, "EV01", "Értéktár 01");
@@ -200,9 +200,94 @@ class ClosingControlServiceTest {
 
         ClosingControlDto result = service.getBranchStatus(branchId, date);
 
+        assertEquals("NONE", result.getAlertLevel());
+        assertEquals(1, result.getCompletedCount());
+        assertEquals(1, result.getRequiredCount());
+        assertFalse(result.getMissingRecord());
+    }
+
+    @Test
+    @DisplayName("FK-062: vault branch without DAILY flag stays missing (WARNING)")
+    void getBranchStatus_vaultWithoutDailyIsMissing() {
+        LocalDate date = LocalDate.now();
+        UUID branchId = UUID.randomUUID();
+        Branch branch = branch(branchId, "EV02", "Értéktár 02");
+        branch.setIsVault(true);
+        ClosingControl control = ClosingControl.builder()
+                .id(UUID.randomUUID())
+                .companyId(companyId)
+                .branchId(branchId)
+                .controlDate(date)
+                .dailyClosingDone(false)
+                .eveningClosingDone(true)
+                .navClosingDone(false)
+                .alertLevel("WARNING")
+                .build();
+
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(closingControlRepository.findByCompanyIdAndBranchIdAndControlDate(companyId, branchId, date))
+                .thenReturn(Optional.of(control));
+
+        ClosingControlDto result = service.getBranchStatus(branchId, date);
+
         assertEquals("WARNING", result.getAlertLevel());
         assertEquals(0, result.getCompletedCount());
         assertEquals(1, result.getRequiredCount());
+    }
+
+    @Test
+    @DisplayName("FK-062 regression: cashier branch with only EVENING flag stays missing")
+    void getBranchStatus_cashierEveningOnlyIsMissing() {
+        LocalDate date = LocalDate.now();
+        UUID branchId = UUID.randomUUID();
+        Branch branch = branch(branchId, "BP02", "Budapest 02");
+        ClosingControl control = ClosingControl.builder()
+                .id(UUID.randomUUID())
+                .companyId(companyId)
+                .branchId(branchId)
+                .controlDate(date)
+                .dailyClosingDone(false)
+                .eveningClosingDone(true)
+                .navClosingDone(false)
+                .alertLevel("WARNING")
+                .build();
+
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(closingControlRepository.findByCompanyIdAndBranchIdAndControlDate(companyId, branchId, date))
+                .thenReturn(Optional.of(control));
+
+        ClosingControlDto result = service.getBranchStatus(branchId, date);
+
+        assertEquals("WARNING", result.getAlertLevel());
+        assertEquals(0, result.getCompletedCount());
+    }
+
+    @Test
+    @DisplayName("FK-062: markClosingDone DAILY on vault branch resolves alertLevel to NONE")
+    void markClosingDone_vaultDailyResolvesAlert() {
+        LocalDate date = LocalDate.now();
+        UUID branchId = UUID.randomUUID();
+        Branch branch = branch(branchId, "EV03", "Értéktár 03");
+        branch.setIsVault(true);
+
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(closingControlRepository.findByCompanyIdAndBranchIdAndControlDate(companyId, branchId, date))
+                .thenReturn(Optional.empty());
+        when(closingControlRepository.save(org.mockito.ArgumentMatchers.any(ClosingControl.class)))
+                .thenAnswer(invocation -> {
+                    ClosingControl control = invocation.getArgument(0);
+                    if (control.getId() == null) {
+                        control.setId(UUID.randomUUID());
+                    }
+                    return control;
+                });
+
+        ClosingControlDto result = service.markClosingDone(companyId, branchId, date, ClosingMarkType.DAILY);
+
+        assertTrue(result.getDailyClosingDone());
+        assertFalse(result.getEveningClosingDone());
+        assertEquals("NONE", result.getAlertLevel());
+        assertEquals(1, result.getCompletedCount());
     }
 
     private Branch branch(UUID id, String code, String name) {

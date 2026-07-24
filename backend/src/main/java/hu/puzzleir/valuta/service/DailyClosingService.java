@@ -75,6 +75,7 @@ public class DailyClosingService {
     private final AmlService amlService;
     private final ReceiptSequenceService receiptSequenceService;
     private final ClosingControlService closingControlService;
+    private final BranchRepository branchRepository;
 
     @Value("${nav.bridge.simulated-success-enabled:false}")
     private boolean navBridgeSimulatedSuccessEnabled;
@@ -233,6 +234,20 @@ public class DailyClosingService {
      * Legacy: cimletsorszam=1, cimletctrlrutin - osszeveti a valos penzt a szamitott keszlettel.
      */
     private StepCheckResult checkEveningDenomination(UUID companyId, UUID branchId, LocalDate date) {
+        // FK-061 FR-2: vault-kontextusban (értéktári branch) ez a HUF-only lépés kihagyandó —
+        // az értéktári véglegesítés kizárólag a valutánkénti currency_stock-alapú
+        // ellenőrzésre támaszkodik (VaultClosing). A pénztári (nem-vault) viselkedés változatlan.
+        if (isVaultBranch(branchId)) {
+            log.info("FK-061: checkEveningDenomination kihagyva vault-kontextusban: branch={}, datum={}",
+                branchId, date);
+            auditLogService.log("EVENING_DENOMINATION_CHECK_SKIPPED_VAULT",
+                "Esti cimletezes-ellenorzes (HUF-only) kihagyva vault-kontextusban; "
+                    + "a veglegesites a valutankenti currency_stock ellenorzesre tamaszkodik. "
+                    + "{\"branchId\":\"" + branchId + "\",\"date\":\"" + date + "\"}",
+                branchId.toString());
+            return StepCheckResult.skipped("Esti cimletezes-ellenorzes kihagyva (ertektar)");
+        }
+
         // Ellenorzi hogy a cimletezett osszeg egyezik-e a szamitott keszlettel
         boolean hasDenomination = denominationBalanceRepository
             .existsByBranchIdAndDateAndCategory(branchId, date, DenominationCategory.EVENING);
@@ -774,6 +789,17 @@ public class DailyClosingService {
             // Ha nincs ilyen parameter, a feature nem aktiv
             return false;
         }
+    }
+
+    /**
+     * FK-061: backend-oldali vault-kontextus detektálás — a branch `isVault` jelzője alapján.
+     * Újrahasználható segéd a napi zárás ellenőrzés-láncához; a frontend zárási varázsló
+     * mode-detekciójának (értéktár mód) szerver-oldali megfelelője.
+     */
+    private boolean isVaultBranch(UUID branchId) {
+        return branchRepository.findById(branchId)
+            .map(b -> Boolean.TRUE.equals(b.getIsVault()))
+            .orElse(false);
     }
 
     // ============ HELPER CLASSOK ============
