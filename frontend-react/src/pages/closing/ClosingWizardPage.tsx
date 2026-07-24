@@ -107,17 +107,17 @@ export default function ClosingWizardPage() {
         : // FK-063 FR-2: dinamikus, cash_balance-alapú szekciók — HUF mindig,
           // a többi pénznem csak akkor, ha van belőle készlet. A címletlista a
           // denomination törzsből jön; HUF-ra a beépített lista a fallback.
-          cashierCurrencies
-            .map((currencyCode) => ({
-              currencyCode,
-              faceValues:
-                currencyCode === 'HUF'
-                  ? cashierDenominations['HUF']?.length
-                    ? cashierDenominations['HUF']
-                    : [...HUF_DENOMINATIONS]
-                  : (cashierDenominations[currencyCode] ?? []),
-            }))
-            .filter(({ faceValues }) => faceValues.length > 0),
+          // PR #1483 review: a címlettörzs-hiányos, de készleten lévő pénznem NEM
+          // eshet ki (üres szekcióként blokkolja a továbblépést, nem tűnik el).
+          cashierCurrencies.map((currencyCode) => ({
+            currencyCode,
+            faceValues:
+              currencyCode === 'HUF'
+                ? cashierDenominations['HUF']?.length
+                  ? cashierDenominations['HUF']
+                  : [...HUF_DENOMINATIONS]
+                : (cashierDenominations[currencyCode] ?? []),
+          })),
     [currencyDenominations, isVaultContext, cashierCurrencies, cashierDenominations],
   )
   const denominationTotals = useMemo(
@@ -182,7 +182,7 @@ export default function ClosingWizardPage() {
     ) {
       blockingSources.push(t('closing.forrasChecklist'))
     }
-    if (closingDifferences.some((d) => d.status !== 'OK')) {
+    if (closingDifferences.some(isBlockingDifference)) {
       blockingSources.push(t('closing.forrasElteresTablazat'))
     }
     return { ready: blockingSources.length === 0, blockingSources }
@@ -462,7 +462,10 @@ export default function ClosingWizardPage() {
         currencyCode,
         Object.fromEntries(
           faceValues
-            .filter((faceValue) => (denomQuantities[denomKey(currencyCode, faceValue)] ?? 0) >= 0)
+            // Codex P1 (PR #1483): csak a ténylegesen kitöltött tételek mennek a
+            // payloadba — a 0 darabos (pl. tört címletű) sorok kihagyása megvédi a
+            // backend Map<Integer,Integer> szerződését és nem hoz létre üres rekordot.
+            .filter((faceValue) => (denomQuantities[denomKey(currencyCode, faceValue)] ?? 0) > 0)
             .map((faceValue) => [
               faceValue,
               denomQuantities[denomKey(currencyCode, faceValue)] ?? 0,
@@ -724,12 +727,12 @@ export default function ClosingWizardPage() {
                 "minden rendben"-t, ha az eltérés-táblázatban megoldatlan eltérés van. */}
             <div
               className={`mb-2 rounded-md border p-2 text-sm ${
-                closingValidation.allValid && !closingDifferences.some((d) => d.status !== 'OK')
+                closingValidation.allValid && !closingDifferences.some(isBlockingDifference)
                   ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200'
                   : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200'
               }`}
             >
-              {closingValidation.allValid && closingDifferences.some((d) => d.status !== 'OK')
+              {closingValidation.allValid && closingDifferences.some(isBlockingDifference)
                 ? t('closing.megoldatlanElteresVan')
                 : closingValidation.errorMessage ||
                   (closingValidation.allValid
@@ -879,14 +882,12 @@ export default function ClosingWizardPage() {
                   {t('cashdesk.osszesen')}
                 </span>
                 <span className="text-base font-bold text-blue-900 dark:text-blue-300">
-                  {denominationSections.length > 1
-                    ? denominationSections
-                        .map(
-                          ({ currencyCode }) =>
-                            `${(denominationTotals[currencyCode] ?? 0).toLocaleString('hu-HU')} ${currencyCode}`,
-                        )
-                        .join(' + ')
-                    : `${denomTotal.toLocaleString('hu-HU')} ${t('common.ft')}`}
+                  {formatDenominationTotals(
+                    denominationSections,
+                    denominationTotals,
+                    t('common.ft'),
+                    denomTotal,
+                  )}
                 </span>
               </div>
               <button
@@ -906,14 +907,12 @@ export default function ClosingWizardPage() {
               <Check className="h-4 w-4 text-green-600" />
               <span className="text-xs font-medium text-green-800 dark:text-green-300">
                 {t('closing.cimletezesRogzitve')}
-                {denominationSections.length > 1
-                  ? denominationSections
-                      .map(
-                        ({ currencyCode }) =>
-                          `${(denominationTotals[currencyCode] ?? 0).toLocaleString('hu-HU')} ${currencyCode}`,
-                      )
-                      .join(' + ')
-                  : `${denomTotal.toLocaleString('hu-HU')} ${t('common.ft')}`}
+                {formatDenominationTotals(
+                  denominationSections,
+                  denominationTotals,
+                  t('common.ft'),
+                  denomTotal,
+                )}
               </span>
             </div>
           )}
@@ -1157,6 +1156,38 @@ export default function ClosingWizardPage() {
 
 function formatNumber(value: number | undefined | null): string {
   return (value ?? 0).toLocaleString('hu-HU')
+}
+
+/**
+ * FK-064 / PR #1483 review: blokkoló-e egy eltérés-sor? A backend
+ * checkEveningDenomination HUF-toleranciájának (|diff| ≤ 1 Ft, kerekítés) tükre —
+ * enélkül a frontend 1 Ft-os HUF-eltérésnél is blokkolna, miközben a backend átengedi.
+ */
+function isBlockingDifference(d: ClosingWizardDifference): boolean {
+  if (d.status === 'OK') return false
+  if (d.currencyCode === 'HUF') {
+    const diff = typeof d.difference === 'number' ? d.difference : Number(d.difference)
+    if (Number.isFinite(diff) && Math.abs(diff) <= 1) return false
+  }
+  return true
+}
+
+/**
+ * FK-063 FR-7 / PR #1483 review: közös összesen-formázó — több pénznemnél
+ * pénznemenkénti bontás, egy pénznemnél a megszokott "… Ft".
+ */
+function formatDenominationTotals(
+  sections: { currencyCode: string }[],
+  totals: Record<string, number>,
+  ftLabel: string,
+  singleTotal: number,
+): string {
+  if (sections.length > 1) {
+    return sections
+      .map(({ currencyCode }) => `${(totals[currencyCode] ?? 0).toLocaleString('hu-HU')} ${currencyCode}`)
+      .join(' + ')
+  }
+  return `${singleTotal.toLocaleString('hu-HU')} ${ftLabel}`
 }
 
 function formatAmount(value: number | string | undefined | null): string {

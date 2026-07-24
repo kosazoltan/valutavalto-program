@@ -273,6 +273,12 @@ public class DailyClosingService {
         Set<String> codes = new LinkedHashSet<>(expectedByCurrency.keySet());
         codes.addAll(denominatedByCurrency.keySet());
 
+        // Sourcery review (PR #1483): üres adathalmaz nem mehet át csendben "rendben"-ként —
+        // ha sem becímletezett, sem nyilvántartott adat nincs, az adat-/konfigurációs hiba.
+        if (codes.isEmpty()) {
+            return StepCheckResult.failed("Nem lehet ellenorizni a cimletezest (hianyznak adatok)");
+        }
+
         List<String> mismatches = new ArrayList<>();
         for (String code : codes) {
             BigDecimal denominated = denominatedByCurrency.getOrDefault(code, BigDecimal.ZERO);

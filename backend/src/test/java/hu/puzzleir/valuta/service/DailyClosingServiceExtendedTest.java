@@ -101,6 +101,13 @@ class DailyClosingServiceExtendedTest {
                 any(), any(), eq(DenominationCategory.EVENING))).thenReturn(true);
         when(denominationBalanceRepository.sumDenominatedAmount(any(), any(), any()))
             .thenReturn(new BigDecimal("100000"));
+        // FK-063: a checkEveningDenomination pénznemenkénti útjának default stubjai —
+        // becímletezett HUF 100 000 = nyilvántartott HUF 100 000 (step 2 PASS).
+        when(denominationBalanceRepository.sumActualStockByCurrency(
+                any(), any(), eq(DenominationCategory.EVENING)))
+            .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("100000")}));
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(any(), any()))
+            .thenReturn(List.of(cashBalanceOf("HUF", new BigDecimal("100000"))));
         when(cashBalanceRepository.sumCurrentBalanceHufByBranchIdAndCompanyId(any(), any()))
             .thenReturn(new BigDecimal("100000"));
         when(transactionRepository.sumDailyHandlingFees(any(), any()))

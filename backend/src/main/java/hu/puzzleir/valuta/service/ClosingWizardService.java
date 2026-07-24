@@ -585,8 +585,14 @@ public class ClosingWizardService {
                 (branch != null && !isVaultContext(branch))
                         ? computePerCurrencyDiscrepancies(gateCompanyId, branch.getId(), closingDate)
                         : null;
-        java.math.BigDecimal discrepancy = computeCashDiscrepancy(gateCompanyId,
-                branch != null ? branch.getId() : null, closingDate, perCurrencyDiscrepancies);
+        // Sourcery/Codex review (PR #1483): a discrepancyAmount oszlop Ft-szemantikájú —
+        // pénztári ágon CSAK a HUF-eltérést perzisztáljuk (a nem-HUF eltérések nominális
+        // összegzése árfolyam nélkül értelmezhetetlen volna). A gate ettől függetlenül
+        // minden pénznemre a perCurrencyDiscrepancyBlockReason-nel blokkol.
+        java.math.BigDecimal discrepancy = perCurrencyDiscrepancies != null
+                ? perCurrencyDiscrepancies.getOrDefault("HUF", BigDecimal.ZERO)
+                : computeCashDiscrepancy(gateCompanyId,
+                        branch != null ? branch.getId() : null, closingDate);
         wizard.setDiscrepancyAmount(discrepancy);
         if (discrepancyExplanation != null && !discrepancyExplanation.isBlank()) {
             wizard.setDiscrepancyExplanation(discrepancyExplanation.trim());
@@ -639,16 +645,6 @@ public class ClosingWizardService {
      * COALESCE-olnak 0-ra, így hiányzó adatnál az eltérés 0 (toleranciaon belül).
      */
     private java.math.BigDecimal computeCashDiscrepancy(UUID companyId, UUID branchId, LocalDate date) {
-        return computeCashDiscrepancy(companyId, branchId, date, null);
-    }
-
-    /**
-     * FK-063: mint {@link #computeCashDiscrepancy(UUID, UUID, LocalDate)}, de a hívó
-     * átadhatja az előre kiszámolt pénznemenkénti eltérés-térképet (nem-vault ág),
-     * elkerülve a dupla repository-lekérdezést a finalizeClosing gate-jében.
-     */
-    private java.math.BigDecimal computeCashDiscrepancy(
-            UUID companyId, UUID branchId, LocalDate date, Map<String, BigDecimal> precomputedPerCurrency) {
         if (branchId == null) {
             return null;
         }
@@ -660,15 +656,11 @@ public class ClosingWizardService {
                     .map(BigDecimal.class::cast)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
         }
-        // FK-063 FR-3/FR-4: pénztári ágon pénznemenkénti összevetés (nem forint-only).
-        // A visszaadott összeg a pénznemenkénti eltérések abszolútértékeinek összege —
-        // előjeles összegzésnél a +EUR/−HUF eltérés kiolthatná egymást és a gate átengedne.
-        Map<String, BigDecimal> perCurrency = precomputedPerCurrency != null
-                ? precomputedPerCurrency
-                : computePerCurrencyDiscrepancies(companyId, branchId, date);
-        return perCurrency.values().stream()
-                .map(BigDecimal::abs)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // FK-063 (PR #1483 review): a visszatérési érték Ft-szemantikájú (discrepancyAmount
+        // oszlop) — pénztári ágon a HUF-eltérést adjuk vissza; a nem-HUF pénznemek eltéréseit
+        // a perCurrencyDiscrepancyBlockReason gate kezeli pénznemenként.
+        return computePerCurrencyDiscrepancies(companyId, branchId, date)
+                .getOrDefault("HUF", BigDecimal.ZERO);
     }
 
     /**
