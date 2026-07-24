@@ -17,6 +17,9 @@ const mocks = vi.hoisted(() => ({
   closingWizardApiSubmitDenominations: vi.fn(),
   closingWizardApiCalculateDifferences: vi.fn(),
   closingWizardApiGetReport: vi.fn(),
+  closingWizardApiGetCurrenciesWithBalance: vi.fn(),
+  denominationApiList: vi.fn(),
+  currencyApiGetActive: vi.fn(),
   dailySessionApiValidateClosing: vi.fn(),
   toast: {
     success: vi.fn(),
@@ -47,6 +50,13 @@ vi.mock('../../services/api/index', () => ({
     submitDenominations: mocks.closingWizardApiSubmitDenominations,
     calculateDifferences: mocks.closingWizardApiCalculateDifferences,
     getReport: mocks.closingWizardApiGetReport,
+    getCurrenciesWithBalance: mocks.closingWizardApiGetCurrenciesWithBalance,
+  },
+  denominationApi: {
+    list: mocks.denominationApiList,
+  },
+  currencyApi: {
+    getActive: mocks.currencyApiGetActive,
   },
   dailySessionApi: {
     validateClosing: mocks.dailySessionApiValidateClosing,
@@ -200,6 +210,10 @@ describe('ClosingWizardPage', () => {
       stepData: {},
     })
     mocks.closingWizardApiValidateTransactions.mockResolvedValue([])
+    // FK-063: default pénztári készlet — csak HUF (a meglévő tesztek HUF-only formát várnak)
+    mocks.closingWizardApiGetCurrenciesWithBalance.mockResolvedValue(['HUF'])
+    mocks.denominationApiList.mockResolvedValue([])
+    mocks.currencyApiGetActive.mockResolvedValue([])
     mocks.dailySessionApiValidateClosing.mockResolvedValue({
       validationDate: '2026-06-18',
       errorCode: 0,
@@ -573,6 +587,201 @@ describe('ClosingWizardPage', () => {
 
     await waitFor(() => {
       expect(mocks.closingWizardApiFinalize).toHaveBeenCalledWith('wizard-1', String(mockWorker.id))
+    })
+  })
+
+  // ========== FK-063: MULTI-DEVIZÁS PÉNZTÁRI BECÍMLETEZÉS ==========
+
+  describe('FK-063 multi-devizás pénztári becímletezés', () => {
+    beforeEach(() => {
+      mocks.closingWizardApiGetCurrenciesWithBalance.mockResolvedValue(['HUF', 'EUR'])
+      mocks.denominationApiList.mockResolvedValue([
+        { currencyCode: 'HUF', faceValue: 20000 },
+        { currencyCode: 'HUF', faceValue: 10000 },
+        { currencyCode: 'EUR', faceValue: 100 },
+        { currencyCode: 'EUR', faceValue: 50 },
+        { currencyCode: 'USD', faceValue: 100 }, // nincs készlet → nem jelenhet meg
+      ])
+    })
+
+    it('FR-2: pénztár módban HUF+EUR szekció renderel (USD nem, mert nincs készlet)', async () => {
+      await runStep1()
+
+      await waitFor(() => {
+        expect(mocks.closingWizardApiGetCurrenciesWithBalance).toHaveBeenCalled()
+      })
+      // Szekció-fejlécek több pénznemnél
+      expect(screen.getByText('HUF')).toBeInTheDocument()
+      expect(screen.getByText('EUR')).toBeInTheDocument()
+      expect(screen.queryByText('USD')).not.toBeInTheDocument()
+      // HUF 2 + EUR 2 = 4 input
+      expect(screen.getAllByRole('spinbutton')).toHaveLength(4)
+    })
+
+    it('FR-7: a Tovább gomb csak akkor aktív, ha minden kötelező pénznem ki van töltve', async () => {
+      const user = await runStep1()
+
+      const inputs = screen.getAllByRole('spinbutton')
+      const submitBtn = screen.getByRole('button', { name: /Cimletezés rogzitese/i })
+
+      // Csak HUF kitöltve → disabled
+      await user.clear(inputs[0]!)
+      await user.type(inputs[0]!, '2')
+      expect(submitBtn).toBeDisabled()
+
+      // EUR is kitöltve → enabled
+      await user.clear(inputs[2]!)
+      await user.type(inputs[2]!, '3')
+      expect(submitBtn).not.toBeDisabled()
+    })
+
+    it('FR-7: pénznemenkénti részösszeg jelenik meg (nem összevont Ft)', async () => {
+      const user = await runStep1()
+
+      const inputs = screen.getAllByRole('spinbutton')
+      await user.clear(inputs[0]!)
+      await user.type(inputs[0]!, '2') // 40 000 HUF
+      await user.clear(inputs[2]!)
+      await user.type(inputs[2]!, '3') // 300 EUR
+
+      const totalEl = screen.getByText((_c, element) => {
+        return (
+          element?.tagName === 'SPAN' &&
+          element.classList.contains('text-base') &&
+          element.textContent?.replace(/\s/g, '') === '40000HUF+300EUR'
+        )
+      })
+      expect(totalEl).toBeInTheDocument()
+    })
+
+    it('FR-2 fallback: végpont-hiba esetén HUF-only forma marad', async () => {
+      mocks.closingWizardApiGetCurrenciesWithBalance.mockRejectedValue(new Error('offline'))
+      await runStep1()
+
+      // 12 beépített HUF címlet
+      expect(screen.getAllByRole('spinbutton')).toHaveLength(12)
+      expect(screen.queryByText('EUR')).not.toBeInTheDocument()
+    })
+  })
+
+  // ========== FK-064: EGYSÉGES ZÁRÁS-KÉSZENLÉT ==========
+
+  describe('FK-064 zárás-készenlét egységesítés', () => {
+    it('FR-1: mindhárom forrás rendben → "Kész a beküldésre"', async () => {
+      const user = await runStep1()
+      mocks.closingWizardApiNavigate.mockResolvedValue({
+        steps: [{ stepNumber: 2, completed: true }],
+      })
+
+      const inputs = screen.getAllByRole('spinbutton')
+      await user.clear(inputs[0]!)
+      await user.type(inputs[0]!, '3')
+      await user.click(screen.getByRole('button', { name: /Cimletezés rogzitese/i }))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('closing-readiness-banner')).toHaveTextContent(
+          'Kész a beküldésre',
+        )
+      })
+    })
+
+    it('FR-2: kezdeti állapotban "Van teendő" + a checklist forrás nevesítve', () => {
+      renderClosingWizardPage()
+      const banner = screen.getByTestId('closing-readiness-banner')
+      expect(banner).toHaveTextContent('Van teendő')
+      expect(banner).toHaveTextContent('ellenőrzési lista')
+    })
+
+    it('FR-2: előellenőrzés hibás → az előellenőrző panel forrás is nevesítve', async () => {
+      mocks.dailySessionApiValidateClosing.mockResolvedValue({
+        validationDate: '2026-06-18',
+        errorCode: 1,
+        errorMessage: 'Hiányzó címletezés',
+        allValid: false,
+        currencyDenominationOk: false,
+        handlingFeeDenominationOk: true,
+        westernUnionDenominationOk: true,
+        vatDenominationOk: true,
+        ecommerceDenominationOk: true,
+      })
+      renderClosingWizardPage()
+
+      await waitFor(() => {
+        expect(screen.getByTestId('closing-readiness-banner')).toHaveTextContent(
+          'előellenőrző panel',
+        )
+      })
+    })
+
+    it('FR-3: DISCREPANCY az eltérés-táblázatban → a panel nem mutat "minden rendben"-t', async () => {
+      const user = await runStep1()
+      mocks.closingWizardApiNavigate.mockResolvedValue({
+        steps: [{ stepNumber: 2, completed: true }],
+      })
+      mocks.closingWizardApiCalculateDifferences.mockResolvedValue([
+        { currencyCode: 'HUF', expected: 100000, actual: 100000, difference: 0, status: 'OK' },
+        { currencyCode: 'EUR', expected: 500, actual: 450, difference: -50, status: 'DISCREPANCY' },
+      ])
+
+      const inputs = screen.getAllByRole('spinbutton')
+      await user.clear(inputs[0]!)
+      await user.type(inputs[0]!, '3')
+      await user.click(screen.getByRole('button', { name: /Cimletezés rogzitese/i }))
+
+      await waitFor(() => {
+        expect(screen.queryByText('Minden címletezés rendben')).not.toBeInTheDocument()
+        expect(
+          screen.getByText('Megoldatlan eltérés van az eltérés-táblázatban'),
+        ).toBeInTheDocument()
+        const banner = screen.getByTestId('closing-readiness-banner')
+        expect(banner).toHaveTextContent('Van teendő')
+        expect(banner).toHaveTextContent('eltérés-táblázat')
+      })
+    })
+
+    it('FR-4: az eltérés-táblázat N pénznem-sorral is renderel (4 sor)', async () => {
+      const user = await runStep1()
+      mocks.closingWizardApiNavigate.mockResolvedValue({
+        steps: [{ stepNumber: 2, completed: true }],
+      })
+      mocks.closingWizardApiCalculateDifferences.mockResolvedValue([
+        { currencyCode: 'HUF', expected: 1, actual: 1, difference: 0, status: 'OK' },
+        { currencyCode: 'EUR', expected: 2, actual: 2, difference: 0, status: 'OK' },
+        { currencyCode: 'USD', expected: 3, actual: 3, difference: 0, status: 'OK' },
+        { currencyCode: 'GBP', expected: 4, actual: 4, difference: 0, status: 'OK' },
+      ])
+
+      const inputs = screen.getAllByRole('spinbutton')
+      await user.clear(inputs[0]!)
+      await user.type(inputs[0]!, '3')
+      await user.click(screen.getByRole('button', { name: /Cimletezés rogzitese/i }))
+
+      await waitFor(() => {
+        const table = screen.getByTestId('closing-differences-table')
+        expect(table.querySelectorAll('tbody tr')).toHaveLength(4)
+        expect(table).toHaveTextContent('GBP')
+      })
+    })
+
+    it('FR-5: DISCREPANCY esetén a véglegesítés gomb inaktív marad', async () => {
+      const user = await runStep1()
+      mocks.closingWizardApiNavigate.mockResolvedValue({
+        steps: [{ stepNumber: 2, completed: true }],
+      })
+      mocks.closingWizardApiCalculateDifferences.mockResolvedValue([
+        { currencyCode: 'EUR', expected: 500, actual: 450, difference: -50, status: 'DISCREPANCY' },
+      ])
+
+      const inputs = screen.getAllByRole('spinbutton')
+      await user.clear(inputs[0]!)
+      await user.type(inputs[0]!, '3')
+      await user.click(screen.getByRole('button', { name: /Cimletezés rogzitese/i }))
+
+      await waitFor(() => {
+        expect(mocks.closingWizardApiNavigate).toHaveBeenCalledTimes(9)
+      })
+      const finalizeBtn = screen.getByRole('button', { name: /Minden lépés szükséges/i })
+      expect(finalizeBtn).toBeDisabled()
     })
   })
 })

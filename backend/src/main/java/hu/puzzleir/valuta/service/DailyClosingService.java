@@ -256,24 +256,48 @@ public class DailyClosingService {
             return StepCheckResult.failed("Hianyzik az esti penztar cimletezese!");
         }
 
-        // Osszeg egyezes ellenorzese
-        BigDecimal denominatedTotal = denominationBalanceRepository
-            .sumDenominatedAmount(branchId, date, "EVENING");
-        BigDecimal expectedTotal = cashBalanceRepository
-            .sumCurrentBalanceHufByBranchIdAndCompanyId(branchId, companyId);
+        // FK-063 FR-5/FR-6: pénznemenkénti összevetés a pénztári ágon (nem HUF-only).
+        // Becímletezett (EVENING, valutánként) vs. nyilvántartott cash_balance egyenleg.
+        Map<String, BigDecimal> denominatedByCurrency = new LinkedHashMap<>();
+        for (Object[] row : denominationBalanceRepository.sumActualStockByCurrency(
+                branchId, date, DenominationCategory.EVENING)) {
+            if (row.length >= 2 && row[0] instanceof String code && row[1] instanceof BigDecimal total) {
+                denominatedByCurrency.put(code, total);
+            }
+        }
+        Map<String, BigDecimal> expectedByCurrency = new LinkedHashMap<>();
+        for (CashBalance cb : cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId)) {
+            expectedByCurrency.put(cb.getCurrency().getCode(), cb.getCurrentBalance());
+        }
 
-        if (denominatedTotal == null || expectedTotal == null) {
+        Set<String> codes = new LinkedHashSet<>(expectedByCurrency.keySet());
+        codes.addAll(denominatedByCurrency.keySet());
+
+        // Sourcery review (PR #1483): üres adathalmaz nem mehet át csendben "rendben"-ként —
+        // ha sem becímletezett, sem nyilvántartott adat nincs, az adat-/konfigurációs hiba.
+        if (codes.isEmpty()) {
             return StepCheckResult.failed("Nem lehet ellenorizni a cimletezest (hianyznak adatok)");
         }
 
-        // 1 Ft elteres megengedett (kerekites miatt)
-        if (denominatedTotal.subtract(expectedTotal).abs().compareTo(BigDecimal.ONE) > 0) {
-            return StepCheckResult.failed(String.format(
-                "Cimletezesi elter es: ciml=%s Ft, vart=%s Ft",
-                denominatedTotal.toPlainString(), expectedTotal.toPlainString()));
+        List<String> mismatches = new ArrayList<>();
+        for (String code : codes) {
+            BigDecimal denominated = denominatedByCurrency.getOrDefault(code, BigDecimal.ZERO);
+            BigDecimal expected = expectedByCurrency.getOrDefault(code, BigDecimal.ZERO);
+            BigDecimal diff = denominated.subtract(expected).abs();
+            // HUF-nal 1 Ft elteres megengedett (kerekites); nem-HUF darabra pontos.
+            BigDecimal tolerance = "HUF".equals(code) ? BigDecimal.ONE : BigDecimal.ZERO;
+            if (diff.compareTo(tolerance) > 0) {
+                mismatches.add(String.format("%s: ciml=%s, vart=%s",
+                    code, denominated.toPlainString(), expected.toPlainString()));
+            }
         }
 
-        return StepCheckResult.passed("Esti cimletez es rendben");
+        if (!mismatches.isEmpty()) {
+            return StepCheckResult.failed(
+                "Cimletezesi elteres penznemenkent — " + String.join("; ", mismatches));
+        }
+
+        return StepCheckResult.passed("Esti cimletez es rendben (penznemenkent egyezik)");
     }
 
     /**

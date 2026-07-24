@@ -163,26 +163,34 @@ async function mockClosingApis(page: Page) {
     }
 
     if (path.endsWith(`/closing-wizard/${wizardId}/denominations`) && method === 'POST') {
+      // FK-063 (PR #1483): csak a >0 darabszámú tételek mennek a payloadba —
+      // a 0 darabos sorok kimaradnak (tört címletek / üres rekordok védelme).
       expect(await route.request().postDataJSON()).toEqual({
         HUF: {
           20000: 5,
-          10000: 0,
-          5000: 0,
-          2000: 0,
-          1000: 0,
-          500: 0,
-          200: 0,
-          100: 0,
-          50: 0,
-          20: 0,
-          10: 0,
-          5: 0,
         },
       })
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ total: 100000 }),
+      })
+    }
+
+    // FK-063 FR-1: készleten lévő pénznemek — HUF-only pénztár a teszthez
+    if (path.endsWith('/closing-wizard/currencies-with-balance') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(['HUF']),
+      })
+    }
+
+    if (path.endsWith('/denominations') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
       })
     }
 
