@@ -27,7 +27,7 @@ vi.mock('../printer', () => ({
 
 vi.mock('../sqlite', () => ({
   getConfig: vi.fn((key: string) => {
-    if (key === 'server_url') return 'https://backend.test/api/v1';
+    if (key === 'server_url') return 'https://excvaluta.com/api/v1';
     if (key === 'auth_token') return 'token-abc';
     if (key === 'bootstrap_company_code') return 'BEST_CHANGE';
     return null;
@@ -106,7 +106,7 @@ describe('SyncEngine — circular reply outbox sync', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockedGetConfig.mockImplementation((key: string) => {
-      if (key === 'server_url') return 'https://backend.test/api/v1';
+      if (key === 'server_url') return 'https://excvaluta.com/api/v1';
       if (key === 'auth_token') return 'token-abc';
       if (key === 'bootstrap_company_code') return 'BEST_CHANGE';
       return null;
@@ -126,7 +126,7 @@ describe('SyncEngine — circular reply outbox sync', () => {
     await engine.syncCircularReplies();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://backend.test/api/v1/circulars/42/reply',
+      'https://excvaluta.com/api/v1/circulars/42/reply',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
