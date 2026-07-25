@@ -8,9 +8,11 @@ import hu.puzzleir.valuta.repository.ExchangeRateRepository;
 import hu.puzzleir.valuta.repository.SystemParameterRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,14 +36,35 @@ public class SupervisorService {
     private final ExchangeRateRepository exchangeRateRepository;
     private final AuditLogService auditLogService;
     private final PasswordEncoder passwordEncoder;
+    private final Environment environment;
 
-    @Value("${app.supervisor.password-hash:$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy}")
+    @Value("${app.supervisor.password-hash}")
     private String supervisorPasswordHash;
+
+    @PostConstruct
+    void validateSupervisorHash() {
+        boolean isProduction = java.util.Arrays.asList(environment.getActiveProfiles())
+                .contains("production");
+        if (isProduction && (supervisorPasswordHash == null
+                || supervisorPasswordHash.isBlank()
+                || supervisorPasswordHash.startsWith("CHANGE-ME")
+                || !supervisorPasswordHash.startsWith("$2"))) {
+            throw new IllegalStateException(
+                    "FATAL: app.supervisor.password-hash nincs konfigurálva vagy nem BCrypt hash! "
+                            + "Állítsd be az APP_SUPERVISOR_PASSWORD_HASH env változót (BCrypt hash).");
+        }
+        if (!isProduction && (supervisorPasswordHash == null || supervisorPasswordHash.isBlank())) {
+            log.warn("app.supervisor.password-hash nincs beállítva — supervisor jelszavas auth letiltva (fail-closed)");
+        }
+    }
 
     /**
      * Supervisor jelszó ellenőrzés.
      */
     public boolean authenticate(String rawPassword) {
+        if (supervisorPasswordHash == null || supervisorPasswordHash.isBlank()) {
+            return false; // fail-closed: nincs konfigurált hash → soha nincs egyezés
+        }
         return passwordEncoder.matches(rawPassword, supervisorPasswordHash);
     }
 
