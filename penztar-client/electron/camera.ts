@@ -9,7 +9,7 @@ import {
   computeFileHash,
   generateNewKey,
 } from './camera-encryption';
-import { assertInsideBase, validateRecordingExtension } from './path-guard';
+import { assertInsideBase, sanitizeId, validateRecordingExtension } from './path-guard';
 
 const CAMERA_DIR = 'C:/valuta/camera';
 
@@ -17,12 +17,6 @@ const CAMERA_DIR = 'C:/valuta/camera';
 let rtspRecorder: RtspRecorder | null = null;
 const completedSegments: RecordingSegment[] = [];
 const MAX_SEGMENT_HISTORY = 500;
-
-function sanitizeId(id: string): string {
-  const clean = id.replace(/[^a-zA-Z0-9_-]/g, '');
-  if (!clean || clean !== id) throw new Error('Invalid transactionId: ' + id);
-  return clean;
-}
 
 function listDirectories(root: string): string[] {
   if (!fs.existsSync(root)) return [];
@@ -336,6 +330,7 @@ export function registerCameraHandlers(): void {
 
       for (const cam of cameras) {
         try {
+          sanitizeId(cam.id, 'cameraId');
           rtspRecorder.addCamera(cam);
         } catch (err) {
           errors.push(`${cam.id}: ${(err as Error).message}`);

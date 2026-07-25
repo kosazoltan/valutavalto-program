@@ -77,6 +77,7 @@ import {
   SERIAL_PORT_CONFIG_KEY,
   type PrintReceiptData,
 } from './printer';
+import { sanitizeStoredServerUrl } from './config-guard';
 
 // --- Típusok ---
 
@@ -478,7 +479,11 @@ export class SyncEngine {
     if (!stored) {
       return null;
     }
-    return stored;
+    const sanitized = sanitizeStoredServerUrl(stored);
+    if (!sanitized) {
+      log.warn('[SyncEngine] invalid stored server_url ignored');
+    }
+    return sanitized;
   }
 
   /**
@@ -514,7 +519,11 @@ export class SyncEngine {
       getConfig('server_url_fallback') ??
       ''
     ).trim();
-    return stored || null;
+    const sanitized = sanitizeStoredServerUrl(stored);
+    if (stored && !sanitized) {
+      log.warn('[SyncEngine] invalid stored server_url_fallback_primary ignored');
+    }
+    return sanitized;
   }
 
   /**
@@ -525,7 +534,11 @@ export class SyncEngine {
    */
   private getServerUrlFallbackSecondary(): string | null {
     const stored = (getConfig('server_url_fallback_secondary') ?? '').trim();
-    return stored || null;
+    const sanitized = sanitizeStoredServerUrl(stored);
+    if (stored && !sanitized) {
+      log.warn('[SyncEngine] invalid stored server_url_fallback_secondary ignored');
+    }
+    return sanitized;
   }
 
   /**

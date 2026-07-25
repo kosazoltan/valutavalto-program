@@ -20,6 +20,7 @@ import {
   preferredRoleCodesForAppMode,
   resolveBootstrapRoleCodeForAppMode,
 } from './setup-app-mode-roles';
+import { isAllowedUrl } from './api-proxy';
 
 export type { SetupWorkerOption } from '@valuta/shared-ipc';
 export { resolveBootstrapRoleCodeForAppMode } from './setup-app-mode-roles';
@@ -588,6 +589,12 @@ export function isFirstRun(): SetupCheckResult {
   return { isFirstRun: false, envPath };
 }
 
+export function assertSetupAllowed(check: SetupCheckResult): void {
+  if (!check.isFirstRun) {
+    throw new Error('setup IPC blokkolva: a munkaallomas mar provizionalt');
+  }
+}
+
 /**
  * Iroda-lista lekérése a wizard 2. lépéshez.
  *
@@ -1047,6 +1054,12 @@ export async function testConnection(
   if (!normalizedUrl.endsWith('/api/v1')) {
     normalizedUrl = `${normalizedUrl}/api/v1`;
   }
+  if (!isAllowedUrl(normalizedUrl)) {
+    return {
+      success: false,
+      errorMessage: 'A szerver URL nincs az engedélyezett host allowlistben.',
+    };
+  }
 
   if (!username.trim() || !password) {
     const response = await httpJsonWithRetry<{ completed?: boolean }>(
@@ -1099,6 +1112,13 @@ export async function saveSetupConfig(payload: SetupSavePayload): Promise<SetupS
     if (!payload.offlineMode) {
       if (!/^https?:\/\//i.test(payload.apiUrl)) {
         return { success: false, envPath, errorMessage: 'Érvénytelen szerver URL.' };
+      }
+      if (!isAllowedUrl(payload.apiUrl)) {
+        return {
+          success: false,
+          envPath,
+          errorMessage: 'A szerver URL nincs az engedélyezett host allowlistben.',
+        };
       }
       if (!payload.companyCode) {
         return { success: false, envPath, errorMessage: 'Hiányzó cégkód.' };
