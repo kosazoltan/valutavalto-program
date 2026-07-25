@@ -40,7 +40,10 @@ vi.mock('electron', () => ({
 
 import { net, safeStorage } from 'electron';
 import {
+  DEFAULT_BRANCHES,
   assertSetupAllowed,
+  fetchBranchesFromBackend,
+  getBranches,
   getWorkers,
   isFirstRun,
   persistBootstrapPasswordConfig,
@@ -125,6 +128,29 @@ describe('setup IPC guards', () => {
     },
   );
 
+  it('uses the static branch fallback for a non-allowlisted URL without a network request', async () => {
+    await expect(getBranches('https://evil.example', 'EBC')).resolves.toEqual(DEFAULT_BRANCHES);
+    expect(net.request).not.toHaveBeenCalled();
+  });
+
+  it('returns no workers for a non-allowlisted URL without a network request', async () => {
+    await expect(getWorkers('https://evil.example', 'EBC', 'B001')).resolves.toEqual([]);
+    expect(net.request).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-allowlisted branch fetch before any network request', async () => {
+    await expect(fetchBranchesFromBackend('https://evil.example', 'EBC')).rejects.toThrow(
+      /allowlist/i,
+    );
+    expect(net.request).not.toHaveBeenCalled();
+  });
+
+  it('allows an allowlisted branch URL to reach the request path', async () => {
+    mockHttpResponse(200);
+    await getBranches('https://excvaluta.com', 'EBC');
+    expect(net.request).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects a non-allowlisted online setup URL without writing .env', async () => {
     await expect(
       saveSetupConfig(setupPayload({ apiUrl: 'https://evil.example' })),
@@ -136,11 +162,15 @@ describe('setup IPC guards', () => {
   });
 
   it('skips the apiUrl allowlist check in offline mode', async () => {
-    await expect(
-      saveSetupConfig(
-        setupPayload({ apiUrl: 'https://evil.example', offlineMode: true, branchName: '' }),
-      ),
-    ).resolves.toMatchObject({ success: false, errorMessage: 'Hiányzó iroda.' });
+    const result = await saveSetupConfig(
+      setupPayload({ apiUrl: 'https://evil.example', offlineMode: true, adminPassword: '' }),
+    );
+
+    expect(result.errorMessage ?? '').not.toMatch(/allowlist/i);
+    expect(result).toMatchObject({
+      success: false,
+      errorMessage: 'Az admin jelszónak legalább 8 karakteresnek kell lennie.',
+    });
   });
 });
 

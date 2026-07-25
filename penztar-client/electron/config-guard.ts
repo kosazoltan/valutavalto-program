@@ -36,8 +36,10 @@ export function isConfigKeyWritable(key: string): boolean {
 }
 
 /**
- * Validates only the stored URL protocol. Host allowlisting, including the
- * link-local block, remains centralized in api-proxy.ts `isAllowedUrl`.
+ * Validates the stored URL protocol and returns a credential-free normalized
+ * form. Userinfo, query, fragment, and trailing slashes are removed. Host
+ * allowlisting, including the link-local block, remains centralized in
+ * api-proxy.ts `isAllowedUrl`.
  */
 export function sanitizeStoredServerUrl(raw: string | null | undefined): string | null {
   const trimmed = raw?.trim() ?? '';
@@ -46,7 +48,7 @@ export function sanitizeStoredServerUrl(raw: string | null | undefined): string 
   try {
     const parsed = new URL(trimmed);
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
-    return trimmed;
+    return parsed.origin + parsed.pathname.replace(/\/+$/, '');
   } catch {
     return null;
   }

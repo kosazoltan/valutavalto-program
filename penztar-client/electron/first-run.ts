@@ -393,6 +393,9 @@ function normalizeApiBase(apiUrl: string): string {
   if (!url.endsWith('/api/v1')) {
     url = `${url}/api/v1`;
   }
+  if (!isAllowedUrl(url)) {
+    throw new Error('A szerver URL nincs az engedélyezett host allowlistben.');
+  }
   return url;
 }
 
