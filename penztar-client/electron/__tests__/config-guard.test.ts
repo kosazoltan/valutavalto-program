@@ -85,6 +85,10 @@ describe('config-guard — stored server URL', () => {
   it.each([
     ['  https://backend.local/api/v1  ', 'https://backend.local/api/v1'],
     ['http://192.168.1.10:8080/api/v1', 'http://192.168.1.10:8080/api/v1'],
+    ['http://user:pass@backend.local/api/v1', 'http://backend.local/api/v1'],
+    ['https://backend.local/api/v1?x=1#frag', 'https://backend.local/api/v1'],
+    ['https://backend.local/api/v1/', 'https://backend.local/api/v1'],
+    ['https://backend.local', 'https://backend.local'],
   ])('accepts `%s`', (raw, expected) => {
     expect(sanitizeStoredServerUrl(raw)).toBe(expected);
   });
