@@ -40,7 +40,10 @@ vi.mock('electron', () => ({
 
 import { net, safeStorage } from 'electron';
 import {
+  DEFAULT_BRANCHES,
   assertSetupAllowed,
+  fetchBranchesFromBackend,
+  getBranches,
   getWorkers,
   isFirstRun,
   persistBootstrapPasswordConfig,
@@ -124,6 +127,29 @@ describe('setup IPC guards', () => {
       expect(net.request).toHaveBeenCalledTimes(1);
     },
   );
+
+  it('uses the static branch fallback for a non-allowlisted URL without a network request', async () => {
+    await expect(getBranches('https://evil.example', 'EBC')).resolves.toEqual(DEFAULT_BRANCHES);
+    expect(net.request).not.toHaveBeenCalled();
+  });
+
+  it('returns no workers for a non-allowlisted URL without a network request', async () => {
+    await expect(getWorkers('https://evil.example', 'EBC', 'B001')).resolves.toEqual([]);
+    expect(net.request).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-allowlisted branch fetch before any network request', async () => {
+    await expect(fetchBranchesFromBackend('https://evil.example', 'EBC')).rejects.toThrow(
+      /allowlist/i,
+    );
+    expect(net.request).not.toHaveBeenCalled();
+  });
+
+  it('allows an allowlisted branch URL to reach the request path', async () => {
+    mockHttpResponse(200);
+    await getBranches('https://excvaluta.com', 'EBC');
+    expect(net.request).toHaveBeenCalledTimes(1);
+  });
 
   it('rejects a non-allowlisted online setup URL without writing .env', async () => {
     await expect(
