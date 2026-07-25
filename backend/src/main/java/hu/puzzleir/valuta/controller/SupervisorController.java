@@ -25,9 +25,9 @@ public class SupervisorController {
      * POST /api/v1/supervisor/authenticate
      * Supervisor jelszó ellenőrzés.
      */
-     @PostMapping("/authenticate")
-     @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
-     public ResponseEntity<Map<String, Boolean>> authenticate(
+    @PostMapping("/authenticate")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<Map<String, Boolean>> authenticate(
             @Valid @RequestBody SupervisorAuthRequest request) {
         boolean ok = supervisorService.authenticate(request.getPassword());
         return ResponseEntity.ok(Map.of("authenticated", ok));
