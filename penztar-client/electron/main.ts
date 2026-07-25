@@ -438,8 +438,11 @@ ipcMain.handle('get-config', async (_event, key: string): Promise<string | null>
 });
 
 ipcMain.handle('set-config', async (_event, key: string, value: string): Promise<void> => {
-  if (typeof key !== 'string' || typeof value !== 'string' || !isConfigKeyWritable(key)) {
+  if (typeof key !== 'string' || !isConfigKeyWritable(key)) {
     throw new Error('set-config: key not allowed: ' + key);
+  }
+  if (typeof value !== 'string') {
+    throw new Error('set-config: value must be a string for key: ' + key);
   }
   setConfig(key, value);
 });
