@@ -241,6 +241,42 @@ describe('FK14 — Főlap szinkron-jelző hálózat-állapot (Fázis 0, RED)', (
     expect(screen.queryByDisplayValue('395.00')).not.toBeInTheDocument()
   })
 
+  it('FR-4: ping-hiba miatti offline állapotból egy sikeres health-ping önmagában Online-ra vált és resyncet indít', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    await renderOnline()
+    expect(await screen.findByDisplayValue('390.00')).toBeInTheDocument()
+
+    // health-ping hibázik → Offline. Böngésző-esemény NINCS: a navigator.onLine
+    // végig true marad, tehát a visszaváltást sem hozhatja window 'online' esemény.
+    apiGetSpy.mockImplementation((url: string) => {
+      if (url === '/health') return Promise.reject(networkError())
+      return Promise.resolve({ data: {} })
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(HEALTH_PING_INTERVAL_MS)
+    })
+    expect(await screen.findByText(OFFLINE_TEXT)).toBeVisible()
+    expect(window.navigator.onLine).toBe(true)
+
+    // a következő ping sikeres; a szerveren közben ÚJ érték van (E=385) — a konkrét
+    // érték megjelenése bizonyítja a resyncet, nem csak a hívásszám
+    mocks.listActivePublished.mockResolvedValue([{ ...SERVER_EUR, baseBuyRate: 385 }])
+    const callsBefore = mocks.listActivePublished.mock.calls.length
+    apiGetSpy.mockImplementation((url: string) => {
+      if (url === '/health') return Promise.resolve({ data: { status: 'UP' } })
+      return Promise.resolve({ data: {} })
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(HEALTH_PING_INTERVAL_MS)
+    })
+
+    expect(await screen.findByText(ONLINE_TEXT)).toBeVisible()
+    await flushAsync()
+    expect(mocks.listActivePublished.mock.calls.length).toBe(callsBefore + 1)
+    expect(await screen.findByDisplayValue('385.00')).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('390.00')).not.toBeInTheDocument()
+  })
+
   it('FR-5: mount alatt (katalógus-lekérés folyamatban) a jelző azonnal Szerver szinkron…, nem üres', async () => {
     mocks.catalog.loading = true
     seedStorage()
