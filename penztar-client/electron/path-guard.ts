@@ -12,6 +12,12 @@
  */
 import path from 'node:path';
 
+export function sanitizeId(id: string, label = 'transactionId'): string {
+  const clean = id.replace(/[^a-zA-Z0-9_-]/g, '');
+  if (!clean || clean !== id) throw new Error(`Invalid ${label}: ${id}`);
+  return clean;
+}
+
 /**
  * Biztositja, hogy `value` a `base` konyvtar alatt (vagy egyenlo vele) van.
  * Sibling-prefix tamadasok ellen vedett: `C:\valuta\scan_evil` NEM mehet at,

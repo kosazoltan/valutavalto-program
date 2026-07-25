@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { encryptFile, computeFileHash, type EncryptionConfig } from './camera-encryption';
+import { assertInsideBase } from './path-guard';
 
 export interface RtspCameraConfig {
   id: string;
@@ -185,11 +186,19 @@ export class RtspRecorder extends EventEmitter {
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
     const timeStr = now.toISOString().slice(11, 19).replace(/:/g, '-');
-    const dir = path.join(this.storageRoot, dateStr, config.id);
+    const dir = assertInsideBase(
+      path.join(this.storageRoot, dateStr, config.id),
+      this.storageRoot,
+      'camera segment dir',
+    );
     fs.mkdirSync(dir, { recursive: true });
 
     const filename = `${config.id}_${timeStr}.mp4`;
-    const segmentPath = path.join(dir, filename);
+    const segmentPath = assertInsideBase(
+      path.join(dir, filename),
+      this.storageRoot,
+      'camera segment path',
+    );
 
     const segment: RecordingSegment = {
       cameraId: config.id,

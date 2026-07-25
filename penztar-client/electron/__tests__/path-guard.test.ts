@@ -10,11 +10,29 @@ import { describe, it, expect } from 'vitest';
 import path from 'node:path';
 import {
   assertInsideBase,
+  sanitizeId,
   validateDocumentType,
   validateRecordingExtension,
   ALLOWED_DOCUMENT_TYPES,
   ALLOWED_RECORDING_EXTENSIONS,
 } from '../path-guard';
+
+describe('path-guard — sanitizeId', () => {
+  it('returns an allowlisted camera identifier unchanged', () => {
+    expect(sanitizeId('cam-01_A')).toBe('cam-01_A');
+  });
+
+  it.each(['../../evil', 'a/b', 'a\\b', '', 'a b', '..'])(
+    'rejects the unsafe identifier `%s`',
+    (id) => {
+      expect(() => sanitizeId(id)).toThrow(/Invalid transactionId/);
+    },
+  );
+
+  it('includes the supplied label in the error message', () => {
+    expect(() => sanitizeId('../evil', 'cameraId')).toThrow(/Invalid cameraId/);
+  });
+});
 
 describe('path-guard — assertInsideBase', () => {
   const SCAN_BASE = process.platform === 'win32' ? 'C:\\valuta\\scan' : '/var/valuta/scan';
