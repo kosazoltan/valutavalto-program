@@ -146,6 +146,7 @@ import {
   type CustomerDisplayPayload,
 } from './customer-display';
 import {
+  assertSetupAllowed,
   isFirstRun,
   getBranches,
   getWorkers,
@@ -456,6 +457,7 @@ ipcMain.handle('setup:check', async () => {
 ipcMain.handle(
   'setup:branches',
   async (_event, params?: { apiUrl?: string; companyCode?: string }) => {
+    assertSetupAllowed(isFirstRun());
     return await getBranches(params?.apiUrl, params?.companyCode);
   },
 );
@@ -463,6 +465,7 @@ ipcMain.handle(
 ipcMain.handle(
   IPC_CHANNELS.SETUP_WORKERS,
   async (_event, params: SetupWorkersRequest): Promise<SetupWorkerOption[]> => {
+    assertSetupAllowed(isFirstRun());
     const apiUrl = params?.apiUrl?.trim() ?? '';
     const companyCode = params?.companyCode?.trim() ?? '';
     const branchCode = params?.branchCode?.trim() ?? '';
@@ -486,6 +489,7 @@ ipcMain.handle(
     _event,
     params: { apiUrl: string; companyCode: string; username: string; password: string },
   ) => {
+    assertSetupAllowed(isFirstRun());
     return await testConnection(
       params.apiUrl,
       params.companyCode,
@@ -496,6 +500,7 @@ ipcMain.handle(
 );
 
 ipcMain.handle('setup:save', async (_event, payload: SetupSavePayload) => {
+  assertSetupAllowed(isFirstRun());
   return await saveSetupConfig(payload);
 });
 

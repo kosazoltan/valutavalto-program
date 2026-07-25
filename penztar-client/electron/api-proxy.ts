@@ -106,7 +106,7 @@ function isPrivateOrLoopbackHost(hostname: string): boolean {
   return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || a === 127;
 }
 
-function isAllowedUrl(raw: string): boolean {
+export function isAllowedUrl(raw: string): boolean {
   try {
     const parsed = new URL(raw);
     // Csak http(s) — file:, data:, stb. tiltott (F-005).
