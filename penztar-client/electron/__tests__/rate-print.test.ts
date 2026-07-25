@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const { getConfigMock, defaultGetConfig } = vi.hoisted(() => {
   const defaultGetConfig = (key: string): string | null => {
-    if (key === 'server_url') return 'https://backend.test/api/v1';
+    if (key === 'server_url') return 'https://excvaluta.com/api/v1';
     if (key === 'auth_token') return 'token-abc';
     if (key === 'branch_code') return 'BR001';
     if (key === 'worker_name') return 'Teszt Pénztáros';
@@ -110,7 +110,7 @@ function outboxRows(values: Array<[string, string, string]>): Array<{
 }
 
 const pendingPrintUrl =
-  'https://backend.test/api/v1/exchange-rate-master/distribution/pending-print';
+  'https://excvaluta.com/api/v1/exchange-rate-master/distribution/pending-print';
 
 describe('SyncEngine — rate print obligations', () => {
   let engine: SyncEngine;
@@ -138,7 +138,7 @@ describe('SyncEngine — rate print obligations', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      'https://backend.test/api/v1/exchange-rate-master/distribution/pending-print',
+      'https://excvaluta.com/api/v1/exchange-rate-master/distribution/pending-print',
       expect.objectContaining({ method: 'GET' }),
     );
     expect(mockedPrintReceipt).toHaveBeenCalledWith(
@@ -153,7 +153,7 @@ describe('SyncEngine — rate print obligations', () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      'https://backend.test/api/v1/exchange-rate-master/distribution/dist-1/acknowledge',
+      'https://excvaluta.com/api/v1/exchange-rate-master/distribution/dist-1/acknowledge',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({ Authorization: 'Bearer token-abc' }),
@@ -224,7 +224,7 @@ describe('SyncEngine — rate print obligations', () => {
     await engine.syncRatePrintObligations();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://backend.test/api/v1/exchange-rate-master/distribution/dist-1/acknowledge',
+      'https://excvaluta.com/api/v1/exchange-rate-master/distribution/dist-1/acknowledge',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ printProofToken: 'proof-token' }),
