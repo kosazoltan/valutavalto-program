@@ -66,10 +66,7 @@ describe('config-guard — allowlist and deny-pattern consistency', () => {
 
   it('keeps deny-pattern matches blocked before allowlist consideration', () => {
     const readAllowlistWithSecret = [...CONFIG_READ_ALLOWLIST, 'my_token_cache'];
-    const writeAllowlistWithServerUrl = [
-      ...CONFIG_WRITE_ALLOWLIST,
-      'server_url_fallback_primary',
-    ];
+    const writeAllowlistWithServerUrl = [...CONFIG_WRITE_ALLOWLIST, 'server_url_fallback_primary'];
 
     expect(
       readAllowlistWithSecret.some(
