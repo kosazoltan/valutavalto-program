@@ -355,8 +355,29 @@ function oauthClientConfig(): { clientId: string; clientSecret: string } {
   }
 }
 
+// Keep in sync with penztar-client/electron/config-guard.ts (VV-017).
+const CONFIG_READ_ALLOWLIST = [
+  'app_mode',
+  'offline_mode',
+  'branch_code',
+  'server_url',
+  'camera_configs',
+  // Shared bundle — rate-maker flavor uses this (exchange-rates.ts:562); DO NOT REMOVE without verifying tree-shaking doesn't strip the call site in penztar builds.
+  'rate_maker_device_id',
+] as const
+const SENSITIVE_READ_KEY_PATTERN = /password|token|secret|_sub/i
+
 function registerIpcHandlers(): void {
-  ipcMain.handle('get-config', (_event, key: string) => getConfig(key))
+  ipcMain.handle('get-config', (_event, key: string) => {
+    if (
+      SENSITIVE_READ_KEY_PATTERN.test(key) ||
+      !(CONFIG_READ_ALLOWLIST as readonly string[]).includes(key)
+    ) {
+      log.warn('[IPC] get-config blocked key:', key)
+      return null
+    }
+    return getConfig(key)
+  })
   ipcMain.handle('set-config', (_event, key: string, value: string) => setConfig(key, value))
   ipcMain.handle('delete-config', (_event, key: string) => deleteConfig(key))
 
