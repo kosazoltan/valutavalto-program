@@ -22,7 +22,8 @@
       "signingHashAlgorithms": ["sha256"],
       "rfc3161TimeStampServer": "http://timestamp.digicert.com"
     },
-    "verifyUpdateCodeSignature": false
+    "verifyUpdateCodeSignature": true,
+    "publisherName": ["EXCLUSIVE BEST Change Zrt."]
   },
   "nsis": {
     "oneClick": false,
