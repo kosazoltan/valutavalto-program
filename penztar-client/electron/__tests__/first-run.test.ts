@@ -162,11 +162,15 @@ describe('setup IPC guards', () => {
   });
 
   it('skips the apiUrl allowlist check in offline mode', async () => {
-    await expect(
-      saveSetupConfig(
-        setupPayload({ apiUrl: 'https://evil.example', offlineMode: true, branchName: '' }),
-      ),
-    ).resolves.toMatchObject({ success: false, errorMessage: 'Hiányzó iroda.' });
+    const result = await saveSetupConfig(
+      setupPayload({ apiUrl: 'https://evil.example', offlineMode: true, adminPassword: '' }),
+    );
+
+    expect(result.errorMessage ?? '').not.toMatch(/allowlist/i);
+    expect(result).toMatchObject({
+      success: false,
+      errorMessage: 'Az admin jelszónak legalább 8 karakteresnek kell lennie.',
+    });
   });
 });
 
