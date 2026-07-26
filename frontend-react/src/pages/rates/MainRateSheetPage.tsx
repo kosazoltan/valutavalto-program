@@ -456,6 +456,10 @@ export default function MainRateSheetPage() {
   // FK14 FR-9 (Bugbot Medium): az „Offline" toast egy offline-perióduson belül
   // legfeljebb egyszer — a flag sikeresen befejezett szerver-syncnél áll vissza.
   const offlineToastShownRef = useRef(false)
+  // FK14 FR-11 (Bugbot 2. kör): a folyamatban lévő mount-sync/resync érvénytelenítője —
+  // a goOffline() ezen keresztül állítja a futó loadServerData cancelled-flagjét, így a
+  // repülés közbeni 'offline' esemény után a kései sync-siker nem írhat 'online'-t.
+  const invalidateActiveSyncRef = useRef<(() => void) | null>(null)
 
   // Computed cross settlement for G column
   const eurRow = useMemo(() => rows.find((r) => r.currency === 'EUR'), [rows])
@@ -934,6 +938,11 @@ export default function MainRateSheetPage() {
       return
     }
     let cancelled = false
+    // FR-11 (Bugbot 2. kör): a network-watcher goOffline()-ja innen éri el a futó
+    // sync cancelled-flagjét — a következő effect-futás felülírja a regisztrációt.
+    invalidateActiveSyncRef.current = () => {
+      cancelled = true
+    }
     setServerSyncState('loading')
     const loadServerData = async () => {
       try {
@@ -1030,6 +1039,9 @@ export default function MainRateSheetPage() {
             offErr,
           )
         }
+        // FR-11: az MNB-fetch hibaágán is ellenőrizni kell — a cancel (offline esemény)
+        // a fenti await KÖZBEN is érkezhetett, és a catch-ág átlépné az in-try checket.
+        if (cancelled) return
 
         // FK07-fix (FR-2): a perzisztált helyi-módosítás jelzők — a remountot túlélő,
         // még ki nem küldött cella-értékeket a merge NEM írhatja felül (a dirtyRef
@@ -1146,6 +1158,9 @@ export default function MainRateSheetPage() {
     }
     const goOffline = () => {
       bumpGeneration()
+      // FR-11: a megerősített hálózat-vesztés a repülő mount-sync/resync sikerét is
+      // érvényteleníti — a kései HTTP-siker már nem írhatja felül az offline állapotot.
+      invalidateActiveSyncRef.current?.()
       setServerSyncState('offline')
     }
     const goOnlineAndResync = () => {
