@@ -448,6 +448,14 @@ export default function MainRateSheetPage() {
   // FK14 (FR-4): a passzív visszaváltási triggerek (window 'online' esemény VAGY sikeres
   // health-ping offline állapotban) ezzel futtatják újra a mount-sync effectet (resync).
   const [resyncNonce, setResyncNonce] = useState(0)
+  // FK14 FR-8 (Bugbot High+Medium, PR #1493): generation/staleness guard — minden
+  // állapotváltási trigger (offline/online esemény, új ping indítása, unmount) növeli,
+  // és a repülő health-ping válasza csak akkor írhat state-et, ha a ping indításakor
+  // rögzített érték még egyezik (különben stale, csendben eldobjuk).
+  const networkGenerationRef = useRef(0)
+  // FK14 FR-9 (Bugbot Medium): az „Offline" toast egy offline-perióduson belül
+  // legfeljebb egyszer — a flag sikeresen befejezett szerver-syncnél áll vissza.
+  const offlineToastShownRef = useRef(false)
 
   // Computed cross settlement for G column
   const eurRow = useMemo(() => rows.find((r) => r.currency === 'EUR'), [rows])
@@ -917,7 +925,12 @@ export default function MainRateSheetPage() {
       // a cache-fallback kedvéért — dirty alatt a memóriabeli rows marad.
       if (!dirtyRef.current) setRows(loadFromStorage())
       setServerSyncState('offline')
-      toast.warning('Offline', 'Szerver nem elérhető — helyi cache betöltve')
+      // FR-9 (Bugbot): az „Offline" toast offline-periódusonként legfeljebb egyszer —
+      // ismételt sikertelen resync-próbálkozás nem generál toast-spamet.
+      if (!offlineToastShownRef.current) {
+        offlineToastShownRef.current = true
+        toast.warning('Offline', 'Szerver nem elérhető — helyi cache betöltve')
+      }
       return
     }
     let cancelled = false
@@ -981,6 +994,8 @@ export default function MainRateSheetPage() {
           setRows((prev) => buildRowsFromCatalog(catalog.currencies, prev))
           setServerSyncState('online')
           setServerLastSyncAt(new Date().toISOString())
+          // FR-9 (Bugbot): sikeres sync = az offline-periódus vége, a toast-flag visszaáll.
+          offlineToastShownRef.current = false
           logger.info(
             'MainRateSheetPage',
             `Server sync (user editing - ertekek megorzve, tagsag frissitve): ${serverRates.length} aktiv arfolyam`,
@@ -1067,6 +1082,7 @@ export default function MainRateSheetPage() {
           setRows((prev) => buildRowsFromCatalog(catalog.currencies, prev))
           setServerSyncState('online')
           setServerLastSyncAt(new Date().toISOString())
+          offlineToastShownRef.current = false
           logger.info(
             'MainRateSheetPage',
             'Server sync (user editing a 2. fetch alatt) - ertekek megorzve',
@@ -1076,6 +1092,7 @@ export default function MainRateSheetPage() {
         setRows(mergedRows)
         setServerSyncState('online')
         setServerLastSyncAt(new Date().toISOString())
+        offlineToastShownRef.current = false
 
         // Copilot PR #687: persist merged rows to localStorage for true offline fallback
         try {
@@ -1100,7 +1117,11 @@ export default function MainRateSheetPage() {
         // Verif P2: dirty alatt a memóriabeli (in-flight editet hordozó) rows marad.
         if (!dirtyRef.current) setRows(loadFromStorage())
         setServerSyncState('offline')
-        toast.warning('Offline', 'Szerver nem elérhető — helyi cache betöltve')
+        // FR-9 (Bugbot): toast-dedup — lásd a catalog.error ág megjegyzését.
+        if (!offlineToastShownRef.current) {
+          offlineToastShownRef.current = true
+          toast.warning('Offline', 'Szerver nem elérhető — helyi cache betöltve')
+        }
       }
     }
     void loadServerData()
@@ -1120,12 +1141,17 @@ export default function MainRateSheetPage() {
   // Platformfüggetlen, nincs isElectron() kapu (spec FR-2 megjegyzés). NFR-2: az állapot
   // azonnal vált; toastot ezek a triggerek nem adnak, így toast-spam sem keletkezhet.
   useEffect(() => {
+    const bumpGeneration = () => {
+      networkGenerationRef.current += 1
+    }
     const goOffline = () => {
+      bumpGeneration()
       setServerSyncState('offline')
     }
     const goOnlineAndResync = () => {
       // TBD-1 (Tomi döntése): azonnali visszaváltás; a resync a háttérben tölti újra a
       // katalógust — dirty cellát a mount-sync effect meglévő védelme miatt nem ír felül.
+      bumpGeneration()
       setServerSyncState('online')
       setResyncNonce((n) => n + 1)
     }
@@ -1133,20 +1159,32 @@ export default function MainRateSheetPage() {
     window.addEventListener('offline', goOffline)
 
     const pingInterval = setInterval(() => {
+      // FR-8: az új ping indítása maga is állapotváltási trigger — az esetleg még
+      // repülő korábbi ping válasza ettől kezdve stale, nem írhat state-et.
+      bumpGeneration()
+      const generationAtStart = networkGenerationRef.current
+      const isStale = () => networkGenerationRef.current !== generationAtStart
       void api
         .get('/health', { timeout: 5_000 })
         .then(() => {
+          // FR-8: stale válasz (közben offline/online esemény, újabb ping vagy unmount
+          // történt) semmit nem írhat — a friss állapot triggere az irányadó.
+          if (isStale()) return
           // FR-4 (spec-pontosítás): a sikeres ping OFFLINE állapotban önálló visszaváltási
           // trigger. Online/loading állapotban a sikeres ping no-op (nincs villogás).
           if (serverSyncStateRef.current === 'offline') goOnlineAndResync()
         })
         .catch(() => {
+          if (isStale()) return
           // FR-3: megerősített hálózat-vesztés — azonnali offline váltás.
           goOffline()
         })
     }, HEALTH_PING_INTERVAL_MS)
 
     return () => {
+      // FR-10: unmountkor is nő a generáció — a még repülő ping-válasz stale-ként
+      // eldobódik, nem hív setState-et/resyncet a megsemmisült komponensen.
+      bumpGeneration()
       window.removeEventListener('online', goOnlineAndResync)
       window.removeEventListener('offline', goOffline)
       clearInterval(pingInterval)
