@@ -77,6 +77,8 @@ import {
   SERIAL_PORT_CONFIG_KEY,
   type PrintReceiptData,
 } from './printer';
+import { sanitizeStoredServerUrl } from './config-guard';
+import { isAllowedUrl } from './api-proxy';
 
 // --- Típusok ---
 
@@ -457,17 +459,24 @@ export class SyncEngine {
   private readonly maxBackoffMs = 300_000; // 5 perc
 
   /**
-   * Szerver URL lekérése a SQLite config-ból.
-   * NULL-t ad vissza, ha:
-   *   - nincs beállítva (server_url config hiányzik/üres)
-   *   - explicit offline módban van az app (offline_mode=true config)
-   *
-   * A runSync() ekkor NEM indít hálózati hívást — offline pénztárnál NEM spamel HTTP 400-at.
-   * A SetupWizard online-regisztrációkor állítja be a server_url + offline_mode=false configot.
+   * Normalizes a stored server URL and rejects hosts outside the outbound allowlist.
    */
+  private sanitizeAllowedServerUrl(stored: string, configLabel: string): string | null {
+    const sanitized = sanitizeStoredServerUrl(stored);
+    if (!sanitized) {
+      return null;
+    }
+    if (!isAllowedUrl(sanitized)) {
+      log.warn(`[SyncEngine] stored ${configLabel} rejected by host allowlist — ignored`);
+      return null;
+    }
+    return sanitized;
+  }
+
   /**
-   * Primary server URL (vagy null ha offline).
-   * HA: a runSync hibanal probalja a fallback URL-t, ha be van allitva.
+   * Primary server URL from SQLite config (or null when missing/offline).
+   * HA: runSync tries a configured fallback after a primary failure.
+   * Returning null prevents outbound requests while the till is offline.
    */
   private getServerUrl(): string | null {
     const offlineFlag = (getConfig('offline_mode') ?? '').toLowerCase();
@@ -478,7 +487,11 @@ export class SyncEngine {
     if (!stored) {
       return null;
     }
-    return stored;
+    const sanitized = this.sanitizeAllowedServerUrl(stored, 'server_url');
+    if (!sanitized) {
+      log.warn('[SyncEngine] invalid stored server_url ignored');
+    }
+    return sanitized;
   }
 
   /**
@@ -514,7 +527,11 @@ export class SyncEngine {
       getConfig('server_url_fallback') ??
       ''
     ).trim();
-    return stored || null;
+    const sanitized = this.sanitizeAllowedServerUrl(stored, 'server_url_fallback_primary');
+    if (stored && !sanitized) {
+      log.warn('[SyncEngine] invalid stored server_url_fallback_primary ignored');
+    }
+    return sanitized;
   }
 
   /**
@@ -525,7 +542,11 @@ export class SyncEngine {
    */
   private getServerUrlFallbackSecondary(): string | null {
     const stored = (getConfig('server_url_fallback_secondary') ?? '').trim();
-    return stored || null;
+    const sanitized = this.sanitizeAllowedServerUrl(stored, 'server_url_fallback_secondary');
+    if (stored && !sanitized) {
+      log.warn('[SyncEngine] invalid stored server_url_fallback_secondary ignored');
+    }
+    return sanitized;
   }
 
   /**

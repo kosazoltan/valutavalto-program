@@ -1,7 +1,7 @@
 {
   "name": "valutavalto-frontend",
   "private": true,
-  "version": "2.28.57",
+  "version": "2.28.58",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -97,6 +97,7 @@
   "overrides": {
     "esbuild": "^0.25.0",
     "flatted": "^3.4.2",
-    "follow-redirects": "^1.16.0"
+    "follow-redirects": "^1.16.0",
+    "react-router": "8.3.0"
   }
 }

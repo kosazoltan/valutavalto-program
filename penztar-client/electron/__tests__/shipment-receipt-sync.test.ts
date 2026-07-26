@@ -25,7 +25,7 @@ vi.mock('../printer', () => ({ printReceipt: vi.fn() }));
 
 vi.mock('../sqlite', () => ({
   getConfig: vi.fn((key: string) => {
-    if (key === 'server_url') return 'https://backend.test/api/v1';
+    if (key === 'server_url') return 'https://excvaluta.com/api/v1';
     if (key === 'auth_token') return 'token-abc';
     if (key === 'bootstrap_company_code') return 'BEST_CHANGE';
     return null;
@@ -136,7 +136,7 @@ describe('SyncEngine — offline Shipment-átvételi outbox', () => {
     const result = await engine.syncShipmentReceipts();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://backend.test/api/v1/shipments/11111111-1111-4111-8111-111111111111/deliver',
+      'https://excvaluta.com/api/v1/shipments/11111111-1111-4111-8111-111111111111/deliver',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
@@ -206,7 +206,7 @@ describe('SyncEngine — offline Shipment-átvételi outbox', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      'https://backend.test/api/v1/shipments/11111111-1111-4111-8111-111111111111',
+      'https://excvaluta.com/api/v1/shipments/11111111-1111-4111-8111-111111111111',
       expect.objectContaining({ method: 'GET' }),
     );
     expect(mockedSynced).toHaveBeenCalledWith(11);

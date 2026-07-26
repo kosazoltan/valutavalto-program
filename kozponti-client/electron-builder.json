@@ -19,9 +19,10 @@
     "signtoolOptions": {
       "sign": "../penztar-client/scripts/sign-with-azure-keyvault.js",
       "signingHashAlgorithms": ["sha256"],
-      "rfc3161TimeStampServer": "http://timestamp.digicert.com"
+      "rfc3161TimeStampServer": "http://timestamp.digicert.com",
+      "publisherName": ["EXCLUSIVE BEST Change Zrt."]
     },
-    "verifyUpdateCodeSignature": false
+    "verifyUpdateCodeSignature": true
   },
   "nsis": {
     "oneClick": false,

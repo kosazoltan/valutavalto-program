@@ -8,6 +8,11 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+const mockLog = vi.hoisted(() => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }));
+
+vi.mock('electron-log', () => ({ default: mockLog }));
+vi.mock('electron-log/main', () => ({ default: mockLog }));
+
 // Mock electron
 vi.mock('electron', () => ({
   app: {
@@ -20,6 +25,8 @@ vi.mock('electron', () => ({
     encryptString: vi.fn(),
     decryptString: vi.fn(),
   },
+  net: { request: vi.fn() },
+  IncomingMessage: class {},
 }));
 
 // Mock sqlite module
@@ -1634,6 +1641,48 @@ describe('SyncEngine — P1.7 offline mode regression', () => {
     expect(result.synced).toBe(0);
     expect(result.failed).toBe(0);
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('allowlist-rejected server_url esetén nem indít hálózati hívást és figyelmeztet', async () => {
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'server_url') return 'https://evil.example/api/v1';
+      if (key === 'auth_token') return 'test-token-123';
+      return null;
+    });
+    mockedGetPendingTransactions.mockReturnValue([
+      {
+        id: 1,
+        type: 'SELL',
+        currency_code: 'EUR',
+        foreign_amount: 100,
+        huf_amount: 40000,
+        rounded_huf_amount: 40000,
+        rate: 400,
+        handling_fee: null,
+        discount_percent: null,
+        customer_id: null,
+        customer_identifier: null,
+        customer_name: null,
+        customer_document_number: null,
+        customer_address: null,
+        denominations: null,
+        source_of_funds: null,
+        customer_is_pep: null,
+        foreign_status: null,
+        local_reference_number: 'LS-X',
+        idempotency_key: 'allowlist-rejected-1',
+        created_at: '2026-03-24 10:00:00',
+        synced: 0,
+      },
+    ] as unknown as ReturnType<typeof mockedGetPendingTransactions>);
+    mockFetch.mockResolvedValue({ ok: true, json: vi.fn(async () => ({ success: true })) });
+
+    await engine.syncAll('test-token');
+
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(mockLog.warn).toHaveBeenCalledWith(
+      '[SyncEngine] stored server_url rejected by host allowlist — ignored',
+    );
   });
 });
 

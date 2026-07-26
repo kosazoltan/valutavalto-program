@@ -40,13 +40,19 @@ vi.mock('electron', () => ({
 
 import { net, safeStorage } from 'electron';
 import {
+  DEFAULT_BRANCHES,
+  assertSetupAllowed,
+  fetchBranchesFromBackend,
+  getBranches,
   getWorkers,
   isFirstRun,
   persistBootstrapPasswordConfig,
   resolveBootstrapRoleCodeForAppMode,
   resolveEffectiveBootstrapCredentials,
   selectBootstrapLoginRoleCode,
+  saveSetupConfig,
   shouldUseWorkerFirstTimeSetup,
+  testConnection,
   type SetupSavePayload,
 } from '../first-run';
 
@@ -58,6 +64,115 @@ function writeEnv(content: string): void {
 function validSecret(seed: string): string {
   return seed.repeat(32).slice(0, 64);
 }
+
+function mockHttpResponse(statusCode: number): void {
+  vi.mocked(net.request).mockImplementationOnce(() => {
+    const request = new EventEmitter() as EventEmitter & {
+      setHeader: ReturnType<typeof vi.fn>;
+      write: ReturnType<typeof vi.fn>;
+      end: ReturnType<typeof vi.fn>;
+      abort: ReturnType<typeof vi.fn>;
+    };
+    request.setHeader = vi.fn();
+    request.write = vi.fn();
+    request.abort = vi.fn();
+    request.end = vi.fn(() => {
+      const response = new EventEmitter() as EventEmitter & {
+        statusCode: number;
+        headers: Record<string, string>;
+      };
+      response.statusCode = statusCode;
+      response.headers = { 'content-type': 'application/json' };
+      queueMicrotask(() => {
+        request.emit('response', response);
+        response.emit('data', Buffer.from('{}'));
+        response.emit('end');
+      });
+    });
+    return request;
+  });
+}
+
+describe('setup IPC guards', () => {
+  beforeEach(() => {
+    mockState.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'valuta-setup-guard-'));
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    fs.rmSync(mockState.userDataDir, { recursive: true, force: true });
+  });
+
+  it('blocks setup IPC after provisioning and allows it during first run', () => {
+    expect(() => assertSetupAllowed({ isFirstRun: false, envPath: 'x' })).toThrow(
+      /setup IPC blokkolva/,
+    );
+    expect(() =>
+      assertSetupAllowed({ isFirstRun: true, envPath: 'x', reason: 'env-missing' }),
+    ).not.toThrow();
+  });
+
+  it('rejects a non-allowlisted test URL before any network request', async () => {
+    await expect(
+      testConnection('https://evil.example/api', 'EBC', 'USER', 'password'),
+    ).resolves.toMatchObject({ success: false, errorMessage: expect.stringMatching(/allowlist/i) });
+    expect(net.request).not.toHaveBeenCalled();
+  });
+
+  it.each(['https://excvaluta.com', 'http://192.168.1.50:8080'])(
+    'allows `%s` to reach the request path',
+    async (apiUrl) => {
+      mockHttpResponse(401);
+      await testConnection(apiUrl, 'EBC', 'USER', 'password');
+      expect(net.request).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('uses the static branch fallback for a non-allowlisted URL without a network request', async () => {
+    await expect(getBranches('https://evil.example', 'EBC')).resolves.toEqual(DEFAULT_BRANCHES);
+    expect(net.request).not.toHaveBeenCalled();
+  });
+
+  it('returns no workers for a non-allowlisted URL without a network request', async () => {
+    await expect(getWorkers('https://evil.example', 'EBC', 'B001')).resolves.toEqual([]);
+    expect(net.request).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-allowlisted branch fetch before any network request', async () => {
+    await expect(fetchBranchesFromBackend('https://evil.example', 'EBC')).rejects.toThrow(
+      /allowlist/i,
+    );
+    expect(net.request).not.toHaveBeenCalled();
+  });
+
+  it('allows an allowlisted branch URL to reach the request path', async () => {
+    mockHttpResponse(200);
+    await getBranches('https://excvaluta.com', 'EBC');
+    expect(net.request).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a non-allowlisted online setup URL without writing .env', async () => {
+    await expect(
+      saveSetupConfig(setupPayload({ apiUrl: 'https://evil.example' })),
+    ).resolves.toMatchObject({
+      success: false,
+      errorMessage: expect.stringMatching(/allowlist/i),
+    });
+    expect(fs.existsSync(path.join(mockState.userDataDir, '.env'))).toBe(false);
+  });
+
+  it('skips the apiUrl allowlist check in offline mode', async () => {
+    const result = await saveSetupConfig(
+      setupPayload({ apiUrl: 'https://evil.example', offlineMode: true, adminPassword: '' }),
+    );
+
+    expect(result.errorMessage ?? '').not.toMatch(/allowlist/i);
+    expect(result).toMatchObject({
+      success: false,
+      errorMessage: 'Az admin jelszónak legalább 8 karakteresnek kell lennie.',
+    });
+  });
+});
 
 describe('isFirstRun', () => {
   beforeEach(() => {

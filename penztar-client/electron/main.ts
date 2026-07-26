@@ -124,6 +124,7 @@ import {
   SERIAL_PORT_CONFIG_KEY,
 } from './printer';
 import { syncEngine } from './sync-engine';
+import { isConfigKeyReadable, isConfigKeyWritable } from './config-guard';
 import { registerCameraHandlers } from './camera';
 import { registerVideoManagerHandlers } from './video-manager';
 import { registerScannerHandlers, SCAN_DIR } from './scanner';
@@ -145,6 +146,7 @@ import {
   type CustomerDisplayPayload,
 } from './customer-display';
 import {
+  assertSetupAllowed,
   isFirstRun,
   getBranches,
   getWorkers,
@@ -428,14 +430,25 @@ ipcMain.handle('open-cash-drawer', async (): Promise<boolean> => {
 });
 
 ipcMain.handle('get-config', async (_event, key: string): Promise<string | null> => {
+  if (!isConfigKeyReadable(key)) {
+    log.warn('[IPC] get-config blocked key:', key);
+    return null;
+  }
   return getConfig(key);
 });
 
 ipcMain.handle('set-config', async (_event, key: string, value: string): Promise<void> => {
+  if (typeof key !== 'string' || !isConfigKeyWritable(key)) {
+    throw new Error('set-config: key not allowed: ' + key);
+  }
+  if (typeof value !== 'string') {
+    throw new Error('set-config: value must be a string for key: ' + key);
+  }
   setConfig(key, value);
 });
 
 ipcMain.handle('delete-config', async (_event, key: string): Promise<void> => {
+  // TODO: wave 2b — delete-config needs allowlist (reuse CONFIG_WRITE_ALLOWLIST + SENSITIVE_WRITE_KEY_PATTERN)
   deleteConfig(key);
 });
 
@@ -447,6 +460,7 @@ ipcMain.handle('setup:check', async () => {
 ipcMain.handle(
   'setup:branches',
   async (_event, params?: { apiUrl?: string; companyCode?: string }) => {
+    assertSetupAllowed(isFirstRun());
     return await getBranches(params?.apiUrl, params?.companyCode);
   },
 );
@@ -454,6 +468,7 @@ ipcMain.handle(
 ipcMain.handle(
   IPC_CHANNELS.SETUP_WORKERS,
   async (_event, params: SetupWorkersRequest): Promise<SetupWorkerOption[]> => {
+    assertSetupAllowed(isFirstRun());
     const apiUrl = params?.apiUrl?.trim() ?? '';
     const companyCode = params?.companyCode?.trim() ?? '';
     const branchCode = params?.branchCode?.trim() ?? '';
@@ -477,6 +492,7 @@ ipcMain.handle(
     _event,
     params: { apiUrl: string; companyCode: string; username: string; password: string },
   ) => {
+    assertSetupAllowed(isFirstRun());
     return await testConnection(
       params.apiUrl,
       params.companyCode,
@@ -487,6 +503,7 @@ ipcMain.handle(
 );
 
 ipcMain.handle('setup:save', async (_event, payload: SetupSavePayload) => {
+  assertSetupAllowed(isFirstRun());
   return await saveSetupConfig(payload);
 });
 
