@@ -189,7 +189,20 @@ Fázis 1–3 implementációs promptot. A tesztek innentől fagyottak.)*
 - [x] Más klienst nem érint (kizárólag árfolyamkészítő)
 - [x] Teszt-előbb (freeze) folyamat explicit jelölve a 9. szekcióban
 
+## 13. Cursor Bugbot utólagos találatok (PR #1493 review)
+
+Forrás: Cursor Bugbot, PR #1493 review-threadek (sorhivatkozások a review-kori
+`MainRateSheetPage.tsx` állapotára: 1141, 1145, 1130, 1146). A 4 találatot 3 új
+FR fedi le, mert a High „stale ping revives online" és a Medium „late ping
+marks offline" ugyanazt a hiányzó staleness-guardot igényli (FR-8).
+
+| ID | Prioritás / lefedett találat | Leírás | Acceptance (Given/When/Then) |
+|---|---|---|---|
+| FR-8 | MUST — High „stale ping revives online" (1141. sor) + Medium „late ping marks offline" (1145. sor) | Minden health-ping indításakor rögzíteni kell egy generation/staleness jelzőt (pl. ref-számláló vagy az aktuális `serverSyncState` pillanatnyi értéke). Amikor a ping válasza (siker VAGY hiba) megérkezik, csak akkor módosíthatja az állapotot, ha a jelző azóta nem változott (nem történt közben másik állapotváltási trigger — offline esemény, online esemény, újabb ping, unmount). | Adott: ping elindul `'online'` állapotban, közben `'offline'` esemény érkezik. Amikor: a régi ping később sikeresen visszatér. Akkor: a state NEM vált vissza `'online'`-ra, marad `'offline'`. — Adott: ping elindul `'loading'` állapotban. Amikor: közben egy másik úton (pl. `'online'` esemény) `'online'`-ra vált az állapot, majd a régi ping később hibázik. Akkor: a state NEM vált `'offline'`-ra. |
+| FR-9 | MEDIUM — „reconnect repeats offline toast" (1130. sor) | Ingadozó hálózatnál (ismételt online→resync-próbálkozás→még mindig elérhetetlen szerver) a `toast.warning('Offline', …)` NE ismétlődjön minden egyes körben — legfeljebb egyszer jelenjen meg egy adott offline-perióduson belül, amíg vissza nem áll online. | Adott: state `'offline'`, a szerver elérhetetlen. Amikor: több egymást követő `'online'` esemény resync-próbálkozása is hibázik. Akkor: az „Offline" toast legfeljebb egyszer jelenik meg az adott offline-periódus alatt. |
+| FR-10 | LOW — „unmount ping updates state" (1146. sor), a meglévő FR-7 kiterjesztése | Az unmount-cleanup (interval + listener leiratkozás) mellett a repülő (in-flight) ping-promise válasza unmount UTÁN semmilyen setState-et (state VAGY `resyncNonce`) nem hívhat. | Adott: in-flight health-ping fut, és a komponens unmountol. Amikor: a ping válasza (siker vagy hiba) megérkezik. Akkor: nem történik state-/`resyncNonce`-írás, és resync sem indul. |
+
 ---
-FR-ek száma: 7 db
+FR-ek száma: 10 db (7 alap + 3 Bugbot-kiegészítés, 13. szekció)
 TBD-ek száma: 4 db
 Érintett csomagok: frontend-react (kizárólag)
