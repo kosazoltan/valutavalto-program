@@ -201,8 +201,21 @@ marks offline" ugyanazt a hiányzó staleness-guardot igényli (FR-8).
 | FR-8 | MUST — High „stale ping revives online" (1141. sor) + Medium „late ping marks offline" (1145. sor) | Minden health-ping indításakor rögzíteni kell egy generation/staleness jelzőt (pl. ref-számláló vagy az aktuális `serverSyncState` pillanatnyi értéke). Amikor a ping válasza (siker VAGY hiba) megérkezik, csak akkor módosíthatja az állapotot, ha a jelző azóta nem változott (nem történt közben másik állapotváltási trigger — offline esemény, online esemény, újabb ping, unmount). | Adott: ping elindul `'online'` állapotban, közben `'offline'` esemény érkezik. Amikor: a régi ping később sikeresen visszatér. Akkor: a state NEM vált vissza `'online'`-ra, marad `'offline'`. — Adott: ping elindul `'loading'` állapotban. Amikor: közben egy másik úton (pl. `'online'` esemény) `'online'`-ra vált az állapot, majd a régi ping később hibázik. Akkor: a state NEM vált `'offline'`-ra. |
 | FR-9 | MEDIUM — „reconnect repeats offline toast" (1130. sor) | Ingadozó hálózatnál (ismételt online→resync-próbálkozás→még mindig elérhetetlen szerver) a `toast.warning('Offline', …)` NE ismétlődjön minden egyes körben — legfeljebb egyszer jelenjen meg egy adott offline-perióduson belül, amíg vissza nem áll online. | Adott: state `'offline'`, a szerver elérhetetlen. Amikor: több egymást követő `'online'` esemény resync-próbálkozása is hibázik. Akkor: az „Offline" toast legfeljebb egyszer jelenik meg az adott offline-periódus alatt. |
 | FR-10 | LOW — „unmount ping updates state" (1146. sor), a meglévő FR-7 kiterjesztése | Az unmount-cleanup (interval + listener leiratkozás) mellett a repülő (in-flight) ping-promise válasza unmount UTÁN semmilyen setState-et (state VAGY `resyncNonce`) nem hívhat. | Adott: in-flight health-ping fut, és a komponens unmountol. Amikor: a ping válasza (siker vagy hiba) megérkezik. Akkor: nem történik state-/`resyncNonce`-írás, és resync sem indul. |
+| FR-11 | MEDIUM — „resync success ignores network offline" (Bugbot 2. kör, `aff155d1` head; érintett sikerágak kb. 994, 1080, 1091. sor) | A `loadServerData` sikerágai jelenleg nem ellenőrzik, hogy a resync HTTP-hívás közben nem érkezett-e `'offline'` esemény. A generation/staleness-guard mechanizmusnak a resync-sikerágat is fednie kell — ugyanaz az elv, mint FR-8, csak a ping-callback helyett a resync-útvonalra kiterjesztve. | Adott: resync elindul (akár `'online'` eseményre, akár sikeres ping-re). Amikor: a resync HTTP-hívás még fut, és közben `'offline'` esemény érkezik. Akkor: a resync sikeres visszatérése után a state NEM vált `'online'`-ra, marad `'offline'`. |
+
+### Tudatosan elfogadott trade-off (nem hiba, nem kerül tesztre/fixre)
+
+**„Redundant offline bumps stale pings"** (Bugbot 2. kör, `aff155d1` head,
+Medium): a konzervatív generation-guard mellékhatása, hogy ismételt
+offline-jelzés (újabb `'offline'` esemény vagy offline állapotban hibázó ping)
+generációt léptet, így egy éppen repülő `/health` kérés sikeres válasza
+stale-ként eldobódik, és a visszaállás a következő ping-ciklusig (max. ~30 mp)
+késleltetődhet. Ez TUDATOSAN ELFOGADOTT viselkedés: a guard a téves
+„online"-ra váltást (súlyosabb hiba) árazza be egy legfeljebb 30 mp-es
+visszaállási késleltetéssel (enyhébb kellemetlenség). A téma a meglévő TBD-3
+(ping-gyakoriság/terhelés) körébe tartozik, külön FK-t nem igényel.
 
 ---
-FR-ek száma: 10 db (7 alap + 3 Bugbot-kiegészítés, 13. szekció)
+FR-ek száma: 11 db (7 alap + 4 Bugbot-kiegészítés, 13. szekció)
 TBD-ek száma: 4 db
 Érintett csomagok: frontend-react (kizárólag)
