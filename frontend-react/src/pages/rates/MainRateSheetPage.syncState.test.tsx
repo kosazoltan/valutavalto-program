@@ -514,4 +514,48 @@ describe('FK14 — Főlap szinkron-jelző hálózat-állapot (Fázis 0, RED)', (
     expect(mocks.listActivePublished.mock.calls.length).toBe(callsBefore)
     expect(consoleErrorSpy).not.toHaveBeenCalled()
   })
+
+  it('FR-11: resync közben érkező offline esemény után a kései resync-siker nem vált Online-ra', async () => {
+    // kezdeti mount-sync hibázik → Offline (cache-értékek)
+    mocks.listActivePublished.mockRejectedValueOnce(networkError())
+    // a KÖVETKEZŐ (resync-beli) hívást a teszt vezérli: függőben marad, amíg el nem engedjük
+    let releaseResync: ((rows: unknown[]) => void) | null = null
+    mocks.listActivePublished.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseResync = resolve
+        }),
+    )
+    seedStorage()
+    const Page = await importPage()
+    render(<Page />)
+    expect(await screen.findByText(OFFLINE_TEXT)).toBeVisible()
+
+    // resync indul online eseményre — a HTTP-hívás függőben (loading jelző)
+    fireWindowEvent('online')
+    await waitFor(() => expect(mocks.listActivePublished.mock.calls.length).toBe(2))
+    expect(releaseResync).not.toBeNull()
+
+    // a resync-hívás REPÜLÉSE KÖZBEN passzív hálózat-vesztés érkezik
+    fireWindowEvent('offline')
+    expect(await screen.findByText(OFFLINE_TEXT)).toBeVisible()
+
+    // a resync HTTP-hívás most tér vissza SIKERREL (stale siker)
+    await act(async () => {
+      releaseResync?.([SERVER_EUR])
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    // a kései siker nem írhatja felül az offline eseményt: a jelző Offline marad
+    expect(screen.getByText(OFFLINE_TEXT)).toBeVisible()
+    expect(screen.queryByText(ONLINE_TEXT)).not.toBeInTheDocument()
+
+    // sentinel-ellenpróba: egy ÚJABB online esemény friss resyncje viszont jogosan
+    // vált Online-ra (FR-4 él) — a guard nem „örökre offline"
+    const callsBefore = mocks.listActivePublished.mock.calls.length
+    fireWindowEvent('online')
+    expect(await screen.findByText(ONLINE_TEXT)).toBeVisible()
+    await waitFor(() => expect(mocks.listActivePublished.mock.calls.length).toBe(callsBefore + 1))
+    expect(await screen.findByDisplayValue('390.00')).toBeInTheDocument()
+  })
 })
