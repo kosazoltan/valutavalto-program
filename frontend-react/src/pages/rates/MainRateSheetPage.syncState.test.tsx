@@ -128,6 +128,29 @@ function fireWindowEvent(type: 'online' | 'offline') {
   })
 }
 
+// FK14 FR-8/FR-10 (Cursor Bugbot race-tesztek): kézzel vezérelt health-ping
+// promise-ok — a teszt dönti el, MIKOR (milyen state mellett) fut le a válasz,
+// így a stale-race determinisztikusan előidézhető.
+type DeferredPing = { resolve: (value: unknown) => void; reject: (error: unknown) => void }
+let healthPings: DeferredPing[] = []
+function deferHealthPings() {
+  healthPings = []
+  apiGetSpy.mockImplementation((url: string) => {
+    if (url === '/health') {
+      return new Promise((resolve, reject) => {
+        healthPings.push({ resolve, reject })
+      })
+    }
+    return Promise.resolve({ data: {} })
+  })
+}
+
+function pingAt(index: number): DeferredPing {
+  const ping = healthPings[index]
+  if (!ping) throw new Error(`nincs függő health-ping a(z) ${index}. indexen`)
+  return ping
+}
+
 // Valós (nem fake-elt) setTimeout-tal engedjük leürülni a teljes async
 // merge-láncot (listActivePublished → exchangeRateApi.list → setRows).
 async function flushAsync() {
@@ -360,5 +383,135 @@ describe('FK14 — Főlap szinkron-jelző hálózat-állapot (Fázis 0, RED)', (
     fireWindowEvent('offline')
     await flushAsync()
     expect(mocks.listActivePublished.mock.calls.length).toBe(callsAtUnmount)
+  })
+
+  // ── FK14 13. szekció — Cursor Bugbot race-condition regressziós tesztek ──
+
+  it('FR-8: offline esemény UTÁN beérkező stale ping-siker nem váltja vissza Online-ra', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    await renderOnline()
+
+    // a ping ONLINE állapotban indul el, és függőben marad
+    deferHealthPings()
+    await act(async () => {
+      vi.advanceTimersByTime(HEALTH_PING_INTERVAL_MS)
+    })
+    expect(healthPings.length).toBe(1)
+
+    // közben passzív hálózat-vesztés: offline esemény
+    fireWindowEvent('offline')
+    expect(await screen.findByText(OFFLINE_TEXT)).toBeVisible()
+    const callsBefore = mocks.listActivePublished.mock.calls.length
+
+    // a RÉGI (offline esemény ELŐTT indult) ping most tér vissza sikerrel
+    await act(async () => {
+      pingAt(0).resolve({ data: { status: 'UP' } })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    // stale siker: a jelző NEM válthat vissza, és resync sem indulhat
+    expect(screen.getByText(OFFLINE_TEXT)).toBeVisible()
+    expect(screen.queryByText(ONLINE_TEXT)).not.toBeInTheDocument()
+    expect(mocks.listActivePublished.mock.calls.length).toBe(callsBefore)
+  })
+
+  it('FR-8: loading közben indult ping kései hibája nem viszi Offline-ba a közben Online-ra váltott jelzőt', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    // a kezdeti katalógus-sync függőben marad → tartós 'loading' állapot
+    mocks.listActivePublished.mockImplementationOnce(() => new Promise(() => {}))
+    seedStorage()
+    const Page = await importPage()
+    render(<Page />)
+    expect(screen.getByText(LOADING_TEXT)).toBeInTheDocument()
+
+    // a ping LOADING állapotban indul el, és függőben marad
+    deferHealthPings()
+    await act(async () => {
+      vi.advanceTimersByTime(HEALTH_PING_INTERVAL_MS)
+    })
+    expect(healthPings.length).toBe(1)
+
+    // másik trigger (online esemény) útján az állapot Online-ra vált (resync sikeres)
+    fireWindowEvent('online')
+    expect(await screen.findByText(ONLINE_TEXT)).toBeVisible()
+    expect(await screen.findByDisplayValue('390.00')).toBeInTheDocument()
+
+    // a RÉGI (loading alatt indult) ping most hibázik
+    await act(async () => {
+      pingAt(0).reject(networkError())
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    // stale hiba: az Online jelző marad, nem eshet vissza Offline-ba
+    expect(screen.getByText(ONLINE_TEXT)).toBeVisible()
+    expect(screen.queryByText(OFFLINE_TEXT)).not.toBeInTheDocument()
+
+    // sentinel-ellenpróba: egy FRISS (Online alatt indult) ping hibája viszont
+    // jogosan visz Offline-ba (FR-3) — a guard nem „minden hibát elnyelő"
+    await act(async () => {
+      vi.advanceTimersByTime(HEALTH_PING_INTERVAL_MS)
+    })
+    expect(healthPings.length).toBe(2)
+    await act(async () => {
+      pingAt(1).reject(networkError())
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(await screen.findByText(OFFLINE_TEXT)).toBeVisible()
+  })
+
+  it('FR-9: ismételt sikertelen resync-körök alatt az Offline toast legfeljebb egyszer jelenik meg', async () => {
+    await renderOnline()
+
+    // a szerver tartósan elérhetetlenné válik
+    mocks.listActivePublished.mockRejectedValue(networkError())
+    fireWindowEvent('offline')
+    expect(await screen.findByText(OFFLINE_TEXT)).toBeVisible()
+
+    // 3 egymást követő online-esemény → 3 resync-próbálkozás, mind hibázik
+    for (let round = 0; round < 3; round++) {
+      const before = mocks.listActivePublished.mock.calls.length
+      fireWindowEvent('online')
+      await waitFor(() => expect(mocks.listActivePublished.mock.calls.length).toBe(before + 1))
+      expect(await screen.findByText(OFFLINE_TEXT)).toBeVisible()
+    }
+
+    // per-hívás attribúció: pontosan az 'Offline' című toastokat számoljuk
+    const offlineToasts = mocks.toast.warning.mock.calls.filter(
+      (call) => call[0] === 'Offline',
+    ).length
+    expect(offlineToasts).toBeLessThanOrEqual(1)
+  })
+
+  it('FR-10: unmount után beérkező in-flight ping-válasz nem ír state-et és nem indít resyncet', async () => {
+    // MEGJEGYZÉS (Fázis 0 jelzés): ez a teszt a jelenlegi kóddal is zöld, mert a
+    // React 18+ az unmountolt komponens setState-jét csendben eldobja — a hibás
+    // setState fekete-dobozból nem figyelhető meg. Regressziós őrszemként marad:
+    // a resync-mellékhatást és a console.error-csendet rögzíti szerződésként.
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const view = await renderOnline()
+
+    // offline állapot + in-flight ping (ez a legveszélyesebb kombináció: a stale
+    // siker a jelenlegi kódban goOnlineAndResync-et hívna)
+    deferHealthPings()
+    fireWindowEvent('offline')
+    expect(await screen.findByText(OFFLINE_TEXT)).toBeVisible()
+    await act(async () => {
+      vi.advanceTimersByTime(HEALTH_PING_INTERVAL_MS)
+    })
+    expect(healthPings.length).toBe(1)
+    const callsBefore = mocks.listActivePublished.mock.calls.length
+    const consoleErrorSpy = vi.spyOn(console, 'error')
+
+    view.unmount()
+
+    // az in-flight ping válasza unmount UTÁN érkezik
+    await act(async () => {
+      pingAt(0).resolve({ data: { status: 'UP' } })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    // sentinel: nem indult resync az unmountolt fáról, és nincs React-hiba/warning
+    expect(mocks.listActivePublished.mock.calls.length).toBe(callsBefore)
+    expect(consoleErrorSpy).not.toHaveBeenCalled()
   })
 })
