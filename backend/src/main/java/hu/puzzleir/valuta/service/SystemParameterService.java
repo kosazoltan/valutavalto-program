@@ -128,6 +128,10 @@ public class SystemParameterService {
     /** FK-067: a záráskori kontroll-lépéseket kapcsoló feature-flagek kulcs-prefixe. */
     static final String FEATURE_KEY_PREFIX = "FEATURE_";
 
+    /** FK-067 (Sourcery): a kezelési díj záráskori ellenőrzését kapcsoló feature-flag kulcsa. */
+    static final String FEATURE_HANDLING_FEE_DENOMINATION_KEY =
+            FEATURE_KEY_PREFIX + "HANDLING_FEE_DENOMINATION";
+
     /**
      * Védett pénzügyi kontroll-kulcsok: a GLOBÁLIS (company_id IS NULL) soruk írása minden
      * cég zárási/ellenőrzési viselkedését befolyásolja, ezért ADMIN-only.

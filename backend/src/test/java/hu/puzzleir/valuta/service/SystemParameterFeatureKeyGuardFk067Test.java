@@ -59,9 +59,12 @@ class SystemParameterFeatureKeyGuardFk067Test {
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
+    /** FK-067 (Sourcery): a kulcs egyetlen forrásból — elgépelés/drift ellen. */
+    private static final String FLAG_KEY = SystemParameterService.FEATURE_HANDLING_FEE_DENOMINATION_KEY;
+
     private SystemParameter featureRow(UUID companyId) {
         return SystemParameter.builder()
-                .parameterKey("FEATURE_HANDLING_FEE_DENOMINATION")
+                .parameterKey(FLAG_KEY)
                 .parameterValue("true")
                 .parameterType("BOOLEAN")
                 .category("CLOSING")
@@ -78,7 +81,7 @@ class SystemParameterFeatureKeyGuardFk067Test {
 
         assertThatThrownBy(() -> service.update(ROW_ID, "false", null))
                 .isInstanceOf(AccessDeniedException.class)
-                .hasMessageContaining("FEATURE_HANDLING_FEE_DENOMINATION")
+                .hasMessageContaining(FLAG_KEY)
                 .hasMessageContaining("ADMIN");
         verify(repo, never()).save(any());
     }
@@ -89,14 +92,24 @@ class SystemParameterFeatureKeyGuardFk067Test {
         authenticateAs("MANAGER");
         when(repo.findVisibleById(ROW_ID, COMPANY_ID)).thenReturn(Optional.of(featureRow(null)));
 
-        assertThatThrownBy(() -> service.upsert("FEATURE_HANDLING_FEE_DENOMINATION", "true", "CLOSING", null))
-                .isInstanceOf(AccessDeniedException.class);
+        // Sourcery (PR #1505): minden útvonalon az üzenet is konzisztens diagnosztikát adjon
+        // (kulcsnév + ADMIN-elvárás), ne csak a kivétel típusa egyezzen.
+        assertThatThrownBy(() -> service.upsert(FLAG_KEY, "true", "CLOSING", null))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining(FLAG_KEY)
+                .hasMessageContaining("ADMIN");
         assertThatThrownBy(() -> service.create("FEATURE_WESTERN_UNION", "true", "BOOLEAN", "CLOSING", null))
-                .isInstanceOf(AccessDeniedException.class);
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("FEATURE_WESTERN_UNION")
+                .hasMessageContaining("ADMIN");
         assertThatThrownBy(() -> service.toggleActive(ROW_ID))
-                .isInstanceOf(AccessDeniedException.class);
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining(FLAG_KEY)
+                .hasMessageContaining("ADMIN");
         assertThatThrownBy(() -> service.delete(ROW_ID))
-                .isInstanceOf(AccessDeniedException.class);
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining(FLAG_KEY)
+                .hasMessageContaining("ADMIN");
         verify(repo, never()).save(any());
         verify(repo, never()).delete(any());
     }
@@ -105,12 +118,12 @@ class SystemParameterFeatureKeyGuardFk067Test {
     @DisplayName("FK-067 HIGH#1: MANAGER saját céges FEATURE-override-ot írhat (upsertCompanyValue) → engedélyezett")
     void managerCanUpsertOwnCompanyFeatureOverride() {
         authenticateAs("MANAGER");
-        when(repo.findByParameterKeyAndCompanyId("FEATURE_HANDLING_FEE_DENOMINATION", COMPANY_ID))
+        when(repo.findByParameterKeyAndCompanyId(FLAG_KEY, COMPANY_ID))
                 .thenReturn(Optional.empty());
         when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
 
         SystemParameter saved = service.upsertCompanyValue(
-                "FEATURE_HANDLING_FEE_DENOMINATION", COMPANY_ID, "true", "CLOSING", "céges override");
+                FLAG_KEY, COMPANY_ID, "true", "CLOSING", "céges override");
 
         assertThat(saved.getParameterValue()).isEqualTo("true");
         assertThat(saved.getCompanyId()).isEqualTo(COMPANY_ID);

@@ -844,7 +844,8 @@ public class DailyClosingService {
      */
     private boolean resolveHandlingFeeDenominationFeature() {
         try {
-            String val = systemParameterService.getValue("FEATURE_HANDLING_FEE_DENOMINATION");
+            String val = systemParameterService.getValue(
+                SystemParameterService.FEATURE_HANDLING_FEE_DENOMINATION_KEY);
             return "true".equalsIgnoreCase(val) || "1".equals(val);
         } catch (ResourceNotFoundException e) {
             return false;
