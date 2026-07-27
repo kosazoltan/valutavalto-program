@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.dto.ClosingMarkType;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.eveningclosing.DailyDataPackage;
 import hu.puzzleir.valuta.dto.eveningclosing.DataSyncResult;
@@ -308,8 +309,23 @@ public class DailyClosingService {
     /**
      * 3. Kezelesi dij cimletezese.
      * Legacy: cimletsorszam=2
+     * FK-067: a lepes csak a FEATURE_HANDLING_FEE_DENOMINATION kapcsoloval aktiv.
      */
     private StepCheckResult checkHandlingFeeDenomination(UUID branchId, LocalDate date) {
+        boolean hasHandlingFeeDenomination;
+        try {
+            hasHandlingFeeDenomination = resolveHandlingFeeDenominationFeature();
+        } catch (RuntimeException e) {
+            // FK-067 HIGH#2 (Codex): varatlan hiba (pl. DB-kieses) nem nyelheto el csendben —
+            // ismeretlen konfiguracios allapot mellett a penzugyi kontroll nem maradhat ki.
+            log.error("FK-067: kezelesi dij feature-flag feloldasa sikertelen: branch={}, datum={}, hiba={}",
+                branchId, date, e.getMessage(), e);
+            return StepCheckResult.failed("Kezelesi dij ellenorzes konfiguracioja nem ellenorizheto");
+        }
+        if (!hasHandlingFeeDenomination) {
+            return StepCheckResult.skipped("Kezelesi dij cimletezes nem aktiv");
+        }
+
         BigDecimal totalHandlingFees = transactionRepository
             .sumDailyHandlingFees(branchId, date);
 
@@ -816,6 +832,22 @@ public class DailyClosingService {
             return "true".equalsIgnoreCase(val) || "1".equals(val);
         } catch (Exception e) {
             // Ha nincs ilyen parameter, a feature nem aktiv
+            return false;
+        }
+    }
+
+    /**
+     * FK-067 HIGH#2 (Codex): dedikalt flag-feloldas KIZAROLAG a kezelesi dij lepeshez.
+     * A generikus {@link #hasFeature} minden kivetelt elnyel (fail-open) — itt csak a
+     * "nincs beallitva" eset (ResourceNotFoundException) jelent kikapcsolt feature-t;
+     * minden mas kivetel tovabbdobodik, es a hivo failed lepes-eredmenykent kezeli.
+     */
+    private boolean resolveHandlingFeeDenominationFeature() {
+        try {
+            String val = systemParameterService.getValue(
+                SystemParameterService.FEATURE_HANDLING_FEE_DENOMINATION_KEY);
+            return "true".equalsIgnoreCase(val) || "1".equals(val);
+        } catch (ResourceNotFoundException e) {
             return false;
         }
     }
