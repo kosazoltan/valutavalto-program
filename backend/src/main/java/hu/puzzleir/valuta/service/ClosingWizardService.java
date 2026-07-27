@@ -336,6 +336,15 @@ public class ClosingWizardService {
                     continue;
                 }
 
+                // Bugbot-hardening: a lazy branch→company audit-adatok kiolvasása a bulk
+                // UPDATE ELŐTT, lokális változókba. A @Modifying defaultja
+                // clearAutomatically=false (a persistence context nem ürül), de így az
+                // audit a JPA-viselkedéstől függetlenül, kóddal garantált.
+                UUID auditBranchId = wizard.getBranch() != null ? wizard.getBranch().getId() : null;
+                UUID auditCompanyId = wizard.getBranch() != null && wizard.getBranch().getCompany() != null
+                        ? wizard.getBranch().getCompany().getId()
+                        : null;
+
                 // Security Gate HIGH-fix: feltételes, ATOMIKUS UPDATE — a SELECT és az
                 // írás közti konkurens cancel()/finalize ellen a DB WHERE-feltétele véd.
                 // 0 érintett sor = közben más állapotba került → NEM auditolunk EXPIRED-et.
@@ -353,18 +362,17 @@ public class ClosingWizardService {
                 log.info("Beragadt zárási varázsló lejáratva: id={}, indítva={}, küszöb={} perc",
                         wizard.getId(), wizard.getStartedAt(), expireMinutes);
 
-                if (auditLogService != null && wizard.getBranch() != null
-                        && wizard.getBranch().getCompany() != null) {
+                if (auditLogService != null && auditCompanyId != null) {
                     auditLogService.logForCompany(
                             "CLOSING_WIZARD_AUTO_EXPIRED",
                             String.format(
                                     "{\"KAT\":\"TX\",\"error_code\":\"VV-BIZ-011\","
                                             + "\"branch_id\":\"%s\",\"closing_date\":\"%s\","
                                             + "\"started_at\":\"%s\",\"expire_minutes\":%d}",
-                                    wizard.getBranch().getId(), wizard.getClosingDate(),
+                                    auditBranchId, wizard.getClosingDate(),
                                     wizard.getStartedAt(), expireMinutes),
                             wizard.getId().toString(),
-                            wizard.getBranch().getCompany().getId());
+                            auditCompanyId);
                 }
             } catch (Exception e) {
                 log.error("Zárási varázsló auto-lejárat hiba: id={}, hiba={}",

@@ -30,6 +30,7 @@ import type { Denomination } from '../../services/api/settings'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { localIsoDate } from '../../utils/dateFormat'
 import { useTranslation } from 'react-i18next'
 import {
   resolveWizardResumeAction,
@@ -39,16 +40,6 @@ import {
 
 /** HUF cimletek — csökkeno sorrendben */
 const HUF_DENOMINATIONS = [20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5] as const
-
-// Codex P2 #560 minta (ClosingControlPage): NEM toISOString().slice(0, 10), mert az
-// UTC zónát adná — éjfél körül rossz zárási napot kérdeznénk le. Helyi dátum lokálisan.
-function todayIso() {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 /**
  * Napzaras wizard — backend-driven ellenorzesi lanc.
@@ -240,7 +231,8 @@ export default function ClosingWizardPage() {
     let cancelled = false
     const checkStaleWizard = async () => {
       try {
-        const status = await closingWizardApi.getStatus(todayIso())
+        // Időzóna-biztos lokális dátum (Sourcery-javaslat: közös util, nem lokális helper)
+        const status = await closingWizardApi.getStatus(localIsoDate())
         if (cancelled || !status?.activeWizardId || !status?.activeWizardStatus) return
         try {
           const action = resolveWizardResumeAction(status.activeWizardStatus as WizardStatusValue)
