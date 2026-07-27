@@ -125,29 +125,41 @@ public class SystemParameterService {
                 .orElse(defaultValue);
     }
 
+    /** FK-067: a záráskori kontroll-lépéseket kapcsoló feature-flagek kulcs-prefixe. */
+    static final String FEATURE_KEY_PREFIX = "FEATURE_";
+
     /**
-     * FK-066 HIGH-fix (Codex): a GLOBÁLIS (company_id IS NULL) CLOSING_TOLERANCE_* sorok
+     * Védett pénzügyi kontroll-kulcsok: a GLOBÁLIS (company_id IS NULL) soruk írása minden
+     * cég zárási/ellenőrzési viselkedését befolyásolja, ezért ADMIN-only.
+     * FK-066 HIGH-fix (Codex): CLOSING_TOLERANCE_*; FK-067 HIGH#1-fix (Codex): FEATURE_*.
+     */
+    private static final List<String> PROTECTED_FINANCIAL_CONTROL_KEY_PREFIXES =
+            List.of(ClosingToleranceService.KEY_PREFIX, FEATURE_KEY_PREFIX);
+
+    /**
+     * FK-066 HIGH-fix (Codex), FK-067 HIGH#1-fixszel általánosítva: a GLOBÁLIS
+     * (company_id IS NULL) védett pénzügyi kontroll-kulcsok (CLOSING_TOLERANCE_*, FEATURE_*)
      * írása minden cég zárási kapuját befolyásolja, ezért kizárólag ADMIN végezheti —
      * a generikus írási útvonalakon (update/upsert/create/toggleActive/delete) is, nem
      * csak a dedikált ADMIN-controlleren. MANAGER a saját céges override-ot a
      * {@link #upsertCompanyValue} útvonalon továbbra is kezelheti (arra a guard nem
      * vonatkozik). Auth-kontextus nélkül a SecurityUtils dob → fail-closed.
      */
-    private void assertGlobalClosingToleranceWriteAllowed(String parameterKey, UUID companyId) {
+    private void assertGlobalFinancialControlKeyWriteAllowed(String parameterKey, UUID companyId) {
         boolean globalRow = companyId == null;
-        boolean toleranceKey = parameterKey != null
-                && parameterKey.startsWith(ClosingToleranceService.KEY_PREFIX);
-        if (globalRow && toleranceKey && !SecurityUtils.isAdmin()) {
+        boolean protectedKey = parameterKey != null
+                && PROTECTED_FINANCIAL_CONTROL_KEY_PREFIXES.stream().anyMatch(parameterKey::startsWith);
+        if (globalRow && protectedKey && !SecurityUtils.isAdmin()) {
             throw new org.springframework.security.access.AccessDeniedException(
                     "VV-AUTH-001: a globális " + parameterKey
-                            + " zárási toleranciát csak ADMIN módosíthatja; "
+                            + " védett pénzügyi kontroll-paramétert csak ADMIN módosíthatja; "
                             + "céges felülíráshoz használd a cég-szintű beállítást.");
         }
     }
 
     @Transactional(rollbackFor = Exception.class)
     public SystemParameter upsert(String key, String value, String category, String description) {
-        assertGlobalClosingToleranceWriteAllowed(key, null);
+        assertGlobalFinancialControlKeyWriteAllowed(key, null);
         return repo.findByParameterKeyAndCompanyIdIsNull(key)
                 .map(p -> {
                     p.setParameterValue(value);
@@ -177,7 +189,7 @@ public class SystemParameterService {
 
     @Transactional(rollbackFor = Exception.class)
     public SystemParameter create(String key, String value, String type, String category, String description) {
-        assertGlobalClosingToleranceWriteAllowed(key, null);
+        assertGlobalFinancialControlKeyWriteAllowed(key, null);
         SystemParameter p = SystemParameter.builder()
                 .parameterKey(key).parameterValue(value).parameterType(type)
                 .category(category).description(description).isActive(true).build();
@@ -187,7 +199,7 @@ public class SystemParameterService {
     @Transactional(rollbackFor = Exception.class)
     public SystemParameter update(UUID id, String value, String description) {
         SystemParameter p = findOrThrow(id);
-        assertGlobalClosingToleranceWriteAllowed(p.getParameterKey(), p.getCompanyId());
+        assertGlobalFinancialControlKeyWriteAllowed(p.getParameterKey(), p.getCompanyId());
         if (value != null) p.setParameterValue(value);
         if (description != null) p.setDescription(description);
         return repo.save(p);
@@ -196,7 +208,7 @@ public class SystemParameterService {
     @Transactional(rollbackFor = Exception.class)
     public SystemParameter toggleActive(UUID id) {
         SystemParameter p = findOrThrow(id);
-        assertGlobalClosingToleranceWriteAllowed(p.getParameterKey(), p.getCompanyId());
+        assertGlobalFinancialControlKeyWriteAllowed(p.getParameterKey(), p.getCompanyId());
         p.setIsActive(!p.getIsActive());
         return repo.save(p);
     }
@@ -204,7 +216,7 @@ public class SystemParameterService {
     @Transactional(rollbackFor = Exception.class)
     public void delete(UUID id) {
         SystemParameter p = findOrThrow(id);
-        assertGlobalClosingToleranceWriteAllowed(p.getParameterKey(), p.getCompanyId());
+        assertGlobalFinancialControlKeyWriteAllowed(p.getParameterKey(), p.getCompanyId());
         repo.delete(p);
     }
 

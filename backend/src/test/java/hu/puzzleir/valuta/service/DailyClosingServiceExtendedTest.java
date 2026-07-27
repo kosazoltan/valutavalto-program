@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.dto.eveningclosing.DailyDataPackage;
 import hu.puzzleir.valuta.dto.eveningclosing.DataSyncResult;
 import hu.puzzleir.valuta.dto.pos.PosClosingResult;
 import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -668,5 +669,139 @@ class DailyClosingServiceExtendedTest {
         assertThat(result.isSkipped()).isTrue();
         verify(denominationBalanceRepository, never()).sumActualStockByCurrency(any(), any(), any());
         verify(cashBalanceRepository, never()).findByBranchIdAndCompanyId(any(), any());
+    }
+
+    // ============ FK-067: kezelési díj záráskori ellenőrzés feature-kapcsolóval ============
+
+    @Test
+    @DisplayName("FK-067 FR-1: flag explicit false + van díjforgalom — skipped, a díj-összegzés meg sem hívódik")
+    void checkHandlingFeeDenomination_flagFalse_withFees_skippedBeforeSum() {
+        LocalDate closingDate = LocalDate.of(2026, 7, 24);
+        // setUp default: systemParameterService.getValue(anyString()) -> "false" (explicit kikapcsolt flag).
+        // A díjforgalom-stub csak azt rögzíti, hogy VAN forgalom — a flag-checknek előbb kell döntenie.
+        when(transactionRepository.sumDailyHandlingFees(BRANCH_ID, closingDate))
+            .thenReturn(new BigDecimal("5000"));
+
+        DailyClosingService.StepCheckResult result =
+            dailyClosingService.executeStepCheck(3, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isTrue();
+        assertThat(result.isSkipped()).isTrue();
+        assertThat(result.getMessage()).isEqualTo("Kezelesi dij cimletezes nem aktiv");
+        // Szerződés (FK-067 v2): a flag-check a nulla-díj guard ELŐTT fut, az összegzés el sem indul.
+        verify(transactionRepository, never()).sumDailyHandlingFees(any(), any());
+    }
+
+    @Test
+    @DisplayName("FK-067 FR-1: flag nincs beállítva (nincs system_parameter sor) + 0 díj — az új skip-üzenet jön, nem a régi")
+    void checkHandlingFeeDenomination_flagMissing_zeroFees_newSkipMessage() {
+        LocalDate closingDate = LocalDate.of(2026, 7, 24);
+        // Hiányzó sor szimulációja: a getValue ResourceNotFoundException-t dob (SystemParameterService.getByKey
+        // viselkedése), amit a hasFeature elnyel -> feature inaktív. A díj a setUp szerint 0.
+        when(systemParameterService.getValue("FEATURE_HANDLING_FEE_DENOMINATION"))
+            .thenThrow(new ResourceNotFoundException(
+                "Paraméter nem található: FEATURE_HANDLING_FEE_DENOMINATION"));
+
+        DailyClosingService.StepCheckResult result =
+            dailyClosingService.executeStepCheck(3, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isTrue();
+        assertThat(result.isSkipped()).isTrue();
+        // Alapállapotban (flag off) a régi "Nem volt kezelesi dij ma" üzenet nem jelenhet meg:
+        // a flag-check előbb dönt, mint a nulla-díj guard.
+        assertThat(result.getMessage()).isEqualTo("Kezelesi dij cimletezes nem aktiv");
+    }
+
+    @Test
+    @DisplayName("FK-067 FR-2: flag true + van díjforgalom + nincs címlet-sor — failed (mai viselkedés változatlan)")
+    void checkHandlingFeeDenomination_flagTrue_missingDenomination_fails() {
+        LocalDate closingDate = LocalDate.of(2026, 7, 24);
+        when(systemParameterService.getValue("FEATURE_HANDLING_FEE_DENOMINATION")).thenReturn("true");
+        when(transactionRepository.sumDailyHandlingFees(BRANCH_ID, closingDate))
+            .thenReturn(new BigDecimal("5000"));
+        when(denominationBalanceRepository.existsByBranchIdAndDateAndType(
+                BRANCH_ID, closingDate, "HANDLING_FEE")).thenReturn(false);
+
+        DailyClosingService.StepCheckResult result =
+            dailyClosingService.executeStepCheck(3, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isFalse();
+        assertThat(result.getMessage()).isEqualTo("Hianyzik a kezelesi dij cimletezese!");
+    }
+
+    @Test
+    @DisplayName("FK-067 FR-2: flag true + van díjforgalom + van címlet-sor — passed (mai viselkedés változatlan)")
+    void checkHandlingFeeDenomination_flagTrue_withDenomination_passes() {
+        LocalDate closingDate = LocalDate.of(2026, 7, 24);
+        when(systemParameterService.getValue("FEATURE_HANDLING_FEE_DENOMINATION")).thenReturn("true");
+        when(transactionRepository.sumDailyHandlingFees(BRANCH_ID, closingDate))
+            .thenReturn(new BigDecimal("5000"));
+        when(denominationBalanceRepository.existsByBranchIdAndDateAndType(
+                BRANCH_ID, closingDate, "HANDLING_FEE")).thenReturn(true);
+
+        DailyClosingService.StepCheckResult result =
+            dailyClosingService.executeStepCheck(3, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isTrue();
+        assertThat(result.isSkipped()).isFalse();
+        assertThat(result.getMessage()).isEqualTo("Kezelesi dij cimletezes rendben");
+    }
+
+    @Test
+    @DisplayName("FK-067 regresszió: flag true + 0 díj — a régi nulla-díj skip üzenet ILYENKOR (és csak ilyenkor) él")
+    void checkHandlingFeeDenomination_flagTrue_zeroFees_legacyZeroFeeSkip() {
+        LocalDate closingDate = LocalDate.of(2026, 7, 24);
+        // FONTOS: ez a teszt a flag=true ágat rögzíti, NEM az alapállapotot. Bekapcsolt feature mellett
+        // a flag-check átenged, és a régi nulla-díj guard fut tovább változatlanul -> a
+        // "Nem volt kezelesi dij ma" üzenet itt a HELYES elvárt eredmény. Alapállapotban (flag off)
+        // ugyanezt az üzenetet a flag-check blokkolja (lásd: checkHandlingFeeDenomination_flagMissing_zeroFees_newSkipMessage).
+        when(systemParameterService.getValue("FEATURE_HANDLING_FEE_DENOMINATION")).thenReturn("true");
+        // sumDailyHandlingFees a setUp szerint BigDecimal.ZERO
+
+        DailyClosingService.StepCheckResult result =
+            dailyClosingService.executeStepCheck(3, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isTrue();
+        assertThat(result.isSkipped()).isTrue();
+        assertThat(result.getMessage()).isEqualTo("Nem volt kezelesi dij ma");
+    }
+
+    @Test
+    @DisplayName("FK-067: executeStepCheck(3) közvetlen hívás — a flag '1' értékkel is aktív, teljes happy path")
+    void executeStepCheck_step3_flagNumericTrue_happyPath() {
+        LocalDate closingDate = LocalDate.of(2026, 7, 24);
+        // A hasFeature az "1" értéket is igaznak fogadja el (WU-minta, DailyClosingService.hasFeature).
+        // A wizard lépésenkénti útvonala (executeStepCheck case 3) ugyanazt a privát checket hívja —
+        // Fázis 0 megállapítása szerint erre a lépésre eddig nem volt közvetlen teszt.
+        when(systemParameterService.getValue("FEATURE_HANDLING_FEE_DENOMINATION")).thenReturn("1");
+        when(transactionRepository.sumDailyHandlingFees(BRANCH_ID, closingDate))
+            .thenReturn(new BigDecimal("2500"));
+        when(denominationBalanceRepository.existsByBranchIdAndDateAndType(
+                BRANCH_ID, closingDate, "HANDLING_FEE")).thenReturn(true);
+
+        DailyClosingService.StepCheckResult result =
+            dailyClosingService.executeStepCheck(3, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isTrue();
+        assertThat(result.isSkipped()).isFalse();
+        assertThat(result.getMessage()).isEqualTo("Kezelesi dij cimletezes rendben");
+    }
+
+    @Test
+    @DisplayName("FK-067 HIGH#2 (Codex): váratlan kivétel a flag-feloldásban — failed, NEM skipped (nincs csendes fail-open)")
+    void checkHandlingFeeDenomination_unexpectedError_failsNotSkipped() {
+        LocalDate closingDate = LocalDate.of(2026, 7, 24);
+        // NEM ResourceNotFoundException (az a "nincs beállítva" eset, lásd flagMissing teszt),
+        // hanem váratlan futásidejű hiba (pl. DB-kiesés): a lépés nem skippelhet, mert a
+        // konfiguráció állapota ismeretlen — explicit failed a kontraktus.
+        when(systemParameterService.getValue("FEATURE_HANDLING_FEE_DENOMINATION"))
+            .thenThrow(new RuntimeException("DB kapcsolat megszakadt"));
+
+        DailyClosingService.StepCheckResult result =
+            dailyClosingService.executeStepCheck(3, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isFalse();
+        assertThat(result.isSkipped()).isFalse();
+        assertThat(result.getMessage()).isEqualTo("Kezelesi dij ellenorzes konfiguracioja nem ellenorizheto");
     }
 }
