@@ -66,6 +66,31 @@ class SystemParameterServiceTest {
     }
 
     @Test
+    @DisplayName("FK-066/Sourcery: findEffectiveValue — adat-elérési hiba fail-conservative (WARN + empty)")
+    void findEffectiveValue_dataAccessErrorYieldsEmpty() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+                    .thenThrow(new org.springframework.dao.DataAccessResourceFailureException("DB down"));
+
+            assertThat(service.findEffectiveValue(KEY)).isEmpty();
+        }
+    }
+
+    @Test
+    @DisplayName("FK-066/Sourcery: findEffectiveValue — programozási hiba (NPE) TOVÁBB propagál, nem nyelődik el")
+    void findEffectiveValue_programmingErrorPropagates() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+                    .thenThrow(new NullPointerException("programozási hiba"));
+
+            assertThatThrownBy(() -> service.findEffectiveValue(KEY))
+                    .isInstanceOf(NullPointerException.class);
+        }
+    }
+
+    @Test
     @DisplayName("Shipment stale küszöb — az A cég override-ja nem szivárog át a B cégbe")
     void shipmentStaleThresholdOverrideRemainsTenantScoped() {
         String key = ShipmentService.PARAM_STALE_WARNING_HOURS;

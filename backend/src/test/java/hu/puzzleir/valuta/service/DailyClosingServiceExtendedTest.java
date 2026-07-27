@@ -69,6 +69,8 @@ class DailyClosingServiceExtendedTest {
     @Mock private ReceiptSequenceService receiptSequenceService;
     @Mock private ClosingControlService closingControlService;
     @Mock private BranchRepository branchRepository;
+    /** FK-066: új konstruktor-függőség (FK-065 minta) — fixture-bekötés, assertion nem változik. */
+    @Mock private ClosingToleranceService closingToleranceService;
 
     private static final UUID BRANCH_ID  = UUID.randomUUID();
     private static final UUID COMPANY_ID = UUID.randomUUID();
@@ -114,6 +116,13 @@ class DailyClosingServiceExtendedTest {
             .thenReturn(BigDecimal.ZERO);
         when(transactionRepository.countUnreportedTransactions(any(), any())).thenReturn(0L);
         when(systemParameterService.getValue(anyString())).thenReturn("false");
+        // FK-066 fixture: paraméter-sor nélküli (fallback) tolerancia-szimuláció — a
+        // korábbi hardkódolt viselkedés tükre (HUF: 1 Ft '>' operátorral, nem-HUF: 0).
+        // A meglévo tesztek szemantikáját nem változtatja.
+        when(closingToleranceService.getToleranceFor(anyString()))
+            .thenAnswer(inv -> "HUF".equals(inv.getArgument(0))
+                ? ClosingTolerance.fallbackOf(BigDecimal.ONE)
+                : ClosingTolerance.fallbackOf(BigDecimal.ZERO));
 
         // FK-061: alapértelmezett nem-vault branch (pénztári kontextus)
         Branch nonVaultBranch = new Branch();
@@ -584,6 +593,26 @@ class DailyClosingServiceExtendedTest {
 
         assertThat(result.isPassed()).isFalse();
         assertThat(result.getMessage()).contains("EUR").doesNotContain("USD");
+    }
+
+    @Test
+    @DisplayName("FK-066 regresszió: HUF-fallback felső határa — 2 Ft eltérés paraméter-sor nélkül bukik")
+    void checkEveningDenomination_hufFallbackUpperBoundary() {
+        // FK-066 szerződés-rögzítés: system_parameter sor NÉLKÜL a kód-szintű fallback
+        // HUF-tolerancia 1 Ft marad (a seedelt 5 CSAK explicit DB-sorként érvényes),
+        // tehát a 2 Ft-os eltérésnek fallback-ágon FK-066 után is buknia kell.
+        LocalDate closingDate = LocalDate.of(2026, 7, 24);
+        when(denominationBalanceRepository.sumActualStockByCurrency(
+                BRANCH_ID, closingDate, DenominationCategory.EVENING))
+            .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("100002")}));
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID))
+            .thenReturn(List.of(cashBalanceOf("HUF", new BigDecimal("100000"))));
+
+        DailyClosingService.StepCheckResult result =
+            dailyClosingService.executeStepCheck(2, BRANCH_ID, closingDate);
+
+        assertThat(result.isPassed()).isFalse();
+        assertThat(result.getMessage()).contains("HUF");
     }
 
     @Test
