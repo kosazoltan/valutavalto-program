@@ -58,11 +58,20 @@ public class ClosingWizardService {
     private final CurrencyRepository currencyRepository;
     private final CurrencyStockRepository currencyStockRepository;
     private final SystemParameterService systemParameterService;
+    // FK-065: beragadt munkamenet auto-lejárat + megszakítás auditja.
+    private final AuditLogService auditLogService;
 
     /** G3: a zárás-eltérés magyarázat-kötelezettség feature-flag SystemParameter kulcsa. */
     static final String CLOSING_DISCREPANCY_PARAM = "CLOSING_DISCREPANCY_EXPLANATION_REQUIRED";
     /** G3: az eltérés-tolerancia (Ft) — ezalatt nincs magyarázat-kötelezettség (kerekítés). */
     private static final java.math.BigDecimal DISCREPANCY_TOLERANCE_HUF = java.math.BigDecimal.ONE;
+    /** FK-065: az auto-lejárat küszöbének (perc) SystemParameter kulcsa. */
+    static final String AUTO_EXPIRE_MINUTES_PARAM = "CLOSING_WIZARD_AUTO_EXPIRE_MINUTES";
+    /** FK-065: default lejárati küszöb percben, ha a paraméter hiányzik/érvénytelen. */
+    private static final int DEFAULT_AUTO_EXPIRE_MINUTES = 120;
+    /** FK-065 MEDIUM-fix: a küszöb megengedett tartománya (perc) — ezen kívül clamp. */
+    private static final int AUTO_EXPIRE_MIN_MINUTES = 30;
+    private static final int AUTO_EXPIRE_MAX_MINUTES = 1440;
 
     /**
      * Zárási varázsló indítása
@@ -134,6 +143,27 @@ public class ClosingWizardService {
      * {@code findByIdWithSteps(...)} után. Ez user-facing (ClosingWizardController) hívási
      * útra való; az osztálynak nincs {@code @Scheduled}/auth-mentes hívója.</p>
      */
+    /**
+     * FK-065 (Codex HIGH): user-facing wizard-írás optimista lock-fordítással.
+     * A flush() a metóduson BELÜL futtatja le a verzió-ellenőrzést (nem a
+     * tranzakció commitjánál), így a konfliktus itt elkapható és felhasználó-barát
+     * 409-re fordítható (GlobalExceptionHandler), nem generikus 500-ra. Konfliktus =
+     * a sort időközben más írta (pl. a scheduler auto-lejárata EXPIRED-re váltotta).
+     */
+    private ClosingWizard saveWizardWithConflictCheck(ClosingWizard wizard) {
+        try {
+            ClosingWizard saved = closingWizardRepository.save(wizard);
+            closingWizardRepository.flush();
+            return saved;
+        } catch (org.springframework.dao.OptimisticLockingFailureException
+                | jakarta.persistence.OptimisticLockException e) {
+            log.warn("Zárási varázsló optimista lock konfliktus: id={}", wizard.getId());
+            throw new jakarta.persistence.OptimisticLockException(
+                    "A zárási munkamenet közben megváltozott (pl. automatikus lejárat) — "
+                            + "frissítsd az oldalt és próbáld újra.");
+        }
+    }
+
     private void assertOwnWizard(ClosingWizard wizard) {
         UUID currentBranchId = SecurityUtils.getCurrentBranchId();
         if (wizard.getBranch() != null && !wizard.getBranch().getId().equals(currentBranchId)) {
@@ -203,7 +233,7 @@ public class ClosingWizardService {
             }
         }
 
-        ClosingWizard saved = closingWizardRepository.save(wizard);
+        ClosingWizard saved = saveWizardWithConflictCheck(wizard);
 
         return toDto(saved);
     }
@@ -239,7 +269,7 @@ public class ClosingWizardService {
         wizard.setCompletedByWorker(worker);
         wizard.setCompletedAt(LocalDateTime.now());
 
-        ClosingWizard saved = closingWizardRepository.save(wizard);
+        ClosingWizard saved = saveWizardWithConflictCheck(wizard);
         log.info("Zárási varázsló befejezve: id={}", wizardId);
 
         return toDto(saved);
@@ -258,10 +288,153 @@ public class ClosingWizardService {
         }
 
         wizard.setWizardStatus(WizardStatus.CANCELLED);
-        ClosingWizard saved = closingWizardRepository.save(wizard);
+        ClosingWizard saved = saveWizardWithConflictCheck(wizard);
         log.info("Zárási varázsló megszakítva: id={}", wizardId);
 
+        // FK-065: a megszakítás auditja — az INDÍTÓ és a MEGSZAKÍTÓ megkülönböztetése
+        // kizárólag audit_log-on történik (a wizard-táblán nincs erre oszlop): a userId
+        // a megszakító (aktor), a changes tartalmazza az indító worker azonosítóját.
+        // Manuális megszakítás nem hibaeset — error_code szándékosan nincs.
+        if (auditLogService != null) {
+            String cancellerCode = SecurityUtils.getCurrentWorkerCode();
+            Long starterId = wizard.getStartedByWorker() != null
+                    ? wizard.getStartedByWorker().getId()
+                    : null;
+            String branchIdStr = wizard.getBranch() != null && wizard.getBranch().getId() != null
+                    ? wizard.getBranch().getId().toString()
+                    : null;
+            String branchName = wizard.getBranch() != null ? wizard.getBranch().getName() : null;
+            // Security Gate LOW-fix: ObjectMapper-es serializálás a kézi string-fűzés
+            // helyett — a cancellerCode így escape-elve kerül a changes JSON-ba.
+            Map<String, Object> auditChanges = new LinkedHashMap<>();
+            auditChanges.put("KAT", "TX");
+            auditChanges.put("started_by_worker_id", starterId);
+            auditChanges.put("cancelled_by_worker_code", cancellerCode);
+            auditLogService.log(
+                    "CLOSING_WIZARD_CANCELLED",
+                    "ClosingWizard",
+                    wizardId.toString(),
+                    cancellerCode,
+                    null,
+                    branchIdStr,
+                    branchName,
+                    objectMapper.writeValueAsString(auditChanges),
+                    null,
+                    null);
+        }
+
         return toDto(saved);
+    }
+
+    /**
+     * FK-065 FR-1: beragadt (a küszöbnél régebben indított, IN_PROGRESS) zárási
+     * varázslók automatikus lejáratása — a {@code ReservationService.autoExpireReservations()}
+     * mintája.
+     *
+     * <p>Scheduler-kontextusban fut, SecurityContext nélkül: TILOS
+     * {@code SecurityUtils.getCurrentCompanyId()}-t hívni — a company/branch minden
+     * esetben a wizard SAJÁT rekordjából jön. Cross-tenant: egy körben az összes cég
+     * sorait kezeli, cégenkénti audittal ({@code logForCompany}, P29-minta;
+     * KAT=TX, error_code=VV-BIZ-011). Per-item try/catch: egy hibás rekord nem
+     * boríthatja a teljes kört.</p>
+     *
+     * @return a lejáratott varázslók száma
+     */
+    public int autoExpireStaleWizards() {
+        int expireMinutes = resolveAutoExpireMinutes();
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(expireMinutes);
+
+        List<ClosingWizard> stale = closingWizardRepository
+                .findByWizardStatusAndStartedAtBefore(WizardStatus.IN_PROGRESS, cutoff);
+
+        int count = 0;
+        for (ClosingWizard wizard : stale) {
+            try {
+                // Gyors előszűrő: ha a betöltött példány már nem IN_PROGRESS, kihagyjuk.
+                if (wizard.getWizardStatus() != WizardStatus.IN_PROGRESS) {
+                    log.debug("Zárási varázsló már nem aktív, auto-lejárat kihagyva: id={}, státusz={}",
+                            wizard.getId(), wizard.getWizardStatus());
+                    continue;
+                }
+
+                // Bugbot-hardening: a lazy branch→company audit-adatok kiolvasása a bulk
+                // UPDATE ELŐTT, lokális változókba. A @Modifying defaultja
+                // clearAutomatically=false (a persistence context nem ürül), de így az
+                // audit a JPA-viselkedéstől függetlenül, kóddal garantált.
+                UUID auditBranchId = wizard.getBranch() != null ? wizard.getBranch().getId() : null;
+                UUID auditCompanyId = wizard.getBranch() != null && wizard.getBranch().getCompany() != null
+                        ? wizard.getBranch().getCompany().getId()
+                        : null;
+
+                // Security Gate HIGH-fix: feltételes, ATOMIKUS UPDATE — a SELECT és az
+                // írás közti konkurens cancel()/finalize ellen a DB WHERE-feltétele véd.
+                // 0 érintett sor = közben más állapotba került → NEM auditolunk EXPIRED-et.
+                int updated = closingWizardRepository.transitionIfStale(
+                        wizard.getId(), WizardStatus.IN_PROGRESS, WizardStatus.EXPIRED, cutoff);
+                if (updated == 0) {
+                    log.debug("Zárási varázsló közben más állapotba került, auto-lejárat kihagyva: id={}",
+                            wizard.getId());
+                    continue;
+                }
+
+                // In-memory szinkron a betöltött példányon (a bulk UPDATE nem frissíti).
+                wizard.setWizardStatus(WizardStatus.EXPIRED);
+                count++;
+                log.info("Beragadt zárási varázsló lejáratva: id={}, indítva={}, küszöb={} perc",
+                        wizard.getId(), wizard.getStartedAt(), expireMinutes);
+
+                if (auditLogService != null && auditCompanyId != null) {
+                    auditLogService.logForCompany(
+                            "CLOSING_WIZARD_AUTO_EXPIRED",
+                            String.format(
+                                    "{\"KAT\":\"TX\",\"error_code\":\"VV-BIZ-011\","
+                                            + "\"branch_id\":\"%s\",\"closing_date\":\"%s\","
+                                            + "\"started_at\":\"%s\",\"expire_minutes\":%d}",
+                                    auditBranchId, wizard.getClosingDate(),
+                                    wizard.getStartedAt(), expireMinutes),
+                            wizard.getId().toString(),
+                            auditCompanyId);
+                }
+            } catch (Exception e) {
+                log.error("Zárási varázsló auto-lejárat hiba: id={}, hiba={}",
+                        wizard.getId(), e.getMessage(), e);
+            }
+        }
+        return count;
+    }
+
+    /**
+     * FK-065 MEDIUM-fix: az auto-lejárat küszöbének olvasása tartomány-validációval.
+     * Érvénytelen (nem szám) érték → default 120 perc; tartományon kívüli érték →
+     * WARN + clamp a legközelebbi határra (30..1440 perc). A SystemParameterService-nek
+     * nincs saját clamp-mintája, ezért itt, a felhasználás helyén validálunk.
+     */
+    private int resolveAutoExpireMinutes() {
+        int expireMinutes = DEFAULT_AUTO_EXPIRE_MINUTES;
+        if (systemParameterService != null) {
+            try {
+                expireMinutes = Integer.parseInt(systemParameterService
+                        .getValue(AUTO_EXPIRE_MINUTES_PARAM, String.valueOf(DEFAULT_AUTO_EXPIRE_MINUTES))
+                        .trim());
+            } catch (NumberFormatException e) {
+                log.warn("Érvénytelen {} paraméter, default {} perc marad: {}",
+                        AUTO_EXPIRE_MINUTES_PARAM, DEFAULT_AUTO_EXPIRE_MINUTES, e.getMessage());
+                return DEFAULT_AUTO_EXPIRE_MINUTES;
+            }
+        }
+        if (expireMinutes < AUTO_EXPIRE_MIN_MINUTES) {
+            log.warn("{} = {} a megengedett tartomány ({}-{} perc) alatt — clamp {} percre",
+                    AUTO_EXPIRE_MINUTES_PARAM, expireMinutes,
+                    AUTO_EXPIRE_MIN_MINUTES, AUTO_EXPIRE_MAX_MINUTES, AUTO_EXPIRE_MIN_MINUTES);
+            return AUTO_EXPIRE_MIN_MINUTES;
+        }
+        if (expireMinutes > AUTO_EXPIRE_MAX_MINUTES) {
+            log.warn("{} = {} a megengedett tartomány ({}-{} perc) felett — clamp {} percre",
+                    AUTO_EXPIRE_MINUTES_PARAM, expireMinutes,
+                    AUTO_EXPIRE_MIN_MINUTES, AUTO_EXPIRE_MAX_MINUTES, AUTO_EXPIRE_MAX_MINUTES);
+            return AUTO_EXPIRE_MAX_MINUTES;
+        }
+        return expireMinutes;
     }
 
     // ============ STEP-SPECIFIC METHODS ============
@@ -628,11 +801,13 @@ public class ClosingWizardService {
                             .collect(Collectors.joining("; ")));
         }
 
-        // Wizard lezárása
+        // Wizard lezárása — optimista lock-ellenőrzéssel (Codex HIGH): ha a
+        // scheduler auto-lejárata közben EXPIRED-re váltotta, itt konfliktus lesz,
+        // nem néma COMPLETED-felülírás.
         wizard.setWizardStatus(WizardStatus.COMPLETED);
         wizard.setCompletedByWorker(worker);
         wizard.setCompletedAt(LocalDateTime.now());
-        closingWizardRepository.save(wizard);
+        saveWizardWithConflictCheck(wizard);
 
         log.info("Zárás véglegesítve: wizard={}, closingDate={}", wizardId, closingDate);
 
@@ -788,6 +963,25 @@ public class ClosingWizardService {
             message = "A zárási címletezés pontosan egyezik a nyilvántartással.";
         }
 
+        // FK-065 FR-2 (egyhívásos FR-3): a napra vonatkozó beragadt/aktív wizard jelzése —
+        // mai IN_PROGRESS elsőbbség, EXPIRED-fallback, különben mindkettő null. A frontend
+        // ebből dönt (Folytatás / Új zárás indítása), külön get() hívás nélkül.
+        String activeWizardId = null;
+        String activeWizardStatus = null;
+        List<ClosingWizard> activeToday = closingWizardRepository
+                .findByBranchIdAndStatusAndClosingDate(branchId, WizardStatus.IN_PROGRESS, date);
+        if (!activeToday.isEmpty()) {
+            activeWizardId = activeToday.get(0).getId().toString();
+            activeWizardStatus = WizardStatus.IN_PROGRESS.name();
+        } else {
+            List<ClosingWizard> expiredToday = closingWizardRepository
+                    .findByBranchIdAndStatusAndClosingDate(branchId, WizardStatus.EXPIRED, date);
+            if (!expiredToday.isEmpty()) {
+                activeWizardId = expiredToday.get(0).getId().toString();
+                activeWizardStatus = WizardStatus.EXPIRED.name();
+            }
+        }
+
         return ClosingWizardStatusDto.builder()
                 .branchId(branchId.toString())
                 .closingDate(date.toString())
@@ -796,6 +990,8 @@ public class ClosingWizardService {
                 .exactMatch(exactMatch)
                 .message(message)
                 .differences(differences)
+                .activeWizardId(activeWizardId)
+                .activeWizardStatus(activeWizardStatus)
                 .build();
     }
 

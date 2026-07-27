@@ -126,6 +126,16 @@ public class ClosingWizard {
     private String discrepancyExplanation;
 
     /**
+     * FK-065 (Codex HIGH): optimista lock — a scheduler (auto-lejárat) és a
+     * user-facing írások (cancel/navigate/complete/finalize) versenyét a
+     * verzióellenőrzés zárja le mindkét irányban (V363).
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+
+    /**
      * Lépések
      */
     @OneToMany(mappedBy = "wizard", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)

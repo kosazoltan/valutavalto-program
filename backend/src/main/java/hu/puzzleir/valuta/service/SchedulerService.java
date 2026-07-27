@@ -29,6 +29,7 @@ public class SchedulerService {
 
     private final ScheduledTaskRepository scheduledTaskRepository;
     private final ReservationService reservationService;
+    private final ClosingWizardService closingWizardService;
 
     // =====================================================================
     // Fix @Scheduled feladatok
@@ -81,6 +82,21 @@ public class SchedulerService {
         executeAndRecord("RESERVATION_AUTO_EXPIRY", ScheduledTask.TaskType.HEALTH_CHECK, () -> {
             int count = reservationService.autoExpireReservations();
             log.info("Foglaló auto-expiry kész: {} foglaló lejárt", count);
+        });
+    }
+
+    /**
+     * FK-065 FR-1: Beragadt zárási varázslók auto-lejárata — 30 percenként.
+     * A küszöbnél (CLOSING_WIZARD_AUTO_EXPIRE_MINUTES, default 120 perc) régebben
+     * indított IN_PROGRESS varázslók EXPIRED-re váltanak, cégenkénti audittal.
+     * A 30 perces ütem a session-döntésre vár megerősítésként (FK-065 TBD).
+     */
+    @Scheduled(cron = "0 */30 * * * *")
+    public void closingWizardAutoExpiry() {
+        log.info("Zárási varázsló auto-lejárat indítása...");
+        executeAndRecord("CLOSING_WIZARD_AUTO_EXPIRY", ScheduledTask.TaskType.HEALTH_CHECK, () -> {
+            int count = closingWizardService.autoExpireStaleWizards();
+            log.info("Zárási varázsló auto-lejárat kész: {} varázsló lejáratva", count);
         });
     }
 

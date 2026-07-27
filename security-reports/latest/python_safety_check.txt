@@ -1,4 +1,4 @@
-﻿Command: python -m safety check -r "D:\repo\valutavalto-program\.claude\worktrees\youthful-shannon-8ac321\tools\ztype\requirements.txt" --json
+﻿Command: python -m safety check -r "C:\repo\valutavalto-program\tools\ztype\requirements.txt" --json
 Status: PASSED
 Note: 
 
@@ -21,10 +21,10 @@ We highly encourage switching to the new `scan` command which is easier to use, 
     "report_meta": {
         "scan_target": "files",
         "scanned": [
-            "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
+            "C:\\repo\\valutavalto-program\\tools\\ztype\\requirements.txt"
         ],
         "scanned_full_path": [
-            "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
+            "C:\\repo\\valutavalto-program\\tools\\ztype\\requirements.txt"
         ],
         "target_languages": [
             "python"
@@ -35,11 +35,11 @@ We highly encourage switching to the new `scan` command which is easier to use, 
         "api_key": false,
         "account": "",
         "local_database_path": null,
-        "safety_version": "3.7.0",
-        "timestamp": "2026-06-11 22:46:41",
-        "packages_found": 8,
+        "safety_version": "3.8.1",
+        "timestamp": "2026-07-27 12:59:27",
+        "packages_found": 10,
         "vulnerabilities_found": 0,
-        "vulnerabilities_ignored": 11,
+        "vulnerabilities_ignored": 0,
         "remediations_recommended": 0,
         "telemetry": {
             "safety_options": {
@@ -50,20 +50,20 @@ We highly encourage switching to the new `scan` command which is easier to use, 
                     "--json": 1
                 }
             },
-            "safety_version": "3.7.0",
+            "safety_version": "3.8.1",
             "safety_source": "cli",
             "os_type": "Windows",
-            "os_release": "11",
-            "os_description": "Windows-11-10.0.26200-SP0",
-            "python_version": "3.14.3",
+            "os_release": "10",
+            "os_description": "Windows-10-10.0.26200-SP0",
+            "python_version": "3.11.15",
             "safety_command": "check"
         },
         "git": {
             "branch": "main",
-            "tag": "",
-            "commit": "828c1136ad04f181f8d0eda55b4a5539a62c6d24",
+            "tag": "v2.28.59",
+            "commit": "8ca51438a03025b65d9826539704691370336188",
             "dirty": "True",
-            "origin": "https://github.com/kosazoltan/valutavalto-program.git"
+            "origin": "https://github.com/kosazoltan/valutavalto-program"
         },
         "project": null,
         "json_version": "1.1",
@@ -83,7 +83,7 @@ We highly encourage switching to the new `scan` command which is easier to use, 
                     "name": "openai",
                     "specifier": ">=1.40.0",
                     "url": null,
-                    "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
+                    "found": "C:\\repo\\valutavalto-program\\tools\\ztype\\requirements.txt"
                 }
             ]
         },
@@ -98,7 +98,7 @@ We highly encourage switching to the new `scan` command which is easier to use, 
                     "name": "sounddevice",
                     "specifier": ">=0.5.0",
                     "url": null,
-                    "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
+                    "found": "C:\\repo\\valutavalto-program\\tools\\ztype\\requirements.txt"
                 }
             ]
         },
@@ -113,7 +113,7 @@ We highly encourage switching to the new `scan` command which is easier to use, 
                     "name": "numpy",
                     "specifier": ">=1.26.0",
                     "url": null,
-                    "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
+                    "found": "C:\\repo\\valutavalto-program\\tools\\ztype\\requirements.txt"
                 }
             ]
         },
@@ -128,7 +128,7 @@ We highly encourage switching to the new `scan` command which is easier to use, 
                     "name": "keyboard",
                     "specifier": ">=0.13.5",
                     "url": null,
-                    "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
+                    "found": "C:\\repo\\valutavalto-program\\tools\\ztype\\requirements.txt"
                 }
             ]
         },
@@ -143,7 +143,7 @@ We highly encourage switching to the new `scan` command which is easier to use, 
                     "name": "pyperclip",
                     "specifier": ">=1.9.0",
                     "url": null,
-                    "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
+                    "found": "C:\\repo\\valutavalto-program\\tools\\ztype\\requirements.txt"
                 }
             ]
         },
@@ -158,7 +158,7 @@ We highly encourage switching to the new `scan` command which is easier to use, 
                     "name": "pystray",
                     "specifier": ">=0.19.5",
                     "url": null,
-                    "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
+                    "found": "C:\\repo\\valutavalto-program\\tools\\ztype\\requirements.txt"
                 }
             ]
         },
@@ -167,13 +167,43 @@ We highly encourage switching to the new `scan` command which is easier to use, 
             "version": null,
             "requirements": [
                 {
-                    "raw": "Pillow>=10.0.0",
+                    "raw": "Pillow>=12.2.0",
                     "extras": [],
                     "marker": null,
                     "name": "Pillow",
-                    "specifier": ">=10.0.0",
+                    "specifier": ">=12.2.0",
                     "url": null,
-                    "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
+                    "found": "C:\\repo\\valutavalto-program\\tools\\ztype\\requirements.txt"
+                }
+            ]
+        },
+        "tqdm": {
+            "name": "tqdm",
+            "version": null,
+            "requirements": [
+                {
+                    "raw": "tqdm>=4.68.3",
+                    "extras": [],
+                    "marker": null,
+                    "name": "tqdm",
+                    "specifier": ">=4.68.3",
+                    "url": null,
+                    "found": "C:\\repo\\valutavalto-program\\tools\\ztype\\requirements.txt"
+                }
+            ]
+        },
+        "idna": {
+            "name": "idna",
+            "version": null,
+            "requirements": [
+                {
+                    "raw": "idna>=3.18",
+                    "extras": [],
+                    "marker": null,
+                    "name": "idna",
+                    "specifier": ">=3.18",
+                    "url": null,
+                    "found": "C:\\repo\\valutavalto-program\\tools\\ztype\\requirements.txt"
                 }
             ]
         },
@@ -188,514 +218,20 @@ We highly encourage switching to the new `scan` command which is easier to use, 
                     "name": "keyring",
                     "specifier": ">=25.0.0",
                     "url": null,
-                    "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
+                    "found": "C:\\repo\\valutavalto-program\\tools\\ztype\\requirements.txt"
                 }
             ]
         }
     },
-    "affected_packages": {
-        "pillow": {
-            "name": "pillow",
-            "version": null,
-            "requirements": [
-                {
-                    "raw": "Pillow>=10.0.0",
-                    "extras": [],
-                    "marker": null,
-                    "name": "Pillow",
-                    "specifier": ">=10.0.0",
-                    "url": null,
-                    "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
-                }
-            ],
-            "found": null,
-            "insecure_versions": [
-                "1.0",
-                "1.1",
-                "1.2",
-                "1.3",
-                "1.4",
-                "1.5",
-                "1.6",
-                "1.7.0",
-                "1.7.1",
-                "1.7.2",
-                "1.7.3",
-                "1.7.4",
-                "1.7.5",
-                "1.7.6",
-                "1.7.7",
-                "1.7.8",
-                "2.0.0",
-                "2.1.0",
-                "2.2.0",
-                "2.2.1",
-                "2.2.2",
-                "2.3.0",
-                "2.3.1",
-                "2.3.2",
-                "2.4.0",
-                "2.5.0",
-                "2.5.1",
-                "2.5.2",
-                "2.5.3",
-                "2.6.0",
-                "2.6.1",
-                "2.6.2",
-                "2.7.0",
-                "2.8.0",
-                "2.8.1",
-                "2.8.2",
-                "2.9.0",
-                "3.0.0",
-                "3.1.0rc1",
-                "3.1.0",
-                "3.1.1",
-                "3.1.2",
-                "3.2.0",
-                "3.3.0",
-                "3.3.1",
-                "3.3.2",
-                "3.3.3",
-                "3.4.0",
-                "3.4.1",
-                "3.4.2",
-                "4.0.0",
-                "4.1.0",
-                "4.1.1",
-                "4.2.0",
-                "4.2.1",
-                "4.3.0",
-                "5.0.0",
-                "5.1.0",
-                "5.2.0",
-                "5.3.0",
-                "5.4.0.dev0",
-                "5.4.0",
-                "5.4.1",
-                "6.0.0",
-                "6.1.0",
-                "6.2.0",
-                "6.2.1",
-                "6.2.2",
-                "7.0.0",
-                "7.1.0",
-                "7.1.1",
-                "7.1.2",
-                "7.2.0",
-                "8.0.0",
-                "8.0.1",
-                "8.1.0",
-                "8.1.1",
-                "8.1.2",
-                "8.2.0",
-                "8.3.0",
-                "8.3.1",
-                "8.3.2",
-                "8.4.0",
-                "9.0.0",
-                "9.0.1",
-                "9.1.0",
-                "9.1.1",
-                "9.2.0",
-                "9.3.0",
-                "9.4.0",
-                "9.5.0",
-                "10.0.0",
-                "10.0.1",
-                "10.1.0",
-                "10.2.0",
-                "10.3.0",
-                "10.4.0",
-                "11.0.0",
-                "11.1.0",
-                "11.2.0",
-                "11.2.1",
-                "11.3.0",
-                "12.0.0",
-                "12.1.0",
-                "12.1.1"
-            ],
-            "secure_versions": [
-                "12.2.0"
-            ],
-            "latest_version_without_known_vulnerabilities": "12.2.0",
-            "latest_version": "12.2.0",
-            "more_info_url": "https://getsafety.com/p/pypi/pillow/97c/"
-        }
-    },
+    "affected_packages": {},
     "announcements": [
         {
             "type": "warning",
-            "message": "Warning: openai, sounddevice, numpy, keyboard, pyperclip, pystray, pillow and keyring are unpinned. Safety by default does not report on potential vulnerabilities in unpinned packages. It is recommended to pin your dependencies unless this is a library meant for distribution. To learn more about reporting these, specifier range handling, and options for scanning unpinned packages visit https://docs.pyup.io/docs/safety-range-specs"
+            "message": "Warning: openai, sounddevice, numpy, keyboard, pyperclip, pystray, pillow, tqdm, idna and keyring are unpinned. Safety by default does not report on potential vulnerabilities in unpinned packages. It is recommended to pin your dependencies unless this is a library meant for distribution. To learn more about reporting these, specifier range handling, and options for scanning unpinned packages visit https://docs.pyup.io/docs/safety-range-specs"
         }
     ],
     "vulnerabilities": [],
-    "ignored_vulnerabilities": [
-        {
-            "vulnerability_id": "95896",
-            "package_name": "pillow",
-            "ignored": true,
-            "ignored_reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-            "ignored_expires": null,
-            "vulnerable_spec": [
-                ">=10.3.0,<12.2.0"
-            ],
-            "all_vulnerable_specs": [
-                ">=10.3.0,<12.2.0"
-            ],
-            "analyzed_version": null,
-            "analyzed_requirement": {
-                "raw": "Pillow>=10.0.0",
-                "extras": [],
-                "marker": null,
-                "name": "Pillow",
-                "specifier": ">=10.0.0",
-                "url": null,
-                "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
-            },
-            "advisory": "Affected versions of the pillow package are vulnerable to Out-of-bounds Write due to an integer overflow in PSD tile extent bounds checks that allow attacker-controlled tile dimensions to bypass validation in PSD image decoding and encoding. The bounds checks added in Pillow 12.1.1 to address CVE-2026-25990 use narrow integer types prone to wraparound, so a PSD image with carefully chosen tile dimensions can produce values that wrap around and pass validation while still exceeding the underlying buffer in src/decode.c and src/encode.c. A remote attacker who supplies a malicious PSD file can trigger memory corruption, potentially resulting in a crash or arbitrary code execution.",
-            "is_transitive": false,
-            "published_date": null,
-            "fixed_versions": [],
-            "closest_versions_without_known_vulnerabilities": [],
-            "resources": [],
-            "CVE": "CVE-2026-42311",
-            "severity": null,
-            "affected_versions": [],
-            "more_info_url": "https://getsafety.com/v/95896/97c"
-        },
-        {
-            "vulnerability_id": "93093",
-            "package_name": "pillow",
-            "ignored": true,
-            "ignored_reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-            "ignored_expires": null,
-            "vulnerable_spec": [
-                ">=10.3.0,<12.2.0"
-            ],
-            "all_vulnerable_specs": [
-                ">=10.3.0,<12.2.0"
-            ],
-            "analyzed_version": null,
-            "analyzed_requirement": {
-                "raw": "Pillow>=10.0.0",
-                "extras": [],
-                "marker": null,
-                "name": "Pillow",
-                "specifier": ">=10.0.0",
-                "url": null,
-                "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
-            },
-            "advisory": "Affected versions of the pillow package are vulnerable to Denial of Service due to unrestricted GZIP-compressed data consumption during FITS image decoding. The FITS image plugin does not limit the amount of GZIP-compressed data read when processing a FITS file, allowing unbounded memory allocation. An attacker can supply a specially crafted FITS file containing a GZIP decompression bomb, causing an out-of-memory crash or severe performance degradation.",
-            "is_transitive": false,
-            "published_date": null,
-            "fixed_versions": [],
-            "closest_versions_without_known_vulnerabilities": [],
-            "resources": [],
-            "CVE": "CVE-2026-40192",
-            "severity": null,
-            "affected_versions": [],
-            "more_info_url": "https://getsafety.com/v/93093/97c"
-        },
-        {
-            "vulnerability_id": "64436",
-            "package_name": "pillow",
-            "ignored": true,
-            "ignored_reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-            "ignored_expires": null,
-            "vulnerable_spec": [
-                "<10.2.0"
-            ],
-            "all_vulnerable_specs": [
-                "<10.2.0"
-            ],
-            "analyzed_version": null,
-            "analyzed_requirement": {
-                "raw": "Pillow>=10.0.0",
-                "extras": [],
-                "marker": null,
-                "name": "Pillow",
-                "specifier": ">=10.0.0",
-                "url": null,
-                "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
-            },
-            "advisory": "Pillow is affected by an arbitrary code execution vulnerability. If an attacker has control over the keys passed to the environment argument of PIL.ImageMath.eval(), they may be able to execute arbitrary code.\r\nhttps://pillow.readthedocs.io/en/stable/releasenotes/10.2.0.html",
-            "is_transitive": false,
-            "published_date": null,
-            "fixed_versions": [],
-            "closest_versions_without_known_vulnerabilities": [],
-            "resources": [],
-            "CVE": "CVE-2023-50447",
-            "severity": null,
-            "affected_versions": [],
-            "more_info_url": "https://getsafety.com/v/64436/97c"
-        },
-        {
-            "vulnerability_id": "64437",
-            "package_name": "pillow",
-            "ignored": true,
-            "ignored_reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-            "ignored_expires": null,
-            "vulnerable_spec": [
-                "<10.2.0"
-            ],
-            "all_vulnerable_specs": [
-                "<10.2.0"
-            ],
-            "analyzed_version": null,
-            "analyzed_requirement": {
-                "raw": "Pillow>=10.0.0",
-                "extras": [],
-                "marker": null,
-                "name": "Pillow",
-                "specifier": ">=10.0.0",
-                "url": null,
-                "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
-            },
-            "advisory": "Pillow is potentially vulnerable to DoS attacks through PIL.ImageFont.ImageFont.getmask(). A decompression bomb check has also been added to the affected function.",
-            "is_transitive": false,
-            "published_date": null,
-            "fixed_versions": [],
-            "closest_versions_without_known_vulnerabilities": [],
-            "resources": [],
-            "CVE": null,
-            "severity": null,
-            "affected_versions": [],
-            "more_info_url": "https://getsafety.com/v/64437/97c"
-        },
-        {
-            "vulnerability_id": "67136",
-            "package_name": "pillow",
-            "ignored": true,
-            "ignored_reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-            "ignored_expires": null,
-            "vulnerable_spec": [
-                "<10.3.0"
-            ],
-            "all_vulnerable_specs": [
-                "<10.3.0"
-            ],
-            "analyzed_version": null,
-            "analyzed_requirement": {
-                "raw": "Pillow>=10.0.0",
-                "extras": [],
-                "marker": null,
-                "name": "Pillow",
-                "specifier": ">=10.0.0",
-                "url": null,
-                "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
-            },
-            "advisory": "Pillow 10.3.0 introduces a security update addressing CVE-2024-28219 by replacing certain functions with strncpy to prevent buffer overflow issues.",
-            "is_transitive": false,
-            "published_date": null,
-            "fixed_versions": [],
-            "closest_versions_without_known_vulnerabilities": [],
-            "resources": [],
-            "CVE": "CVE-2024-28219",
-            "severity": null,
-            "affected_versions": [],
-            "more_info_url": "https://getsafety.com/v/67136/97c"
-        },
-        {
-            "vulnerability_id": "SFTY-20260504-37305",
-            "package_name": "pillow",
-            "ignored": true,
-            "ignored_reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-            "ignored_expires": null,
-            "vulnerable_spec": [
-                "<12.2.0"
-            ],
-            "all_vulnerable_specs": [
-                "<12.2.0"
-            ],
-            "analyzed_version": null,
-            "analyzed_requirement": {
-                "raw": "Pillow>=10.0.0",
-                "extras": [],
-                "marker": null,
-                "name": "Pillow",
-                "specifier": ">=10.0.0",
-                "url": null,
-                "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
-            },
-            "advisory": "Affected versions of the Pillow package are vulnerable to Integer Overflow due to unchecked accumulation of glyph advance values while tracking the current rendering position during font processing. The `font` module fails to properly handle large glyph advance values, causing the running position counter to wrap around because the arithmetic is performed in a fixed-width integer type. A remote attacker who can supply a crafted font file to a target using Pillow's font rendering can trigger the overflow, leading to incorrect memory calculations and potential memory corruption.",
-            "is_transitive": false,
-            "published_date": null,
-            "fixed_versions": [],
-            "closest_versions_without_known_vulnerabilities": [],
-            "resources": [],
-            "CVE": "CVE-2026-42308",
-            "severity": null,
-            "affected_versions": [],
-            "more_info_url": "https://getsafety.com/v/SFTY-20260504-37305/97c"
-        },
-        {
-            "vulnerability_id": "95895",
-            "package_name": "pillow",
-            "ignored": true,
-            "ignored_reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-            "ignored_expires": null,
-            "vulnerable_spec": [
-                ">=4.2.0,<12.2.0"
-            ],
-            "all_vulnerable_specs": [
-                ">=4.2.0,<12.2.0"
-            ],
-            "analyzed_version": null,
-            "analyzed_requirement": {
-                "raw": "Pillow>=10.0.0",
-                "extras": [],
-                "marker": null,
-                "name": "Pillow",
-                "specifier": ">=10.0.0",
-                "url": null,
-                "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
-            },
-            "advisory": "Affected versions of the pillow package are vulnerable to Denial of Service due to an unbounded loop when traversing PDF cross-reference trailer chains without cycle detection. The PdfParser module follows Prev pointers in PDF trailers to read cross-reference sections, but it does not track previously processed offsets, so a trailer whose Prev pointer references its own offset or forms a longer cycle causes the parser to loop indefinitely. A remote attacker who supplies a crafted PDF document can cause the parsing process to hang, consuming 100% CPU and rendering the consuming application unresponsive.",
-            "is_transitive": false,
-            "published_date": null,
-            "fixed_versions": [],
-            "closest_versions_without_known_vulnerabilities": [],
-            "resources": [],
-            "CVE": "CVE-2026-42310",
-            "severity": null,
-            "affected_versions": [],
-            "more_info_url": "https://getsafety.com/v/95895/97c"
-        },
-        {
-            "vulnerability_id": "77942",
-            "package_name": "pillow",
-            "ignored": true,
-            "ignored_reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-            "ignored_expires": null,
-            "vulnerable_spec": [
-                ">=11.2.1,<11.3.0"
-            ],
-            "all_vulnerable_specs": [
-                ">=11.2.1,<11.3.0"
-            ],
-            "analyzed_version": null,
-            "analyzed_requirement": {
-                "raw": "Pillow>=10.0.0",
-                "extras": [],
-                "marker": null,
-                "name": "Pillow",
-                "specifier": ">=10.0.0",
-                "url": null,
-                "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
-            },
-            "advisory": "Affected versions of this package are vulnerable to a Buffer Overflow when saving sufficiently large compressed DDS images (>64KB with default settings). The DDS encoding functionality fails to perform bounds checking when writing to the destination buffer, leading to a heap buffer overflow condition. This vulnerability was introduced in Pillow 11.2.0 when BCn compression support for DDS format was added.",
-            "is_transitive": false,
-            "published_date": null,
-            "fixed_versions": [],
-            "closest_versions_without_known_vulnerabilities": [],
-            "resources": [],
-            "CVE": "CVE-2025-48379",
-            "severity": null,
-            "affected_versions": [],
-            "more_info_url": "https://getsafety.com/v/77942/97c"
-        },
-        {
-            "vulnerability_id": "95893",
-            "package_name": "pillow",
-            "ignored": true,
-            "ignored_reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-            "ignored_expires": null,
-            "vulnerable_spec": [
-                ">=11.2.1,<12.2.0"
-            ],
-            "all_vulnerable_specs": [
-                ">=11.2.1,<12.2.0"
-            ],
-            "analyzed_version": null,
-            "analyzed_requirement": {
-                "raw": "Pillow>=10.0.0",
-                "extras": [],
-                "marker": null,
-                "name": "Pillow",
-                "specifier": ">=10.0.0",
-                "url": null,
-                "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
-            },
-            "advisory": "Affected versions of the pillow package are vulnerable to a heap-based buffer overflow due to insufficient validation of coordinate input passed to drawing APIs. Passing nested lists as coordinates to ImagePath.Path, ImageDraw.ImageDraw.polygon, and ImageDraw.ImageDraw.line causes nested lists to be recursively unpacked beyond the allocated buffer, since coordinate lists were not validated to contain exactly two numeric values. An attacker who can control the coordinate input supplied to these APIs can trigger an out-of-bounds heap write, resulting in memory corruption and potentially impacting the availability of the affected process.",
-            "is_transitive": false,
-            "published_date": null,
-            "fixed_versions": [],
-            "closest_versions_without_known_vulnerabilities": [],
-            "resources": [],
-            "CVE": "CVE-2026-42309",
-            "severity": null,
-            "affected_versions": [],
-            "more_info_url": "https://getsafety.com/v/95893/97c"
-        },
-        {
-            "vulnerability_id": "86269",
-            "package_name": "pillow",
-            "ignored": true,
-            "ignored_reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-            "ignored_expires": null,
-            "vulnerable_spec": [
-                ">=10.3.0,<12.1.1"
-            ],
-            "all_vulnerable_specs": [
-                ">=10.3.0,<12.1.1"
-            ],
-            "analyzed_version": null,
-            "analyzed_requirement": {
-                "raw": "Pillow>=10.0.0",
-                "extras": [],
-                "marker": null,
-                "name": "Pillow",
-                "specifier": ">=10.0.0",
-                "url": null,
-                "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
-            },
-            "advisory": "Affected versions of the Pillow package are vulnerable to an Out-of-bounds Write issue due to insufficient validation of tile extents when decoding PSD image data. When Image.open() loads a PSD and the decoder paths in src/decode.c and src/encode.c process tile offsets and sizes, negative xoff/yoff values (and related invalid extents) can bypass expected bounds checks and lead to writes outside the intended image buffer.",
-            "is_transitive": false,
-            "published_date": null,
-            "fixed_versions": [],
-            "closest_versions_without_known_vulnerabilities": [],
-            "resources": [],
-            "CVE": "CVE-2026-25990",
-            "severity": null,
-            "affected_versions": [],
-            "more_info_url": "https://getsafety.com/v/86269/97c"
-        },
-        {
-            "vulnerability_id": "61489",
-            "package_name": "pillow",
-            "ignored": true,
-            "ignored_reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-            "ignored_expires": null,
-            "vulnerable_spec": [
-                ">=2.5.0,<10.0.1"
-            ],
-            "all_vulnerable_specs": [
-                ">=2.5.0,<10.0.1"
-            ],
-            "analyzed_version": null,
-            "analyzed_requirement": {
-                "raw": "Pillow>=10.0.0",
-                "extras": [],
-                "marker": null,
-                "name": "Pillow",
-                "specifier": ">=10.0.0",
-                "url": null,
-                "found": "D:\\repo\\valutavalto-program\\.claude\\worktrees\\youthful-shannon-8ac321\\tools\\ztype\\requirements.txt"
-            },
-            "advisory": "Pillow 10.0.1 updates its C dependency 'libwebp' to 1.3.2 to include a fix for a high-risk vulnerability.\r\nhttps://pillow.readthedocs.io/en/stable/releasenotes/10.0.1.html",
-            "is_transitive": true,
-            "published_date": null,
-            "fixed_versions": [],
-            "closest_versions_without_known_vulnerabilities": [],
-            "resources": [],
-            "CVE": "CVE-2023-4863",
-            "severity": null,
-            "affected_versions": [],
-            "more_info_url": "https://getsafety.com/v/61489/97c"
-        }
-    ],
+    "ignored_vulnerabilities": [],
     "remediations": {},
     "remediations_results": {
         "vulnerabilities_fixed": [],
@@ -720,4 +256,7 @@ We highly encourage switching to the new `scan` command which is easier to use, 
 
 
 --- STDERR ---
+C:\Valutavalto\SecurityGate\python-audit\Lib\site-packages\safety\auth\main.py:5: AuthlibDeprecationWarning: authlib.jose module is deprecated, please use joserfc instead.
+It will be compatible before version 2.0.0.
+  from authlib.jose.errors import ExpiredTokenError
 

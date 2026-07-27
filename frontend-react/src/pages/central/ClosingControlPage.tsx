@@ -23,20 +23,14 @@ import {
   matchesClosingFilter,
 } from './closingControlView'
 import { excludeBankPartners } from '../../utils/bankPartners'
+import { localIsoDate } from '../../utils/dateFormat'
 
 // Codex P2 #560 fix: NEM toISOString().slice(0, 10), mert az UTC zónát ad vissza.
-// Helyi (Europe/Budapest) dátum lokálisan komponálva.
-function todayIso() {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+// A lokális dátumot a közös localIsoDate util adja (utils/dateFormat).
 
 export default function ClosingControlPage() {
   const navigate = useNavigate()
-  const [date, setDate] = useState(todayIso())
+  const [date, setDate] = useState(localIsoDate())
   const [rows, setRows] = useState<ClosingControlStatus[]>([])
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<ClosingViewFilter>('all')

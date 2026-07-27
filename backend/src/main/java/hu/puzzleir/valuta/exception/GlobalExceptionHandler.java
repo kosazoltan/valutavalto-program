@@ -307,6 +307,18 @@ public class GlobalExceptionHandler {
                 "Az adatot időközben módosította valaki más. Kérjük, frissítse és próbálja újra.");
     }
 
+    // --- 409 Conflict (Spring optimista lock wrapper) ---
+    // FK-065 (Codex HIGH): a Spring Data a jakarta OptimisticLockException-t
+    // ObjectOptimisticLockingFailureException-be csomagolja (commit-kori flushnál is) —
+    // kezeletlenül generikus 500 lenne 409 helyett.
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleSpringOptimisticConflict(
+            org.springframework.dao.OptimisticLockingFailureException ex) {
+        log.warn("Optimistic lock conflict (Spring wrapper): {}", ex.getMessage());
+        return buildResponse(HttpStatus.CONFLICT, "CONFLICT",
+                "Az adatot időközben módosította valaki más. Kérjük, frissítse és próbálja újra.");
+    }
+
     // --- 409 Conflict (custom) ---
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ErrorResponse> handleConflictException(ConflictException ex) {
