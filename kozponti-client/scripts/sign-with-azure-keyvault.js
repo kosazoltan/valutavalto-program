@@ -8,4 +8,4 @@
  * tenyleges implementaciot valtozatlanul a penztar-client scriptje adja
  * (single source of truth, nincs duplikacio).
  */
-exports.default = require('../../penztar-client/scripts/sign-with-azure-keyvault.js').default
+module.exports = require('../../penztar-client/scripts/sign-with-azure-keyvault.js')
