@@ -31,9 +31,24 @@ import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { useTranslation } from 'react-i18next'
+import {
+  resolveWizardResumeAction,
+  type WizardResumeAction,
+  type WizardStatusValue,
+} from './wizardStatusPolicy'
 
 /** HUF cimletek — csökkeno sorrendben */
 const HUF_DENOMINATIONS = [20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5] as const
+
+// Codex P2 #560 minta (ClosingControlPage): NEM toISOString().slice(0, 10), mert az
+// UTC zónát adná — éjfél körül rossz zárási napot kérdeznénk le. Helyi dátum lokálisan.
+function todayIso() {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 /**
  * Napzaras wizard — backend-driven ellenorzesi lanc.
@@ -151,6 +166,15 @@ export default function ClosingWizardPage() {
   // Wizard pauses after step 1 for denomination input
   const [waitingForDenom, setWaitingForDenom] = useState(false)
 
+  // FK-065 FR-3: mountkor felderített beragadt zárási munkamenet (resume =
+  // IN_PROGRESS, restart-only = EXPIRED); statusPolicyError = ismeretlen státusz
+  // (exhaustiveness-throw a wizardStatusPolicy-ból) — semleges, perzisztens jelzés.
+  const [staleWizard, setStaleWizard] = useState<{
+    id: string
+    action: Exclude<WizardResumeAction, 'none'>
+  } | null>(null)
+  const [statusPolicyError, setStatusPolicyError] = useState(false)
+
   const completedCount = steps.filter((s) => s.status === 'done' || s.status === 'skipped').length
   const failedCount = steps.filter((s) => s.status === 'failed').length
   const progress = (completedCount / steps.length) * 100
@@ -175,18 +199,22 @@ export default function ClosingWizardPage() {
     if (!closingValidation?.allValid) {
       blockingSources.push(t('closing.forrasElokontroll'))
     }
-    if (
-      failedCount > 0 ||
-      completedCount !== steps.length ||
-      !denomSubmitted
-    ) {
+    if (failedCount > 0 || completedCount !== steps.length || !denomSubmitted) {
       blockingSources.push(t('closing.forrasChecklist'))
     }
     if (closingDifferences.some(isBlockingDifference)) {
       blockingSources.push(t('closing.forrasElteresTablazat'))
     }
     return { ready: blockingSources.length === 0, blockingSources }
-  }, [closingValidation, failedCount, completedCount, steps.length, denomSubmitted, closingDifferences, t])
+  }, [
+    closingValidation,
+    failedCount,
+    completedCount,
+    steps.length,
+    denomSubmitted,
+    closingDifferences,
+    t,
+  ])
 
   const loadClosingValidation = useCallback(async () => {
     setValidationLoading(true)
@@ -204,6 +232,37 @@ export default function ClosingWizardPage() {
   useEffect(() => {
     void loadClosingValidation()
   }, [loadClosingValidation])
+
+  // FK-065 FR-3: beragadt zárási munkamenet felderítése — mountkor MINDIG lefut.
+  // Egyhívásos szerződés: az activeWizardId + activeWizardStatus a getStatus
+  // válaszából jön, külön get(activeWizardId) hívás TILOS.
+  useEffect(() => {
+    let cancelled = false
+    const checkStaleWizard = async () => {
+      try {
+        const status = await closingWizardApi.getStatus(todayIso())
+        if (cancelled || !status?.activeWizardId || !status?.activeWizardStatus) return
+        try {
+          const action = resolveWizardResumeAction(status.activeWizardStatus as WizardStatusValue)
+          if (!cancelled && action !== 'none') {
+            setStaleWizard({ id: status.activeWizardId, action })
+          }
+        } catch (policyErr) {
+          // Ismeretlen státusz (pl. verzió-eltérés kliens és backend közt): a
+          // wizardStatusPolicy szándékosan dob — itt semleges, perzisztens inline
+          // jelzésre váltunk, a normál indítás elérhető marad.
+          logger.error('ClosingWizardPage', 'Ismeretlen wizard státusz:', policyErr)
+          if (!cancelled) setStatusPolicyError(true)
+        }
+      } catch {
+        // A státusz-lekérdezés hibája nem blokkolhatja a normál zárás-indítást.
+      }
+    }
+    void checkStaleWizard()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!isVaultContext) return
@@ -402,6 +461,9 @@ export default function ClosingWizardPage() {
     setReportLoading(false)
     toast.info('Napzárás indítása', 'Wizard indítása folyamatban...')
 
+    // FK-065 FR-4: a hiba-ágakban (step-1 bukás, kivétel) az elindított wizard
+    // megszakítandó, hogy ne maradjon beragadt IN_PROGRESS sor.
+    let startedWizardId: string | null = null
     try {
       const transactionErrors = await closingWizardApi.validateTransactions()
       if (transactionErrors.length > 0) {
@@ -424,11 +486,18 @@ export default function ClosingWizardPage() {
         String(worker.id),
       )
       logger.info('ClosingWizardPage', 'wizard started, id=', wizard.id)
+      startedWizardId = wizard.id
       setWizardId(wizard.id)
 
       // Run step 1 (MTCN check)
       const step1Ok = await runSteps(wizard.id, 0, 0)
       if (!step1Ok) {
+        // FK-065 FR-4: bukó indítás → wizard-megszakítás a hibaüzenet előtt
+        try {
+          await closingWizardApi.cancel(wizard.id)
+        } catch {
+          // cancel-hiba nem blokkoló
+        }
         toast.warning('Step 1 sikertelen', 'A MTCN ellenőrzés nem ment át')
         setIsRunning(false)
         return
@@ -445,11 +514,42 @@ export default function ClosingWizardPage() {
       setIsRunning(false)
       setWaitingForDenom(true)
     } catch (err) {
+      // FK-065 FR-4: kivétel esetén sem maradhat beragadt IN_PROGRESS sor
+      if (startedWizardId) {
+        try {
+          await closingWizardApi.cancel(startedWizardId)
+        } catch {
+          // cancel-hiba nem blokkoló
+        }
+      }
       logger.error('ClosingWizardPage', 'start failed:', err)
       toast.error('Napzárás hiba', getErrorMessage(err))
       setIsRunning(false)
     }
   }, [worker, runSteps, closingType, isVaultContext])
+
+  // FK-065 FR-3: beragadt munkamenet folytatása — a meglévő route-alapú betöltési
+  // útra visz (/closing/wizard/:wizardId), új API-felület nélkül.
+  const handleResumeStale = useCallback(() => {
+    if (staleWizard) {
+      navigate(`/closing/wizard/${staleWizard.id}`)
+    }
+  }, [staleWizard, navigate])
+
+  // FK-065 FR-3: megszakítás/új zárás — IN_PROGRESS sort előbb megszakítjuk;
+  // EXPIRED sorra a backend cancel-t úgyis elutasítaná, ott csak új zárás indul.
+  const handleRestartStale = useCallback(async () => {
+    if (!staleWizard) return
+    if (staleWizard.action === 'resume') {
+      try {
+        await closingWizardApi.cancel(staleWizard.id)
+      } catch {
+        // nem blokkoló — ha közben lezárult/lejárt, az új indítás attól még mehet
+      }
+    }
+    setStaleWizard(null)
+    await runClosing()
+  }, [staleWizard, runClosing])
 
   /** Phase 2: user submitted denomination → persist to backend, then continue steps 2-9 */
   const continueAfterDenom = useCallback(async () => {
@@ -1047,6 +1147,55 @@ export default function ClosingWizardPage() {
         </div>
       )}
 
+      {/* FK-065 FR-3: ismeretlen wizard-státusz — semleges, perzisztens jelzés (nem toast) */}
+      {statusPolicyError && !wizardId && (
+        <div className="flex items-center justify-center gap-2 mb-2 p-3 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200 text-sm">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>Állapot lekérdezése sikertelen, frissítsd az oldalt</span>
+        </div>
+      )}
+
+      {/* FK-065 FR-3: beragadt zárási munkamenet — folytatás vagy újraindítás */}
+      {staleWizard && !wizardId && !isRunning && (
+        <div className="mb-2 p-3 rounded-lg border border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-100">
+          {staleWizard.action === 'resume' ? (
+            <>
+              <p className="text-sm text-center mb-2">
+                Beragadt zárási munkamenet található a mai napra.
+              </p>
+              <div className="flex justify-center gap-2">
+                <button
+                  onClick={handleResumeStale}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg shadow transition-colors"
+                >
+                  Folytatás
+                </button>
+                <button
+                  onClick={() => void handleRestartStale()}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-bold rounded-lg shadow transition-colors"
+                >
+                  Megszakítás és újraindítás
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-center mb-2">
+                A korábbi zárási munkamenet lejárt (időtúllépés), nem folytatható.
+              </p>
+              <div className="flex justify-center">
+                <button
+                  onClick={() => void handleRestartStale()}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg shadow transition-colors"
+                >
+                  Új zárás indítása
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* G10: ZÁRÁS TÍPUS VÁLASZTÓ (csak indítás előtt) */}
       {!wizardId && !isRunning && completedCount === 0 && !waitingForDenom && (
         <div className="flex items-center justify-center gap-2 mb-2">
@@ -1184,7 +1333,10 @@ function formatDenominationTotals(
 ): string {
   if (sections.length > 1) {
     return sections
-      .map(({ currencyCode }) => `${(totals[currencyCode] ?? 0).toLocaleString('hu-HU')} ${currencyCode}`)
+      .map(
+        ({ currencyCode }) =>
+          `${(totals[currencyCode] ?? 0).toLocaleString('hu-HU')} ${currencyCode}`,
+      )
       .join(' + ')
   }
   return `${singleTotal.toLocaleString('hu-HU')} ${ftLabel}`

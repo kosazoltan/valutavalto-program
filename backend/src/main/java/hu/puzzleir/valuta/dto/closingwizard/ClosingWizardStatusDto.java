@@ -20,4 +20,13 @@ public class ClosingWizardStatusDto {
     private boolean exactMatch;
     private String message;
     private List<Map<String, Object>> differences;
+
+    /**
+     * FK-065 FR-2 (egyhívásos FR-3 szerződés): a napra vonatkozó beragadt/aktív wizard
+     * jelzése a kliensnek — a frontend ebből dönt, külön get() hívás nélkül.
+     * Kitöltés: mai IN_PROGRESS sor id-ja + "IN_PROGRESS"; különben mai EXPIRED sor
+     * id-ja + "EXPIRED"; különben mindkettő null.
+     */
+    private String activeWizardId;
+    private String activeWizardStatus;
 }

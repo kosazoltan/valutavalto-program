@@ -7,5 +7,7 @@ public enum WizardStatus {
     IN_PROGRESS,
     COMPLETED,
     FAILED,
-    CANCELLED
+    CANCELLED,
+    /** FK-065: beragadt munkamenet automatikus lejáratása — nem folytatható. */
+    EXPIRED
 }

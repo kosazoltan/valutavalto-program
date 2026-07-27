@@ -310,7 +310,12 @@ export interface TransactionLineRequest {
  * `type` alias és a list() szűrő ne driftelhessen szét (Sourcery/Copilot #780).
  */
 export type TransactionTypeName =
-  'BUY' | 'SELL' | 'REVERSAL' | 'CONVERSION' | 'TRANSFER_OUT' | 'TRANSFER_IN'
+  | 'BUY'
+  | 'SELL'
+  | 'REVERSAL'
+  | 'CONVERSION'
+  | 'TRANSFER_OUT'
+  | 'TRANSFER_IN'
 
 export interface Transaction {
   id: number
@@ -405,7 +410,12 @@ export interface BuyRequest {
   customerActorName?: string
   // V235 (2026-05-19 HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
   customerPepKind?:
-    'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+    | 'CSALADTAG'
+    | 'KOZELI_MUNKATARS'
+    | 'KORMANYFO'
+    | 'PARLAMENTI'
+    | 'NAV_VEZETO'
+    | 'EGYEB'
   /** V325 (Batch3-C): jogi szemely ugyfel + tenyleges tulajdonosok (max 4). */
   isLegalEntityCustomer?: boolean
   legalEntityName?: string
@@ -478,7 +488,12 @@ export interface SellRequest {
   customerActorName?: string
   // V235 (2026-05-19 HIBA #15 + #17): PEP minoseg + actor teljes azonositasa
   customerPepKind?:
-    'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+    | 'CSALADTAG'
+    | 'KOZELI_MUNKATARS'
+    | 'KORMANYFO'
+    | 'PARLAMENTI'
+    | 'NAV_VEZETO'
+    | 'EGYEB'
   /** V325 (Batch3-C): jogi szemely ugyfel + tenyleges tulajdonosok (max 4). */
   isLegalEntityCustomer?: boolean
   legalEntityName?: string
@@ -558,7 +573,12 @@ export interface ConversionRequest {
   customerOnOwnBehalf?: boolean
   customerActorName?: string
   customerPepKind?:
-    'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+    | 'CSALADTAG'
+    | 'KOZELI_MUNKATARS'
+    | 'KORMANYFO'
+    | 'PARLAMENTI'
+    | 'NAV_VEZETO'
+    | 'EGYEB'
   /** V325 (Batch3-C): jogi szemely ugyfel + tenyleges tulajdonosok (max 4). */
   isLegalEntityCustomer?: boolean
   legalEntityName?: string
@@ -1080,7 +1100,8 @@ export interface ClosingWizard {
   closingType: 'DAILY' | 'POS' | 'DECADE' | 'MONTHLY'
   currentStep: number
   totalSteps: number
-  wizardStatus: 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+  // FK-065: a backend WizardStatus enum teljes értékkészlete (FAILED + EXPIRED is)
+  wizardStatus: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'EXPIRED'
   startedByWorkerId: string
   startedByWorkerName: string
   startedAt: string
@@ -1140,6 +1161,13 @@ export interface ClosingWizardStatus {
   exactMatch: boolean
   message: string
   differences: ClosingWizardDifference[]
+  /**
+   * FK-065 FR-2 (egyhívásos FR-3 szerződés): a napra vonatkozó beragadt/aktív
+   * wizard — IN_PROGRESS elsőbbség, EXPIRED fallback, különben null/hiányzó.
+   * A kliens ebből dönt (Folytatás / Új zárás indítása), külön get() hívás nélkül.
+   */
+  activeWizardId?: string | null
+  activeWizardStatus?: string | null
 }
 
 export const closingWizardApi = {
