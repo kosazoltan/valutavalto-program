@@ -68,9 +68,13 @@ public interface ClosingWizardRepository extends JpaRepository<ClosingWizard, UU
      * véd: csak akkor ír, ha a sor MÉG MINDIG a várt státuszban van és a cutoff
      * előtt indult. Visszatérés: érintett sorok száma (0 = közben más állapotba
      * került — ilyenkor a hívó nem auditolhat EXPIRED-váltást).
+     *
+     * <p>Codex HIGH: a SET ág a {@code version}-t is emeli — a JPQL bulk update a
+     * {@code @Version} mezőt magától NEM inkrementálná, e nélkül a user-oldali
+     * optimista lock nem látná a scheduler írását.</p>
      */
     @Modifying
-    @Query("UPDATE ClosingWizard cw SET cw.wizardStatus = :newStatus " +
+    @Query("UPDATE ClosingWizard cw SET cw.wizardStatus = :newStatus, cw.version = cw.version + 1 " +
            "WHERE cw.id = :id " +
            "AND cw.wizardStatus = :expectedStatus " +
            "AND cw.startedAt < :startedBefore")

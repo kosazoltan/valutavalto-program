@@ -10,6 +10,7 @@ import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -532,5 +533,118 @@ class ClosingWizardStaleSessionFk065Test {
         }
         assertThat(expired.getWizardStatus()).isEqualTo(WizardStatus.EXPIRED);
         verify(closingWizardRepository, never()).save(any());
+    }
+
+    // =====================================================================
+    // Codex HIGH: optimista lock (@Version) — user-facing írások vs. scheduler
+    // =====================================================================
+
+    private ClosingWizard inProgressWizardForConflict(UUID wizardId) {
+        return ClosingWizard.builder()
+                .id(wizardId)
+                .branch(branchOf(BRANCH_ID, COMPANY_ID))
+                .closingDate(LocalDate.now())
+                .closingType(ClosingType.DAILY)
+                .wizardStatus(WizardStatus.IN_PROGRESS)
+                .startedByWorker(Worker.builder().id(1L).build())
+                .startedAt(LocalDateTime.now().minusHours(3))
+                .totalSteps(9)
+                .build();
+    }
+
+    @Test
+    @DisplayName("FK-065 Codex HIGH: finalizeClosing közben EXPIRED-re váltott sorra → kezelt konfliktus, nem COMPLETED")
+    void finalizeClosing_concurrentExpiry_translatedConflict() {
+        UUID wizardId = UUID.randomUUID();
+        ClosingWizard wizard = inProgressWizardForConflict(wizardId);
+
+        when(closingWizardRepository.findByIdWithSteps(wizardId)).thenReturn(Optional.of(wizard));
+        when(workerRepository.findById(2L)).thenReturn(Optional.of(Worker.builder().id(2L).build()));
+        when(denominationBalanceRepository.sumActualStockByCurrency(
+                BRANCH_ID, LocalDate.now(), DenominationCategory.EVENING)).thenReturn(List.of());
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID))
+                .thenReturn(List.of());
+        lenient().when(systemParameterService.getValue(eq("CLOSING_DISCREPANCY_EXPLANATION_REQUIRED"), anyString()))
+                .thenReturn("false");
+        when(dailyClosingService.startDailyClosing(LocalDate.now()))
+                .thenReturn(DailyClosingService.ClosingWizardResult.builder()
+                        .allPassed(true)
+                        .steps(List.of())
+                        .build());
+        // A verzió-ütközést a scheduler közbeni EXPIRED-váltása okozza:
+        when(closingWizardRepository.save(any(ClosingWizard.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(ClosingWizard.class, wizardId));
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+
+            assertThatThrownBy(() -> service.finalizeClosing(wizardId, 2L))
+                    .isInstanceOf(jakarta.persistence.OptimisticLockException.class)
+                    .hasMessageContaining("közben megváltozott");
+        }
+    }
+
+    @Test
+    @DisplayName("FK-065 Codex HIGH: cancel() verzió-ütközésnél kezelt konfliktus, audit nélkül")
+    void cancel_concurrentExpiry_translatedConflict() {
+        UUID wizardId = UUID.randomUUID();
+        ClosingWizard wizard = inProgressWizardForConflict(wizardId);
+
+        when(closingWizardRepository.findByIdWithSteps(wizardId)).thenReturn(Optional.of(wizard));
+        when(closingWizardRepository.save(any(ClosingWizard.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(ClosingWizard.class, wizardId));
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+
+            assertThatThrownBy(() -> service.cancel(wizardId))
+                    .isInstanceOf(jakarta.persistence.OptimisticLockException.class)
+                    .hasMessageContaining("közben megváltozott");
+        }
+        // Meghiúsult megszakításról nem készülhet CANCELLED-audit
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    @DisplayName("FK-065 Codex HIGH: navigate() verzió-ütközésnél kezelt konfliktus")
+    void navigate_concurrentExpiry_translatedConflict() {
+        UUID wizardId = UUID.randomUUID();
+        ClosingWizard wizard = inProgressWizardForConflict(wizardId);
+
+        when(closingWizardRepository.findByIdWithSteps(wizardId)).thenReturn(Optional.of(wizard));
+        when(closingWizardRepository.save(any(ClosingWizard.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(ClosingWizard.class, wizardId));
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+
+            assertThatThrownBy(() -> service.navigate(wizardId, 2))
+                    .isInstanceOf(jakarta.persistence.OptimisticLockException.class)
+                    .hasMessageContaining("közben megváltozott");
+        }
+    }
+
+    @Test
+    @DisplayName("FK-065 Codex HIGH: a transitionIfStale SET ága a version-t is emeli + az entitáson @Version van")
+    void transitionIfStale_queryIncrementsVersion() throws NoSuchMethodException, NoSuchFieldException {
+        // A JPQL bulk update a @Version mezőt magától NEM inkrementálja — a SET ágban
+        // kötelező a version + 1, különben a user-oldali optimista lock nem látná a
+        // scheduler írását. (Valós-DB integrációs teszt a repo Testcontainers-mintájával
+        // CI-ben futtatható; H2-n a jsonb-s entitáskészlet nem áll fel.)
+        org.springframework.data.jpa.repository.Query query = ClosingWizardRepository.class
+                .getMethod("transitionIfStale",
+                        UUID.class, WizardStatus.class, WizardStatus.class, LocalDateTime.class)
+                .getAnnotation(org.springframework.data.jpa.repository.Query.class);
+        assertThat(query).isNotNull();
+        assertThat(query.value())
+                .contains("cw.version = cw.version + 1")
+                .contains("cw.wizardStatus = :expectedStatus")
+                .contains("cw.startedAt < :startedBefore");
+
+        assertThat(ClosingWizard.class.getDeclaredField("version")
+                .getAnnotation(jakarta.persistence.Version.class))
+                .as("A ClosingWizard.version mezőn @Version annotáció kötelező")
+                .isNotNull();
     }
 }

@@ -143,6 +143,27 @@ public class ClosingWizardService {
      * {@code findByIdWithSteps(...)} után. Ez user-facing (ClosingWizardController) hívási
      * útra való; az osztálynak nincs {@code @Scheduled}/auth-mentes hívója.</p>
      */
+    /**
+     * FK-065 (Codex HIGH): user-facing wizard-írás optimista lock-fordítással.
+     * A flush() a metóduson BELÜL futtatja le a verzió-ellenőrzést (nem a
+     * tranzakció commitjánál), így a konfliktus itt elkapható és felhasználó-barát
+     * 409-re fordítható (GlobalExceptionHandler), nem generikus 500-ra. Konfliktus =
+     * a sort időközben más írta (pl. a scheduler auto-lejárata EXPIRED-re váltotta).
+     */
+    private ClosingWizard saveWizardWithConflictCheck(ClosingWizard wizard) {
+        try {
+            ClosingWizard saved = closingWizardRepository.save(wizard);
+            closingWizardRepository.flush();
+            return saved;
+        } catch (org.springframework.dao.OptimisticLockingFailureException
+                | jakarta.persistence.OptimisticLockException e) {
+            log.warn("Zárási varázsló optimista lock konfliktus: id={}", wizard.getId());
+            throw new jakarta.persistence.OptimisticLockException(
+                    "A zárási munkamenet közben megváltozott (pl. automatikus lejárat) — "
+                            + "frissítsd az oldalt és próbáld újra.");
+        }
+    }
+
     private void assertOwnWizard(ClosingWizard wizard) {
         UUID currentBranchId = SecurityUtils.getCurrentBranchId();
         if (wizard.getBranch() != null && !wizard.getBranch().getId().equals(currentBranchId)) {
@@ -212,7 +233,7 @@ public class ClosingWizardService {
             }
         }
 
-        ClosingWizard saved = closingWizardRepository.save(wizard);
+        ClosingWizard saved = saveWizardWithConflictCheck(wizard);
 
         return toDto(saved);
     }
@@ -248,7 +269,7 @@ public class ClosingWizardService {
         wizard.setCompletedByWorker(worker);
         wizard.setCompletedAt(LocalDateTime.now());
 
-        ClosingWizard saved = closingWizardRepository.save(wizard);
+        ClosingWizard saved = saveWizardWithConflictCheck(wizard);
         log.info("Zárási varázsló befejezve: id={}", wizardId);
 
         return toDto(saved);
@@ -267,7 +288,7 @@ public class ClosingWizardService {
         }
 
         wizard.setWizardStatus(WizardStatus.CANCELLED);
-        ClosingWizard saved = closingWizardRepository.save(wizard);
+        ClosingWizard saved = saveWizardWithConflictCheck(wizard);
         log.info("Zárási varázsló megszakítva: id={}", wizardId);
 
         // FK-065: a megszakítás auditja — az INDÍTÓ és a MEGSZAKÍTÓ megkülönböztetése
@@ -780,11 +801,13 @@ public class ClosingWizardService {
                             .collect(Collectors.joining("; ")));
         }
 
-        // Wizard lezárása
+        // Wizard lezárása — optimista lock-ellenőrzéssel (Codex HIGH): ha a
+        // scheduler auto-lejárata közben EXPIRED-re váltotta, itt konfliktus lesz,
+        // nem néma COMPLETED-felülírás.
         wizard.setWizardStatus(WizardStatus.COMPLETED);
         wizard.setCompletedByWorker(worker);
         wizard.setCompletedAt(LocalDateTime.now());
-        closingWizardRepository.save(wizard);
+        saveWizardWithConflictCheck(wizard);
 
         log.info("Zárás véglegesítve: wizard={}, closingDate={}", wizardId, closingDate);
 
