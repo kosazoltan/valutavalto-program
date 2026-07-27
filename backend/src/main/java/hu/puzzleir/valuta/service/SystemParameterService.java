@@ -52,14 +52,16 @@ public class SystemParameterService {
      * a hívó az Optional.empty()-ből tudja, hogy nincs (használható) sor, és nem az
      * érték/default egyezéséből következtet. Jelen lévő, de null/üres értékű sor
      * szintén empty (használhatatlan konfiguráció → a hívó fallback-ága dönt).
-     * Repository-hiba fail-conservative: WARN + empty.
+     * Sourcery-fix (PR #1502): CSAK adat-elérési hiba fail-conservative (WARN + empty) —
+     * programozási hiba (pl. NPE) tovább propagál, a pénzügyi záráskapunál a széles
+     * catch néma default mögé maszkolná a valódi hibát.
      */
     public Optional<String> findEffectiveValue(String key) {
         try {
             return findEffective(key)
                     .map(SystemParameter::getParameterValue)
                     .filter(v -> v != null && !v.isBlank());
-        } catch (Exception e) {
+        } catch (org.springframework.dao.DataAccessException e) {
             log.warn("SystemParameter effektív lekérés sikertelen, empty-vel térünk vissza: key={}, hiba={}",
                     key, e.getMessage(), e);
             return Optional.empty();
