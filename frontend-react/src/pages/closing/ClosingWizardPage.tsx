@@ -165,6 +165,9 @@ export default function ClosingWizardPage() {
     action: Exclude<WizardResumeAction, 'none'>
   } | null>(null)
   const [statusPolicyError, setStatusPolicyError] = useState(false)
+  // Bugbot Medium fix: a beragadt munkamenet megszakításának hibája — konkrét,
+  // bannerben megjelenő üzenet (nem általános toast), a banner megtartása mellett.
+  const [staleActionError, setStaleActionError] = useState<string | null>(null)
 
   const completedCount = steps.filter((s) => s.status === 'done' || s.status === 'skipped').length
   const failedCount = steps.filter((s) => s.status === 'failed').length
@@ -532,14 +535,34 @@ export default function ClosingWizardPage() {
   // EXPIRED sorra a backend cancel-t úgyis elutasítaná, ott csak új zárás indul.
   const handleRestartStale = useCallback(async () => {
     if (!staleWizard) return
+    setStaleActionError(null)
     if (staleWizard.action === 'resume') {
       try {
         await closingWizardApi.cancel(staleWizard.id)
-      } catch {
-        // nem blokkoló — ha közben lezárult/lejárt, az új indítás attól még mehet
+      } catch (err) {
+        // Bugbot Medium fix: bukó cancel után NEM indulhat új zárás (a backend
+        // start-guardja a még aktív mai wizard miatt úgyis elutasítaná) és a
+        // banner sem tűnhet el. Konkrét hibaüzenet + státusz-frissítés: ha
+        // időközben más úton (pl. auto-expiry) megoldódott, a banner ahhoz igazodik.
+        logger.error('ClosingWizardPage', 'Beragadt wizard megszakítása sikertelen:', err)
+        setStaleActionError('A korábbi munkamenet megszakítása sikertelen, próbáld újra')
+        try {
+          const status = await closingWizardApi.getStatus(localIsoDate())
+          if (!status?.activeWizardId || !status?.activeWizardStatus) {
+            // Időközben megszűnt az aktív munkamenet — a banner okafogyottá vált.
+            setStaleWizard(null)
+          } else {
+            const action = resolveWizardResumeAction(status.activeWizardStatus as WizardStatusValue)
+            setStaleWizard(action !== 'none' ? { id: status.activeWizardId, action } : null)
+          }
+        } catch {
+          // A frissítés hibája nem ronthat tovább: a meglévő banner marad.
+        }
+        return
       }
     }
     setStaleWizard(null)
+    setStaleActionError(null)
     await runClosing()
   }, [staleWizard, runClosing])
 
@@ -1150,6 +1173,11 @@ export default function ClosingWizardPage() {
       {/* FK-065 FR-3: beragadt zárási munkamenet — folytatás vagy újraindítás */}
       {staleWizard && !wizardId && !isRunning && (
         <div className="mb-2 p-3 rounded-lg border border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-100">
+          {staleActionError && (
+            <p className="text-sm text-center font-medium text-red-600 dark:text-red-400 mb-2">
+              {staleActionError}
+            </p>
+          )}
           {staleWizard.action === 'resume' ? (
             <>
               <p className="text-sm text-center mb-2">

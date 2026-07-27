@@ -211,6 +211,34 @@ describe('ClosingWizardPage — FK-065 beragadt zárási munkamenet', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('FR-3 Bugbot-fix: bukó cancel után a banner megmarad, konkrét hibaüzenet, új zárás NEM indul', async () => {
+    mocks.closingWizardApiGetStatus.mockResolvedValue(statusResponse('wizard-9', 'IN_PROGRESS'))
+    mocks.closingWizardApiCancel.mockRejectedValue(new Error('Hálózati hiba'))
+
+    renderPage()
+    const user = userEvent.setup()
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Megszakítás és újraindítás/i }),
+      ).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: /Megszakítás és újraindítás/i }))
+
+    // Konkrét hibaüzenet jelenik meg (inline, nem általános toast)
+    await waitFor(() => {
+      expect(
+        screen.getByText(/A korábbi munkamenet megszakítása sikertelen, próbáld újra/i),
+      ).toBeInTheDocument()
+    })
+    // A banner megmarad — a vezetett helyreállítás (Folytatás) továbbra is elérhető
+    expect(screen.getByRole('button', { name: /Folytatás/i })).toBeInTheDocument()
+    // Új zárás NEM indul (runClosing nem fut): sem validateTransactions, sem start
+    expect(mocks.closingWizardApiValidateTransactions).not.toHaveBeenCalled()
+    expect(mocks.closingWizardApiStart).not.toHaveBeenCalled()
+    // A hiba után státusz-újralekérdezés történik (mount + refresh = 2 hívás)
+    expect(mocks.closingWizardApiGetStatus).toHaveBeenCalledTimes(2)
+  })
+
   // ============ FR-4: bukó indítás nem hagy beragadt sort ============
 
   it('FR-4: az 1. lépés bukásakor a wizard megszakításra kerül (cancel hívódik)', async () => {
