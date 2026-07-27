@@ -76,6 +76,8 @@ public class DailyClosingService {
     private final ReceiptSequenceService receiptSequenceService;
     private final ClosingControlService closingControlService;
     private final BranchRepository branchRepository;
+    /** FK-066: pénznemenkénti zárás-tolerancia közös forrása (FR-6) — a kemény kapu ebből olvas. */
+    private final ClosingToleranceService closingToleranceService;
 
     @Value("${nav.bridge.simulated-success-enabled:false}")
     private boolean navBridgeSimulatedSuccessEnabled;
@@ -283,12 +285,15 @@ public class DailyClosingService {
         for (String code : codes) {
             BigDecimal denominated = denominatedByCurrency.getOrDefault(code, BigDecimal.ZERO);
             BigDecimal expected = expectedByCurrency.getOrDefault(code, BigDecimal.ZERO);
-            BigDecimal diff = denominated.subtract(expected).abs();
-            // HUF-nal 1 Ft elteres megengedett (kerekites); nem-HUF darabra pontos.
-            BigDecimal tolerance = "HUF".equals(code) ? BigDecimal.ONE : BigDecimal.ZERO;
-            if (diff.compareTo(tolerance) > 0) {
-                mismatches.add(String.format("%s: ciml=%s, vart=%s",
-                    code, denominated.toPlainString(), expected.toPlainString()));
+            BigDecimal diff = denominated.subtract(expected);
+            // FK-066 (FR-2/FR-6): a tolerancia és az ág-függő operátor (explicit >=,
+            // fallback >) KIZÁRÓLAG a közös ClosingTolerance.blocks()-ban dől el.
+            ClosingTolerance tolerance = closingToleranceService.getToleranceFor(code);
+            if (tolerance.blocks(diff)) {
+                // FR-7: a hibaüzenet nevesíti a pénznemet ÉS az alkalmazott toleranciát.
+                mismatches.add(String.format("%s: ciml=%s, vart=%s, tolerancia=%s",
+                    code, denominated.toPlainString(), expected.toPlainString(),
+                    tolerance.value().toPlainString()));
             }
         }
 

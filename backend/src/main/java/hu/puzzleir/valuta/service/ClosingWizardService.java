@@ -58,13 +58,16 @@ public class ClosingWizardService {
     private final CurrencyRepository currencyRepository;
     private final CurrencyStockRepository currencyStockRepository;
     private final SystemParameterService systemParameterService;
+    /** FK-066: pénznemenkénti zárás-tolerancia közös forrása (FR-6) — a puha kapu ebből olvas. */
+    private final ClosingToleranceService closingToleranceService;
     // FK-065: beragadt munkamenet auto-lejárat + megszakítás auditja.
     private final AuditLogService auditLogService;
 
     /** G3: a zárás-eltérés magyarázat-kötelezettség feature-flag SystemParameter kulcsa. */
     static final String CLOSING_DISCREPANCY_PARAM = "CLOSING_DISCREPANCY_EXPLANATION_REQUIRED";
-    /** G3: az eltérés-tolerancia (Ft) — ezalatt nincs magyarázat-kötelezettség (kerekítés). */
-    private static final java.math.BigDecimal DISCREPANCY_TOLERANCE_HUF = java.math.BigDecimal.ONE;
+    // FK-066: a korábbi hardkódolt DISCREPANCY_TOLERANCE_HUF konstans megszűnt — a
+    // toleranciát pénznemenként a ClosingToleranceService adja (explicit sor vagy
+    // kód-fallback), a blokkolási operátor a ClosingTolerance.blocks()-ban dől el.
     /** FK-065: az auto-lejárat küszöbének (perc) SystemParameter kulcsa. */
     static final String AUTO_EXPIRE_MINUTES_PARAM = "CLOSING_WIZARD_AUTO_EXPIRE_MINUTES";
     /** FK-065: default lejárati küszöb percben, ha a paraméter hiányzik/érvénytelen. */
@@ -773,11 +776,15 @@ public class ClosingWizardService {
         boolean enforce = systemParameterService != null
                 && "true".equalsIgnoreCase(systemParameterService.getValue(CLOSING_DISCREPANCY_PARAM, "false"));
         if (enforce) {
+            // FK-066 (FR-3/FR-6): a tolerancia pénznemenként a közös ClosingToleranceService-ből
+            // jön; az ág-függő operátor (explicit >=, fallback >) a ClosingTolerance.blocks()-ban.
             String blockReason = perCurrencyDiscrepancies != null
                     ? perCurrencyDiscrepancyBlockReason(
-                            perCurrencyDiscrepancies, wizard.getDiscrepancyExplanation(), DISCREPANCY_TOLERANCE_HUF)
+                            perCurrencyDiscrepancies, wizard.getDiscrepancyExplanation(),
+                            closingToleranceService::getToleranceFor)
                     : closingDiscrepancyBlockReason(
-                            discrepancy, wizard.getDiscrepancyExplanation(), DISCREPANCY_TOLERANCE_HUF);
+                            discrepancy, wizard.getDiscrepancyExplanation(),
+                            closingToleranceService.getToleranceFor("HUF"));
             if (blockReason != null) {
                 throw new ValidationException(blockReason);
             }
@@ -882,55 +889,87 @@ public class ClosingWizardService {
     }
 
     /**
-     * G3 (FR-13) eltérés-gate döntés — statikus, függőség-mentes (tesztelhető).
-     *
-     * @return blokkoló indok, ha (az eltérés meghaladja a toleranciát ÉS nincs
-     *         magyarázat); {@code null}, ha nincs eltérés / toleranciaon belül /
-     *         van magyarázat / nem dönthető el (null eltérés)
+     * G3 (FR-13) eltérés-gate döntés — legacy overload rögzített HUF-toleranciával.
+     * FK-066: fallback-szemantikával delegál ({@code |diff| > tolerancia} blokkol) —
+     * a paraméter-vezérelt viselkedés változatlan.
      */
     static String closingDiscrepancyBlockReason(
             java.math.BigDecimal discrepancyHuf, String explanation, java.math.BigDecimal toleranceHuf) {
+        return closingDiscrepancyBlockReason(discrepancyHuf, explanation,
+                ClosingTolerance.fallbackOf(toleranceHuf));
+    }
+
+    /**
+     * G3 (FR-13) + FK-066 eltérés-gate döntés — statikus, függőség-mentes (tesztelhető).
+     * Az ág-függő blokkolási operátor (explicit {@code >=}, fallback {@code >}) a
+     * {@link ClosingTolerance#blocks} közös döntési pontjában dől el (FR-6).
+     *
+     * @return blokkoló indok, ha (az eltérés blokkoló ÉS nincs magyarázat);
+     *         {@code null}, ha nincs eltérés / tolerancián belül / van magyarázat /
+     *         nem dönthető el (null eltérés)
+     */
+    static String closingDiscrepancyBlockReason(
+            java.math.BigDecimal discrepancyHuf, String explanation, ClosingTolerance tolerance) {
         if (discrepancyHuf == null) {
             return null;
         }
-        if (discrepancyHuf.abs().compareTo(toleranceHuf) <= 0) {
+        if (!tolerance.blocks(discrepancyHuf)) {
             return null;
         }
         if (explanation != null && !explanation.isBlank()) {
             return null;
         }
+        // FR-7: pénznem + alkalmazott tolerancia az üzenetben.
         return String.format(
-                "Pénzügyi eltérés (%s Ft) — a zárás véglegesítéséhez eltérés-magyarázat kötelező (FR-13).",
-                discrepancyHuf.toPlainString());
+                "Pénzügyi eltérés (HUF: %s Ft, tolerancia: %s Ft) — a zárás véglegesítéséhez eltérés-magyarázat kötelező (FR-13).",
+                discrepancyHuf.toPlainString(), tolerance.value().toPlainString());
     }
 
     /**
-     * FK-063 FR-4: pénznemenkénti eltérés-gate döntés a pénztári (nem-vault) ágra —
-     * statikus, függőség-mentes (tesztelhető). A HUF-ra a kerekítési tolerancia él
-     * (|diff| ≤ tolerance nem blokkol); nem-HUF pénznemre bármilyen nem-nulla eltérés
-     * blokkol (a valuta-készlet darabra pontos). A blokkoló üzenet nevesíti az érintett
-     * pénznem(ek)et és eltérésüket.
-     *
-     * @return blokkoló indok, ha van tolerancián túli eltérés ÉS nincs magyarázat;
-     *         különben {@code null}
+     * FK-063 FR-4: pénznemenkénti eltérés-gate döntés — legacy overload rögzített
+     * HUF-toleranciával. FK-066: fallback-szemantikával delegál (HUF: {@code |diff| >
+     * tolerancia} blokkol; nem-HUF: bármilyen nem-nulla eltérés blokkol) — a
+     * paraméter-vezérelt viselkedés változatlan.
      */
     static String perCurrencyDiscrepancyBlockReason(
             Map<String, java.math.BigDecimal> perCurrencyDiscrepancies,
             String explanation,
             java.math.BigDecimal hufToleranceHuf) {
+        return perCurrencyDiscrepancyBlockReason(perCurrencyDiscrepancies, explanation,
+                code -> "HUF".equals(code)
+                        ? ClosingTolerance.fallbackOf(hufToleranceHuf)
+                        : ClosingTolerance.fallbackOf(java.math.BigDecimal.ZERO));
+    }
+
+    /**
+     * FK-063 FR-4 + FK-066: pénznemenkénti eltérés-gate döntés a pénztári (nem-vault)
+     * ágra — statikus, függőség-mentes (tesztelhető). A toleranciát pénznemenként a
+     * {@code toleranceOf} adja (éles hívásnál {@code ClosingToleranceService::getToleranceFor}),
+     * a blokkolási döntés (explicit {@code >=}, fallback {@code >}, nulla eltérés soha)
+     * KIZÁRÓLAG a {@link ClosingTolerance#blocks} közös pontjában dől el (FR-6).
+     * A blokkoló üzenet nevesíti az érintett pénznem(ek)et, eltérésüket és az
+     * alkalmazott toleranciát (FR-7).
+     *
+     * @return blokkoló indok, ha van blokkoló eltérés ÉS nincs magyarázat;
+     *         különben {@code null}
+     */
+    static String perCurrencyDiscrepancyBlockReason(
+            Map<String, java.math.BigDecimal> perCurrencyDiscrepancies,
+            String explanation,
+            java.util.function.Function<String, ClosingTolerance> toleranceOf) {
         if (perCurrencyDiscrepancies == null || perCurrencyDiscrepancies.isEmpty()) {
             return null;
         }
         List<String> blocking = new ArrayList<>();
         for (Map.Entry<String, java.math.BigDecimal> entry : perCurrencyDiscrepancies.entrySet()) {
             java.math.BigDecimal diff = entry.getValue();
-            if (diff == null || diff.compareTo(java.math.BigDecimal.ZERO) == 0) {
+            ClosingTolerance tolerance = toleranceOf.apply(entry.getKey());
+            if (!tolerance.blocks(diff)) {
                 continue;
             }
-            if ("HUF".equals(entry.getKey()) && diff.abs().compareTo(hufToleranceHuf) <= 0) {
-                continue;
-            }
-            blocking.add(entry.getKey() + ": " + diff.toPlainString());
+            // FR-7: pénznem + eltérés + alkalmazott tolerancia.
+            blocking.add(entry.getKey() + ": " + diff.toPlainString()
+                    + " (tolerancia: " + tolerance.value().toPlainString() + ")");
         }
         if (blocking.isEmpty()) {
             return null;

@@ -47,6 +47,25 @@ public class SystemParameterService {
                 .orElseThrow(() -> new ResourceNotFoundException("Paraméter nem található: " + key));
     }
 
+    /**
+     * FK-066 (Codex M1): effektív paraméter-érték a SOR JELENLÉTÉNEK jelzésével —
+     * a hívó az Optional.empty()-ből tudja, hogy nincs (használható) sor, és nem az
+     * érték/default egyezéséből következtet. Jelen lévő, de null/üres értékű sor
+     * szintén empty (használhatatlan konfiguráció → a hívó fallback-ága dönt).
+     * Repository-hiba fail-conservative: WARN + empty.
+     */
+    public Optional<String> findEffectiveValue(String key) {
+        try {
+            return findEffective(key)
+                    .map(SystemParameter::getParameterValue)
+                    .filter(v -> v != null && !v.isBlank());
+        } catch (Exception e) {
+            log.warn("SystemParameter effektív lekérés sikertelen, empty-vel térünk vissza: key={}, hiba={}",
+                    key, e.getMessage(), e);
+            return Optional.empty();
+        }
+    }
+
     public String getValue(String key) {
         return getByKey(key).getParameterValue();
     }
@@ -104,8 +123,29 @@ public class SystemParameterService {
                 .orElse(defaultValue);
     }
 
+    /**
+     * FK-066 HIGH-fix (Codex): a GLOBÁLIS (company_id IS NULL) CLOSING_TOLERANCE_* sorok
+     * írása minden cég zárási kapuját befolyásolja, ezért kizárólag ADMIN végezheti —
+     * a generikus írási útvonalakon (update/upsert/create/toggleActive/delete) is, nem
+     * csak a dedikált ADMIN-controlleren. MANAGER a saját céges override-ot a
+     * {@link #upsertCompanyValue} útvonalon továbbra is kezelheti (arra a guard nem
+     * vonatkozik). Auth-kontextus nélkül a SecurityUtils dob → fail-closed.
+     */
+    private void assertGlobalClosingToleranceWriteAllowed(String parameterKey, UUID companyId) {
+        boolean globalRow = companyId == null;
+        boolean toleranceKey = parameterKey != null
+                && parameterKey.startsWith(ClosingToleranceService.KEY_PREFIX);
+        if (globalRow && toleranceKey && !SecurityUtils.isAdmin()) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "VV-AUTH-001: a globális " + parameterKey
+                            + " zárási toleranciát csak ADMIN módosíthatja; "
+                            + "céges felülíráshoz használd a cég-szintű beállítást.");
+        }
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public SystemParameter upsert(String key, String value, String category, String description) {
+        assertGlobalClosingToleranceWriteAllowed(key, null);
         return repo.findByParameterKeyAndCompanyIdIsNull(key)
                 .map(p -> {
                     p.setParameterValue(value);
@@ -135,6 +175,7 @@ public class SystemParameterService {
 
     @Transactional(rollbackFor = Exception.class)
     public SystemParameter create(String key, String value, String type, String category, String description) {
+        assertGlobalClosingToleranceWriteAllowed(key, null);
         SystemParameter p = SystemParameter.builder()
                 .parameterKey(key).parameterValue(value).parameterType(type)
                 .category(category).description(description).isActive(true).build();
@@ -144,6 +185,7 @@ public class SystemParameterService {
     @Transactional(rollbackFor = Exception.class)
     public SystemParameter update(UUID id, String value, String description) {
         SystemParameter p = findOrThrow(id);
+        assertGlobalClosingToleranceWriteAllowed(p.getParameterKey(), p.getCompanyId());
         if (value != null) p.setParameterValue(value);
         if (description != null) p.setDescription(description);
         return repo.save(p);
@@ -152,12 +194,17 @@ public class SystemParameterService {
     @Transactional(rollbackFor = Exception.class)
     public SystemParameter toggleActive(UUID id) {
         SystemParameter p = findOrThrow(id);
+        assertGlobalClosingToleranceWriteAllowed(p.getParameterKey(), p.getCompanyId());
         p.setIsActive(!p.getIsActive());
         return repo.save(p);
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void delete(UUID id) { repo.delete(findOrThrow(id)); }
+    public void delete(UUID id) {
+        SystemParameter p = findOrThrow(id);
+        assertGlobalClosingToleranceWriteAllowed(p.getParameterKey(), p.getCompanyId());
+        repo.delete(p);
+    }
 
     private SystemParameter findOrThrow(UUID id) {
         return repo.findVisibleById(id, SecurityUtils.getCurrentCompanyIdOrNull())
