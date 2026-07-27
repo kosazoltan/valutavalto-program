@@ -1238,7 +1238,9 @@ export default function ClosingWizardPage() {
 
       {/* GOMBOK */}
       <div className="flex justify-center gap-2">
-        {!isRunning && completedCount === 0 && !waitingForDenom && (
+        {/* Bugbot Low fix: aktív stale-banner mellett a normál indítás rejtett —
+            a felhasználó csak a Folytatás / Megszakítás és újraindítás úton léphet tovább. */}
+        {!isRunning && completedCount === 0 && !waitingForDenom && !staleWizard && (
           <button
             onClick={runClosing}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-base font-bold rounded-lg shadow transition-colors"

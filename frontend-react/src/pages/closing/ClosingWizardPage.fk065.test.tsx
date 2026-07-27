@@ -239,6 +239,21 @@ describe('ClosingWizardPage — FK-065 beragadt zárási munkamenet', () => {
     expect(mocks.closingWizardApiGetStatus).toHaveBeenCalledTimes(2)
   })
 
+  it('FR-3 Bugbot-fix: aktív stale-banner mellett a normál indítás-gomb nem érhető el', async () => {
+    // A staleWizard-hiányos ág (normál indítás-flow változatlan) fedése:
+    // az "activeWizardId=null" teszt assertálja, hogy a start gomb ilyenkor látszik.
+    mocks.closingWizardApiGetStatus.mockResolvedValue(statusResponse('wizard-9', 'IN_PROGRESS'))
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Folytatás/i })).toBeInTheDocument()
+    })
+    // A start gomb nem renderelődik — csak a Folytatás / Megszakítás és
+    // újraindítás úton lehet továbblépni.
+    expect(screen.queryByRole('button', { name: /ELLENŐRZÉS INDÍTÁSA/i })).not.toBeInTheDocument()
+  })
+
   // ============ FR-4: bukó indítás nem hagy beragadt sort ============
 
   it('FR-4: az 1. lépés bukásakor a wizard megszakításra kerül (cancel hívódik)', async () => {
