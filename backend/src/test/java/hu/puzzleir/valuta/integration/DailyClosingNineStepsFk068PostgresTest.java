@@ -26,8 +26,6 @@ import hu.puzzleir.valuta.repository.DailySessionRepository;
 import hu.puzzleir.valuta.repository.DictionaryRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
-import hu.puzzleir.valuta.service.AuditLogService;
-import hu.puzzleir.valuta.service.ClosingControlService;
 import hu.puzzleir.valuta.service.ClosingToleranceService;
 import hu.puzzleir.valuta.service.ClosingWizardService;
 import hu.puzzleir.valuta.service.DailyClosingService;
@@ -39,7 +37,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -94,18 +91,20 @@ import static org.mockito.Mockito.when;
  * a teszt CI-ben fut élesben.
  */
 @Testcontainers
-@EnableJpaAuditing
 // A TestApplication szándékosan nem component-scannel (ld. annak javadocja) —
 // a valós zárási service-lánc a Shipment*PostgresIT-minta szerint @Import-tal
 // kerül a kontextusba; a láncon kívüli kollaborátorok @MockitoBean-ek.
+// SZÁNDÉKOSAN NINCS @EnableJpaAuditing: a mvn-test-suite többi tesztje arra épül,
+// hogy a TestApplication-kontextusokban a @CreatedDate nem íródik felül (kézi
+// createdAt-seedelés) — az auditingot igénylő írásokat (AuditLogService,
+// ClosingControlService) ezért mockoljuk, a Denomination-sorokat pedig a seed
+// hozza létre, hogy a countDenominations auto-create ága ne fusson.
 @Import({
         ClosingWizardService.class,
         DailyClosingService.class,
         DailySessionService.class,
-        ClosingControlService.class,
         SystemParameterService.class,
-        ClosingToleranceService.class,
-        AuditLogService.class
+        ClosingToleranceService.class
 })
 @SpringBootTest(
         classes = TestApplication.class,
@@ -135,6 +134,7 @@ class DailyClosingNineStepsFk068PostgresTest {
     @Autowired private WorkerRepository workerRepository;
     @Autowired private CurrencyRepository currencyRepository;
     @Autowired private CashBalanceRepository cashBalanceRepository;
+    @Autowired private hu.puzzleir.valuta.repository.DenominationRepository denominationRepository;
     @Autowired private DailySessionRepository dailySessionRepository;
     @Autowired private ClosingWizardRepository closingWizardRepository;
     @Autowired private ClosingWizardService closingWizardService;
@@ -148,7 +148,11 @@ class DailyClosingNineStepsFk068PostgresTest {
 
     // A zárási láncon kívüli kollaborátorok — az executeClosing ezeket try/catch-csel
     // (warning-ként) kezeli, vagy az adott ágon nem is hívja; a lépés-teljesség
-    // (FR-3) és a vault-egyezés (FR-4) szerződését nem érintik.
+    // (FR-3) és a vault-egyezés (FR-4) szerződését nem érintik. Az audit- és
+    // zárás-kontroll írás @CreatedDate-auditingot igényelne (ld. osztály-komment),
+    // ezért mock — az audit-trail nem része az FK-068 elfogadási feltételeknek.
+    @MockitoBean private hu.puzzleir.valuta.service.AuditLogService auditLogService;
+    @MockitoBean private hu.puzzleir.valuta.service.ClosingControlService closingControlService;
     @MockitoBean private hu.puzzleir.valuta.service.DailyBalanceService dailyBalanceService;
     @MockitoBean private hu.puzzleir.valuta.service.PosTerminalService posTerminalService;
     @MockitoBean private hu.puzzleir.valuta.service.MonthlyArchiveService monthlyArchiveService;
@@ -332,6 +336,21 @@ class DailyClosingNineStepsFk068PostgresTest {
                 .createdAt(now)
                 .build());
 
+        // A becímletezett HUF címletek előseedelve (kézi createdAt-tal): a
+        // countDenominations auto-create ága @CreatedDate-auditingot igényelne,
+        // ami a TestApplication-kontextusokban szándékosan nincs bekapcsolva.
+        for (int faceValue : new int[]{20000, 10000, 5000}) {
+            denominationRepository.save(hu.puzzleir.valuta.entity.Denomination.builder()
+                    .company(company)
+                    .branch(branch)
+                    .currency(huf)
+                    .faceValue(BigDecimal.valueOf(faceValue))
+                    .denominationType(hu.puzzleir.valuta.entity.DenominationType.BANKNOTE)
+                    .active(true)
+                    .createdAt(now)
+                    .build());
+        }
+
         if (withOpenSession) {
             dailySessionRepository.save(DailySession.builder()
                     .company(company)
@@ -353,9 +372,10 @@ class DailyClosingNineStepsFk068PostgresTest {
         return new Seed(company.getId(), branch.getId(), worker.getId());
     }
 
+    /** A SeededPostgresAcceptanceIT mintája: prefix + max 8 számjegy — belefér a worker.code varchar(10)-be. */
     private static String shortCode(String kind, String suffix) {
-        String compact = suffix.replaceAll("[^A-Za-z0-9]", "");
-        String tail = compact.length() > 12 ? compact.substring(compact.length() - 12) : compact;
+        String digits = suffix.replaceAll("[^0-9]", "");
+        String tail = digits.length() <= 8 ? digits : digits.substring(digits.length() - 8);
         return kind + tail;
     }
 }
