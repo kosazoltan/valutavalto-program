@@ -26,12 +26,20 @@ import hu.puzzleir.valuta.repository.DailySessionRepository;
 import hu.puzzleir.valuta.repository.DictionaryRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
+import hu.puzzleir.valuta.service.AuditLogService;
+import hu.puzzleir.valuta.service.ClosingControlService;
+import hu.puzzleir.valuta.service.ClosingToleranceService;
 import hu.puzzleir.valuta.service.ClosingWizardService;
+import hu.puzzleir.valuta.service.DailyClosingService;
+import hu.puzzleir.valuta.service.DailySessionService;
+import hu.puzzleir.valuta.service.SystemParameterService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -86,6 +94,19 @@ import static org.mockito.Mockito.when;
  * a teszt CI-ben fut élesben.
  */
 @Testcontainers
+@EnableJpaAuditing
+// A TestApplication szándékosan nem component-scannel (ld. annak javadocja) —
+// a valós zárási service-lánc a Shipment*PostgresIT-minta szerint @Import-tal
+// kerül a kontextusba; a láncon kívüli kollaborátorok @MockitoBean-ek.
+@Import({
+        ClosingWizardService.class,
+        DailyClosingService.class,
+        DailySessionService.class,
+        ClosingControlService.class,
+        SystemParameterService.class,
+        ClosingToleranceService.class,
+        AuditLogService.class
+})
 @SpringBootTest(
         classes = TestApplication.class,
         properties = {
@@ -125,6 +146,19 @@ class DailyClosingNineStepsFk068PostgresTest {
      */
     @MockitoBean private hu.puzzleir.valuta.service.EveningClosingService eveningClosingService;
 
+    // A zárási láncon kívüli kollaborátorok — az executeClosing ezeket try/catch-csel
+    // (warning-ként) kezeli, vagy az adott ágon nem is hívja; a lépés-teljesség
+    // (FR-3) és a vault-egyezés (FR-4) szerződését nem érintik.
+    @MockitoBean private hu.puzzleir.valuta.service.DailyBalanceService dailyBalanceService;
+    @MockitoBean private hu.puzzleir.valuta.service.PosTerminalService posTerminalService;
+    @MockitoBean private hu.puzzleir.valuta.service.MonthlyArchiveService monthlyArchiveService;
+    @MockitoBean private hu.puzzleir.valuta.service.DailyClosingArchiveService dailyClosingArchiveService;
+    @MockitoBean private hu.puzzleir.valuta.service.DecadeReportService decadeReportService;
+    @MockitoBean private hu.puzzleir.valuta.service.AmlService amlService;
+    @MockitoBean private hu.puzzleir.valuta.service.ReceiptSequenceService receiptSequenceService;
+    @MockitoBean private hu.puzzleir.valuta.service.NotificationService notificationService;
+    @MockitoBean private hu.puzzleir.valuta.service.CashBalanceService cashBalanceService;
+
     /** A becímletezett HUF összeg — a seedelt cash_balance-szal pontosan egyezik (0 eltérés). */
     private static final Map<String, Map<Integer, Integer>> HUF_DENOMS =
             Map.of("HUF", Map.of(20000, 5, 10000, 3, 5000, 2)); // = 140 000 Ft
@@ -146,6 +180,8 @@ class DailyClosingNineStepsFk068PostgresTest {
                 .thenReturn(DailyDataPackage.builder().date(today).build());
         lenient().when(eveningClosingService.sendToHeadquarters(any()))
                 .thenReturn(DataSyncResult.success("FK068-TEST-CHECKSUM"));
+        lenient().when(receiptSequenceService.checkReceiptContinuity(any(UUID.class), any(LocalDate.class)))
+                .thenReturn(java.util.List.of());
 
         ClosingWizardDto wizard = closingWizardService.startWizard(
                 seed.branchId(), null, "DAILY", seed.workerId());
