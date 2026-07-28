@@ -243,9 +243,16 @@ describe('FK11 — tartós munkacsoport dirty-jelző', () => {
     fireEvent.click(screen.getByRole('button', { name: 'rates.arfolyamokSzetkuldese' }))
 
     await waitFor(() => expect(publishMocks.publishAllWorkgroups).toHaveBeenCalledTimes(1))
+    // Flaky-fix (CI 2026-07-24/27): a current-buy '405' a publish ELŐTT is igaz, ezért önmagában
+    // nem bizonyítja a reload lefutását — előbb a publish utáni loadData() bootstrap-újrahívását
+    // várjuk (diszkrimináló jel), a záró assertionöket pedig waitFor hidalja át a szerver-baseline
+    // → overlay-visszaírás közti tranziens commiton (ott a dirty-jelző egy effekt-ciklusra eltűnik).
+    await waitFor(() => expect(apiMocks.getLocalRateMakerBootstrap).toHaveBeenCalledTimes(2))
     await waitFor(() => expect(screen.getByTestId('current-buy')).toHaveTextContent('405'))
-    expect(screen.getByTestId('wg-dirty-indicator')).toBeInTheDocument()
-    expect(screen.getByTestId('row-modified')).toHaveTextContent('true')
+    await waitFor(() => {
+      expect(screen.getByTestId('wg-dirty-indicator')).toBeInTheDocument()
+      expect(screen.getByTestId('row-modified')).toHaveTextContent('true')
+    })
   })
 
   it('G4: szerverértékre visszaállító commit törli a dirty-jelzőt publikálás nélkül', async () => {
