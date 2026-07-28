@@ -47,6 +47,44 @@ updates:
       - "dependencies"
       - "electron"
 
+  # Kozponti-client (Electron kozponti munkaallomas, rate-maker moddal)
+  - package-ecosystem: "npm"
+    directory: "/kozponti-client"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Europe/Budapest"
+    open-pull-requests-limit: 3
+    groups:
+      kozponti-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - "dependencies"
+      - "electron"
+
+  # Arfolyam-keszito-client (legacy/kozos kodforras, onallo release nincs)
+  - package-ecosystem: "npm"
+    directory: "/arfolyam-keszito-client"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Europe/Budapest"
+    open-pull-requests-limit: 3
+    groups:
+      arfolyam-keszito-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - "dependencies"
+      - "electron"
+
   # Frontend-react (React 19 admin UI)
   - package-ecosystem: "npm"
     directory: "/frontend-react"
