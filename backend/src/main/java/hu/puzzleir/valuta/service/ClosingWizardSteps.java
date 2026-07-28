@@ -164,7 +164,10 @@ public final class ClosingWizardSteps {
         new StepDefinition(STEP_SEND_PERIOD_REPORTS_FINALIZE,
             "Időszaki jelentések + véglegesítés",
             "Dekád/havi jelentések küldése a központba és a zárás véglegesítése",
-            true,  true,  true,  true)
+            // FK-068: napi zárásnál nem aktív — a DailyClosingService 9 lépéses
+            // ellenőrzés-lánca csak az 1-9 pozíciókat ismeri, a 10. perzisztált
+            // lépés a felületről soha nem volt teljesíthető.
+            false, true,  true,  true)
     );
 
     /**
