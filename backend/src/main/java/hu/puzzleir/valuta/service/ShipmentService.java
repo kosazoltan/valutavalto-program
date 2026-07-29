@@ -533,6 +533,14 @@ public class ShipmentService {
         request.setStatus(ShipmentRequestStatus.CANCELLED);
         request.setCancelledByWorkerId(workerId);
         request.setCancelledAt(cancelledAt);
+        // FKH-022 FR-K2/3: a sztornó-sor SAJÁT naplókönyv-sorszámot kap (nem az eredetiét
+        // ismétli), a sztornó pillanatának (cancelled_at) időrendi helyén. Az évet a
+        // MEGRAGADOTT cancelledAt időbélyegből vesszük (Bugbot #2, PR #1518): így az élő
+        // kiosztás és a V366 backfill év-szemantikája évhatáron is azonos.
+        if (isHufDaybookPrefix(request.getSerialPrefix()) && request.getCompanyId() != null) {
+            request.setStornoJournalSequence(hufDaybookSequenceService.next(
+                    request.getCompanyId(), cancelledAt.getYear()));
+        }
         log.info("Szállítmánykérés visszavonva: {}", request.getRequestNumber());
         ShipmentRequest saved = shipmentRequestRepository.save(request);
         handlingFeeSyncService.syncFromShipment(saved);

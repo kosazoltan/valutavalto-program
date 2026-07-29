@@ -51,6 +51,14 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     Optional<Branch> findByIdAndCompanyId(UUID id, UUID companyId);
 
     /**
+     * FKH-022 FR-K12 (Security Gate tenant-guard hardening): partner-fiókok BATCH
+     * betöltése cég-scope-pal. A HUF naplókönyv partner-kód feloldása ezen keresztül
+     * fut, hogy korrupt/legacy cross-tenant branch-referencia esetén se töltődjön be
+     * idegen tenant Branch-rekordja.
+     */
+    List<Branch> findByIdInAndCompanyId(java.util.Collection<UUID> ids, UUID companyId);
+
+    /**
      * Összes aktív fiók lekérdezése (GLOBALIS - minden ceg).
      *
      * <p><b>FIGYELEM:</b> multi-tenant kontextusban NE hasznald!

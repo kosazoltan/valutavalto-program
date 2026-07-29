@@ -12,6 +12,9 @@ import { useTranslation } from 'react-i18next'
 interface DaybookRow {
   annualSequence?: number
   receiptNumber: string
+  // FKH-022 FR-K3: partner-azonosító — fizikai pénztárnál numerikus (076),
+  // VAULT_COUNTERPARTY partnernél betűkód (PRB, ERB, ...)
+  partnerCode?: string
   timestamp: string
   atadasHuf?: number
   atvetelHuf?: number
@@ -140,6 +143,7 @@ export default function DaybookPage() {
                 <tr>
                   <th>Sorszám</th>
                   <th>Bizonylat</th>
+                  <th>Partner</th>
                   <th>{t('misc.ido')}</th>
                   <th className="text-right">Átadás (HUF)</th>
                   <th className="text-right">Átvétel (HUF)</th>
@@ -153,6 +157,7 @@ export default function DaybookPage() {
                       {row.receiptNumber}
                       {row.storno && <span className="ml-2 text-red-600 font-semibold">Sztornó</span>}
                     </td>
+                    <td className="font-mono">{row.partnerCode ?? '-'}</td>
                     <td>{row.timestamp}</td>
                     <td className="text-right">{row.atadasHuf != null ? fmtHuf(row.atadasHuf) : ''}</td>
                     <td className="text-right">{row.atvetelHuf != null ? fmtHuf(row.atvetelHuf) : ''}</td>
@@ -161,7 +166,7 @@ export default function DaybookPage() {
               </tbody>
               <tfoot>
                 <tr className="font-semibold">
-                  <td colSpan={3}>Összesen</td>
+                  <td colSpan={4}>Összesen</td>
                   <td className="text-right">{fmtHuf(report.totalAtadasHuf)}</td>
                   <td className="text-right">{fmtHuf(report.totalAtvetelHuf)}</td>
                 </tr>

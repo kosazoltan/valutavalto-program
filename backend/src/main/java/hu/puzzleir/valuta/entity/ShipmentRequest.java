@@ -50,6 +50,13 @@ public class ShipmentRequest {
     @Column(name = "annual_journal_sequence")
     private Integer annualJournalSequence;
 
+    /**
+     * FKH-022 FR-K2/3: a sztornó-sor SAJÁT naplókönyv-sorszáma — a cancelled_at
+     * időrendi helyén kiosztva, nem az eredeti bizonylat sorszámát ismétli (V365).
+     */
+    @Column(name = "storno_journal_sequence")
+    private Integer stornoJournalSequence;
+
     @Column(name = "from_branch_id", nullable = false)
     private UUID fromBranchId;
 
