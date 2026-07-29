@@ -7,6 +7,9 @@ version: 2
 #   - `groups`: minor + patch egy PR-be osszevonva -> kb. 50% kevesebb diff/PR
 #   - csak `production` deps frontend-en (test-only deps mentesek a hetente kell-e check-ben)
 # Ezzel a Sourcery rate-limit nem kerul elhasznalva mar a kedd esti batch-en.
+# Frissites 2026-07-28 (PR #1506): ket uj npm ecosystem bejegyzes kerult be
+# (kozponti-client, arfolyam-keszito-client) -> jelenleg 6 ecosystem.
+# Az open-pull-requests-limit valtozatlanul 3/ecosystem -> max 18 nyitott PR.
 
 updates:
   # Backend (Java / Maven)

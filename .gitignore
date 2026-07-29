@@ -227,3 +227,9 @@ docs/legacy-analysis/generated/legacy-binary-analysis.json
 
 # Coverage riportok (JaCoCo + Vitest) — generált, nem verziókövetett
 **/coverage/
+
+# Lokalis, gep-specifikus AI-munkafajlok — soha ne kerüljenek a repóba.
+# Eddig csak a .git/info/exclude fedte oket, ami gepfuggo; ez a bejegyzes
+# gepfuggetlen, tartos vedelmet ad (#8 follow-up, 2026-07-28).
+/fejlesztesi-het-allapot.md
+/CLAUDE-tomi.md
