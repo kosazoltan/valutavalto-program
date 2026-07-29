@@ -15,8 +15,14 @@
 --
 -- Megjegyzés: szándékosan NINCS DO $$ blokk — a migrációt a tesztek statement-enként
 -- splittelő ResourceDatabasePopulator-ral is futtatják. A tmp_hd_* táblák TEMP táblák:
--- a kapcsolat (Flyway-migrációs session / teszt-populator) végén automatikusan
--- megszűnnek, ezért explicit DROP nem szükséges (és nem is szerepel itt).
+-- a fizikai kapcsolat végén automatikusan megszűnnek.
+
+-- 0. Tiszta temp-névtér. Pool-olt (újrahasznosított) fizikai kapcsolaton — pl. a
+-- Testcontainers-tesztek HikariCP session-jein — az előző futás temp táblái még
+-- élhetnek ("relation tmp_hd_events already exists", CI-bizonyíték: PR #1518 első
+-- futása). A DISCARD TEMP a session MINDEN temp tábláját eldobja; tranzakcióblokkban
+-- is futtatható (csak a DISCARD ALL tilos), Flyway friss session-jén no-op.
+DISCARD TEMP;
 
 -- 1. Esemény-halmaz: minden még számozatlan eredeti bizonylat (created_at kulccsal)
 --    és minden még számozatlan sztornó-esemény (cancelled_at kulccsal), mindkét táblából.

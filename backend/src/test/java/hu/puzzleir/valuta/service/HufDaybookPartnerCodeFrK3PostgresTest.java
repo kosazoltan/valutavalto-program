@@ -234,14 +234,39 @@ class HufDaybookPartnerCodeFrK3PostgresTest {
         Branch vaultBranch = seedBranch(company, tag + "-V-" + suffix, "FR-K3 Erektar",
                 normalType, country, branchStatus, now, true);
         // Fizikai pénztár partner — a kód numerikus része a spec-példa szerinti 076.
-        // (A branch.code globálisan unique; a BR076 literál csak ebben az osztályban használt.)
-        Branch physicalBranch = seedBranch(company, "BR076", "Bekescsaba Tesco",
-                normalType, country, branchStatus, now, false);
+        // CI-fix (PR #1518, branch_code_key duplikáció): a branch.code GLOBÁLISAN unique, és az
+        // osztály két tesztmetódusa közös sémán fut — a literál-kódú partnereket ezért
+        // find-or-re-parent mintával seedeljük: ha a másik metódus már létrehozta, az AKTUÁLIS
+        // teszt cégéhez igazítjuk (különben az FR-K12 tenant-guard jogosan null-ozná a
+        // partner-kódot). KIZÁRÓLAG setup-plumbing — egyetlen assertion sem változott.
+        Branch physicalBranch = findOrReparentBranch("BR076", "Bekescsaba Tesco", company,
+                normalType, country, branchStatus, now);
         // Virtuális banki partner — V277-minta: betűkód, VAULT_COUNTERPARTY branch-type.
-        Branch counterpartyBranch = seedBranch(company, "PRB", "POS Raiffeisen Bank",
-                counterpartyType, country, branchStatus, now, false);
+        Branch counterpartyBranch = findOrReparentBranch("PRB", "POS Raiffeisen Bank", company,
+                counterpartyType, country, branchStatus, now);
 
         return new Seed(company, vaultBranch, physicalBranch, counterpartyBranch);
+    }
+
+    /**
+     * Literál-kódú partner-branch find-or-re-parent seedje (setup-only CI-fix): a globálisan
+     * unique {@code branch.code} miatt a második tesztmetódus nem szúrhatja be újra ugyanazt
+     * a kódot; ha már létezik, az aktuális teszt cégéhez + típusához igazítjuk. (A
+     * {@code @Deprecated findByCode} global lookup teszt-seed célra legitim.)
+     */
+    @SuppressWarnings("deprecation")
+    private Branch findOrReparentBranch(String code, String name, Company company,
+                                        Dictionary branchType, Dictionary country,
+                                        Dictionary branchStatus, LocalDateTime now) {
+        return branchRepository.findByCode(code)
+                .map(existing -> {
+                    existing.setCompany(company);
+                    existing.setBranchType(branchType);
+                    existing.setName(name);
+                    return branchRepository.save(existing);
+                })
+                .orElseGet(() -> seedBranch(company, code, name, branchType, country,
+                        branchStatus, now, false));
     }
 
     private Branch seedBranch(Company company, String code, String name, Dictionary branchType,
