@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -171,4 +172,45 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
             @Param("branchId") UUID branchId,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
+
+    /**
+     * FKH-022 FR-K5: a naplókönyv Nyitó egyenlegének shipment-oldali, ELŐJELES összege a
+     * megadott nap ELŐTTI eredeti bizonylatokból (UF = átvétel +, FF = átadás −).
+     * Szűrők a napi lista-lekérdezéssel ({@link #findHufDaybookShipmentsForDate}) azonosak,
+     * csak a nap-egyenlőség helyett {@code requestDate < :date} (implicit horgony — nincs
+     * dátum-alsókorlát). A null hufValue-jú tételsort a SUM kihagyja (a napi
+     * összegzéssel konzisztensen).
+     */
+    @Query("""
+            SELECT COALESCE(SUM(CASE WHEN sr.serialPrefix = 'UF' THEN i.hufValue ELSE -i.hufValue END), 0)
+            FROM ShipmentRequest sr JOIN sr.items i
+            WHERE sr.companyId = :companyId
+              AND sr.serialPrefix IN ('FF', 'UF')
+              AND sr.requestDate < :date
+              AND ((sr.serialPrefix = 'FF' AND sr.fromBranchId = :branchId)
+                OR (sr.serialPrefix = 'UF' AND sr.toBranchId = :branchId))
+            """)
+    BigDecimal sumHufDaybookSignedHufBeforeDate(
+            @Param("companyId") UUID companyId,
+            @Param("branchId") UUID branchId,
+            @Param("date") LocalDate date);
+
+    /**
+     * FKH-022 FR-K5: a nap ELŐTTI shipment-SZTORNÓ-események előjeles NETTÓ hatása —
+     * az eredetivel ellentétes előjellel (UF-sztornó −, FF-sztornó +), a sztornó-sor
+     * nap-hozzárendelése a {@code cancelledAt} (FR-K6/11-gyel konzisztensen).
+     */
+    @Query("""
+            SELECT COALESCE(SUM(CASE WHEN sr.serialPrefix = 'UF' THEN -i.hufValue ELSE i.hufValue END), 0)
+            FROM ShipmentRequest sr JOIN sr.items i
+            WHERE sr.companyId = :companyId
+              AND sr.serialPrefix IN ('FF', 'UF')
+              AND sr.cancelledAt < :before
+              AND ((sr.serialPrefix = 'FF' AND sr.fromBranchId = :branchId)
+                OR (sr.serialPrefix = 'UF' AND sr.toBranchId = :branchId))
+            """)
+    BigDecimal sumCancelledHufDaybookSignedHufBefore(
+            @Param("companyId") UUID companyId,
+            @Param("branchId") UUID branchId,
+            @Param("before") LocalDateTime before);
 }

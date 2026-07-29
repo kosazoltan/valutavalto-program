@@ -112,14 +112,36 @@ public class HufDaybookService {
                 .filter(v -> v != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // FR-K5: Nyitó = a nap ELŐTTI össz FF/UF előjeles összege (UF+, FF−), IMPLICIT
+        // horgonnyal (nincs dátum-alsókorlát — az első tétel napján automatikusan 0).
+        // Eredeti tétel a requestDate/transferDate, sztornó-hatás a cancelledAt napján
+        // számít (FR-K6/11-gyel konzisztensen); a szűrők a napi lista-query-kkel azonosak.
+        BigDecimal opening = nz(shipmentRequestRepository.sumHufDaybookSignedHufBeforeDate(companyId, branchId, date))
+                .add(nz(shipmentRequestRepository.sumCancelledHufDaybookSignedHufBefore(companyId, branchId, from)))
+                .add(nz(transferRepository.sumHufDaybookSignedHufBeforeDate(companyId, branchId, date)))
+                .add(nz(transferRepository.sumCancelledHufDaybookSignedHufBefore(companyId, branchId, from)));
+        // FR-K5: Záró = Nyitó + napi UF − napi FF (a napi totálok a sztornó-sorokat
+        // előjelesen már tartalmazzák).
+        BigDecimal closing = opening.add(totalAtvetel).subtract(totalAtadas);
+
         return HufDaybookDto.builder()
                 .branchId(branch.getId().toString())
                 .branchName(branch.getName())
+                // FR-K4 tenant-garancia: a cím KIZÁRÓLAG a requireAccessibleBranch által a
+                // hívó tenant-re szűrten (findByIdAndCompanyId) betöltött Branch-ből jöhet.
+                .branchAddress(branch.getAddress())
                 .date(date.toString())
                 .rows(dtoRows)
                 .totalAtadasHuf(totalAtadas)
                 .totalAtvetelHuf(totalAtvetel)
+                .openingBalanceHuf(opening)
+                .closingBalanceHuf(closing)
                 .build();
+    }
+
+    /** Null-biztos összeg (a query COALESCE-e mellett mock/edge esetekre is). */
+    private static BigDecimal nz(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 
     private Branch requireAccessibleBranch(UUID branchId) {

@@ -353,6 +353,55 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
                                                            @Param("from") java.time.LocalDateTime from,
                                                            @Param("to") java.time.LocalDateTime to);
 
+    /**
+     * FKH-022 FR-K5: a naplókönyv Nyitó egyenlegének transfer-oldali, ELŐJELES összege a
+     * megadott nap ELŐTTI eredeti bizonylatokból (UF = átvétel +, FF = átadás −; összeg:
+     * hufValue, fallback amount — a {@code HufDaybookService.transferHuf} logikával azonosan).
+     * A szűrők a napi lista-lekérdezéssel ({@link #findHufDaybookTransfersForDate}) azonosak
+     * (FR-K13: CANCELLED/REJECTED kizárva; '-SZ' műtermék kizárva), csak
+     * {@code transferDate < :date} (implicit horgony).
+     */
+    @Query("""
+            SELECT COALESCE(SUM(CASE WHEN t.transferNumber LIKE 'UF-%'
+                                     THEN COALESCE(t.hufValue, t.amount)
+                                     ELSE -COALESCE(t.hufValue, t.amount) END), 0)
+            FROM Transfer t
+            WHERE t.companyId = :companyId
+              AND t.transferDate < :date
+              AND ((t.transferNumber LIKE 'FF-%' AND t.fromBranch.id = :branchId)
+                OR (t.transferNumber LIKE 'UF-%' AND t.toBranch.id = :branchId))
+              AND t.transferNumber NOT LIKE '%-SZ'
+              AND t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED,
+                                   hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED)
+            """)
+    BigDecimal sumHufDaybookSignedHufBeforeDate(@Param("companyId") UUID companyId,
+                                                @Param("branchId") UUID branchId,
+                                                @Param("date") LocalDate date);
+
+    /**
+     * FKH-022 FR-K5: a nap ELŐTTI transfer-SZTORNÓ-események előjeles NETTÓ hatása — az
+     * eredetivel ellentétes előjellel (UF-sztornó −, FF-sztornó +). Sztornó kizárólag
+     * {@code isCancelled = true} esetén (FR-K6/10), nap-hozzárendelés a {@code cancelledAt}
+     * szerint; FR-K13: CANCELLED/REJECTED státusz a sztornó-ágból is kizárva.
+     */
+    @Query("""
+            SELECT COALESCE(SUM(CASE WHEN t.transferNumber LIKE 'UF-%'
+                                     THEN -COALESCE(t.hufValue, t.amount)
+                                     ELSE COALESCE(t.hufValue, t.amount) END), 0)
+            FROM Transfer t
+            WHERE t.companyId = :companyId
+              AND t.isCancelled = true
+              AND t.cancelledAt < :before
+              AND ((t.transferNumber LIKE 'FF-%' AND t.fromBranch.id = :branchId)
+                OR (t.transferNumber LIKE 'UF-%' AND t.toBranch.id = :branchId))
+              AND t.transferNumber NOT LIKE '%-SZ'
+              AND t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED,
+                                   hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED)
+            """)
+    BigDecimal sumCancelledHufDaybookSignedHufBefore(@Param("companyId") UUID companyId,
+                                                     @Param("branchId") UUID branchId,
+                                                     @Param("before") java.time.LocalDateTime before);
+
     /** ReportService â€" kimenĹ' ĂˇtadĂˇsok */
     @Query("SELECT t FROM Transfer t WHERE t.fromBranch.company.id = :companyId " +
            "AND t.fromBranch.id = :branchId ORDER BY t.createdAt DESC")
