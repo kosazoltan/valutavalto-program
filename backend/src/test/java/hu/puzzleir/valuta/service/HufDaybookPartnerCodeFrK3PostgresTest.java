@@ -198,11 +198,18 @@ class HufDaybookPartnerCodeFrK3PostgresTest {
     private Seed seed(String tag) {
         LocalDateTime now = DAY.atTime(6, 0);
         String suffix = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        Company company = companyRepository.save(Company.builder()
-                .code(tag + "-" + suffix)
-                .name("FR-K3 partner company " + tag)
-                .createdAt(now)
-                .build());
+        // CI-fix (PR #1518, branch_code_key duplikáció) — VÉGLEGES, shared-company megoldás:
+        // az osztály két tesztmetódusa KÖZÖS sémán fut, a partner-kódok pedig literálisak és
+        // globálisan unique-ok. Ezért a teszt-cég FIX kódú (FRK3-SHARED), find-or-create:
+        // az elsőként futó metódus hozza létre, a második változtatás NÉLKÜL újrahasználja —
+        // így a BR076/PRB partnerek is tiszta find-or-create-tel seedelhetők, companyId-átírás
+        // SEHOL nincs. KIZÁRÓLAG setup-plumbing — egyetlen assertion sem változott.
+        Company company = companyRepository.findByCode("FRK3-SHARED")
+                .orElseGet(() -> companyRepository.save(Company.builder()
+                        .code("FRK3-SHARED")
+                        .name("FR-K3 megosztott partner teszt-ceg")
+                        .createdAt(now)
+                        .build()));
         Dictionary normalType = dictionaryRepository.save(Dictionary.builder()
                 .category("BRANCH_TYPE")
                 .code(tag + "-BT-" + suffix)
@@ -234,37 +241,29 @@ class HufDaybookPartnerCodeFrK3PostgresTest {
         Branch vaultBranch = seedBranch(company, tag + "-V-" + suffix, "FR-K3 Erektar",
                 normalType, country, branchStatus, now, true);
         // Fizikai pénztár partner — a kód numerikus része a spec-példa szerinti 076.
-        // CI-fix (PR #1518, branch_code_key duplikáció): a branch.code GLOBÁLISAN unique, és az
-        // osztály két tesztmetódusa közös sémán fut — a literál-kódú partnereket ezért
-        // find-or-re-parent mintával seedeljük: ha a másik metódus már létrehozta, az AKTUÁLIS
-        // teszt cégéhez igazítjuk (különben az FR-K12 tenant-guard jogosan null-ozná a
-        // partner-kódot). KIZÁRÓLAG setup-plumbing — egyetlen assertion sem változott.
-        Branch physicalBranch = findOrReparentBranch("BR076", "Bekescsaba Tesco", company,
+        // A megosztott FRK3-SHARED cég alatt tiszta find-or-create: ha a másik metódus már
+        // létrehozta, az EREDETI (közös cégű) branch változtatás nélkül újrahasznált.
+        Branch physicalBranch = findOrCreateBranch("BR076", "Bekescsaba Tesco", company,
                 normalType, country, branchStatus, now);
         // Virtuális banki partner — V277-minta: betűkód, VAULT_COUNTERPARTY branch-type.
-        Branch counterpartyBranch = findOrReparentBranch("PRB", "POS Raiffeisen Bank", company,
+        Branch counterpartyBranch = findOrCreateBranch("PRB", "POS Raiffeisen Bank", company,
                 counterpartyType, country, branchStatus, now);
 
         return new Seed(company, vaultBranch, physicalBranch, counterpartyBranch);
     }
 
     /**
-     * Literál-kódú partner-branch find-or-re-parent seedje (setup-only CI-fix): a globálisan
-     * unique {@code branch.code} miatt a második tesztmetódus nem szúrhatja be újra ugyanazt
-     * a kódot; ha már létezik, az aktuális teszt cégéhez + típusához igazítjuk. (A
-     * {@code @Deprecated findByCode} global lookup teszt-seed célra legitim.)
+     * Literál-kódú partner-branch find-or-create seedje (setup-only): a globálisan unique
+     * {@code branch.code} miatt a második tesztmetódus nem szúrhatja be újra ugyanazt a kódot.
+     * A partnerek a fix kódú FRK3-SHARED teszt-céghez tartoznak, ezért a talált branch
+     * MÓDOSÍTÁS NÉLKÜL újrahasználható — companyId-átírás nincs. (A {@code @Deprecated
+     * findByCode} global lookup teszt-seed célra legitim.)
      */
     @SuppressWarnings("deprecation")
-    private Branch findOrReparentBranch(String code, String name, Company company,
-                                        Dictionary branchType, Dictionary country,
-                                        Dictionary branchStatus, LocalDateTime now) {
+    private Branch findOrCreateBranch(String code, String name, Company company,
+                                      Dictionary branchType, Dictionary country,
+                                      Dictionary branchStatus, LocalDateTime now) {
         return branchRepository.findByCode(code)
-                .map(existing -> {
-                    existing.setCompany(company);
-                    existing.setBranchType(branchType);
-                    existing.setName(name);
-                    return branchRepository.save(existing);
-                })
                 .orElseGet(() -> seedBranch(company, code, name, branchType, country,
                         branchStatus, now, false));
     }
