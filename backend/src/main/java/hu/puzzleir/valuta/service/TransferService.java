@@ -385,10 +385,12 @@ public class TransferService {
         transfer.setCancelledBy(actor.getId());
 
         // FKH-022 FR-K2/3: a sztornó-sor SAJÁT naplókönyv-sorszámot kap (nem az eredetiét
-        // ismétli), a sztornó pillanatának (cancelled_at) időrendi helyén.
+        // ismétli), a sztornó pillanatának (cancelled_at) időrendi helyén. Az évet a
+        // MEGRAGADOTT cancelledAt időbélyegből vesszük (Bugbot #2, PR #1518): így az élő
+        // kiosztás és a V366 backfill év-szemantikája évhatáron is azonos.
         if (transfer.getCompanyId() != null && isHufDaybookNumber(transfer.getTransferNumber())) {
             transfer.setStornoJournalSequence(hufDaybookSequenceService.next(
-                    transfer.getCompanyId(), LocalDate.now().getYear()));
+                    transfer.getCompanyId(), transfer.getCancelledAt().getYear()));
         }
 
         // FIZIKAI KÉSZLET-VISSZAFORDÍTÁS: az eredeti (COMPLETED) átadás-átvétel készletmozgását

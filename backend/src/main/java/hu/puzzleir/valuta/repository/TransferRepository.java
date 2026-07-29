@@ -303,6 +303,11 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
      * konzisztensen). Tenant-szűrés SZIGORÚAN t.companyId alapján (FR-K6/8) — a
      * legacy-nullable company_id-jű sorok fail-closed kimaradnak. A legacy '...-SZ'
      * sorszámú sorok (külön-rekordos sztornó-műtermékek) kizárva.
+     * FR-K13 (Bugbot #1, PR #1518): az érvénytelenített bizonylat (PENDING-fázisú
+     * cancel → CANCELLED, ill. REJECTED) nem valós pénzmozgás — kizárva, a
+     * {@code findForReconciliation} precedense szerint. A sztornózott COMPLETED
+     * bizonylat (is_cancelled=true) bent marad: azt az eredeti + sztornó sorpár
+     * ellentételezi.
      */
     @Query("""
             SELECT DISTINCT t FROM Transfer t
@@ -313,6 +318,8 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
               AND ((t.transferNumber LIKE 'FF-%' AND fb.id = :branchId)
                 OR (t.transferNumber LIKE 'UF-%' AND tb.id = :branchId))
               AND t.transferNumber NOT LIKE '%-SZ'
+              AND t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED,
+                                   hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED)
             ORDER BY t.createdAt ASC, t.transferNumber ASC
             """)
     List<Transfer> findHufDaybookTransfersForDate(@Param("companyId") UUID companyId,
@@ -323,6 +330,8 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
      * FKH-022 FR-K6/10: a naplókönyv transfer-oldali SZTORNÓ-sorai. A sztornó-ág
      * kizárólag {@code isCancelled = true} esetén él (a kitöltött cancelledAt önmagában
      * NEM sztornó); a nap-hozzárendelés a cancelledAt alapján történik.
+     * FR-K13 (Bugbot #1): a CANCELLED/REJECTED státuszú (érvénytelenített) bizonylat
+     * defenzíven a sztornó-ágból is kizárva — sztornó csak COMPLETED bizonylaton él.
      */
     @Query("""
             SELECT DISTINCT t FROM Transfer t
@@ -335,6 +344,8 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
               AND ((t.transferNumber LIKE 'FF-%' AND fb.id = :branchId)
                 OR (t.transferNumber LIKE 'UF-%' AND tb.id = :branchId))
               AND t.transferNumber NOT LIKE '%-SZ'
+              AND t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED,
+                                   hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED)
             ORDER BY t.cancelledAt ASC, t.transferNumber ASC
             """)
     List<Transfer> findCancelledHufDaybookTransfersForDate(@Param("companyId") UUID companyId,
