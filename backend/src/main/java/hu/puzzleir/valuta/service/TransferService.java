@@ -40,6 +40,8 @@ public class TransferService {
     private final TransactionRepository transactionRepository;
     private final ReceiptSequenceService receiptSequenceService;
     private final TransferSerialSequenceService transferSerialSequenceService;
+    /** FKH-022 FR-K2: HUF naplókönyv éves sorszám (FF-/UF- bizonylatnál, cég+év számláló). */
+    private final HufDaybookSequenceService hufDaybookSequenceService;
     private final AuditLogService auditLogService;
     // Batch3-B (currency_stock-doc FR-1/FR-2): a vault-erintett kassza-mozgasok
     // currency_stock ("B konyv") tukrozesehez.
@@ -134,6 +136,13 @@ public class TransferService {
 
         String transferNumber = generateTransferNumber(direction, currency, companyId);
 
+        // FKH-022 FR-K2: FF-/UF- (HUF) bizonylat a naplókönyv cég+év szerinti éves
+        // sorszámát is megkapja — a shipment-oldali kiosztással közös számlálóból.
+        Integer annualJournalSequence = null;
+        if (companyId != null && isHufDaybookNumber(transferNumber)) {
+            annualJournalSequence = hufDaybookSequenceService.next(companyId, LocalDate.now().getYear());
+        }
+
         // HUF-fallback (FR-5, FR-6): HUF esetén az elszámoló árfolyam konstans 1,0000 → a forintosított
         // érték = összeg (5 Ft-ra kerekítve). HUF-nál NINCS DB-árfolyam, ezért a rögzítés sosem
         // blokkolódik árfolyam hiányára. Más valutánál a kliens által küldött hufValue marad.
@@ -142,6 +151,7 @@ public class TransferService {
 
         Transfer transfer = Transfer.builder()
                 .transferNumber(transferNumber)
+                .annualJournalSequence(annualJournalSequence)
                 .companyId(companyId)
                 .fromBranch(fromBranch)
                 .toBranch(toBranch)
@@ -373,6 +383,13 @@ public class TransferService {
         transfer.setCancelledAt(LocalDateTime.now());
         transfer.setCancellationReason(normalizedReason);
         transfer.setCancelledBy(actor.getId());
+
+        // FKH-022 FR-K2/3: a sztornó-sor SAJÁT naplókönyv-sorszámot kap (nem az eredetiét
+        // ismétli), a sztornó pillanatának (cancelled_at) időrendi helyén.
+        if (transfer.getCompanyId() != null && isHufDaybookNumber(transfer.getTransferNumber())) {
+            transfer.setStornoJournalSequence(hufDaybookSequenceService.next(
+                    transfer.getCompanyId(), LocalDate.now().getYear()));
+        }
 
         // FIZIKAI KÉSZLET-VISSZAFORDÍTÁS: az eredeti (COMPLETED) átadás-átvétel készletmozgását
         // visszafordítjuk (a készpénz visszakerül/kikerül), ellentételező TRANSFER tranzakciókkal.
@@ -1028,6 +1045,15 @@ public class TransferService {
         String prefix = huf ? (atvetel ? "UF" : "FF") : (atvetel ? "AV" : "AT");
         long next = transferSerialSequenceService.next(companyId, prefix);
         return prefix + "-" + String.format("%06d", next);
+    }
+
+    /** FKH-022 FR-K2: a HUF naplókönyvbe tartozó bizonylatszám (FF-/UF- prefix). */
+    private static boolean isHufDaybookNumber(String transferNumber) {
+        if (transferNumber == null) {
+            return false;
+        }
+        String upper = transferNumber.toUpperCase();
+        return upper.startsWith("FF-") || upper.startsWith("UF-");
     }
 
     private TransferDto toDto(Transfer t) {

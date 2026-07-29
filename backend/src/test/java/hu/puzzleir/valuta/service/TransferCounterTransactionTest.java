@@ -47,6 +47,8 @@ class TransferCounterTransactionTest {
     @Mock
     private TransferSerialSequenceService transferSerialSequenceService;
     @Mock
+    private HufDaybookSequenceService hufDaybookSequenceService;
+    @Mock
     private AuditLogService auditLogService;
 
     @Mock

@@ -49,6 +49,7 @@ class TransferReceiveAuditTest {
     @Mock private TransactionRepository transactionRepository;
     @Mock private ReceiptSequenceService receiptSequenceService;
     @Mock private TransferSerialSequenceService transferSerialSequenceService;
+    @Mock private HufDaybookSequenceService hufDaybookSequenceService;
     @Mock private AuditLogService auditLogService;
     @Mock private VaultStockFlowService vaultStockFlowService;
     @Mock private AccessScopeService accessScopeService;

@@ -295,6 +295,53 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
                                            @Param("startDate") LocalDate startDate,
                                            @Param("endDate") LocalDate endDate);
 
+    /**
+     * FKH-022 FR-K6: a HUF naplókönyv transfer-oldali FF/UF tételei az adott napra.
+     * Napi szűrés = {@code transferDate} (NEM a created_at dátumrésze — FR-K6/11: éjfél
+     * után rögzített, előző napi transferDate-ű bizonylat az előző napi naplóba tartozik).
+     * Irány: FF → fromBranch, UF → toBranch (a shipment-oldali daybook-lekérdezéssel
+     * konzisztensen). Tenant-szűrés SZIGORÚAN t.companyId alapján (FR-K6/8) — a
+     * legacy-nullable company_id-jű sorok fail-closed kimaradnak. A legacy '...-SZ'
+     * sorszámú sorok (külön-rekordos sztornó-műtermékek) kizárva.
+     */
+    @Query("""
+            SELECT DISTINCT t FROM Transfer t
+            JOIN FETCH t.fromBranch fb
+            JOIN FETCH t.toBranch tb
+            WHERE t.companyId = :companyId
+              AND t.transferDate = :date
+              AND ((t.transferNumber LIKE 'FF-%' AND fb.id = :branchId)
+                OR (t.transferNumber LIKE 'UF-%' AND tb.id = :branchId))
+              AND t.transferNumber NOT LIKE '%-SZ'
+            ORDER BY t.createdAt ASC, t.transferNumber ASC
+            """)
+    List<Transfer> findHufDaybookTransfersForDate(@Param("companyId") UUID companyId,
+                                                  @Param("branchId") UUID branchId,
+                                                  @Param("date") LocalDate date);
+
+    /**
+     * FKH-022 FR-K6/10: a naplókönyv transfer-oldali SZTORNÓ-sorai. A sztornó-ág
+     * kizárólag {@code isCancelled = true} esetén él (a kitöltött cancelledAt önmagában
+     * NEM sztornó); a nap-hozzárendelés a cancelledAt alapján történik.
+     */
+    @Query("""
+            SELECT DISTINCT t FROM Transfer t
+            JOIN FETCH t.fromBranch fb
+            JOIN FETCH t.toBranch tb
+            WHERE t.companyId = :companyId
+              AND t.isCancelled = true
+              AND t.cancelledAt >= :from
+              AND t.cancelledAt < :to
+              AND ((t.transferNumber LIKE 'FF-%' AND fb.id = :branchId)
+                OR (t.transferNumber LIKE 'UF-%' AND tb.id = :branchId))
+              AND t.transferNumber NOT LIKE '%-SZ'
+            ORDER BY t.cancelledAt ASC, t.transferNumber ASC
+            """)
+    List<Transfer> findCancelledHufDaybookTransfersForDate(@Param("companyId") UUID companyId,
+                                                           @Param("branchId") UUID branchId,
+                                                           @Param("from") java.time.LocalDateTime from,
+                                                           @Param("to") java.time.LocalDateTime to);
+
     /** ReportService â€" kimenĹ' ĂˇtadĂˇsok */
     @Query("SELECT t FROM Transfer t WHERE t.fromBranch.company.id = :companyId " +
            "AND t.fromBranch.id = :branchId ORDER BY t.createdAt DESC")

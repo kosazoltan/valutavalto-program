@@ -80,6 +80,20 @@ public class Transfer {
     private BigDecimal hufValue;
 
     /**
+     * FKH-022 FR-K2: a HUF naplókönyv cég+év szerinti éves sorszáma (FF-/UF- prefixű
+     * bizonylatnál, a shipment_request.annual_journal_sequence párja; V365).
+     */
+    @Column(name = "annual_journal_sequence")
+    private Integer annualJournalSequence;
+
+    /**
+     * FKH-022 FR-K2/3: a sztornó-sor SAJÁT naplókönyv-sorszáma — a cancelled_at
+     * időrendi helyén kiosztva, nem az eredeti bizonylat sorszámát ismétli (V365).
+     */
+    @Column(name = "storno_journal_sequence")
+    private Integer stornoJournalSequence;
+
+    /**
      * Több-valutás átadólap sorai (#6). ÜRES a hagyományos egy-valutás átadásnál
      * (akkor a fenti currency+amount a forrás). Ha van sor, a header currency/amount
      * az ELSŐ sort tükrözi, a cash-balance pedig soronként könyvel.

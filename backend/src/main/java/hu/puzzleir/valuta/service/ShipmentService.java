@@ -533,6 +533,12 @@ public class ShipmentService {
         request.setStatus(ShipmentRequestStatus.CANCELLED);
         request.setCancelledByWorkerId(workerId);
         request.setCancelledAt(cancelledAt);
+        // FKH-022 FR-K2/3: a sztornó-sor SAJÁT naplókönyv-sorszámot kap (nem az eredetiét
+        // ismétli), a sztornó pillanatának (cancelled_at) időrendi helyén.
+        if (isHufDaybookPrefix(request.getSerialPrefix()) && request.getCompanyId() != null) {
+            request.setStornoJournalSequence(hufDaybookSequenceService.next(
+                    request.getCompanyId(), LocalDate.now().getYear()));
+        }
         log.info("Szállítmánykérés visszavonva: {}", request.getRequestNumber());
         ShipmentRequest saved = shipmentRequestRepository.save(request);
         handlingFeeSyncService.syncFromShipment(saved);
