@@ -10,6 +10,7 @@ import {
 } from '../../services/api/vaultStocktake'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import { useTextReasonModal } from '../../components/TextReasonModal'
 
 const STATUS_LABELS: Record<StocktakeStatus, string> = {
   OPEN: 'Nyitva',
@@ -29,6 +30,7 @@ export default function VaultStocktakeDetailPage() {
   const [summary, setSummary] = useState<StocktakeSummary | null>(null)
   const [saving, setSaving] = useState<string | null>(null) // itemId lementve
   const [editValues, setEditValues] = useState<Record<string, string>>({})
+  const { modal: reasonModal, requestReason } = useTextReasonModal()
 
   const load = useCallback(async () => {
     if (!id) return
@@ -112,7 +114,7 @@ export default function VaultStocktakeDetailPage() {
 
   const handleCancel = async () => {
     if (!id) return
-    const reason = prompt('Megszakitas oka:')
+    const reason = await requestReason({ title: 'Megszakítás oka' })
     if (!reason) return
     try {
       await vaultStocktakeApi.cancel(id, reason)
@@ -336,6 +338,7 @@ export default function VaultStocktakeDetailPage() {
           </tbody>
         </table>
       </div>
+      {reasonModal}
     </div>
   )
 }
