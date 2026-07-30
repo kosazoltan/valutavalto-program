@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Loader2,
   RefreshCw,
+  RotateCcw,
   FileDown,
   CalendarDays,
 } from 'lucide-react'
@@ -26,6 +27,8 @@ import { isElectron, getElectronAPI } from '../../utils/electron'
 import { useTranslation } from 'react-i18next'
 import { downloadBlob } from '../../utils/downloadBlob'
 import { getBlobErrorMessage } from '../../utils/errorHandling'
+import { sanitizeSyncErrorMessage } from '../../utils/syncErrorSanitizer'
+import { useOnlineStatus } from '../../hooks/useOnlineStatus'
 
 const PAGE_SIZE = 25
 const PENDING_TX_ID_OFFSET = 1_000_000
@@ -75,6 +78,11 @@ export default function TransactionListPage() {
   const [data, setData] = useState<PagedResponse<Transaction> | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // FK-071 FR-3/NFR-1: célzott újraküldés állapota + online-detektálás.
+  // Offline állapotban a gomb letiltott (disabled + magyarázó tooltip, v2.3.36 minta).
+  const { isOnline } = useOnlineStatus()
+  const [retryingIds, setRetryingIds] = useState<Set<number>>(new Set())
 
   const fetchTransactions = useCallback(async () => {
     setLoading(true)
@@ -252,6 +260,31 @@ export default function TransactionListPage() {
       toast.success('ESC/POS bizonylat letöltése elindítva')
     } catch (err) {
       toast.error('Nem sikerült az ESC/POS bizonylat letöltése', await getBlobErrorMessage(err))
+    }
+  }
+
+  // FK-071: a sor helyi (Electron SQLite) pending TRANZAKCIÓ-e (nem konverzió,
+  // nem szerver-oldali tétel) — csak ezekre értelmezett a célzott újraküldés.
+  const isPendingLocalTx = (tx: Transaction) =>
+    tx.id <= -PENDING_TX_ID_OFFSET && tx.id > -PENDING_CONVERSION_ID_OFFSET
+
+  // FK-071 FR-3/NFR-3: célzott, aszinkron újraküldés — a lista nem blokkol, a
+  // gomb a futó kísérlet alatt letiltott, az eredmény (siker/új hibaüzenet) a
+  // frissített pending sorból jön (a sync-engine tartósan rögzíti).
+  const handleRetry = async (tx: Transaction) => {
+    const api = getElectronAPI()
+    if (!api?.retryPendingTransaction) return
+    const localId = -tx.id - PENDING_TX_ID_OFFSET
+    setRetryingIds((prev) => new Set(prev).add(tx.id))
+    try {
+      await api.retryPendingTransaction(localId)
+      await fetchTransactions()
+    } finally {
+      setRetryingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(tx.id)
+        return next
+      })
     }
   }
 
@@ -455,15 +488,27 @@ export default function TransactionListPage() {
                           // FK-SYNC (2026-06-02): ha a függő tételnél van tartós sync-hiba, PIROS
                           // "Feltöltés hibás" badge + tooltip az okkal — így a tétel nem tűnik el
                           // némán, a felhasználó látja, miért nem ment fel.
+                          // FK-071 FR-2/FR-6: a tárolt szerver-üzenet PII-szűrve, látható
+                          // részletként is megjelenik, nem csak a badge-felirat.
                           const syncErr = (tx as Transaction & { syncError?: string }).syncError
                           if (tx.status === 'PENDING' && syncErr) {
+                            const sanitizedErr = sanitizeSyncErrorMessage(syncErr)
                             return (
-                              <span
-                                className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-700 cursor-help"
-                                title={`Feltöltés sikertelen: ${syncErr}`}
-                              >
-                                Feltöltés hibás
-                              </span>
+                              <div className="flex flex-col gap-0.5">
+                                <span
+                                  className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-700 cursor-help w-fit"
+                                  title={`Feltöltés sikertelen: ${sanitizedErr}`}
+                                >
+                                  Feltöltés hibás
+                                </span>
+                                <span
+                                  data-testid={`sync-error-detail-${tx.id}`}
+                                  className="block max-w-[240px] truncate text-[11px] text-red-600"
+                                  title={sanitizedErr}
+                                >
+                                  {sanitizedErr}
+                                </span>
+                              </div>
                             )
                           }
                           return (
@@ -476,17 +521,49 @@ export default function TransactionListPage() {
                                     : 'bg-yellow-100 text-yellow-700'
                               }`}
                             >
+                              {/* FK-071 Döntés 2 + kiegészítés: a "Feltöltve" felirat csak
+                                  Electron/offline (penztar-client) kontextusban jelenik meg —
+                                  web-módban a COMPLETED sor a korábbi "Teljesítve" feliratot
+                                  kapja. A "Szinkronra vár" platform-független (szerver-oldali
+                                  PENDING-et a backend soha nem ír, csak az Electron-lokális
+                                  merge állítja be). Csak ez a Tranzakciólista-badge érintett;
+                                  a többi modul feliratai modul-lokálisak és változatlanok. */}
                               {tx.status === 'COMPLETED'
-                                ? 'Teljesítve'
+                                ? isElectron()
+                                  ? 'Feltöltve'
+                                  : 'Teljesítve'
                                 : tx.status === 'REVERSED'
                                   ? 'Sztornózva'
-                                  : 'Függőben'}
+                                  : 'Szinkronra vár'}
                             </span>
                           )
                         })()}
                       </td>
                       <td>
                         <div className="flex gap-1">
+                          {/* FK-071 FR-3/NFR-1: célzott újraküldés helyi pending tranzakcióra.
+                              Offline állapotban letiltva + magyarázó tooltip (nincs csendes
+                              próbálkozás); futó kísérlet alatt szintén letiltva (NFR-3). */}
+                          {isPendingLocalTx(tx) && (
+                            <button
+                              className="toolbar-button"
+                              title={
+                                !isOnline
+                                  ? 'Nincs hálózati kapcsolat — az újraküldés offline nem indítható'
+                                  : retryingIds.has(tx.id)
+                                    ? 'Újraküldés folyamatban…'
+                                    : 'Újraküldés'
+                              }
+                              onClick={() => void handleRetry(tx)}
+                              disabled={!isOnline || retryingIds.has(tx.id)}
+                              data-testid={`retry-tx-${tx.id}`}
+                            >
+                              <RotateCcw
+                                size={14}
+                                className={retryingIds.has(tx.id) ? 'animate-spin' : ''}
+                              />
+                            </button>
+                          )}
                           <button
                             className="toolbar-button"
                             title="Megtekintés"

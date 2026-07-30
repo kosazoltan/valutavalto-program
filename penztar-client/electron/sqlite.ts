@@ -731,6 +731,20 @@ export async function initDatabase(): Promise<void> {
       }
     }
 
+    // FK-071 FR-5: sync-kísérlet-történet — BELSŐ diagnosztikai napló (nem UI-adat).
+    // Minden feltöltési kísérlet (automatikus és kézi újraküldés) egy sora:
+    // időbélyeg + eredmény (SUCCESS/ERROR) + hibaüzenet. IF NOT EXISTS → meglévő
+    // telepítéseken is migráció nélkül létrejön.
+    db.run(`
+      CREATE TABLE IF NOT EXISTS pending_transaction_sync_attempts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pending_transaction_id INTEGER NOT NULL,
+        attempted_at TEXT NOT NULL,
+        outcome TEXT NOT NULL CHECK(outcome IN ('SUCCESS', 'ERROR')),
+        message TEXT
+      );
+    `);
+
     db.run(`
       CREATE TABLE IF NOT EXISTS cached_customers (
         id INTEGER PRIMARY KEY,
@@ -2239,11 +2253,92 @@ export function markConversionSynced(id: number): void {
   saveDatabase();
 }
 
+/** FK-071 FR-5: egy sync-kísérlet eredménye a belső kísérlet-történetben. */
+export interface TransactionSyncAttempt {
+  attemptedAt: string;
+  outcome: 'SUCCESS' | 'ERROR';
+  message: string | null;
+}
+
+/**
+ * FK-071 FR-5: tételenként legfeljebb ennyi kísérlet-bejegyzést őrzünk meg —
+ * egy napokig ragadt tétel 30 mp-es auto-sync mellett is korlátos naplót adjon.
+ */
+const SYNC_ATTEMPT_HISTORY_LIMIT = 100;
+
+/**
+ * FK-071 FR-5: kísérlet hozzáfűzése a belső naplóhoz. Best-effort: a napló
+ * hibája nem akadályozhatja magát a szinkron-folyamatot.
+ */
+function appendTransactionSyncAttempt(
+  pendingTransactionId: number,
+  outcome: 'SUCCESS' | 'ERROR',
+  attemptedAt: string,
+  message: string | null,
+): void {
+  if (!db) return;
+  try {
+    db.run(
+      `INSERT INTO pending_transaction_sync_attempts
+         (pending_transaction_id, attempted_at, outcome, message)
+       VALUES (?, ?, ?, ?)`,
+      [pendingTransactionId, attemptedAt, outcome, message],
+    );
+    db.run(
+      `DELETE FROM pending_transaction_sync_attempts
+        WHERE pending_transaction_id = ?
+          AND id NOT IN (
+            SELECT id FROM pending_transaction_sync_attempts
+             WHERE pending_transaction_id = ?
+             ORDER BY id DESC LIMIT ${SYNC_ATTEMPT_HISTORY_LIMIT})`,
+      [pendingTransactionId, pendingTransactionId],
+    );
+  } catch {
+    // Belső diagnosztikai napló — best-effort, a sync-folyamatot nem blokkolja.
+  }
+}
+
+/**
+ * FK-071 FR-5: egy pending tranzakció sync-kísérlet-története, időrendben.
+ * KIZÁRÓLAG belső diagnosztikára — a UI-nak nem exponáljuk (a renderer felé
+ * nincs IPC-csatorna hozzá; a TransactionListPage guard-teszt is ezt rögzíti).
+ */
+export function getTransactionSyncAttemptHistory(id: number): TransactionSyncAttempt[] {
+  if (!db) return [];
+  const stmt = db.prepare(
+    `SELECT attempted_at, outcome, message
+       FROM pending_transaction_sync_attempts
+      WHERE pending_transaction_id = ?
+      ORDER BY id ASC`,
+  );
+  stmt.bind([id]);
+  const rows: TransactionSyncAttempt[] = [];
+  while (stmt.step()) {
+    const row = stmt.getAsObject() as {
+      attempted_at?: string;
+      outcome?: string;
+      message?: string | null;
+    };
+    rows.push({
+      attemptedAt: String(row.attempted_at ?? ''),
+      outcome: row.outcome === 'SUCCESS' ? 'SUCCESS' : 'ERROR',
+      message: row.message ?? null,
+    });
+  }
+  stmt.free();
+  return rows;
+}
+
 export function markTransactionSynced(id: number): void {
   if (!db) return;
   db.run('UPDATE pending_transactions SET synced = 1 WHERE id = ?', [id]);
+  // FK-071 FR-5: a sikeres kísérlet is a belső kísérlet-történetbe kerül.
+  appendTransactionSyncAttempt(id, 'SUCCESS', new Date().toISOString(), null);
   saveDatabase();
 }
+
+/** FK-071: a tárolt sync-hibaüzenet maximális hossza (korábban 500). */
+const SYNC_ERROR_MAX_LENGTH = 2000;
 
 /**
  * FK-SYNC (2026-06-02): sikertelen tranzakció-sync TARTÓS rögzítése a pending soron. A tétel
@@ -2252,10 +2347,15 @@ export function markTransactionSynced(id: number): void {
  */
 export function markTransactionSyncError(id: number, error: string, attemptIso: string): void {
   if (!db) return;
+  const storedError = error.slice(0, SYNC_ERROR_MAX_LENGTH);
   db.run(
+    // FK-071: 500 → 2000 karakteres vágás — a szerver ErrorResponse.message-e is
+    // beleférjen (a TEXT oszlopnak nincs hossz-korlátja, séma-migráció nem kell).
     'UPDATE pending_transactions SET sync_error = ?, sync_attempts = COALESCE(sync_attempts, 0) + 1, last_attempt_at = ? WHERE id = ?',
-    [error.slice(0, 500), attemptIso, id],
+    [storedError, attemptIso, id],
   );
+  // FK-071 FR-5: a hibás kísérlet a belső kísérlet-történetbe is bekerül.
+  appendTransactionSyncAttempt(id, 'ERROR', attemptIso, storedError);
   saveDatabase();
 }
 

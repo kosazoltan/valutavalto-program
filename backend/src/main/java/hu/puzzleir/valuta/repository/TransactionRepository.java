@@ -65,6 +65,25 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("companyId") UUID companyId);
 
     /**
+     * FK-071 HIGH-D (Codex security review): fiók-szintre szűkített bizonylat-lekérdezés
+     * a nem-supervisor (pénztáros) hívókhoz — a cégszintű változat bizonylatszám-
+     * tippeléssel más fiók tranzakcióját is kiadta volna. A scope-on kívüli találat
+     * üres Optional → 404 (létezés-maszkolás), a cross-tenant F9 konvencióval azonosan.
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "JOIN FETCH t.branch " +
+           "JOIN FETCH t.company " +
+           "LEFT JOIN FETCH t.currency " +
+           "LEFT JOIN FETCH t.worker " +
+           "LEFT JOIN FETCH t.originalTransaction " +
+           "WHERE t.receiptNumber = :receiptNumber AND t.company.id = :companyId " +
+           "AND t.branch.id = :branchId")
+    Optional<Transaction> findByReceiptNumberAndCompanyIdAndBranchId(
+        @Param("receiptNumber") String receiptNumber,
+        @Param("companyId") UUID companyId,
+        @Param("branchId") UUID branchId);
+
+    /**
      * Napi tranzakciók egy fiókhoz (JOIN FETCH a lazy proxy hiba elkerüléséhez).
      *
      * <p>MEGJEGYZES: a branch.id uniq garantalva van, es branch->company FK biztositja az
