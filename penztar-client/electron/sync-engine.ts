@@ -370,7 +370,8 @@ async function httpGet<T>(url: string, token: string | null): Promise<T> {
 
     return response.json() as Promise<T>;
   } catch (err) {
-    log.error('[SyncEngine] httpGet failed:', { url, err });
+    // FK-071 MEDIUM-E: az err objektum message-e szerver-üzenetet hordozhat — maszkolva logolunk.
+    log.error('[SyncEngine] httpGet failed:', { url, err: splitSyncError(err).masked });
     throw err;
   }
 }
@@ -421,7 +422,8 @@ async function httpPost<T>(
     }
     return response.json() as Promise<T>;
   } catch (err) {
-    log.error('[SyncEngine] httpPost failed:', { url, err });
+    // FK-071 MEDIUM-E: a HttpStatusError message-e a szerver-üzenetet (PII-t) hordozhatja — maszkolva.
+    log.error('[SyncEngine] httpPost failed:', { url, err: splitSyncError(err).masked });
     throw err;
   }
 }
@@ -457,7 +459,7 @@ async function httpPostMultipart(
 
     return response;
   } catch (err) {
-    log.error('[SyncEngine] httpPostMultipart failed:', { url, err });
+    log.error('[SyncEngine] httpPostMultipart failed:', { url, err: splitSyncError(err).masked });
     throw err;
   }
 }
@@ -754,10 +756,7 @@ export class SyncEngine {
           '[SyncEngine] Lokális auth bootstrap sikertelen (401/403). Ellenőrizd a bootstrap credentialöket.',
         );
       } else {
-        log.warn(
-          '[SyncEngine] Lokális auth bootstrap hiba:',
-          err instanceof Error ? err.message : err,
-        );
+        log.warn('[SyncEngine] Lokális auth bootstrap hiba:', splitSyncError(err).masked);
       }
       return null;
     }
@@ -988,7 +987,8 @@ export class SyncEngine {
         );
       }
 
-      log.error('[SyncEngine] Sync hiba:', err);
+      // FK-071 MEDIUM-E: a bubbled hiba message-e szerver-üzenetet hordozhat — maszkolva logolunk.
+      log.error('[SyncEngine] Sync hiba:', splitSyncError(err).masked);
     } finally {
       this.status.isRunning = false;
     }
@@ -2217,7 +2217,7 @@ export class SyncEngine {
         );
         return;
       }
-      log.warn('[SyncEngine] Árfolyam sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Árfolyam sync hiba:', splitSyncError(err).masked);
     }
   }
 
@@ -2275,7 +2275,7 @@ export class SyncEngine {
           }
           log.warn(
             `[SyncEngine] Rate-print ACK hiba, outboxba mentve: ${obligation.distributionId}`,
-            err instanceof Error ? err.message : err,
+            splitSyncError(err).masked,
           );
         }
       }
@@ -2289,7 +2289,7 @@ export class SyncEngine {
         );
         return;
       }
-      log.warn('[SyncEngine] Rate-print sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Rate-print sync hiba:', splitSyncError(err).masked);
     }
   }
 
@@ -2324,13 +2324,13 @@ export class SyncEngine {
           mutated = true;
           log.warn(
             `[SyncEngine] Rate-print outbox poison sor eldobva: ${row.distributionId}`,
-            err instanceof Error ? err.message : err,
+            splitSyncError(err).masked,
           );
           continue;
         }
         log.warn(
           `[SyncEngine] Rate-print outbox flush átmeneti hiba, sor megtartva: ${row.distributionId}`,
-          err instanceof Error ? err.message : err,
+          splitSyncError(err).masked,
         );
         break;
       }
@@ -2478,7 +2478,7 @@ export class SyncEngine {
         );
         return;
       }
-      log.warn('[SyncEngine] Körlevél sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Körlevél sync hiba:', splitSyncError(err).masked);
     }
   }
 
@@ -2534,15 +2534,12 @@ export class SyncEngine {
             log.warn('[SyncEngine] Distribution auth hiba (401/403), ciklus leállítva.');
             break;
           }
-          log.warn(
-            `[SyncEngine] Distribution #${dist.id} sync hiba:`,
-            err instanceof Error ? err.message : err,
-          );
+          log.warn(`[SyncEngine] Distribution #${dist.id} sync hiba:`, splitSyncError(err).masked);
           break; // Hálózati hiba → kilépés
         }
       }
     } catch (err) {
-      log.warn('[SyncEngine] Distribution sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Distribution sync hiba:', splitSyncError(err).masked);
     }
   }
 
@@ -2617,15 +2614,12 @@ export class SyncEngine {
             log.warn('[SyncEngine] Transfer auth hiba (401/403), ciklus leállítva.');
             break;
           }
-          log.warn(
-            `[SyncEngine] Transfer #${tx.id} sync hiba:`,
-            err instanceof Error ? err.message : err,
-          );
+          log.warn(`[SyncEngine] Transfer #${tx.id} sync hiba:`, splitSyncError(err).masked);
           break;
         }
       }
     } catch (err) {
-      log.warn('[SyncEngine] Transfer sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Transfer sync hiba:', splitSyncError(err).masked);
     }
   }
 
@@ -2685,7 +2679,7 @@ export class SyncEngine {
         }
       }
     } catch (err) {
-      log.warn('[SyncEngine] Körlevél-válasz sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Körlevél-válasz sync hiba:', splitSyncError(err).masked);
     }
   }
 
@@ -2760,7 +2754,7 @@ export class SyncEngine {
         }
       }
     } catch (err) {
-      log.warn('[SyncEngine] Okmány-scan sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Okmány-scan sync hiba:', splitSyncError(err).masked);
     }
   }
 
@@ -2827,7 +2821,7 @@ export class SyncEngine {
         }
       }
     } catch (err) {
-      log.warn('[SyncEngine] Transfer-storno sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Transfer-storno sync hiba:', splitSyncError(err).masked);
     }
   }
 
@@ -2992,15 +2986,12 @@ export class SyncEngine {
             log.warn('[SyncEngine] Collection auth hiba (401/403), ciklus leállítva.');
             break;
           }
-          log.warn(
-            `[SyncEngine] Collection #${col.id} sync hiba:`,
-            err instanceof Error ? err.message : err,
-          );
+          log.warn(`[SyncEngine] Collection #${col.id} sync hiba:`, splitSyncError(err).masked);
           break;
         }
       }
     } catch (err) {
-      log.warn('[SyncEngine] Collection sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Collection sync hiba:', splitSyncError(err).masked);
     }
   }
 
@@ -3065,7 +3056,7 @@ export class SyncEngine {
         }
       }
     } catch (err) {
-      log.warn('[SyncEngine] Stocktake sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Stocktake sync hiba:', splitSyncError(err).masked);
     }
   }
 
@@ -3111,7 +3102,7 @@ export class SyncEngine {
         );
         return;
       }
-      log.warn('[SyncEngine] Branch status cache hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Branch status cache hiba:', splitSyncError(err).masked);
     }
   }
 
@@ -3159,7 +3150,7 @@ export class SyncEngine {
         );
         return;
       }
-      log.warn('[SyncEngine] Pénztár törzs sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Pénztár törzs sync hiba:', splitSyncError(err).masked);
     }
   }
 
@@ -3204,7 +3195,7 @@ export class SyncEngine {
         );
         return;
       }
-      log.warn('[SyncEngine] Dolgozó törzs sync hiba:', err instanceof Error ? err.message : err);
+      log.warn('[SyncEngine] Dolgozó törzs sync hiba:', splitSyncError(err).masked);
     }
   }
 
@@ -3307,10 +3298,7 @@ export class SyncEngine {
       this.lastHeartbeatAt = now;
       log.debug('[SyncEngine] Heartbeat sikeres:', deviceId);
     } catch (err) {
-      log.warn(
-        '[SyncEngine] Heartbeat sikertelen (nem blokkolo):',
-        err instanceof Error ? err.message : err,
-      );
+      log.warn('[SyncEngine] Heartbeat sikertelen (nem blokkolo):', splitSyncError(err).masked);
     }
   }
 }

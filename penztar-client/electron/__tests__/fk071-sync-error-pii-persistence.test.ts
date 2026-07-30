@@ -12,6 +12,16 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Mock electron-log — a log-hívások argumentumait vizsgáljuk (maszkolt-e a tartalom).
+vi.mock('electron-log', () => ({
+  default: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
 // Mock electron
 vi.mock('electron', () => ({
   app: {
@@ -60,13 +70,39 @@ vi.mock('../sqlite', () => ({
   saveCachedWorker: vi.fn(),
 }));
 
+import log from 'electron-log';
 import { SyncEngine } from '../sync-engine';
 import { sanitizeSyncErrorMessage, EMAIL_MASK, PHONE_MASK } from '../sync-error-sanitizer';
-import { getConfig, getPendingTransactions, markTransactionSyncError } from '../sqlite';
+import {
+  getConfig,
+  getPendingCollections,
+  getPendingDistributions,
+  getPendingTransactions,
+  getPendingTransfers,
+  markTransactionSyncError,
+} from '../sqlite';
 
 const mockedGetConfig = vi.mocked(getConfig);
 const mockedGetPendingTransactions = vi.mocked(getPendingTransactions);
+const mockedGetPendingDistributions = vi.mocked(getPendingDistributions);
+const mockedGetPendingTransfers = vi.mocked(getPendingTransfers);
+const mockedGetPendingCollections = vi.mocked(getPendingCollections);
 const mockedMarkTransactionSyncError = vi.mocked(markTransactionSyncError);
+
+/**
+ * Az ÖSSZES electron-log hívás (warn/error/info/debug) minden argumentuma,
+ * egyetlen szövegként — így a teszt a teljes log-felületet szkenneli PII-re,
+ * beleértve a httpPost-réteg `{ url, err }` logját is, nem csak az ág saját
+ * log-sorát.
+ */
+function allLoggedText(): string {
+  return [log.warn, log.error, log.info, log.debug]
+    .flatMap((fn) => vi.mocked(fn).mock.calls)
+    .map((args) =>
+      args.map((a) => (typeof a === 'string' ? a : (JSON.stringify(a) ?? String(a)))).join(' '),
+    )
+    .join('\n');
+}
 
 const PII_EMAIL = 'kovacs.bela@example.com';
 const PII_PHONE = '+36 20 123 4567';
@@ -197,6 +233,118 @@ describe('FK-071 MEDIUM-E — maszkolt tárolás + nyers detektor a sync-engine-
     const result2 = await engine.syncAll('test-token');
     expect(mockFetch.mock.calls.length).toBe(callsAfterFirstRun);
     expect(result2.failed).toBe(0);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // MEDIUM-E maradék (Codex 2. kör): az önálló értéktár-sync ágak logja is
+  // maszkolt. Minden teszt a TELJES log-felületet szkenneli (allLoggedText),
+  // így a httpPost-réteg `{ url, err }` logját is lefedi.
+  // ───────────────────────────────────────────────────────────────────────
+
+  it('syncDistributions: 4xx+PII válasznál a log maszkolt, nyers PII sehol nem jelenik meg', async () => {
+    mockedGetPendingDistributions.mockReturnValue([
+      {
+        id: 7,
+        company_code: null,
+        target_branch_code: 'BUD02',
+        currency_code: 'EUR',
+        amount: 1000,
+        denominations: null,
+        note: null,
+        idempotency_key: 'ikey-d7',
+      },
+    ] as unknown as ReturnType<typeof getPendingDistributions>);
+    const mockFetch = vi.fn().mockResolvedValue(make4xxWithPiiResponse());
+    vi.stubGlobal('fetch', mockFetch);
+
+    await engine.syncDistributions();
+
+    const logged = allLoggedText();
+    expect(logged).toContain('Distribution #7 sync hiba');
+    expect(logged).toContain(EMAIL_MASK);
+    expect(logged).not.toContain(PII_EMAIL);
+    expect(logged).not.toContain(PII_PHONE);
+  });
+
+  it('syncTransfers: 4xx+PII válasznál a log maszkolt, nyers PII sehol nem jelenik meg', async () => {
+    mockedGetPendingTransfers.mockReturnValue([
+      {
+        id: 9,
+        company_code: null,
+        amount: 500,
+        target_branch_id: null,
+        target_branch_code: 'BUD03',
+        currency_id: 1,
+        currency_code: 'EUR',
+        transfer_type: null,
+        huf_value: null,
+        denominations: null,
+        note: null,
+        carrier_name: 'Futár',
+        seal_number: 'SEAL-1',
+        direction: null,
+        lines: null,
+        idempotency_key: 'ikey-t9',
+      },
+    ] as unknown as ReturnType<typeof getPendingTransfers>);
+    const mockFetch = vi.fn().mockResolvedValue(make4xxWithPiiResponse());
+    vi.stubGlobal('fetch', mockFetch);
+
+    await engine.syncTransfers();
+
+    const logged = allLoggedText();
+    expect(logged).toContain('Transfer #9 sync hiba');
+    expect(logged).toContain(EMAIL_MASK);
+    expect(logged).not.toContain(PII_EMAIL);
+    expect(logged).not.toContain(PII_PHONE);
+  });
+
+  it('syncCollections: 4xx+PII válasznál a log maszkolt, nyers PII sehol nem jelenik meg', async () => {
+    mockedGetPendingCollections.mockReturnValue([
+      {
+        id: 11,
+        company_code: null,
+        source_branch_code: 'BUD04',
+        currency_code: 'EUR',
+        amount: 250,
+        note: null,
+        idempotency_key: 'ikey-c11',
+      },
+    ] as unknown as ReturnType<typeof getPendingCollections>);
+    const mockFetch = vi.fn().mockResolvedValue(make4xxWithPiiResponse());
+    vi.stubGlobal('fetch', mockFetch);
+
+    await engine.syncCollections();
+
+    const logged = allLoggedText();
+    expect(logged).toContain('Collection #11 sync hiba');
+    expect(logged).toContain(EMAIL_MASK);
+    expect(logged).not.toContain(PII_EMAIL);
+    expect(logged).not.toContain(PII_PHONE);
+  });
+
+  it('bootstrapAuthSession + httpPost-réteg: 4xx+PII login-válasznál a teljes log-felület maszkolt', async () => {
+    // Nincs auth_token → a kézi retry bootstrapAuthSession-t hív, a /auth/login
+    // 4xx+PII választ ad → a bootstrap catch ÉS a httpPost-réteg `{ url, err }`
+    // logja is maszkolt kell legyen.
+    mockedGetConfig.mockImplementation((key: string) => {
+      if (key === 'server_url') return 'http://localhost:8080/api/v1';
+      if (key === 'bootstrap_company_code') return 'EBC';
+      if (key === 'bootstrap_worker_code') return 'PENZTAR-7';
+      if (key === 'bootstrap_password') return 'test-password';
+      return null;
+    });
+    mockedGetPendingTransactions.mockReturnValue([makeTx(42)]);
+    const mockFetch = vi.fn().mockResolvedValue(make4xxWithPiiResponse());
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await engine.retryPendingTransaction(42);
+
+    expect(result.success).toBe(false);
+    const logged = allLoggedText();
+    expect(logged).toContain(EMAIL_MASK);
+    expect(logged).not.toContain(PII_EMAIL);
+    expect(logged).not.toContain(PII_PHONE);
   });
 
   it('kézi újraküldés: a visszaadott error és a perzisztált érték is maszkolt', async () => {
