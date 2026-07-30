@@ -260,6 +260,59 @@ class CashBalanceCorrectionFk070MigrationPostgresTest {
     }
 
     // =====================================================================
+    // Lookup-szűrés: nem-EBC company.code esetén a migráció nem nyúl az
+    // egyenlegekhez (Codex-adta teszteset, változtatás nélkül beillesztve).
+    //
+    // Codex-figyelmeztetés: a "más cég" állapotot a seedelt cég code mezőjének
+    // átírásával állítjuk elő — ha a jövőben V369+ migráció is bekerül a láncba,
+    // és ez a teszt továbbra is migrateToLatest()-et hív, a mellékhatást (az
+    // adott cég MINDEN 'EBC'-kódos lookupja elbukik ugyanebben a tesztben)
+    // újra át kell nézni.
+    // =====================================================================
+    @Test
+    @DisplayName("Lookup-szűrés: ha a BR035 mögötti cég code-ja nem 'EBC', a Flyway-úton futó migráció nem nyúl az egyenlegekhez, és NOTICE jelzi a no-opot")
+    void nemEbcCompanyCodeEsetenNoOp() throws Exception {
+        migrateToVersion(fk070Version() - 1);
+
+        List<String> before;
+        try (Connection connection = openConnection()) {
+            Br035 br035 = resolveSeededBr035(connection);
+
+            // Séma-konform negatív eset: a seedelt cég FK-k érintése nélkül más code-ot kap,
+            // így a V368 lookup (branch.code='BR035' AND company.code='EBC' AND is_active=TRUE)
+            // már nem talál célfiókot.
+            execute(connection, "UPDATE company SET code = 'FK070NOEBC' WHERE id = ?", br035.companyId());
+
+            upsertBalance(connection, br035.companyId(), br035.branchId(), "EUR", EUR_BAD);
+            upsertBalance(connection, br035.companyId(), br035.branchId(), "USD", USD_BAD);
+
+            before = snapshotAllBalances(connection);
+        }
+
+        migrateToLatest();
+
+        try (Connection connection = openConnection()) {
+            assertThat(fk070MigrationSucceeded(connection))
+                    .as("A migráció EBC-től eltérő company.code mellett is sikeresen (no-opként) lefut")
+                    .isTrue();
+            assertThat(snapshotAllBalances(connection))
+                    .as("A company.code != 'EBC' miatt semmilyen cash_balance sor nem változott")
+                    .isEqualTo(before);
+            assertThat(balance(connection, "BR035", "EUR"))
+                    .as("Az EBC-től eltérő company.code miatt a BR035 EUR egyenlege változatlan")
+                    .isEqualByComparingTo(EUR_BAD);
+            assertThat(balance(connection, "BR035", "USD"))
+                    .as("Az EBC-től eltérő company.code miatt a BR035 USD egyenlege változatlan")
+                    .isEqualByComparingTo(USD_BAD);
+        }
+
+        List<String> notices = runMigrationRawCollectingNotices();
+        assertThat(notices)
+                .as("A NOTICE jelzi, hogy nincs EBC-hez tartozó aktív BR035")
+                .anySatisfy(n -> assertThat(n).contains("BR035 branch (EBC ceg) nem talalhato"));
+    }
+
+    // =====================================================================
     // Hiányzó BR035: no-op, nem hibázik — a fiók átkódolásával előállítva
     // (a branch.code globálisan egyedi; DELETE az FK-k miatt nem járható)
     // =====================================================================
