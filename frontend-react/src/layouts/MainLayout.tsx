@@ -86,6 +86,19 @@ export default function MainLayout() {
     featureFlags,
   }
 
+  // FKH-026 v3 (TBD-3): a fejléc-jelző az "Úton lévő csomagok" menüpont
+  // láthatóságához kötött — ugyanaz a forrás (isMenuGroupVisible/isMenuItemVisible),
+  // mint a sidebar szűrése, nem párhuzamos feltétel. Rejtett menüpont
+  // (pénztáros/értéktáros) → nincs badge; felügyeleti bypass (Főértéktáros/
+  // helyettes) → a menüpont és a badge is látszik.
+  const transitBadgeVisible = menuGroups.some(
+    (group) =>
+      isMenuGroupVisible(group, menuVisibilityCtx) &&
+      group.items.some(
+        (item) => item.path === '/transit' && isMenuItemVisible(item, group, menuVisibilityCtx),
+      ),
+  )
+
   const markSessionReadyWithoutDailyGate = useCallback(() => {
     setSessionInfo(null)
     setSessionError(null)
@@ -361,8 +374,8 @@ export default function MainLayout() {
           </div>
 
           <div className="flex min-w-0 flex-wrap items-center gap-4">
-            {/* v2.1.4: Uton levo csomagok badge */}
-            <TransitBadge />
+            {/* v2.1.4: Uton levo csomagok badge — FKH-026 v3: menüpont-láthatósághoz kötve */}
+            {transitBadgeVisible && <TransitBadge />}
 
             {/* Notification Bell */}
             <button className="relative p-1.5 hover:bg-secondary-50 rounded-lg transition-colors">

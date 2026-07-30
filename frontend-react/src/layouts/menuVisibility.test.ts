@@ -177,12 +177,28 @@ describe('ELLENŐRZÉS — pénztár/értéktár (lokál) modul menüi megfelel�
     { mode: 'rate-maker', role: 'foertektar', groupLabel: 'Árfolyamkészítés' },
   ]
 
+  // FKH-026 v3 (jóváhagyott spec-változás, GREEN-fázis 2026-07-30): a lokál operatív
+  // menü teljes láthatósága alól kivétel a `hidden: true` bejegyzés-készlet
+  // (FR-1/FR-3/FR-5/FR-6) — ezek szándékosan rejtettek az operatív szerepkör elől
+  // (a felügyeleti bypass továbbra is látja őket, ld. menuGroups.test.ts FKH-026
+  // őr-tesztjei). A söprés a NEM-rejtett itemekre fut, a rejtett készletet pedig
+  // csoportonként PONTOSAN pineljük, hogy a kivétel ne tágulhasson csendben.
+  const FKH026_HIDDEN_PATHS: Record<string, string[]> = {
+    'Pénztár (Valutaváltó)': ['/transit', '/transfers/new'],
+    'Értéktár (lokál)': ['/trades', '/transfers/new', '/transfer-documents', '/transit'],
+    Árfolyamkészítés: [],
+  }
+
   for (const { mode, role, groupLabel } of LOCAL_CASES) {
-    it(`${mode} mód / ${role}: a "${groupLabel}" csoport ÉS minden itemje látható`, () => {
+    it(`${mode} mód / ${role}: a "${groupLabel}" csoport ÉS minden nem-rejtett itemje látható`, () => {
       const group = groupByLabel(groupLabel)
       const ctx = ctxFor([role], mode)
       expect(isMenuGroupVisible(group, ctx), `csoport rejtve: ${groupLabel}`).toBe(true)
-      for (const item of group.items) {
+      expect(
+        group.items.filter((i) => i.hidden).map((i) => i.path),
+        `FKH-026 rejtett készlet eltér: ${groupLabel}`,
+      ).toEqual(FKH026_HIDDEN_PATHS[groupLabel])
+      for (const item of group.items.filter((i) => !i.hidden)) {
         expect(isMenuItemVisible(item, group, ctx), `item rejtve: ${item.path}`).toBe(true)
       }
     })
@@ -285,10 +301,9 @@ describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-h
 
   it('/transfers/new → a Pénztár és Értéktár bejegyzések szerepkör-uniója', () => {
     // SPEC-CHANGE 2026-07-14: az ertekszallito kikerült a menü-RBAC-ból.
-    expect([...(effectiveCanonicalRolesForPath(menuGroups, '/transfers/new') ?? [])].sort()).toEqual([
-      'ertektar',
-      'penztar',
-    ])
+    expect(
+      [...(effectiveCanonicalRolesForPath(menuGroups, '/transfers/new') ?? [])].sort(),
+    ).toEqual(['ertektar', 'penztar'])
   })
 
   // Fail-safe: a MenuRoleGate fail-open, ha az útvonalnak nincs menü-szerepköre. Ez a teszt
@@ -366,7 +381,9 @@ describe('MENU-LEGACY-ROLE-INVISIBLE: legacy-orphan MANAGER a VALODI authStore-o
     useAuthStore.getState().login(legacyWorker, 'tok', 'Bearer', '', null, [], [])
     const aml = groupByLabel('AML / Compliance')
     expect(isMenuGroupVisible(aml, storeCtx('full'))).toBe(true)
-    expect(isMenuItemVisible(itemByPath(aml, '/admin/error-monitor'), aml, storeCtx('full'))).toBe(true)
+    expect(isMenuItemVisible(itemByPath(aml, '/admin/error-monitor'), aml, storeCtx('full'))).toBe(
+      true,
+    )
     expect(isMenuItemVisible(itemByPath(aml, '/compliance'), aml, storeCtx('full'))).toBe(true)
     useAuthStore.getState().logout()
   })
@@ -374,7 +391,15 @@ describe('MENU-LEGACY-ROLE-INVISIBLE: legacy-orphan MANAGER a VALODI authStore-o
   it('regresszio: canonical assignmentes (foertektar primary) worker AML-lathatosaga VALTOZATLAN (false)', () => {
     useAuthStore
       .getState()
-      .login({ ...legacyWorker, role: 'MANAGER' }, 'tok', 'Bearer', '', 'foertektar', [], ['foertektar'])
+      .login(
+        { ...legacyWorker, role: 'MANAGER' },
+        'tok',
+        'Bearer',
+        '',
+        'foertektar',
+        [],
+        ['foertektar'],
+      )
     const aml = groupByLabel('AML / Compliance')
     expect(isMenuGroupVisible(aml, storeCtx('full'))).toBe(false)
     expect(isMenuGroupVisible(groupByLabel('Központ'), storeCtx('full'))).toBe(true)

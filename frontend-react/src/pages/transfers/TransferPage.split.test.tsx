@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TransferPage from './TransferPage'
 
@@ -363,5 +363,62 @@ describe('TransferPage — visszaigazolás és létrehozás szétválasztása', 
     expect(await screen.findByText('FF-OFFLINE-001')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Átvételre váró/ })).toHaveTextContent('1')
     expect(screen.getByText('Szinkronra vár')).toBeInTheDocument()
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FKH-026 v3 — FR-7/FR-8 (RED-fázis 2. kör, 2026-07-30).
+//
+// FR-7: a fejléc-gomb felirata "+ Új átadás"-ra módosul (v3: a gomb MÁR LÉTEZIK
+// — PR #274, v2.3.12 —, kizárólag a felirat változik). A teszt ma a felirat-
+// eltérés miatt bukik ("Új átadás" ≠ "+ Új átadás") → RED.
+//
+// FR-8: REGRESSZIÓ-ŐR, nem új funkció — a kattintás már ma is a /transfers/new
+// route-ra visz (ld. fenti pin: href='/transfers/new'), ezért ez a teszt MA IS
+// ZÖLD, és a felirat-módosítás közben is zöldnek kell maradnia. A locator itt
+// szándékosan felirat-agnosztikus (/Új átadás/ regex), hogy az átcímkézés előtt
+// és után is ugyanazt a viselkedést őrizze.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('FKH-026 v3 — "+ Új átadás" gomb (FR-7 felirat + FR-8 regresszió-őr)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.electronQueueAvailable = false
+    mocks.getOutgoing.mockResolvedValue([])
+    mocks.getIncoming.mockResolvedValue([])
+    mocks.getPending.mockResolvedValue([])
+    mocks.countPending.mockResolvedValue(0)
+    mocks.getShipmentPending.mockResolvedValue([])
+    mocks.getQueuedShipmentReceiptIds.mockResolvedValue(new Set())
+    mocks.getShipmentReceiptIssues.mockResolvedValue([])
+    mocks.getShipmentReceiptOutboxState.mockResolvedValue({ pending: [], issues: [] })
+    mocks.getActive.mockResolvedValue([])
+    mocks.listActive.mockResolvedValue([])
+  })
+
+  it('FR-7: a fejléc-gomb felirata "+ Új átadás", és változatlanul a /transfers/new-ra mutat', async () => {
+    render(
+      <MemoryRouter>
+        <TransferPage />
+      </MemoryRouter>,
+    )
+
+    // A fejléc-eszközsor a lista-betöltéstől függetlenül renderel; a findByRole
+    // az effektek lefutását is kivárja.
+    const link = await screen.findByRole('link', { name: '+ Új átadás' })
+    expect(link).toHaveAttribute('href', '/transfers/new')
+  })
+
+  it('FR-8 (regresszió-őr, ma is zöld): a gombra kattintva a /transfers/new route töltődik be', async () => {
+    render(
+      <MemoryRouter initialEntries={['/transfers']}>
+        <Routes>
+          <Route path="/transfers" element={<TransferPage />} />
+          <Route path="/transfers/new" element={<div data-testid="transfer-create-probe" />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(await screen.findByRole('link', { name: /Új átadás/ }))
+    expect(await screen.findByTestId('transfer-create-probe')).toBeInTheDocument()
   })
 })
