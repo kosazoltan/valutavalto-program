@@ -131,18 +131,25 @@ interface PendingRequest {
 /**
  * Promise-alapú wrapper: requestReason() megnyitja a modált, és a Promise
  * a beírt stringgel (OK/Enter — üres string is érvényes) vagy null-lal
- * (Escape/overlay/Mégse) teljesül. Egyszerre egy kérés támogatott.
+ * (Escape/overlay/Mégse) teljesül. Átfedő hívásnál az előző kérés Promise-a
+ * null-lal záródik le, hogy soha ne maradjon örökre függőben.
  */
 export function useTextReasonModal(): {
   modal: ReactNode
   requestReason: (opts: { title: string; placeholder?: string }) => Promise<string | null>
 } {
   const [pending, setPending] = useState<PendingRequest | null>(null)
+  // A state render-tükre: átfedő requestReason-hívásnál innen érhető el az
+  // előző kérés, hogy a Promise-a null-lal lezárható legyen (Bugbot-fix, PR #1524)
+  const pendingRef = useRef<PendingRequest | null>(null)
 
   const requestReason = useCallback(
     (opts: { title: string; placeholder?: string }) =>
       new Promise<string | null>((resolve) => {
-        setPending({ title: opts.title, placeholder: opts.placeholder, resolve })
+        pendingRef.current?.resolve(null)
+        const next = { title: opts.title, placeholder: opts.placeholder, resolve }
+        pendingRef.current = next
+        setPending(next)
       }),
     [],
   )
@@ -153,6 +160,9 @@ export function useTextReasonModal(): {
       title={pending.title}
       placeholder={pending.placeholder}
       onClose={(result) => {
+        // Elavult closure-ból érkező zárás nem lőheti ki az újabb kérést
+        if (pendingRef.current !== pending) return
+        pendingRef.current = null
         setPending(null)
         pending.resolve(result)
       }}
