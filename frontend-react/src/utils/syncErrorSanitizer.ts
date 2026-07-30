@@ -13,6 +13,11 @@
  * Okmányszám-maszkolás TUDATOSAN nincs (FK-071 GREEN Döntés 1): nincs bizonyíték
  * rá, hogy szerver-hibaüzenetben előfordulna, és egy mohó minta a bizonylatszám-
  * formátumot (1 betű + 9 számjegy, pl. V035000001) tévesen elfedhetné.
+ *
+ * FK-071 MEDIUM-E óta ez a modul a MEGJELENÍTÉS-oldali (defense-in-depth) réteg:
+ * a maszkolás elsődlegesen már a tárolás/naplózás ELŐTT lefut az Electron main
+ * processben. TARTSD SZINKRONBAN a párjával:
+ * penztar-client/electron/sync-error-sanitizer.ts.
  */
 
 const EMAIL_PATTERN = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g

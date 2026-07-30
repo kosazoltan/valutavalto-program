@@ -749,12 +749,24 @@ public class TransactionService {
     // ============ LEKÉRDEZÉSEK ============
 
     /**
-     * Tranzakció keresése bizonylat szám alapján
+     * Tranzakció keresése bizonylat szám alapján.
+     *
+     * <p>FK-071 HIGH-D (Codex security review): a pénztáros (nem supervisor+) csak a
+     * SAJÁT fiókja bizonylatát kérheti le — a korábbi, csak companyId-szűrt lekérdezés
+     * bizonylatszám-tippeléssel/URL-manipulációval ugyanazon cég MÁS fiókjának
+     * tranzakcióját is kiadta. Supervisor+ (SUPERVISOR/MANAGER/ADMIN,
+     * {@link SecurityUtils#isSupervisorOrAbove()}) számára a cégszintű viselkedés
+     * változatlan. Scope-on kívüli bizonylat = 404 (létezés-maszkolás), ugyanúgy,
+     * ahogy a cross-tenant (F9) és a territory-scope (Transfer) konvenció teszi.</p>
      */
     @Transactional(readOnly = true)
     public Transaction findByReceiptNumber(String receiptNumber) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        Transaction tx = transactionRepository.findByReceiptNumberAndCompanyId(receiptNumber, companyId)
+        var found = SecurityUtils.isSupervisorOrAbove()
+                ? transactionRepository.findByReceiptNumberAndCompanyId(receiptNumber, companyId)
+                : transactionRepository.findByReceiptNumberAndCompanyIdAndBranchId(
+                        receiptNumber, companyId, SecurityUtils.getCurrentBranchId());
+        Transaction tx = found
                 .orElseThrow(() -> new ResourceNotFoundException("Bizonylat nem található: " + receiptNumber));
         initMultiLineForMapping(tx);
         return tx;

@@ -79,6 +79,7 @@ import {
 } from './printer';
 import { sanitizeStoredServerUrl } from './config-guard';
 import { isAllowedUrl } from './api-proxy';
+import { sanitizeSyncErrorMessage } from './sync-error-sanitizer';
 
 // --- Típusok ---
 
@@ -260,6 +261,18 @@ async function readServerErrorMessage(response: Response): Promise<string | null
   } catch {
     return null;
   }
+}
+
+/**
+ * FK-071 MEDIUM-E (Codex security review): hiba-üzenet kettébontása.
+ * A NYERS (raw) változaton fut a PR #116 business-error detektor és minden
+ * tartalom-alapú osztályozás (auth/hálózat/409/VV-kód), a MASZKOLT (masked)
+ * változat kerül minden tartós tárolásba (sync_error, kísérlet-napló),
+ * naplóba és a SyncResult-ba. Sorrend: detektor → maszkolás → tárolás/log.
+ */
+function splitSyncError(err: unknown): { raw: string; masked: string } {
+  const raw = err instanceof Error ? err.message : String(err);
+  return { raw, masked: sanitizeSyncErrorMessage(raw) };
 }
 
 function isAuthStatusError(err: unknown): boolean {
@@ -1043,13 +1056,14 @@ export class SyncEngine {
       log.info(`[SyncEngine] TX #${tx.id} kézi újraküldés sikeres`);
       return { success: true, error: null };
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
+      // FK-071 MEDIUM-E: detektor a nyersen; a tárolt/logolt/visszaadott érték maszkolt.
+      const { raw: rawErrorMsg, masked: errorMsg } = splitSyncError(err);
       try {
         markTransactionSyncError(tx.id, errorMsg, new Date().toISOString());
       } catch {
         /* best-effort */
       }
-      if (this.isBusinessValidationError(errorMsg)) {
+      if (this.isBusinessValidationError(rawErrorMsg)) {
         this.abandonedTxIds.add(tx.id);
       }
       log.warn(`[SyncEngine] TX #${tx.id} kézi újraküldés sikertelen: ${errorMsg}`);
@@ -1232,7 +1246,8 @@ export class SyncEngine {
         markTransactionSynced(tx.id);
         result.synced++;
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
+        // FK-071 MEDIUM-E: detektor/osztályozás a NYERS szövegen, tárolás/log/eredmény maszkolva.
+        const { raw: rawErrorMsg, masked: errorMsg } = splitSyncError(err);
         result.failed++;
         result.errors.push(`TX #${tx.id} (${tx.type} ${tx.currency_code}): ${errorMsg}`);
         // FK-SYNC (2026-06-02): a hibát TARTÓSAN a pending soron is rögzítjük (nem csak in-memory +
@@ -1243,14 +1258,14 @@ export class SyncEngine {
           /* best-effort */
         }
         // PR #116: business-validation-error -> abandon (ne retry-oljon végtelenül)
-        if (this.isBusinessValidationError(errorMsg)) {
+        if (this.isBusinessValidationError(rawErrorMsg)) {
           this.abandonedTxIds.add(tx.id);
           log.warn(`[SyncEngine] TX #${tx.id} abandoned (business error): ${errorMsg}`);
         }
         if (
           isAuthStatusError(err) ||
-          errorMsg.includes('HTTP 401') ||
-          errorMsg.includes('HTTP 403')
+          rawErrorMsg.includes('HTTP 401') ||
+          rawErrorMsg.includes('HTTP 403')
         ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -1258,9 +1273,9 @@ export class SyncEngine {
         }
         // Ha hálózati hiba, a többi se fog menni — megszakítjuk
         if (
-          errorMsg.includes('fetch') ||
-          errorMsg.includes('network') ||
-          errorMsg.includes('timeout')
+          rawErrorMsg.includes('fetch') ||
+          rawErrorMsg.includes('network') ||
+          rawErrorMsg.includes('timeout')
         ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -1289,28 +1304,28 @@ export class SyncEngine {
         markConversionSynced(conversion.id);
         result.synced++;
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
+        const { raw: rawErrorMsg, masked: errorMsg } = splitSyncError(err);
         result.failed++;
         result.errors.push(
           `CONV #${conversion.id} (${conversion.from_currency_code}->${conversion.to_currency_code}): ${errorMsg}`,
         );
-        if (this.isBusinessValidationError(errorMsg)) {
+        if (this.isBusinessValidationError(rawErrorMsg)) {
           this.abandonedConvIds.add(conversion.id);
           log.warn(`[SyncEngine] CONV #${conversion.id} abandoned (business error): ${errorMsg}`);
         }
         if (
           isAuthStatusError(err) ||
-          errorMsg.includes('HTTP 401') ||
-          errorMsg.includes('HTTP 403')
+          rawErrorMsg.includes('HTTP 401') ||
+          rawErrorMsg.includes('HTTP 403')
         ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
         }
         if (
-          errorMsg.includes('fetch') ||
-          errorMsg.includes('network') ||
-          errorMsg.includes('timeout')
+          rawErrorMsg.includes('fetch') ||
+          rawErrorMsg.includes('network') ||
+          rawErrorMsg.includes('timeout')
         ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -1339,12 +1354,12 @@ export class SyncEngine {
         markBankTransactionSynced(bankTransaction.id);
         result.synced++;
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
+        const { raw: rawErrorMsg, masked: errorMsg } = splitSyncError(err);
         result.failed++;
         result.errors.push(
           `BANK #${bankTransaction.id} (${bankTransaction.transaction_type} ${bankTransaction.currency_code}): ${errorMsg}`,
         );
-        if (this.isBusinessValidationError(errorMsg)) {
+        if (this.isBusinessValidationError(rawErrorMsg)) {
           this.abandonedBankTxIds.add(bankTransaction.id);
           log.warn(
             `[SyncEngine] BANK #${bankTransaction.id} abandoned (business error): ${errorMsg}`,
@@ -1352,17 +1367,17 @@ export class SyncEngine {
         }
         if (
           isAuthStatusError(err) ||
-          errorMsg.includes('HTTP 401') ||
-          errorMsg.includes('HTTP 403')
+          rawErrorMsg.includes('HTTP 401') ||
+          rawErrorMsg.includes('HTTP 403')
         ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
         }
         if (
-          errorMsg.includes('fetch') ||
-          errorMsg.includes('network') ||
-          errorMsg.includes('timeout')
+          rawErrorMsg.includes('fetch') ||
+          rawErrorMsg.includes('network') ||
+          rawErrorMsg.includes('timeout')
         ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -1391,26 +1406,26 @@ export class SyncEngine {
         markDistributionSynced(distribution.id);
         result.synced++;
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
+        const { raw: rawErrorMsg, masked: errorMsg } = splitSyncError(err);
         result.failed++;
         result.errors.push(`DIST #${distribution.id} (${distribution.currency_code}): ${errorMsg}`);
-        if (this.isBusinessValidationError(errorMsg)) {
+        if (this.isBusinessValidationError(rawErrorMsg)) {
           this.abandonedDistribIds.add(distribution.id);
           log.warn(`[SyncEngine] DIST #${distribution.id} abandoned (business error): ${errorMsg}`);
         }
         if (
           isAuthStatusError(err) ||
-          errorMsg.includes('HTTP 401') ||
-          errorMsg.includes('HTTP 403')
+          rawErrorMsg.includes('HTTP 401') ||
+          rawErrorMsg.includes('HTTP 403')
         ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
         }
         if (
-          errorMsg.includes('fetch') ||
-          errorMsg.includes('network') ||
-          errorMsg.includes('timeout')
+          rawErrorMsg.includes('fetch') ||
+          rawErrorMsg.includes('network') ||
+          rawErrorMsg.includes('timeout')
         ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -1439,26 +1454,26 @@ export class SyncEngine {
         markTransferSynced(transfer.id);
         result.synced++;
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
+        const { raw: rawErrorMsg, masked: errorMsg } = splitSyncError(err);
         result.failed++;
         result.errors.push(`TRANSFER #${transfer.id} (${transfer.currency_code}): ${errorMsg}`);
-        if (this.isBusinessValidationError(errorMsg)) {
+        if (this.isBusinessValidationError(rawErrorMsg)) {
           this.abandonedTransferIds.add(transfer.id);
           log.warn(`[SyncEngine] TRANSFER #${transfer.id} abandoned (business error): ${errorMsg}`);
         }
         if (
           isAuthStatusError(err) ||
-          errorMsg.includes('HTTP 401') ||
-          errorMsg.includes('HTTP 403')
+          rawErrorMsg.includes('HTTP 401') ||
+          rawErrorMsg.includes('HTTP 403')
         ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
         }
         if (
-          errorMsg.includes('fetch') ||
-          errorMsg.includes('network') ||
-          errorMsg.includes('timeout')
+          rawErrorMsg.includes('fetch') ||
+          rawErrorMsg.includes('network') ||
+          rawErrorMsg.includes('timeout')
         ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -1487,12 +1502,12 @@ export class SyncEngine {
         markCollectionSynced(collection.id);
         result.synced++;
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
+        const { raw: rawErrorMsg, masked: errorMsg } = splitSyncError(err);
         result.failed++;
         result.errors.push(
           `COLLECTION #${collection.id} (${collection.currency_code}): ${errorMsg}`,
         );
-        if (this.isBusinessValidationError(errorMsg)) {
+        if (this.isBusinessValidationError(rawErrorMsg)) {
           this.abandonedCollectionIds.add(collection.id);
           log.warn(
             `[SyncEngine] COLLECTION #${collection.id} abandoned (business error): ${errorMsg}`,
@@ -1500,17 +1515,17 @@ export class SyncEngine {
         }
         if (
           isAuthStatusError(err) ||
-          errorMsg.includes('HTTP 401') ||
-          errorMsg.includes('HTTP 403')
+          rawErrorMsg.includes('HTTP 401') ||
+          rawErrorMsg.includes('HTTP 403')
         ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
         }
         if (
-          errorMsg.includes('fetch') ||
-          errorMsg.includes('network') ||
-          errorMsg.includes('timeout')
+          rawErrorMsg.includes('fetch') ||
+          rawErrorMsg.includes('network') ||
+          rawErrorMsg.includes('timeout')
         ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -1533,26 +1548,26 @@ export class SyncEngine {
         markStornoSynced(storno.id);
         result.synced++;
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
+        const { raw: rawErrorMsg, masked: errorMsg } = splitSyncError(err);
         result.failed++;
         result.errors.push(`STORNO #${storno.id} (${storno.original_receipt_number}): ${errorMsg}`);
-        if (this.isBusinessValidationError(errorMsg)) {
+        if (this.isBusinessValidationError(rawErrorMsg)) {
           this.abandonedStornoIds.add(storno.id);
           log.warn(`[SyncEngine] STORNO #${storno.id} abandoned (business error): ${errorMsg}`);
         }
         if (
           isAuthStatusError(err) ||
-          errorMsg.includes('HTTP 401') ||
-          errorMsg.includes('HTTP 403')
+          rawErrorMsg.includes('HTTP 401') ||
+          rawErrorMsg.includes('HTTP 403')
         ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
         }
         if (
-          errorMsg.includes('fetch') ||
-          errorMsg.includes('network') ||
-          errorMsg.includes('timeout')
+          rawErrorMsg.includes('fetch') ||
+          rawErrorMsg.includes('network') ||
+          rawErrorMsg.includes('timeout')
         ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -1581,10 +1596,10 @@ export class SyncEngine {
         markHandoverOperationSynced(operation.id);
         result.synced++;
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
+        const { raw: rawErrorMsg, masked: errorMsg } = splitSyncError(err);
         result.failed++;
         result.errors.push(`HANDOVER #${operation.id} (${operation.operation_type}): ${errorMsg}`);
-        if (this.isBusinessValidationError(errorMsg)) {
+        if (this.isBusinessValidationError(rawErrorMsg)) {
           this.abandonedHandoverIds.add(operation.id);
           log.warn(
             `[SyncEngine] HANDOVER #${operation.id} abandoned (business error): ${errorMsg}`,
@@ -1592,17 +1607,17 @@ export class SyncEngine {
         }
         if (
           isAuthStatusError(err) ||
-          errorMsg.includes('HTTP 401') ||
-          errorMsg.includes('HTTP 403')
+          rawErrorMsg.includes('HTTP 401') ||
+          rawErrorMsg.includes('HTTP 403')
         ) {
           result.errors.push('Auth/session hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
           break;
         }
         if (
-          errorMsg.includes('fetch') ||
-          errorMsg.includes('network') ||
-          errorMsg.includes('timeout')
+          rawErrorMsg.includes('fetch') ||
+          rawErrorMsg.includes('network') ||
+          rawErrorMsg.includes('timeout')
         ) {
           result.errors.push('Hálózati hiba — további próbálkozások leállítva');
           result.failed += totalPending - result.synced - result.failed;
@@ -1631,9 +1646,9 @@ export class SyncEngine {
         await fn();
         count++;
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const { raw: rawMsg, masked: msg } = splitSyncError(err);
         // halozati hiba -> nincs ertelme folytatni; a kovetkezo recovery ujraprobalja
-        if (msg.includes('fetch') || msg.includes('network') || msg.includes('timeout')) {
+        if (rawMsg.includes('fetch') || rawMsg.includes('network') || rawMsg.includes('timeout')) {
           throw err;
         }
         log.warn(`[Reassert] ${label}: ${msg}`);
@@ -2647,8 +2662,8 @@ export class SyncEngine {
           );
           markCircularReplySynced(reply.id);
         } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : String(err);
-          if (errorMsg.includes('409')) {
+          const { raw: rawErrorMsg, masked: errorMsg } = splitSyncError(err);
+          if (rawErrorMsg.includes('409')) {
             markCircularReplySynced(reply.id);
             log.info(`[SyncEngine] Körlevél-válasz #${reply.id} már a szerveren → synced.`);
             continue;
@@ -2658,7 +2673,7 @@ export class SyncEngine {
             log.warn('[SyncEngine] Körlevél-válasz auth hiba (401/403), ciklus leállítva.');
             break;
           }
-          if (this.isBusinessValidationError(errorMsg)) {
+          if (this.isBusinessValidationError(rawErrorMsg)) {
             markCircularReplySynced(reply.id);
             log.warn(
               `[SyncEngine] Körlevél-válasz #${reply.id} elvetve (business error): ${errorMsg}`,
@@ -2729,12 +2744,12 @@ export class SyncEngine {
             `[SyncEngine] Okmány-scan #${doc.id} feltöltve a centerbe, helyi fájlok törölve.`,
           );
         } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : String(err);
+          const { raw: rawErrorMsg, masked: errorMsg } = splitSyncError(err);
           if (isAuthStatusError(err)) {
             log.warn('[SyncEngine] Okmány-scan auth hiba (401/403), ciklus leállítva.');
             break;
           }
-          if (this.isBusinessValidationError(errorMsg)) {
+          if (this.isBusinessValidationError(rawErrorMsg)) {
             markScannedDocumentSyncError(doc.id, errorMsg);
             log.warn(`[SyncEngine] Okmány-scan #${doc.id} üzleti hiba: ${errorMsg}`);
             continue;
@@ -2783,12 +2798,12 @@ export class SyncEngine {
           );
           markTransferStornoSynced(st.id);
         } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : String(err);
+          const { raw: rawErrorMsg, masked: errorMsg } = splitSyncError(err);
           // Már sztornózva (409 / VV-TX-003) → a kívánt végállapot már fennáll → kész.
           if (
-            errorMsg.includes('409') ||
-            errorMsg.includes('VV-TX-003') ||
-            errorMsg.includes('már sztornózva')
+            rawErrorMsg.includes('409') ||
+            rawErrorMsg.includes('VV-TX-003') ||
+            rawErrorMsg.includes('már sztornózva')
           ) {
             markTransferStornoSynced(st.id);
             log.info(`[SyncEngine] Transfer-storno #${st.id} már sztornózva a szerveren → synced.`);
@@ -2800,7 +2815,7 @@ export class SyncEngine {
             break;
           }
           // Üzleti validációs hiba (nem-újrázható) → ne blokkolja a queue-t.
-          if (this.isBusinessValidationError(errorMsg)) {
+          if (this.isBusinessValidationError(rawErrorMsg)) {
             markTransferStornoSynced(st.id);
             log.warn(
               `[SyncEngine] Transfer-storno #${st.id} elvetve (business error): ${errorMsg}`,
@@ -2872,7 +2887,7 @@ export class SyncEngine {
         result.synced++;
       } catch (err) {
         if (isAuthStatusError(err)) {
-          const message = err instanceof Error ? err.message : String(err);
+          const message = splitSyncError(err).masked;
           markShipmentReceiptRetryError(receipt.id, message);
           result.failed++;
           result.errors.push(message);
@@ -2910,8 +2925,7 @@ export class SyncEngine {
             result.errors.push(message);
             continue;
           } catch (verifyError) {
-            const message =
-              verifyError instanceof Error ? verifyError.message : String(verifyError);
+            const message = splitSyncError(verifyError).masked;
             markShipmentReceiptRetryError(receipt.id, message);
             result.failed++;
             result.errors.push(message);
@@ -2919,8 +2933,8 @@ export class SyncEngine {
           }
         }
 
-        const message = err instanceof Error ? err.message : String(err);
-        if (err instanceof HttpStatusError && this.isBusinessValidationError(message)) {
+        const { raw: rawMessage, masked: message } = splitSyncError(err);
+        if (err instanceof HttpStatusError && this.isBusinessValidationError(rawMessage)) {
           markShipmentReceiptTerminalError(receipt.id, message);
         } else {
           markShipmentReceiptRetryError(receipt.id, message);
@@ -3044,7 +3058,7 @@ export class SyncEngine {
             log.warn('[SyncEngine] Stocktake auth hiba (401/403), ciklus leállítva.');
             break;
           }
-          const errMsg = err instanceof Error ? err.message : String(err);
+          const errMsg = splitSyncError(err).masked;
           markStocktakeItemError(row.id, errMsg);
           log.warn(`[SyncEngine] Stocktake item #${row.id} sync hiba:`, errMsg);
           break;
@@ -3245,7 +3259,7 @@ export class SyncEngine {
 
       return { restored: saved, error: null };
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = splitSyncError(err).masked;
       log.error('[SyncEngine] Restore hiba:', msg);
       return { restored: 0, error: msg };
     }

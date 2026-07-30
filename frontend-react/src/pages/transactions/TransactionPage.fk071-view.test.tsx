@@ -214,4 +214,29 @@ describe('FK-071 FR-4 — Megtekintés (👁): read-only tranzakció-nézet a /t
 
     expect(screen.queryByTestId('tx-save-print')).not.toBeInTheDocument()
   })
+
+  // FK-071 HIGH-D utókövetés: a backend a scope-on kívüli bizonylatra 404-et ad
+  // (létezés-maszkolás) — a nézetnek hibapanelt kell mutatnia, adatok nélkül.
+  // A 403-as ág ugyanazt a hibapanel-utat futtatja (védekező eset, ha a backend
+  // konvenció később változna).
+  it('HIGH-D: 404-es válasz (más fiók bizonylata) → hibapanel, adatpanel nélkül', async () => {
+    mocks.transactionApiGetById.mockRejectedValue(new Error('Request failed with status code 404'))
+
+    renderViewRoute('E001000777')
+
+    expect(await screen.findByText('Request failed with status code 404')).toBeInTheDocument()
+    expect(screen.queryByTestId('tx-view-panel')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tx-save-print')).not.toBeInTheDocument()
+    expect(screen.getByTestId('tx-view-back')).toBeInTheDocument()
+  })
+
+  it('HIGH-D: 403-as válasz esetén ugyanaz a hibapanel-ág fut, mint 404-nél', async () => {
+    mocks.transactionApiGetById.mockRejectedValue(new Error('Request failed with status code 403'))
+
+    renderViewRoute('E001000777')
+
+    expect(await screen.findByText('Request failed with status code 403')).toBeInTheDocument()
+    expect(screen.queryByTestId('tx-view-panel')).not.toBeInTheDocument()
+    expect(screen.getByTestId('tx-view-back')).toBeInTheDocument()
+  })
 })
