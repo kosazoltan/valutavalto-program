@@ -20,6 +20,7 @@ import {
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import { useTextReasonModal } from '../../components/TextReasonModal'
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
   REQUESTED: { label: 'Jóváhagyásra vár', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
@@ -64,6 +65,7 @@ export default function CameraExportPage() {
     chainIntact: boolean
     verifiedAt: string
   } | null>(null)
+  const { modal: reasonModal, requestReason } = useTextReasonModal()
 
   // New request form
   const [form, setForm] = useState({
@@ -161,7 +163,7 @@ export default function CameraExportPage() {
   }
 
   const handleReject = async (id: string) => {
-    const reason = prompt('Elutasítás indoka:')
+    const reason = await requestReason({ title: 'Elutasítás indoka' })
     if (!reason) return
     try {
       const res = await cameraExportApi.reject(id, reason)
@@ -533,6 +535,7 @@ export default function CameraExportPage() {
           )}
         </div>
       </div>
+      {reasonModal}
     </div>
   )
 }
